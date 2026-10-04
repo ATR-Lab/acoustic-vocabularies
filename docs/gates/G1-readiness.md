@@ -23,10 +23,10 @@ distinguish verified observations, proposed pins and unresolved fields.
 | #45 | [PR96](https://github.com/ATR-Lab/acoustic-vocabularies/pull/96), Windows Link and Android ARM64 IL2CPP builds, logger | Headset runs on both topologies, refresh/frame/startup metrics, removal/sleep/disconnect behavior, captures, LTS decision |
 | #46 | [PR101](https://github.com/ATR-Lab/acoustic-vocabularies/pull/101), reproducible import, 43/43 joint map, 5,060 passing link-pose comparisons plus 165 supplemental hand comparisons, aligned Android build | LFS binary publication, wearer visual review, 600-second Quest render-cost/frame-budget run |
 | #44 | [PR93](https://github.com/ATR-Lab/acoustic-vocabularies/pull/93), 600-second headless and offscreen runs, short concurrent/multi-env probes, inventory/hashes, close hand images | Visible viewport condition, discarded-render-frame investigation, OS/GPU qualification, review of proposed pinned-USD use |
-| #47 | [PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100), strict Unity client, live custom publisher and diagnostic SSH captures; actual ROS# integration underway | Full 2-option × 2-rate × 2-topology runs, reconnect tests, CPU/client cost, live headset capture and transport/rate recommendation |
+| #47 | [PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100), strict clients, actual ROS# integration, Android/Windows builds, live SSH diagnostics and both candidates rendering the robot | Full 2-option × 2-rate × 2-topology runs, clock qualification, reconnect/resource tests, headset capture, full ROS extension validation/deviation review and transport/rate recommendation |
 | #48 | [PR94](https://github.com/ATR-Lab/acoustic-vocabularies/pull/94), compiled click harness and tested onset analysis | Independent clock synchronization, 200 physical onsets per route/mode, acoustic/electrical comparisons, real uncertainty and equipment photo |
 | #49 | [PR95](https://github.com/ATR-Lab/acoustic-vocabularies/pull/95), compiled controller/poke panel, legality check and tested analysis | Three internal testers, 32 commands/method, legibility ladder, input-loss confirmation and captures |
-| #50 | [PR97](https://github.com/ATR-Lab/acoustic-vocabularies/pull/97), seven Proposed ADRs, engineering schema CI, hardware arithmetic, model provenance | Real measurements cited, private protocol/template reconciliation, runtime/decoding qualification, review and merge |
+| #50 | [PR97](https://github.com/ATR-Lab/acoustic-vocabularies/pull/97), seven Proposed ADRs, measured spike references, engineering schema CI, hardware arithmetic, model provenance | Complete remaining spike evidence, private protocol/template reconciliation, runtime/decoding qualification, review and merge |
 | #51 | This readiness packet and risk register | All above criteria, review notes, developer/gate-owner sign-off, Accepted ADRs on main |
 
 No empty template or synthetic test result counts as a measured spike. Consult
@@ -38,6 +38,10 @@ as a substitute for its acceptance criteria.
 - Unity editor 6000.6.0f1 built Windows x64 Mono/DX11 and Android ARM64
   IL2CPP/Vulkan. The aligned robot APK is 60,353,958 bytes. No Quest is attached;
   build success does not establish device refresh, latency or frame timing.
+  The integrated bridge/robot scene, including actual ROS# and both transport
+  paths, also built for Android ARM64 IL2CPP and Windows x64 Mono. Exact build
+  revisions, file manifests and hashes are in the bridge report. Device execution
+  remains a separate check.
 - The fixed-base Isaac headless run completed 83,308 steps in 600.0011 seconds.
   Full step intervals were mean 7.2019 ms / p95 7.7469 ms / max 12.7667 ms.
   Total GPU use was 3,336 MiB, including the existing workload; pre-run total was
@@ -65,6 +69,19 @@ as a substitute for its acceptance criteria.
   loss or reordering. These use a Python collector without qualified source
   clocks or a renderer. They fail the acceptance screen and do not substitute
   for either headset topology or the full-duration comparison.
+- A separate 30 Hz ROS/rosbridge Python capture received 900 live frames in
+  30.007 s, RTT median/p95 36.659/63.477 ms, maximum gap 56.548 ms and no sequence
+  loss/reordering. These separate short runs do not rank the transports.
+  Actual ROS# in Unity applied 601 live 43-joint frames over 19.9955 s, with
+  callback median/p95 0.3082/0.5207 ms and a verified robot image. The completed
+  custom Unity capture applied 600 live frames over approximately 19.97 s,
+  callback median/p95 0.3020/0.4133 ms, with a valid summary, CSV and image.
+  Interrupted attempts are preserved separately and excluded from passes. Diagnostic
+  application explicitly records unqualified source freshness; it cannot pass
+  acceptance or establish total frame cost. The ROS path uses bundled Humble
+  `rclpy` directly because full ROS/OmniGraph activation stalled; that requested
+  extension path remains unresolved. Private shared IPC resolved observed
+  Fast DDS delivery failure without host IPC/network changes.
 - Physical audio onset, seated input and label legibility remain unmeasured.
 
 LFS initialization, tracking and valid pointer creation are verified. After the
@@ -77,6 +94,8 @@ retained; no unavailable pointers were published and no support request was sent
 - Both standalone and Link remain candidates; build success does not pick a winner.
 - Compare custom WebSocket and rosbridge with an identical public state contract.
   Prohibit trial/target metadata; apply the 250 ms stale-state fault.
+  Keep diagnostic animation visibly ineligible for acceptance until conservative
+  source-clock bounds and the required device/network conditions are measured.
 - One isolated Isaac instance per station is the planning baseline until actual
   concurrency measurements support consolidation. Four/six role allocations are
   in [ADR-003](../adr/ADR-003-hosting.md).

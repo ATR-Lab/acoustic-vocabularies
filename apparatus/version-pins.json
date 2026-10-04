@@ -41,11 +41,15 @@
     "canonical_joint_map_sha256": "1d6a3129b2dc3747284043d43b1ecd33bbaae6003874a5a01f63711b3a7b686e",
     "unity_json_package": "com.unity.nuget.newtonsoft-json@3.2.2",
     "rossharp_commit": "99387714e3d498b87a93add711c7e9b5d38392f9",
-    "rossharp_validation": "editor-compilation-and-synthetic-RosSocket-state-echo; device-run-pending",
+    "rossharp_validation": "editor-live-43-joint-rendering-and-android-arm64-il2cpp-build; device-run-pending",
     "rosbridge_suite": "2.0.8-1jammy.20260907.222404",
     "ros_sidecar_os": "Ubuntu 22.04.5",
     "ros_sidecar_image_id": "sha256:8ac407e2fadf88b0fcbed24ec03102ba5eef7c3e21954f33e1f82a350f785564",
-    "ros_sidecar_distro": "Humble"
+    "ros_sidecar_distro": "Humble",
+    "isaac_ros_path": "bundled-Humble-rclpy-direct; full-ROS-OmniGraph-extension-unvalidated",
+    "isaac_bundled_rclpy": "3.3.17",
+    "ros_sidecar_base_digest": "sha256:1813d3c85d7f96ff7d3012d865204583255740182db5d0065f8f8cd029a83138",
+    "spike_isolation": "shared-private-IPC-and-loopback-only-network-namespace"
   },
   "llm": {
     "vllm_version": "0.30.0",
