@@ -26,9 +26,11 @@ namespace AcousticVocab.Spikes.Bridge
             if (!benchmark.settings.diagnostic_apply) throw new InvalidOperationException("Capture requires diagnostic_apply=true");
             deadline = Time.realtimeSinceStartupAsDouble + benchmark.settings.duration_s + benchmark.settings.warmup_timeout_s + 15;
             foreach (var driver in FindObjectsByType<TrackedPoseDriver>(FindObjectsSortMode.None)) driver.enabled = false;
+            var workcell = GameObject.Find("SeatedWorkcell"); if (workcell != null) workcell.SetActive(false);
             var camera = Camera.main;
-            camera.transform.position = new Vector3(0, 1.3f, -.5f);
-            camera.transform.LookAt(robot.transform.position + new Vector3(0, .25f, 0));
+            camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = new Color(.32f, .34f, .37f);
+            camera.transform.position = robot.transform.position + new Vector3(0, .65f, -2.2f);
+            camera.transform.LookAt(robot.transform.position + new Vector3(0, .15f, 0));
         }
         void LateUpdate()
         {

@@ -103,7 +103,7 @@ def main():
     parser.add_argument("--candidate", choices=("custom", "rosbridge"), default="custom")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    fields = "event session_id seq publish_host_ns recv_client_s sim_time sim_step c0_s s1_ns s2_ns c3_s apply_ms queue_drops source_kind source_fresh applied".split()
+    fields = "event session_id seq publish_host_ns recv_client_s sim_time sim_step c0_s s1_ns s2_ns c3_s apply_ms queue_drops source_kind source_fresh applied diagnostic".split()
     count = 0
     client = LoopbackWebSocket(args.uri)
     if args.candidate == "rosbridge":
@@ -114,6 +114,7 @@ def main():
     with args.output.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
+        writer.writerow(dict(event="diagnostic_mode", recv_client_s=time.perf_counter(), diagnostic="true"))
         writer.writerow(dict(event="run_start", recv_client_s=time.perf_counter()))
         try:
             while time.perf_counter() - start < args.seconds:
@@ -134,7 +135,7 @@ def main():
                     validate_frame(message)
                     writer.writerow(dict(event="state", session_id=message["session_id"], seq=message["seq"],
                         publish_host_ns=message["host_monotonic_ns"], recv_client_s=received, sim_time=message["sim_time"],
-                        sim_step=message["sim_step"], queue_drops=0, source_kind=message["source_kind"], source_fresh="false", applied="false"))
+                        sim_step=message["sim_step"], queue_drops=0, source_kind=message["source_kind"], source_fresh="false", applied="false", diagnostic="true"))
                     count += 1
                 elif message["kind"] == "echo":
                     writer.writerow(dict(event="echo", recv_client_s=received, c0_s=message["c0_s"],
