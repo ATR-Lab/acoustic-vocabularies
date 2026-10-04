@@ -17,9 +17,9 @@ distinguish verified observations, proposed pins and unresolved fields.
 | --- | --- | --- |
 | #43 | [PR89](https://github.com/ATR-Lab/acoustic-vocabularies/pull/89), passing CI, three deliberate failed checks, enforced main protection | LFS server restoration and real upload/fresh-clone hash proof; protocol-template validation; maintainer merge |
 | #45 | [PR96](https://github.com/ATR-Lab/acoustic-vocabularies/pull/96), Windows Link and Android ARM64 IL2CPP builds, logger | Headset runs on both topologies, refresh/frame/startup metrics, removal/sleep/disconnect behavior, captures, LTS decision |
-| #46 | One-time import/reproducibility work tracked in [issue46](https://github.com/ATR-Lab/acoustic-vocabularies/issues/46) | Imported prefab, canonical map against loaded Isaac inventory, three pose comparisons, render cost and headset checks |
-| #44 | [PR93](https://github.com/ATR-Lab/acoustic-vocabularies/pull/93), host/container provenance, isolated setup and harness | Ten-minute step/resource evidence, viewport screenshot, concurrent-instance/environment checks, OS/GPU qualification, asset-use license decision |
-| #47 | Candidate prototypes tracked in [issue47](https://github.com/ATR-Lab/acoustic-vocabularies/issues/47) | Full 2-option × 2-rate × 2-topology runs, reconnect tests, CPU/client cost, live headset capture and transport/rate recommendation |
+| #46 | [PR101](https://github.com/ATR-Lab/acoustic-vocabularies/pull/101), reproducible import, 43/43 joint map, 5,060 passing link-pose comparisons, aligned Android build | LFS binary publication, side-by-side hand/visual review, 600-second Quest render-cost/frame-budget run |
+| #44 | [PR93](https://github.com/ATR-Lab/acoustic-vocabularies/pull/93), 600-second headless run, measured inventory, hashes and resource/step CSVs; offscreen image | Rendered/concurrent evidence, visible viewport condition, OS/GPU qualification, final study-use license review |
+| #47 | [PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100), strict Unity client, live custom publisher and diagnostic SSH captures; actual ROS# integration underway | Full 2-option × 2-rate × 2-topology runs, reconnect tests, CPU/client cost, live headset capture and transport/rate recommendation |
 | #48 | [PR94](https://github.com/ATR-Lab/acoustic-vocabularies/pull/94), compiled click harness and tested onset analysis | Independent clock synchronization, 200 physical onsets per route/mode, acoustic/electrical comparisons, real uncertainty and equipment photo |
 | #49 | [PR95](https://github.com/ATR-Lab/acoustic-vocabularies/pull/95), compiled controller/poke panel, legality check and tested analysis | Three internal testers, 32 commands/method, legibility ladder, input-loss confirmation and captures |
 | #50 | [PR97](https://github.com/ATR-Lab/acoustic-vocabularies/pull/97), seven Proposed ADRs, engineering schema CI, hardware arithmetic, model provenance | Real measurements cited, private protocol/template reconciliation, runtime/decoding qualification, review and merge |
@@ -28,6 +28,33 @@ distinguish verified observations, proposed pins and unresolved fields.
 No empty template or synthetic test result counts as a measured spike. Consult
 each spike report for the newest actual data rather than interpreting this table
 as a substitute for its acceptance criteria.
+
+## Measured evidence so far
+
+- Unity editor 6000.6.0f1 built Windows x64 Mono/DX11 and Android ARM64
+  IL2CPP/Vulkan. The aligned robot APK is 60,353,958 bytes. No Quest is attached;
+  build success does not establish device refresh, latency or frame timing.
+- The fixed-base Isaac headless run completed 83,308 steps in 600.0011 seconds.
+  Full step intervals were mean 7.2019 ms / p95 7.7469 ms / max 12.7667 ms.
+  Total GPU use was 3,336 MiB, including the existing workload; pre-run total was
+  1,019 MiB. Process RSS was mean 3,355.23 MiB, with mean CPU about 2.09 cores.
+  This is the approved Ubuntu 24.04 / Quadro RTX 6000 feasibility environment.
+- All 43 driven joints, including seven per hand, match. Across 92 poses and 55
+  aligned frames, maximum position/orientation errors were 0.000649038 mm and
+  0.000105371 degrees. A real fixed-sensor-frame mismatch was corrected explicitly;
+  the original URDF and failed baseline evidence remain available.
+- Thirty-second custom-bridge diagnostics crossed the actual Linux-to-Windows
+  SSH path. The 30 Hz capture had 900 live frames and three gaps above 250 ms;
+  the 60 Hz capture had 1,798 frames and ten such gaps. Neither had sequence
+  loss or reordering. These use a Python collector without qualified source
+  clocks or a renderer. They fail the acceptance screen and do not substitute
+  for either headset topology or the full-duration comparison.
+- Physical audio onset, seated input and label legibility remain unmeasured.
+
+LFS initialization, tracking and valid pointer creation are verified. After the
+owner updated billing, both normal push and the documented all-object retry still
+returned the server's disabled-service response. The local fixture commit is
+retained; no unavailable pointers were published and no support request was sent.
 
 ## Decisions proposed for review
 
@@ -55,6 +82,7 @@ require operator involvement. The remote Isaac setup has been authorized in an
 isolated environment; this does not approve an OS/GPU baseline exception.
 
 Methodology documents were not found in accessible desktop/remote locations.
+Exact-name and related searches in connected Drive also did not locate the sources.
 The read-only external source and templates must be supplied or located before
 protocol claims, decoding settings, panel wording and export schemas can freeze.
 Never copy them into this public repository.

@@ -38,7 +38,10 @@
     "ros2_candidate": "Humble",
     "observed_host_ros2": "Jazzy",
     "rossharp_candidate": "2.3.0",
-    "canonical_joint_map_sha256": null
+    "canonical_joint_map_sha256": "1d6a3129b2dc3747284043d43b1ecd33bbaae6003874a5a01f63711b3a7b686e",
+    "unity_json_package": "com.unity.nuget.newtonsoft-json@3.2.2",
+    "rossharp_commit": "99387714e3d498b87a93add711c7e9b5d38392f9",
+    "rossharp_validation": "isolated-editor-compilation; device-run-pending"
   },
   "llm": {
     "vllm_version": "0.30.0",
