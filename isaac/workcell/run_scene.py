@@ -123,6 +123,12 @@ def main():
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))
         print(json.dumps(summary),flush=True)
+    except Exception:
+        import traceback
+        error=traceback.format_exc()
+        (args.output/'error.txt').write_text(error)
+        print(error,flush=True)
+        raise
     finally:
         app.close(wait_for_replicator=False,skip_cleanup=True)
 
