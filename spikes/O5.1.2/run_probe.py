@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 
 from evidence import hash_files, require_revision, summarize, verify_loopback_only, write_csv
 
@@ -158,7 +159,7 @@ def main():
         manifest["fixed_base"] = all(robot.is_fixed_base for robot in robots)
         layers, assets, unresolved = UsdUtils.ComputeAllDependencies(str(asset.resolve()))
         if unresolved:
-            raise RuntimeError("Asset dependency closure contains unresolved references")
+            raise RuntimeError(f"Asset dependency closure contains unresolved references: {unresolved}")
         files = {Path(layer.realPath) for layer in layers if layer.realPath}
         files.update(Path(layer.realPath) for layer in stage.GetUsedLayers() if layer.realPath)
         files.update(Path(path) for path in assets)
@@ -210,6 +211,7 @@ def main():
         if not completed:
             raise RuntimeError("Simulation ended before requested duration")
     except Exception as exc:
+        traceback.print_exc()
         (args.output / "failure.json").write_text(json.dumps({"error_type": type(exc).__name__,
                                                              "completed": False}) + "\n")
         raise
