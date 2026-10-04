@@ -84,7 +84,7 @@ def build_workcell(stage, layout):
 
     for data in layout['objects']:
         path=data['prim_path']; root=UsdGeom.Xform.Define(stage,path)
-        root.AddTranslateOp(); root.AddOrientOp()
+        root.AddTranslateOp(); root.AddOrientOp(precision=UsdGeom.XformOp.PrecisionDouble)
         root.GetPrim().CreateAttribute('workcell:id',Sdf.ValueTypeNames.String).Set(data['id'])
         root.GetPrim().CreateAttribute('workcell:enabled',Sdf.ValueTypeNames.Bool).Set(True)
         root.GetPrim().CreateAttribute('workcell:linearVelocity',Sdf.ValueTypeNames.Double3).Set(Gf.Vec3d(0))
@@ -140,3 +140,4 @@ def build_workcell(stage, layout):
     accessors=StateAccessors(stage,layout)
     accessors.apply_state(neutral_state(layout))
     return accessors
+
