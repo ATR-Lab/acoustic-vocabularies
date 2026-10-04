@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic engineering event envelope; protocol template mapping pending",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "apparatus_version", "event", "host_mono_ms"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "protocol_version": {"type": "string", "minLength": 1},
+    "apparatus_version": {"type": "string", "minLength": 1},
+    "event": {"const": "engineering_fixture"},
+    "host_mono_ms": {"type": "number", "minimum": 0}
+  }
+}
