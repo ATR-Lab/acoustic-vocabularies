@@ -158,11 +158,24 @@ def main():
         manifest["joint_counts"] = dump_inventory(robots[0], stage, args.output / "joint_inventory.csv")
         manifest["fixed_base"] = all(robot.is_fixed_base for robot in robots)
         layers, assets, unresolved = UsdUtils.ComputeAllDependencies(str(asset.resolve()))
+        # USD's resolver does not resolve bare MDL module names. Kit's standard
+        # MDL search root does; include that whole source tree to cover imports.
+        mdl_root = Path("/isaac-sim/kit/mdl")
+        builtin_mdl = {}
+        for identifier in unresolved:
+            if Path(identifier).name == identifier and identifier.endswith(".mdl"):
+                candidates = list(mdl_root.rglob(identifier))
+                if len(candidates) == 1:
+                    builtin_mdl[identifier] = candidates[0]
+        unresolved = [item for item in unresolved if item not in builtin_mdl]
         if unresolved:
             raise RuntimeError(f"Asset dependency closure contains unresolved references: {unresolved}")
         files = {Path(layer.realPath) for layer in layers if layer.realPath}
         files.update(Path(layer.realPath) for layer in stage.GetUsedLayers() if layer.realPath)
-        files.update(Path(path) for path in assets)
+        files.update(builtin_mdl.get(path, Path(path)) for path in assets)
+        if builtin_mdl:
+            files.update(mdl_root.rglob("*.mdl"))
+        manifest["builtin_mdl_dependencies"] = sorted(builtin_mdl)
         files.update((source, pins_path, Path(__file__), Path(__file__).with_name("evidence.py"), manifest_path))
         for imported in tuple(sys.modules.values()):
             filename = getattr(imported, "__file__", None)
@@ -219,7 +232,7 @@ def main():
         stop.set()
         if sampler:
             sampler.join(timeout=5)
-        app.close()
+        app.close(wait_for_replicator=False)
     summarize(args.output)
 
 
