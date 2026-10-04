@@ -20,6 +20,7 @@ from av_sound.recipe import StrictJsonError, strict_json_loads
 SCHEMA_FILES: tuple[str, ...] = (
     "recipe.schema.json",
     "reserved-registry.schema.json",
+    "store-record.schema.json",
     "validation-result.schema.json",
     "validator-config.schema.json",
 )

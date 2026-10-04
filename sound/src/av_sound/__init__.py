@@ -16,6 +16,8 @@ Stable public API (see `sound/README.md` and `docs/interfaces/sound-engine.md`):
 - `nonlexical_assets`, `nonlexical_asset`, `calibration_example`, `NonlexicalAsset`,
   `build_reserved_registry`, `CALIBRATION_SAMPLES`: calibration examples, READY cue and
   grammar clicks (`sound/docs/nonlexical.md`).
+- `VocabularyStore`, `StoreEntry`, `VerifyReport`: the append-only vocabulary store
+  (`sound/docs/store.md`).
 """
 
 from av_sound.composer import (
@@ -63,6 +65,20 @@ from av_sound.renderer import (
 )
 from av_sound.reserved import ReservedEntry, ReservedRegistry, load_reserved_registry
 from av_sound.selftest import self_test
+from av_sound.store import (
+    BookFrozen,
+    BookInfo,
+    CommitRejected,
+    OverwriteRejected,
+    StoreEntry,
+    StoreError,
+    StoreIntegrityError,
+    VerifyIssue,
+    VerifyReport,
+    VocabularyStore,
+    persistence_violations,
+    snapshot_digest,
+)
 from av_sound.tables import SAMPLE_RATE, SAMPLES_PER_MS
 from av_sound.validate import (
     REASON_CODES,
@@ -95,12 +111,16 @@ __all__ = [
     "VALIDATOR_VERSION",
     "AtomAudio",
     "AtomAudioLike",
+    "BookFrozen",
+    "BookInfo",
+    "CommitRejected",
     "CompositionError",
     "GrammarError",
     "HeldOutMessageError",
     "Message",
     "NearestReference",
     "NonlexicalAsset",
+    "OverwriteRejected",
     "Profile",
     "Recipe",
     "RecipeError",
@@ -108,8 +128,14 @@ __all__ = [
     "Rendered",
     "ReservedEntry",
     "ReservedRegistry",
+    "StoreEntry",
+    "StoreError",
+    "StoreIntegrityError",
     "Timing",
     "ValidationResult",
+    "VerifyIssue",
+    "VerifyReport",
+    "VocabularyStore",
     "build_reserved_registry",
     "calibration_example",
     "compose",
@@ -127,6 +153,7 @@ __all__ = [
     "nonlexical_assets",
     "parse_threshold",
     "pcm_sha256",
+    "persistence_violations",
     "read_wav",
     "render",
     "renderer_hash",
@@ -134,6 +161,7 @@ __all__ = [
     "renderer_recipe_schema_hash",
     "self_test",
     "separated",
+    "snapshot_digest",
     "sum_squared_diff",
     "timing",
     "validate",
