@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 using AcousticVocab.Spikes.Urdf;
@@ -18,6 +19,13 @@ namespace AcousticVocab.Spikes.Bridge
         void OnEnable() { if (benchmark != null) benchmark.FrameReceived += OnFrame; }
         void OnDisable() { if (benchmark != null) benchmark.FrameReceived -= OnFrame; }
         void OnFrame(BridgeBenchmark.StateFrame frame) { applied++; }
+        static void DurableWrite(string path, byte[] bytes)
+        {
+            string temporary = path + ".tmp";
+            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            { stream.Write(bytes, 0, bytes.Length); stream.Flush(true); }
+            File.Move(temporary, path); // existing evidence is never overwritten
+        }
         void Start()
         {
             var args = Environment.GetCommandLineArgs(); int index = Array.IndexOf(args, "-bridgeDiagnosticOutput");
@@ -43,13 +51,13 @@ namespace AcousticVocab.Spikes.Bridge
                 {
                     camera.targetTexture = render; camera.Render(); RenderTexture.active = render;
                     pixels.ReadPixels(new Rect(0, 0, 1280, 960), 0, 0); pixels.Apply();
-                    File.WriteAllBytes(Path.Combine(output, "bridge-diagnostic.png"), pixels.EncodeToPNG()); captured = true;
+                    DurableWrite(Path.Combine(output, "bridge-diagnostic.png"), pixels.EncodeToPNG()); captured = true;
                 }
                 finally { camera.targetTexture = old; RenderTexture.active = active; Destroy(render); Destroy(pixels); }
             }
             if (benchmark.IsFinished || Time.realtimeSinceStartupAsDouble > deadline)
             {
-                File.WriteAllText(Path.Combine(output, "capture-summary.json"), "{\"diagnostic\":true,\"applied_frames\":" + applied + ",\"captured\":" + (captured ? "true" : "false") + ",\"device_acceptance\":false}\n");
+                DurableWrite(Path.Combine(output, "capture-summary.json"), Encoding.UTF8.GetBytes("{\"diagnostic\":true,\"applied_frames\":" + applied + ",\"captured\":" + (captured ? "true" : "false") + ",\"device_acceptance\":false}\n"));
                 int code = benchmark.IsFinished && applied > 0 && captured ? 0 : 1;
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.Exit(code);

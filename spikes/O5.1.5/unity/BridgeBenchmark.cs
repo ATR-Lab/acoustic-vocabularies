@@ -234,9 +234,9 @@ namespace AcousticVocab.Spikes.Bridge
             if (Now - lastAgeLog >= 1) { lastAgeLog = Now; Record("heartbeat", Now); }
             Flush();
             if (measurementStarted && Now - start >= settings.duration_s)
-            { Record("run_end", Now); Flush(); finished = true; lifetime.Cancel(); rosSharpTransport?.Stop(); }
+            { Record("run_end", Now); Flush(true); finished = true; lifetime.Cancel(); rosSharpTransport?.Stop(); }
             else if (!measurementStarted && Now - captureStart >= settings.warmup_timeout_s)
-            { Record("warmup_failed", Now); Flush(); finished = true; lifetime.Cancel(); rosSharpTransport?.Stop(); }
+            { Record("warmup_failed", Now); Flush(true); finished = true; lifetime.Cancel(); rosSharpTransport?.Stop(); }
         }
 
         void Record(string name, double received) => records.Enqueue(string.Join(",", name, "", "", "", N(received), "", "", "", "", "", "", "", queueDrops, "", "", "", settings.diagnostic_apply ? "true" : "false"));
@@ -266,7 +266,7 @@ namespace AcousticVocab.Spikes.Bridge
             return "{\"kind\":\"echo\",\"c0_s\":\"" + timestamp + "\"}";
         }
         public void ExternalProtocolError() => Record("transport_error", Now);
-        void Flush() { while (records.TryDequeue(out string record)) writer.WriteLine(record); writer.Flush(); }
-        void OnDisable() { lifetime?.Cancel(); rosSharpTransport?.Stop(); if (writer != null) { Record("component_disabled", Now); Flush(); writer.Dispose(); writer = null; } }
+        void Flush(bool durable = false) { while (records.TryDequeue(out string record)) writer.WriteLine(record); writer.Flush(); if (durable && writer.BaseStream is FileStream stream) stream.Flush(true); }
+        void OnDisable() { lifetime?.Cancel(); rosSharpTransport?.Stop(); if (writer != null) { Record("component_disabled", Now); Flush(true); writer.Dispose(); writer = null; } }
     }
 }
