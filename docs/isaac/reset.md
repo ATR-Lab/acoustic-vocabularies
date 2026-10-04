@@ -9,6 +9,9 @@ independent readback, and opens `exposure_ready` only after the reset event has
 been durably logged. Any mismatch closes that gate. Merely observing a corrected
 state never reopens it: a new explicit, successful `reset()` is required. There
 is no automatic reset retry and no target/action argument to the reset path.
+Restore and verification enforce the owning simulation thread; network workers
+must queue commands to it. This prevents concurrent writes during verification
+or durable logging. The exposure gate is read-only to callers.
 
 ## Snapshot and startup
 

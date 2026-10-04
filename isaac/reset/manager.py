@@ -5,6 +5,7 @@ from copy import deepcopy
 from dataclasses import dataclass, asdict
 import math
 import time
+import threading
 
 from .snapshot import sha256, validate_snapshot, validate_state
 
@@ -44,13 +45,23 @@ class ResetManager:
         self.reset_snapshot_sha256 = expected_sha256
         self.event_sink = event_sink
         self.tolerances = tolerances or Tolerances()
-        self.exposure_ready = False
+        self._exposure_ready = False
+        self._owner_thread = threading.get_ident()
+
+    @property
+    def exposure_ready(self):
+        return self._exposure_ready
+
+    def _check_thread(self):
+        if threading.get_ident() != self._owner_thread:
+            raise RuntimeError("reset and verification must run on the owning simulation thread")
 
     @property
     def neutral_state(self):
         return deepcopy(self._snapshot["state"])
 
     def verify_state(self, state):
+        self._check_thread()
         failures = []
         worst = {"joint_rad": 0., "position_m": 0., "orientation_rad": 0.,
                  "linear_velocity_m_s": 0., "angular_velocity_rad_s": 0., "environment_absolute": 0.}
@@ -102,18 +113,20 @@ class ResetManager:
             failures.append({"item": "state", "reason": "invalid_readback", "detail": str(exc)})
         result = {"reset_ok": not failures, "failures": failures, "worst_deviation": worst}
         if failures:
-            self.exposure_ready = False
+            self._exposure_ready = False
         return result
 
     def verify_current(self):
+        self._check_thread()
         try:
             return self.verify_state(self.adapter.read_state())
         except Exception as exc:
-            self.exposure_ready = False
+            self._exposure_ready = False
             return {"reset_ok": False, "failures": [{"item": "adapter", "reason": "read_failed", "detail": type(exc).__name__}], "worst_deviation": {}}
 
     def reset(self):
-        self.exposure_ready = False
+        self._check_thread()
+        self._exposure_ready = False
         started = time.monotonic_ns()
         try:
             if self.adapter.scene_sha256 != self._snapshot["scene_sha256"]:
@@ -128,5 +141,5 @@ class ResetManager:
                       verification_elapsed_ms=(time.monotonic_ns()-started)/1e6)
         # Sink failure cannot produce successful return or open the exposure gate.
         self.event_sink(deepcopy(result))
-        self.exposure_ready = result["reset_ok"]
+        self._exposure_ready = result["reset_ok"]
         return result

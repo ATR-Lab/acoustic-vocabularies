@@ -196,3 +196,14 @@ def test_duplicate_json_and_unknown_keys_rejected(tmp_path):
     snapshot["state"]["robot"]["target"] = "forbidden"
     with pytest.raises(ValueError, match="exact keys"):
         snapshot_bytes(snapshot)
+
+
+def test_cross_thread_restore_rejected_before_write():
+    from concurrent.futures import ThreadPoolExecutor
+    adapter, _, _, reset = manager()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with pytest.raises(RuntimeError, match="simulation thread"):
+            pool.submit(reset.reset).result()
+    assert adapter.writes == 0 and not reset.exposure_ready
+    with pytest.raises(AttributeError):
+        reset.exposure_ready = True

@@ -107,7 +107,7 @@ def validate_state(state, neutral=False):
         if not isinstance(category, dict):
             raise ValueError("environment category must be mapping")
         primitive_tree(category, "environment")
-    if not isinstance(state["frames"], dict) or not state["frames"]:
+    if not isinstance(state["frames"], dict) or len(state["frames"]) < 3:
         raise ValueError("head/hand observer frames required")
     for name, frame in state["frames"].items():
         keys(frame, {"position_m", "rotation_xyzw"}, f"frame/{name}")
