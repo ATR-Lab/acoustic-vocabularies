@@ -1,5 +1,76 @@
 {
-  "entries": [],
+  "entries": [
+    {
+      "description": "Calibration example for P1: 2.000 s steady tone at f0 = 300 Hz (pitch 0), partials 1/0.15/0.05, 10/30 ms raised-cosine envelope, RMS 7336 LSB (the motif target). Nonsemantic; used for comfort screening, gain calibration and the profile menu.",
+      "file_sha256": "f5a1a6d526bb5685e8a26217c5313e0afd18c3824c9adee8643fe99e2af8bd90",
+      "id": "calibration-P1",
+      "kind": "calibration",
+      "n_samples": 96000,
+      "pcm_sha256": "e50e47627a73137392e2cfdd0dac2253adda3c8b10aea49174c9506c3fb90211",
+      "profile": "P1",
+      "recipe": null
+    },
+    {
+      "description": "Calibration example for P2: 2.000 s steady tone at f0 = 450 Hz (pitch 0), partials 1/0.15/0.05, 10/30 ms raised-cosine envelope, RMS 7336 LSB (the motif target). Nonsemantic; used for comfort screening, gain calibration and the profile menu.",
+      "file_sha256": "94c4aa228c33f3f57b78bb5c10ccc86a00e85efe5d59fa0c7e8ac09d2d2bb19a",
+      "id": "calibration-P2",
+      "kind": "calibration",
+      "n_samples": 96000,
+      "pcm_sha256": "5c1cf02801d36137df047975043a89613aff99882eca77f3604579a2e223dca8",
+      "profile": "P2",
+      "recipe": null
+    },
+    {
+      "description": "Calibration example for P3: 2.000 s steady tone at f0 = 675 Hz (pitch 0), partials 1/0.15/0.05, 10/30 ms raised-cosine envelope, RMS 7336 LSB (the motif target). Nonsemantic; used for comfort screening, gain calibration and the profile menu.",
+      "file_sha256": "0645d88eabf758f4e53645119538f703dc1ae641771655e900e1b9089f1787fd",
+      "id": "calibration-P3",
+      "kind": "calibration",
+      "n_samples": 96000,
+      "pcm_sha256": "14299502afa920cc0413def79b289f0258dcea794bf4922a0666ad34186ea2b1",
+      "profile": "P3",
+      "recipe": null
+    },
+    {
+      "description": "READY cue (familiarization only, never a semantic item): two 120 ms bursts of band-limited noise (about 0.9-2.9 kHz) with 80 ms of silence, 320 ms in total; RMS over the bursts 3668 LSB. Profile-independent.",
+      "file_sha256": "93f5a38691672296b2969a8dea2412f37012d4b63d0322e92ce2c161cb26abb0",
+      "id": "ready-cue",
+      "kind": "ready_cue",
+      "n_samples": 15360,
+      "pcm_sha256": "fa17509cb859718336a136b21c9555a55a834497b89b8321e97ed5704f800d4d",
+      "profile": null,
+      "recipe": null
+    },
+    {
+      "description": "Grammar click for 'action': one 4 ms click (3 kHz, raised-cosine window, peak 10362 LSB). Profile-independent.",
+      "file_sha256": "14f7c000678a77e7e42bdf15a490b19cd8a14a3e1c85b72ed6b808396c019ede",
+      "id": "click-action",
+      "kind": "click",
+      "n_samples": 192,
+      "pcm_sha256": "7770d01665c23f962cd875a621a8c614eb0944ababa60974e18532890b306b6a",
+      "profile": null,
+      "recipe": null
+    },
+    {
+      "description": "Grammar click for 'target': two 4 ms clicks with onsets 80 ms apart (84 ms in total, peak 10362 LSB). Profile-independent.",
+      "file_sha256": "3acfe281916e7e86ca9cfc91cb364f9ad2d45cad5d567afd641b14aa2bad2aa4",
+      "id": "click-target",
+      "kind": "click",
+      "n_samples": 4032,
+      "pcm_sha256": "cee7832d4c0cc9e490752917b4fbedd35b438832230c7c2713cbfe49e904b6ff",
+      "profile": null,
+      "recipe": null
+    },
+    {
+      "description": "Grammar demonstration: action click, exactly 9600 zero samples (200 ms), target click; mirrors action motif, gap, referent motif. Profile-independent.",
+      "file_sha256": "1697e38e2154531be452868c3e9ee7f62c210d362f458154735f08074cec94dd",
+      "id": "click-grammar-demo",
+      "kind": "click",
+      "n_samples": 13824,
+      "pcm_sha256": "3da116f4c9de748eb745a0f0abbf9333d1435dd93806f2d2b8051af35d449619",
+      "profile": null,
+      "recipe": null
+    }
+  ],
   "registry_version": 1,
   "renderer_version": "0.1.0"
 }

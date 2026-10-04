@@ -13,6 +13,9 @@ Stable public API (see `sound/README.md` and `docs/interfaces/sound-engine.md`):
   `Reference`: admissibility checks and the 12-feature separation screen.
 - `features`, `distance`, `separated`, `sum_squared_diff`: the exact feature metric.
 - `load_reserved_registry`, `ReservedEntry`, `ReservedRegistry`: reserved signals.
+- `nonlexical_assets`, `nonlexical_asset`, `calibration_example`, `NonlexicalAsset`,
+  `build_reserved_registry`, `CALIBRATION_SAMPLES`: calibration examples, READY cue and
+  grammar clicks (`sound/docs/nonlexical.md`).
 """
 
 from av_sound.composer import (
@@ -39,6 +42,14 @@ from av_sound.features import (
     sum_squared_diff,
 )
 from av_sound.grammar import GrammarError
+from av_sound.nonlexical import (
+    CALIBRATION_SAMPLES,
+    NonlexicalAsset,
+    build_reserved_registry,
+    calibration_example,
+    nonlexical_asset,
+    nonlexical_assets,
+)
 from av_sound.recipe import E_DOMAIN, E_JSON, E_SCHEMA, Profile, Recipe, RecipeError
 from av_sound.renderer import (
     MIN_EVENT_SAMPLES,
@@ -67,6 +78,7 @@ from av_sound.version import renderer_hash, renderer_manifest, renderer_recipe_s
 from av_sound.wav import file_sha256, pcm_sha256, read_wav, wav_bytes, write_wav
 
 __all__ = [
+    "CALIBRATION_SAMPLES",
     "E_DOMAIN",
     "E_JSON",
     "E_SCHEMA",
@@ -88,6 +100,7 @@ __all__ = [
     "HeldOutMessageError",
     "Message",
     "NearestReference",
+    "NonlexicalAsset",
     "Profile",
     "Recipe",
     "RecipeError",
@@ -97,6 +110,8 @@ __all__ = [
     "ReservedRegistry",
     "Timing",
     "ValidationResult",
+    "build_reserved_registry",
+    "calibration_example",
     "compose",
     "compose_message",
     "composite_hash",
@@ -108,6 +123,8 @@ __all__ = [
     "load_separation_threshold",
     "message_length",
     "nearest_reference",
+    "nonlexical_asset",
+    "nonlexical_assets",
     "parse_threshold",
     "pcm_sha256",
     "read_wav",
