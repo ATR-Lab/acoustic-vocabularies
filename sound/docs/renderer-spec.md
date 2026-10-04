@@ -143,7 +143,8 @@ version.
 - **Envelope tables.** `EA` and `ER` as in D2.
 - **Generation.** The implementation computes all tables at import time with exact
   big-integer arithmetic (at least 64 guard bits), not with floating-point
-  `sin`, `cos` or `pow`. No table entry is an exact tie, so the result is the
+  `sin`, `cos` or `pow`. Amplitudes enter through a lookup (D5), not a float
+  product. No table entry is an exact tie, so the result is the
   correctly rounded value. The table digests below are checked by tests.
 
 Per event `j` with `n_j` samples, for `i = 0..n_j - 1`:
@@ -156,9 +157,10 @@ e       = mix * k_j * env(i)                      # k_j from D5
 x       = floor((e + 2^39) / 2^40)                # round half up to the working scale
 ```
 
-Gaps are `x = 0`. All intermediate values fit in a signed 64-bit integer
-(`|e| <= 24 * 2^24 * 5 * 2^30 < 2^61`; `|x| < 2^21`, so `sum(x^2) < 2^58` for the
-longest motif).
+Gaps are `x = 0`. Every value in this section fits in a signed 64-bit integer:
+`i * INC < 2^44`, `|e| <= 24 * 2^24 * 5 * 2^30 < 2^61`, `|x| < 2^21` and
+`sum(x^2) < 2^58` for the longest motif. Only the gain computation in D6 needs
+wider integers.
 
 Table digests (SHA-256 of the little-endian bytes):
 
@@ -178,8 +180,8 @@ negligible error. Frequency resolution is 48000 / 2^32 ≈ 1.1e-5 Hz.
 
 ### D5. Amplitudes
 
-Each amplitude becomes an integer `k = 5 * a`, which is 3, 4 or 5. The three
-integers are then divided by their greatest common divisor:
+Each amplitude maps to an integer by lookup: 0.6 → 3, 0.8 → 4, 1.0 → 5 (`k = 5a`).
+The three integers are then divided by their greatest common divisor:
 `k_j = k_j / gcd(k_1, k_2, k_3)`.
 
 The divisor is 1 for every triple except the uniform ones. (0.6, 0.6, 0.6),
@@ -189,8 +191,10 @@ Rationale: normalization (D6) removes the overall level. Uniform triples are
 therefore the same sound, and with this rule they are also the same bytes. The
 duplicate check (`E_DUPLICATE`) then catches them. Without the rule they would
 differ by rounding, and they would also pass the separation screen: their
-amplitude features differ by 0.5 each, giving a distance of 0.25. No other two
-triples in the domain are proportional, so the rule changes nothing else.
+amplitude features differ by 0.5 per event for adjacent levels (0.6 and 0.8) and
+by 1.0 for 0.6 and 1.0, giving distances of 0.25 and 0.5. No other two triples
+in the domain are proportional, so the rule changes nothing else. D5 catches only
+exact duplicates; section 6 describes what it does not catch.
 Amplitude ratios within a motif are preserved exactly.
 
 ### D6. Normalization
@@ -205,6 +209,11 @@ G = isqrt((RMS_TARGET^2 * N * 2^64) // S)        # gain, Q32
 y = floor((x * G + 2^31) / 2^32)                 # output samples
 ```
 
+`isqrt` is the floor of the exact square root. The numerator is below 2^106, so
+the gain step needs integers wider than 64 bits (Python integers; `UInt128` or a
+big-integer type elsewhere). `G` itself is below 2^29 and `|x * G| <=
+RMS_TARGET * sqrt(N) * 2^32 < 2^53`, so the per-sample step fits in int64.
+
 `RMS_TARGET = 7336` LSB, which is −13.00 dB relative to full-scale code 32,767.
 
 **Headroom.** The worst-case crest factor (peak / RMS) was measured in two stages:
@@ -216,7 +225,9 @@ y = floor((x * G + 2^31) / 2^32)                 # output samples
 
 The worst crest factor is 8.814 dB (T=450, weights 1/1/3, gaps 60/60,
 amplitudes 0.6/1.0/0.6, P1, pitches −2/−2/−2). `sound/tools/headroom_sweep.py`
-reproduces it. Pitch and profile change it by less than 0.01 dB.
+(added with the renderer, #8) reproduces it. An exhaustive check over all
+2,097 × 27 × 2,197 × 3 in-domain recipes, done in review, found the same worst
+case: peak 20,238 LSB. Pitch and profile change it by less than 0.01 dB.
 Worst-case peak is therefore −4.19 dBFS: **4.19 dB of headroom**, above the
 3 dB minimum. The continuous waveform `sin t + 0.15 sin 2t + 0.05 sin 3t` peaks
 at 1.0113, so no sample can exceed the bound by more than its sampling error.
@@ -227,7 +238,11 @@ procedures §4) and normalization does not replace it.
 
 Rationale: RMS normalization keeps loudness comparable across motifs with
 different duty cycles, so level is not an uncontrolled cue. One target for
-every motif keeps it a property of the renderer, not of any method.
+every motif keeps it a property of the renderer, not of any method. Common
+procedures §2 mentions digital peak normalization in passing; this spec chooses
+RMS, as the issue proposes. A peak target would remove `E_CLIP` entirely but let
+loudness vary with duty cycle. This choice needs sign-off with the other
+decisions.
 
 ### D7. Reject, never limit
 
@@ -269,9 +284,10 @@ Rationale: 16-bit PCM with a minimal header is the most widely supported format
 and gives about 88 dB of signal-to-noise ratio at the RMS target (quantization noise
 is about 0.29 LSB RMS), which is enough for comfortable listening levels. Unity imports it without a decoder. The Unity app must keep the
 clip as PCM (no Vorbis or ADPCM recompression, no sample-rate override). It must
-also verify the SHA-256 of the raw file bytes before decoding. **Pending:**
-confirmation from the audio-subsystem owner (#64) that this loads byte-exact on
-Quest Pro.
+also verify the SHA-256 of the raw file bytes before decoding. The decision is
+16-bit. Confirmation that it loads byte-exact on Quest Pro is requested from the
+audio-subsystem owner (#64); if that fails, the bit depth changes with a renderer
+version bump.
 
 ### D9. What is hashed
 
@@ -294,12 +310,20 @@ Quest Pro.
   pull request. Every hash record (store, golden manifest, package) stores the
   renderer version.
 - `renderer_hash` is the SHA-256 of the compact canonical JSON
-  (`sort_keys`, separators `,` and `:`) of:
-  - `renderer_version`
-  - every numeric constant: sample rate, table sizes, Q formats, attack, release,
-    harmonic weights, profile `f0`, `RMS_TARGET`, full-scale code
+  (`sort_keys`, separators `,` and `:`) of `renderer_manifest()`:
+  - `renderer_version` and `spec_version` (this document's version, not its
+    bytes, so editorial fixes do not change the hash)
+  - every numeric constant that shapes the bytes, with the keys listed by
+    `renderer_manifest()`
   - the four table digests
-  - the SHA-256 of each renderer source module, with CRLF normalized to LF
+  - the code digest of each byte-path module (`renderer.py`, `tables.py`,
+    `wav.py`): SHA-256 of the Python 3.11 `ast.dump` of the module with every
+    docstring and bare string statement removed. Comments, docstrings and
+    formatting do not change it; any change to code does.
+- The current `renderer_hash` and `renderer_recipe_schema_hash` are pinned in
+  `sound/testvectors/renderer/vectors.json`. A test fails when either changes.
+  A code change that leaves the bytes unchanged updates the pins with a reviewer
+  note. A change to bytes also bumps `RENDERER_VERSION`.
 - `renderer_recipe_schema_hash` is the SHA-256 of the compact canonical JSON
   `{"recipe_schema_sha256": ..., "renderer_hash": ...}`. The schema digest covers
   the schema file bytes, with CRLF normalized to LF. This value goes into the
@@ -358,14 +382,27 @@ The recipe above, profile P2 (`f0` = 450 Hz):
 | `INC` (h = 1) | 33,858,962; 40,265,318; 50,731,122 |
 | `k` (D5) | 5, 3, 4 |
 | Output peak, RMS | 13,865; 7,336.0 LSB |
+| `pcm_sha256` | `4c0467de354c076c0b30bc9af794e31384afdf161af24605fb621cc455c35d87` |
+| `file_sha256` | `32ade67b9c996e11deb3e5c1ee4b51381c0d49c6e22b4bbce9095980e119fca8` |
 
-The renderer's reference vectors (#8, `sound/testvectors/renderer/`) record its
-`pcm_sha256`.
+The renderer's reference vectors (#8, `sound/testvectors/renderer/`) include this
+example.
 
-## 6. Known limitation (flag for the threshold review)
+## 6. Known limitation (flag for the validator and threshold review)
 
-The separation features include absolute amplitudes, but D6 removes overall level.
-Two non-uniform triples, such as (0.6, 0.8, 0.8) and (0.8, 1.0, 1.0), have
-different features (distance contribution 0.5 per event) but nearly equal ratios
-(0.75 versus 0.8). D5 removes the exact case (uniform triples). The near-equal
-cases remain for the separation-threshold listening check (O6.2.2) to judge.
+The separation features (Study A protocol §3.2) include absolute amplitudes, but
+D6 removes overall level. A uniform change of level therefore moves the feature
+distance without changing the sound:
+
+- Recipe A has amplitudes (0.6, 0.6, 0.6). Recipe C is A with `pitches[0]` one
+  semitone higher: d(A, C) = 0.024, so C is rejected.
+- Recipe B is C with amplitudes (1.0, 1.0, 1.0). By D5, B renders to the same bytes
+  as C, but d(A, B) = 0.501, so B passes the screen against A.
+
+Non-uniform, nearly proportional triples, such as (0.6, 0.8, 0.8) and
+(0.8, 1.0, 1.0), behave the same way approximately. D5 catches only exact
+duplicates. Within the protocol's feature definition the renderer cannot close
+this. Options for the protocol owner are to compute the amplitude features on
+level-normalized amplitudes (`a / max(a)`) or to accept the screen as it is.
+This is flagged to the validator (#9) and to the separation-threshold review
+(O6.2.2).

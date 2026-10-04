@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/sound/schema/recipe.schema.json",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/recipe.schema.json",
   "title": "Motif recipe",
   "description": "One 3-event acoustic motif recipe (renderer spec 0.1.0, pilot default; freezes at G4). The profile is passed to the renderer separately. Every field is an enum so the schema can be used for constrained decoding unchanged. Checks a schema cannot express (60 ms events, clipping, duplicates, reserved signals, separation) belong to the validator.",
   "type": "object",
