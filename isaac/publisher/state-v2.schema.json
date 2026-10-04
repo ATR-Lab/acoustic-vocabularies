@@ -35,7 +35,7 @@
     },
     "station_id": {
       "type": "string",
-      "pattern": "^station-[0-9]{2}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
     },
     "scene_sha256": {
       "type": "string",

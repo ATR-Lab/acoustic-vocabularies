@@ -16,7 +16,7 @@ from dataclasses import dataclass
 HEX = re.compile(r"[0-9a-f]{64}\Z")
 SESSION = re.compile(r"[0-9a-f]{32}\Z")
 IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_/.-]{0,95}\Z")
-STATION = re.compile(r"station-[0-9]{2}\Z")
+STATION = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z")
 FIELDS = {"version", "kind", "source_kind", "station_id", "scene_sha256",
           "reset_snapshot_sha256", "session_id", "seq", "host_monotonic_ns",
           "sim_time", "sim_step", "joint_names", "joint_positions", "objects"}
@@ -62,7 +62,7 @@ class PublicRegistry:
 
     def __post_init__(self):
         if not STATION.fullmatch(self.station_id):
-            raise ValueError("Use a logical station-NN identifier, not a hostname/person")
+            raise ValueError("Use a logical station identifier (1..80 safe characters)")
         if not HEX.fullmatch(self.scene_sha256) or not HEX.fullmatch(self.reset_snapshot_sha256):
             raise ValueError("Verified scene and neutral snapshot hashes required")
         if len(self.joint_names) != 43 or len(set(self.joint_names)) != 43:
