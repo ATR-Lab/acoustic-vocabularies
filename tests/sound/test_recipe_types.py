@@ -91,22 +91,29 @@ def test_non_object_is_e_schema():
     assert err.value.code == "E_SCHEMA"
 
 
+_DUP = (
+    '{"total_ms":450,"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
+    '"gaps_ms":[20,20],"amplitudes":[1.0,1.0,1.0]}'
+)
+_NAN = (
+    '{"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
+    '"gaps_ms":[20,20],"amplitudes":[NaN,1.0,1.0]}'
+)
+
+
 @pytest.mark.parametrize(
     "text",
     [
-        "{not json",
-        "",
-        b"\xff\xfe",
-        '{"total_ms":450,"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
-        '"gaps_ms":[20,20],"amplitudes":[1.0,1.0,1.0]}',
-        '{"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
-        '"gaps_ms":[20,20],"amplitudes":[NaN,1.0,1.0]}',
-        '{"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
-        '"gaps_ms":[20,20],"amplitudes":[Infinity,1.0,1.0]}',
-        b"\xef\xbb\xbf{}",  # UTF-8 byte-order mark
-        '{"total_ms":600}'.encode("utf-16"),  # not UTF-8
-        "[" * 100_000 + "]" * 100_000,  # nesting beyond the recursion limit
-        '{"total_ms":' + "9" * 5000 + "}",  # beyond the integer-digit limit
+        pytest.param("{not json", id="syntax"),
+        pytest.param("", id="empty"),
+        pytest.param(b"\xff\xfe", id="bad-utf8"),
+        pytest.param(_DUP, id="duplicate-key"),
+        pytest.param(_NAN, id="nan"),
+        pytest.param(_NAN.replace("NaN", "Infinity"), id="infinity"),
+        pytest.param(b"\xef\xbb\xbf{}", id="utf8-bom"),
+        pytest.param('{"total_ms":600}'.encode("utf-16"), id="utf16"),
+        pytest.param("[" * 5_000 + "]" * 5_000, id="nesting-depth"),
+        pytest.param('{"total_ms":' + "9" * 5_000 + "}", id="integer-digits"),
     ],
 )
 def test_not_strict_json_is_e_json(text):
