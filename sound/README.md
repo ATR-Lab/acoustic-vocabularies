@@ -28,7 +28,8 @@ Nothing needs the network at runtime.
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
 | `docs/` | Renderer spec and component docs |
 | `testvectors/renderer/vectors.json` | Reference hashes for synthetic recipes |
-| `tools/` | Spec evidence: shortest events, headroom sweep, spectral check, test-vector writer |
+| `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
+| `tools/` | Spec evidence: shortest events, headroom sweep, spectral check, test-vector writers |
 
 ## API
 
@@ -47,6 +48,13 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `RENDERER_VERSION`, `renderer_hash()`, `renderer_recipe_schema_hash()` | Provenance for store records and the apparatus manifest (pinned in `testvectors/renderer/vectors.json`) |
 | `self_test()` | Renders two pinned reference vectors; call at start-up on a generation host |
 | `SAMPLE_RATE`, `SAMPLES_PER_MS`, `MIN_EVENT_SAMPLES`, `RMS_TARGET` | Constants (48,000; 48; 2,880; 7,336) |
+| `AtomAudio(atom_id, profile, pcm)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` also works |
+| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; refuses held-out IDs (`HeldOutMessageError`) and mixed profiles, families or roles (`CompositionError`) |
+| `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
+| `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
+| `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |
+| `GAP_SAMPLES`, `MIN_MESSAGE_SAMPLES`, `MAX_MESSAGE_SAMPLES` | 9,600; 52,800; 96,000 |
+| `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
 
 ```python
 from av_sound import Profile, Recipe, render, write_wav
@@ -60,6 +68,8 @@ assert motif.n_samples == 600 * 48
 file_hash = write_wav(motif, "example.wav")  # never commit WAVs from study recipes
 ```
 
+Messages follow the byte contract in [`docs/composition.md`](docs/composition.md).
+
 The renderer does not decide admissibility. It reports `overflow` and
 `short_event` flags and never limits or repairs a recipe.
 
@@ -67,7 +77,8 @@ The renderer does not decide admissibility. It reports `overflow` and
 
 `RENDERER_VERSION` is `0.1.0` until the G4 freeze, when it becomes `1.0.0`. Any
 change to rendered bytes bumps it in the same pull request and regenerates
-`testvectors/` with `uv run --project sound python sound/tools/make_testvectors.py`.
+`testvectors/` with `uv run --project sound python sound/tools/make_testvectors.py` and
+`uv run --project sound python sound/tools/make_composition_vectors.py`.
 A code change that leaves the bytes unchanged still changes `renderer_hash`: regenerate
 the vectors to update the pins and say why in the pull request.
 CI renders the vectors on Linux, macOS and Windows and fails on any hash change.
