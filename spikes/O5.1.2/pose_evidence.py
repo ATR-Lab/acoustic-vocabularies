@@ -28,9 +28,7 @@ def export(robot, sim, path, dt, capture_pose=None):
         "joint_names": list(robot.joint_names), "body_names": list(robot.body_names), "poses": []}
     defaults = robot.data.default_joint_pos[0].tolist()
     limits = robot.data.joint_pos_limits[0].tolist()
-    capture_names = {"default"}
-    for joint_name in ("left_shoulder_pitch_joint", "left_hand_thumb_0_joint"):
-        capture_names.add(f"joint_{robot.joint_names.index(joint_name):02d}_25pct")
+    capture_names = {"default", "joint_20_75pct", "spread_4"}
     for name, vector in target_vectors(defaults, limits):
         target = torch.tensor([vector], device=robot.device, dtype=robot.data.joint_pos.dtype)
         robot.write_joint_state_to_sim(target, torch.zeros_like(target))
