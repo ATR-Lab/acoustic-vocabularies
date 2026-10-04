@@ -21,7 +21,9 @@ WEIGHTS = (1, 2, 3, 4)
 GAPS_MS = (20, 40, 60)
 
 
-def event_samples(total_ms: int, weights: tuple[int, int, int], gaps_ms: tuple[int, int]) -> tuple[int, int, int]:
+def event_samples(
+    total_ms: int, weights: tuple[int, int, int], gaps_ms: tuple[int, int]
+) -> tuple[int, int, int]:
     """Spec D1: events 1 and 2 rounded half-up, event 3 takes the remainder."""
     d = (total_ms - gaps_ms[0] - gaps_ms[1]) * SAMPLES_PER_MS
     w = sum(weights)
@@ -31,8 +33,20 @@ def event_samples(total_ms: int, weights: tuple[int, int, int], gaps_ms: tuple[i
 
 
 def main(out: Path) -> None:
-    header = ["total_ms", "w1", "w2", "w3", "g1_ms", "g2_ms", "n1", "n2", "n3",
-              "shortest_samples", "shortest_ms", "admissible"]
+    header = [
+        "total_ms",
+        "w1",
+        "w2",
+        "w3",
+        "g1_ms",
+        "g2_ms",
+        "n1",
+        "n2",
+        "n3",
+        "shortest_samples",
+        "shortest_ms",
+        "admissible",
+    ]
     admissible: dict[int, int] = dict.fromkeys(TOTALS_MS, 0)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="\n") as f:
@@ -46,7 +60,8 @@ def main(out: Path) -> None:
                     shortest = min(n)
                     ok = shortest >= MIN_EVENT_SAMPLES
                     admissible[t] += ok
-                    ms = f"{shortest // SAMPLES_PER_MS}.{(shortest % SAMPLES_PER_MS) * 1000 // SAMPLES_PER_MS:03d}"
+                    frac = (shortest % SAMPLES_PER_MS) * 1000 // SAMPLES_PER_MS
+                    ms = f"{shortest // SAMPLES_PER_MS}.{frac:03d}"
                     writer.writerow([t, *w, *g, *n, shortest, ms, int(ok)])
     total = sum(admissible.values())
     print(f"wrote {out}: 2304 timing structures, {total} admissible")
@@ -55,4 +70,8 @@ def main(out: Path) -> None:
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]) if len(sys.argv) > 1 else Path("sound/docs/data/shortest-event-samples.csv"))
+    main(
+        Path(sys.argv[1])
+        if len(sys.argv) > 1
+        else Path("sound/docs/data/shortest-event-samples.csv")
+    )
