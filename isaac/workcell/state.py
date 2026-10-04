@@ -54,13 +54,22 @@ class StateAccessors:
         self.stage, self.layout = stage, layout
         self.anchor_ids = tuple(layout["anchor_ids"])
         self.definitions = {item["id"]: item for item in layout["objects"]}
+        self._static_geometry = None
 
     def read_state(self):
         from pxr import UsdGeom, UsdPhysics
+        for parent in ("/World", "/World/Workcell", "/World/Workcell/Objects"):
+            prim = self.stage.GetPrimAtPath(parent)
+            if prim and prim.IsA(UsdGeom.Xformable) and UsdGeom.Xformable(prim).GetOrderedXformOps():
+                raise ValueError("Workcell ancestry must have identity transforms")
+            if prim and prim.IsA(UsdGeom.Imageable) and UsdGeom.Imageable(prim).GetVisibilityAttr().Get() == UsdGeom.Tokens.invisible:
+                raise ValueError("Workcell ancestor unexpectedly hidden")
         result = {}
         for identifier, definition in self.definitions.items():
             prim = self.stage.GetPrimAtPath(definition["prim_path"])
             if not prim: raise ValueError("Missing semantic prim: " + identifier)
+            if [str(op.GetOpName()) for op in UsdGeom.Xformable(prim).GetOrderedXformOps()] != ["xformOp:translate", "xformOp:orient"]:
+                raise ValueError("Unexpected semantic transform operations")
             q = prim.GetAttribute("xformOp:orient").Get()
             children = list(self._collision_prims(prim))
             collision = [bool(UsdPhysics.CollisionAPI(p).GetCollisionEnabledAttr().Get()) for p in children]
@@ -74,6 +83,14 @@ class StateAccessors:
                 linear_velocity_m_s=list(prim.GetAttribute("workcell:linearVelocity").Get()),
                 angular_velocity_rad_s=list(prim.GetAttribute("workcell:angularVelocity").Get()),
                 state={key: prim.GetAttribute("workcell:" + key).Get() for key in definition["state"]})
+            state = result[identifier]["state"]
+            visual = self.stage.GetPrimAtPath(str(prim.GetPath()) + "/Visual")
+            for key, operation, expected in (
+                ("card_face", "xformOp:rotateX", lambda v: 180. * v),
+                ("arrow_angle_rad", "xformOp:rotateZ", math.degrees),
+                ("lid_open_fraction", "xformOp:rotateY", lambda v: math.degrees(definition["open_angle_rad"]) * v)):
+                if key in state and abs(visual.GetAttribute(operation).Get() - expected(state[key])) > 2e-5:
+                    raise ValueError("Visual geometry disagrees with semantic state: " + identifier)
         return validate_states(self.layout, result)
 
     @staticmethod
