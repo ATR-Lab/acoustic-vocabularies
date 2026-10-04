@@ -1,0 +1,55 @@
+{
+  "status": "proposed-not-frozen",
+  "checked_date": "2026-10-04",
+  "protocol_version": null,
+  "protocol_templates_verified": false,
+  "unity": {
+    "editor": "6000.6.0f1",
+    "revision": "f7f8ed4d1e24",
+    "channel": "supported-release-not-lts",
+    "openxr": "1.18.0",
+    "meta_openxr": "2.6.1",
+    "xr_hands": "1.6.3",
+    "meta_xr_core_sdk": null,
+    "meta_xr_core_sdk_status": "not-used",
+    "android_architecture": "ARM64",
+    "android_backend": "IL2CPP",
+    "windows_backend": "Mono"
+  },
+  "isaac": {
+    "sim_version": "5.1.0",
+    "observed_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+    "base_image_digest": "sha256:f3563cb2ba0c18af0b2fb321360dcb73a917b899f879e3213623d66bee484fa54",
+    "isaac_lab_commit": "80094be3245aa5c8376a7464d29cb4412ea518f5",
+    "unitree_commit": "e30c25b1dffdf92ada1d6c8c1fe9a47bdde0fecc",
+    "dataset_revision": "394cf2448f8a9ed815c77c701a761f3d1ff1c8fb",
+    "dataset_archive_sha256": "06fbf14549be3a81e3dbd4a8a019e7f060f48de1556b70f291a18ac8f9ead4b0",
+    "configuration": "G129_CFG_WITH_DEX3_BASE_FIX",
+    "asset_filename": "g1_29dof_with_dex3_base_fix.usd",
+    "required_os": "Ubuntu 22.04",
+    "observed_host_os": "Ubuntu 24.04.5",
+    "observed_container_os": "Ubuntu 24.04.2",
+    "baseline_qualification": "pending-explicit-deviation-review"
+  },
+  "bridge": {
+    "transport": null,
+    "publish_hz": null,
+    "stale_threshold_ms": 250,
+    "ros2_candidate": "Humble",
+    "observed_host_ros2": "Jazzy",
+    "rossharp_candidate": "2.3.0",
+    "canonical_joint_map_sha256": null
+  },
+  "llm": {
+    "vllm_version": "0.30.0",
+    "vllm_commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "model": "Qwen/Qwen2.5-7B-Instruct",
+    "model_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "precision": "bfloat16",
+    "minimum_separate_gpu_vram_gb": 24,
+    "provenance_file": "apparatus/model-provenance.json",
+    "runtime_validated": false,
+    "decoding_protocol_verified": false
+  },
+  "undecided": ["headset_topology", "bridge_transport", "bridge_rate", "hosting_density", "input_method", "panel_text_angle", "audio_route", "audio_play_mode", "audio_buffer", "protocol_log_template_mapping"]
+}
