@@ -5,5 +5,9 @@
   "run_kind": "steady-state",
   "rate_hz": 30,
   "duration_s": 1800,
-  "canonical_joint_names": []
+  "canonical_joint_names": [],
+  "clock_drift_bound_ppm": -1,
+  "clock_bound_evidence": "",
+  "max_echo_age_s": 2,
+  "warmup_timeout_s": 30
 }

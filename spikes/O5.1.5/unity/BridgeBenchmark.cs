@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using Newtonsoft.Json.Linq;
 
 namespace AcousticVocab.Spikes.Bridge
 {
@@ -34,20 +35,29 @@ namespace AcousticVocab.Spikes.Bridge
             public int rate_hz = 30;
             public double duration_s = 1800;
             public string[] canonical_joint_names;
+            public double clock_drift_bound_ppm = -1;
+            public string clock_bound_evidence = "";
+            public double max_echo_age_s = 2;
+            public double warmup_timeout_s = 30;
         }
-        struct Arrival { public string raw; public double received; }
+        struct Arrival { public string raw; public double received; public int epoch; }
         public Settings settings = new Settings();
         // Bind the #46 named FK renderer; never apply transforms on a network thread.
         public event Action<StateFrame> FrameReceived;
         readonly ConcurrentQueue<Arrival> incoming = new ConcurrentQueue<Arrival>();
         readonly ConcurrentQueue<string> records = new ConcurrentQueue<string>();
+        readonly ConcurrentDictionary<string, double> pendingEchoes = new ConcurrentDictionary<string, double>();
+        BridgeFreshnessGate freshness;
         CancellationTokenSource lifetime;
         StreamWriter writer;
-        double start, lastState, lastAgeLog;
+        double start, captureStart, lastState, lastAgeLog;
         double lastNetworkReceive;
-        int queued, queueDrops;
-        bool finished, stale;
+        int queued, queueDrops, transportEpoch, processedEpoch = -1;
+        bool finished, stale, measurementStarted;
         public bool StateIsStale => stale;
+        public bool TransportIsStale => Now - Volatile.Read(ref lastNetworkReceive) > .25;
+        double lastApplied = double.NegativeInfinity;
+        public bool AppliedStateIsStale => Now - lastApplied > .25 || StateIsStale;
         static double Now => (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
         static string N(double value) => value.ToString("R", CultureInfo.InvariantCulture);
 
@@ -62,14 +72,16 @@ namespace AcousticVocab.Spikes.Bridge
                 throw new InvalidOperationException("Complete bridge.local.json with verified canonical joint order");
             var names = new HashSet<string>(settings.canonical_joint_names);
             if (names.Count != settings.canonical_joint_names.Length) throw new InvalidOperationException("Duplicate canonical names");
+            if (settings.max_echo_age_s <= 0 || settings.max_echo_age_s > 5) throw new InvalidOperationException("Echo freshness must be between 0 and 5 seconds");
+            freshness = new BridgeFreshnessGate(settings.clock_drift_bound_ppm, settings.max_echo_age_s, !string.IsNullOrWhiteSpace(settings.clock_bound_evidence));
             string directory = Path.Combine(Application.persistentDataPath, "bridge-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
             // Endpoint is station-private; keep this file private with raw capture.
             File.WriteAllText(Path.Combine(directory, "settings.local.json"), JsonUtility.ToJson(settings, true));
             writer = new StreamWriter(Path.Combine(directory, "messages.csv"));
-            writer.WriteLine("event,session_id,seq,publish_host_ns,recv_client_s,sim_time,sim_step,c0_s,s1_ns,s2_ns,c3_s,apply_ms,queue_drops,source_kind");
-            start = lastState = Now;
-            Record("run_start", start);
+            writer.WriteLine("event,session_id,seq,publish_host_ns,recv_client_s,sim_time,sim_step,c0_s,s1_ns,s2_ns,c3_s,apply_ms,queue_drops,source_kind,source_fresh,applied");
+            start = captureStart = lastState = Now;
+            Record("capture_start", start);
             lifetime = new CancellationTokenSource();
             _ = Task.Run(() => ConnectionLoop(lifetime.Token));
             UnityEngine.Debug.Log("Bridge benchmark started; public state only. Output: " + directory);
@@ -84,6 +96,8 @@ namespace AcousticVocab.Spikes.Bridge
 
         async Task ConnectionLoop(CancellationToken stop)
         {
+            int failures = 0;
+            double[] backoff = { .25, .5, 1, 2, 5 };
             while (!stop.IsCancellationRequested)
             {
                 using var socket = new ClientWebSocket();
@@ -95,6 +109,9 @@ namespace AcousticVocab.Spikes.Bridge
                     using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(stop))
                     { timeout.CancelAfter(5000); await socket.ConnectAsync(new Uri(settings.uri), timeout.Token); }
                     Record("connected", Now);
+                    int epoch = Interlocked.Increment(ref transportEpoch);
+                    while (incoming.TryDequeue(out _)) Interlocked.Decrement(ref queued);
+                    pendingEchoes.Clear();
                     Interlocked.Exchange(ref lastNetworkReceive, Now);
                     if (settings.candidate == "rosbridge")
                     {
@@ -117,9 +134,10 @@ namespace AcousticVocab.Spikes.Bridge
                         } while (!result.EndOfMessage);
                         double received = Now; // before parsing and before Unity main-thread queue
                         Interlocked.Exchange(ref lastNetworkReceive, received);
+                        failures = 0;
                         if (Interlocked.Increment(ref queued) > 4096)
                         { Interlocked.Decrement(ref queued); Interlocked.Increment(ref queueDrops); Record("queue_overflow", received); continue; }
-                        incoming.Enqueue(new Arrival { raw = Encoding.UTF8.GetString(payload.ToArray()), received = received });
+                        incoming.Enqueue(new Arrival { raw = Encoding.UTF8.GetString(payload.ToArray()), received = received, epoch = epoch });
                     }
                 }
                 catch (OperationCanceledException) { }
@@ -130,7 +148,8 @@ namespace AcousticVocab.Spikes.Bridge
                     if (echoes != null) { try { await echoes; } catch (Exception) { } }
                     Record("disconnected", Now);
                 }
-                try { await Task.Delay(500, stop); } catch (OperationCanceledException) { }
+                double delay = backoff[Math.Min(failures++, backoff.Length - 1)];
+                try { await Task.Delay(TimeSpan.FromSeconds(delay), stop); } catch (OperationCanceledException) { }
             }
         }
 
@@ -139,6 +158,8 @@ namespace AcousticVocab.Spikes.Bridge
             while (!token.IsCancellationRequested)
             {
                 var echo = new Echo { c0_s = N(Now) };
+                pendingEchoes[echo.c0_s] = double.Parse(echo.c0_s, CultureInfo.InvariantCulture);
+                foreach (var pending in pendingEchoes) if (Now - pending.Value > 5) pendingEchoes.TryRemove(pending.Key, out _);
                 if (Now - Volatile.Read(ref lastNetworkReceive) > 2)
                 { socket.Abort(); throw new IOException("Receive watchdog expired"); }
                 string payload = "{\"kind\":\"echo\",\"c0_s\":\"" + echo.c0_s + "\"}";
@@ -149,65 +170,56 @@ namespace AcousticVocab.Spikes.Bridge
             }
         }
 
-        bool Validate(StateFrame frame)
-        {
-            if (frame == null || frame.version != 1 || frame.kind != "state" ||
-                (frame.source_kind != "live" && frame.source_kind != "synthetic") ||
-                frame.session_id == null || frame.session_id.Length != 32 || frame.seq < 0 || frame.sim_step < 0 ||
-                !ulong.TryParse(frame.host_monotonic_ns, out _) || double.IsNaN(frame.sim_time) || double.IsInfinity(frame.sim_time) ||
-                frame.joint_names == null || frame.joint_positions == null ||
-                frame.joint_names.Length != settings.canonical_joint_names.Length || frame.joint_positions.Length != frame.joint_names.Length)
-                return false;
-            for (int i = 0; i < frame.joint_names.Length; i++)
-                if (frame.joint_names[i] != settings.canonical_joint_names[i] || double.IsNaN(frame.joint_positions[i]) || double.IsInfinity(frame.joint_positions[i])) return false;
-            return true;
-        }
-
         void Update()
         {
             if (writer == null || finished) return;
+            int epoch = Volatile.Read(ref transportEpoch);
+            if (processedEpoch != epoch)
+            { processedEpoch = epoch; freshness.Reset(); lastApplied = double.NegativeInfinity; Record("session_buffers_reset", Now); }
             // Process bounded batches; overflow is explicit and invalidates clean benchmark claims.
             int budget = 512;
             while (budget-- > 0 && incoming.TryDequeue(out Arrival item))
             {
                 Interlocked.Decrement(ref queued);
+                if (item.epoch != epoch) { Record("old_connection_frame", item.received); continue; }
                 double before = Now;
                 try
                 {
-                    string raw = item.raw;
-                    if (settings.candidate == "rosbridge")
+                    JObject value = settings.candidate == "rosbridge" ? BridgeValidation.UnwrapRos(item.raw) : BridgeValidation.Parse(item.raw);
+                    if (value == null) continue;
+                    if (value["kind"]?.Value<string>() == "echo")
                     {
-                        var wrapper = JsonUtility.FromJson<RosEnvelope>(raw);
-                        if (wrapper.op != "publish" || (wrapper.topic != "/spike/state" && wrapper.topic != "/spike/echo/reply")) continue;
-                        raw = wrapper.msg.data;
-                    }
-                    var type = JsonUtility.FromJson<Echo>(raw);
-                    if (type.kind == "echo")
-                    {
-                        records.Enqueue(string.Join(",", "echo", "", "", "", N(item.received), "", "", type.c0_s, type.s1_ns, type.s2_ns, N(item.received), "", queueDrops, ""));
+                        var echo = BridgeValidation.Echo(value);
+                        if (!pendingEchoes.TryRemove(echo.c0_s, out double c0) || !freshness.Echo(c0, BridgeValidation.Nanoseconds(echo.s1_ns), BridgeValidation.Nanoseconds(echo.s2_ns), item.received))
+                        { Record("invalid_echo", item.received); continue; }
+                        records.Enqueue(string.Join(",", "echo", "", "", "", N(item.received), "", "", echo.c0_s, echo.s1_ns, echo.s2_ns, N(item.received), "", queueDrops, "", "", ""));
                         continue;
                     }
-                    var frame = JsonUtility.FromJson<StateFrame>(raw);
-                    if (!Validate(frame)) { Record("invalid_frame", item.received); continue; }
-                    // Stale receive queues must never animate an apparently fresh robot.
-                    if (Now - item.received <= .25) FrameReceived?.Invoke(frame);
-                    else Record("stale_queued_frame", item.received);
+                    var frame = BridgeValidation.State(value, settings.canonical_joint_names);
+                    bool fresh = freshness.Accept(frame, item.received, Now, out string reason);
+                    bool applied = false;
+                    if (fresh && FrameReceived != null) { FrameReceived.Invoke(frame); lastApplied = Now; applied = true; }
+                    if (!measurementStarted && fresh && applied)
+                    { measurementStarted = true; start = item.received; Record("run_start", start); }
+                    if (!fresh) Record(measurementStarted ? reason : "warmup_" + reason, item.received);
                     double cost = (Now - before) * 1000;
                     lastState = item.received;
-                    records.Enqueue(string.Join(",", "state", frame.session_id, frame.seq, frame.host_monotonic_ns, N(item.received), N(frame.sim_time), frame.sim_step,
-                        "", "", "", "", N(cost), queueDrops, frame.source_kind));
+                    records.Enqueue(string.Join(",", measurementStarted ? "state" : "warmup_state", frame.session_id, frame.seq, frame.host_monotonic_ns, N(item.received), N(frame.sim_time), frame.sim_step,
+                        "", "", "", "", N(cost), queueDrops, frame.source_kind, fresh ? "true" : "false", applied ? "true" : "false"));
                 }
                 catch (Exception) { Record("invalid_frame", item.received); }
             }
-            bool fault = Now - lastState > .25;
+            bool fault = freshness.IsStale(Now);
             if (fault != stale) { stale = fault; Record(stale ? "stale_begin" : "stale_end", Now); }
             if (Now - lastAgeLog >= 1) { lastAgeLog = Now; Record("heartbeat", Now); }
             Flush();
-            if (Now - start >= settings.duration_s)
+            if (measurementStarted && Now - start >= settings.duration_s)
             { Record("run_end", Now); Flush(); finished = true; lifetime.Cancel(); }
+            else if (!measurementStarted && Now - captureStart >= settings.warmup_timeout_s)
+            { Record("warmup_failed", Now); Flush(); finished = true; lifetime.Cancel(); }
         }
 
-        void Record(string name, double received) => records.Enqueue(string.Join(",", name, "", "", "", N(received), "", "", "", "", "", "", "", queueDrops, ""));
+        void Record(string name, double received) => records.Enqueue(string.Join(",", name, "", "", "", N(received), "", "", "", "", "", "", "", queueDrops, "", "", ""));
         void Flush() { while (records.TryDequeue(out string record)) writer.WriteLine(record); writer.Flush(); }
         void OnDisable() { lifetime?.Cancel(); if (writer != null) { Record("component_disabled", Now); Flush(); writer.Dispose(); writer = null; } }
     }

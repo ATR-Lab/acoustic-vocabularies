@@ -39,8 +39,11 @@ def summarize(rows, rate, requested_seconds=1800):
             echoes.append(echo_statistics(row["c0_s"], row["s1_ns"], row["s2_ns"], row["c3_s"]))
         except (ValueError, TypeError):
             bad_echoes += 1
-    clock_times = [float(r["recv_client_s"]) for r in rows if r["event"] in ("run_start", "run_end")]
-    duration = max(clock_times) - min(clock_times) if len(clock_times) >= 2 else None
+    starts = [float(r["recv_client_s"]) for r in rows if r["event"] == "run_start"]
+    ends = [float(r["recv_client_s"]) for r in rows if r["event"] == "run_end"]
+    boundaries = len(starts) == 1 and len(ends) == 1 and ends[0] >= starts[0]
+    clock_times = starts + ends
+    duration = ends[0] - starts[0] if boundaries else None
     times = [float(r["recv_client_s"]) for r in states]
     intervals = [b - a for a, b in zip(times, times[1:])]
     gaps = list(intervals)
@@ -49,6 +52,7 @@ def summarize(rows, rate, requested_seconds=1800):
     elif clock_times:
         gaps.append(max(clock_times) - min(clock_times))
     previous, missing, reordered, first_last = {}, 0, 0, {}
+    progression, progression_failures = {}, 0
     latency, uncertainty, no_echo = [], [], 0
     for row in states:
         session, seq = row["session_id"], int(row["seq"])
@@ -60,6 +64,11 @@ def summarize(rows, rate, requested_seconds=1800):
                 missing += seq - previous[session] - 1
         previous[session] = max(seq, previous.get(session, seq))
         first_last[session][1] = max(first_last[session][1], seq)
+        current_progress = (int(row["publish_host_ns"]), int(row.get("sim_step", seq)), float(row.get("sim_time", seq)))
+        if session in progression and any(a <= b for a, b in zip(current_progress, progression[session])):
+            progression_failures += 1
+        else:
+            progression[session] = current_progress
         received = float(row["recv_client_s"])
         nearby = [e for e in echoes if abs(e["client_s"] - received) <= 5]
         if nearby:
@@ -79,12 +88,18 @@ def summarize(rows, rate, requested_seconds=1800):
             previous_disconnect = None
     jitter = [abs(interval - 1 / rate) * 1000 for interval in intervals]
     invalid = sum(r["event"] == "invalid_frame" for r in rows)
+    bad_echoes += sum(r["event"] == "invalid_echo" for r in rows)
+    freshness_events = {event: sum(r["event"] == event for r in rows) for event in
+                        ("stale_source", "stale_queued_frame", "unknown_source_clock", "future_source_timestamp", "nonprogressing_state")}
+    source_qualified = bool(states) and all(r.get("source_fresh") == "true" for r in states)
+    renderer_applied = bool(states) and all(r.get("applied") == "true" for r in states)
     queue_drops = max([int(r["queue_drops"] or 0) for r in rows] or [0])
     live = bool(states) and all(r["source_kind"] == "live" for r in states)
     complete = (duration is not None and duration >= requested_seconds and
                 any(r["event"] == "run_end" for r in rows) and live and invalid == 0)
     return {"frames": len(states), "source_is_live": live, "run_duration_s": duration,
-        "complete_duration": complete, "rate_hz": rate,
+        "complete_duration": complete, "rate_hz": rate, "start_end_boundaries_valid": boundaries,
+        "start_markers": len(starts), "end_markers": len(ends),
         "rtt_median_ms": statistics.median([e["network_rtt_ms"] for e in echoes]) if echoes else None,
         "rtt_p95_ms": percentile([e["network_rtt_ms"] for e in echoes], .95),
         "one_way_estimate_median_ms": statistics.median(latency) if latency else None,
@@ -98,10 +113,15 @@ def summarize(rows, rate, requested_seconds=1800):
         "missing_sequences_within_sessions": missing, "sequence_loss_rate": missing / expected if expected else None,
         "duplicate_or_reordered_frames": reordered, "session_count": len(previous),
         "client_queue_drops": queue_drops, "invalid_frames": invalid,
+        "source_freshness_qualified": source_qualified, "all_frames_applied": renderer_applied,
+        "freshness_rejections": freshness_events, "progression_violations": progression_failures,
         "main_apply_p95_ms": percentile(costs, .95), "main_apply_max_ms": max(costs) if costs else None,
         "disconnect_detection_to_first_state_s": detection_reconnect,
         "unrecovered_disconnect": previous_disconnect is not None,
-        "steady_state_screen_met": complete and bool(states) and not any(g > .25 for g in gaps) and reordered == 0 and queue_drops == 0,
+        "steady_state_screen_met": (complete and bool(states) and not any(g > .25 for g in gaps) and reordered == 0 and queue_drops == 0
+                                    and source_qualified and renderer_applied and no_echo == 0 and bad_echoes == 0
+                                    and progression_failures == 0 and not any(freshness_events.values())
+                                    and len(states) >= .95 * requested_seconds * rate),
         "recommendation": "pending topology/device validity, fault runs and total host CPU comparison"}
 
 

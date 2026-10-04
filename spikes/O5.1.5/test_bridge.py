@@ -74,6 +74,40 @@ class BridgeTests(unittest.TestCase):
         rows[1]["source_kind"] = "synthetic"
         self.assertFalse(analysis.summarize(rows, 30, .01)["steady_state_screen_met"])
 
+    def qualified_rows(self):
+        rows = [self.row("run_start", 0), self.row("echo", .002, c0_s="0", s1_ns="10001000000", s2_ns="10001000000", c3_s=".002")]
+        for seq, timestamp in enumerate((.02, .05, .08)):
+            row = self.row("state", timestamp, seq)
+            row.update(source_fresh="true", applied="true")
+            rows.append(row)
+        rows.append(self.row("run_end", .1))
+        return rows
+
+    def test_unknown_clock_echo_gap_and_stale_queue_cannot_pass(self):
+        rows = self.qualified_rows()
+        self.assertTrue(analysis.summarize(rows, 30, .09)["steady_state_screen_met"])
+        self.assertFalse(analysis.summarize([r for r in rows if r["event"] != "echo"], 30, .09)["steady_state_screen_met"])
+        for reason in ("unknown_source_clock", "stale_source", "stale_queued_frame", "invalid_echo"):
+            self.assertFalse(analysis.summarize(rows + [self.row(reason, .09)], 30, .09)["steady_state_screen_met"])
+
+    def test_source_progression_and_actual_application_required(self):
+        rows = self.qualified_rows()
+        rows[2]["applied"] = "false"
+        self.assertFalse(analysis.summarize(rows, 30, .09)["steady_state_screen_met"])
+        rows = self.qualified_rows()
+        rows[3]["publish_host_ns"] = rows[2]["publish_host_ns"]
+        result = analysis.summarize(rows, 30, .09)
+        self.assertEqual(result["progression_violations"], 1)
+        self.assertFalse(result["steady_state_screen_met"])
+
+    def test_missing_or_duplicate_boundaries_reported(self):
+        rows = self.qualified_rows()[:-1]
+        result = analysis.summarize(rows, 30, .09)
+        self.assertFalse(result["start_end_boundaries_valid"])
+        self.assertFalse(result["steady_state_screen_met"])
+        rows = self.qualified_rows()
+        self.assertFalse(analysis.summarize(rows + [rows[-1]], 30, .09)["start_end_boundaries_valid"])
+
     def test_schema_recursive_unknown_keys_rejected(self):
         from jsonschema import Draft202012Validator
         schema = json.loads((HERE.parents[1] / "apparatus/schemas/bridge-state.schema.json").read_text())
