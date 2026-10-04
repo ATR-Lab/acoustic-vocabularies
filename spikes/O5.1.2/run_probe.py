@@ -8,6 +8,7 @@ import csv
 import importlib.util
 import importlib.metadata
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -84,6 +85,10 @@ def main():
     parser.add_argument("--seconds", type=float, default=600)
     parser.add_argument("--num-envs", type=int, choices=(1, 2), default=1)
     parser.add_argument("--physics-dt", type=float, default=1 / 60)
+    parser.add_argument("--bridge-config", type=Path,
+                        help="Optional O5.1.5 local transport config; public state only")
+    parser.add_argument("--bridge-demo-motion", action="store_true",
+                        help="Isolated simulator only: small limit-clamped engineering motion for live stream capture")
     parser.add_argument("--capture", action="store_true",
                         help="Enable an offscreen RGB camera; distinct from a visible viewport")
     parser.add_argument("--pose-evidence", action="store_true",
@@ -107,6 +112,8 @@ def main():
     args = parser.parse_args()
     if args.seconds <= 0 or args.physics_dt <= 0:
         parser.error("Duration and physics dt must be positive")
+    if args.bridge_demo_motion and not args.bridge_config:
+        parser.error("Bridge demo motion requires the optional bridge harness")
     args.output.mkdir(parents=True, exist_ok=False)
     if args.capture:
         args.enable_cameras = True
@@ -126,6 +133,7 @@ def main():
     app = AppLauncher(args).app
     stop = threading.Event()
     sampler = None
+    bridge = None
     try:
         import isaaclab.sim as sim_utils
         from isaaclab.assets import Articulation
@@ -216,7 +224,28 @@ def main():
         # Write final configuration before hashing it; completion metadata has its own file.
         manifest["status"] = "initialized"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+        if args.bridge_config:
+            bridge_root = Path(__file__).parent.parent / "O5.1.5"
+            roots["bridge"] = bridge_root
+            files.update(bridge_root.glob("*.py"))
         hash_files(files, args.output / "asset_hashes.csv", roots)
+        if args.bridge_config:
+            bridge_settings = json.loads(args.bridge_config.read_text())
+            allowed = {"candidate", "rate_hz", "canonical_joint_names"}
+            if set(bridge_settings) != allowed:
+                raise ValueError("Bridge config must contain only candidate/rate/canonical names")
+            if not bridge_settings["canonical_joint_names"]:
+                raise ValueError("Verify canonical joint map before starting a live bridge")
+            if bridge_settings["candidate"] == "rosbridge":
+                from isaacsim.core.utils.extensions import enable_extension
+                enable_extension("isaacsim.ros2.bridge")
+                app.update()
+            sys.path.insert(0, str(Path(__file__).parent.parent / "O5.1.5"))
+            from live_tap import LiveBridgeTap
+            bridge = LiveBridgeTap(robots[0], bridge_settings["candidate"], bridge_settings["rate_hz"],
+                                   args.output / "publisher.csv", args.output / "state.sock",
+                                   bridge_settings["canonical_joint_names"])
+            (args.output / "bridge.json").write_text(json.dumps(bridge_settings, indent=2) + "\n")
         sampler = threading.Thread(target=sample_resources, args=(args.output / "resources.csv", stop), daemon=True)
         sampler.start()
         started = time.monotonic()
@@ -226,7 +255,13 @@ def main():
             writer.writerow(["step", "host_monotonic_ns", "sim_time", "step_wall_ms", "render_interval_ms"])
             while app.is_running() and time.monotonic() - started < args.seconds:
                 for robot in robots:
-                    robot.set_joint_position_target(robot.data.default_joint_pos)
+                    target = robot.data.default_joint_pos
+                    if args.bridge_demo_motion:
+                        limits = robot.data.joint_pos_limits
+                        margin = (limits[..., 1] - limits[..., 0]) * .01
+                        target = (target + .04 * math.sin((time.monotonic() - started) * math.pi)).clamp(
+                            min=limits[..., 0] + margin, max=limits[..., 1] - margin)
+                    robot.set_joint_position_target(target)
                     robot.write_data_to_sim()
                 before = time.monotonic_ns()
                 sim.step(render=rendered)
@@ -239,6 +274,8 @@ def main():
                 if rendered:
                     last_render = after
                 step_index += 1
+                if bridge:
+                    bridge.after_step(robots[0], step_index * args.physics_dt, step_index)
                 writer.writerow([step_index, after, step_index * args.physics_dt, (after - before) / 1e6, render_interval])
         elapsed = time.monotonic() - started
         completed = elapsed >= args.seconds
@@ -271,12 +308,16 @@ def main():
                                                              "completed": False}) + "\n")
         raise
     finally:
-        stop.set()
-        if sampler:
-            sampler.join(timeout=5)
-        # All evidence is flushed before Kit releases the Python framework.
-        # The isolated process has no live DDS or outstanding capture writer.
-        app.close(wait_for_replicator=False, skip_cleanup=True)
+        try:
+            if bridge:
+                bridge.close()
+        finally:
+            stop.set()
+            if sampler:
+                sampler.join(timeout=5)
+            # All evidence is flushed before Kit releases the Python framework.
+            # The isolated process has no live DDS or outstanding capture writer.
+            app.close(wait_for_replicator=False, skip_cleanup=True)
 
 
 if __name__ == "__main__":
