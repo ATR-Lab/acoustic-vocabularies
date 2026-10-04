@@ -143,6 +143,12 @@ namespace AcousticVocab.Spikes.Urdf.Editor
             public LinkPose[] links;
         }
         [Serializable] public sealed class LinkPose { public string name; public float[] position, quaternion_wxyz; }
+        [Serializable] public sealed class CaptureView
+        {
+            public float[] camera_position_usd, target_position_usd;
+            public int width = 1024, height = 1024;
+            public float vertical_fov = 60, near_clip = .01f, far_clip = 20;
+        }
 
         [MenuItem("Spikes/URDF/Export comparison poses")]
         public static void ExportPoses()
@@ -177,14 +183,18 @@ namespace AcousticVocab.Spikes.Urdf.Editor
             var robot = UnityEngine.Object.FindFirstObjectByType<RobotHierarchy>();
             var poses = JsonUtility.FromJson<PoseSet>(File.ReadAllText(RequiredEnvironment("G1_POSES_JSON")));
             var selected = RequiredEnvironment("G1_CAPTURE_POSES").Split(',');
+            var focusLinks = (Environment.GetEnvironmentVariable("G1_CAPTURE_FOCUS_LINKS") ?? "").Split(',');
+            string viewPath = Environment.GetEnvironmentVariable("G1_CAPTURE_VIEW_JSON");
+            var view = string.IsNullOrEmpty(viewPath) ? new CaptureView() : JsonUtility.FromJson<CaptureView>(File.ReadAllText(viewPath));
+            if(view.width < 1 || view.height < 1 || view.vertical_fov <= 0 || view.vertical_fov >= 180)throw new InvalidDataException("Invalid capture view");
             string output = RequiredEnvironment("G1_CAPTURE_DIRECTORY");
             Directory.CreateDirectory(output);
             GameObject.Find("SeatedWorkcell")?.SetActive(false);
             var cameraObject = new GameObject("PoseEvidenceCamera");
             var camera = cameraObject.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = new Color(.12f,.14f,.18f);
-            camera.nearClipPlane = .05f; camera.farClipPlane = 20;
-            var target = new RenderTexture(1024, 1024, 24) { antiAliasing = 4 };
+            camera.nearClipPlane = view.near_clip; camera.farClipPlane = view.far_clip; camera.fieldOfView = view.vertical_fov;
+            var target = new RenderTexture(view.width, view.height, 24) { antiAliasing = 4 };
             camera.targetTexture = target;
             foreach (string name in selected)
             {
@@ -194,18 +204,42 @@ namespace AcousticVocab.Spikes.Urdf.Editor
                 robot.transform.rotation = RobotHierarchy.ToUnityQuaternion(pose.root_quaternion_wxyz);
                 for(int i=0;i<pose.joint_names.Length;++i)
                     if(!robot.ApplyJoint(pose.joint_names[i],pose.joint_positions[i]))throw new InvalidDataException("Unmapped joint");
-                camera.transform.position = robot.transform.position + new Vector3(.9f,.65f,2.4f);
-                camera.transform.LookAt(robot.transform.position + new Vector3(0,.15f,0));
-                camera.Render();
-                var previous = RenderTexture.active; RenderTexture.active = target;
-                var image = new Texture2D(1024,1024,TextureFormat.RGB24,false);
-                image.ReadPixels(new Rect(0,0,1024,1024),0,0); image.Apply(); RenderTexture.active = previous;
-                string file = new string(name.Select(c => char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_').ToArray());
-                File.WriteAllBytes(Path.Combine(output,file+".png"),image.EncodeToPNG());
-                UnityEngine.Object.DestroyImmediate(image);
+                foreach(string focus in focusLinks)
+                {
+                    Vector3 lookAt = robot.transform.position + new Vector3(0,.15f,0);
+                    camera.transform.position = robot.transform.position + new Vector3(.9f,.65f,2.4f);
+                    if(!string.IsNullOrEmpty(focus))
+                    {
+                        var link = robot.links.Single(item => item.name == focus).link;
+                        var renderers = link.GetComponentsInChildren<Renderer>();
+                        if(renderers.Length == 0)throw new InvalidDataException("Focus link has no geometry");
+                        var bounds = renderers[0].bounds;
+                        foreach(var renderer in renderers.Skip(1))bounds.Encapsulate(renderer.bounds);
+                        lookAt = bounds.center;
+                        var direction = new Vector3(focus.StartsWith("left_",StringComparison.Ordinal) ? -.6f : .6f,.35f,1).normalized;
+                        camera.transform.position = lookAt + robot.transform.TransformDirection(direction) * Mathf.Max(.1f,bounds.extents.magnitude*3);
+                    }
+                    if(!string.IsNullOrEmpty(viewPath))
+                    {
+                        camera.transform.position = RobotHierarchy.ToUnity(view.camera_position_usd);
+                        lookAt = RobotHierarchy.ToUnity(view.target_position_usd);
+                    }
+                    camera.transform.LookAt(lookAt);
+                    camera.Render();
+                    var previous = RenderTexture.active; RenderTexture.active = target;
+                    var image = new Texture2D(view.width,view.height,TextureFormat.RGB24,false);
+                    image.ReadPixels(new Rect(0,0,view.width,view.height),0,0); image.Apply(); RenderTexture.active = previous;
+                    string label = name + (string.IsNullOrEmpty(focus) ? "" : "__"+focus);
+                    string file = new string(label.Select(c => char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_').ToArray());
+                    File.WriteAllBytes(Path.Combine(output,file+".png"),image.EncodeToPNG());
+                    string cameraPosition = string.Join(",",RobotHierarchy.ToRos(camera.transform.position));
+                    string targetPosition = string.Join(",",RobotHierarchy.ToRos(lookAt));
+                    Debug.Log($"URDF_SPIKE_CAPTURE_VIEW pose={name} focus={focus} camera_usd={cameraPosition} target_usd={targetPosition} vertical_fov={camera.fieldOfView}");
+                    UnityEngine.Object.DestroyImmediate(image);
+                }
             }
             target.Release(); UnityEngine.Object.DestroyImmediate(target); UnityEngine.Object.DestroyImmediate(cameraObject);
-            Debug.Log("URDF_SPIKE_IMAGES_RENDERED count="+selected.Length);
+            Debug.Log("URDF_SPIKE_IMAGES_RENDERED count="+(selected.Length*focusLinks.Length));
         }
 
         public static void BuildAndroidRobot()

@@ -2,7 +2,8 @@
 
 Status: **incomplete**. Fetch, conversion, hierarchy import, Android robot build
 and the full measured Isaac-versus-Unity pose comparison are verified. Headset
-frame timing and the final visual review remain pending. Binary vendoring remains
+frame timing remains pending. Supplemental close hand views have been inspected.
+Binary vendoring remains
 blocked while Git LFS uploads are rejected.
 No fabricated performance values appear here.
 
@@ -69,7 +70,7 @@ fixture. The per-link values are in `pose_errors.csv`.
 | Link coverage | 55 / 55 in every pose; zero missing/unobserved frames |
 | Quest 10-minute frame-budget run | pending wearer/device |
 | Unity engineering captures | 3 rendered and locally inspected; hashes in screenshot-manifest.json |
-| Side-by-side Isaac/Unity review | pending |
+| Side-by-side Isaac/Unity hand review | 3 supplemental measured poses inspected with matching cameras |
 
 Three synthetic Python tests verify binary/ASCII STL conversion, coordinate and
 winding convention, deterministic description hashes, invalid hierarchy rejection
@@ -77,12 +78,22 @@ and quaternion/position error calculations. They are not measured apparatus data
 All 12 repository Python tests pass. Three 1024-square Unity editor images show
 the complete robot at `default`, `joint_20_75pct` and `spread_4`, without obvious
 missing mesh geometry. They remain local while LFS is unavailable. They are not
-headset captures, and do not establish the required hand-closure visual review.
+headset captures. Those full-body images were insufficient to inspect hand closure.
+
+A separate measured fixture now covers `hands_open`, `hands_half_flexed` and
+`hands_flexed` with the body at its loaded default. All **165 link-pose pairs**
+pass, with maximum position error **0.000299510 mm** and orientation error
+**0.000092271 degrees**. The canonical 92-pose fixture and map hash are unchanged.
+Results and paired screenshot hashes are in `hand-comparison/`. Three matching
+1280x720 camera views visibly agree in body and finger flexion. Six additional
+Unity views fit the left and right palms separately; both fully flexed close views
+were inspected. Lighting and materials differ, and visible USD wrist brackets are
+absent from the source URDF geometry; the added camera frames are empty transforms.
+This establishes pose/display evidence, not identical mesh content or Quest timing.
 
 ## Remaining acceptance
 
-Review at least three side-by-side poses including hand closure. Run the full G1
-scene on Quest for at least 600 seconds at the chosen #45 rate with app timing and
+Run the full G1 scene on Quest for at least 600 seconds at the chosen #45 rate with app timing and
 presentation evidence. Decide on decimation only from that result. Resolve binary
 vendoring after LFS is enabled. External protocol review is still required.
 Follow [the reproducible runbook](../O5.1.4-runbook.md).
