@@ -40,6 +40,28 @@ class OnsetAnalysisTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audio.pair_events([{"trial_id": str(i), "request_host_s": i} for i in (1, 1.2)], [], self.sync())
 
+    def test_invalid_or_reused_sync_anchors_cannot_qualify(self):
+        rows = [{"host_s": x, "capture_s": x, "role": "fit" if x % 2 == 0 else "check"}
+                for x in range(6)]
+        for bad in (float("nan"), float("inf"), -float("inf")):
+            with self.assertRaises(ValueError):
+                audio.fit_sync(rows, bad)
+            broken = [dict(row) for row in rows]
+            broken[-1]["capture_s"] = bad
+            with self.assertRaises(ValueError):
+                audio.fit_sync(broken, 0)
+        rows[-1]["host_s"] = rows[0]["host_s"]
+        with self.assertRaises(ValueError):
+            audio.fit_sync(rows, 0)
+
+    def test_sync_uncertainty_converted_to_host_clock_before_screen(self):
+        rows = [{"host_s": x, "capture_s": .995 * x + (.01995 if x % 2 else 0),
+                 "role": "fit" if x % 2 == 0 else "check"} for x in range(6)]
+        sync = audio.fit_sync(rows, 0)
+        self.assertAlmostEqual(sync["heldout_max_ms"], 19.95 / .995)
+        pairs = [{"status": "matched", "offset_ms": 40.} for _ in range(200)]
+        self.assertFalse(audio.summarize(pairs, sync, {}, 0)["screening_target_met"])
+
     def test_no_pass_for_incomplete_or_uncertain_sync(self):
         rows = [{"status": "matched", "offset_ms": 40.} for _ in range(200)]
         sync = self.sync()

@@ -72,8 +72,19 @@ def fit_sync(rows, external_bound_ms):
 
     Held-out anchors test drift/model error; their error is NOT evidence about
     unmeasured display latency. external_bound_ms includes instrumentation and
-    independent anchor uncertainty, established separately by the operator.
+    independent anchor uncertainty in host-clock milliseconds, established
+    separately by the operator.
     """
+    if not math.isfinite(external_bound_ms) or external_bound_ms < 0:
+        raise ValueError("Independent sync bound must be finite and nonnegative")
+    anchors = []
+    for row in rows:
+        host, capture = float(row["host_s"]), float(row["capture_s"])
+        if row["role"] not in ("fit", "check") or not all(map(math.isfinite, (host, capture))):
+            raise ValueError("Sync anchors need valid roles and finite timestamps")
+        anchors.append(host)
+    if len(set(anchors)) != len(anchors):
+        raise ValueError("Sync anchor times must be unique; fit/check anchors cannot be reused")
     fit = [(float(r["host_s"]), float(r["capture_s"])) for r in rows if r["role"] == "fit"]
     check = [(float(r["host_s"]), float(r["capture_s"])) for r in rows if r["role"] == "check"]
     if len(fit) < 3 or len(check) < 3 or external_bound_ms < 0:
@@ -86,12 +97,15 @@ def fit_sync(rows, external_bound_ms):
     if not 0.99 <= slope <= 1.01:
         raise ValueError("Implausible clock ratio; verify units/timebase")
     intercept = y0 - slope * x0
-    errors = [1000 * abs(y - (intercept + slope * x)) for x, y in check]
+    # Onset offsets below are host-clock milliseconds, so model residuals must
+    # use the same domain before the uncertainty terms can be combined.
+    errors = [1000 * abs(y - (intercept + slope * x)) / slope for x, y in check]
     return {"intercept_s": intercept, "slope": slope,
             "host_min_s": min(x for x, _ in fit + check),
             "host_max_s": max(x for x, _ in fit + check),
             "heldout_p95_ms": quantile(errors, .95), "heldout_max_ms": max(errors),
             "external_bound_ms": external_bound_ms,
+            "uncertainty_timebase": "host_clock_ms",
             "screening_bound_ms": max(errors) + external_bound_ms,
             "fit_n": len(fit), "check_n": len(check)}
 
