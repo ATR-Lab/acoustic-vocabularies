@@ -195,7 +195,75 @@ build_reserved_registry() -> ReservedRegistry        # what sound/reserved/regis
   `pcm_sha256`) like any package WAV. The assets set no sound pressure; the
   comfortable gain is set on the calibration example, which has the motif RMS.
 
-## Store (#11), fallback (#15), packages (#13)
+## Vocabulary store (#11)
 
-*Pending.* Each pull request adds its section here: the vocabulary store,
-`scan_fallback()` and the package builder.
+Append-only store of committed atoms: format, verification and storage policy in
+[`sound/docs/store.md`](../../sound/docs/store.md); log record format
+`sound/schema/store-record.schema.json`. Entries can be added, never changed; there
+is no update and no delete.
+
+```python
+VocabularyStore(root: str | os.PathLike[str], *,
+                clock: Callable[[], datetime] | None = None,        # default: UTC now
+                reserved: ReservedRegistry | Iterable[ReservedEntry] | None = None)
+.create_book(book_id: str, profile: Profile | str, *, kind: str = "study",
+             threshold: Fraction | Decimal | int | str | None = None) -> str   # chain head
+.commit(book_id: str, atom_id: str, semantic_label: str | None,
+        recipe: Recipe | Mapping[str, Any] | str | bytes, *, source: str,
+        profile: Profile | str | None = None, pcm_sha256: str | None = None,
+        references: Iterable[Reference] | None = None) -> tuple[StoreEntry, str]
+.get(book_id, atom_id) -> StoreEntry
+.list(book_id) -> list[StoreEntry]                    # commit order
+.verify(book_id, *, rerender: bool = True, expected_head: str | None = None) -> VerifyReport
+.snapshot_hashes(book_id) -> dict[str, str]           # {atom_id: pcm_sha256}, commit order
+.snapshot(book_id) -> dict[str, dict[str, Any]]       # + recipe_sha256, profile, semantic_label
+.freeze(book_id) -> str                               # chain head; idempotent
+.books() -> list[str]; .book(book_id) -> BookInfo; .head(book_id) -> str
+.records(book_id) -> list[dict[str, Any]]             # decoded log records
+persistence_violations(before, after) -> tuple[str, ...]
+snapshot_digest(snapshot) -> str
+```
+
+- Layout: `blobs/<pcm_sha256>.wav` (canonical WAV, written once, read-only) and
+  `books/<book_id>/log.jsonl` (one canonical JSON record per line; `seq`,
+  `prev_sha256`, `record_sha256`). The chain head is the SHA-256 of the last line.
+- Events: `create_book`, `commit`, `recommit_noop`, `overwrite_rejected`,
+  `commit_rejected_frozen`, `freeze`.
+- `kind`: `study`, `fallback` (#15; entries have `semantic_label=None`) or
+  `synthetic` (IDs `DEMO-...`). Study and fallback books cannot be created inside the
+  repository working tree (`E_POLICY`). Book IDs: 3-64 letters, digits and inner
+  hyphens; no `A1`/`A2`/`A3` token or method word.
+- `commit` order of checks: frozen book -> log `commit_rejected_frozen`, raise
+  `BookFrozen`; committed atom -> identical recipe, profile, waveform and label logs
+  `recommit_noop` and returns the existing entry, anything else logs
+  `overwrite_rejected` and raises `OverwriteRejected` (`.reasons` from `profile`,
+  `recipe`, `semantic_label`, `waveform`); new atom -> `validate()` against the
+  book's entries in commit order (+ `references`) with the book's threshold and the
+  reserved signals; failure raises `CommitRejected(result)` and logs nothing.
+- `semantic_label` must be an ontology label of the atom's family and role
+  (`av_sound.store.SEMANTIC_LABELS`), unique in the book (`E_LABEL`).
+- `profile=` and `pcm_sha256=` are assertions: for a new atom a mismatch raises
+  (`E_PROFILE`, `E_WAVEFORM`); for a committed atom it is an overwrite attempt.
+- `StoreEntry`: `book_id`, `atom_id`, `family`, `role`, `matrix_index`,
+  `semantic_label`, `recipe`, `profile`, `pcm`, `pcm_sha256`, `file_sha256`,
+  `n_samples`, `renderer_version`, `validator_version`, `threshold`, `source`,
+  `timestamp`, `commit_index` (the nearest-reference atom index), `seq`;
+  `.reference()` -> `Reference(atom_id, ...)`. It satisfies `AtomAudioLike`.
+- Errors (`StoreError` with `.code`): `InvalidIdentifier` (`E_IDENTIFIER`),
+  `NotFound`, `BookExists`, `CommitRejected` (`.result`), `OverwriteRejected`
+  (`.record`, `.chain_head`), `BookFrozen` (`.record`, `.chain_head`),
+  `StoreIntegrityError` (`.issues`), and `StoreError` with `E_POLICY`, `E_VERSION`,
+  `E_PROFILE`, `E_LABEL`, `E_WAVEFORM`.
+- Every read and write first checks the chain, the records and the blobs, and refuses
+  a damaged book (`StoreIntegrityError`). `VerifyReport`: `ok`, `issues`
+  (`VerifyIssue(code, message, seq, atom_id)`), `codes`, `n_records`, `n_entries`,
+  `frozen`, `chain_head`, `rerendered`, `anchored_seq`. Removing lines from the end is
+  detected only with `expected_head`: callers record the chain heads that `commit`
+  and `freeze` return (#20 batch log; release manifest).
+- Publish only chain heads and `snapshot_digest` values of study books, never
+  per-atom hashes (the recipe domain can be enumerated).
+
+## Fallback (#15), packages (#13)
+
+*Pending.* Each pull request adds its section here: `scan_fallback()` and the
+package builder.

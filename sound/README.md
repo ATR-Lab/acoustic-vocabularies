@@ -26,6 +26,7 @@ Nothing needs the network at runtime.
 | --- | --- |
 | `src/av_sound/` | The package |
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
+| `schema/store-record.schema.json` | One line of a vocabulary-store log ([`docs/store.md`](docs/store.md)) |
 | `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
 | `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
 | `reserved/registry.json` | Reserved-signal registry: the seven nonlexical assets (#14, [`docs/nonlexical.md`](docs/nonlexical.md)) |
@@ -33,7 +34,8 @@ Nothing needs the network at runtime.
 | `testvectors/renderer/vectors.json` | Reference hashes for synthetic recipes |
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`) |
+| `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo |
 
 ## API
 
@@ -66,6 +68,10 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
 | `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |
 | `GAP_SAMPLES`, `MIN_MESSAGE_SAMPLES`, `MAX_MESSAGE_SAMPLES` | 9,600; 52,800; 96,000 |
+| `VocabularyStore(root, *, clock=None, reserved=None)` | Append-only store: `create_book`, `commit`, `get`, `list`, `verify`, `snapshot_hashes`, `snapshot`, `freeze`; no update or delete ([`docs/store.md`](docs/store.md)) |
+| `StoreEntry`, `BookInfo`, `VerifyReport`, `VerifyIssue` | A committed atom (an `AtomAudioLike`; `.reference()`), book facts, `verify` result |
+| `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError` | Store errors (`.code`); overwrite and frozen attempts are logged |
+| `persistence_violations(before, after)`, `snapshot_digest(snapshot)` | Growth check (old entries unchanged) and one publishable hash per book |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
 
 ```python
