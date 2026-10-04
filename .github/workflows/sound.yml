@@ -78,7 +78,7 @@ jobs:
           EOF
       - name: Composition fingerprint
         run: |
-          uv run --project sound python - | tee -a "$GITHUB_STEP_SUMMARY" <<'EOF'
+          uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
           import hashlib, json, platform
           from av_sound import Profile, composite_hash
           from av_sound.grammar import MESSAGES
