@@ -17,7 +17,7 @@ def target_vectors(defaults, limits):
             for joint, (lower, upper) in enumerate(limits)]
 
 
-def export(robot, sim, path, dt):
+def export(robot, sim, path, dt, capture_pose=None):
     import torch
     result = {
         "source": "loaded_isaac_articulation",
@@ -28,6 +28,9 @@ def export(robot, sim, path, dt):
         "joint_names": list(robot.joint_names), "body_names": list(robot.body_names), "poses": []}
     defaults = robot.data.default_joint_pos[0].tolist()
     limits = robot.data.joint_pos_limits[0].tolist()
+    capture_names = {"default"}
+    for joint_name in ("left_shoulder_pitch_joint", "left_hand_thumb_0_joint"):
+        capture_names.add(f"joint_{robot.joint_names.index(joint_name):02d}_25pct")
     for name, vector in target_vectors(defaults, limits):
         target = torch.tensor([vector], device=robot.device, dtype=robot.data.joint_pos.dtype)
         robot.write_joint_state_to_sim(target, torch.zeros_like(target))
@@ -46,6 +49,8 @@ def export(robot, sim, path, dt):
                       for body, position, rotation in zip(
                           robot.body_names, robot.data.body_pos_w[0].tolist(),
                           robot.data.body_quat_w[0].tolist())]})
+        if capture_pose and name in capture_names:
+            capture_pose(name)
     path.write_text(json.dumps(result, indent=2) + "\n")
     robot.write_joint_state_to_sim(robot.data.default_joint_pos, robot.data.default_joint_vel)
     robot.set_joint_position_target(robot.data.default_joint_pos)

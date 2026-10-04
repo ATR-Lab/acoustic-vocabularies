@@ -244,9 +244,19 @@ def main():
         completed = elapsed >= args.seconds
         stop.set()
         sampler.join(timeout=5)
+        captured_pose_ids = []
         if args.pose_evidence and completed:
             from pose_evidence import export
-            export(robots[0], sim, args.output / "poses.json", args.physics_dt)
+            def capture_pose(name):
+                from PIL import Image
+                for _ in range(10):
+                    sim.render()
+                    camera.update(args.physics_dt, force_recompute=True)
+                Image.fromarray(camera.data.output["rgb"][0, :, :, :3].cpu().numpy()).save(
+                    args.output / f"pose-{name}.png")
+                captured_pose_ids.append(name)
+            export(robots[0], sim, args.output / "poses.json", args.physics_dt,
+                   capture_pose if camera else None)
             if camera:
                 for _ in range(10):
                     sim.render()
@@ -261,6 +271,7 @@ def main():
                 app.update()
         (args.output / "completion.json").write_text(json.dumps(
             {"completed": completed, "elapsed_seconds": elapsed, "steps": step_index,
+             "captured_pose_ids": captured_pose_ids,
              "screenshot_requires_visual_review": rendered}, indent=2) + "\n")
         if not completed:
             raise RuntimeError("Simulation ended before requested duration")
