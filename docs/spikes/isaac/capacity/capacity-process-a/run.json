@@ -1,0 +1,42 @@
+{
+  "status": "initialized",
+  "pins": {
+    "isaac_sim": "5.1.0",
+    "isaac_container_digest": "nvcr.io/nvidia/isaac-sim@sha256:f3563cb2ba0c18af0b2fb321360dcb73a917b899f879e3213623d66bee484fa54",
+    "isaac_lab_commit": "80094be3245aa5c8376a7464d29cb4412ea518f5",
+    "unitree_commit": "e30c25b1dffdf92ada1d6c8c1fe9a47bdde0fecc",
+    "dataset": "unitreerobotics/unitree_sim_isaaclab_usds",
+    "dataset_revision": "394cf2448f8a9ed815c77c701a761f3d1ff1c8fb",
+    "archive": "assets.zip",
+    "archive_bytes": 1305090539,
+    "archive_sha256": "06fbf14549be3a81e3dbd4a8a019e7f060f48de1556b70f291a18ac8f9ead4b0",
+    "dataset_declared_license": "apache-2.0",
+    "license_checked_date": "2026-10-04",
+    "configuration": "G129_CFG_WITH_DEX3_BASE_FIX",
+    "asset_relative_path": "assets/robots/g1-29dof-dex3-base-fix-usd/g1_29dof_with_dex3_base_fix.usd"
+  },
+  "os": "Ubuntu 24.04.2 LTS",
+  "network_interfaces": [
+    "lo"
+  ],
+  "dds_started": false,
+  "duration_requested_seconds": 60.0,
+  "num_envs": 1,
+  "headless": true,
+  "offscreen_camera": false,
+  "rendered": false,
+  "physics_dt": 0.016666666666666666,
+  "acceptance_duration": false,
+  "isaac_sim_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+  "isaac_sim_version": "5.1.0",
+  "joint_counts": {
+    "body": 29,
+    "left_hand": 7,
+    "right_hand": 7
+  },
+  "fixed_base": true,
+  "builtin_mdl_dependencies": [
+    "OmniPBR.mdl",
+    "OmniSurface.mdl"
+  ]
+}
