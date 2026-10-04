@@ -17,7 +17,23 @@ def target_vectors(defaults, limits):
             for joint, (lower, upper) in enumerate(limits)]
 
 
-def export(robot, sim, path, dt, capture_pose=None):
+def hand_target_vectors(defaults, limits, joint_names):
+    """Neutral body with three engineering finger flexions; not grasp commands."""
+    for name, fraction in (("hands_open", 0.), ("hands_half_flexed", .4), ("hands_flexed", .8)):
+        vector = list(defaults)
+        for index, joint in enumerate(joint_names):
+            if "_hand_" not in joint or "thumb_0" in joint:
+                continue
+            lower, upper = limits[index]
+            # Flexion endpoints differ across mirrored fingers. This is an
+            # explicit visual fixture, never an inferred production joint map.
+            positive = joint.startswith("right_") != ("thumb_" in joint)
+            endpoint = upper if positive else lower
+            vector[index] = defaults[index] + fraction * (endpoint - defaults[index])
+        yield name, vector
+
+
+def export(robot, sim, path, dt, capture_pose=None, hand_visuals=False):
     import torch
     result = {
         "source": "loaded_isaac_articulation",
@@ -29,7 +45,11 @@ def export(robot, sim, path, dt, capture_pose=None):
     defaults = robot.data.default_joint_pos[0].tolist()
     limits = robot.data.joint_pos_limits[0].tolist()
     capture_names = {"default", "joint_20_75pct", "spread_4"}
-    for name, vector in target_vectors(defaults, limits):
+    targets = target_vectors(defaults, limits)
+    if hand_visuals:
+        targets = hand_target_vectors(defaults, limits, robot.joint_names)
+        capture_names = {"hands_open", "hands_half_flexed", "hands_flexed"}
+    for name, vector in targets:
         target = torch.tensor([vector], device=robot.device, dtype=robot.data.joint_pos.dtype)
         robot.write_joint_state_to_sim(target, torch.zeros_like(target))
         robot.set_joint_position_target(target)
