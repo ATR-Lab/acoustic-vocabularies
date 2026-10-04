@@ -41,7 +41,11 @@ clock bounds, unapplied frames and synthetic sources cannot pass the live screen
 ## Decision
 
 Evaluate B as the simpler candidate, with A retained for comparison. Do not freeze
-a rate or transport without evidence. Proposed public envelope (schema in #47):
+a rate or transport without evidence. The proposed public envelope is in
+[`schemas/bridge-state.schema.json`](schemas/bridge-state.schema.json), matching
+#47's tested contract. CI validates a clearly synthetic example and rejects
+top-level and nested answer metadata. When the spike is integrated, CI checks
+that the two schema copies agree.
 
 | Field | Meaning |
 | --- | --- |
@@ -57,6 +61,8 @@ Reject unknown fields, duplicate joints, length mismatch, nonfinite values and
 unexpected session/sequence transitions. Use local receive time for liveness,
 and check source progress and mapped publish age conservatively to reject queued
 old frames. A valid packet alone must not clear a fault after a source stall.
+Array-length equality, finite IEEE values, normalized quaternions and measured
+canonical order also require runtime validation; JSON Schema alone is insufficient.
 Do not expose trial information in object names or encode hidden answer metadata.
 
 Proposed per-station ports: `8765 + station_index` for custom state and
