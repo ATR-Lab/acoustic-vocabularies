@@ -128,6 +128,8 @@ def test_quaternion_sign_equivalence_and_boundary():
     adapter, _, _, reset = manager()
     adapter.state["robot"]["root_rotation_xyzw"] = [0., 0., 0., -1.]
     assert reset.verify_current()["reset_ok"]
+    adapter.state["robot"]["root_rotation_xyzw"] = [0., 0., 0., .999999]
+    assert reset.verify_current()["worst_deviation"]["orientation_rad"] == 0
     adapter.state["objects"]["engineering_object_0"]["position_m"][0] = .001
     assert reset.verify_current()["reset_ok"]
     adapter.state["objects"]["engineering_object_0"]["position_m"][0] = .00101
