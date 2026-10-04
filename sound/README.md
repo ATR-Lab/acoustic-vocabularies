@@ -26,10 +26,14 @@ Nothing needs the network at runtime.
 | --- | --- |
 | `src/av_sound/` | The package |
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
+| `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
+| `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
+| `reserved/registry.json` | Reserved-signal registry (empty until #14) |
 | `docs/` | Renderer spec and component docs |
 | `testvectors/renderer/vectors.json` | Reference hashes for synthetic recipes |
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
-| `tools/` | Spec evidence: shortest events, headroom sweep, spectral check, test-vector writers |
+| `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark |
 
 ## API
 
@@ -48,6 +52,12 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `RENDERER_VERSION`, `renderer_hash()`, `renderer_recipe_schema_hash()` | Provenance for store records and the apparatus manifest (pinned in `testvectors/renderer/vectors.json`) |
 | `self_test()` | Renders two pinned reference vectors; call at start-up on a generation host |
 | `SAMPLE_RATE`, `SAMPLES_PER_MS`, `MIN_EVENT_SAMPLES`, `RMS_TARGET` | Constants (48,000; 48; 2,880; 7,336) |
+| `validate(candidate, profile, committed=(), *, reserved=None, threshold=None) -> ValidationResult` | Admissibility check; all failing reason codes in a fixed order ([`docs/validator.md`](docs/validator.md)) |
+| `Reference(ref_id, recipe, pcm_sha256, profile)`, `Reference.from_rendered(ref_id, rendered)` | A committed motif or retained bank option to check against |
+| `nearest_reference(candidate, committed) -> NearestReference \| None` | Closest committed reference by 12-feature distance; ties to the lowest index |
+| `features(recipe)`, `sum_squared_diff(a, b)`, `distance(a, b)`, `separated(a, b, threshold)` | Exact 12-feature metric; `distance` is a float for reports |
+| `REASON_CODES`, `VALIDATOR_VERSION`, `load_separation_threshold()`, `parse_threshold()` | Codes, version and the configured threshold (exact `Fraction`) |
+| `load_reserved_registry()`, `ReservedRegistry`, `ReservedEntry` | Reserved signals (`E_RESERVED`) |
 | `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
 | `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
@@ -71,7 +81,16 @@ file_hash = write_wav(motif, "example.wav")  # never commit WAVs from study reci
 Messages follow the byte contract in [`docs/composition.md`](docs/composition.md).
 
 The renderer does not decide admissibility. It reports `overflow` and
-`short_event` flags and never limits or repairs a recipe.
+`short_event` flags and never limits or repairs a recipe. `validate()` decides:
+
+```python
+from av_sound import Reference, validate
+
+committed = [Reference.from_rendered("K-a1", motif)]
+result = validate('{"total_ms":450,"pitches":[0,0,0],"rhythm_weights":[1,4,4],'
+                  '"gaps_ms":[60,60],"amplitudes":[1.0,0.8,0.6]}', Profile.P2, committed)
+assert result.codes == ("E_EVENT_SHORT",)  # first event 1,760 samples (36.7 ms)
+```
 
 ## Versioning
 

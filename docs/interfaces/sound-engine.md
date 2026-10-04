@@ -41,6 +41,61 @@ difference; generation hosts should call it at start-up.
 
 WAV files are canonical (spec D8). `read_wav()` rejects any other layout.
 
+## Validator (#9)
+
+```python
+validate(
+    candidate: Recipe | Mapping[str, Any] | str | bytes | bytearray,
+    profile: Profile | str,
+    committed: Iterable[Reference] = (),
+    *,
+    reserved: ReservedRegistry | Iterable[ReservedEntry] | None = None,
+    threshold: Fraction | Decimal | int | str | None = None,
+) -> ValidationResult
+nearest_reference(candidate, committed, *, profile=None) -> NearestReference | None
+Reference(ref_id: str, recipe: Recipe, pcm_sha256: str, profile: Profile)
+Reference.from_rendered(ref_id, rendered) -> Reference
+```
+
+- `candidate` is raw JSON text or UTF-8 bytes, a decoded JSON object or a `Recipe`.
+  A bad candidate never raises; it gives a result with reason codes.
+- `committed`: the references of one book and one profile (both families and roles),
+  in commit order; the position is the atom index. A reference with another profile
+  raises `ValueError`. Study B passes the retained options of the other atoms.
+- `reserved=None` loads `sound/reserved/registry.json`; `threshold=None` loads
+  `sound/config/validator.json` (`"0.10"`, pilot default; freezes at G4).
+- `ValidationResult`: `ok`, `codes`, `messages` (one per code), `primary_code`,
+  `profile`, `threshold` (`Fraction`), `recipe` (canonical, if parsed), `features`,
+  `event_samples`, `pcm_sha256` (`None` if not parsed, `E_NONFINITE` or `E_CLIP`),
+  `nearest_id`, `nearest_index`, `nearest_distance`, `validator_version`,
+  `renderer_version`, `rendered` (not serialized). `to_dict()` matches
+  `sound/schema/validation-result.schema.json`.
+- Reason codes (`REASON_CODES`, fixed order): `E_JSON`, `E_SCHEMA`, `E_DOMAIN`,
+  `E_EVENT_SHORT`, `E_NONFINITE`, `E_CLIP`, `E_DUPLICATE`, `E_RESERVED`,
+  `E_SEPARATION`. If parsing or the schema fails, only those codes are listed;
+  otherwise every remaining check runs on one render.
+- `NearestReference`: `ref_id`, `index`, `distance`, `sum_sq` (exact). Ties go to the
+  lowest index; `None` when nothing is committed.
+
+Feature metric (Study A protocol §3.2), for the listening tool (#23) and reports:
+
+| Function | Returns |
+| --- | --- |
+| `features(recipe)` | 12 exact `Fraction`s in [0, 1] (`FEATURE_NAMES` order) |
+| `sum_squared_diff(a, b)` | Exact `sum((x_j - y_j)^2)`; `a`, `b` are recipes or 12-value vectors |
+| `distance(a, b)` | `sqrt(sum / 12)` as a float, for reporting only |
+| `separated(a, b, threshold)` | `sum >= 12 * threshold^2`, decided exactly |
+| `parse_threshold(value)`, `load_separation_threshold(path=None)` | Exact threshold (`"0.10"` -> 1/10) |
+
+Reserved signals: `load_reserved_registry(path=None) -> ReservedRegistry`
+(`registry_version`, `renderer_version`, `entries`), `ReservedEntry` (`id`, `kind`,
+`profile`, `n_samples`, `pcm_sha256`, `file_sha256`, `recipe`, `description`).
+Format: `sound/schema/reserved-registry.schema.json`. Details:
+[`sound/docs/validator.md`](../../sound/docs/validator.md).
+
+Note: the package attribute `av_sound.validate` is the function. Import names from
+the module with `from av_sound.validate import ...`.
+
 ## Composer (#10)
 
 Byte contract for other implementations (Unity, #64):
@@ -108,8 +163,7 @@ Synthetic fixtures (`av_sound.synthetic`, not study material):
 `synthetic_book(profile) -> dict[str, AtomAudio]`, `synthetic_book_id(profile)`
 (`DEMO-P1` .. `DEMO-P3`).
 
-## Validator (#9), store (#11), fallback (#15), packages (#13)
+## Store (#11), fallback (#15), packages (#13)
 
-*Pending.* Each pull request adds its section here: `validate()`,
-`nearest_reference()`, the vocabulary store, `scan_fallback()` and the package
-builder.
+*Pending.* Each pull request adds its section here: the vocabulary store,
+`scan_fallback()` and the package builder.
