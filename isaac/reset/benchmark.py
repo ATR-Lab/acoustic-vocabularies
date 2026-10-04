@@ -10,7 +10,7 @@ import statistics
 import time
 import uuid
 
-from .snapshot import capture, snapshot_bytes, sha256
+from .snapshot import capture, load_snapshot, snapshot_bytes, sha256
 from .manager import ResetManager
 from .event_log import DurableResetLog
 
@@ -35,6 +35,7 @@ def run_reset_check(adapter, output, cycles=1000, capture_image=None):
     adapter.prepare_neutral()
     snapshot = capture(adapter)
     durable(output/"neutral_v1.json", snapshot_bytes(snapshot))
+    snapshot = load_snapshot(output/"neutral_v1.json", sha256(snapshot))
     log = DurableResetLog(output/"reset-events.jsonl", session_id=uuid.uuid4().hex,
                           apparatus_version="workcell-development-v1", protocol_version="unresolved-methodology")
     manager = ResetManager(adapter, snapshot, sha256(snapshot), log)
