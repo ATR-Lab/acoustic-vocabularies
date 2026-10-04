@@ -27,7 +27,8 @@ class Tolerances:
 
 def angle(a, b):
     # q and -q are the same orientation. atan2 remains useful near zero.
-    dot = min(1., abs(sum(x*y for x, y in zip(a, b))))
+    norm = math.sqrt(sum(x*x for x in a) * sum(x*x for x in b))
+    dot = min(1., abs(sum(x*y for x, y in zip(a, b))) / norm)
     return 2 * math.atan2(math.sqrt(max(0., 1-dot*dot)), dot)
 
 
