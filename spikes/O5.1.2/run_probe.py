@@ -94,6 +94,8 @@ def main():
                         help="Enable an offscreen RGB camera; distinct from a visible viewport")
     parser.add_argument("--pose-evidence", action="store_true",
                         help="After timing, export actual link transforms for Unity comparison")
+    parser.add_argument("--hand-visuals", action="store_true",
+                        help="Capture a separate three-pose close hand fixture; requires --capture")
     parser.add_argument("--preflight-only", action="store_true")
     # No middleware or simulator import until namespace and revisions pass.
     early, _ = parser.parse_known_args()
@@ -131,6 +133,8 @@ def main():
             os.environ["ROS_DISTRO"] = "humble"
             os.environ["ROS_LOCALHOST_ONLY"] = "1"
             os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp")
+    if args.hand_visuals and (not args.capture or args.pose_evidence):
+        parser.error("--hand-visuals requires --capture and a separate run from --pose-evidence")
     args.output.mkdir(parents=True, exist_ok=False)
     if args.capture:
         args.enable_cameras = True
@@ -141,6 +145,7 @@ def main():
                 "bridge_dds_started": False,
                 "duration_requested_seconds": args.seconds, "num_envs": args.num_envs,
                 "headless": args.headless, "offscreen_camera": args.capture,
+                "hand_visuals": args.hand_visuals,
                 "rendered": rendered, "physics_dt": args.physics_dt,
                 "acceptance_duration": args.seconds >= 600}
     manifest["isaac_sim_build"] = Path("/isaac-sim/VERSION").read_text().strip()
@@ -297,9 +302,25 @@ def main():
         completed = elapsed >= args.seconds
         stop.set()
         sampler.join(timeout=5)
-        if args.pose_evidence and completed:
+        captured_pose_ids = []
+        if (args.pose_evidence or args.hand_visuals) and completed:
             from pose_evidence import export
-            export(robots[0], sim, args.output / "poses.json", args.physics_dt)
+            if args.hand_visuals:
+                if camera is None:
+                    raise ValueError("--hand-visuals requires --capture")
+                camera.set_world_poses_from_view(
+                    torch.tensor([[1.1, -.15, 1.1]], device=args.device),
+                    torch.tensor([[.32, 0., .84]], device=args.device))
+            def capture_pose(name):
+                from PIL import Image
+                for _ in range(10):
+                    sim.render()
+                    camera.update(args.physics_dt, force_recompute=True)
+                Image.fromarray(camera.data.output["rgb"][0, :, :, :3].cpu().numpy()).save(
+                    args.output / f"pose-{name}.png")
+                captured_pose_ids.append(name)
+            export(robots[0], sim, args.output / "poses.json", args.physics_dt,
+                   capture_pose if camera else None, hand_visuals=args.hand_visuals)
             if camera:
                 for _ in range(10):
                     sim.render()
@@ -314,6 +335,7 @@ def main():
                 app.update()
         (args.output / "completion.json").write_text(json.dumps(
             {"completed": completed, "elapsed_seconds": elapsed, "steps": step_index,
+             "captured_pose_ids": captured_pose_ids,
              "screenshot_requires_visual_review": rendered}, indent=2) + "\n")
         if not completed:
             raise RuntimeError("Simulation ended before requested duration")
