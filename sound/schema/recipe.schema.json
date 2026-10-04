@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/sound/schema/recipe.schema.json",
+  "title": "Motif recipe",
+  "description": "One 3-event acoustic motif recipe (renderer spec 0.1.0, pilot default; freezes at G4). The profile is passed to the renderer separately. Every field is an enum so the schema can be used for constrained decoding unchanged. Checks a schema cannot express (60 ms events, clipping, duplicates, reserved signals, separation) belong to the validator.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["total_ms", "pitches", "rhythm_weights", "gaps_ms", "amplitudes"],
+  "properties": {
+    "total_ms": {
+      "description": "Motif length in milliseconds, including both gaps.",
+      "type": "integer",
+      "enum": [450, 600, 750, 900]
+    },
+    "pitches": {
+      "description": "Semitone offset of each event from the profile base frequency.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "integer",
+        "enum": [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+      }
+    },
+    "rhythm_weights": {
+      "description": "Relative share of (total_ms - gaps) given to each event.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4]
+      }
+    },
+    "gaps_ms": {
+      "description": "Silence after event 1 and after event 2, in milliseconds.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "integer",
+        "enum": [20, 40, 60]
+      }
+    },
+    "amplitudes": {
+      "description": "Relative amplitude of each event.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number",
+        "enum": [0.6, 0.8, 1.0]
+      }
+    }
+  }
+}
