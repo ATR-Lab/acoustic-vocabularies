@@ -41,6 +41,9 @@ def run_reset_check(adapter, output, cycles=1000, capture_image=None):
     randomizer = random.Random(531000)  # Public engineering fixture seed only.
     rows = []
     limits = adapter.robot.data.joint_pos_limits[0].tolist()
+    anchor_ids = tuple(adapter.accessors.anchor_ids)
+    if len(anchor_ids) < 2:
+        raise ValueError("at least two registered physical anchors required for location coverage")
     try:
         for cycle in range(cycles):
             changed = manager.neutral_state
@@ -54,11 +57,19 @@ def run_reset_check(adapter, output, cycles=1000, capture_image=None):
                 obj["angular_velocity_rad_s"] = [randomizer.uniform(-.1, .1) for _ in range(3)]
                 obj["visible"] = not obj["visible"]
                 obj["enabled"] = not obj["enabled"]
+                obj["collision_enabled"] = not obj["collision_enabled"]
                 for key in obj["state"]:
                     if key == "card_face": obj["state"][key] = 1 - obj["state"][key]
                     elif key == "arrow_angle_rad": obj["state"][key] += .3
                     elif key == "lid_open_fraction": obj["state"][key] = 1 - obj["state"][key]
                     elif key == "tag_attached": obj["state"][key] = not obj["state"][key]
+                    elif key == "location": obj["state"][key] = next(anchor for anchor in anchor_ids if anchor != obj["state"][key])
+            for value in changed["environment"]["materials"].values():
+                value["diffuse_color"] = [randomizer.uniform(.1, .9) for _ in range(3)]
+                value["roughness"] = randomizer.uniform(.1, .9)
+            for value in changed["environment"]["lights"].values():
+                value["color"] = [randomizer.uniform(.1, .9) for _ in range(3)]
+                value["intensity"] += 10.
             adapter.write_state(changed)
             adapter.step_fixed(1)
             started = time.perf_counter_ns()
