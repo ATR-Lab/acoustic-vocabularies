@@ -17,8 +17,9 @@ namespace AcousticVocab.Spikes.Audio.Editor
             sample.loadType = AudioClipLoadType.DecompressOnLoad;
             sample.compressionFormat = AudioCompressionFormat.PCM;
             sample.sampleRateSetting = AudioSampleRateSetting.PreserveSampleRate;
+            sample.preloadAudioData = true;
             importer.defaultSampleSettings = sample;
-            importer.forceToMono = true; importer.preloadAudioData = true; importer.loadInBackground = false;
+            importer.forceToMono = true; importer.loadInBackground = false;
             importer.SaveAndReimport();
             var origin = GameObject.Find("SeatedOrigin");
             if (origin == null) throw new System.InvalidOperationException("Open the #45 seated workcell scene first.");
