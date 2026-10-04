@@ -178,9 +178,9 @@ Some objects are conditional; this is not evidence that every topic was active.
 
 ## Open validation
 
-Use the [runbook](../O5.1.2-runbook.md) for visible viewport, offscreen image and
-capacity probes. Label a rendered offscreen image separately from a viewport run.
-A short two-process/two-environment feasibility probe is not a 600-second
-stability result or production capacity claim. Confirm both hands in the image;
-compare exported measured link poses with Unity. Ubuntu 22.04/GPU qualification
-needs an explicit architecture decision. #44 stays open for missing checks.
+The interactive viewport remains untested. Investigate the discarded camera frame
+before treating the offscreen renderer as qualified. Unitree runtime DDS topics
+remain source-inspected only. The short capacity probes do not establish sustained
+multi-participant performance. The [runbook](../O5.1.2-runbook.md) describes these
+follow-ups. Ubuntu 22.04/GPU qualification needs an explicit architecture decision.
+#44 stays open for the missing checks; none of these measurements grants G1 approval.
