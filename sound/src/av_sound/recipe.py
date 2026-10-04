@@ -1,13 +1,15 @@
 """Recipe and profile types (renderer spec section 4).
 
 A `Recipe` always holds an in-domain value: the constructor rejects wrong types
-(`E_SCHEMA`) and out-of-domain values (`E_DOMAIN`). It never repairs a value.
+(`E_SCHEMA`) and out-of-domain values (`E_DOMAIN`), and `Recipe.from_json` rejects
+text that is not strict JSON (`E_JSON`). It never repairs a value.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import numbers
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -20,6 +22,7 @@ GAPS_MS: tuple[int, ...] = (20, 40, 60)
 AMPLITUDES: tuple[float, ...] = (0.6, 0.8, 1.0)
 FIELDS: tuple[str, ...] = ("total_ms", "pitches", "rhythm_weights", "gaps_ms", "amplitudes")
 
+E_JSON = "E_JSON"
 E_SCHEMA = "E_SCHEMA"
 E_DOMAIN = "E_DOMAIN"
 
@@ -41,7 +44,8 @@ _F0_HZ: dict[Profile, int] = {Profile.P1: 300, Profile.P2: 450, Profile.P3: 675}
 
 
 class RecipeError(ValueError):
-    """A recipe is malformed (`code == "E_SCHEMA"`) or out of domain (`"E_DOMAIN"`)."""
+    """A recipe is not strict JSON (`code == "E_JSON"`), malformed (`"E_SCHEMA"`) or out of
+    domain (`"E_DOMAIN"`)."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
@@ -49,16 +53,17 @@ class RecipeError(ValueError):
 
 
 def _is_int(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
+    return isinstance(value, numbers.Integral) and not isinstance(value, bool)
 
 
 def _int_field(name: str, value: object, allowed: tuple[int, ...]) -> int:
     if not _is_int(value):
         raise RecipeError(E_SCHEMA, f"{name}: expected an integer, got {value!r}")
-    assert isinstance(value, int)
-    if value not in allowed:
-        raise RecipeError(E_DOMAIN, f"{name}: {value} is not one of {list(allowed)}")
-    return value
+    assert isinstance(value, numbers.Integral)
+    number = int(value)
+    if number not in allowed:
+        raise RecipeError(E_DOMAIN, f"{name}: {number} is not one of {list(allowed)}")
+    return number
 
 
 def _int_list(name: str, value: object, length: int, allowed: tuple[int, ...]) -> tuple[int, ...]:
@@ -70,7 +75,7 @@ def _int_list(name: str, value: object, length: int, allowed: tuple[int, ...]) -
 
 
 def _amplitude(name: str, value: object) -> float:
-    if isinstance(value, bool) or not isinstance(value, int | float):
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
         raise RecipeError(E_SCHEMA, f"{name}: expected a number, got {value!r}")
     for allowed in AMPLITUDES:
         if value == allowed:
@@ -118,8 +123,16 @@ class Recipe:
 
     @classmethod
     def from_json(cls, text: str | bytes) -> Recipe:
-        """Parse a JSON recipe. Invalid JSON raises `json.JSONDecodeError`."""
-        return cls.from_dict(json.loads(text))
+        """Parse a strict JSON recipe (e.g. model output).
+
+        Raises `RecipeError` with `E_JSON` for invalid JSON, duplicate keys and the
+        non-standard constants `NaN`/`Infinity`; then as `from_dict`.
+        """
+        try:
+            data = json.loads(text, object_pairs_hook=_unique_keys, parse_constant=_no_constant)
+        except (json.JSONDecodeError, UnicodeDecodeError, _StrictJsonError) as err:
+            raise RecipeError(E_JSON, f"recipe: not strict JSON ({err})") from err
+        return cls.from_dict(data)
 
     def to_dict(self) -> dict[str, Any]:
         """Plain JSON-compatible dict (lists, not tuples)."""
@@ -138,3 +151,20 @@ class Recipe:
     def sha256(self) -> str:
         """SHA-256 of the canonical JSON (UTF-8), lowercase hex."""
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
+
+
+class _StrictJsonError(ValueError):
+    pass
+
+
+def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise _StrictJsonError(f"duplicate key {key!r}")
+        out[key] = value
+    return out
+
+
+def _no_constant(name: str) -> Any:  # noqa: ANN401 - json hook signature
+    raise _StrictJsonError(f"non-standard constant {name}")

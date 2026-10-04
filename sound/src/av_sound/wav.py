@@ -12,7 +12,8 @@ import struct
 from pathlib import Path
 from typing import Protocol
 
-SAMPLE_RATE = 48_000
+from av_sound.tables import SAMPLE_RATE
+
 CHANNELS = 1
 BITS_PER_SAMPLE = 16
 HEADER_SIZE = 44

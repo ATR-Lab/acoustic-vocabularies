@@ -15,8 +15,9 @@ render(recipe: Recipe | Mapping[str, Any], profile: Profile | str) -> Rendered
 ```
 
 - `recipe` must be in domain. `Recipe(...)`, `Recipe.from_dict()` and
-  `Recipe.from_json()` raise `RecipeError` (`.code` is `E_SCHEMA` or `E_DOMAIN`),
-  or `json.JSONDecodeError` for invalid JSON.
+  `Recipe.from_json()` raise `RecipeError` with `.code` `E_JSON` (invalid JSON,
+  duplicate keys, `NaN`/`Infinity`), `E_SCHEMA` or `E_DOMAIN`. The constants are
+  exported from `av_sound`.
 - `Rendered.n_samples == recipe.total_ms * 48` always.
 - `Rendered.pcm` is int16 LE mono bytes. It raises `OverflowError` when `overflow`
   is set.
@@ -33,6 +34,10 @@ Hashes (lowercase hex SHA-256):
 | `file_sha256(audio)` | The canonical WAV file (44-byte header + samples) |
 | `renderer_hash()` | Renderer constants, table digests and source digests |
 | `renderer_recipe_schema_hash()` | `renderer_hash` + recipe schema digest; apparatus manifest field |
+
+Both provenance hashes are pinned in `sound/testvectors/renderer/vectors.json`.
+`self_test()` renders two pinned vectors and raises `RuntimeError` on any
+difference; generation hosts should call it at start-up.
 
 WAV files are canonical (spec D8). `read_wav()` rejects any other layout.
 

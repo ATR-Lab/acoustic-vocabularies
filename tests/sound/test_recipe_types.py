@@ -82,11 +82,43 @@ def test_malformed_recipes_raise_e_schema(data):
     assert err.value.code == "E_SCHEMA"
 
 
-def test_non_object_and_invalid_json():
-    with pytest.raises(RecipeError):
+def test_non_object_is_e_schema():
+    with pytest.raises(RecipeError) as err:
         Recipe.from_dict([1, 2, 3])  # type: ignore[arg-type]
-    with pytest.raises(json.JSONDecodeError):
-        Recipe.from_json("{not json")
+    assert err.value.code == "E_SCHEMA"
+    with pytest.raises(RecipeError) as err:
+        Recipe.from_json("[1, 2, 3]")
+    assert err.value.code == "E_SCHEMA"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "{not json",
+        "",
+        b"\xff\xfe",
+        '{"total_ms":450,"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
+        '"gaps_ms":[20,20],"amplitudes":[1.0,1.0,1.0]}',
+        '{"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
+        '"gaps_ms":[20,20],"amplitudes":[NaN,1.0,1.0]}',
+        '{"total_ms":600,"pitches":[0,0,0],"rhythm_weights":[1,1,1],'
+        '"gaps_ms":[20,20],"amplitudes":[Infinity,1.0,1.0]}',
+    ],
+)
+def test_not_strict_json_is_e_json(text):
+    with pytest.raises(RecipeError) as err:
+        Recipe.from_json(text)
+    assert err.value.code == "E_JSON"
+
+
+def test_numpy_scalars_are_accepted_and_canonicalized():
+    np = pytest.importorskip("numpy")
+    r = Recipe(
+        np.int64(600), (np.int64(-3), 0, 4), (2, 1, 3), (40, 20), (np.float64(1.0), 0.6, 0.8)
+    )
+    assert r == Recipe.from_dict(BASE)
+    assert type(r.total_ms) is int and type(r.pitches[0]) is int
+    assert r.canonical_json() == Recipe.from_dict(BASE).canonical_json()
 
 
 def test_recipe_is_immutable_and_hashable():

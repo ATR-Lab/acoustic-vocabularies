@@ -7,6 +7,7 @@ import importlib.util
 import itertools
 import json
 import math
+import struct
 from pathlib import Path
 
 import numpy as np
@@ -24,9 +25,18 @@ from av_sound import (
     event_samples,
     file_sha256,
     render,
+    self_test,
+    tables,
 )
 from av_sound.recipe import AMPLITUDES, GAPS_MS, PITCHES, RHYTHM_WEIGHTS, TOTAL_MS
-from av_sound.renderer import FULL_SCALE, amplitude_steps, envelope, normalize, synth_event
+from av_sound.renderer import (
+    FULL_SCALE,
+    amplitude_steps,
+    envelope,
+    normalize,
+    overflows,
+    synth_event,
+)
 
 SOUND_ROOT = Path(__file__).resolve().parents[2] / "sound"
 
@@ -196,10 +206,60 @@ def test_reporting_properties():
     assert "array(" not in repr(r)  # sample data is kept out of the repr
 
 
-def test_synth_event_starts_at_phase_zero():
+def _reference_render(recipe: Recipe, profile: Profile) -> bytes:
+    """Independent pure-Python integer renderer written from the spec text (D1-D7)."""
+    t, w, g = recipe.total_ms, recipe.rhythm_weights, recipe.gaps_ms
+    d = (t - g[0] - g[1]) * 48
+    ws = sum(w)
+    n = [(2 * d * w[0] + ws) // (2 * ws), (2 * d * w[1] + ws) // (2 * ws)]
+    n.append(d - n[0] - n[1])
+    k = [{0.6: 3, 0.8: 4, 1.0: 5}[a] for a in recipe.amplitudes]
+    common = math.gcd(*k)
+    k = [v // common for v in k]
+    sine, attack, release = (tbl.tolist() for tbl in (tables.SINE, tables.ATTACK, tables.RELEASE))
+    x: list[int] = []
+    for j in range(3):
+        inc = [tables.increment(profile, recipe.pitches[j], h) for h in (1, 2, 3)]
+        for i in range(n[j]):
+            s = [sine[((inc[h] * i) % 2**32) >> 16] for h in range(3)]
+            mix = 20 * s[0] + 3 * s[1] + 1 * s[2]
+            env = min(attack[min(i, 480)], release[min(n[j] - 1 - i, 1440)])
+            x.append((mix * k[j] * env + 2**39) // 2**40)
+        if j < 2:
+            x.extend([0] * (g[j] * 48))
+    total = len(x)
+    gain = math.isqrt((RMS_TARGET**2 * total * 2**64) // sum(v * v for v in x))
+    y = [(v * gain + 2**31) // 2**32 for v in x]
+    assert max(abs(v) for v in y) <= FULL_SCALE
+    return struct.pack(f"<{total}h", *y)
+
+
+@pytest.mark.parametrize(
+    ("recipe", "profile"),
+    [
+        (WORKED, Profile.P2),
+        (Recipe(450, (-6, 6, 0), (1, 2, 4), (60, 20), (0.6, 1.0, 0.8)), Profile.P1),
+        (Recipe(900, (6, -5, 3), (4, 4, 1), (20, 60), (0.8, 0.8, 0.8)), Profile.P3),
+        (Recipe(750, (-1, -2, -3), (3, 1, 2), (40, 40), (1.0, 0.6, 0.6)), Profile.P2),
+    ],
+)
+def test_matches_independent_reference_implementation(recipe, profile):
+    assert render(recipe, profile).pcm == _reference_render(recipe, profile)
+
+
+def test_partials_start_at_phase_zero():
+    # 300 Hz = 160 samples per period. Sine phase 0 is positive for samples 1-79 and
+    # negative for 81-159; a cosine start would be negative over 40-120 instead.
     x = synth_event(Profile.P1, 0, 4000, 1)
-    assert x[0] == 0
-    assert x.dtype == np.int64
+    assert x[0] == 0 and x.dtype == np.int64
+    assert np.all(x[45:76] > 0)
+    assert np.all(x[85:116] < 0)
+
+
+def test_overflow_boundary():
+    assert not overflows(np.array([FULL_SCALE, -FULL_SCALE, 0], dtype=np.int64))
+    assert overflows(np.array([-FULL_SCALE - 1], dtype=np.int64))
+    assert overflows(np.array([FULL_SCALE + 1], dtype=np.int64))
 
 
 @settings(max_examples=300, deadline=None)
@@ -214,11 +274,20 @@ def test_property_domain_recipes(recipe, profile):
     assert r.samples.dtype == np.int64
 
 
-def test_worst_case_crest_factor_from_sweep():
-    worst = Recipe(450, (-1, -2, -2), (1, 1, 3), (60, 60), (0.6, 1.0, 0.6))
+def test_worst_case_from_spec_sweep():
+    # Spec D6: worst crest factor 8.814 dB, peak 20,238 LSB (-4.185 dBFS).
+    worst = Recipe(450, (-2, -2, -2), (1, 1, 3), (60, 60), (0.6, 1.0, 0.6))
     r = render(worst, Profile.P1)
-    assert 20 * math.log10(r.peak / r.rms) < 8.82
-    assert r.peak_dbfs < -4.0
+    assert r.peak == 20238
+    assert 20 * math.log10(r.peak / r.rms) == pytest.approx(8.814, abs=5e-4)
+    assert r.peak_dbfs == pytest.approx(-4.185, abs=5e-4)
+
+
+def test_self_test_passes_and_detects_a_change(monkeypatch):
+    self_test()
+    monkeypatch.setattr(renderer_mod, "RMS_TARGET", RMS_TARGET + 1)
+    with pytest.raises(RuntimeError):
+        self_test()
 
 
 def test_reference_vectors():
@@ -230,6 +299,9 @@ def test_reference_vectors():
         assert r.n_samples == v["n_samples"]
         assert list(r.event_samples) == v["event_samples"]
         assert r.short_event == v["short_event"]
+        assert r.overflow == v["overflow"]
+        assert r.peak == v["peak"]
+        assert list(r.timing.event_onsets) == v["event_onsets"]
         assert r.pcm_sha256 == v["pcm_sha256"], v["name"]
         assert file_sha256(r) == v["file_sha256"], v["name"]
 

@@ -10,7 +10,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from av_sound import RENDERER_VERSION, Profile, Recipe, file_sha256, render
+from av_sound import (
+    RENDERER_VERSION,
+    Profile,
+    Recipe,
+    file_sha256,
+    render,
+    renderer_hash,
+    renderer_recipe_schema_hash,
+)
 
 OUT = Path(__file__).resolve().parents[1] / "testvectors" / "renderer" / "vectors.json"
 
@@ -61,9 +69,9 @@ RECIPES: list[tuple[str, dict[str, object]]] = [
         {
             "total_ms": 450,
             "pitches": [-2, -2, -2],
-            "rhythm_weights": [4, 4, 2],
+            "rhythm_weights": [1, 1, 3],
             "gaps_ms": [60, 60],
-            "amplitudes": [0.6, 0.6, 1.0],
+            "amplitudes": [0.6, 1.0, 0.6],
         },
     ),
     (
@@ -110,7 +118,13 @@ def build() -> dict[str, object]:
                     "file_sha256": file_sha256(r),
                 }
             )
-    return {"renderer_version": RENDERER_VERSION, "synthetic": True, "vectors": vectors}
+    return {
+        "renderer_version": RENDERER_VERSION,
+        "renderer_hash": renderer_hash(),
+        "renderer_recipe_schema_hash": renderer_recipe_schema_hash(),
+        "synthetic": True,
+        "vectors": vectors,
+    }
 
 
 def main() -> None:

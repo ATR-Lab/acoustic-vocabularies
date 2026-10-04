@@ -1,4 +1,6 @@
 {
+  "renderer_hash": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d",
+  "renderer_recipe_schema_hash": "936cd8b5f2754535a67d88bf35102de9f2a03804c576d2076cfb67724a21acd1",
   "renderer_version": "0.1.0",
   "synthetic": true,
   "vectors": [
@@ -509,26 +511,26 @@
     {
       "event_onsets": [
         0,
-        9216,
-        18432
+        6048,
+        12096
       ],
       "event_samples": [
-        6336,
-        6336,
-        3168
+        3168,
+        3168,
+        9504
       ],
-      "file_sha256": "ae4bc75c6590b3de4ddd4da089689d81f342499fb8c9d660d242f37e126ec688",
+      "file_sha256": "1d3c28ad916aabc9ced38df46144ac20bcee0739a2ccf62fbbca9f6e972abef5",
       "n_samples": 21600,
       "name": "worst-crest-factor",
       "overflow": false,
-      "pcm_sha256": "dd7a3c170c7ad4d2d53690577b93fce6e4e97b72a8acc87442d1b776c0787b40",
+      "pcm_sha256": "eb25c55778cc8f6f270fab74e2e44ec3d2350f46adf33bf47ac92fe4a3a4aea5",
       "peak": 20238,
       "profile": "P1",
       "recipe": {
         "amplitudes": [
           0.6,
-          0.6,
-          1.0
+          1.0,
+          0.6
         ],
         "gaps_ms": [
           60,
@@ -540,9 +542,9 @@
           -2
         ],
         "rhythm_weights": [
-          4,
-          4,
-          2
+          1,
+          1,
+          3
         ],
         "total_ms": 450
       },
@@ -551,26 +553,26 @@
     {
       "event_onsets": [
         0,
-        9216,
-        18432
+        6048,
+        12096
       ],
       "event_samples": [
-        6336,
-        6336,
-        3168
+        3168,
+        3168,
+        9504
       ],
-      "file_sha256": "41328078cd2819511ac3cb6dfbbfd0e505f7fb698b687175528ad9f7e92f9160",
+      "file_sha256": "7695b031289a9cebdb8c13d1012de1ca77606dcf7cbde73c52e414de76f69a00",
       "n_samples": 21600,
       "name": "worst-crest-factor",
       "overflow": false,
-      "pcm_sha256": "c8b243947c7fa6402a5f53d807f83d562c6e14f0a5aadc50d5a275fbb00e66c0",
+      "pcm_sha256": "bb5a62f930ef7b06bd66f3f8bc92e883f1a9f382870351cfa61d2979c4aea4b8",
       "peak": 20236,
       "profile": "P2",
       "recipe": {
         "amplitudes": [
           0.6,
-          0.6,
-          1.0
+          1.0,
+          0.6
         ],
         "gaps_ms": [
           60,
@@ -582,9 +584,9 @@
           -2
         ],
         "rhythm_weights": [
-          4,
-          4,
-          2
+          1,
+          1,
+          3
         ],
         "total_ms": 450
       },
@@ -593,26 +595,26 @@
     {
       "event_onsets": [
         0,
-        9216,
-        18432
+        6048,
+        12096
       ],
       "event_samples": [
-        6336,
-        6336,
-        3168
+        3168,
+        3168,
+        9504
       ],
-      "file_sha256": "744e3ff955e6a2b33d8c8908786d9315f7447a4e39739f6eb618c6c383c362df",
+      "file_sha256": "a2c0b74c09d8ef6a8187166d2e41296fa2818b9098db9fb18fc0284f9b084b2d",
       "n_samples": 21600,
       "name": "worst-crest-factor",
       "overflow": false,
-      "pcm_sha256": "48f5a4d0840435c0119179ea544b68cc661cb0ae4342010c853a444e6479940e",
+      "pcm_sha256": "28c758c19260063b0cadc4b70e87e73667b7f57377b1ac22062ab864798e6857",
       "peak": 20237,
       "profile": "P3",
       "recipe": {
         "amplitudes": [
           0.6,
-          0.6,
-          1.0
+          1.0,
+          0.6
         ],
         "gaps_ms": [
           60,
@@ -624,9 +626,9 @@
           -2
         ],
         "rhythm_weights": [
-          4,
-          4,
-          2
+          1,
+          1,
+          3
         ],
         "total_ms": 450
       },

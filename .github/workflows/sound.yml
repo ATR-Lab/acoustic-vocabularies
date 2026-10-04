@@ -57,17 +57,22 @@ jobs:
       - name: Tests
         run: >
           uv run --project sound pytest --import-mode=importlib -p no:cacheprovider tests/sound
-          --cov=av_sound --cov-report=term --cov-fail-under=90
+          --cov=av_sound --cov-config=sound/pyproject.toml --cov-report=term --cov-fail-under=90
+      - name: Per-module coverage gate (renderer.py >= 90%)
+        run: >
+          uv run --project sound coverage report --rcfile=sound/pyproject.toml
+          --include='*/av_sound/renderer.py' --fail-under=90
       - name: Determinism fingerprint
         run: |
           uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
           import hashlib, json, platform, sys
           import numpy
-          from av_sound import RENDERER_VERSION, renderer_hash
+          from av_sound import RENDERER_VERSION, Recipe, render, renderer_hash
           vectors = json.load(open("sound/testvectors/renderer/vectors.json", encoding="utf-8"))["vectors"]
-          joined = "".join(v["pcm_sha256"] for v in vectors).encode()
+          rendered = [render(Recipe.from_dict(v["recipe"]), v["profile"]).pcm_sha256 for v in vectors]
+          digest = hashlib.sha256("".join(rendered).encode()).hexdigest()
           print(f"### Sound engine on {platform.system()} {platform.machine()}")
           print(f"- Python {sys.version.split()[0]}, numpy {numpy.__version__}, renderer {RENDERER_VERSION}")
           print(f"- renderer_hash `{renderer_hash()}`")
-          print(f"- reference-vector digest `{hashlib.sha256(joined).hexdigest()}` ({len(vectors)} vectors)")
+          print(f"- digest of freshly rendered reference PCM `{digest}` ({len(rendered)} vectors)")
           EOF

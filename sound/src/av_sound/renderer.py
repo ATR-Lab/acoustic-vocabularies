@@ -75,9 +75,13 @@ def timing(recipe: Recipe) -> Timing:
     return Timing((n1, n2, n3), onsets, (g1, g2), recipe.total_ms * SAMPLES_PER_MS)
 
 
+AMPLITUDE_STEPS: dict[float, int] = {0.6: 3, 0.8: 4, 1.0: 5}
+"""Lookup of k = 5a (spec D5); no float arithmetic enters the sample path."""
+
+
 def amplitude_steps(amplitudes: tuple[float, float, float]) -> tuple[int, int, int]:
     """k = 5a in {3, 4, 5}, divided by gcd(k1, k2, k3) (spec D5)."""
-    k = tuple(round(a * 5) for a in amplitudes)
+    k = tuple(AMPLITUDE_STEPS[a] for a in amplitudes)
     common = gcd(gcd(k[0], k[1]), k[2])
     return k[0] // common, k[1] // common, k[2] // common
 
@@ -101,6 +105,11 @@ def synth_event(profile: Profile, pitch: int, n_samples: int, amplitude_step: in
     return (e + (1 << (WORK_SHIFT - 1))) >> WORK_SHIFT
 
 
+def overflows(samples: IntArray) -> bool:
+    """True if any sample is outside +/-32,767 (-32,768 counts as overflow; spec D7)."""
+    return bool(np.any(np.abs(samples) > FULL_SCALE))
+
+
 @dataclass(frozen=True, slots=True)
 class Normalized:
     """Result of RMS normalization (spec D6)."""
@@ -118,7 +127,7 @@ def normalize(x: IntArray, target_rms: int = RMS_TARGET) -> Normalized:
         raise ValueError("cannot normalize an all-zero signal")
     gain = isqrt((target_rms * target_rms * int(x.size) << (2 * GAIN_FRAC_BITS)) // sum_sq)
     y = (x * gain + (1 << (GAIN_FRAC_BITS - 1))) >> GAIN_FRAC_BITS
-    overflow = bool(np.any(np.abs(y) > FULL_SCALE))
+    overflow = overflows(y)
     y.setflags(write=False)
     return Normalized(y, gain, sum_sq, overflow)
 

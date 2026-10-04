@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "==3.11.*"
 license = { text = "Proprietary; see repository README" }
 dependencies = [
+    "jsonschema>=4.26.0",
     "numpy>=2.0,<3",
 ]
 

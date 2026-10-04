@@ -14,7 +14,7 @@ import numpy.typing as npt
 from av_sound.recipe import PITCHES, Profile
 
 SAMPLE_RATE = 48_000
-SAMPLES_PER_MS = 48
+SAMPLES_PER_MS = SAMPLE_RATE // 1000
 SINE_BITS = 16
 SINE_SIZE = 1 << SINE_BITS
 SINE_Q = 24
