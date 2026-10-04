@@ -22,8 +22,9 @@ def export(robot, sim, path, dt):
     result = {
         "source": "loaded_isaac_articulation",
         "position_units": "m", "joint_units": "rad",
-        "coordinate_frame": "USD world, right-handed Z-up; root pose supplied for base-relative comparison",
+        "coordinate_frame": "usd_world_rh_z_up",
         "quaternion_order": "wxyz",
+        "coverage": "Articulation rigid bodies; fixed or merged URDF links may be absent and require separate comparison reporting",
         "joint_names": list(robot.joint_names), "body_names": list(robot.body_names), "poses": []}
     defaults = robot.data.default_joint_pos[0].tolist()
     limits = robot.data.joint_pos_limits[0].tolist()
@@ -36,12 +37,15 @@ def export(robot, sim, path, dt):
             sim.step(render=False)
             robot.update(dt)
         result["poses"].append({
-            "id": name, "commanded_joint_positions": vector,
-            "measured_joint_positions": robot.data.joint_pos[0].tolist(),
+            "name": name, "commanded_joint_positions": vector,
+            "joint_names": list(robot.joint_names),
+            "joint_positions": robot.data.joint_pos[0].tolist(),
             "root_position": robot.data.root_pos_w[0].tolist(),
-            "root_rotation_wxyz": robot.data.root_quat_w[0].tolist(),
-            "body_positions": robot.data.body_pos_w[0].tolist(),
-            "body_rotations_wxyz": robot.data.body_quat_w[0].tolist()})
+            "root_quaternion_wxyz": robot.data.root_quat_w[0].tolist(),
+            "links": [{"name": body, "position": position, "quaternion_wxyz": rotation}
+                      for body, position, rotation in zip(
+                          robot.body_names, robot.data.body_pos_w[0].tolist(),
+                          robot.data.body_quat_w[0].tolist())]})
     path.write_text(json.dumps(result, indent=2) + "\n")
     robot.write_joint_state_to_sim(robot.data.default_joint_pos, robot.data.default_joint_vel)
     robot.set_joint_position_target(robot.data.default_joint_pos)

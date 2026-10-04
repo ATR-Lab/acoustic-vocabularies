@@ -88,6 +88,8 @@ def summarize(directory):
     result = {key: stats(row[key] for row in resource_rows if row.get(key)) for key in
               ("gpu_total_used_mib", "process_rss_mib", "cpu_one_core_percent")}
     result["step_wall_ms"] = stats(row["step_wall_ms"] for row in steps)
+    timestamps = [int(row["host_monotonic_ns"]) for row in steps]
+    result["step_interval_ms"] = stats((b - a) / 1e6 for a, b in zip(timestamps, timestamps[1:]))
     result["render_interval_ms"] = stats(row["render_interval_ms"] for row in steps
                                          if row.get("render_interval_ms"))
     (directory / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
