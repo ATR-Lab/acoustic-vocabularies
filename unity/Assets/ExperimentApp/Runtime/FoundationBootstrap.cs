@@ -22,6 +22,7 @@ namespace AcousticVocab.Foundation
         FoundationLog log;
         bool initialRestore = true;
         bool trackingWasValid;
+        string lastFault;
 
         void Awake()
         {
@@ -67,7 +68,13 @@ namespace AcousticVocab.Foundation
             }
         }
 
-        static bool IsTracked() => InputDevices.GetDeviceAtXRNode(XRNode.Head).TryGetFeatureValue(CommonUsages.isTracked, out bool tracked) && tracked;
+        static bool IsTracked()
+        {
+            var device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
+            return device.TryGetFeatureValue(CommonUsages.isTracked, out bool tracked) && tracked &&
+                device.TryGetFeatureValue(CommonUsages.trackingState, out InputTrackingState state) &&
+                (state & (InputTrackingState.Position | InputTrackingState.Rotation)) == (InputTrackingState.Position | InputTrackingState.Rotation);
+        }
         void OnTrackingOriginUpdated(XRInputSubsystem _) { if (reference.MarkRecenter()) Fault("tracking_origin_changed"); }
         void Neutral() { Ready = false; if (presentationRoot != null) presentationRoot.SetActive(false); if (observerCamera != null) { observerCamera.clearFlags = CameraClearFlags.SolidColor; observerCamera.backgroundColor = Color.black; } }
         bool Record(string kind, JObject fields)
@@ -75,7 +82,14 @@ namespace AcousticVocab.Foundation
             try { if (log == null) return false; log.Write(kind, fields); return true; }
             catch (Exception) { Neutral(); configuration = null; Faulted?.Invoke("operator_log_unavailable"); return false; }
         }
-        void Fault(string reason) { Neutral(); Record("fault", new JObject { ["reason"] = reason, ["restore_pending"] = reference.RestorePending }); Faulted?.Invoke(reason); }
+        void Fault(string reason)
+        {
+            Neutral();
+            if (lastFault == reason) return;
+            lastFault = reason;
+            Record("fault", new JObject { ["reason"] = reason, ["restore_pending"] = reference.RestorePending });
+            Faulted?.Invoke(reason);
+        }
 
         // Future trial controller calls only at a safe boundary with the observer in the calibration pose.
         // The argument is a bounded engineering reason, never trial content or participant information.
@@ -84,10 +98,12 @@ namespace AcousticVocab.Foundation
             if (configuration == null || log == null || !IsTracked() || !reference.RestorePending) return false;
             if (boundary != "startup" && boundary != "between_trials" && boundary != "operator_recovery") throw new ArgumentException("Unknown safe boundary");
             var headInOrigin = new Pose(seatedOrigin.InverseTransformPoint(observerCamera.transform.position), Quaternion.Inverse(seatedOrigin.rotation) * observerCamera.transform.rotation);
-            var pose = ObserverReference.ResolveOrigin(StationConfig.ReferencePose(configuration), headInOrigin);
+            Pose pose;
+            try { pose = ObserverReference.ResolveOrigin(StationConfig.ReferencePose(configuration), headInOrigin); }
+            catch (ConfigurationFault ex) { Fault(ex.Message); return false; }
             seatedOrigin.SetPositionAndRotation(pose.position, pose.rotation);
             if (!Record("observer_reference_restored", new JObject { ["boundary"] = boundary, ["calibration_id"] = configuration["observer_reference"]["calibration_id"] })) return false;
-            reference.Restored(); Ready = true; presentationRoot.SetActive(true);
+            reference.Restored(); lastFault = null; Ready = true; presentationRoot.SetActive(true);
             return true;
         }
         void OnApplicationPause(bool paused) { if (paused && !initialRestore) { reference.MarkRecenter(); Fault("application_paused"); } }

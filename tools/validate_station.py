@@ -39,6 +39,8 @@ def validate(path: Path, protocol: str, topology: str) -> dict:
     quaternion = value["observer_reference"]["rotation_xyzw"]
     if abs(sum(x*x for x in quaternion) - 1) > .0001 or any(not math.isfinite(x) for x in quaternion):
         raise ValueError("reference quaternion invalid")
+    if abs(quaternion[0]) > .0001 or abs(quaternion[2]) > .0001:
+        raise ValueError("reference must preserve world up")
     return value
 
 

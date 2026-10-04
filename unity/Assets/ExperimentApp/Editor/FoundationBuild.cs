@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+using UnityEditor.Compilation;
 using UnityEditor.SceneManagement;
 using UnityEditor.XR.Management;
 using UnityEditor.XR.Management.Metadata;
@@ -86,7 +87,7 @@ namespace AcousticVocab.Foundation.Editor
                     string name = feature.GetType().Name;
                     feature.enabled = name == "MetaQuestFeature" || name == "DisplayUtilitiesFeature" ||
                         name == "OpenXRCompositionLayersFeature" || name == "OculusTouchControllerProfile" ||
-                        name == "MetaQuestTouchProControllerProfile" || name == "HandTracking";
+                        name == "MetaQuestTouchProControllerProfile" || name == "HandTracking" || name == "OpenXRLifeCycleFeature";
                     EditorUtility.SetDirty(feature);
                 }
                 EditorUtility.SetDirty(settings);
@@ -137,6 +138,24 @@ namespace AcousticVocab.Foundation.Editor
         }
         public static void VerifyParticipantScene()
         {
+            foreach (var assembly in CompilationPipeline.GetAssemblies(AssembliesType.Player))
+                foreach (string file in assembly.sourceFiles)
+                {
+                    string relative = Path.GetRelativePath(Application.dataPath, Path.GetFullPath(file)).Replace('\\', '/');
+                    if (!relative.StartsWith("../", StringComparison.Ordinal) && !relative.StartsWith("ExperimentApp/Runtime/", StringComparison.Ordinal))
+                        throw new BuildFailedException("Unexpected project runtime source outside the reviewed foundation runtime directory.");
+                }
+            if (Directory.GetFiles("Assets", "*.local.json", SearchOption.AllDirectories).Length != 0)
+                throw new BuildFailedException("Private station configuration must not be imported into Assets.");
+            foreach (var group in new[] { BuildTargetGroup.Android, BuildTargetGroup.Standalone })
+            {
+                var features = OpenXRSettings.GetSettingsForBuildTargetGroup(group).GetFeatures();
+                var requiredFeatures = new[] { "DisplayUtilitiesFeature", "OpenXRCompositionLayersFeature", "OpenXRLifeCycleFeature" };
+                if (group == BuildTargetGroup.Android) requiredFeatures = requiredFeatures.Append("MetaQuestFeature").ToArray();
+                foreach (string required in requiredFeatures)
+                    if (!features.Any(x => x.GetType().Name == required && x.enabled))
+                        throw new BuildFailedException("Required OpenXR feature disabled: " + required);
+            }
             var scene = EditorSceneManager.OpenScene(ScenePath);
             var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap) };
             foreach (var root in scene.GetRootGameObjects())

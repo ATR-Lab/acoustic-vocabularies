@@ -50,8 +50,19 @@ namespace AcousticVocab.Foundation.Tests
         [Test] public void ProtocolMismatchFailsClosed() => Assert.Throws<ConfigurationFault>(() => StationConfig.Validate(Provisioned.ToString(), Schema, "different-protocol"));
         [Test] public void QuaternionMustBeUnitLength()
         { var value = Provisioned; value["observer_reference"]["rotation_xyzw"] = new JArray(0, 0, 0, 0); Assert.Throws<ConfigurationFault>(() => Check(value)); }
+        [Test] public void ReferenceCannotTiltTheWorld()
+        {
+            var value = Provisioned; var tilt = Quaternion.Euler(15, 30, 0);
+            value["observer_reference"]["rotation_xyzw"] = new JArray(tilt.x, tilt.y, tilt.z, tilt.w);
+            Assert.Throws<ConfigurationFault>(() => Check(value));
+        }
         [Test] public void EndpointCannotContainCredentials()
         { var value = Provisioned; value["isaac_endpoint"] = "ws://user:secret@example.invalid"; Assert.Throws<ConfigurationFault>(() => Check(value)); }
+        [Test] public void IdentifierAndEndpointCannotHideTrailingNewline()
+        {
+            var value = Provisioned; value["station_id"] = "station\n"; Assert.Throws<ConfigurationFault>(() => Check(value));
+            value = Provisioned; value["isaac_endpoint"] = "ws://example.invalid\n"; Assert.Throws<ConfigurationFault>(() => Check(value));
+        }
         [Test] public void NewUnimplementedSchemaConstraintFailsClosed()
         { var schema = JObject.Parse(Schema); schema["properties"]["station_id"]["not"] = new JObject(); Assert.Throws<ConfigurationFault>(() => StationConfig.Validate(Provisioned.ToString(), schema.ToString(), (string)Example["protocol_version"])); }
         [Test] public void EmbeddedSchemaMatchesCanonical() => FoundationBuild.VerifySchema();
@@ -63,13 +74,28 @@ namespace AcousticVocab.Foundation.Tests
         [Test] public void RestoreMapsCurrentTrackedHeadToReferenceWithoutChangingTrackingPose()
         {
             var target = new Pose(new Vector3(2, 1.3f, -1), Quaternion.Euler(0, 130, 0));
-            var tracked = new Pose(new Vector3(.1f, .8f, -.2f), Quaternion.Euler(5, 40, -2));
+            var tracked = new Pose(new Vector3(.1f, .8f, -.2f), Quaternion.Euler(0, 40, 0));
             var origin = ObserverReference.ResolveOrigin(target, tracked);
             Assert.That(Vector3.Distance(origin.position + origin.rotation * tracked.position, target.position), Is.LessThan(.000001f));
             Assert.That(Quaternion.Angle(origin.rotation * tracked.rotation, target.rotation), Is.LessThan(.001f));
             var naturalMovedHead = tracked.position + Vector3.right * .1f;
             Assert.That(Vector3.Distance(origin.position + origin.rotation * naturalMovedHead, target.position), Is.EqualTo(.1f).Within(.000001f));
         }
+        [Test] public void TiltedStartupPreservesWorldUpAndNaturalHeadPitchRoll()
+        {
+            var desired = new Pose(new Vector3(1, 1.3f, 2), Quaternion.Euler(0, 120, 0));
+            var tracked = new Pose(new Vector3(.1f, .9f, .2f), Quaternion.Euler(35, 20, 12));
+            var origin = ObserverReference.ResolveOrigin(desired, tracked);
+            Assert.That(Vector3.Distance(origin.rotation * Vector3.up, Vector3.up), Is.LessThan(.000001f));
+            Assert.That(Vector3.Distance(origin.position + origin.rotation * tracked.position, desired.position), Is.LessThan(.000001f));
+            var beforeForward = tracked.rotation * Vector3.forward;
+            var afterForward = origin.rotation * beforeForward;
+            Assert.That(afterForward.y, Is.EqualTo(beforeForward.y).Within(.000001f));
+            Assert.That((origin.rotation * tracked.rotation * Vector3.up).y, Is.EqualTo((tracked.rotation * Vector3.up).y).Within(.000001f));
+            beforeForward.y = 0; afterForward.y = 0;
+            Assert.That(Vector3.Angle(afterForward, desired.rotation * Vector3.forward), Is.LessThan(.01f));
+        }
+        [Test] public void VerticalHeadPoseCannotSupplyAStableHeading() => Assert.Throws<ConfigurationFault>(() => ObserverReference.ResolveOrigin(Pose.identity, new Pose(Vector3.zero, Quaternion.Euler(90, 0, 0))));
         [Test] public void DuplicateOriginEventsLatchOneFaultUntilSafeRestore()
         {
             var state = new ObserverReference(); state.Restored();

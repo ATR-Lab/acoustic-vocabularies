@@ -48,6 +48,8 @@ namespace AcousticVocab.Foundation
                 throw new ConfigurationFault("endpoint_invalid");
             double norm = value["observer_reference"]["rotation_xyzw"].Sum(x => (double)x * (double)x);
             if (Math.Abs(norm - 1) > .0001) throw new ConfigurationFault("reference_quaternion_not_unit");
+            var rotation = value["observer_reference"]["rotation_xyzw"];
+            if (Math.Abs((double)rotation[0]) > .0001 || Math.Abs((double)rotation[2]) > .0001) throw new ConfigurationFault("reference_must_preserve_world_up");
             return value;
         }
 
