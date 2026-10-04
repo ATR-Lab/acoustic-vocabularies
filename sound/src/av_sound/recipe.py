@@ -122,15 +122,15 @@ class Recipe:
         return cls(**{f: data[f] for f in FIELDS})
 
     @classmethod
-    def from_json(cls, text: str | bytes) -> Recipe:
-        """Parse a strict JSON recipe (e.g. model output).
+    def from_json(cls, text: str | bytes | bytearray) -> Recipe:
+        """Parse a strict JSON recipe (e.g. model output); see `strict_json_loads`.
 
-        Raises `RecipeError` with `E_JSON` for invalid JSON, duplicate keys and the
-        non-standard constants `NaN`/`Infinity`; then as `from_dict`.
+        Raises `RecipeError` with `E_JSON` when the text is not strict JSON, then as
+        `from_dict`.
         """
         try:
-            data = json.loads(text, object_pairs_hook=_unique_keys, parse_constant=_no_constant)
-        except (json.JSONDecodeError, UnicodeDecodeError, _StrictJsonError) as err:
+            data = strict_json_loads(text)
+        except StrictJsonError as err:
             raise RecipeError(E_JSON, f"recipe: not strict JSON ({err})") from err
         return cls.from_dict(data)
 
@@ -153,18 +153,33 @@ class Recipe:
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
 
 
-class _StrictJsonError(ValueError):
-    pass
+class StrictJsonError(ValueError):
+    """Text is not strict JSON (`E_JSON`)."""
 
 
 def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
         if key in out:
-            raise _StrictJsonError(f"duplicate key {key!r}")
+            raise StrictJsonError(f"duplicate key {key!r}")
         out[key] = value
     return out
 
 
 def _no_constant(name: str) -> Any:  # noqa: ANN401 - json hook signature
-    raise _StrictJsonError(f"non-standard constant {name}")
+    raise StrictJsonError(f"non-standard constant {name}")
+
+
+def strict_json_loads(text: str | bytes | bytearray) -> Any:  # noqa: ANN401 - any JSON value
+    """Decode strict JSON: bytes must be UTF-8 without a byte-order mark, keys unique,
+    and `NaN`/`Infinity` are rejected. Every failure, including nesting depth and
+    integer-size limits, raises `StrictJsonError`.
+    """
+    try:
+        if isinstance(text, bytes | bytearray):
+            text = bytes(text).decode("utf-8")
+        return json.loads(text, object_pairs_hook=_unique_keys, parse_constant=_no_constant)
+    except StrictJsonError:
+        raise
+    except (ValueError, RecursionError) as err:  # JSONDecodeError, UnicodeDecodeError, limits
+        raise StrictJsonError(str(err)) from err
