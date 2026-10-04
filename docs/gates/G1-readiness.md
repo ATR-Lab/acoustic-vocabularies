@@ -4,6 +4,10 @@ Status: **NOT READY FOR SIGN-OFF**. This is a draft evidence index, not a reques
 to accept the architecture. Phase 2 (#52–#74) remains blocked. Only the gate owner
 can authorize G1; no ADR has been changed to Accepted and no PR has been merged.
 
+The owner has conditionally permitted Phase 2 once G1 is ready and signed off.
+The missing evidence below means that condition is not met; this packet records
+no gate sign-off and authorizes no Phase 2 implementation.
+
 ## What is available
 
 The initial monorepo skeleton is on main at `f2f71d2`. Separate issue branches
@@ -110,7 +114,7 @@ Never copy them into this public repository.
 | Sign-off links | Pending |
 | Re-review date | To be set by gate owner after operator availability is known |
 | Hardware release | Not authorized |
-| Phase 2 release | Not authorized |
+| Phase 2 release | Conditional permission; blocked pending G1 readiness and sign-off |
 
 If selected ADRs are accepted separately, record that explicitly with remaining
 conditions and a dated re-review. Do not infer full G1 or a Phase 2 start from
