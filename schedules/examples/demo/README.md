@@ -14,6 +14,12 @@ Contents, per study (`A/`, `B/`):
   that are not committed here.
 - One unit folder each (`A/A-C01/`, `B/B-C01/`) with `curriculum.csv` and
   `permutation.json`.
+- Visit schedules (#30) for every visit of one person per study:
+  `A/A-C01/schedules/A-C01-L01/{D0,D7}.json` and
+  `B/B-C01/schedules/B-C01-M1/{V1,V2,V3,W1,W4}.json`. They show the hidden-answer format
+  (`"hidden_answer": true`); real schedules are restricted material.
+- `<set>-speech-list.json` for both sets, and `pilot-schedule-summary.csv` and
+  `pilot-schedules-manifest.json` (SHA-256 of every pilot schedule, not committed here).
 
 `tests/schedules/test_schedules_io.py` regenerates the examples and fails if any byte
 differs. Real pilot and confirmatory outputs are generated from a private master seed

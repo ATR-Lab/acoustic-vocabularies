@@ -1,0 +1,77 @@
+{
+  "demo": true,
+  "files": {
+    "A-P01/schedules/A-P01-L01/D0.json": "1c104ffda2161425352865b9658fb2335a981d0deb51a3331015324535befa8b",
+    "A-P01/schedules/A-P01-L01/D7.json": "0de473816b6b4d22dbc84d4101efbb619447c6be8e64db0fdae3d4b34b141278",
+    "A-P01/schedules/A-P01-L02/D0.json": "cf1b2a797044f323c96981f218cce5ec12da454947b96fd403888dae5d56f272",
+    "A-P01/schedules/A-P01-L02/D7.json": "3bd6d3159cc625c9c2c7b33546a6acc0b4f44a2c73c54c047dfc40229755fb1d",
+    "A-P01/schedules/A-P01-L03/D0.json": "a6b7b87287588faecf2ac25e0c197180fbab3484910df42da2ff34da7be49789",
+    "A-P01/schedules/A-P01-L03/D7.json": "cb0211de5822a12d1d51d6bcf5ef0027044eda6a7c21afd6bf52cefcb34e6cb3",
+    "A-P01/schedules/A-P01-L04/D0.json": "6acc5fb94903a510e6a54e9de0b59247e0d4df438d2c6f0eb3dc774621e2e6d0",
+    "A-P01/schedules/A-P01-L04/D7.json": "6af8baea44babb8e2b05dbd591b14596333b47930c7d8ec7dbe0b65239ef3cab",
+    "A-P01/schedules/A-P01-L05/D0.json": "26ddc46a1ed11d7c91db3e91b8ff8be19473c4c24fe5dce492e45687183e4b3e",
+    "A-P01/schedules/A-P01-L05/D7.json": "88e80e54547b1b85da1facc88cb5bc2cf2ff61491de7bf1f847181e6de11d224",
+    "A-P01/schedules/A-P01-L06/D0.json": "1cec12af751b28a707f6bfbc5e58ecba07638e1a01c2e75166f086063c3da54a",
+    "A-P01/schedules/A-P01-L06/D7.json": "c902e956d794da9fb9eed00e5ed64073bdb818ad63beb243d9fae9034727882b",
+    "A-P02/schedules/A-P02-L01/D0.json": "287cf975f7806c624cf402c1d47ad3f6195a98eb967c5f0188507a16bfccae78",
+    "A-P02/schedules/A-P02-L01/D7.json": "41343da82c98c5a96e3aa5da026ddc0c9d2198a5e4d45ee8692eecbafb766395",
+    "A-P02/schedules/A-P02-L02/D0.json": "62e8766d994140047060bc7e0230d4664533a20ecb83b3ba41740eb71e2caf74",
+    "A-P02/schedules/A-P02-L02/D7.json": "b04b2b8475ae4540643f73cfb41eea41e727fe8e05ce54bab031bf6fe83dc709",
+    "A-P02/schedules/A-P02-L03/D0.json": "5edd103dcfc59126f588da317b5f899be47265954ef6424d0a8cb0ac39cf604a",
+    "A-P02/schedules/A-P02-L03/D7.json": "21c7ac75594aead27ce3aaf937e861c814a01f908a6f977a94d36b16f242336c",
+    "A-P02/schedules/A-P02-L04/D0.json": "f526f6d84709366d5508a0f1e7e1ba0cd33bb5facf42cf9968cc2afd4703b99e",
+    "A-P02/schedules/A-P02-L04/D7.json": "49b05d0bb11bfbd830b8ade7f8fc949b42c5908fb5dd4511a802391003113241",
+    "A-P02/schedules/A-P02-L05/D0.json": "b50a273d44547b98a6fdd08e6945608a8f66625531b93a0500397af08a2a34d1",
+    "A-P02/schedules/A-P02-L05/D7.json": "9152be30da8a457b999ee1cad4a122cc72a8c0927ec690bcc0e6458334581284",
+    "A-P02/schedules/A-P02-L06/D0.json": "33ac9e43b1432f5aaed2e7ccb5b0a1734ab8106743f1c8232329d2e6bce376da",
+    "A-P02/schedules/A-P02-L06/D7.json": "fdfedc269c88011299ea2b7e97f4d9c3dbf14d1e5ccb17d6e3877f2ebe3e2598",
+    "A-P03/schedules/A-P03-L01/D0.json": "e9e838ca27540d6b0c390fbeee82e5a49630e964ee17af868ee35aeed21ca473",
+    "A-P03/schedules/A-P03-L01/D7.json": "3f59d4eed4dd64c2e2425af85cf3900312d4aaf45fb6cbcf46ed11af4de082e7",
+    "A-P03/schedules/A-P03-L02/D0.json": "4f8b2428df462f13aab5fb2a677e17429babed63d04ced1f84eabd1db446a05f",
+    "A-P03/schedules/A-P03-L02/D7.json": "a93a0291c02d8d9d5abc08263a01ab4e30a756e45dc2c9f1dcfacecd4741789f",
+    "A-P03/schedules/A-P03-L03/D0.json": "7b4c99167070eb3e1aaa84a4e8a83f554dce4b8703321ca3a29b7b5be6791f47",
+    "A-P03/schedules/A-P03-L03/D7.json": "0ba2ee5712c35b0c4480c4b4dc331305e3ed90c348918630dad804485c1c8185",
+    "A-P03/schedules/A-P03-L04/D0.json": "fb76ab5baa3621d249276b62376eb1d6032ae4886a36ddcf98349c91497b7c75",
+    "A-P03/schedules/A-P03-L04/D7.json": "a4430998605c2c4d4da6440f3378ee5885c804135c54d2b4834b82b87ae80d37",
+    "A-P03/schedules/A-P03-L05/D0.json": "fec1eecb4483ed7080b208834fbab8d81359bfd52431695b8116c106ae6813b6",
+    "A-P03/schedules/A-P03-L05/D7.json": "2a1fae0e2dc11081712cc2ba406b1af9779482f08bf108d2214015a937215f39",
+    "A-P03/schedules/A-P03-L06/D0.json": "12f1bf89ac24b57a5237b58d10828259073429023c3a76cd3ca42657bf853fd8",
+    "A-P03/schedules/A-P03-L06/D7.json": "f0228f2e4a848eac8d144d71916b4665bac5d7cdf7f9a04f1326ea33490e760c",
+    "pilot-schedule-summary.csv": "a13cb3634bff520e150b8a686a9542f40d9c7bcd1cdc45ccc7248da957276b57",
+    "pilot-speech-list.json": "3eed1086d5d06a0e07dd4fc41d7fac761a2163d0b0530fb5ee33dd306448c460"
+  },
+  "format": "av-schedules/schedules-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "persons": 18,
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "A",
+  "units": [
+    "A-P01",
+    "A-P02",
+    "A-P03"
+  ],
+  "visits": {
+    "D0": {
+      "assessment_seconds": 704,
+      "atomic": 16,
+      "extra_after_protected": 0,
+      "novel_once": 4,
+      "post_trained": 36,
+      "pre_old_trained": 0
+    },
+    "D7": {
+      "assessment_seconds": 704,
+      "atomic": 16,
+      "extra_after_protected": 16,
+      "novel_once": 4,
+      "post_trained": 36,
+      "pre_old_trained": 0
+    }
+  }
+}

@@ -34,6 +34,7 @@ PLANNING_SHA256: Final[dict[str, str]] = {
     "curriculum.csv": "fbd674329c2dd3ae12caf3383c4f6f78f0732995a3605f3d713ee63ca2ee9298",
     "ontology.csv": "01c0079f6e05a50647ac087b969644f2b34c1a7a9c92275b37dbc5b4f0bd5927",
     "design-checks.json": "5821a7f36c09e2b33d76919dff9296f5646eafab73953a57dd7388845f3491a0",
+    "assessment-schedule.csv": "0fd2dcacff01a5f1318deceee16f48e3e2d06c812cf81b5ca12ef834e94db28a",
 }
 
 # Curriculum-related numeric fields of planning design-checks.json (test oracles).
@@ -60,6 +61,36 @@ GROWTH_FIELDS: Final[tuple[str, ...]] = (
     "new_trained_messages",
 )
 ONTOLOGY_COLUMNS: Final[tuple[str, ...]] = ("family", "role", "semantic_label", "matrix_index")
+
+# Planning assessment-schedule.csv (test oracle for visit schedules, #30, and run sheets, #32).
+ASSESSMENT_COLUMNS: Final[tuple[str, ...]] = (
+    "study",
+    "visit",
+    "pre_old_trained",
+    "post_trained",
+    "novel_once",
+    "atomic",
+    "assessment_seconds",
+    "booked_minutes",
+    "extra_after_protected",
+)
+ASSESSMENT_SCHEDULE: Final[tuple[tuple[str, str, int, int, int, int, int, int, int], ...]] = (
+    ("A", "D0", 0, 36, 4, 16, 704, 75, 0),
+    ("A", "D7", 0, 36, 4, 16, 704, 30, 16),
+    ("B", "V1", 0, 4, 2, 8, 156, 75, 0),
+    ("B", "V2", 4, 10, 2, 12, 332, 45, 0),
+    ("B", "V3", 10, 18, 2, 16, 564, 50, 0),
+    ("B", "W1", 0, 36, 4, 16, 704, 30, 0),
+    ("B", "W4", 0, 36, 4, 16, 704, 40, 16),
+)
+# Schedule-related numeric fields of planning design-checks.json (test oracles, #30/#32).
+SCHEDULE_CHECKS: Final[dict[str, int]] = {
+    "full_primary_trials": 36,
+    "teaching_plays_A.atomic": 48,
+    "teaching_plays_A.whole_phrase": 108,
+    "B_atom_menu_plays_per_person": 128,
+    "B_extra_profile_choice_plays": 8,
+}
 
 
 def derived_design_checks() -> dict[str, int]:

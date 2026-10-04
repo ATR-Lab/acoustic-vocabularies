@@ -1,4 +1,4 @@
-"""Command line: ``python -m av_schedules {curriculum,check-planning,demo-examples}``."""
+"""Command line: ``python -m av_schedules {curriculum,schedules,check-planning,demo-examples}``."""
 
 from __future__ import annotations
 
@@ -15,6 +15,11 @@ from .design import B_DEFAULT_SPARES, SET_NAMES, SetName
 from .matrix import Study
 from .output import demo_example_files, existing_seed_label, generate, write_files
 from .planning import check_planning
+from .schedule_output import (
+    existing_schedules_seed_label,
+    generate_schedules,
+    schedules_manifest_name,
+)
 from .seeds import MasterSeed, demo_seed, load_master_seed
 
 _GIT = "git"  # executable name; tests replace it to simulate a machine without git
@@ -118,6 +123,69 @@ def _cmd_curriculum(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_schedules(args: argparse.Namespace) -> int:
+    master: MasterSeed
+    studies: list[Study] = ["A", "B"] if args.study == "both" else [args.study]
+    sets: list[SetName] = list(SET_NAMES) if args.set == "both" else [args.set]
+    if args.demo_seed is not None:
+        master = demo_seed(args.demo_seed)
+    else:
+        if len(sets) > 1:
+            return _refuse(
+                "a private master seed serves one set only; run --set pilot and "
+                "--set confirmatory separately with different master seed files"
+            )
+        seed_file = Path(args.master_seed_file)
+        if _committable(seed_file):
+            return _refuse(f"{seed_file} is inside a git work tree and not ignored")
+        master = load_master_seed(seed_file)
+    out = Path(args.out) if args.out else default_out_dir()
+    if not master.demo and _committable(out):
+        return _refuse(f"output {out} is inside a git work tree and not ignored")
+    # Check every requested set before writing any of them.
+    for study in studies:
+        study_dir = out / study
+        for set_name in sets:
+            previous = existing_schedules_seed_label(study_dir, set_name)
+            if previous is not None and previous != master.label and not args.force:
+                return _refuse(
+                    f"{study_dir} already holds {set_name} schedules from another seed "
+                    "(use --force to overwrite)"
+                )
+            curriculum = existing_seed_label(study_dir, set_name)
+            if curriculum is not None and curriculum != master.label:
+                return _refuse(
+                    f"the {set_name} curriculum in {study_dir} comes from another seed; "
+                    "schedules must be built from the same master seed as the curriculum"
+                )
+            for other in SET_NAMES:
+                if other == set_name or master.demo:
+                    continue
+                labels = (
+                    existing_seed_label(study_dir, other),
+                    existing_schedules_seed_label(study_dir, other),
+                )
+                if master.label in labels:
+                    return _refuse(
+                        f"the {other} set in {study_dir} was generated from this master seed; "
+                        "pilot and confirmatory sets need different master seeds"
+                    )
+    for study in studies:
+        study_dir = out / study
+        for set_name in sets:
+            files = generate_schedules(master, study, set_name, spares=args.spares)
+            write_files(study_dir, files)
+            manifest = files[schedules_manifest_name(set_name)]
+            n = sum(1 for p in files if "/schedules/" in p)
+            print(
+                f"{study} {set_name}: {n} visit schedules -> {study_dir} "
+                f"manifest sha256 {hashlib.sha256(manifest).hexdigest()}"
+            )
+    if master.demo:
+        print(f"DEMO seed {master.value}: outputs are public examples, not study material")
+    return 0
+
+
 def _cmd_check_planning(args: argparse.Namespace) -> int:
     result = check_planning(Path(args.directory))
     for name in result.checked:
@@ -164,6 +232,27 @@ def build_parser() -> argparse.ArgumentParser:
     cur.add_argument("--out", help="output root (default: schedules/out)")
     cur.add_argument("--force", action="store_true", help="overwrite a set from another seed")
     cur.set_defaults(func=_cmd_curriculum)
+
+    sch = sub.add_parser("schedules", help="generate per-person visit schedules (hidden answers)")
+    sch_seed = sch.add_mutually_exclusive_group(required=True)
+    sch_seed.add_argument("--master-seed-file", help="private master seed file (never commit it)")
+    sch_seed.add_argument("--demo-seed", help="public demonstration seed starting with DEMO-")
+    sch.add_argument("--study", choices=("A", "B", "both"), default="both")
+    sch.add_argument(
+        "--set",
+        choices=("pilot", "confirmatory", "both"),
+        default="both",
+        help="'both' only with --demo-seed: each private master seed serves one set",
+    )
+    sch.add_argument(
+        "--spares",
+        type=int,
+        default=B_DEFAULT_SPARES,
+        help="Study B spare slots (multiple of 4, at most 96)",
+    )
+    sch.add_argument("--out", help="output root (default: schedules/out)")
+    sch.add_argument("--force", action="store_true", help="overwrite schedules from another seed")
+    sch.set_defaults(func=_cmd_schedules)
 
     chk = sub.add_parser("check-planning", help="compare external planning materials")
     chk.add_argument("directory", help="folder holding curriculum.csv and ontology.csv")

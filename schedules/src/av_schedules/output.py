@@ -24,6 +24,7 @@ from .balance import balance_csv, balance_rows, max_abs_deviation
 from .curriculum import curriculum_csv, dumps_json, permutation_json
 from .design import SET_NAMES, ABatch, BDyadSlot, SetName, Unit, build_units
 from .matrix import FAMILIES, ROLES, Study
+from .schedule_output import schedule_example_files
 from .seeds import MasterSeed, demo_seed
 
 A_TABLE_COLUMNS: Final[tuple[str, ...]] = (
@@ -207,7 +208,8 @@ def demo_example_files() -> dict[str, bytes]:
     """The committed DEMO examples, keyed by path relative to ``schedules/examples/demo``.
 
     All set-level files for pilot and confirmatory sets of both studies, plus the unit
-    folders listed in ``EXAMPLE_UNITS``.
+    folders listed in ``EXAMPLE_UNITS`` and the visit-schedule examples (#30,
+    ``schedule_example_files``).
     """
     master = demo_seed(EXAMPLE_DEMO_SEED)
     out: dict[str, bytes] = {}
@@ -218,4 +220,5 @@ def demo_example_files() -> dict[str, bytes]:
                 unit = rel.split("/", 1)[0] if "/" in rel else None
                 if unit is None or unit in EXAMPLE_UNITS:
                     out[f"{study}/{rel}"] = data
+    out.update(schedule_example_files(EXAMPLE_DEMO_SEED))
     return out

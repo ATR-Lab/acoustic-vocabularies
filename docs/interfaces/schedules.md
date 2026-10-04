@@ -188,3 +188,134 @@ Notes for consumers:
   permutations) and `build_b_design_table` (adds roles, banks, profile-menu order and
   concealment). A spare slot should replace a main slot with the same `sq_arm` and
   `swap_w1_w4`.
+
+## Visit schedules (#30)
+
+Producer: lesson and trial order generator (#30). Consumers: session engine (#67),
+package builder `schedules/` slot (#13), run sheets (#32), reconciliation (#33),
+speech-command recording (#71, speech list only). Design: [`schedules/docs/orders.md`](../../schedules/docs/orders.md).
+
+**Schedule files are hidden-answer material and restricted.** Every item carries the
+private intended tuple, and the files carry allocation-dependent facts (the swap-dependent
+novel block and `swap_w1_w4`, the Study B scaffold `presentation`). They belong to the
+trusted task queue, must never reach a participant- or operator-visible display, and join
+a package only when it is sealed after allocation (#13). Pilot and confirmatory schedules
+live in restricted storage next to the curriculum files; only hashes are published. The
+speech list holds no answers or allocation facts and can be handed to #71.
+
+### Files
+
+`python -m av_schedules schedules (--master-seed-file PATH --set pilot|confirmatory | --demo-seed DEMO-...)`
+(options as for `curriculum`) writes under `schedules/out/<study>/`. It uses the same
+master seed as the set's curriculum (it refuses when the curriculum in the output folder
+comes from another seed) and, like `curriculum`, refuses one private seed for both sets.
+
+| Path | Content |
+| --- | --- |
+| `<unit>/schedules/<person_id>/<visit>.json` | one visit schedule (schema below) |
+| `<set>-speech-list.json` | frozen speech list of the study and set ([`speech-list.schema.json`](../../schedules/schema/speech-list.schema.json)) |
+| `<set>-schedule-summary.csv` | `unit_id, unit_kind, person_id, visit, block_position, block, phase, expected_count, passes, slot_s, seconds, shared_by, order_source, seed_label` |
+| `<set>-schedules-manifest.json` | `format` = `av-schedules/schedules-manifest`, `demo`, `seed_label`, `units`, `spare_units`, `persons`, `visits` (assessment counts per visit), `files` (path to SHA-256) |
+
+Person slots: Study A `<unit>-L01`..`-L12` (pilot `-L01`..`-L06`), Study B `<unit>-M1`
+and `-M2` (spare slots too). The allocation lists (#31) assign methods (A) and roles (B)
+to these slots; schedules do not depend on them. Visits: A `D0`, `D7`; B `V1`, `V2`,
+`V3`, `W1`, `W4`.
+
+### Visit schedule JSON
+
+Schema: [`schedules/schema/visit-schedule.schema.json`](../../schedules/schema/visit-schedule.schema.json)
+(`format` = `av-schedules/visit-schedule`, `format_version` = 1). Top level:
+
+| Field | Meaning |
+| --- | --- |
+| `hidden_answer` | always `true` |
+| `demo`, `seed_label` | as in `permutation.json`; refuse `demo: true` for participants |
+| `study`, `set`, `unit_id`, `unit_kind`, `person_id`, `person_slot`, `visit`, `wave` | identity; `wave` = inventory wave at the visit (A: 3) |
+| `swap_w1_w4`, `family_first` | unit design factors used for the novel set and lesson family order |
+| `permutation_json_sha256` | SHA-256 of the unit's `permutation.json` |
+| `assessment` | the visit's `assessment-schedule.csv` row: `pre_old_trained`, `post_trained`, `novel_once`, `atomic`, `assessment_seconds`, `extra_after_protected` |
+| `dictionary_messages` | complete messages allowed in teaching or dictionary views up to this visit (cumulative trained set); never a held-out message |
+| `blocks` | ordered blocks; run in array order |
+
+Block fields: `block` (`profile_menu`, `atom_menus`, `atomic_lessons`,
+`message_lessons`, `pre_old`, `trained`, `novel`, `atomic`, `validity`), `position`,
+`phase` (`selection`, `teaching`, `pre_test`, `protected`, `validity`; no feedback in the
+last three), `expected_count`, `passes`, `slot_s`, `seconds`, `shared_by` (`person`,
+`batch`, `dyad`), `order_source` (`seeded`, `stored`, `fixed`), `seed`, `seed_tokens`,
+`validity` (validity block only: `no_cue_targets` in draw order, `speech_list_seed`,
+`speech_list_sha256`), `items`.
+
+Item fields:
+
+| Field | Meaning |
+| --- | --- |
+| `trial_id` | `<person_id>-<visit>-<code>-<NN>`, code `PM`, `AM`, `AL`, `ML`, `PO`, `TR`, `NV`, `AT`, `VA`; unique across all schedules. The engine gives a retry a new ID with `retry_of`. |
+| `position`, `pass` | 1-based position in the block; pass 1 or 2 (pass 1 items all precede pass 2) |
+| `trial_type` | `profile_menu`, `atom_menu`, `atomic_lesson`, `message_lesson`, `pre_old`, `trained`, `novel`, `atomic`, `no_cue`, `speech` |
+| `slot_s`, `plays` | fixed slot (60, 45, 20, 24, 14, 9 s) and scheduled audio plays (8, 8, 3, 3, 1, 1, 1, 1, 0, 1) |
+| `message_id`, `atom_id`, `speech_id` | the cue played (one of them, or none for the profile menu and no-cue trials) |
+| `trained_status` | `trained`, `heldout` (novel), `atom`, `nonsemantic` (profile menu), `validity` (no-cue, speech) |
+| `presentation` | message lessons: `structured` or `dictionary` (B dictionary family); otherwise null |
+| `intended` | PRIVATE tuple: `{kind: "message", family, message_id, action_index, referent_index, semantic_action, semantic_referent}` or `{kind: "atom", family, atom_id, role, index, semantic_label}`; null for the profile menu. For no-cue trials it is the private target. |
+
+Guarantees (checked by `check_visit_schedule` and the tests): block counts and seconds
+match `assessment-schedule.csv`; one protected battery per visit, trained -> novel ->
+atomic; pre-old blocks precede every menu and lesson; every two-pass block shows each
+item once per pass; no held-out message in lessons, menus, pre-old blocks or
+`dictionary_messages`; each held-out message is tested at most once per person, at its
+visit; validity blocks hold 8 no-cue and 8 speech trials covering every action and
+target once. Same seed, same bytes.
+
+Seeds: `seed = sha256("{master}|" + "|".join(seed_tokens))` with `seed_tokens` =
+`[study, unit_id, person, visit, block]`; for blocks shared by the batch or dyad the
+person token is the unit ID. Stored-order blocks (`atom_menus`, `atomic_lessons`)
+have `seed: null` and follow `permutation.json` `atom_order` (A) or `wave_atom_order`
+(B). Seeds never use the public per-unit `seed` of #29.
+
+### Speech list JSON
+
+`format` = `av-schedules/speech-list`, `format_version` = 1: `demo`, `seed_label`,
+`study`, `set`, `seed`, `seed_tokens` (`[study, "<study>-<P|C>", "speech-list"]`) and 8
+`commands` (`position`, `speech_id` = `<family>-<ACTION>-<TARGET>` such as
+`K-ADD_ONE-B`, `family`, `semantic_action`, `semantic_referent`): one K pairing of the
+four actions with trays A-D and one Q pairing with containers E-H. #71 should name its
+recordings by `speech_id` so the validity blocks can reference them.
+
+### Python API (#30)
+
+```python
+from av_schedules import (
+    person_ids, study_visits, visit_plan, BlockPlan, assessment_counts,
+    build_visit_schedule, unit_schedules, visit_schedule_json, check_visit_schedule,
+    speech_commands, speech_list_document, SpeechCommand,
+    generate_schedules, render_schedules,
+)
+
+person_ids(unit) -> tuple[str, ...]                 # person slots of a unit
+study_visits(study) -> tuple[str, ...]              # ("D0", "D7") or ("V1", ..., "W4")
+visit_plan(study, visit) -> tuple[BlockPlan, ...]   # block, count, passes, slot_s, phase, seconds
+assessment_counts(study, visit) -> dict[str, int]   # the assessment-schedule.csv row
+build_visit_schedule(master, unit, person_id, visit) -> dict    # one schedule document
+unit_schedules(master, unit) -> dict[str, dict]     # "<person_id>/<visit>.json" -> document
+check_visit_schedule(doc) -> list[str]              # problems "<unit> <person> <visit>: <rule>: ..."
+speech_commands(master, study, set_name) -> tuple[SpeechCommand, ...]
+generate_schedules(master, study, set_name, *, spares=8) -> dict[str, bytes]  # all files of a set
+```
+
+`av_schedules.orders` also exposes `block_order(master, unit, person_id, visit, block)`
+(the ordered items of one block with its seed), `seed_tokens`,
+`pass_orders`, `alternating_passes`, `sample_with_replacement`, `SLOT_S`, `PLAYS`;
+`av_schedules.planning` holds the oracles `ASSESSMENT_SCHEDULE`, `ASSESSMENT_COLUMNS`
+and `SCHEDULE_CHECKS`.
+
+Notes for consumers:
+
+- #67 loads one schedule per person and visit, runs blocks and items in array order on
+  `slot_s`, and can fail closed with `check_visit_schedule` (or its own rule set) before
+  the visit; it should check `permutation_json_sha256` against the package. The schema
+  review with the #67 owner is pending.
+- #13 places a person's schedule files in the package `schedules/` slot (A: the learner
+  slots allocated to the book; B: both members), then calls `seal()`.
+- #32 builds run sheets from `visit_plan` / `<set>-schedule-summary.csv` and the
+  allocation lists.

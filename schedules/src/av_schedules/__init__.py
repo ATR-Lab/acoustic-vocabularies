@@ -4,7 +4,8 @@ Modules: ``matrix`` (abstract matrix and derived structures), ``seeds`` (seed de
 and the portable random stream), ``latin`` (seeded Latin squares), ``design`` (Study A
 batch table, Study B design table), ``curriculum`` (per-unit tables and permutation
 documents), ``balance`` (balance report), ``output`` (rendering and writing), ``planning``
-(oracle constants and the external planning-materials check), ``cli``.
+(oracle constants and the external planning-materials check), ``orders`` (per-person
+visit schedules and the speech list), ``schedule_output`` (schedule files), ``cli``.
 """
 
 __version__ = "0.1.0"
@@ -45,8 +46,23 @@ from .matrix import (
     trained_cells,
     wave_atoms,
 )
+from .orders import (
+    BlockPlan,
+    SpeechCommand,
+    assessment_counts,
+    build_visit_schedule,
+    check_visit_schedule,
+    person_ids,
+    speech_commands,
+    speech_list_document,
+    study_visits,
+    unit_schedules,
+    visit_plan,
+    visit_schedule_json,
+)
 from .output import generate, render_set, table_csv, write_files
 from .planning import check_planning
+from .schedule_output import generate_schedules, render_schedules
 from .seeds import MasterSeed, SeedStream, demo_seed, derive_seed, load_master_seed, private_seed
 
 __all__ = [
@@ -60,26 +76,32 @@ __all__ = [
     "ABatch",
     "BDyadSlot",
     "BalanceRow",
+    "BlockPlan",
     "Cell",
     "MasterSeed",
     "Permutation",
     "SeedStream",
     "SetName",
+    "SpeechCommand",
     "Unit",
     "__version__",
+    "assessment_counts",
     "atom_id",
     "balance_csv",
     "balance_rows",
     "build_a_batch_table",
     "build_b_design_table",
     "build_units",
+    "build_visit_schedule",
     "cells",
     "check_planning",
+    "check_visit_schedule",
     "curriculum_csv",
     "curriculum_rows",
     "demo_seed",
     "derive_seed",
     "generate",
+    "generate_schedules",
     "heldout_cells",
     "index_waves",
     "load_master_seed",
@@ -89,10 +111,18 @@ __all__ = [
     "novel_visit",
     "permutation_document",
     "permutation_json",
+    "person_ids",
     "private_seed",
+    "render_schedules",
     "render_set",
+    "speech_commands",
+    "speech_list_document",
+    "study_visits",
     "table_csv",
     "trained_cells",
+    "unit_schedules",
+    "visit_plan",
+    "visit_schedule_json",
     "wave_atoms",
     "write_files",
 ]
