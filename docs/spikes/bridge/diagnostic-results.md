@@ -23,4 +23,6 @@ Official pinned ROS# sources compiled in Unity 6000.6.0f1 with approved Newtonso
 
 The synthetic source is explicitly marked `source_kind=synthetic`; renderer application, source-clock qualification and device acceptance remain false. Initial server attempts failed due to rosbridge allowlist typing, were corrected as documented in [dependencies](dependencies.md), and were not counted as passes. Live Isaac→ROS# validation is a separate pending diagnostic.
 
+The first actual-Isaac ROS attempt stalled during full `isaacsim.ros2.bridge`/OmniGraph extension activation after simulation reset and was stopped. The revised prototype uses the distribution's pinned Humble `rclpy` directly inside the Isaac process. That substitution exercises ROS2 String-topic state transport, but **does not validate the originally requested full extension activation path**. Preserve this deviation until that path is independently resolved or accepted in the architecture decision.
+
 Remaining acceptance: actual ROS# and custom Android IL2CPP/device connections; live robot rendering capture; qualified clock bounds; all eight 1800 s cells; fault intervention timestamps/recovery runs; full process/frame cost comparisons; and the approved network topology. No transport recommendation is final from these diagnostics.
