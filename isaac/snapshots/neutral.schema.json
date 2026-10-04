@@ -1,0 +1,284 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "scene_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "coordinate_frame": {
+      "const": "usd_world_rh_z_up_xyzw"
+    },
+    "fixed_steps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "robot": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "joint_names": {
+              "type": "array",
+              "minItems": 43,
+              "maxItems": 43,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "joint_positions_rad": {
+              "type": "array",
+              "minItems": 43,
+              "maxItems": 43,
+              "items": {
+                "type": "number"
+              }
+            },
+            "joint_velocities_rad_s": {
+              "type": "array",
+              "minItems": 43,
+              "maxItems": 43,
+              "items": {
+                "const": 0
+              }
+            },
+            "root_position_m": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            },
+            "root_rotation_xyzw": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": {
+                "type": "number"
+              }
+            },
+            "root_linear_velocity_m_s": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "const": 0
+              }
+            },
+            "root_angular_velocity_rad_s": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "const": 0
+              }
+            }
+          },
+          "required": [
+            "joint_names",
+            "joint_positions_rad",
+            "joint_velocities_rad_s",
+            "root_position_m",
+            "root_rotation_xyzw",
+            "root_linear_velocity_m_s",
+            "root_angular_velocity_rad_s"
+          ]
+        },
+        "objects": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "position_m": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "rotation_xyzw": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "visible": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "collision_enabled": {
+                "type": "boolean"
+              },
+              "linear_velocity_m_s": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "const": 0
+                }
+              },
+              "angular_velocity_rad_s": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "const": 0
+                }
+              },
+              "state": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "card_face": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "arrow_angle_rad": {
+                    "type": "number"
+                  },
+                  "lid_open_fraction": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tag_attached": {
+                    "type": "boolean"
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "position_m",
+              "rotation_xyzw",
+              "visible",
+              "enabled",
+              "collision_enabled",
+              "linear_velocity_m_s",
+              "angular_velocity_rad_s",
+              "state"
+            ]
+          }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "materials": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/environmentValue"
+              }
+            },
+            "lights": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/environmentValue"
+              }
+            }
+          },
+          "required": [
+            "materials",
+            "lights"
+          ]
+        },
+        "frames": {
+          "type": "object",
+          "minProperties": 3,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "position_m": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "rotation_xyzw": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": [
+              "position_m",
+              "rotation_xyzw"
+            ]
+          }
+        }
+      },
+      "required": [
+        "robot",
+        "objects",
+        "environment",
+        "frames"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "scene_sha256",
+    "coordinate_frame",
+    "fixed_steps",
+    "state"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/engineering/neutral-snapshot-1.0.0.schema.json",
+  "$defs": {
+    "environmentValue": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "number"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/environmentValue"
+          }
+        }
+      ]
+    }
+  },
+  "description": "Engineering neutral snapshot. Runtime additionally checks finite values, unit quaternions and exact scene-registry IDs/state keys."
+}

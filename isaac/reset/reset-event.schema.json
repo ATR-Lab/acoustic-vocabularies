@@ -1,0 +1,151 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "apparatus_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "protocol_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "clock_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_type": {
+      "enum": [
+        "neutral_reset",
+        "reset_fault"
+      ]
+    },
+    "host_mono_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "sim_time": {
+      "type": "number",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reset_ok": {
+          "type": "boolean"
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "item": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "deviation": {
+                "type": "number",
+                "minimum": 0
+              },
+              "unit": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "item",
+              "reason"
+            ]
+          }
+        },
+        "worst_deviation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "joint_rad": {
+              "type": "number",
+              "minimum": 0
+            },
+            "position_m": {
+              "type": "number",
+              "minimum": 0
+            },
+            "orientation_rad": {
+              "type": "number",
+              "minimum": 0
+            },
+            "linear_velocity_m_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "angular_velocity_rad_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "environment_absolute": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": []
+        },
+        "reset_snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "host_mono_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sim_time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "verification_elapsed_ms": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "reset_ok",
+        "failures",
+        "worst_deviation",
+        "reset_snapshot_sha256",
+        "host_mono_ms",
+        "sim_time",
+        "verification_elapsed_ms"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "apparatus_version",
+    "protocol_version",
+    "clock_id",
+    "event_seq",
+    "event_type",
+    "host_mono_ms",
+    "sim_time",
+    "payload"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Engineering ADR-007 reset extension; private protocol templates remain unverified."
+}

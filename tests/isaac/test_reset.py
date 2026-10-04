@@ -1,11 +1,9 @@
 """Synthetic coverage only; actual Isaac cycles have a separate evidence file."""
 import copy
 import hashlib
-import importlib.util
 import json
 import random
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -154,6 +152,10 @@ def test_durable_log_and_failure_never_open_gate(tmp_path):
     reset.reset()
     log.close()
     events = [json.loads(line) for line in path.read_text().splitlines()]
+    import jsonschema
+    schema = json.loads((ROOT/"isaac/reset/reset-event.schema.json").read_text())
+    for event in events:
+        jsonschema.Draft202012Validator(schema).validate(event)
     assert [x["event_type"] for x in events] == ["neutral_reset", "reset_fault"]
     assert [x["event_seq"] for x in events] == [0, 1]
     with pytest.raises(FileExistsError):
@@ -171,3 +173,26 @@ def test_capture_rejects_nonzero_velocity_and_caller_mutation():
     adapter.state["robot"]["joint_velocities_rad_s"][0] = 1e-8
     with pytest.raises(ValueError, match="zero"):
         capture(adapter)
+
+
+def test_published_snapshot_schema_matches_runtime_fixture():
+    import jsonschema
+    _, snapshot, _, _ = manager()
+    schema = json.loads((ROOT/"isaac/snapshots/neutral.schema.json").read_text())
+    jsonschema.Draft202012Validator(schema).validate(snapshot)
+    snapshot["state"]["objects"]["engineering_object_0"]["state"]["target"] = "forbidden"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.Draft202012Validator(schema).validate(snapshot)
+
+
+def test_duplicate_json_and_unknown_keys_rejected(tmp_path):
+    _, snapshot, _, _ = manager()
+    raw = snapshot_bytes(snapshot)
+    raw = raw.replace(b'"fixed_steps":1', b'"fixed_steps":1,"fixed_steps":1')
+    path = tmp_path/"duplicate.json"
+    path.write_bytes(raw)
+    with pytest.raises(ValueError, match="duplicate"):
+        load_snapshot(path, hashlib.sha256(raw).hexdigest())
+    snapshot["state"]["robot"]["target"] = "forbidden"
+    with pytest.raises(ValueError, match="exact keys"):
+        snapshot_bytes(snapshot)
