@@ -1,0 +1,15 @@
+{
+  "name": "AcousticVocab.Foundation.Editor",
+  "references": [
+    "AcousticVocab.Foundation",
+    "Unity.InputSystem",
+    "Unity.XR.CoreUtils",
+    "Unity.XR.Management",
+    "Unity.XR.Management.Editor",
+    "Unity.XR.OpenXR",
+    "Unity.XR.OpenXR.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

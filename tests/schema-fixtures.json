@@ -1,3 +1,10 @@
 [
-  {"schema": "apparatus/schemas/engineering-event.schema.json", "instance": "tests/fixtures/engineering-event.json"}
+  {
+    "schema": "apparatus/schemas/engineering-event.schema.json",
+    "instance": "tests/fixtures/engineering-event.json"
+  },
+  {
+    "schema": "apparatus/schemas/station.schema.json",
+    "instance": "apparatus/examples/station.example.json"
+  }
 ]

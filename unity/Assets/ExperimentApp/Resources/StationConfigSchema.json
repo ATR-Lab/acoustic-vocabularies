@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/acoustic-vocab/station.schema.json",
+  "title": "Foundation engineering station configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol_version",
+    "station_id",
+    "headset_unit_id",
+    "provisioning_status",
+    "topology",
+    "robot_state_source",
+    "isaac_endpoint",
+    "audio",
+    "input_method",
+    "refresh_hz",
+    "tracking_origin_mode",
+    "observer_reference"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "protocol_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "station_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "headset_unit_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "provisioning_status": {
+      "type": "string",
+      "enum": [
+        "example_only",
+        "provisioned"
+      ]
+    },
+    "topology": {
+      "type": "string",
+      "enum": [
+        "standalone_quest",
+        "pcvr_link"
+      ]
+    },
+    "robot_state_source": {
+      "type": "string",
+      "enum": [
+        "live",
+        "snapshot"
+      ]
+    },
+    "isaac_endpoint": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^wss?://[^\\s]+$"
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "buffer_samples",
+        "route_offset_ms"
+      ],
+      "properties": {
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "buffer_samples": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 8192
+        },
+        "route_offset_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1000,
+          "maximum": 1000
+        }
+      }
+    },
+    "input_method": {
+      "type": "string",
+      "enum": [
+        "controllers",
+        "hands"
+      ]
+    },
+    "refresh_hz": {
+      "type": "integer",
+      "enum": [
+        72,
+        80,
+        90,
+        120
+      ]
+    },
+    "tracking_origin_mode": {
+      "type": "string",
+      "enum": [
+        "device"
+      ]
+    },
+    "observer_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coordinate_frame",
+        "calibration_id",
+        "position_m",
+        "rotation_xyzw"
+      ],
+      "properties": {
+        "coordinate_frame": {
+          "type": "string",
+          "enum": [
+            "unity_lh_y_up_m"
+          ]
+        },
+        "calibration_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "position_m": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          }
+        },
+        "rotation_xyzw": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}
