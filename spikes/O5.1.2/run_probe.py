@@ -6,6 +6,7 @@ not import Unitree's sim_main or start DDS. Outputs are real measurements only.
 import argparse
 import csv
 import importlib.util
+import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -85,6 +86,8 @@ def main():
     parser.add_argument("--physics-dt", type=float, default=1 / 60)
     parser.add_argument("--capture", action="store_true",
                         help="Enable an offscreen RGB camera; distinct from a visible viewport")
+    parser.add_argument("--pose-evidence", action="store_true",
+                        help="After timing, export actual link transforms for Unity comparison")
     parser.add_argument("--preflight-only", action="store_true")
     # No middleware or simulator import until namespace and revisions pass.
     early, _ = parser.parse_known_args()
@@ -114,6 +117,10 @@ def main():
                 "headless": args.headless, "offscreen_camera": args.capture,
                 "rendered": rendered, "physics_dt": args.physics_dt,
                 "acceptance_duration": args.seconds >= 600}
+    manifest["isaac_sim_build"] = Path("/isaac-sim/VERSION").read_text().strip()
+    package_path = args.output / "packages.json"
+    package_path.write_text(json.dumps({d.metadata["Name"]: d.version for d in
+                                      importlib.metadata.distributions()}, indent=2, sort_keys=True) + "\n")
     manifest_path = args.output / "run.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     app = AppLauncher(args).app
@@ -194,7 +201,9 @@ def main():
         if builtin_mdl:
             files.update(mdl_root.rglob("*.mdl"))
         manifest["builtin_mdl_dependencies"] = sorted(builtin_mdl)
-        files.update((source, pins_path, Path(__file__), Path(__file__).with_name("evidence.py"), manifest_path))
+        files.update((source, pins_path, Path(__file__), Path(__file__).with_name("evidence.py"),
+                      Path(__file__).with_name("pose_evidence.py"), manifest_path, package_path,
+                      Path("/isaac-sim/VERSION")))
         for imported in tuple(sys.modules.values()):
             filename = getattr(imported, "__file__", None)
             if filename and Path(filename).is_file() and any(
@@ -233,6 +242,15 @@ def main():
                 writer.writerow([step_index, after, step_index * args.physics_dt, (after - before) / 1e6, render_interval])
         elapsed = time.monotonic() - started
         completed = elapsed >= args.seconds
+        stop.set()
+        sampler.join(timeout=5)
+        if args.pose_evidence and completed:
+            from pose_evidence import export
+            export(robots[0], sim, args.output / "poses.json", args.physics_dt)
+            if camera:
+                for _ in range(10):
+                    sim.render()
+                    camera.update(args.physics_dt, force_recompute=True)
         if camera:
             from PIL import Image
             Image.fromarray(camera.data.output["rgb"][0, :, :, :3].cpu().numpy()).save(args.output / "robot.png")
@@ -246,8 +264,6 @@ def main():
              "screenshot_requires_visual_review": rendered}, indent=2) + "\n")
         if not completed:
             raise RuntimeError("Simulation ended before requested duration")
-        stop.set()
-        sampler.join(timeout=5)
         summarize(args.output)
     except Exception as exc:
         traceback.print_exc()

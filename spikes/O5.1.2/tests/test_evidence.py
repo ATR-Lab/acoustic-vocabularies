@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from evidence import hash_files, public_name, stats, verify_loopback_only
 from fetch_assets import safe_members
+from pose_evidence import target_vectors
 
 
 def test_network_fails_closed(tmp_path):
@@ -46,3 +47,12 @@ def test_empty_stats_are_missing_not_zero():
     assert stats(range(1, 101)) == {"count": 100, "mean": 50.5, "p95": 95., "max": 100.}
     with pytest.raises(ValueError):
         stats([float("nan")])
+
+
+def test_pose_targets_cover_each_joint_without_crossing_limits():
+    limits = [(-1, 2), (-2, 0), (.2, .8)]
+    targets = list(target_vectors([0, -1, .5], limits))
+    assert len(targets) == 1 + 2 * len(limits) + 5
+    assert targets == list(target_vectors([0, -1, .5], limits))
+    for _, vector in targets:
+        assert all(lo <= value <= hi for value, (lo, hi) in zip(vector, limits))
