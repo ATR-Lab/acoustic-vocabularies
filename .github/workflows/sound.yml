@@ -76,3 +76,18 @@ jobs:
           print(f"- renderer_hash `{renderer_hash()}`")
           print(f"- digest of freshly rendered reference PCM `{digest}` ({len(rendered)} vectors)")
           EOF
+      - name: Composition fingerprint
+        run: |
+          uv run --project sound python - | tee -a "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import hashlib, json, platform
+          from av_sound import Profile, composite_hash
+          from av_sound.grammar import MESSAGES
+          from av_sound.synthetic import synthetic_book
+          books = [synthetic_book(p) for p in Profile]
+          live = [composite_hash(b[m.action.atom_id], b[m.referent.atom_id]) for b in books for m in MESSAGES]
+          data = json.load(open("sound/testvectors/composition/vectors.json", encoding="utf-8"))
+          ref = [m["composite_sha256"] for b in data["books"] for m in b["messages"]]
+          digest = hashlib.sha256("".join(live).encode()).hexdigest()
+          print(f"- {platform.system()}: live composite digest `{digest}` ({len(live)} messages), equals vectors.json: {live == ref}")
+          assert live == ref
+          EOF
