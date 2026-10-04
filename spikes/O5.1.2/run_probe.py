@@ -83,6 +83,8 @@ def main():
     parser.add_argument("--seconds", type=float, default=600)
     parser.add_argument("--num-envs", type=int, choices=(1, 2), default=1)
     parser.add_argument("--physics-dt", type=float, default=1 / 60)
+    parser.add_argument("--capture", action="store_true",
+                        help="Enable an offscreen RGB camera; distinct from a visible viewport")
     parser.add_argument("--preflight-only", action="store_true")
     # No middleware or simulator import until namespace and revisions pass.
     early, _ = parser.parse_known_args()
@@ -103,10 +105,14 @@ def main():
     if args.seconds <= 0 or args.physics_dt <= 0:
         parser.error("Duration and physics dt must be positive")
     args.output.mkdir(parents=True, exist_ok=False)
+    if args.capture:
+        args.enable_cameras = True
+    rendered = args.capture or not args.headless
     manifest = {"status": "starting", "pins": pins, "os": platform.freedesktop_os_release()["PRETTY_NAME"],
                 "network_interfaces": ["lo"], "dds_started": False,
                 "duration_requested_seconds": args.seconds, "num_envs": args.num_envs,
-                "headless": args.headless, "physics_dt": args.physics_dt,
+                "headless": args.headless, "offscreen_camera": args.capture,
+                "rendered": rendered, "physics_dt": args.physics_dt,
                 "acceptance_duration": args.seconds >= 600}
     manifest_path = args.output / "run.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
@@ -147,7 +153,19 @@ def main():
             cfg.spawn.usd_path = str(asset.resolve())
             cfg.init_state.pos = (index * 2., 0., .75)
             robots.append(Articulation(cfg))
+        camera = None
+        if args.capture:
+            from isaaclab.sensors import Camera, CameraCfg
+            camera = Camera(CameraCfg(
+                prim_path="/World/EvidenceCamera", update_period=0., height=720, width=1280,
+                data_types=["rgb"], spawn=sim_utils.PinholeCameraCfg(
+                    focal_length=24., horizontal_aperture=36., clipping_range=(.1, 100.))))
         sim.reset()
+        if camera:
+            import torch
+            camera.set_world_poses_from_view(
+                torch.tensor([[2.5, -2.5, 2.]], device=args.device),
+                torch.tensor([[0., 0., .9]], device=args.device))
         for robot in robots:
             robot.update(args.physics_dt)
             if not robot.is_fixed_base:
@@ -202,25 +220,30 @@ def main():
                     robot.set_joint_position_target(robot.data.default_joint_pos)
                     robot.write_data_to_sim()
                 before = time.monotonic_ns()
-                sim.step(render=not args.headless)
+                sim.step(render=rendered)
                 after = time.monotonic_ns()
                 for robot in robots:
                     robot.update(args.physics_dt)
-                render_interval = "" if args.headless or last_render is None else (after - last_render) / 1e6
-                if not args.headless:
+                if camera:
+                    camera.update(args.physics_dt)
+                render_interval = "" if not rendered or last_render is None else (after - last_render) / 1e6
+                if rendered:
                     last_render = after
                 step_index += 1
                 writer.writerow([step_index, after, step_index * args.physics_dt, (after - before) / 1e6, render_interval])
         elapsed = time.monotonic() - started
         completed = elapsed >= args.seconds
-        if not args.headless:
+        if camera:
+            from PIL import Image
+            Image.fromarray(camera.data.output["rgb"][0, :, :, :3].cpu().numpy()).save(args.output / "robot.png")
+        elif not args.headless:
             from omni.kit.viewport.utility import get_active_viewport, capture_viewport_to_file
             capture = capture_viewport_to_file(get_active_viewport(), str(args.output / "robot.png"))
             for _ in range(30):
                 app.update()
         (args.output / "completion.json").write_text(json.dumps(
             {"completed": completed, "elapsed_seconds": elapsed, "steps": step_index,
-             "screenshot_requires_visual_review": not args.headless}, indent=2) + "\n")
+             "screenshot_requires_visual_review": rendered}, indent=2) + "\n")
         if not completed:
             raise RuntimeError("Simulation ended before requested duration")
     except Exception as exc:
