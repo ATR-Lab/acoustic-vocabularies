@@ -60,6 +60,7 @@ namespace AcousticVocab.Spikes.Bridge
         double lastNetworkReceive;
         int queued, queueDrops, transportEpoch, processedEpoch = -1;
         bool finished, stale, measurementStarted;
+        public bool IsFinished => finished;
         public bool StateIsStale => stale;
         public bool TransportIsStale => Now - Volatile.Read(ref lastNetworkReceive) > .25;
         double lastApplied = double.NegativeInfinity;
@@ -70,9 +71,12 @@ namespace AcousticVocab.Spikes.Bridge
         void Start()
         {
             string config = Path.Combine(Application.persistentDataPath, "bridge.local.json");
+            var args = Environment.GetCommandLineArgs(); int configArg = Array.IndexOf(args, "-bridgeConfig");
+            if (configArg >= 0 && configArg + 1 < args.Length) config = args[configArg + 1];
             if (File.Exists(config)) settings = JsonUtility.FromJson<Settings>(File.ReadAllText(config));
             if ((settings.candidate != "custom" && settings.candidate != "rosbridge") ||
-                (settings.topology != "standalone-wifi" && settings.topology != "link-wired") ||
+                (settings.topology != "standalone-wifi" && settings.topology != "link-wired" &&
+                 !(settings.topology == "editor-diagnostic-tunnel" && settings.diagnostic_apply)) ||
                 (settings.rate_hz != 30 && settings.rate_hz != 60) || settings.duration_s <= 0 ||
                 settings.canonical_joint_names == null || settings.canonical_joint_names.Length == 0 ||
                 (settings.ros_client != "ros-sharp" && settings.ros_client != "direct-diagnostic"))

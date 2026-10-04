@@ -133,6 +133,12 @@ def main():
             os.environ["ROS_DISTRO"] = "humble"
             os.environ["ROS_LOCALHOST_ONLY"] = "1"
             os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp")
+            bundled_ros = Path("/isaac-sim/exts/isaacsim.ros2.bridge/humble")
+            if str(bundled_ros / "lib") not in os.environ.get("LD_LIBRARY_PATH", "").split(os.pathsep):
+                raise ValueError("Launch Python with bundled Humble lib prepended to LD_LIBRARY_PATH; preserve existing entries")
+            if not (bundled_ros / "rclpy").is_dir():
+                raise ValueError("Pinned bundled Humble rclpy is unavailable")
+            sys.path.insert(0, str(bundled_ros / "rclpy"))
     if args.hand_visuals and (not args.capture or args.pose_evidence):
         parser.error("--hand-visuals requires --capture and a separate run from --pose-evidence")
     args.output.mkdir(parents=True, exist_ok=False)
@@ -254,10 +260,8 @@ def main():
             files.update(bridge_root.glob("*.py"))
         hash_files(files, args.output / "asset_hashes.csv", roots)
         if args.bridge_config:
-            if bridge_settings["candidate"] == "rosbridge":
-                from isaacsim.core.utils.extensions import enable_extension
-                enable_extension("isaacsim.ros2.bridge")
-                app.update()
+            # The String-topic node needs bundled rclpy, not OmniGraph/ROS extension startup.
+            # Native loader paths were explicitly checked before Kit initialization.
             sys.path.insert(0, str(Path(__file__).parent.parent / "O5.1.5"))
             from live_tap import LiveBridgeTap
             bridge = LiveBridgeTap(robots[0], bridge_settings["candidate"], bridge_settings["rate_hz"],
