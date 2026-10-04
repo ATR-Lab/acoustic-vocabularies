@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/sound/schema/validator-config.schema.json",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/validator-config.schema.json",
   "title": "Validator configuration",
   "description": "Configuration read by av_sound.validate. The threshold is a decimal string so it parses to an exact fraction on every platform.",
   "type": "object",

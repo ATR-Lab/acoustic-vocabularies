@@ -9,13 +9,14 @@ from __future__ import annotations
 import json
 from functools import cache
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 from av_sound._paths import schema_path
+from av_sound.recipe import _no_constant, _unique_keys
 
 SCHEMA_FILES: tuple[str, ...] = (
     "recipe.schema.json",
@@ -29,28 +30,17 @@ class StrictJsonError(ValueError):
     """Text that is not strict JSON: syntax errors, NaN/Infinity, duplicate keys, bad UTF-8."""
 
 
-def _reject_constant(name: str) -> NoReturn:
-    raise StrictJsonError(f"{name} is not valid JSON")
-
-
-def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    out: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in out:
-            raise StrictJsonError(f"duplicate key {key!r}")
-        out[key] = value
-    return out
-
-
 def strict_loads(text: str | bytes | bytearray) -> object:
-    """Parse JSON text. Bytes must be UTF-8. Raises `StrictJsonError` on any violation."""
+    """Parse strict JSON with the same rules as `Recipe.from_json` (code `E_JSON`).
+
+    Bytes must be UTF-8 without a byte-order mark. Every failure, including nesting or
+    integer-size limits, raises `StrictJsonError`.
+    """
     try:
         if isinstance(text, bytes | bytearray):
             text = bytes(text).decode("utf-8")
-        return json.loads(text, object_pairs_hook=_unique_keys, parse_constant=_reject_constant)
-    except StrictJsonError:
-        raise
-    except (ValueError, RecursionError) as exc:  # JSONDecodeError, UnicodeDecodeError
+        return json.loads(text, object_pairs_hook=_unique_keys, parse_constant=_no_constant)
+    except (ValueError, RecursionError) as exc:  # JSONDecodeError, UnicodeDecodeError, hooks
         raise StrictJsonError(str(exc)) from exc
 
 

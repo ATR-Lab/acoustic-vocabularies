@@ -16,6 +16,7 @@ Duplicates and separation are checked against every supplied committed reference
 
 from __future__ import annotations
 
+import numbers
 import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -38,7 +39,7 @@ from av_sound.features import (
     parse_threshold,
     sum_squared_diff,
 )
-from av_sound.recipe import E_DOMAIN, E_SCHEMA, Profile, Recipe, RecipeError
+from av_sound.recipe import E_DOMAIN, E_JSON, E_SCHEMA, Profile, Recipe, RecipeError
 from av_sound.renderer import MIN_EVENT_SAMPLES, RENDERER_VERSION, Rendered, render
 from av_sound.reserved import ReservedEntry, ReservedRegistry, load_reserved_registry
 from av_sound.tables import SAMPLES_PER_MS
@@ -49,7 +50,6 @@ VALIDATOR_VERSION = "0.1.0"
 RESULT_VERSION = 1
 """Version of the `ValidationResult.to_dict()` format (`validation-result.schema.json`)."""
 
-E_JSON = "E_JSON"
 E_EVENT_SHORT = "E_EVENT_SHORT"
 E_NONFINITE = "E_NONFINITE"
 E_CLIP = "E_CLIP"
@@ -266,11 +266,21 @@ def _ordered(failures: Mapping[str, list[str]]) -> tuple[tuple[str, ...], tuple[
 # Parsing and schema/domain checks
 
 
+def _scalar(value: object) -> object:
+    # Integral types such as numpy.int64 are integers for Recipe; JSON Schema only knows int.
+    if isinstance(value, numbers.Integral) and not isinstance(value, bool | int):
+        return int(value)
+    return value
+
+
 def _plain(candidate: object) -> object:
-    """Mappings become dicts and tuple/list values become lists (one level, as in JSON)."""
-    if isinstance(candidate, Mapping):
-        return {k: list(v) if isinstance(v, list | tuple) else v for k, v in candidate.items()}
-    return candidate
+    """A decoded-JSON view of a mapping: dict, lists for tuples, plain ints (one level deep)."""
+    if not isinstance(candidate, Mapping):
+        return candidate
+    return {
+        k: [_scalar(x) for x in v] if isinstance(v, list | tuple) else _scalar(v)
+        for k, v in candidate.items()
+    }
 
 
 def _path_text(path: Sequence[object]) -> str:
