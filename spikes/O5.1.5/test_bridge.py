@@ -100,6 +100,13 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(result["progression_violations"], 1)
         self.assertFalse(result["steady_state_screen_met"])
 
+    def test_diagnostic_never_passes_even_if_other_fields_claim_qualified(self):
+        rows = self.qualified_rows()
+        rows[2]["diagnostic"] = "true"
+        result = analysis.summarize(rows, 30, .09)
+        self.assertTrue(result["diagnostic_capture"])
+        self.assertFalse(result["steady_state_screen_met"])
+
     def test_missing_or_duplicate_boundaries_reported(self):
         rows = self.qualified_rows()[:-1]
         result = analysis.summarize(rows, 30, .09)

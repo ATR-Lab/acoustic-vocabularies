@@ -13,6 +13,9 @@ using Newtonsoft.Json.Linq;
 
 namespace AcousticVocab.Spikes.Bridge
 {
+    public interface IRosSharpBridgeTransport
+    { void Begin(BridgeBenchmark benchmark); void Stop(); }
+
     public sealed class BridgeBenchmark : MonoBehaviour
     {
         [Serializable] public sealed class PoseFrame { public string id; public float[] position_m, rotation_xyzw; }
@@ -30,6 +33,8 @@ namespace AcousticVocab.Spikes.Bridge
         {
             public string uri = "ws://127.0.0.1:8765";
             public string candidate = "custom";
+            public string ros_client = "ros-sharp"; // direct-diagnostic is a separate comparison aid
+            public bool diagnostic_apply = false; // explicit unqualified animation; can never pass acceptance
             public string topology = "UNSET"; // standalone-wifi or link-wired
             public string run_kind = "steady-state"; // server-restart or wifi-drop for separate fault runs
             public int rate_hz = 30;
@@ -48,6 +53,7 @@ namespace AcousticVocab.Spikes.Bridge
         readonly ConcurrentQueue<string> records = new ConcurrentQueue<string>();
         readonly ConcurrentDictionary<string, double> pendingEchoes = new ConcurrentDictionary<string, double>();
         BridgeFreshnessGate freshness;
+        IRosSharpBridgeTransport rosSharpTransport;
         CancellationTokenSource lifetime;
         StreamWriter writer;
         double start, captureStart, lastState, lastAgeLog;
@@ -68,7 +74,8 @@ namespace AcousticVocab.Spikes.Bridge
             if ((settings.candidate != "custom" && settings.candidate != "rosbridge") ||
                 (settings.topology != "standalone-wifi" && settings.topology != "link-wired") ||
                 (settings.rate_hz != 30 && settings.rate_hz != 60) || settings.duration_s <= 0 ||
-                settings.canonical_joint_names == null || settings.canonical_joint_names.Length == 0)
+                settings.canonical_joint_names == null || settings.canonical_joint_names.Length == 0 ||
+                (settings.ros_client != "ros-sharp" && settings.ros_client != "direct-diagnostic"))
                 throw new InvalidOperationException("Complete bridge.local.json with verified canonical joint order");
             var names = new HashSet<string>(settings.canonical_joint_names);
             if (names.Count != settings.canonical_joint_names.Length) throw new InvalidOperationException("Duplicate canonical names");
@@ -79,11 +86,19 @@ namespace AcousticVocab.Spikes.Bridge
             // Endpoint is station-private; keep this file private with raw capture.
             File.WriteAllText(Path.Combine(directory, "settings.local.json"), JsonUtility.ToJson(settings, true));
             writer = new StreamWriter(Path.Combine(directory, "messages.csv"));
-            writer.WriteLine("event,session_id,seq,publish_host_ns,recv_client_s,sim_time,sim_step,c0_s,s1_ns,s2_ns,c3_s,apply_ms,queue_drops,source_kind,source_fresh,applied");
+            writer.WriteLine("event,session_id,seq,publish_host_ns,recv_client_s,sim_time,sim_step,c0_s,s1_ns,s2_ns,c3_s,apply_ms,queue_drops,source_kind,source_fresh,applied,diagnostic");
             start = captureStart = lastState = Now;
             Record("capture_start", start);
+            if (settings.diagnostic_apply || (settings.candidate == "rosbridge" && settings.ros_client == "direct-diagnostic")) Record("diagnostic_mode", start);
             lifetime = new CancellationTokenSource();
-            _ = Task.Run(() => ConnectionLoop(lifetime.Token));
+            if (settings.candidate == "rosbridge" && settings.ros_client == "ros-sharp")
+            {
+                foreach (var component in GetComponents<MonoBehaviour>())
+                    if (component is IRosSharpBridgeTransport transport) { rosSharpTransport = transport; break; }
+                if (rosSharpTransport == null) throw new InvalidOperationException("Install/attach the pinned ROS# transport adapter for candidate A");
+                rosSharpTransport.Begin(this);
+            }
+            else _ = Task.Run(() => ConnectionLoop(lifetime.Token));
             UnityEngine.Debug.Log("Bridge benchmark started; public state only. Output: " + directory);
         }
 
@@ -192,20 +207,21 @@ namespace AcousticVocab.Spikes.Bridge
                         var echo = BridgeValidation.Echo(value);
                         if (!pendingEchoes.TryRemove(echo.c0_s, out double c0) || !freshness.Echo(c0, BridgeValidation.Nanoseconds(echo.s1_ns), BridgeValidation.Nanoseconds(echo.s2_ns), item.received))
                         { Record("invalid_echo", item.received); continue; }
-                        records.Enqueue(string.Join(",", "echo", "", "", "", N(item.received), "", "", echo.c0_s, echo.s1_ns, echo.s2_ns, N(item.received), "", queueDrops, "", "", ""));
+                        records.Enqueue(string.Join(",", "echo", "", "", "", N(item.received), "", "", echo.c0_s, echo.s1_ns, echo.s2_ns, N(item.received), "", queueDrops, "", "", "", settings.diagnostic_apply ? "true" : "false"));
                         continue;
                     }
                     var frame = BridgeValidation.State(value, settings.canonical_joint_names);
                     bool fresh = freshness.Accept(frame, item.received, Now, out string reason);
+                    bool diagnosticEligible = settings.diagnostic_apply && (fresh || reason == "unknown_source_clock");
                     bool applied = false;
-                    if (fresh && FrameReceived != null) { FrameReceived.Invoke(frame); lastApplied = Now; applied = true; }
-                    if (!measurementStarted && fresh && applied)
+                    if ((fresh || diagnosticEligible) && FrameReceived != null) { FrameReceived.Invoke(frame); lastApplied = Now; applied = true; }
+                    if (!measurementStarted && applied && (fresh || diagnosticEligible))
                     { measurementStarted = true; start = item.received; Record("run_start", start); }
                     if (!fresh) Record(measurementStarted ? reason : "warmup_" + reason, item.received);
                     double cost = (Now - before) * 1000;
                     lastState = item.received;
                     records.Enqueue(string.Join(",", measurementStarted ? "state" : "warmup_state", frame.session_id, frame.seq, frame.host_monotonic_ns, N(item.received), N(frame.sim_time), frame.sim_step,
-                        "", "", "", "", N(cost), queueDrops, frame.source_kind, fresh ? "true" : "false", applied ? "true" : "false"));
+                        "", "", "", "", N(cost), queueDrops, frame.source_kind, fresh && !settings.diagnostic_apply ? "true" : "false", applied ? "true" : "false", settings.diagnostic_apply ? "true" : "false"));
                 }
                 catch (Exception) { Record("invalid_frame", item.received); }
             }
@@ -214,13 +230,39 @@ namespace AcousticVocab.Spikes.Bridge
             if (Now - lastAgeLog >= 1) { lastAgeLog = Now; Record("heartbeat", Now); }
             Flush();
             if (measurementStarted && Now - start >= settings.duration_s)
-            { Record("run_end", Now); Flush(); finished = true; lifetime.Cancel(); }
+            { Record("run_end", Now); Flush(); finished = true; lifetime.Cancel(); rosSharpTransport?.Stop(); }
             else if (!measurementStarted && Now - captureStart >= settings.warmup_timeout_s)
-            { Record("warmup_failed", Now); Flush(); finished = true; lifetime.Cancel(); }
+            { Record("warmup_failed", Now); Flush(); finished = true; lifetime.Cancel(); rosSharpTransport?.Stop(); }
         }
 
-        void Record(string name, double received) => records.Enqueue(string.Join(",", name, "", "", "", N(received), "", "", "", "", "", "", "", queueDrops, "", "", ""));
+        void Record(string name, double received) => records.Enqueue(string.Join(",", name, "", "", "", N(received), "", "", "", "", "", "", "", queueDrops, "", "", "", settings.diagnostic_apply ? "true" : "false"));
+        public int BeginExternalConnection()
+        {
+            int epoch = Interlocked.Increment(ref transportEpoch);
+            while (incoming.TryDequeue(out _)) Interlocked.Decrement(ref queued);
+            pendingEchoes.Clear(); Interlocked.Exchange(ref lastNetworkReceive, Now);
+            Record("connecting", Now); return epoch;
+        }
+        public void ExternalConnected() => Record("connected", Now);
+        public void ExternalDisconnected()
+        { Interlocked.Increment(ref transportEpoch); Record("disconnected", Now); }
+        public void ExternalReceive(byte[] bytes, double received, int epoch)
+        {
+            if (epoch != Volatile.Read(ref transportEpoch) || finished) return;
+            Interlocked.Exchange(ref lastNetworkReceive, received);
+            if (bytes.Length > 262144) { Record("invalid_frame", received); return; }
+            if (Interlocked.Increment(ref queued) > 4096)
+            { Interlocked.Decrement(ref queued); Interlocked.Increment(ref queueDrops); Record("queue_overflow", received); return; }
+            incoming.Enqueue(new Arrival { raw = Encoding.UTF8.GetString(bytes), received = received, epoch = epoch });
+        }
+        public string ExternalEchoRequest()
+        {
+            string timestamp = N(Now); pendingEchoes[timestamp] = double.Parse(timestamp, CultureInfo.InvariantCulture);
+            foreach (var pending in pendingEchoes) if (Now - pending.Value > 5) pendingEchoes.TryRemove(pending.Key, out _);
+            return "{\"kind\":\"echo\",\"c0_s\":\"" + timestamp + "\"}";
+        }
+        public void ExternalProtocolError() => Record("transport_error", Now);
         void Flush() { while (records.TryDequeue(out string record)) writer.WriteLine(record); writer.Flush(); }
-        void OnDisable() { lifetime?.Cancel(); if (writer != null) { Record("component_disabled", Now); Flush(); writer.Dispose(); writer = null; } }
+        void OnDisable() { lifetime?.Cancel(); rosSharpTransport?.Stop(); if (writer != null) { Record("component_disabled", Now); Flush(); writer.Dispose(); writer = null; } }
     }
 }

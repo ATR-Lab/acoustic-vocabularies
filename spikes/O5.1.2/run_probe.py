@@ -1,7 +1,8 @@
 """Isolated fixed-base articulation spike; requires the approved pinned installation.
 
 Run with Isaac Lab's Python launcher, inside a network-none container. This does
-not import Unitree's sim_main or start DDS. Outputs are real measurements only.
+not import Unitree's sim_main or start Unitree DDS. The optional ROS bridge uses
+ROS DDS only within the verified loopback namespace. Outputs are real measurements.
 """
 import argparse
 import csv
@@ -114,12 +115,30 @@ def main():
         parser.error("Duration and physics dt must be positive")
     if args.bridge_demo_motion and not args.bridge_config:
         parser.error("Bridge demo motion requires the optional bridge harness")
+    bridge_settings = None
+    if args.bridge_config:
+        bridge_settings = json.loads(args.bridge_config.read_text())
+        if set(bridge_settings) != {"candidate", "rate_hz", "canonical_joint_names"}:
+            raise ValueError("Bridge config must contain only candidate/rate/canonical names")
+        if bridge_settings["candidate"] not in ("custom", "rosbridge") or bridge_settings["rate_hz"] not in (30, 60):
+            raise ValueError("Unsupported bridge candidate/rate")
+        if not bridge_settings["canonical_joint_names"]:
+            raise ValueError("Verify canonical joint map before starting a live bridge")
+        if bridge_settings["candidate"] == "rosbridge":
+            # Set before Kit startup; preserve the launcher's bundled native library paths.
+            if os.environ.get("ROS_DISTRO", "humble") != "humble":
+                raise ValueError("Use the pinned isolated Humble environment")
+            os.environ["ROS_DISTRO"] = "humble"
+            os.environ["ROS_LOCALHOST_ONLY"] = "1"
+            os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp")
     args.output.mkdir(parents=True, exist_ok=False)
     if args.capture:
         args.enable_cameras = True
     rendered = args.capture or not args.headless
     manifest = {"status": "starting", "pins": pins, "os": platform.freedesktop_os_release()["PRETTY_NAME"],
-                "network_interfaces": ["lo"], "dds_started": False,
+                "network_interfaces": ["lo"], "unitree_dds_started": False,
+                "bridge_dds_requested": bool(bridge_settings and bridge_settings["candidate"] == "rosbridge"),
+                "bridge_dds_started": False,
                 "duration_requested_seconds": args.seconds, "num_envs": args.num_envs,
                 "headless": args.headless, "offscreen_camera": args.capture,
                 "rendered": rendered, "physics_dt": args.physics_dt,
@@ -230,12 +249,6 @@ def main():
             files.update(bridge_root.glob("*.py"))
         hash_files(files, args.output / "asset_hashes.csv", roots)
         if args.bridge_config:
-            bridge_settings = json.loads(args.bridge_config.read_text())
-            allowed = {"candidate", "rate_hz", "canonical_joint_names"}
-            if set(bridge_settings) != allowed:
-                raise ValueError("Bridge config must contain only candidate/rate/canonical names")
-            if not bridge_settings["canonical_joint_names"]:
-                raise ValueError("Verify canonical joint map before starting a live bridge")
             if bridge_settings["candidate"] == "rosbridge":
                 from isaacsim.core.utils.extensions import enable_extension
                 enable_extension("isaacsim.ros2.bridge")
@@ -245,6 +258,9 @@ def main():
             bridge = LiveBridgeTap(robots[0], bridge_settings["candidate"], bridge_settings["rate_hz"],
                                    args.output / "publisher.csv", args.output / "state.sock",
                                    bridge_settings["canonical_joint_names"])
+            manifest["bridge_dds_started"] = bridge_settings["candidate"] == "rosbridge"
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+            hash_files(files, args.output / "asset_hashes.csv", roots)
             (args.output / "bridge.json").write_text(json.dumps(bridge_settings, indent=2) + "\n")
         sampler = threading.Thread(target=sample_resources, args=(args.output / "resources.csv", stop), daemon=True)
         sampler.start()

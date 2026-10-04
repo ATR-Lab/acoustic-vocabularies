@@ -1,6 +1,8 @@
 {
   "uri": "ws://127.0.0.1:8765",
   "candidate": "custom",
+  "ros_client": "ros-sharp",
+  "diagnostic_apply": false,
   "topology": "UNSET",
   "run_kind": "steady-state",
   "rate_hz": 30,

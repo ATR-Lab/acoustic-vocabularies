@@ -93,6 +93,7 @@ def summarize(rows, rate, requested_seconds=1800):
                         ("stale_source", "stale_queued_frame", "unknown_source_clock", "future_source_timestamp", "nonprogressing_state")}
     source_qualified = bool(states) and all(r.get("source_fresh") == "true" for r in states)
     renderer_applied = bool(states) and all(r.get("applied") == "true" for r in states)
+    diagnostic = any(r["event"] == "diagnostic_mode" or r.get("diagnostic") == "true" for r in rows)
     queue_drops = max([int(r["queue_drops"] or 0) for r in rows] or [0])
     live = bool(states) and all(r["source_kind"] == "live" for r in states)
     complete = (duration is not None and duration >= requested_seconds and
@@ -113,12 +114,12 @@ def summarize(rows, rate, requested_seconds=1800):
         "missing_sequences_within_sessions": missing, "sequence_loss_rate": missing / expected if expected else None,
         "duplicate_or_reordered_frames": reordered, "session_count": len(previous),
         "client_queue_drops": queue_drops, "invalid_frames": invalid,
-        "source_freshness_qualified": source_qualified, "all_frames_applied": renderer_applied,
+        "source_freshness_qualified": source_qualified, "all_frames_applied": renderer_applied, "diagnostic_capture": diagnostic,
         "freshness_rejections": freshness_events, "progression_violations": progression_failures,
         "main_apply_p95_ms": percentile(costs, .95), "main_apply_max_ms": max(costs) if costs else None,
         "disconnect_detection_to_first_state_s": detection_reconnect,
         "unrecovered_disconnect": previous_disconnect is not None,
-        "steady_state_screen_met": (complete and bool(states) and not any(g > .25 for g in gaps) and reordered == 0 and queue_drops == 0
+        "steady_state_screen_met": (complete and not diagnostic and bool(states) and not any(g > .25 for g in gaps) and reordered == 0 and queue_drops == 0
                                     and source_qualified and renderer_applied and no_echo == 0 and bad_echoes == 0
                                     and progression_failures == 0 and not any(freshness_events.values())
                                     and len(states) >= .95 * requested_seconds * rate),

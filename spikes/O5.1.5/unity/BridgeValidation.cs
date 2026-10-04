@@ -100,7 +100,12 @@ namespace AcousticVocab.Spikes.Bridge
         double lastSimTime = -1, offsetLow, offsetHigh, echoAt, expires = double.NegativeInfinity;
         bool hasOffset;
         public BridgeFreshnessGate(double driftBoundPpm, double echoMaxAge, bool evidenceProvided)
-        { driftRate = Math.Max(0, driftBoundPpm) / 1e6; maxEchoAge = echoMaxAge; clockBoundQualified = driftBoundPpm >= 0 && evidenceProvided; }
+        {
+            if (double.IsNaN(driftBoundPpm) || double.IsInfinity(driftBoundPpm) ||
+                double.IsNaN(echoMaxAge) || double.IsInfinity(echoMaxAge) || echoMaxAge <= 0)
+                throw new ArgumentException("Finite drift bound and positive echo age required");
+            driftRate = Math.Max(0, driftBoundPpm) / 1e6; maxEchoAge = echoMaxAge; clockBoundQualified = driftBoundPpm >= 0 && evidenceProvided;
+        }
         public void Reset()
         { session = null; lastSequence = lastStep = -1; lastPublished = 0; lastSimTime = -1; retiredSessions.Clear(); hasOffset = false; expires = double.NegativeInfinity; }
         public bool Echo(double c0, ulong s1ns, ulong s2ns, double c3)

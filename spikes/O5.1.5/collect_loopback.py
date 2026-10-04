@@ -100,12 +100,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--uri", default="ws://127.0.0.1:18765")
     parser.add_argument("--seconds", type=float, default=30)
+    parser.add_argument("--candidate", choices=("custom", "rosbridge"), default="custom")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     fields = "event session_id seq publish_host_ns recv_client_s sim_time sim_step c0_s s1_ns s2_ns c3_s apply_ms queue_drops source_kind source_fresh applied".split()
     count = 0
-    start, next_echo = time.perf_counter(), time.perf_counter()
     client = LoopbackWebSocket(args.uri)
+    if args.candidate == "rosbridge":
+        for topic in ("/spike/state", "/spike/echo/reply"):
+            client.send(json.dumps(dict(op="subscribe", topic=topic, type="std_msgs/msg/String", queue_length=1)))
+        client.send(json.dumps(dict(op="advertise", topic="/spike/echo/request", type="std_msgs/msg/String")))
+    start, next_echo = time.perf_counter(), time.perf_counter()
     with args.output.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
@@ -114,10 +119,17 @@ def main():
             while time.perf_counter() - start < args.seconds:
                 now = time.perf_counter()
                 if now >= next_echo:
-                    client.send(json.dumps({"kind": "echo", "c0_s": format(now, ".17g")}))
+                    echo = json.dumps({"kind": "echo", "c0_s": format(now, ".17g")})
+                    if args.candidate == "rosbridge":
+                        echo = json.dumps(dict(op="publish", topic="/spike/echo/request", msg=dict(data=echo)))
+                    client.send(echo)
                     next_echo = now + 1
                 message = json.loads(client.receive())
                 received = time.perf_counter()
+                if args.candidate == "rosbridge":
+                    if message.get("op") != "publish" or message.get("topic") not in ("/spike/state", "/spike/echo/reply"):
+                        continue
+                    message = json.loads(message["msg"]["data"])
                 if message["kind"] == "state":
                     validate_frame(message)
                     writer.writerow(dict(event="state", session_id=message["session_id"], seq=message["seq"],

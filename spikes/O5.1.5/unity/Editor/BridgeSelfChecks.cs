@@ -47,6 +47,8 @@ namespace AcousticVocab.Spikes.Bridge.Editor
             gate.Reset();
             Assert(!gate.Accept(valid, 1.03, 1.03, out reason) && reason == "unknown_source_clock", "reconnect resets offset");
             Assert(!Synced().Echo(2, 11010000000, 11011000000, 1), "negative RTT rejected");
+            Reject(() => new BridgeFreshnessGate(double.PositiveInfinity, 2, true), "nonfinite clock bound");
+            Reject(() => new BridgeFreshnessGate(100, double.NaN, true), "nonfinite echo age");
             Debug.Log("PASS: strict keys/nested poses, canonical names, duplicate JSON, replay/stall/source/queue age, unknown clock and reconnect reset.");
         }
     }
