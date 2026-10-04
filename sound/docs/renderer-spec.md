@@ -98,19 +98,21 @@ floating-point rounding.
 
 ### D2. Envelope shape
 
-Each event has its own envelope, in Q15 fixed point (32,768 = 1.0). For an event of
+Each event has its own envelope, in Q30 fixed point (2^30 = 1.0). For an event of
 `n` samples and event-local index `i` (0 to `n - 1`):
 
 ```
 A = 480                   # 10 ms attack
 R = 1440                  # 30 ms release
-EA[k] = round_half_up(32768 * (1 - cos(pi * k / A)) / 2),  k = 0..A
-ER[k] = round_half_up(32768 * (1 - cos(pi * k / R)) / 2),  k = 0..R
+EA[k] = round_half_up(2^30 * (1 - cos(pi * k / A)) / 2),  k = 0..A
+ER[k] = round_half_up(2^30 * (1 - cos(pi * k / R)) / 2),  k = 0..R
 env(i) = min(EA[min(i, A)], ER[min(n - 1 - i, R)])
 ```
 
 So `env(0) = 0`, the attack reaches 1.0 at `i = 480`, the release starts at
-`i = n - 1 - 1440` and reaches 0 at the last sample `i = n - 1`. The curve is a
+`i = n - 1 - 1440` and reaches 0 at the last sample `i = n - 1`. Q30 keeps both
+curves strictly monotonic up to those points (`EA[479] < 2^30`, `ER[1] > 0`); a
+Q15 table would round to 1.0 one sample early. The curve is a
 raised cosine. Admissible events (at least 2,880 samples) always have a flat
 middle section, because attack plus release is 1,921 samples. The `min` rule only
 matters for the shorter events that the renderer still renders for diagnosis.
@@ -133,7 +135,7 @@ The sample path uses only integers. It uses no floating-point numbers and no
 platform math library, so output cannot depend on the CPU, the OS or the libm
 version.
 
-- **Sine table.** `S[i] = round_half_up(2^30 * sin(2 * pi * i / 65536))`,
+- **Sine table.** `S[i] = round_half_up(2^24 * sin(2 * pi * i / 65536))`,
   `i = 0..65535`, signed 32-bit, exactly odd-symmetric (quarter wave mirrored).
 - **Phase increments.** For each profile, pitch `p` (−6 to +6) and harmonic
   `h` (1 to 3): `INC[profile][p][h] = round_half_up(h * f0 * 2^(p/12) * 2^32 / 48000)`.
@@ -151,26 +153,28 @@ phase_h = (INC[profile][p_j][h] * i) mod 2^32
 s_h     = S[phase_h >> 16]                        # 16-bit index, no interpolation
 mix     = 20 * s_1 + 3 * s_2 + 1 * s_3            # weights 1, 0.15, 0.05 times 20
 e       = mix * k_j * env(i)                      # k_j from D5
-x       = floor((e + 2^30) / 2^31)                # round half up to the working scale
+x       = floor((e + 2^39) / 2^40)                # round half up to the working scale
 ```
 
 Gaps are `x = 0`. All intermediate values fit in a signed 64-bit integer
-(`|e| < 2^53`).
+(`|e| <= 24 * 2^24 * 5 * 2^30 < 2^61`; `|x| < 2^21`, so `sum(x^2) < 2^58` for the
+longest motif).
 
 Table digests (SHA-256 of the little-endian bytes):
 
 | Table | Encoding | SHA-256 |
 | --- | --- | --- |
-| `S` (65,536) | int32 | `6e699ea4ff420efc9136bea3ef416606b851675d0873e94028e6fe5902ad28c8` |
-| `EA` (481) | int32 | `d311e617fcd1c3e452b8677a5216af3d0c31e634050dd1b76eb8cb7d4f5626cc` |
-| `ER` (1,441) | int32 | `2510eea224e7f75712c80f29b7aecf6b2e795360451067448c079416ea410708` |
+| `S` (65,536) | int32 | `7507c6a534ec1b3bb8bd7e2650f4dad6e0d04adf3d0000cbb2472985b49d2b21` |
+| `EA` (481) | int32 | `7fbc9783264314af81e078b6759a67170904a55f935f207f0ced7c50b3a3af34` |
+| `ER` (1,441) | int32 | `2b2b6c3486da35d3a73cacb83ae1d45bdc5ce9a2d7b7eaeb6cbfe4b36858d3ec` |
 | `INC` (117, order P1..P3, p −6..+6, h 1..3) | uint32 | `14864688cdbb9cacbd6f633485b15c902a7416f0e38a2b8c2616c5b809bdd5f0` |
 
 Rationale: identical bytes on macOS, Linux and Windows are a requirement (Study A
 protocol §3.2: hash the stored waveform). Integer arithmetic makes that
 true by construction instead of by luck. With a 65,536-entry table the
 phase-truncation spurs are about 96 dB below the carrier, below the 16-bit
-quantization floor. Frequency resolution is 48000 / 2^32 ≈ 1.1e-5 Hz.
+quantization floor. The Q24 sine amplitude (error 2^-25) and Q30 envelope add
+negligible error. Frequency resolution is 48000 / 2^32 ≈ 1.1e-5 Hz.
 
 ### D5. Amplitudes
 
@@ -210,8 +214,9 @@ y = floor((x * G + 2^31) / 2^32)                 # output samples
 2. The 15 worst structures from stage 1 times all 2,197 pitch triples times all 3
    profiles.
 
-The worst crest factor is 8.814 dB (T=450, weights 4/4/2, gaps 60/60,
-amplitudes 0.6/0.6/1.0). Pitch and profile change it by less than 0.01 dB.
+The worst crest factor is 8.814 dB (T=450, weights 1/1/3, gaps 60/60,
+amplitudes 0.6/1.0/0.6, P1, pitches −2/−2/−2). `sound/tools/headroom_sweep.py`
+reproduces it. Pitch and profile change it by less than 0.01 dB.
 Worst-case peak is therefore −4.19 dBFS: **4.19 dB of headroom**, above the
 3 dB minimum. The continuous waveform `sin t + 0.15 sin 2t + 0.05 sin 3t` peaks
 at 1.0113, so no sample can exceed the bound by more than its sampling error.
