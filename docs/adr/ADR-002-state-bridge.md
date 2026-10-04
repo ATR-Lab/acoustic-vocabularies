@@ -32,6 +32,12 @@ RTT/2 is a symmetry-dependent estimate, not measured one-way latency. No passing
 hardware matrix exists yet. Joint order must be reconciled between loaded #44
 articulation and #46 import, not inferred from expected counts.
 
+[Bridge PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100) includes
+strict C# parsing and source/queue freshness checks using the approved
+`com.unity.nuget.newtonsoft-json` 3.2.2 package. The direct rosbridge adapter is
+an interim prototype; it does not establish ROS# 2.3.0 compatibility. Unknown
+clock bounds, unapplied frames and synthetic sources cannot pass the live screen.
+
 ## Decision
 
 Evaluate B as the simpler candidate, with A retained for comparison. Do not freeze
