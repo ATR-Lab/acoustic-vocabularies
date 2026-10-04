@@ -100,6 +100,10 @@ def main():
             capture(args.output/'containers-detail.png',[.80,.45,1.35],[.23,.23,.87])
         reset=None
         if args.reset_check:
+            if args.integration_overlay:
+                sys.path.insert(0,str(args.integration_overlay))
+                import isaac
+                isaac.__path__.append(str(args.integration_overlay/'isaac'))
             from isaac.reset.isaac_adapter import IsaacResetAdapter
             from isaac.reset.benchmark import run_reset_check
             adapter=IsaacResetAdapter(robot,accessors,sim,scene_hash)
