@@ -43,7 +43,7 @@ def neutral_layout():
     for index, letter in enumerate("ABCD"):
         tray = "tray_" + letter
         x, y = .115 + (index // 2) * .185, -.105 - (index % 2) * .19
-        add(tray, "tray", [x, y, .851], [.18, .16, .032], label=letter, capacity=6)
+        add(tray, "tray", [x, y, .851], [.18, .16, .032], label=letter, capacity=6, label_offset_z_m=.060)
         anchor(tray, [x + .045, y, .870])
         add(tray + "/card", "card", [x - .048, y - .035, .871], [.055, .048, .004],
             "card", dict(card_face=0))
@@ -65,7 +65,7 @@ def neutral_layout():
             state=dict(lid_open_fraction=1.0), hinge_axis="Y", open_angle_rad=-math.radians(180))
         add(container + "/tag", "tag", [x + .065, y, .840], [.027, .021, .006],
             "tag", dict(tag_attached=False, location=tag_free))
-        add(container + "/code", "code", [x + .049, y, .884], [.002, .078, .024],
+        add(container + "/code", "code", [x + .049, y, .965], [.002, .078, .024],
             "label", label=letter + "001")
         add(quarantine, "quarantine", [x, y + .105, .837], [.095, .095, .004],
             "quarantine", label=letter)

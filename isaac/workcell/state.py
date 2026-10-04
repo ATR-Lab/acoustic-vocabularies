@@ -54,7 +54,19 @@ class StateAccessors:
         self.stage, self.layout = stage, layout
         self.anchor_ids = tuple(layout["anchor_ids"])
         self.definitions = {item["id"]: item for item in layout["objects"]}
-        self._static_geometry = None
+        from pxr import UsdPhysics
+        self._collision_attributes = {
+            identifier: [UsdPhysics.CollisionAPI(prim).GetCollisionEnabledAttr() for prim in
+                         self._collision_prims(stage.GetPrimAtPath(definition["prim_path"]))]
+            for identifier, definition in self.definitions.items()}
+        self._structure_changed = False
+        from pxr import Tf, Usd
+        self._notice = Tf.Notice.Register(Usd.Notice.ObjectsChanged, self._on_stage_changed, stage)
+
+    def _on_stage_changed(self, notice, sender):
+        # Cached geometry handles remain safe only while topology is unchanged.
+        if any(str(path).startswith("/World/Workcell") for path in notice.GetResyncedPaths()):
+            self._structure_changed = True
 
     def read_state(self):
         from pxr import UsdGeom, UsdPhysics
@@ -64,6 +76,7 @@ class StateAccessors:
                 raise ValueError("Workcell ancestry must have identity transforms")
             if prim and prim.IsA(UsdGeom.Imageable) and UsdGeom.Imageable(prim).GetVisibilityAttr().Get() == UsdGeom.Tokens.invisible:
                 raise ValueError("Workcell ancestor unexpectedly hidden")
+        if self._structure_changed: raise ValueError("Workcell topology changed after registry capture")
         result = {}
         for identifier, definition in self.definitions.items():
             prim = self.stage.GetPrimAtPath(definition["prim_path"])
@@ -71,8 +84,7 @@ class StateAccessors:
             if [str(op.GetOpName()) for op in UsdGeom.Xformable(prim).GetOrderedXformOps()] != ["xformOp:translate", "xformOp:orient"]:
                 raise ValueError("Unexpected semantic transform operations")
             q = prim.GetAttribute("xformOp:orient").Get()
-            children = list(self._collision_prims(prim))
-            collision = [bool(UsdPhysics.CollisionAPI(p).GetCollisionEnabledAttr().Get()) for p in children]
+            collision = [bool(attribute.Get()) for attribute in self._collision_attributes[identifier]]
             if not collision or len(set(collision)) != 1:
                 raise ValueError("Collision state must be uniformly authored")
             result[identifier] = dict(
@@ -110,8 +122,8 @@ class StateAccessors:
             prim.GetAttribute("workcell:enabled").Set(item["enabled"])
             prim.GetAttribute("workcell:linearVelocity").Set(Gf.Vec3d(*item["linear_velocity_m_s"]))
             prim.GetAttribute("workcell:angularVelocity").Set(Gf.Vec3d(*item["angular_velocity_rad_s"]))
-            for child in self._collision_prims(prim):
-                UsdPhysics.CollisionAPI(child).GetCollisionEnabledAttr().Set(item["collision_enabled"])
+            for attribute in self._collision_attributes[identifier]:
+                attribute.Set(item["collision_enabled"])
             for key, value in item["state"].items():
                 prim.GetAttribute("workcell:" + key).Set(value)
             self._apply_visual_state(prim, item["state"], self.definitions[identifier])

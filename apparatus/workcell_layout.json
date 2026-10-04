@@ -394,7 +394,7 @@
       "position_m": [
         0.164,
         0.075,
-        0.884
+        0.965
       ],
       "prim_path": "/World/Workcell/Objects/container_E__code",
       "rotation_xyzw": [
@@ -551,7 +551,7 @@
       "position_m": [
         0.164,
         0.285,
-        0.884
+        0.965
       ],
       "prim_path": "/World/Workcell/Objects/container_F__code",
       "rotation_xyzw": [
@@ -708,7 +708,7 @@
       "position_m": [
         0.349,
         0.075,
-        0.884
+        0.965
       ],
       "prim_path": "/World/Workcell/Objects/container_G__code",
       "rotation_xyzw": [
@@ -865,7 +865,7 @@
       "position_m": [
         0.349,
         0.285,
-        0.884
+        0.965
       ],
       "prim_path": "/World/Workcell/Objects/container_H__code",
       "rotation_xyzw": [
@@ -1741,6 +1741,7 @@
       "id": "tray_A",
       "kind": "tray",
       "label": "A",
+      "label_offset_z_m": 0.06,
       "linear_velocity_m_s": [
         0.0,
         0.0,
@@ -1974,6 +1975,7 @@
       "id": "tray_B",
       "kind": "tray",
       "label": "B",
+      "label_offset_z_m": 0.06,
       "linear_velocity_m_s": [
         0.0,
         0.0,
@@ -2207,6 +2209,7 @@
       "id": "tray_C",
       "kind": "tray",
       "label": "C",
+      "label_offset_z_m": 0.06,
       "linear_velocity_m_s": [
         0.0,
         0.0,
@@ -2440,6 +2443,7 @@
       "id": "tray_D",
       "kind": "tray",
       "label": "D",
+      "label_offset_z_m": 0.06,
       "linear_velocity_m_s": [
         0.0,
         0.0,

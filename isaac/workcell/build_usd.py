@@ -100,8 +100,10 @@ def build_workcell(stage, layout):
             shell(vp,(x,y,z))
             if data['label']:
                 pixel=min(.003, y/(len(data['label'])*4+1))
-                cube(vp+'/Label',(.001,y*.90,.020),(x/2+.0007,0,0),'label')
-                text(vp+'/Text',data['label'],(x/2+.0013,0,0),pixel)
+                label_z=data.get('label_offset_z_m',0.)
+                cube(vp+'/Label',(.001,y*.90,.020),(x/2+.0007,0,label_z),'label')
+                if label_z: cube(vp+'/LabelPost',(.003,.008,label_z),(x/2,0,label_z/2),'neutral')
+                text(vp+'/Text',data['label'],(x/2+.0013,0,label_z),pixel)
         elif kind=='surface':
             cube(vp+'/Top',(x,y,z),material=material)
             for i,xx in enumerate((-x*.4,x*.4)):
@@ -127,6 +129,7 @@ def build_workcell(stage, layout):
             cube(vp+'/Panel',(x,y,z),(x/2,0,0),material)
         elif kind=='code':
             cube(vp+'/Plate',(x,y,z),material='label')
+            cube(vp+'/Post',(.002,.006,.055),(0,0,-.038),'neutral')
             text(vp+'/Text',data['label'],(x/2+.0005,0,0),.0038)
         elif kind=='quarantine':
             # Marked perimeter, no coloured per-target differences.
