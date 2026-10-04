@@ -1,3 +1,4 @@
 [
-  {"schema": "apparatus/schemas/engineering-event.schema.json", "instance": "tests/fixtures/engineering-event.json"}
+  {"schema": "apparatus/schemas/engineering-event.schema.json", "instance": "tests/fixtures/engineering-event.json"},
+  {"schema": "isaac/publisher/state-v2.schema.json", "instance": "tests/fixtures/publisher-state.json"}
 ]
