@@ -1,0 +1,9 @@
+{
+  "status": "blocked-server-lfs-disabled",
+  "original_hashes": "tests/fixtures/sha256.json",
+  "upload_succeeded": false,
+  "fresh_clone_hashes": null,
+  "fresh_clone_hashes_match": null,
+  "evidence_date": "2026-10-04",
+  "note": "No downloaded-file comparison exists. Do not regenerate inside the verification clone."
+}

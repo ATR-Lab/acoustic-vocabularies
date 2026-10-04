@@ -1,6 +1,6 @@
 # ADR-003 — Isaac hosting and station hardware
 
-Status: Proposed — capacity pending measured resource runs
+Status: Proposed — one-instance headless evidence available; capacity pending
 
 ## Context
 
@@ -19,10 +19,24 @@ capacity is not established by adding up VRAM alone.
 [Isaac spike PR](https://github.com/ATR-Lab/acoustic-vocabularies/pull/93) records
 the available machine: Quadro RTX 6000 24,576 MiB, 125 GiB RAM, 64 logical CPUs,
 driver 570.211.01, Ubuntu 24.04.5; cached Isaac 5.1 container uses Ubuntu 24.04.2.
-These are inventory facts, not a throughput test. Its GPU differs from the
-planned RTX 4080 class and its OS differs from Ubuntu 22.04. Do not qualify it
-merely because 24 GB exceeds 16 GB. Ten-minute one-instance/viewport and concurrent
-measurements remain required; link sanitized resource CSVs when they exist.
+Its GPU differs from the planned RTX 4080 class and its OS differs from Ubuntu
+22.04. Do not qualify it merely because 24 GB exceeds 16 GB.
+
+The 600.0011-second headless run completed 83,308 physics steps and exited with
+code 0, with no logged errors. The loaded fixed-base articulation has 43 joints
+(29 body plus 7 per hand). Full wall-clock step intervals were mean 7.2019 ms,
+p95 7.7469 ms and maximum 12.7667 ms; the narrower physics call durations were
+mean 5.1635 ms, p95 5.6203 ms and maximum 7.7015 ms. The loop ran faster than
+real time with physics dt 1/60 s; this does not measure paced network delivery.
+
+Total GPU memory was 3,336 MiB throughout sampling, including an existing
+workload (pre-run baseline 1,019 MiB). Simulator RSS was mean 3,355.23 MiB,
+p95 3,358.43 MiB and maximum 3,358.55 MiB. Mean CPU was 208.60% of one core,
+approximately 2.09 cores. These are measured totals on the nonbaseline machine,
+not an allocation or density guarantee. No frames were rendered in this run.
+The [spike evidence](https://github.com/ATR-Lab/acoustic-vocabularies/blob/o5.1.2-isaac-fixed-base-spike/docs/spikes/isaac/report.md)
+links raw timestamps, resource CSVs, hashes and exact run configuration.
+Rendered and concurrent measurements remain required before consolidation.
 
 ## Decision
 
