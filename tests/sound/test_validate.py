@@ -18,6 +18,7 @@ import time
 from fractions import Fraction
 from pathlib import Path
 
+import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -148,6 +149,25 @@ def test_e_json_fails(text):
     assert result.messages[0].startswith("invalid JSON")
 
 
+@pytest.mark.parametrize("text", [t for t in E_JSON_FAIL if isinstance(t, str)])
+def test_e_json_agrees_with_recipe_from_json(text):
+    with pytest.raises(RecipeError) as err:
+        Recipe.from_json(text)
+    assert err.value.code == "E_JSON"
+
+
+def test_e_json_bytes_must_be_utf8():
+    """Bytes are UTF-8 only (RFC 8259 for exchanged JSON); UTF-16 text is E_JSON."""
+    assert check(GOOD_JSON.encode("utf-16")).codes == ("E_JSON",)
+    assert check(b"\xef\xbb\xbf" + GOOD_JSON.encode()).codes == ("E_JSON",)  # UTF-8 BOM
+    assert check(bytearray(GOOD_JSON.encode())).ok
+
+
+def test_e_json_limits_never_raise():
+    assert check("[" * 100_000 + "]" * 100_000).codes == ("E_JSON",)
+    assert check('{"total_ms": ' + "9" * 5000 + "}").codes == ("E_JSON",)
+
+
 @pytest.mark.parametrize("text", [GOOD_JSON, GOOD_JSON.encode(), json.dumps(GOOD_DICT, indent=2)])
 def test_e_json_passes(text):
     assert check(text).ok
@@ -185,6 +205,14 @@ def test_e_schema_passes_for_equivalent_forms():
     for candidate in (GOOD, GOOD_DICT, tuples, json.dumps(GOOD_DICT, sort_keys=False)):
         result = check(candidate)
         assert result.ok and result.recipe == GOOD
+
+
+def test_integral_types_in_mappings_are_integers_like_recipe():
+    data = {**GOOD_DICT, "total_ms": np.int64(600), "pitches": [np.int16(-3), 0, np.uint8(4)]}
+    assert Recipe.from_dict(data) == GOOD
+    result = check(data)
+    assert result.ok and result.recipe == GOOD
+    assert check({**GOOD_DICT, "total_ms": np.float64(600.0)}).codes == ("E_SCHEMA",)
 
 
 def test_integer_valued_floats_are_rejected_like_recipe_error():

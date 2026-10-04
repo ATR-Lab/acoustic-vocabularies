@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/sound/schema/reserved-registry.schema.json",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/reserved-registry.schema.json",
   "title": "Reserved-signal registry",
   "description": "Nonlexical signals that must never be admissible as motifs (calibration examples, READY cue, grammar clicks). The validator reports E_RESERVED when a candidate's pcm_sha256 equals an entry's, or when an entry has a recipe (same profile, or profile null) and the candidate is closer to it than the separation threshold. Hashes are recorded for the stated renderer_version.",
   "type": "object",

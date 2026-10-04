@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/sound/schema/validation-result.schema.json",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/validation-result.schema.json",
   "title": "Validation result",
   "description": "One validator decision (av_sound.validate, ValidationResult.to_dict()). ok is true exactly when codes is empty. codes lists every failing reason code in the fixed order E_JSON, E_SCHEMA, E_DOMAIN, E_EVENT_SHORT, E_NONFINITE, E_CLIP, E_DUPLICATE, E_RESERVED, E_SEPARATION; messages[i] explains codes[i]. If the recipe did not parse or failed the schema, recipe, features, event_samples, pcm_sha256 and the nearest-reference fields are null.",
   "type": "object",

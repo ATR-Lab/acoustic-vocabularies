@@ -23,7 +23,7 @@ result.ok, result.codes, result.nearest_id, result.nearest_distance
 
 | # | Code | Fails when |
 | --- | --- | --- |
-| 1 | `E_JSON` | Text is not strict JSON: syntax error, `NaN`/`Infinity`, duplicate keys, invalid UTF-8, byte-order mark |
+| 1 | `E_JSON` | Text is not strict JSON (the `Recipe.from_json` rule): syntax error, `NaN`/`Infinity`, duplicate keys; bytes that are not UTF-8 or start with a byte-order mark |
 | 2 | `E_SCHEMA` | Not an object, missing or extra field, wrong type or array length, or an integer field given as a number with a fraction part (`600.0`, spec D11) |
 | 3 | `E_DOMAIN` | A value outside its allowed set (JSON Schema `enum`) |
 | 4 | `E_EVENT_SHORT` | Any event shorter than 2,880 samples (60 ms) after rounding (spec D1) |
@@ -39,7 +39,8 @@ Stages:
    [`recipe.schema.json`](../schema/recipe.schema.json) with `jsonschema`: an `enum`
    error is `E_DOMAIN`, every other error is `E_SCHEMA`. An `enum` error on a value
    that already has a type error is not reported again. A single fault gets the same
-   code as `RecipeError` from `Recipe`. If stage 1 fails, the result lists only
+   code as `RecipeError` from `Recipe`. In a mapping, integral values such as numpy
+   integers count as integers, as in `Recipe`. If stage 1 fails, the result lists only
    these codes; `recipe`, `features`, `pcm_sha256` and the nearest reference are
    `None`.
 2. Otherwise render once and evaluate **all** remaining checks. A recipe with a short

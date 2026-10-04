@@ -87,8 +87,12 @@ The renderer does not decide admissibility. It reports `overflow` and
 from av_sound import Reference, validate
 
 committed = [Reference.from_rendered("K-a1", motif)]
-result = validate('{"total_ms":450,"pitches":[0,0,0],"rhythm_weights":[1,4,4],'
-                  '"gaps_ms":[60,60],"amplitudes":[1.0,0.8,0.6]}', Profile.P2, committed)
+result = validate(
+    '{"total_ms":450,"pitches":[0,0,0],"rhythm_weights":[1,4,4],'
+    '"gaps_ms":[60,60],"amplitudes":[1.0,0.8,0.6]}',
+    Profile.P2,
+    committed,
+)
 assert result.codes == ("E_EVENT_SHORT",)  # first event 1,760 samples (36.7 ms)
 ```
 
