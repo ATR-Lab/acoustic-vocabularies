@@ -28,12 +28,12 @@ Nothing needs the network at runtime.
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
 | `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
 | `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
-| `reserved/registry.json` | Reserved-signal registry (empty until #14) |
+| `reserved/registry.json` | Reserved-signal registry: the seven nonlexical assets (#14, [`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `docs/` | Renderer spec and component docs |
 | `testvectors/renderer/vectors.json` | Reference hashes for synthetic recipes |
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`) |
 
 ## API
 
@@ -58,6 +58,8 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `features(recipe)`, `sum_squared_diff(a, b)`, `distance(a, b)`, `separated(a, b, threshold)` | Exact 12-feature metric; `distance` is a float for reports |
 | `REASON_CODES`, `VALIDATOR_VERSION`, `load_separation_threshold()`, `parse_threshold()` | Codes, version and the configured threshold (exact `Fraction`) |
 | `load_reserved_registry()`, `ReservedRegistry`, `ReservedEntry` | Reserved signals (`E_RESERVED`) |
+| `nonlexical_assets()`, `nonlexical_asset(id)`, `calibration_example(profile)` -> `NonlexicalAsset` | Calibration examples (96,000 samples per profile), READY cue and grammar clicks; `.pcm`, `.pcm_sha256`, `.file_sha256`, `.segments`, levels ([`docs/nonlexical.md`](docs/nonlexical.md)) |
+| `build_reserved_registry()`, `CALIBRATION_SAMPLES` | The registry `reserved/registry.json` must equal; 96,000 |
 | `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
 | `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
@@ -101,7 +103,8 @@ assert result.codes == ("E_EVENT_SHORT",)  # first event 1,760 samples (36.7 ms)
 `RENDERER_VERSION` is `0.1.0` until the G4 freeze, when it becomes `1.0.0`. Any
 change to rendered bytes bumps it in the same pull request and regenerates
 `testvectors/` with `uv run --project sound python sound/tools/make_testvectors.py` and
-`uv run --project sound python sound/tools/make_composition_vectors.py`.
+`uv run --project sound python sound/tools/make_composition_vectors.py`, and rewrites the
+reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`.
 A code change that leaves the bytes unchanged still changes `renderer_hash`: regenerate
 the vectors to update the pins and say why in the pull request.
 CI renders the vectors on Linux, macOS and Windows and fails on any hash change.

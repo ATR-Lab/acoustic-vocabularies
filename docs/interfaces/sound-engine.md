@@ -163,6 +163,38 @@ Synthetic fixtures (`av_sound.synthetic`, not study material):
 `synthetic_book(profile) -> dict[str, AtomAudio]`, `synthetic_book_id(profile)`
 (`DEMO-P1` .. `DEMO-P3`).
 
+## Nonlexical assets (#14)
+
+Calibration examples, READY cue and grammar clicks: the only non-motif sounds that
+participants hear. Byte recipes, levels and protocol sources:
+[`sound/docs/nonlexical.md`](../../sound/docs/nonlexical.md).
+
+```python
+nonlexical_assets() -> tuple[NonlexicalAsset, ...]   # registry order (nonlexical.ASSET_IDS)
+nonlexical_asset(asset_id: str) -> NonlexicalAsset   # KeyError for an unknown ID
+calibration_example(profile: Profile | str) -> NonlexicalAsset
+build_reserved_registry() -> ReservedRegistry        # what sound/reserved/registry.json equals
+```
+
+| ID | Samples | Consumer |
+| --- | --- | --- |
+| `calibration-P1`, `calibration-P2`, `calibration-P3` | 96,000 (2.000 s) | Comfort and gain screen, Study B screening and profile menu (#64, #70) |
+| `ready-cue` | 15,360 | Grammar familiarization (#68) |
+| `click-action` (single), `click-target` (double) | 192, 4,032 | Grammar screen (#68) |
+| `click-grammar-demo` | 13,824 | Action click + 9,600 zero samples + target click (#68) |
+
+- `NonlexicalAsset`: `id`, `kind` (`calibration`, `ready_cue`, `click`), `profile`
+  (`None` = every profile), `samples` (read-only int64), `segments` (sounding
+  `(onset, n_samples)` pairs), `description`, `.n_samples`, `.pcm`, `.pcm_sha256`,
+  `.file_sha256`, `.peak`, `.peak_dbfs`, `.rms_dbfs`, `.active_rms_dbfs`,
+  `.to_entry()`. `write_wav(asset, path)` writes the canonical WAV.
+- Every asset is in `sound/reserved/registry.json` (`recipe: null`). No asset has a
+  motif length, so no recipe renders to one; `validate()` reports `E_RESERVED` on an
+  exact waveform match.
+- Unity (#64) can verify a WAV against the registry's `file_sha256` (or
+  `pcm_sha256`) like any package WAV. The assets set no sound pressure; the
+  comfortable gain is set on the calibration example, which has the motif RMS.
+
 ## Store (#11), fallback (#15), packages (#13)
 
 *Pending.* Each pull request adds its section here: the vocabulary store,

@@ -49,7 +49,7 @@ def registry_doc(*entries, **changes):
     return doc
 
 
-def test_committed_registry_is_empty_canonical_and_current():
+def test_committed_registry_is_canonical_and_current():
     text = REGISTRY.read_text(encoding="utf-8")
     doc = json.loads(text)
     assert text == json.dumps(doc, indent=2, sort_keys=True) + "\n"
@@ -57,7 +57,7 @@ def test_committed_registry_is_empty_canonical_and_current():
     assert registry == load_reserved_registry(REGISTRY)
     assert registry.registry_version == 1
     assert registry.renderer_version == RENDERER_VERSION  # rebuild with the renderer (#14)
-    assert registry.entries == ()
+    assert len(registry.entries) == 7  # nonlexical assets; contents: test_nonlexical.py
     assert registry.to_dict() == doc
 
 

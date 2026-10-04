@@ -9,7 +9,7 @@ producer, the consumers and the file that defines the contract. Entries marked
 | Motif recipe (JSON) | #7 | renderer #8, validator #9, generation #16–#20, banks #26 | [`sound/schema/recipe.schema.json`](../../sound/schema/recipe.schema.json), [`sound/docs/renderer-spec.md`](../../sound/docs/renderer-spec.md) |
 | Sound engine Python API (`render`, `validate`, `nearest_reference`, `compose_message`, store, fallback) | #8–#15 | generation #16–#25, banks #26–#28, analysis #33–#35 | [`sound-engine.md`](sound-engine.md) |
 | Message byte contract (action + 200 ms + referent) | #10 | package builder #13, Unity audio subsystem #64 | [`sound/docs/composition.md`](../../sound/docs/composition.md), [`sound/testvectors/composition/`](../../sound/testvectors/composition/) |
-| Reserved-signal registry | #14 | validator #9, Unity #64, #68, #70 | [`sound/reserved/registry.json`](../../sound/reserved/registry.json), `sound/schema/reserved-registry.schema.json` *(format: #9; entries pending, #14)* |
+| Reserved-signal registry and nonlexical assets | #14 | validator #9, Unity #64, #68, #70, goldens #12 | [`sound/reserved/registry.json`](../../sound/reserved/registry.json), `sound/schema/reserved-registry.schema.json` (format: #9), [`sound/docs/nonlexical.md`](../../sound/docs/nonlexical.md) |
 | Package format (manifest, answers, held-out hashes) | #13 | Unity audio subsystem #64, session engine #67 | [`package-format.md`](package-format.md), `sound/schema/package.schema.json` *(pending, #13)* |
 | Curriculum, permutation, schedules, allocation, run sheets | #29–#32 | package builder #13, session engine #67, operator console #73, round orchestrator #20 | [`schedules.md`](schedules.md), `schedules/schema/` *(pending, #29)* |
 

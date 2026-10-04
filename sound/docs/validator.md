@@ -119,7 +119,7 @@ before G4 (#25). One value applies to every method and to Study B banks.
 
 [`../reserved/registry.json`](../reserved/registry.json) (schema
 `reserved-registry.schema.json`) lists the calibration examples, the READY cue and
-the clicks. #14 fills it; the file starts with no entries. Each entry has `id`,
+the clicks: seven entries from #14 ([`nonlexical.md`](nonlexical.md)). Each entry has `id`,
 `kind`, `profile` (or `null` for all profiles), `n_samples`, `pcm_sha256`,
 `file_sha256`, `recipe` (or `null`) and `description`. A candidate gets `E_RESERVED`
 when:
