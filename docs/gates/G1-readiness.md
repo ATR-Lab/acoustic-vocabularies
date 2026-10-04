@@ -1,12 +1,16 @@
 # G1 architecture review — readiness packet
 
-Status: **NOT READY FOR SIGN-OFF**. This is a draft evidence index, not a request
-to accept the architecture. Phase 2 (#52–#74) remains blocked. Only the gate owner
-can authorize G1; no ADR has been changed to Accepted and no PR has been merged.
+Status: **PHASE 2 DEVELOPMENT AUTHORIZED; G1 QUALIFICATION INCOMPLETE**.
+The owner explicitly directed development to proceed using the G1 in Isaac Sim
+after reviewing the HOLD recommendation. This supersedes the earlier conditional
+Phase 2 permission and releases implementation work against the measured
+fixed-base G1/Dex3 setup. It does not turn missing measurements into passes,
+accept every proposed ADR, authorize procurement, or permit PR merges.
 
-The owner has conditionally permitted Phase 2 once G1 is ready and signed off.
-The missing evidence below means that condition is not met; this packet records
-no gate sign-off and authorizes no Phase 2 implementation.
+This packet remains the evidence index for outstanding apparatus qualification.
+Protocol-dependent choices remain provisional until the external sources are
+available; participant use and a claim of a fully frozen architecture are not
+established by this development authorization.
 
 ## What is available
 
@@ -128,14 +132,14 @@ Never copy them into this public repository.
 
 | Item | Value |
 | --- | --- |
-| Developer recommendation | Hold G1; complete evidence and reconcile protocol |
-| Gate-owner decision | Pending |
-| Sign-off links | Pending |
+| Developer recommendation | Continue authorized engineering; complete qualification and protocol reconciliation |
+| Gate-owner decision | Explicit Phase 2 development go-ahead using G1 in Isaac Sim; full apparatus qualification remains incomplete |
+| Sign-off links | Owner development directive recorded on #51; full gate sign-offs pending |
 | Re-review date | To be set by gate owner after operator availability is known |
 | Hardware release | Not authorized |
-| Phase 2 release | Conditional permission; blocked pending G1 readiness and sign-off |
+| Phase 2 release | Authorized by the owner's subsequent explicit directive, with unresolved evidence retained |
 
 If selected ADRs are accepted separately, record that explicitly with remaining
-conditions and a dated re-review. Do not infer full G1 or a Phase 2 start from
-partial acceptance. A trajectory fallback requires an explicit decision; it
-cannot silently replace live Isaac state.
+conditions and a dated re-review. The development release is not full G1
+qualification. A trajectory fallback still requires an explicit decision; it
+cannot silently replace the owner's requested live Isaac state.
