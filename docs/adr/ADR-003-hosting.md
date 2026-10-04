@@ -1,6 +1,6 @@
 # ADR-003 — Isaac hosting and station hardware
 
-Status: Proposed — one-instance headless evidence available; capacity pending
+Status: Proposed — measured feasibility; production density remains unqualified
 
 ## Context
 
@@ -36,7 +36,27 @@ approximately 2.09 cores. These are measured totals on the nonbaseline machine,
 not an allocation or density guarantee. No frames were rendered in this run.
 The [spike evidence](https://github.com/ATR-Lab/acoustic-vocabularies/blob/o5.1.2-isaac-fixed-base-spike/docs/spikes/isaac/report.md)
 links raw timestamps, resource CSVs, hashes and exact run configuration.
-Rendered and concurrent measurements remain required before consolidation.
+The additional offscreen run completed 600.0121 s and 25,446 steps, exit code 0.
+Its full step/render intervals were mean 23.5787 ms, p95 25.4004 ms and maximum
+41.6179 ms. Mean GPU total was 5,189.12 MiB (maximum 5,258 MiB); RSS was mean
+6,339.63 MiB (maximum 6,340.49 MiB), with mean CPU about 4.14 cores. The renderer
+logged discarded synthetic-data frames, so this is not an error-free render pass.
+Offscreen rendering does not establish interactive viewport or headset cadence.
+
+Short headless capacity trials all exited with code 0 and no logged errors:
+
+| Configuration | Duration | Full step mean / p95 / max | GPU total |
+| --- | --- | --- | --- |
+| One process, two environments | 60 s | 9.1649 / 9.7605 / 16.3594 ms | 3,336 MiB |
+| Concurrent process A, one environment | 60 s | 15.5889 / 16.3406 / 24.1291 ms | 5,645 MiB shared total |
+| Concurrent process B, one environment | 60 s | 15.5736 / 16.3115 / 24.4470 ms | Same shared total |
+
+The two processes overlapped for approximately 59.44 s. Their GPU totals must
+not be added together. These trials omit rendering and bridge load and are too
+short to qualify sustained density. The raw and derived evidence is linked from
+the spike report above. A multi-environment process also retains a shared failure
+boundary. Preserve one-instance-per-station planning until the qualified apparatus
+passes simultaneous workload and isolation checks.
 
 ## Decision
 

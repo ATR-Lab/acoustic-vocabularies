@@ -34,9 +34,19 @@ articulation and #46 import, not inferred from expected counts.
 
 [Bridge PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100) includes
 strict C# parsing and source/queue freshness checks using the approved
-`com.unity.nuget.newtonsoft-json` 3.2.2 package. The direct rosbridge adapter is
-an interim prototype; it does not establish ROS# 2.3.0 compatibility. Unknown
-clock bounds, unapplied frames and synthetic sources cannot pass the live screen.
+`com.unity.nuget.newtonsoft-json` 3.2.2 package. Actual ROS# 2.3.0 source and
+its pinned support libraries now compile in the isolated Unity project, with
+RosSocket serialization/dispatch and a synthetic state/echo connection verified.
+The direct rosbridge adapter remains an explicitly separate diagnostic option.
+Device compatibility and the full matrix remain open. Unknown clock bounds,
+unapplied frames and synthetic sources cannot pass the live screen.
+
+Short custom-transport SSH/Python diagnostics received 900 live frames at 30 Hz
+and 1,798 at 60 Hz, without sequence loss/reordering. They nevertheless recorded
+three and ten receive gaps above 250 ms (maxima 593.727 ms and 1,856.458 ms).
+The [diagnostic report](https://github.com/ATR-Lab/acoustic-vocabularies/blob/o5.1.5-state-bridge-spike/docs/spikes/bridge/diagnostic-results.md)
+retains this failing evidence. It cannot establish either required topology,
+rendered-state freshness or an attribution to a particular network component.
 
 ## Decision
 
