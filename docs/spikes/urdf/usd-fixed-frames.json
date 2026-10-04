@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "provenance": "Authored USD fixed-joint localPos0/localRot0 evidence from O5.1.2; localPos1 is zero and localRot1 identity in all three cases.",
+  "reference_pose_sha256": "e658c275074b90378e75958f8db36916b7bb1961bc227c458fb5f6914d60aea3",
+  "coordinate_frame": "parent_local_rh_z_up",
+  "rotation_order": "wxyz",
+  "frames": [
+    {
+      "name": "mid360_link",
+      "parent": "torso_link",
+      "source_joint": "mid360_joint",
+      "change": "Override source URDF fixed sensor frame; source URDF remains unchanged.",
+      "local_position": [0.0002835, 0.00003, 0.41618],
+      "local_quaternion_wxyz": [0.9997986, 0, 0.02006994, 0]
+    },
+    {
+      "name": "left_hand_camera_base_link",
+      "parent": "left_wrist_yaw_link",
+      "source_joint": "left_hand_camera_base_joint",
+      "change": "Add USD-only empty sensor frame without modifying mesh geometry.",
+      "local_position": [0.0415, 0.003, 0],
+      "local_quaternion_wxyz": [1, 0, 0, 0]
+    },
+    {
+      "name": "right_hand_camera_base_link",
+      "parent": "right_wrist_yaw_link",
+      "source_joint": "right_hand_camera_base_joint",
+      "change": "Add USD-only empty sensor frame without modifying mesh geometry.",
+      "local_position": [0.0415, -0.003, 0],
+      "local_quaternion_wxyz": [1, 0, 0, 0]
+    }
+  ]
+}

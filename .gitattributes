@@ -17,8 +17,11 @@
 *.asset text eol=lf merge=unityyamlmerge
 *.mat text eol=lf merge=unityyamlmerge
 *.urdf text eol=lf
+# Preserve the pinned upstream URDF bytes for reproducible input hashing.
+unity/Assets/ThirdParty/Unitree/G1/g1_29dof_with_hand_rev_1_0.urdf -text
 *.stl filter=lfs diff=lfs merge=lfs -text
 *.obj filter=lfs diff=lfs merge=lfs -text
+*.avmesh filter=lfs diff=lfs merge=lfs -text
 *.usd filter=lfs diff=lfs merge=lfs -text
 *.usda filter=lfs diff=lfs merge=lfs -text
 *.usdc filter=lfs diff=lfs merge=lfs -text
