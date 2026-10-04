@@ -45,3 +45,6 @@ raw-results/
 *.key
 *.pfx
 *.p12
+# Generated public LFS proof fixtures; add explicitly when server LFS is enabled.
+/tests/fixtures/triangle.stl
+/tests/fixtures/nonlexical.wav
