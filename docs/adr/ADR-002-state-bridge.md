@@ -35,11 +35,22 @@ articulation and #46 import, not inferred from expected counts.
 [Bridge PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100) includes
 strict C# parsing and source/queue freshness checks using the approved
 `com.unity.nuget.newtonsoft-json` 3.2.2 package. Actual ROS# 2.3.0 source and
-its pinned support libraries now compile in the isolated Unity project, with
-RosSocket serialization/dispatch and a synthetic state/echo connection verified.
-The direct rosbridge adapter remains an explicitly separate diagnostic option.
-Device compatibility and the full matrix remain open. Unknown clock bounds,
-unapplied frames and synthetic sources cannot pass the live screen.
+its pinned support libraries compile in the isolated Unity project. RosSocket
+serialization/dispatch, a synthetic state/echo connection and a real 43-joint
+Isaac-to-ROS# rendering diagnostic are verified. The integrated robot and both
+transport paths also build for Android ARM64 IL2CPP; device runtime remains
+unverified. The direct rosbridge adapter is a separate diagnostic option.
+Unknown clock bounds, unapplied frames and synthetic sources cannot pass the
+live screen. Explicit diagnostic animation records `diagnostic=true` and
+`source_fresh=false`, so it cannot be mistaken for qualified application.
+
+The live ROS prototype uses Isaac's bundled Humble `rclpy` directly. Full
+`isaacsim.ros2.bridge`/OmniGraph extension activation stalled after reset; the
+requested extension path therefore remains unvalidated. The Ubuntu 22.04
+Humble/rosbridge sidecar and simulator share only a private IPC and loopback-only
+network namespace. A failed separate-IPC attempt exposed Fast DDS shared-memory
+delivery failure; task-scoped IPC sharing resolved it without host IPC/network
+changes. These are documented spike deviations, not baseline qualification.
 
 Short custom-transport SSH/Python diagnostics received 900 live frames at 30 Hz
 and 1,798 at 60 Hz, without sequence loss/reordering. They nevertheless recorded
@@ -47,6 +58,15 @@ three and ten receive gaps above 250 ms (maxima 593.727 ms and 1,856.458 ms).
 The [diagnostic report](https://github.com/ATR-Lab/acoustic-vocabularies/blob/o5.1.5-state-bridge-spike/docs/spikes/bridge/diagnostic-results.md)
 retains this failing evidence. It cannot establish either required topology,
 rendered-state freshness or an attribution to a particular network component.
+
+A separate 30 Hz live ROS/Python diagnostic received 900 states in 30.007 s,
+with RTT median/p95 36.659/63.477 ms, maximum gap 56.548 ms and no missing or
+reordered states. It still fails the qualification screen because source clocks,
+renderer application and the full duration are unqualified. These captures ran
+at different times and loads; their values cannot rank the transports.
+The real ROS# Unity rendering diagnostic applied 601 frames over 19.9955 s;
+callback median/p95 was 0.3082/0.5207 ms. Callback cost excludes the full render
+frame and does not establish headset timing or end-to-end latency.
 
 ## Decision
 
