@@ -246,6 +246,9 @@ def main():
              "screenshot_requires_visual_review": rendered}, indent=2) + "\n")
         if not completed:
             raise RuntimeError("Simulation ended before requested duration")
+        stop.set()
+        sampler.join(timeout=5)
+        summarize(args.output)
     except Exception as exc:
         traceback.print_exc()
         (args.output / "failure.json").write_text(json.dumps({"error_type": type(exc).__name__,
@@ -255,8 +258,9 @@ def main():
         stop.set()
         if sampler:
             sampler.join(timeout=5)
-        app.close(wait_for_replicator=False)
-    summarize(args.output)
+        # All evidence is flushed before Kit releases the Python framework.
+        # The isolated process has no live DDS or outstanding capture writer.
+        app.close(wait_for_replicator=False, skip_cleanup=True)
 
 
 if __name__ == "__main__":
