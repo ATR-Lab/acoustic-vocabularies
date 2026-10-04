@@ -27,6 +27,8 @@ import numpy as np
 from av_sound import (
     GAP_SAMPLES,
     RENDERER_VERSION,
+    SAMPLE_RATE,
+    SAMPLES_PER_MS,
     AtomAudio,
     Profile,
     compose_message,
@@ -97,7 +99,7 @@ def book_vectors(profile: Profile) -> dict[str, object]:
                 "heldout_set": m.heldout_set,
                 "training_wave": m.training_wave,
                 "n_samples": n_samples,
-                "duration_ms": n_samples // 48,
+                "duration_ms": n_samples // SAMPLES_PER_MS,
                 "composite_sha256": digest,
             }
         )
@@ -134,7 +136,7 @@ def build() -> dict[str, object]:
         "format_version": FORMAT_VERSION,
         "synthetic": True,
         "renderer_version": RENDERER_VERSION,
-        "sample_rate": 48_000,
+        "sample_rate": SAMPLE_RATE,
         "channels": 1,
         "sample_format": "int16 little-endian",
         "gap_samples": GAP_SAMPLES,
