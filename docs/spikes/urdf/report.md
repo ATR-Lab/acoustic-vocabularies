@@ -87,8 +87,9 @@ pass, with maximum position error **0.000299510 mm** and orientation error
 Results and paired screenshot hashes are in `hand-comparison/`. Three matching
 1280x720 camera views visibly agree in body and finger flexion. Six additional
 Unity views fit the left and right palms separately; both fully flexed close views
-were inspected. Lighting and materials differ, and visible USD wrist brackets are
-absent from the source URDF geometry; the added camera frames are empty transforms.
+were inspected. Lighting and materials differ, and authored USD camera-mount
+meshes (20,232 left / 20,202 right points) are absent from the source URDF geometry;
+the added camera frames are empty transforms.
 This establishes pose/display evidence, not identical mesh content or Quest timing.
 
 ## Remaining acceptance
