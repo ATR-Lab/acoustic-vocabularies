@@ -17,8 +17,8 @@ distinguish verified observations, proposed pins and unresolved fields.
 | --- | --- | --- |
 | #43 | [PR89](https://github.com/ATR-Lab/acoustic-vocabularies/pull/89), passing CI, three deliberate failed checks, enforced main protection | LFS server restoration and real upload/fresh-clone hash proof; protocol-template validation; maintainer merge |
 | #45 | [PR96](https://github.com/ATR-Lab/acoustic-vocabularies/pull/96), Windows Link and Android ARM64 IL2CPP builds, logger | Headset runs on both topologies, refresh/frame/startup metrics, removal/sleep/disconnect behavior, captures, LTS decision |
-| #46 | [PR101](https://github.com/ATR-Lab/acoustic-vocabularies/pull/101), reproducible import, 43/43 joint map, 5,060 passing link-pose comparisons, aligned Android build | LFS binary publication, side-by-side hand/visual review, 600-second Quest render-cost/frame-budget run |
-| #44 | [PR93](https://github.com/ATR-Lab/acoustic-vocabularies/pull/93), 600-second headless run, measured inventory, hashes and resource/step CSVs; offscreen image | Rendered/concurrent evidence, visible viewport condition, OS/GPU qualification, final study-use license review |
+| #46 | [PR101](https://github.com/ATR-Lab/acoustic-vocabularies/pull/101), reproducible import, 43/43 joint map, 5,060 passing link-pose comparisons plus 165 supplemental hand comparisons, aligned Android build | LFS binary publication, wearer visual review, 600-second Quest render-cost/frame-budget run |
+| #44 | [PR93](https://github.com/ATR-Lab/acoustic-vocabularies/pull/93), 600-second headless and offscreen runs, short concurrent/multi-env probes, inventory/hashes, close hand images | Visible viewport condition, discarded-render-frame investigation, OS/GPU qualification, review of proposed pinned-USD use |
 | #47 | [PR100](https://github.com/ATR-Lab/acoustic-vocabularies/pull/100), strict Unity client, live custom publisher and diagnostic SSH captures; actual ROS# integration underway | Full 2-option × 2-rate × 2-topology runs, reconnect tests, CPU/client cost, live headset capture and transport/rate recommendation |
 | #48 | [PR94](https://github.com/ATR-Lab/acoustic-vocabularies/pull/94), compiled click harness and tested onset analysis | Independent clock synchronization, 200 physical onsets per route/mode, acoustic/electrical comparisons, real uncertainty and equipment photo |
 | #49 | [PR95](https://github.com/ATR-Lab/acoustic-vocabularies/pull/95), compiled controller/poke panel, legality check and tested analysis | Three internal testers, 32 commands/method, legibility ladder, input-loss confirmation and captures |
@@ -39,10 +39,22 @@ as a substitute for its acceptance criteria.
   Total GPU use was 3,336 MiB, including the existing workload; pre-run total was
   1,019 MiB. Process RSS was mean 3,355.23 MiB, with mean CPU about 2.09 cores.
   This is the approved Ubuntu 24.04 / Quadro RTX 6000 feasibility environment.
+- The 600.0121-second offscreen run completed 25,446 steps, with full step/render
+  intervals mean 23.5787 ms / p95 25.4004 ms / max 41.6179 ms. Mean total GPU use
+  was 5,189.12 MiB and mean RSS 6,339.63 MiB. A discarded-frame renderer error
+  prevents an error-free rendering claim. This is not a visible viewport run.
+- Three 60-second headless capacity trials completed without logged errors.
+  A two-environment process had p95 step interval 9.7605 ms. Two concurrent
+  one-environment processes had p95 16.3406 / 16.3115 ms and shared total GPU
+  use 5,645 MiB. They overlapped approximately 59.44 s; these brief unloaded
+  probes do not qualify sustained rendering/bridge capacity.
 - All 43 driven joints, including seven per hand, match. Across 92 poses and 55
   aligned frames, maximum position/orientation errors were 0.000649038 mm and
   0.000105371 degrees. A real fixed-sensor-frame mismatch was corrected explicitly;
   the original URDF and failed baseline evidence remain available.
+  A separate three-pose hand suite adds 165 passing comparisons, maximum
+  0.000299510 mm / 0.000092271 degrees, with close images confirming flexion.
+  The URDF and USD retain documented geometry/material differences.
 - Thirty-second custom-bridge diagnostics crossed the actual Linux-to-Windows
   SSH path. The 30 Hz capture had 900 live frames and three gaps above 250 ms;
   the 60 Hz capture had 1,798 frames and ten such gaps. Neither had sequence
@@ -71,6 +83,8 @@ retained; no unavailable pointers were published and no support request was sent
   protocol templates cannot be replaced by public engineering fixtures.
 - Fetch USDs by pinned revision/hash outside Git. A dataset card license is
   evidence of the declaration, not a complete downstream provenance audit.
+  Propose use of the pinned dataset under its declared Apache-2.0 license;
+  keep USD publication prohibited by project policy and revisit contradictions.
 
 ## Operator work
 
