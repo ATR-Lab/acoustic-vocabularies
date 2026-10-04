@@ -1,0 +1,185 @@
+"""Public engineering fixtures: command modes, retries and protected isolation."""
+import copy
+import json
+import queue
+import threading
+import uuid
+
+import pytest
+
+from test_reset import manager
+from isaac.commands import CommandDispatcher, CommandQueue
+from isaac.commands.protocol import LEGAL_PAIRS, COMMANDS, MODES
+
+
+def setup(*, demo=True, cache_size=1024):
+    adapter, snapshot, reset_events, reset = manager()
+    reset.reset()
+    events, motions = [], []
+    def factory(action, target):
+        motions.append((action, target))
+        yield "safe_point"
+        return {"execution_ok": True}
+    def hold(value):
+        adapter.state["robot"] = copy.deepcopy(value)
+    dispatcher = CommandDispatcher(reset, events.append, station_id="engineering-fixture", allowed_client="127.0.0.1",
+                                   demo_factory=factory if demo else None, hold_robot=hold, cache_size=cache_size)
+    return adapter, snapshot, reset, dispatcher, events, motions
+
+
+def command(dispatcher, name, args=None, request_id=None):
+    return json.dumps({"version": 1, "kind": "private_command", "control_session_id": dispatcher.control_session_id,
+                       "request_id": request_id or uuid.uuid4().hex, "command": name, "args": args or {}})
+
+
+def send(dispatcher, name, args=None, **kwargs):
+    future = dispatcher.submit(command(dispatcher, name, args, **kwargs), "127.0.0.1")
+    for _ in range(3):
+        if future.done():
+            break
+        dispatcher.advance()
+    return future.result(timeout=.2)
+
+
+def test_all_32_test_demos_rejected_with_identical_full_state():
+    adapter, snapshot, _, dispatcher, events, motions = setup()
+    for action, target in sorted(LEGAL_PAIRS):
+        reply = send(dispatcher, "demo", dict(action=action, target=target))
+        assert not reply["accepted"] and reply["reason"] == "PROTECTED_TARGET_COMMAND"
+        assert adapter.state == snapshot["state"]
+    assert len(events) == 32 and not motions
+    assert all(event["mode"] == "test" and event["arguments"] for event in events)
+
+
+@pytest.mark.parametrize("mode", ["teaching", "post_endpoint"])
+def test_all_32_legal_hooks_complete_in_visible_modes(mode):
+    _, _, _, dispatcher, events, motions = setup()
+    assert send(dispatcher, "set_mode", {"mode": mode})["accepted"]
+    for action, target in sorted(LEGAL_PAIRS):
+        assert send(dispatcher, "demo", dict(action=action, target=target))["reason"] == "DEMO_COMPLETE"
+    assert len(motions) == 32 and len(events) == 33
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("name", COMMANDS)
+def test_every_command_in_every_mode(mode, name):
+    _, _, _, dispatcher, events, _ = setup()
+    send(dispatcher, "set_mode", {"mode": mode})
+    args = {"action": "FLIP_CARD", "target": "tray_A"} if name == "demo" else {"mode": mode} if name == "set_mode" else {}
+    reply = send(dispatcher, name, args)
+    assert reply["accepted"] is not (name == "demo" and mode == "test")
+    assert len(events) == 2
+
+
+@pytest.mark.parametrize("raw", ["{", "[]", '{"version":NaN}', '{"command":"reset","command":"demo"}',
+    '{"command":"health","args":{"nested":{"target":"tray_A"}}}',
+    '{"command":"unknown","args":{}}'])
+def test_malformed_unknown_nested_target_commands_have_no_effect(raw):
+    adapter, snapshot, _, dispatcher, events, motions = setup()
+    reply = dispatcher.submit(raw, "127.0.0.1").result()
+    assert not reply["accepted"] and adapter.state == snapshot["state"]
+    assert len(events) == 1 and not motions and events[0]["raw_command"] == raw
+
+
+def test_unknown_client_is_logged_without_effect():
+    adapter, snapshot, _, dispatcher, events, _ = setup()
+    reply = dispatcher.submit(command(dispatcher, "set_mode", {"mode": "teaching"}), "127.0.0.2").result()
+    assert reply["reason"] == "UNKNOWN_CLIENT" and dispatcher.mode == "test"
+    assert adapter.state == snapshot["state"] and len(events) == 1
+
+
+def test_replay_does_not_execute_and_protected_lock_precedes_cached_success():
+    _, _, _, dispatcher, events, motions = setup()
+    send(dispatcher, "set_mode", {"mode": "teaching"})
+    identifier = uuid.uuid4().hex
+    assert send(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}, request_id=identifier)["accepted"]
+    replay = send(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}, request_id=identifier)
+    assert replay["duplicate"] and len(motions) == 1
+    conflict = send(dispatcher, "demo", {"action": "TAG", "target": "container_E"}, request_id=identifier)
+    assert conflict["reason"] == "REQUEST_ID_CONFLICT"
+    send(dispatcher, "set_mode", {"mode": "test"})
+    protected = send(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}, request_id=identifier)
+    assert protected["reason"] == "PROTECTED_TARGET_COMMAND" and len(motions) == 1
+    assert len(events) == 6
+
+
+def test_session_restart_refuses_old_ids_and_cache_never_evicts():
+    _, _, _, dispatcher, _, _ = setup(cache_size=1)
+    old = command(dispatcher, "reset")
+    assert dispatcher.submit(old, "127.0.0.1").result()["accepted"]
+    assert send(dispatcher, "health")["reason"] == "IDEMPOTENCY_CAPACITY"
+    assert dispatcher.submit(old, "127.0.0.1").result()["duplicate"]
+    _, _, _, restarted, _, _ = setup()
+    assert restarted.submit(old, "127.0.0.1").result()["reason"] == "CONTROL_SESSION_MISMATCH"
+
+
+def test_pause_resume_and_stop_interrupt_only_at_explicit_safe_points():
+    _, _, _, dispatcher, events, motions = setup()
+    send(dispatcher, "set_mode", {"mode": "teaching"})
+    future = dispatcher.submit(command(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}), "127.0.0.1")
+    dispatcher.advance()
+    assert len(motions) == 1 and not future.done()
+    send(dispatcher, "pause")
+    for _ in range(5): dispatcher.advance()
+    assert not future.done()
+    send(dispatcher, "resume")
+    dispatcher.advance()
+    assert future.result()["accepted"]
+    second = dispatcher.submit(command(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}), "127.0.0.1")
+    send(dispatcher, "stop")
+    assert second.result()["reason"] == "STOP_INTERRUPTED"
+    assert send(dispatcher, "resume")["reason"] == "STOPPED_RESTART_REQUIRED"
+
+
+def test_test_transition_cancels_active_and_prioritizes_over_queued_demo():
+    _, _, reset, dispatcher, events, motions = setup()
+    send(dispatcher, "set_mode", {"mode": "teaching"})
+    active = dispatcher.submit(command(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}), "127.0.0.1")
+    dispatcher.advance()
+    handoff = CommandQueue(dispatcher)
+    queued = handoff.submit(command(dispatcher, "demo", {"action": "TAG", "target": "container_E"}), "127.0.0.1")
+    locked = handoff.submit(command(dispatcher, "set_mode", {"mode": "test"}), "127.0.0.1")
+    handoff.drain()
+    assert active.result()["reason"] == "PROTECTED_MODE_INTERRUPTED"
+    assert queued.result()["reason"] == "PROTECTED_TARGET_COMMAND"
+    assert locked.result()["reset_ok"] and dispatcher.mode == "test" and reset.exposure_ready
+    assert len(motions) == 1
+
+
+def test_failed_neutral_transition_still_locks_and_does_not_ack_success():
+    adapter, _, _, dispatcher, _, _ = setup()
+    send(dispatcher, "set_mode", {"mode": "teaching"})
+    adapter.locked = True
+    result = send(dispatcher, "set_mode", {"mode": "test"})
+    assert not result["accepted"] and result["reset_ok"] is False and dispatcher.mode == "test"
+
+
+def test_hold_restores_robot_only_and_latches_object_fault():
+    adapter, _, _, dispatcher, _, _ = setup()
+    adapter.state["robot"]["joint_positions_rad"][0] = .1
+    adapter.state["robot"]["joint_velocities_rad_s"][0] = .1
+    assert dispatcher.after_physics_step()
+    adapter.state["objects"]["engineering_object_0"]["state"]["card_face"] = 1
+    assert not dispatcher.after_physics_step() and dispatcher.fault == "NEUTRAL_DIVERGED"
+    assert adapter.state["objects"]["engineering_object_0"]["state"]["card_face"] == 1
+    send(dispatcher, "reset")
+    assert dispatcher.fault == "NEUTRAL_DIVERGED"  # Explicit service restart required.
+
+
+def test_missing_demo_is_not_fabricated_execution():
+    _, _, _, dispatcher, _, _ = setup(demo=False)
+    send(dispatcher, "set_mode", {"mode": "teaching"})
+    assert send(dispatcher, "demo", {"action": "SCAN", "target": "container_E"})["reason"] == "DEMO_NOT_IMPLEMENTED"
+
+
+def test_queue_is_bounded_and_network_threads_never_touch_scene():
+    adapter, _, _, dispatcher, _, _ = setup()
+    handoff = CommandQueue(dispatcher, capacity=1)
+    result = []
+    thread = threading.Thread(target=lambda: result.append(handoff.submit(command(dispatcher, "reset"), "127.0.0.1")))
+    before = adapter.writes
+    thread.start(); thread.join()
+    assert adapter.writes == before and not result[0].done()
+    assert handoff.submit(command(dispatcher, "health"), "127.0.0.1").result()["reason"] == "COMMAND_QUEUE_FULL"
+    handoff.drain()
+    assert result[0].result()["accepted"] and adapter.writes == before+1
