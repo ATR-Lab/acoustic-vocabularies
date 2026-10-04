@@ -1,15 +1,23 @@
-"""Per-unit curriculum tables (``curriculum.csv``) and ``permutation.json`` documents."""
+"""Per-unit curriculum tables (``curriculum.csv``) and ``permutation.json`` documents.
+
+* ``curriculum.csv`` is RESTRICTED: it carries the H-W1/H-W4 swap flag, the realised
+  novel-test visits and the block ID, i.e. allocation-cell information.
+* ``permutation.json`` is PACKAGE-SAFE: only the semantic labels at matrix indices, the
+  atom/wave orders and allocation-invariant facts (the abstract matrix). It contains
+  nothing derived from the allocation cell (no SQ arm, scaffold families, swap flag,
+  novel schedule, block or grid position) and no derived seeds, so it can travel in
+  learner packages and be read by the bank builder before allocation.
+"""
 
 from __future__ import annotations
 
 import csv
-import hashlib
 import io
 import json
 from typing import Any, Final
 
 from . import __version__
-from .design import ABatch, BDyadSlot, Unit
+from .design import Unit
 from .matrix import (
     A_VISITS,
     B_VISITS,
@@ -34,7 +42,9 @@ ORIGINAL_COLUMNS: Final[tuple[str, ...]] = (
     "A_novel_default",
     "counterbalance",
 )
-# Columns added per unit. ``novel_visit`` is the realised test visit after the swap.
+# Columns added per unit. ``novel_visit`` is the realised test visit after the swap;
+# ``seed_label`` marks DEMO outputs (``DEMO-...``) or names the private master seed's
+# fingerprint (``sha256:...``).
 ADDED_COLUMNS: Final[tuple[str, ...]] = (
     "unit_id",
     "semantic_action",
@@ -43,11 +53,12 @@ ADDED_COLUMNS: Final[tuple[str, ...]] = (
     "swap_w1_w4",
     "seed",
     "novel_visit",
+    "seed_label",
 )
 CURRICULUM_COLUMNS: Final[tuple[str, ...]] = ORIGINAL_COLUMNS + ADDED_COLUMNS
 
 PERMUTATION_FORMAT: Final = "av-schedules/permutation"
-PERMUTATION_FORMAT_VERSION: Final = 1
+PERMUTATION_FORMAT_VERSION: Final = 2
 
 
 def _opt(value: object) -> str:
@@ -77,6 +88,7 @@ def curriculum_rows(unit: Unit) -> tuple[dict[str, str], ...]:
                 "swap_w1_w4": "1" if unit.swap_w1_w4 else "0",
                 "seed": unit.seed,
                 "novel_visit": "" if hs is None else novel_visit(unit.study, hs, unit.swap_w1_w4),
+                "seed_label": unit.seed_label,
             }
         )
     return tuple(rows)
@@ -92,7 +104,10 @@ def curriculum_csv(unit: Unit) -> bytes:
 
 
 def novel_by_visit(unit: Unit) -> dict[str, list[str]]:
-    """Held-out message IDs tested at each visit (A: D0/D7; B: V1..W4), planning order."""
+    """Held-out message IDs tested at each visit (A: D0/D7; B: V1..W4), planning order.
+
+    Depends on the swap flag: restricted until the package is sealed after allocation.
+    """
     visits = A_VISITS if unit.study == "A" else B_VISITS
     out: dict[str, list[str]] = {v: [] for v in visits}
     for c in cells():
@@ -105,7 +120,10 @@ def novel_by_visit(unit: Unit) -> dict[str, list[str]]:
 
 
 def permutation_document(unit: Unit) -> dict[str, Any]:
-    """The ``permutation.json`` document (schema: ``schema/permutation.schema.json``)."""
+    """The package-safe ``permutation.json`` document (``schema/permutation.schema.json``).
+
+    Contains no allocation-cell information and no derived seeds (see module docstring).
+    """
     position = {a: i + 1 for i, a in enumerate(unit.atom_order)}
     atom_entries = []
     for a in atoms():
@@ -135,7 +153,6 @@ def permutation_document(unit: Unit) -> dict[str, Any]:
                 "status": "trained" if hs is None else "heldout",
                 "training_wave": c.training_wave,
                 "heldout_set": hs,
-                "novel_visit": None if hs is None else novel_visit(unit.study, hs, unit.swap_w1_w4),
             }
         )
     doc: dict[str, Any] = {
@@ -149,35 +166,15 @@ def permutation_document(unit: Unit) -> dict[str, Any]:
         "unit_id": unit.unit_id,
         "unit_kind": unit.kind,
         "shared_by": "batch" if unit.study == "A" else "dyad",
-        "seed": unit.seed,
-        "design": {
-            "sequence": unit.sequence,
-            "block_id": unit.block_id,
-            "block_position": unit.block_position,
-            "cycle": unit.cycle,
-            "grid_row": unit.grid_row,
-            "grid_col": unit.grid_col,
-        },
-        "swap_w1_w4": unit.swap_w1_w4,
         "family_first": unit.family_first,
         "labels": {f: {r: list(unit.permutation.labels(f, r)) for r in ROLES} for f in FAMILIES},
         "atoms": atom_entries,
         "atom_order": list(unit.atom_order),
         "messages": messages,
-        "novel_by_visit": novel_by_visit(unit),
-        "curriculum_csv_sha256": hashlib.sha256(curriculum_csv(unit)).hexdigest(),
     }
-    if isinstance(unit, ABatch):
-        # The A1 designer ID stays in the batch table: packages need no generation metadata.
-        doc["study_a"] = {"profile": unit.profile}
-    if isinstance(unit, BDyadSlot):
-        doc["study_b"] = {
-            "sq_arm": unit.sq_arm,
-            "structured_family": unit.structured_family,
-            "dictionary_family": unit.dictionary_family,
-            "wave_atom_order": {
-                str(w): list(order) for w, order in enumerate(unit.wave_orders, start=1)
-            },
+    if unit.wave_orders:
+        doc["wave_atom_order"] = {
+            str(w): list(order) for w, order in enumerate(unit.wave_orders, start=1)
         }
     return doc
 

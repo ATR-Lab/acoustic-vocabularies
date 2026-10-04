@@ -1,9 +1,13 @@
 """Seed handling: master seeds, SHA-256 seed derivation and a portable random stream.
 
-* A master seed is either a private value read from a file (never committed) or a
-  public demonstration value that must start with ``DEMO-``.
-* Derived seeds are ``sha256("{master}|{study}|{unit}|{purpose}")`` as lowercase hex.
-  ``unit`` is a unit ID (``A-C01``) or a design token (``A-C-cyc01``, ``B-C-blk03``).
+* A master seed is either a private value read from a file (never committed; at least
+  64 lowercase hex digits, i.e. 256 bits, because its SHA-256 is published as a
+  fingerprint) or a public demonstration value that must start with ``DEMO-``.
+* Derived seeds are ``sha256("{master}|{part1}|{part2}|...")`` as lowercase hex. This
+  generator uses ``(study, unit, purpose)``, where ``unit`` is a unit ID (``A-C01``) or a
+  design token (``A-C-cyc01``, ``B-C-blk03``); downstream generators append more parts
+  (e.g. ``study, unit, person, visit, block``). Concealed draws must always be derived
+  from the master seed with their own purpose, never from a published derived seed.
 * :class:`SeedStream` turns a derived seed into integers without ``random``'s Mersenne
   Twister, so the procedure is specified completely here and can be re-implemented in
   any language: draw ``k`` is the first 8 bytes (big-endian) of
@@ -23,7 +27,7 @@ T = TypeVar("T")
 
 DEMO_PREFIX: Final = "DEMO-"
 _DEMO_RE: Final = re.compile(r"DEMO-[A-Za-z0-9._-]{1,64}")
-_MASTER_RE: Final = re.compile(r"[A-Za-z0-9._-]{32,256}")
+_MASTER_RE: Final = re.compile(r"[0-9a-f]{64,256}")
 _TOKEN_RE: Final = re.compile(r"[A-Za-z0-9._:-]+")
 _LIMIT: Final = 1 << 64
 
@@ -58,14 +62,13 @@ def demo_seed(value: str) -> MasterSeed:
 
 
 def private_seed(value: str) -> MasterSeed:
-    """A private master seed: 32-256 characters of ``[A-Za-z0-9._-]``, not ``DEMO-``."""
+    """A private master seed: 64-256 lowercase hex digits (at least 256 bits)."""
     value = value.strip()
     if value.startswith(DEMO_PREFIX):
         raise ValueError("a private master seed must not start with 'DEMO-'")
     if not _MASTER_RE.fullmatch(value):
         raise ValueError(
-            "a private master seed must be 32-256 characters of [A-Za-z0-9._-] "
-            "(e.g. 64 hex digits from secrets.token_hex(32))"
+            "a private master seed must be 64-256 lowercase hex digits (e.g. secrets.token_hex(32))"
         )
     return MasterSeed(value, demo=False)
 
@@ -75,12 +78,17 @@ def load_master_seed(path: Path) -> MasterSeed:
     return private_seed(path.read_text(encoding="utf-8"))
 
 
-def derive_seed(master: MasterSeed, study: str, unit: str, purpose: str) -> str:
-    """``sha256("{master}|{study}|{unit}|{purpose}")`` as 64 lowercase hex digits."""
-    for name, part in (("study", study), ("unit", unit), ("purpose", purpose)):
+def derive_seed(master: MasterSeed, *parts: str) -> str:
+    """``sha256("{master}|{part1}|{part2}|...")`` as 64 lowercase hex digits.
+
+    At least one part is required; each part must match ``[A-Za-z0-9._:-]+``.
+    """
+    if not parts:
+        raise ValueError("derive_seed needs at least one part after the master seed")
+    for part in parts:
         if not _TOKEN_RE.fullmatch(part):
-            raise ValueError(f"{name} token {part!r} must match [A-Za-z0-9._:-]+")
-    text = f"{master.value}|{study}|{unit}|{purpose}"
+            raise ValueError(f"seed part {part!r} must match [A-Za-z0-9._:-]+")
+    text = "|".join((master.value, *parts))
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -115,6 +123,6 @@ class SeedStream:
         return tuple(out)
 
 
-def stream(master: MasterSeed, study: str, unit: str, purpose: str) -> SeedStream:
-    """Shorthand for ``SeedStream(derive_seed(master, study, unit, purpose))``."""
-    return SeedStream(derive_seed(master, study, unit, purpose))
+def stream(master: MasterSeed, *parts: str) -> SeedStream:
+    """Shorthand for ``SeedStream(derive_seed(master, *parts))``."""
+    return SeedStream(derive_seed(master, *parts))

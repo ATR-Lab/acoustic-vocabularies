@@ -16,6 +16,7 @@ from hypothesis import strategies as st
 from av_schedules import (
     MasterSeed,
     SeedStream,
+    cli,
     demo_seed,
     derive_seed,
     generate,
@@ -25,13 +26,14 @@ from av_schedules import (
 )
 from av_schedules._paths import default_out_dir, examples_dir
 from av_schedules.cli import main
-from av_schedules.latin import ORDER, CycleSquares, CyclicSquare
+from av_schedules.latin import ORDER, CycleSquares
 from av_schedules.output import EXAMPLE_DEMO_SEED, demo_example_files, table_name
 from av_schedules.planning import synthetic_planning_files
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLES = ROOT / "schedules" / "examples" / "demo"
 PRIVATE = "0123456789abcdef" * 4  # synthetic stand-in for a private seed (test only)
+PRIVATE_2 = "fedcba9876543210" * 4
 
 
 # ---------------------------------------------------------------------------------------
@@ -42,8 +44,12 @@ def test_derive_seed_formula():
     master = demo_seed("DEMO-x")
     expected = hashlib.sha256(b"DEMO-x|A|A-C01|unit").hexdigest()
     assert derive_seed(master, "A", "A-C01", "unit") == expected
+    longer = hashlib.sha256(b"DEMO-x|B|B-C01|p1|V2|trained").hexdigest()
+    assert derive_seed(master, "B", "B-C01", "p1", "V2", "trained") == longer
     with pytest.raises(ValueError):
         derive_seed(master, "A", "A|C01", "unit")
+    with pytest.raises(ValueError):
+        derive_seed(master)
 
 
 @pytest.mark.parametrize("value", ["demo-x", "DEMO-", "DEMO-a b", "X-DEMO-1", "DEMO-" + "a" * 65])
@@ -55,8 +61,10 @@ def test_demo_seed_must_start_with_demo(value):
 def test_private_seed_rules(tmp_path):
     with pytest.raises(ValueError, match="DEMO-"):
         private_seed("DEMO-" + "a" * 40)
-    with pytest.raises(ValueError):
-        private_seed("short")
+    for weak in ("short", "a" * 63, PRIVATE.upper(), "g" * 64, "a" * 257):
+        with pytest.raises(ValueError):
+            private_seed(weak)
+    assert private_seed("a" * 64).value == "a" * 64
     path = tmp_path / "seed.txt"
     path.write_text(PRIVATE + "\n", encoding="utf-8")
     master = load_master_seed(path)
@@ -99,14 +107,22 @@ def test_seed_stream_is_roughly_uniform():
 @given(st.text(min_size=1, max_size=16))
 def test_latin_squares_property(seed):
     sq = CycleSquares.draw(SeedStream(seed))
-    cyc = CyclicSquare.draw(SeedStream(seed + "c"))
     grid = [(r, c) for r in range(ORDER) for c in range(ORDER)]
-    for square in (sq.a, sq.b, cyc.value):
+
+    def latin(k):
+        return lambda r, c: sq.latin(k, r, c)
+
+    squares = (sq.a, sq.b, latin(1), latin(2), latin(3))
+    for square in squares:
         for r in range(ORDER):
             assert sorted(square(r, c) for c in range(ORDER)) == [0, 1, 2, 3]
         for c in range(ORDER):
             assert sorted(square(r, c) for r in range(ORDER)) == [0, 1, 2, 3]
-    assert len({(sq.a(r, c), sq.b(r, c)) for r, c in grid}) == 16  # orthogonal
+    for j, k in ((1, 2), (1, 3), (2, 3)):  # mutually orthogonal
+        assert len({(sq.latin(j, r, c), sq.latin(k, r, c)) for r, c in grid}) == 16
+        for r in range(ORDER):  # L_j ^ L_k depends on the row only
+            assert len({sq.latin(j, r, c) ^ sq.latin(k, r, c) for c in range(ORDER)}) == 1
+    assert len({(sq.a(r, c), sq.b(r, c)) for r, c in grid}) == 16
     assert len({(sq.a(r, c), sq.split(r, c)) for r, c in grid}) == 16
     for pair in ((0, 1), (2, 3), (0, 2), (1, 3)):  # arm and swap column pairs
         cols = [(r, c) for r in range(ORDER) for c in pair]
@@ -134,13 +150,38 @@ def test_rendered_set_manifest_hashes_every_file(study, set_name):
     assert all(data.endswith(b"\n") and b"\r" not in data for data in files.values())
 
 
-def test_balance_report_has_label_index_rows():
+def test_balance_report_rows():
     files = generate(demo_seed("DEMO-balance"), "B", "confirmatory")
     lines = files["confirmatory-balance.csv"].decode().splitlines()
-    assert lines[0] == "study,set,metric,scope,family,role,item,position,count,expected,deviation"
+    assert lines[0] == (
+        "study,set,metric,scope,family,role,item,position,count,expected,deviation,seed_label"
+    )
+    assert all(line.endswith(",DEMO-balance") for line in lines[1:])
     label_rows = [line for line in lines if ",label_index,all," in line]
     assert len(label_rows) == 64
-    assert all(line.endswith(",16,16,0") for line in label_rows)
+    assert all(line.endswith(",16,16,0,DEMO-balance") for line in label_rows)
+    cell_rows = [line for line in lines if ",message_cell,all," in line]
+    assert len(cell_rows) == 2 * 16 * 16
+    assert all(",4,4,0," in line for line in cell_rows)  # 4 cycles: each message 4x per cell
+    held = [line for line in lines if ",message_heldout,all," in line]
+    assert len(held) == 32 and all(",28,28,0," in line for line in held)
+    assert sum(1 for line in lines if ",message_novel,all," in line) == 32 * 5
+    assert sum(1 for line in lines if ",wave1_label_position,all," in line) == 16 * 8
+    a_lines = generate(demo_seed("DEMO-balance"), "A", "confirmatory")["confirmatory-balance.csv"]
+    a_text = a_lines.decode()
+    assert a_text.count(",label_position,all,") == 16 * 16
+    assert a_text.count(",atom_position,all,") == 16 * 16
+
+
+def test_write_files_removes_stale_units(tmp_path):
+    master = demo_seed("DEMO-stale")
+    write_files(tmp_path, generate(master, "B", "confirmatory", spares=8))
+    assert (tmp_path / "B-S08" / "permutation.json").is_file()
+    files = generate(master, "B", "confirmatory", spares=4)
+    write_files(tmp_path, files)
+    assert not (tmp_path / "B-S05").exists() and not (tmp_path / "B-S08").exists()
+    written = {p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()}
+    assert written == set(files)
 
 
 def test_write_files_round_trip(tmp_path):
@@ -223,6 +264,46 @@ def test_cli_master_seed_file(tmp_path):
     assert doc["demo"] is False and doc["seed_label"].startswith("sha256:")
     assert PRIVATE not in (out / "B" / "pilot-manifest.json").read_text(encoding="utf-8")
     assert not (out / "A").exists()
+    curriculum = (out / "B" / "B-P01" / "curriculum.csv").read_text(encoding="utf-8")
+    assert curriculum.splitlines()[1].endswith(doc["seed_label"])
+
+
+def test_cli_private_seed_serves_one_set(tmp_path):
+    seed_file = tmp_path / "master.txt"
+    seed_file.write_text(PRIVATE, encoding="utf-8")
+    other_file = tmp_path / "master2.txt"
+    other_file.write_text(PRIVATE_2, encoding="utf-8")
+    out = tmp_path / "out"
+    base = ["curriculum", "--study", "A", "--out", str(out)]
+    # --set both with a private seed is refused before anything is written.
+    assert main([*base, "--master-seed-file", str(seed_file), "--set", "both"]) == 2
+    assert not out.exists()
+    assert main([*base, "--master-seed-file", str(seed_file), "--set", "pilot"]) == 0
+    # The confirmatory set may not reuse the pilot's master seed.
+    assert main([*base, "--master-seed-file", str(seed_file), "--set", "confirmatory"]) == 2
+    assert not (out / "A" / "confirmatory-manifest.json").exists()
+    assert main([*base, "--master-seed-file", str(other_file), "--set", "confirmatory"]) == 0
+
+
+def test_cli_checks_every_set_before_writing(tmp_path):
+    out = tmp_path / "out"
+    assert main(["curriculum", "--demo-seed", "DEMO-one", "--study", "B", "--out", str(out)]) == 0
+    before = (out / "B" / "pilot-manifest.json").read_bytes()
+    # Study A would be fine, Study B conflicts: nothing is written for A either.
+    assert main(["curriculum", "--demo-seed", "DEMO-two", "--out", str(out)]) == 2
+    assert not (out / "A").exists()
+    assert (out / "B" / "pilot-manifest.json").read_bytes() == before
+
+
+def test_cli_fails_closed_without_git(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "_GIT", "git-not-installed-av-schedules")
+    seed_file = tmp_path / "master.txt"
+    seed_file.write_text(PRIVATE, encoding="utf-8")
+    base = ["curriculum", "--master-seed-file", str(seed_file), "--study", "A", "--set", "pilot"]
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    assert main([*base, "--out", str(repo / "out")]) == 2  # repository present, git missing
+    assert main([*base, "--out", str(tmp_path / "plain")]) == 0  # no repository at all
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not available")

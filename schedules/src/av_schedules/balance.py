@@ -3,13 +3,18 @@
 Every row compares an observed ``count`` with the ``expected`` mean count for that item
 across positions (or levels) within a scope; ``deviation = count - expected``.
 
-Metrics: ``label_index`` (semantic label at matrix index, per family and role),
-``atom_position`` (Study A: position 1..16 in the atom order), ``wave<w>_position``
-(Study B: position within the wave's menu order), and the factor levels
-``family_first``, ``swap_w1_w4``, ``profile``/``designer`` (A) and ``sq_arm`` (B).
-Scopes: ``all`` (main units; Study B spares excluded), ``all+spares`` (Study B
-confirmatory), and subsets by profile (A), SQ arm (B) and swap flag. Study A atom
-positions are reported for ``all`` only.
+Metrics per scope: ``label_index`` (semantic label at matrix index, per family and
+role), ``wave<w>_position`` (Study B: atom at position within the wave's menu order) and
+the factor levels ``family_first``, ``swap_w1_w4``, ``profile``/``designer`` (A) and
+``sq_arm`` (B). Scopes: ``all`` (main units; Study B spares excluded), ``all+spares``
+(Study B confirmatory), and subsets by profile (A), SQ arm (B) and swap flag.
+
+Message-level and order metrics, scope ``all`` only: ``message_cell`` (semantic message,
+e.g. ``ADD_ONE+B``, at matrix cell ``a1-r2``), ``message_heldout`` (units in which the
+semantic message is held out), ``message_novel`` (units in which it is the novel test at
+a visit; swap-dependent), ``atom_position`` (Study A: matrix atom at position 1..16),
+``label_position`` (Study A: semantic label at position 1..16) and
+``wave<w>_label_position`` (Study B: semantic label at position within wave w).
 """
 
 from __future__ import annotations
@@ -22,7 +27,18 @@ from fractions import Fraction
 from typing import Final
 
 from .design import DESIGNERS, PROFILES, SQ_ARMS, ABatch, BDyadSlot, Unit
-from .matrix import FAMILIES, INDICES, LABELS, ROLES, atoms, wave_atoms
+from .matrix import (
+    A_VISITS,
+    B_VISITS,
+    FAMILIES,
+    INDICES,
+    LABELS,
+    ROLES,
+    atoms,
+    family_cells,
+    novel_visit,
+    wave_atoms,
+)
 
 BALANCE_COLUMNS: Final[tuple[str, ...]] = (
     "study",
@@ -36,6 +52,7 @@ BALANCE_COLUMNS: Final[tuple[str, ...]] = (
     "count",
     "expected",
     "deviation",
+    "seed_label",
 )
 
 
@@ -51,6 +68,7 @@ class BalanceRow:
     position: str
     count: int
     expected: Fraction
+    seed_label: str = ""
 
     @property
     def deviation(self) -> Fraction:
@@ -99,11 +117,11 @@ def balance_rows(units: Sequence[Unit]) -> tuple[BalanceRow, ...]:
     """All balance rows for one study and set."""
     if not units:
         return ()
-    study, set_name = units[0].study, units[0].set_name
+    study, set_name, seed_label = units[0].study, units[0].set_name, units[0].seed_label
     rows: list[BalanceRow] = []
 
     def add(metric: str, scope: str, keys: tuple[str, str, str, str], n: int, e: Fraction) -> None:
-        rows.append(BalanceRow(study, set_name, metric, scope, *keys, n, e))
+        rows.append(BalanceRow(study, set_name, metric, scope, *keys, n, e, seed_label))
 
     factors: list[tuple[str, tuple[str, ...], Callable[[Unit], str]]] = [
         ("family_first", FAMILIES, _family_first),
@@ -122,21 +140,18 @@ def balance_rows(units: Sequence[Unit]) -> tuple[BalanceRow, ...]:
                     for i in INDICES:
                         count = sum(1 for u in members if u.permutation.label(f, r, i) == label)
                         add("label_index", scope, (f, r, label, str(i)), count, Fraction(n, 4))
-        if study == "A":
-            # Study A atom orders are balanced over the whole set, not within subsets.
-            seqs_a = [u.atom_order for u in members] if scope == "all" else []
-            orders = [("atom_position", atoms(), seqs_a)] if seqs_a else []
-        else:
-            orders = [
-                (f"wave{w}_position", wave_atoms(w), [u.wave_orders[w - 1] for u in members])
-                for w in (1, 2, 3)
-            ]
-        for metric, wave_set, seqs in orders:
-            expected = Fraction(n, len(wave_set))
-            for a in wave_set:
-                for pos in range(1, len(wave_set) + 1):
-                    count = sum(1 for s in seqs if s[pos - 1] == a)
-                    add(metric, scope, (a[0], "", a, str(pos)), count, expected)
+        if study == "B":
+            for w in (1, 2, 3):
+                wave_set = wave_atoms(w)
+                seqs = [u.wave_orders[w - 1] for u in members]
+                expected = Fraction(n, len(wave_set))
+                for a in wave_set:
+                    for pos in range(1, len(wave_set) + 1):
+                        count = sum(1 for s in seqs if s[pos - 1] == a)
+                        add(f"wave{w}_position", scope, (a[0], "", a, str(pos)), count, expected)
+        if scope == "all":
+            _message_rows(add, study, members)
+            _order_rows(add, study, members)
         for metric, levels, key in factors:
             if scope.startswith(f"{metric}="):
                 continue  # degenerate: the scope fixes this factor
@@ -146,6 +161,77 @@ def balance_rows(units: Sequence[Unit]) -> tuple[BalanceRow, ...]:
     return tuple(rows)
 
 
+_Add = Callable[[str, str, tuple[str, str, str, str], int, Fraction], None]
+
+
+def _message(u: Unit, family: str, a: int, r: int) -> str:
+    return (
+        f"{u.permutation.label(family, 'action', a)}+{u.permutation.label(family, 'referent', r)}"
+    )
+
+
+def _message_rows(add: _Add, study: str, members: Sequence[Unit]) -> None:
+    """Semantic message x matrix cell, held-out counts and novel-test counts per message."""
+    n = len(members)
+    visits = A_VISITS if study == "A" else B_VISITS
+    for f in FAMILIES:
+        messages = [f"{a}+{r}" for a in LABELS[f]["action"] for r in LABELS[f]["referent"]]
+        fam_cells = family_cells(f)
+        cell_count = {(m, c.action_index, c.referent_index): 0 for m in messages for c in fam_cells}
+        held = dict.fromkeys(messages, 0)
+        novel = {(m, v): 0 for m in messages for v in visits}
+        for u in members:
+            for c in fam_cells:
+                m = _message(u, f, c.action_index, c.referent_index)
+                cell_count[(m, c.action_index, c.referent_index)] += 1
+                if c.heldout_set is not None:
+                    held[m] += 1
+                    visit = novel_visit(u.study, c.heldout_set, u.swap_w1_w4)
+                    if visit in visits:
+                        novel[(m, visit)] += 1
+        for (m, a, r), count in cell_count.items():
+            add("message_cell", "all", (f, "", m, f"a{a}-r{r}"), count, Fraction(n, 16))
+        n_held = sum(1 for c in fam_cells if c.heldout_set is not None)
+        for m in messages:
+            add("message_heldout", "all", (f, "", m, ""), held[m], Fraction(n * n_held, 16))
+        # Messages per family tested at each visit (the same with or without the swap).
+        tested = [
+            novel_visit(members[0].study, c.heldout_set, False)
+            for c in fam_cells
+            if c.heldout_set is not None
+        ]
+        per_visit = {v: tested.count(v) for v in visits}
+        for (m, v), count in novel.items():
+            add("message_novel", "all", (f, "", m, v), count, Fraction(n * per_visit[v], 16))
+
+
+def _order_rows(add: _Add, study: str, members: Sequence[Unit]) -> None:
+    """Atom order by matrix atom (Study A) and by semantic label (both studies)."""
+    n = len(members)
+    if study == "A":
+        for a in atoms():
+            for pos in range(1, 17):
+                count = sum(1 for u in members if u.atom_order[pos - 1] == a)
+                add("atom_position", "all", (a[0], "", a, str(pos)), count, Fraction(n, 16))
+        waves = [("label_position", [u.atom_order for u in members], 16)]
+    else:
+        waves = [
+            (f"wave{w}_label_position", [u.wave_orders[w - 1] for u in members], len(wave_atoms(w)))
+            for w in (1, 2, 3)
+        ]
+    for metric, _seqs, size in waves:
+        for f in FAMILIES:
+            for r in ROLES:
+                for label in LABELS[f][r]:
+                    for pos in range(1, size + 1):
+                        count = sum(
+                            1
+                            for u, seq in zip(members, _seqs, strict=True)
+                            if u.permutation.atom_label(seq[pos - 1]) == label
+                        )
+                        add(metric, "all", (f, r, label, str(pos)), count, Fraction(n, 16))
+
+
 def balance_csv(rows: Sequence[BalanceRow]) -> bytes:
     """Balance report CSV bytes (UTF-8, LF), header ``BALANCE_COLUMNS``."""
     buf = io.StringIO(newline="")
@@ -153,7 +239,7 @@ def balance_csv(rows: Sequence[BalanceRow]) -> bytes:
     w.writerow(BALANCE_COLUMNS)
     for r in rows:
         values = (r.study, r.set_name, r.metric, r.scope, r.family, r.role, r.item, r.position)
-        w.writerow([*values, r.count, _fmt(r.expected), _fmt(r.deviation)])
+        w.writerow([*values, r.count, _fmt(r.expected), _fmt(r.deviation), r.seed_label])
     return buf.getvalue().encode("utf-8")
 
 

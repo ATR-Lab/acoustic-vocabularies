@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/curriculum-unit.schema.json",
-  "title": "Unit curriculum row (curriculum.csv)",
-  "description": "One row of schedules/out/<study>/<unit>/curriculum.csv, read as an object of strings (e.g. csv.DictReader). The file has exactly 32 rows in planning order (family K then Q, action index, referent index) and the header: family, action_index, referent_index, message_id, components_available_wave, training_wave, B_first_novel_visit_default, A_novel_default, counterbalance, unit_id, semantic_action, semantic_referent, heldout_set, swap_w1_w4, seed, novel_visit. The first nine columns repeat planning curriculum.csv (counterbalance holds the unit's block ID); the format version is permutation.json format_version. See docs/interfaces/schedules.md.",
+  "title": "Unit curriculum row (curriculum.csv, restricted)",
+  "description": "One row of schedules/out/<study>/<unit>/curriculum.csv, read as an object of strings (e.g. csv.DictReader). The file has exactly 32 rows in planning order (family K then Q, action index, referent index) and the header: family, action_index, referent_index, message_id, components_available_wave, training_wave, B_first_novel_visit_default, A_novel_default, counterbalance, unit_id, semantic_action, semantic_referent, heldout_set, swap_w1_w4, seed, novel_visit, seed_label. The file is restricted (it holds the swap flag and realised novel-test visits) and never goes into a package as such. The first nine columns repeat planning curriculum.csv (counterbalance holds the unit's block ID); the format version is permutation.json format_version. See docs/interfaces/schedules.md.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -21,7 +21,8 @@
     "heldout_set",
     "swap_w1_w4",
     "seed",
-    "novel_visit"
+    "novel_visit",
+    "seed_label"
   ],
   "properties": {
     "family": {"enum": ["K", "Q"]},
@@ -38,7 +39,8 @@
     "semantic_referent": {"enum": ["A", "B", "C", "D", "E", "F", "G", "H"]},
     "heldout_set": {"enum": ["", "H-V1", "H-V2", "H-V3", "H-W1", "H-W4"]},
     "swap_w1_w4": {"enum": ["0", "1"]},
-    "seed": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Unit root seed sha256(master|study|unit_id|unit)."},
-    "novel_visit": {"enum": ["", "D0", "D7", "unused", "V1", "V2", "V3", "W1", "W4"], "description": "Realised test visit of a held-out message for this unit, after the swap; empty for trained messages."}
+    "seed": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Unit identifier sha256(master|study|unit_id|unit). It never seeds any draw; concealed draws derive from the master seed with their own purpose."},
+    "novel_visit": {"enum": ["", "D0", "D7", "unused", "V1", "V2", "V3", "W1", "W4"], "description": "Realised test visit of a held-out message for this unit, after the swap; empty for trained messages."},
+    "seed_label": {"type": "string", "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$", "description": "DEMO marker (the DEMO- seed) or sha256:<fingerprint of the private master seed>."}
   }
 }

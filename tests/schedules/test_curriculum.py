@@ -93,6 +93,32 @@ def label_counts(members: Sequence[Unit]) -> Counter[tuple[str, str, str, int]]:
     return c
 
 
+def message_cell_counts(members: Sequence[Unit]) -> Counter[tuple[str, str, str, int, int]]:
+    """(family, semantic action, semantic referent, action index, referent index) counts."""
+    c: Counter[tuple[str, str, str, int, int]] = Counter()
+    for u in members:
+        for cell in cells():
+            f, a, r = cell.family, cell.action_index, cell.referent_index
+            labels = (u.permutation.label(f, "action", a), u.permutation.label(f, "referent", r))
+            c[(f, *labels, a, r)] += 1
+    return c
+
+
+def heldout_counts(members: Sequence[Unit]) -> Counter[tuple[str, str, str]]:
+    c: Counter[tuple[str, str, str]] = Counter()
+    for u in members:
+        for cell in heldout_cells():
+            f = cell.family
+            c[
+                (
+                    f,
+                    u.permutation.label(f, "action", cell.action_index),
+                    u.permutation.label(f, "referent", cell.referent_index),
+                )
+            ] += 1
+    return c
+
+
 def assert_label_index_within(members: Sequence[Unit], tolerance: float) -> None:
     counts = label_counts(members)
     mean = len(members) / len(INDICES)
@@ -370,14 +396,19 @@ def test_a_label_index_balanced_within_profiles():
         assert Counter(u.family_first for u in members) == {"K": 3, "Q": 3}
 
 
-def test_a_blocks_hold_two_swapped_and_two_unswapped_batches():
-    by_block: dict[str, list[Unit]] = {}
+def test_a_layout_profile_blocks_and_swap_columns():
+    by_block: dict[str, list[ABatch]] = {}
     for u in units("A", "confirmatory"):
+        assert isinstance(u, ABatch)
+        assert u.swap_w1_w4 == (u.grid_col in (1, 3))
         by_block.setdefault(u.block_id, []).append(u)
-    sizes = [len(v) for v in by_block.values()]
-    assert sizes == [4, 4, 4, 4, 2]
-    for members in by_block.values():
-        assert sum(u.swap_w1_w4 for u in members) == len(members) // 2
+    blocks = list(by_block.values())
+    assert [len(b) for b in blocks] == [4, 4, 4, 4, 2]
+    assert [sum(u.swap_w1_w4 for u in b) for b in blocks] == [2, 2, 2, 2, 1]
+    assert [len({u.profile for u in b}) for b in blocks] == [1, 1, 1, 2, 1]
+    assert len({blocks[i][0].profile for i in range(3)}) == 3
+    for pair in ({0, 3}, {1, 2}):  # block 4 is split along its diagonal cell pairs
+        assert len({u.profile for u in blocks[3] if u.grid_col in pair}) == 1
 
 
 # ---------------------------------------------------------------------------------------
@@ -417,11 +448,30 @@ def test_b_pilot_design_table():
     assert all(u.kind == "dyad" for u in pilot)
 
 
-def test_b_spare_count_must_be_multiple_of_block():
-    with pytest.raises(ValueError, match="multiple of 4"):
-        build_b_design_table(SEED, "confirmatory", spares=6)
+def test_b_spare_count_rules():
+    for bad in (6, -4, 100):
+        with pytest.raises(ValueError, match="multiple of 4"):
+            build_b_design_table(SEED, "confirmatory", spares=bad)
     assert len(build_b_design_table(SEED, "confirmatory", spares=0)) == 64
+    widest = build_b_design_table(SEED, "confirmatory", spares=96)
+    assert widest[-1].unit_id == "B-S96"
     assert len(build_b_design_table(SEED, "pilot", spares=12)) == 8
+
+
+def block_cell_orders(study: str, set_name: str, seed: str = SEED.value) -> list[tuple[int, ...]]:
+    by_block: dict[str, list[Unit]] = {}
+    for u in units(study, set_name, seed):
+        by_block.setdefault(u.block_id, []).append(u)
+    return [tuple(u.grid_col for u in b) for b in by_block.values() if len(b) == 4]
+
+
+@pytest.mark.parametrize("study", ["A", "B"])
+def test_cell_order_within_blocks_is_seeded(study):
+    orders = block_cell_orders(study, "confirmatory")
+    assert all(sorted(o) == [0, 1, 2, 3] for o in orders)
+    assert len(set(orders)) > 1  # varies across blocks
+    other = block_cell_orders(study, "confirmatory", "DEMO-another-seed")
+    assert orders != other  # and across seeds
 
 
 # ---------------------------------------------------------------------------------------
@@ -475,6 +525,74 @@ def test_b_permutations_balanced_within_sq_arms_swap_levels_and_cells():
     assert set(label_counts(main).values()) == {16}
 
 
+@pytest.mark.parametrize("study", ["A", "B"])
+def test_each_semantic_message_at_each_cell_once_per_cycle(study):
+    members = main_units(study, "confirmatory")
+    for cycle in sorted({u.cycle for u in members}):
+        group = [u for u in members if u.cycle == cycle]
+        if len(group) < 16:
+            continue
+        counts = message_cell_counts(group)
+        assert len(counts) == 2 * 16 * 16 and set(counts.values()) == {1}, cycle
+
+
+def novel_counts(members: Sequence[Unit]) -> Counter[tuple[str, str, str, str]]:
+    c: Counter[tuple[str, str, str, str]] = Counter()
+    for u in members:
+        for cell in heldout_cells():
+            f = cell.family
+            visit = novel_visit(u.study, cell.heldout_set or "", u.swap_w1_w4)
+            labels = (
+                u.permutation.label(f, "action", cell.action_index),
+                u.permutation.label(f, "referent", cell.referent_index),
+            )
+            c[(f, *labels, visit)] += 1
+    return c
+
+
+@pytest.mark.parametrize("study", ["A", "B"])
+def test_each_semantic_message_novel_equally_often_per_cycle(study):
+    expected = (
+        {"D0": 2, "D7": 2, "unused": 3}
+        if study == "A"
+        else {
+            "V1": 1,
+            "V2": 1,
+            "V3": 1,
+            "W1": 2,
+            "W4": 2,
+        }
+    )
+    for cycle in (1,) if study == "A" else (1, 2, 3, 4):
+        group = [u for u in main_units(study, "confirmatory") if u.cycle == cycle]
+        counts = novel_counts(group)
+        assert len(counts) == 32 * len(expected)
+        for (_f, _a, _r, visit), n in counts.items():
+            assert n == expected[visit], (cycle, visit, n)
+    if study == "A":  # 18 batches: each message is the D0 (or D7) novel test 2 or 3 times
+        counts = novel_counts(main_units("A", "confirmatory"))
+        assert {n for (_f, _a, _r, v), n in counts.items() if v in ("D0", "D7")} <= {2, 3}
+
+
+def test_heldout_counts_per_semantic_message():
+    b_counts = heldout_counts(main_units("B", "confirmatory"))
+    assert len(b_counts) == 32 and set(b_counts.values()) == {28}  # 64 * 7 / 16
+    a_counts = heldout_counts(main_units("A", "confirmatory"))
+    assert len(a_counts) == 32 and set(a_counts.values()) <= {7, 8, 9}  # mean 7.875
+    first = heldout_counts([u for u in units("A", "confirmatory") if u.cycle == 1])
+    assert set(first.values()) == {7}
+
+
+def test_a_action_and_referent_permutations_are_crossed():
+    first = [u for u in units("A", "confirmatory") if u.cycle == 1]
+    for f in FAMILIES:
+        pairs = {
+            (u.permutation.labels(f, "action"), u.permutation.labels(f, "referent")) for u in first
+        }
+        assert len(pairs) == 16
+    assert len({u.permutation.lines for u in first}) == 16
+
+
 # ---------------------------------------------------------------------------------------
 # Atom introduction orders
 
@@ -494,11 +612,24 @@ def test_a_atom_order_balanced_over_positions():
     assert Counter(u.family_first for u in batches) == {"K": 9, "Q": 9}
 
 
-def test_a_atom_order_alternates_families():
-    for u in units("A", "confirmatory"):
+def test_a_atom_order_balanced_over_semantic_labels():
+    first = [u for u in units("A", "confirmatory") if u.cycle == 1]
+    counts = Counter(
+        (u.permutation.atom_label(a), i) for u in first for i, a in enumerate(u.atom_order)
+    )
+    assert len(counts) == 16 * 16 and set(counts.values()) == {1}
+
+
+def test_a_atom_order_alternates_families_and_roles():
+    for u in units("A", "confirmatory") + units("A", "pilot"):
         fams = [a[0] for a in u.atom_order]
+        roles = [a[2] for a in u.atom_order]
         assert fams[0] == u.family_first
         assert all(fams[i] != fams[i + 1] for i in range(15))
+        for k in range(0, 16, 2):  # roles change every two atoms
+            assert roles[k] == roles[k + 1]
+            if k + 2 < 16:
+                assert roles[k + 2] != roles[k]
 
 
 def test_b_wave_orders_balanced_within_arms_and_swap_levels():
@@ -557,9 +688,8 @@ def test_three_methods_share_one_batch_table():
         doc = permutation_document(u)
         assert doc["shared_by"] == "batch" and doc["unit_kind"] == "batch"
         text = permutation_json(u).decode() + curriculum_csv(u).decode()
-        assert not re.search(r"\bA[123]\b", text)  # no method labels in package-bound files
+        assert not re.search(r"\bA[123]\b", text)  # no method labels
         assert "designer" not in text
-        assert permutation_json(u) == permutation_json(u)
 
 
 def test_dyad_members_share_one_table():
@@ -581,43 +711,128 @@ def validator(name: str) -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def test_permutation_documents_validate_and_bind_the_csv():
+PACKAGE_KEYS = {
+    "format",
+    "format_version",
+    "generator",
+    "demo",
+    "seed_label",
+    "study",
+    "set",
+    "unit_id",
+    "unit_kind",
+    "shared_by",
+    "family_first",
+    "labels",
+    "atoms",
+    "atom_order",
+    "messages",
+}
+CELL_WORDS = (
+    "swap",
+    "sq_arm",
+    "SQ-",
+    "structured",
+    "dictionary",
+    "novel",
+    "block",
+    "grid",
+    "cycle",
+    "sequence",
+    "profile",
+    'seed"',
+)
+
+
+def test_permutation_json_holds_no_allocation_cell_information():
+    for u in all_units():
+        doc = permutation_document(u)
+        extra = {"wave_atom_order"} if u.study == "B" else set()
+        assert set(doc) == PACKAGE_KEYS | extra
+        text = permutation_json(u).decode()
+        for word in CELL_WORDS:
+            assert word not in text, (u.unit_id, word)
+        assert not re.search(r"[0-9a-f]{64}", text)  # no derived seeds or hashes
+        for m in doc["messages"]:
+            assert set(m) == {
+                "message_id",
+                "family",
+                "action_atom",
+                "referent_atom",
+                "semantic_action",
+                "semantic_referent",
+                "status",
+                "training_wave",
+                "heldout_set",
+            }
+
+
+def test_permutation_json_is_invariant_to_swap_and_sq_arm():
+    import dataclasses
+
+    for u in units("B", "pilot") + units("A", "pilot"):
+        flipped = dataclasses.replace(
+            u,
+            swap_w1_w4=not u.swap_w1_w4,
+            grid_row=0,
+            grid_col=0,
+            block_id="B-P-blk99",
+            block_position=4,
+            sequence=99,
+        )
+        if isinstance(u, BDyadSlot):
+            flipped = dataclasses.replace(flipped, sq_arm="SQ-2" if u.sq_arm == "SQ-1" else "SQ-1")
+        if isinstance(u, ABatch):
+            flipped = dataclasses.replace(flipped, profile="P9", designer="D9")
+        assert permutation_json(flipped) == permutation_json(u)
+        assert curriculum_csv(flipped) != curriculum_csv(u)  # the restricted file does change
+
+
+def test_permutation_documents_validate():
     v = validator("permutation.schema.json")
     for u in all_units():
         doc = json.loads(permutation_json(u))
         v.validate(doc)
-        assert doc["curriculum_csv_sha256"] == hashlib.sha256(curriculum_csv(u)).hexdigest()
+        assert doc["format_version"] == 2
         assert doc["atom_order"] == list(u.atom_order)
+        if u.study == "B":
+            assert doc["wave_atom_order"] == {
+                str(w): list(o) for w, o in enumerate(u.wave_orders, start=1)
+            }
         assert doc["demo"] is True and doc["seed_label"] == SEED.value
         positions = {a["atom_id"]: a["order_position"] for a in doc["atoms"]}
         assert [a for a, _ in sorted(positions.items(), key=lambda kv: kv[1])] == list(u.atom_order)
 
 
-def test_permutation_schema_rejects_wrong_study_block():
+def test_permutation_schema_rejects_cell_fields_and_wrong_study():
     v = validator("permutation.schema.json")
-    doc = permutation_document(units("A", "confirmatory")[0])
-    doc["study_b"] = {
-        "sq_arm": "SQ-1",
-        "structured_family": "K",
-        "dictionary_family": "Q",
-        "wave_atom_order": {"1": [], "2": [], "3": []},
-    }
-    assert list(v.iter_errors(doc))
-    doc = permutation_document(units("A", "confirmatory")[0])
-    doc["extra"] = 1
+    a_doc = permutation_document(units("A", "confirmatory")[0])
+    b_doc = permutation_document(units("B", "confirmatory")[0])
+    for doc, key, value in (
+        (dict(a_doc), "wave_atom_order", b_doc["wave_atom_order"]),
+        (dict(a_doc), "swap_w1_w4", True),
+        (dict(b_doc), "study_b", {"sq_arm": "SQ-1"}),
+        (dict(b_doc), "seed", "0" * 64),
+    ):
+        doc[key] = value
+        assert list(v.iter_errors(doc)), key
+    doc = dict(b_doc)
+    del doc["wave_atom_order"]
     assert list(v.iter_errors(doc))
 
 
 def test_curriculum_csv_header_and_rows_validate():
     v = validator("curriculum-unit.schema.json")
     assert CURRICULUM_COLUMNS == ORIGINAL_COLUMNS + ADDED_COLUMNS
-    assert ADDED_COLUMNS[:6] == (
+    assert ADDED_COLUMNS == (
         "unit_id",
         "semantic_action",
         "semantic_referent",
         "heldout_set",
         "swap_w1_w4",
         "seed",
+        "novel_visit",
+        "seed_label",
     )
     for u in all_units():
         data = curriculum_csv(u)
@@ -628,6 +843,7 @@ def test_curriculum_csv_header_and_rows_validate():
         assert len(rows) == 32
         for row in rows:
             v.validate(row)
+            assert row["seed_label"] == SEED.value
 
 
 def test_message_cells_in_planning_order():
@@ -688,6 +904,13 @@ def test_property_a_confirmatory_invariants(suffix):
         members = [u for u in batches if u.profile == p]
         assert_label_index_within(members, 0.5)
         assert Counter(u.family_first for u in members) == {"K": 3, "Q": 3}
+    first = [u for u in batches if u.cycle == 1]
+    assert set(message_cell_counts(first).values()) == {1}
+    assert {n for (*_, v), n in novel_counts(first).items() if v != "unused"} == {2}
+    labels_at = Counter(
+        (u.permutation.atom_label(a), i) for u in first for i, a in enumerate(u.atom_order)
+    )
+    assert set(labels_at.values()) == {1}
 
 
 @settings(max_examples=25, deadline=None)
@@ -708,6 +931,11 @@ def test_property_b_confirmatory_invariants(suffix):
         members = [u for u in slots if u.swap_w1_w4 == swap]
         assert set(label_counts(members).values()) == {8}
         assert set(position_counts([u.wave_orders[0] for u in members]).values()) == {4}
+    for cycle in range(1, 5):
+        group = [u for u in slots if u.cycle == cycle]
+        assert set(message_cell_counts(group).values()) == {1}
+    assert set(heldout_counts(slots).values()) == {28}
+    assert {n for (*_, v), n in novel_counts(slots).items() if v in ("W1", "W4")} == {8}
 
 
 @settings(max_examples=25, deadline=None)

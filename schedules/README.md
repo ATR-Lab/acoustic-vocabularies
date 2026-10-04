@@ -15,7 +15,8 @@ Design and balance argument: [`docs/curriculum.md`](docs/curriculum.md).
 uv sync --project schedules --locked
 # DEMO run (public seed, outputs are examples only)
 uv run --project schedules python -m av_schedules curriculum --demo-seed DEMO-local
-# Real pilot or confirmatory run: private seed file kept outside the repository
+# Real pilot or confirmatory run: one private seed file per set, kept outside the repo
+# (64+ lowercase hex digits, e.g. python -c "import secrets; print(secrets.token_hex(32))")
 uv run --project schedules python -m av_schedules curriculum \
     --master-seed-file <path outside the repo> --set confirmatory
 # Compare the external planning materials with the matrix constant
@@ -24,18 +25,20 @@ uv run --project schedules python -m av_schedules check-planning <planning-mater
 uv run --project schedules python -m av_schedules demo-examples
 ```
 
-Options of `curriculum`: `--study A|B|both`, `--set pilot|confirmatory|both`,
-`--spares N` (Study B spare slots, multiple of 4, default 8), `--out DIR` (default
-`schedules/out`), `--force` (overwrite a set written from another seed).
+Options of `curriculum`: `--study A|B|both`, `--set pilot|confirmatory|both` (`both` only
+with `--demo-seed`), `--spares N` (Study B spare slots, multiple of 4 up to 96, default 8),
+`--out DIR` (default `schedules/out`), `--force` (overwrite a set written from another
+seed). Of the outputs, only `<unit>/permutation.json` is package-safe; `curriculum.csv`,
+the batch/design tables, balance reports and manifests of real sets are restricted.
 
 ## API
 
 | Module | Function or constant | Purpose | Issue |
 | --- | --- | --- | --- |
 | `matrix` | `MATRIX`, `LABELS`, `cells()`, `trained_cells(wave)`, `heldout_cells(set)`, `index_waves()`, `wave_atoms(wave)`, `novel_visit(study, set, swap)` | the abstract matrix and everything derived from it | #29 |
-| `seeds` | `demo_seed()`, `load_master_seed()`, `derive_seed(master, study, unit, purpose)`, `SeedStream` | master seeds, SHA-256 derivation, portable integer stream | #29 |
+| `seeds` | `demo_seed()`, `load_master_seed()`, `derive_seed(master, *parts)`, `SeedStream` | master seeds, SHA-256 derivation, portable integer stream | #29 |
 | `design` | `build_a_batch_table(master, set_name)`, `build_b_design_table(master, set_name, *, spares=8)`, `build_units(...)`, `Unit`, `ABatch`, `BDyadSlot`, `Permutation` | Study A batch table and Study B design table with permutations, swap flags and atom orders | #29 |
-| `curriculum` | `curriculum_rows(unit)`, `curriculum_csv(unit)`, `permutation_document(unit)`, `permutation_json(unit)`, `novel_by_visit(unit)` | per-unit `curriculum.csv` and `permutation.json` | #29 |
+| `curriculum` | `curriculum_rows(unit)`, `curriculum_csv(unit)`, `permutation_document(unit)`, `permutation_json(unit)`, `novel_by_visit(unit)` | per-unit restricted `curriculum.csv` and package-safe `permutation.json` | #29 |
 | `balance` | `balance_rows(units)`, `balance_csv(rows)`, `max_abs_deviation(rows)` | balance report | #29 |
 | `output` | `generate(master, study, set_name)`, `render_set(units)`, `write_files(root, files)`, `demo_example_files()` | all files of a set, manifest | #29 |
 | `planning` | `check_planning(dir)`, `DESIGN_CHECKS`, `GROWTH_COUNTS`, `PLANNING_SHA256`, `synthetic_planning_files()` | planning-material check and test oracles | #29 |

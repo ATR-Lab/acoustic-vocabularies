@@ -5,16 +5,18 @@ dyad slot (both members share it). Every unit carries the semantic-label permuta
 the H-W1/H-W4 swap flag and the stored atom introduction order; the abstract matrix is
 the same for all units.
 
-Units are numbered in their stored order (``sequence``) and grouped into blocks of 4
-consecutive units; 4 consecutive blocks form a Latin *cycle*. Each block holds each of
-4 design cells once, in a seeded order (a permuted block):
+Units are numbered in their stored order (``sequence``; an ID order, not a generation or
+recruitment order) and grouped into blocks of 4 consecutive units; 4 consecutive blocks
+form a Latin *cycle*. Each block holds each of 4 grid columns once, in a seeded order (a
+permuted block):
 
-* Study A cells: 0, 1 = unswapped, 2, 3 = swapped (H-W1/H-W4 swap).
-* Study B cells: (SQ-1, unswapped), (SQ-1, swapped), (SQ-2, unswapped), (SQ-2, swapped).
+* Study A columns: 0, 2 = unswapped, 1, 3 = swapped (H-W1/H-W4 swap).
+* Study B columns: (SQ-1, unswapped), (SQ-1, swapped), (SQ-2, unswapped), (SQ-2, swapped).
 
-A unit's grid position is (row = block within cycle, column = cell). Latin squares on
-that grid (``latin.py``) assign semantic-permutation rotations and atom-order factors.
-See ``schedules/docs/curriculum.md`` for the balancing argument.
+A unit's grid position is (row = block within cycle, column). The GF(4) Latin squares of
+``latin.py`` on that grid shift the semantic labels (action and referent lines use
+orthogonal squares, so every semantic message sits at every matrix cell exactly once per
+cycle) and set the atom-order factors. See ``schedules/docs/curriculum.md``.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final, Literal
 
-from .latin import ORDER, CycleSquares, CyclicSquare
+from .latin import ORDER, CycleSquares
 from .matrix import (
     FAMILIES,
     INDICES,
@@ -50,11 +52,15 @@ CYCLE_SIZE: Final = BLOCK_SIZE * CYCLE_BLOCKS
 A_BATCHES: Final[dict[SetName, int]] = {"pilot": 3, "confirmatory": 18}
 PROFILES: Final[tuple[str, ...]] = ("P1", "P2", "P3")
 DESIGNERS: Final[tuple[str, ...]] = ("D1", "D2", "D3")
-A_CELL_SWAP: Final[tuple[bool, ...]] = (False, False, True, True)
+# Swapped grid columns {1, 3} form a coset of {0, 3} in GF(4) terms (CycleSquares.draw), as
+# in Study B, so each semantic message is the immediate novel test once and the delayed
+# novel test once in its two H-W1 and two H-W4 placements of a cycle.
+A_CELL_SWAP: Final[tuple[bool, ...]] = (False, True, False, True)
 
 # Study B (Study B protocol section 2).
 B_DYADS: Final[dict[SetName, int]] = {"pilot": 8, "confirmatory": 64}
 B_DEFAULT_SPARES: Final = 8
+B_MAX_SPARES: Final = 96  # spare IDs B-S01..B-S96 (two digits)
 SQ_ARMS: Final[tuple[str, ...]] = ("SQ-1", "SQ-2")
 STRUCTURED_FAMILY: Final[dict[str, Family]] = {"SQ-1": "K", "SQ-2": "Q"}
 B_CELLS: Final[tuple[tuple[str, bool], ...]] = (
@@ -67,6 +73,25 @@ B_CELLS: Final[tuple[tuple[str, bool], ...]] = (
 PERMUTATION_LINES: Final[tuple[tuple[Family, Role], ...]] = tuple(
     (f, r) for f in FAMILIES for r in ROLES
 )
+# GF(4) Latin square L_k (latin.CycleSquares.latin) that shifts each label line: label at
+# index i (0-based) = base[i ^ L_k]. Action and referent use orthogonal squares, so every
+# semantic message sits at every matrix cell once per cycle; with the column constraint of
+# CycleSquares.draw, each message's two H-W1 and two H-W4 cells also fall once in a
+# swapped and once in an unswapped Study B column.
+PERMUTATION_SQUARE: Final[dict[tuple[Family, Role], int]] = {
+    ("K", "action"): 1,
+    ("K", "referent"): 3,
+    ("Q", "action"): 1,
+    ("Q", "referent"): 3,
+}
+# Study A atom-order track shift per line (the other of L_1, L_3), so that both matrix
+# index and semantic label are balanced over atom positions in every cycle.
+ORDER_SQUARE: Final[dict[tuple[Family, Role], int]] = {
+    ("K", "action"): 3,
+    ("K", "referent"): 1,
+    ("Q", "action"): 3,
+    ("Q", "referent"): 1,
+}
 
 
 @dataclass(frozen=True)
@@ -102,13 +127,13 @@ class Unit:
     set_name: SetName
     unit_id: str
     kind: str  # "batch" (A), "dyad" or "spare" (B)
-    sequence: int  # 1-based position in the set's stored order
+    sequence: int  # 1-based position in the stored ID order (not a generation/recruitment order)
     block_id: str
     block_position: int  # 1-based position within the block
     cycle: int  # 1-based Latin cycle (4 blocks)
     grid_row: int  # 0-based block within the cycle
-    grid_col: int  # 0-based design cell
-    seed: str  # unit root seed: sha256(master|study|unit_id|unit)
+    grid_col: int  # 0-based grid column (A: swap cell; B: SQ x swap cell)
+    seed: str  # public unit identifier sha256(master|study|unit_id|unit); never seeds draws
     demo: bool  # True when generated from a public DEMO- seed
     seed_label: str  # public master-seed label: the DEMO- seed or sha256:<fingerprint>
     swap_w1_w4: bool
@@ -149,14 +174,13 @@ class BDyadSlot(Unit):
 class _Cycle:
     squares: CycleSquares
     perm_bases: tuple[tuple[str, ...], ...]  # per PERMUTATION_LINES
-    perm_squares: tuple[CyclicSquare, ...]  # per PERMUTATION_LINES
     order_bases: tuple[tuple[int, ...], ...]  # per PERMUTATION_LINES (track index order)
 
     def permutation(self, row: int, col: int) -> Permutation:
         lines = []
-        for base, square in zip(self.perm_bases, self.perm_squares, strict=True):
-            rot = square.value(row, col)
-            lines.append(tuple(base[(i + rot) % ORDER] for i in range(ORDER)))
+        for line, base in zip(PERMUTATION_LINES, self.perm_bases, strict=True):
+            shift = self.squares.latin(PERMUTATION_SQUARE[line], row, col)
+            lines.append(tuple(base[i ^ shift] for i in range(ORDER)))
         return Permutation(tuple(lines))
 
 
@@ -168,23 +192,21 @@ def _draw_cycle(
 ) -> _Cycle:
     squares = CycleSquares.draw(stream(master, study, token, "squares"))
     bases: list[tuple[str, ...]] = []
-    perm_squares: list[CyclicSquare] = []
     order_bases: list[tuple[int, ...]] = []
     for family, role in PERMUTATION_LINES:
         s = stream(master, study, token, f"perm:{family}:{role}")
         bases.append(s.permutation(LABELS[family][role]))
-        perm_squares.append(CyclicSquare.draw(s))
         o = stream(master, study, token, f"order:{family}:{role}")
         order_bases.append(o.permutation(order_indices[role]))
-    return _Cycle(squares, tuple(bases), tuple(perm_squares), tuple(order_bases))
+    return _Cycle(squares, tuple(bases), tuple(order_bases))
 
 
 def _block_cells(master: MasterSeed, study: Study, block_id: str, size: int) -> tuple[int, ...]:
     """Cells of one block in seeded order.
 
     A partial block (``size`` < 4) takes the first cell ``c`` of the seeded order, then its
-    diagonal partner ``3 - c`` (other swap level; in Study B also the other SQ arm, and
-    always the other family-first value), then further cells in seeded order.
+    diagonal partner ``3 - c`` (in Study B the other SQ arm and swap level; always the
+    other family-first value), then further cells in seeded order.
     """
     order = stream(master, study, block_id, "cells").permutation(range(ORDER))
     if size >= ORDER:
@@ -253,20 +275,21 @@ def interleave(
 
 
 def _a_atom_order(cyc: _Cycle, row: int, col: int) -> tuple[Family, tuple[str, ...]]:
-    """Study A: index rotation from square A; family-first and role-first from square B."""
-    rot = cyc.squares.a(row, col)
+    """Study A: each track lists its indices as ``base[k] ^ L_t`` (0-based, t from
+    ORDER_SQUARE); family-first and role-first come from the two bits of ``L_2``."""
     ff, rf = cyc.squares.split(row, col)
     fam = _family_order(ff)
-    tracks = {
-        line: _rotate(base, rot)
-        for line, base in zip(PERMUTATION_LINES, cyc.order_bases, strict=True)
-    }
+    tracks = {}
+    for line, base in zip(PERMUTATION_LINES, cyc.order_bases, strict=True):
+        shift = cyc.squares.latin(ORDER_SQUARE[line], row, col)
+        tracks[line] = tuple(((i - 1) ^ shift) + 1 for i in base)
     return fam[0], interleave(tracks, fam, _role_order(rf))
 
 
 def _b_wave_orders(cyc: _Cycle, row: int, col: int) -> tuple[Family, tuple[tuple[str, ...], ...]]:
     """Study B: wave-1 role-first and index order from square A; family-first and wave-2
-    role-first from square B; wave 3 starts with the role that came second in wave 2."""
+    role-first from the bits of ``L_2``; wave 3 starts with the role that came second in
+    wave 2."""
     rf1, rot1 = divmod(cyc.squares.a(row, col), 2)
     ff, rf2 = cyc.squares.split(row, col)
     rf3 = 1 - rf2
@@ -292,58 +315,59 @@ def _b_wave_orders(cyc: _Cycle, row: int, col: int) -> tuple[Family, tuple[tuple
 def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, ...]:
     """Study A batches with profile, anonymous A1 designer, swap flag and curriculum design.
 
-    Confirmatory: 18 batches in 5 blocks (4 + 4 + 4 + 4 + 2); every block holds equal
-    numbers of unswapped and swapped batches. Profiles are dealt by block: three profiles
-    take one whole block each, the fourth block is split between two profiles along its
-    diagonal cell pairs (0, 3) and (1, 2), and the last block goes to the third profile.
-    So each profile has 6 batches, 3 swapped, and its batches cover a complete Latin row
-    plus two cells of one row (label-at-index counts 1 or 2 within every profile). Within
-    each profile and swap level the designers D1..D3 are dealt in a seeded order, so each
-    designer makes 2 books per profile (one swapped, one not). K and Q each lead the atom
-    order of 9 batches (3 per profile). Pilot: 3 batches, one per profile, distinct
-    designers, at least one swapped and one unswapped batch.
+    Confirmatory: 18 batches, the full factorial profile (3) x designer (3) x swap (2), in a
+    cycle of 16 (blocks 1-4) plus block 5 (2 batches). Columns 1 and 3 are swapped, so each
+    block of 4 has 2 swapped batches and the partial block 5 (a diagonal cell pair) one.
+    Profiles are dealt by block: each of blocks 1-3 goes to one profile (seeded), block 4 is
+    split between two profiles along its diagonal cell pairs (0, 3) and (1, 2), and block 5
+    goes to the third profile. So each profile has 6 batches, 3 swapped, and covers a
+    complete Latin row plus two cells of one row (label-at-index counts 1 or 2 within every
+    profile; K/Q lead 3/3). Within each profile and swap level the designers D1..D3 are
+    dealt in a seeded order, so each designer makes 2 books per profile (one swapped, one
+    not). Pilot: 3 batches, one per profile, distinct designers, both swap levels.
     """
     code = SET_CODE[set_name]
     prefix = f"A-{code}"
     n = A_BATCHES[set_name]
     slots = _slots(master, "A", prefix, n)
     s = stream(master, "A", prefix, "batch-table")
-    if set_name == "confirmatory":
-        assert n == 4 * BLOCK_SIZE + 2
-        whole = s.permutation(PROFILES)  # blocks 1-3
-        split = s.permutation(PROFILES)  # [0]: block 5; [1]: block 4 cells 0, 3; [2]: cells 1, 2
+    order_indices: dict[Role, tuple[int, ...]] = {"action": INDICES, "referent": INDICES}
+    cycles: dict[int, _Cycle] = {}
 
-        def profile_of(slot: _Slot) -> str:
+    def cycle_of(number: int) -> _Cycle:
+        if number not in cycles:
+            token = f"{prefix}-cyc{number:02d}"
+            cycles[number] = _draw_cycle(master, "A", token, order_indices)
+        return cycles[number]
+
+    swaps = [A_CELL_SWAP[slot.col] for slot in slots]
+    if set_name == "confirmatory":
+        if n != CYCLE_SIZE + 2:
+            raise RuntimeError("the Study A layout assumes 16 + 2 confirmatory batches")
+        whole = s.permutation(PROFILES)  # blocks 1-3
+        split = s.permutation(PROFILES)  # [0]: block 5; [1]: block 4 cells 0, 3; [2]: 1, 2
+        profiles: list[str] = []
+        for slot in slots:
             block0 = (slot.sequence - 1) // BLOCK_SIZE
             if block0 < len(PROFILES):
-                return whole[block0]
-            if block0 == len(PROFILES):
-                return split[1] if slot.col in (0, ORDER - 1) else split[2]
-            return split[0]
-
-        profiles = [profile_of(slot) for slot in slots]
+                profiles.append(whole[block0])
+            elif block0 == len(PROFILES):
+                profiles.append(split[1] if slot.col in (0, ORDER - 1) else split[2])
+            else:
+                profiles.append(split[0])
         designers = [""] * n
         for p in PROFILES:
             for swap in (False, True):
-                idx = [
-                    i
-                    for i, sl in enumerate(slots)
-                    if profiles[i] == p and A_CELL_SWAP[sl.col] == swap
-                ]
+                idx = [i for i in range(n) if profiles[i] == p and swaps[i] == swap]
                 for i, d in zip(idx, s.permutation(DESIGNERS), strict=True):
                     designers[i] = d
-        assignment = list(zip(profiles, designers, strict=True))
     else:
-        assignment = list(zip(s.permutation(PROFILES), s.permutation(DESIGNERS), strict=True))
+        profiles = list(s.permutation(PROFILES))
+        designers = list(s.permutation(DESIGNERS))
 
-    order_indices: dict[Role, tuple[int, ...]] = {"action": INDICES, "referent": INDICES}
-    cycles: dict[int, _Cycle] = {}
     out: list[ABatch] = []
-    for slot, (profile, designer) in zip(slots, assignment, strict=True):
-        if slot.cycle not in cycles:
-            token = f"{prefix}-cyc{slot.cycle:02d}"
-            cycles[slot.cycle] = _draw_cycle(master, "A", token, order_indices)
-        cyc = cycles[slot.cycle]
+    for i, slot in enumerate(slots):
+        cyc = cycle_of(slot.cycle)
         family_first, order = _a_atom_order(cyc, slot.row, slot.col)
         unit_id = f"A-{code}{slot.sequence:02d}"
         out.append(
@@ -361,13 +385,13 @@ def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, 
                 seed=derive_seed(master, "A", unit_id, "unit"),
                 demo=master.demo,
                 seed_label=master.label,
-                swap_w1_w4=A_CELL_SWAP[slot.col],
+                swap_w1_w4=swaps[i],
                 permutation=cyc.permutation(slot.row, slot.col),
                 family_first=family_first,
                 atom_order=order,
                 wave_orders=(),
-                profile=profile,
-                designer=designer,
+                profile=profiles[i],
+                designer=designers[i],
             )
         )
     return tuple(out)
@@ -384,11 +408,11 @@ def build_b_design_table(
 
     Slots form permuted blocks of 4 that contain each SQ arm x swap cell once (seeded order
     within the block). Confirmatory sets have 64 main slots plus ``spares`` spare slots
-    (a multiple of 4; spare blocks follow the main blocks); the pilot has 8 slots and no
-    spares. Pilot and confirmatory slots never share IDs or seeds.
+    (a multiple of 4, at most 96; spare blocks follow the main blocks); the pilot has 8
+    slots and no spares. Pilot and confirmatory slots never share IDs or seeds.
     """
-    if spares < 0 or spares % BLOCK_SIZE:
-        raise ValueError("spares must be a non-negative multiple of 4")
+    if spares < 0 or spares % BLOCK_SIZE or spares > B_MAX_SPARES:
+        raise ValueError(f"spares must be a multiple of 4 between 0 and {B_MAX_SPARES}")
     if set_name == "pilot":
         spares = 0  # spare slots exist only for the confirmatory set
     code = SET_CODE[set_name]

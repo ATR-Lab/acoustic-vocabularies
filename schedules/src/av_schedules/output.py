@@ -42,6 +42,7 @@ A_TABLE_COLUMNS: Final[tuple[str, ...]] = (
     "Q_referent",
     "atom_order",
     "seed",
+    "seed_label",
 )
 B_TABLE_COLUMNS: Final[tuple[str, ...]] = (
     "unit_id",
@@ -62,6 +63,7 @@ B_TABLE_COLUMNS: Final[tuple[str, ...]] = (
     "V2_atom_order",
     "V3_atom_order",
     "seed",
+    "seed_label",
 )
 MANIFEST_FORMAT: Final = "av-schedules/manifest"
 
@@ -88,6 +90,7 @@ def table_rows(units: Sequence[Unit]) -> list[dict[str, str]]:
             "swap_w1_w4": "1" if u.swap_w1_w4 else "0",
             "family_first": u.family_first,
             "seed": u.seed,
+            "seed_label": u.seed_label,
         }
         for f in FAMILIES:
             for r in ROLES:
@@ -148,8 +151,43 @@ def generate(
     return render_set(build_units(master, study, set_name, spares=spares))
 
 
+def _stale_files(root: Path, files: Mapping[str, bytes]) -> list[Path]:
+    """Files listed by a manifest being replaced that the new output no longer contains."""
+    stale: list[Path] = []
+    for rel in sorted(files):
+        if not rel.endswith("-manifest.json"):
+            continue
+        old = root.joinpath(*PurePosixPath(rel).parts)
+        if not old.is_file():
+            continue
+        try:
+            listed = json.loads(old.read_text(encoding="utf-8")).get("files", {})
+        except (ValueError, OSError) as exc:
+            raise ValueError(f"cannot read existing manifest {old}: {exc}") from exc
+        base = PurePosixPath(rel).parent
+        for name in sorted(listed):
+            parts = PurePosixPath(name).parts
+            if ".." in parts or PurePosixPath(name).is_absolute():
+                raise ValueError(f"unexpected path {name!r} in {old}")
+            full = (base / name).as_posix()
+            if full not in files:
+                stale.append(root.joinpath(*PurePosixPath(full).parts))
+    return stale
+
+
 def write_files(root: Path, files: Mapping[str, bytes]) -> None:
-    """Write ``files`` (relative POSIX paths) under ``root`` byte-for-byte."""
+    """Write ``files`` (relative POSIX paths) under ``root`` byte-for-byte.
+
+    When a set manifest (``*-manifest.json``) is replaced, files listed by the old
+    manifest but absent from the new output (e.g. unit folders of a set regenerated with
+    fewer spares) are deleted, and emptied unit folders removed, so no stale units remain.
+    """
+    for path in _stale_files(root, files):
+        if path.is_file():
+            path.unlink()
+        parent = path.parent
+        if parent != root and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
     for rel, data in sorted(files.items()):
         path = root.joinpath(*PurePosixPath(rel).parts)
         path.parent.mkdir(parents=True, exist_ok=True)
