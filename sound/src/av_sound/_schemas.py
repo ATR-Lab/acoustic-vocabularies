@@ -6,7 +6,6 @@ refer to another (for example the reserved registry refers to the recipe schema)
 
 from __future__ import annotations
 
-import json
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -16,7 +15,7 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 from av_sound._paths import schema_path
-from av_sound.recipe import _no_constant, _unique_keys
+from av_sound.recipe import StrictJsonError, strict_json_loads
 
 SCHEMA_FILES: tuple[str, ...] = (
     "recipe.schema.json",
@@ -25,23 +24,17 @@ SCHEMA_FILES: tuple[str, ...] = (
     "validator-config.schema.json",
 )
 
+strict_loads = strict_json_loads
+"""Strict JSON with the same rules as `Recipe.from_json` (code `E_JSON`)."""
 
-class StrictJsonError(ValueError):
-    """Text that is not strict JSON: syntax errors, NaN/Infinity, duplicate keys, bad UTF-8."""
-
-
-def strict_loads(text: str | bytes | bytearray) -> object:
-    """Parse strict JSON with the same rules as `Recipe.from_json` (code `E_JSON`).
-
-    Bytes must be UTF-8 without a byte-order mark. Every failure, including nesting or
-    integer-size limits, raises `StrictJsonError`.
-    """
-    try:
-        if isinstance(text, bytes | bytearray):
-            text = bytes(text).decode("utf-8")
-        return json.loads(text, object_pairs_hook=_unique_keys, parse_constant=_no_constant)
-    except (ValueError, RecursionError) as exc:  # JSONDecodeError, UnicodeDecodeError, hooks
-        raise StrictJsonError(str(exc)) from exc
+__all__ = [
+    "SCHEMA_FILES",
+    "StrictJsonError",
+    "load_json_file",
+    "load_schema",
+    "schema_validator",
+    "strict_loads",
+]
 
 
 def load_json_file(path: Path) -> object:
