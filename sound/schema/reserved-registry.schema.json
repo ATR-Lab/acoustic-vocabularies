@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/sound/schema/reserved-registry.schema.json",
+  "title": "Reserved-signal registry",
+  "description": "Nonlexical signals that must never be admissible as motifs (calibration examples, READY cue, grammar clicks). The validator reports E_RESERVED when a candidate's pcm_sha256 equals an entry's, or when an entry has a recipe (same profile, or profile null) and the candidate is closer to it than the separation threshold. Hashes are recorded for the stated renderer_version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "renderer_version", "entries"],
+  "properties": {
+    "registry_version": {
+      "description": "Format version of this file.",
+      "const": 1
+    },
+    "renderer_version": {
+      "description": "Renderer version that produced every hash below.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "profile",
+        "n_samples",
+        "pcm_sha256",
+        "file_sha256",
+        "recipe",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "description": "Unique entry identifier.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "maxLength": 64
+        },
+        "kind": {
+          "enum": ["calibration", "ready_cue", "click", "other"]
+        },
+        "profile": {
+          "description": "Profile the signal belongs to; null means it applies to every profile.",
+          "enum": ["P1", "P2", "P3", null]
+        },
+        "n_samples": {
+          "description": "Number of 48 kHz mono samples.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "pcm_sha256": {
+          "description": "SHA-256 of the int16 LE sample bytes (renderer spec D9).",
+          "$ref": "#/$defs/sha256"
+        },
+        "file_sha256": {
+          "description": "SHA-256 of the canonical WAV file (renderer spec D8, D9).",
+          "$ref": "#/$defs/sha256"
+        },
+        "recipe": {
+          "description": "Motif recipe when the signal is recipe-shaped, else null. Enables the feature-distance collision check.",
+          "oneOf": [{ "$ref": "recipe.schema.json" }, { "type": "null" }]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,10 @@ Stable public API (see `sound/README.md` and `docs/interfaces/sound-engine.md`):
 - `RENDERER_VERSION`, `renderer_hash`, `renderer_recipe_schema_hash`, `self_test`: provenance.
 - `compose_message`, `composite_hash`, `message_length`, `write_message_wav`: messages
   (action + 9,600 zero samples + referent; `sound/docs/composition.md`).
+- `validate(candidate, profile, committed) -> ValidationResult`, `nearest_reference`,
+  `Reference`: admissibility checks and the 12-feature separation screen.
+- `features`, `distance`, `separated`, `sum_squared_diff`: the exact feature metric.
+- `load_reserved_registry`, `ReservedEntry`, `ReservedRegistry`: reserved signals.
 """
 
 from av_sound.composer import (
@@ -26,6 +30,14 @@ from av_sound.composer import (
     message_length,
     write_message_wav,
 )
+from av_sound.features import (
+    FEATURE_NAMES,
+    distance,
+    features,
+    parse_threshold,
+    separated,
+    sum_squared_diff,
+)
 from av_sound.grammar import GrammarError
 from av_sound.recipe import E_DOMAIN, E_JSON, E_SCHEMA, Profile, Recipe, RecipeError
 from av_sound.renderer import (
@@ -38,8 +50,19 @@ from av_sound.renderer import (
     render,
     timing,
 )
+from av_sound.reserved import ReservedEntry, ReservedRegistry, load_reserved_registry
 from av_sound.selftest import self_test
 from av_sound.tables import SAMPLE_RATE, SAMPLES_PER_MS
+from av_sound.validate import (
+    REASON_CODES,
+    VALIDATOR_VERSION,
+    NearestReference,
+    Reference,
+    ValidationResult,
+    load_separation_threshold,
+    nearest_reference,
+    validate,
+)
 from av_sound.version import renderer_hash, renderer_manifest, renderer_recipe_schema_hash
 from av_sound.wav import file_sha256, pcm_sha256, read_wav, wav_bytes, write_wav
 
@@ -47,31 +70,45 @@ __all__ = [
     "E_DOMAIN",
     "E_JSON",
     "E_SCHEMA",
+    "FEATURE_NAMES",
     "GAP_SAMPLES",
     "MAX_MESSAGE_SAMPLES",
     "MIN_EVENT_SAMPLES",
     "MIN_MESSAGE_SAMPLES",
+    "REASON_CODES",
     "RENDERER_VERSION",
     "RMS_TARGET",
     "SAMPLES_PER_MS",
     "SAMPLE_RATE",
+    "VALIDATOR_VERSION",
     "AtomAudio",
     "AtomAudioLike",
     "CompositionError",
     "GrammarError",
     "HeldOutMessageError",
     "Message",
+    "NearestReference",
     "Profile",
     "Recipe",
     "RecipeError",
+    "Reference",
     "Rendered",
+    "ReservedEntry",
+    "ReservedRegistry",
     "Timing",
+    "ValidationResult",
     "compose",
     "compose_message",
     "composite_hash",
+    "distance",
     "event_samples",
+    "features",
     "file_sha256",
+    "load_reserved_registry",
+    "load_separation_threshold",
     "message_length",
+    "nearest_reference",
+    "parse_threshold",
     "pcm_sha256",
     "read_wav",
     "render",
@@ -79,7 +116,10 @@ __all__ = [
     "renderer_manifest",
     "renderer_recipe_schema_hash",
     "self_test",
+    "separated",
+    "sum_squared_diff",
     "timing",
+    "validate",
     "wav_bytes",
     "write_message_wav",
     "write_wav",
