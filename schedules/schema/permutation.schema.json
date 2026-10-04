@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/permutation.schema.json",
+  "title": "Unit permutation and curriculum (permutation.json)",
+  "description": "One Study A batch or Study B dyad slot: semantic-label permutation onto matrix indices, H-W1/H-W4 swap, atom introduction order and the 32 message cells. Written by av_schedules; consumed by the package builder, session engine, round orchestrator and bank builder. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "generator",
+    "demo",
+    "seed_label",
+    "study",
+    "set",
+    "unit_id",
+    "unit_kind",
+    "shared_by",
+    "seed",
+    "design",
+    "swap_w1_w4",
+    "family_first",
+    "labels",
+    "atoms",
+    "atom_order",
+    "messages",
+    "novel_by_visit",
+    "curriculum_csv_sha256"
+  ],
+  "properties": {
+    "format": {"const": "av-schedules/permutation"},
+    "format_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "av-schedules"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "demo": {"type": "boolean", "description": "True when generated from a public DEMO- seed; such units must never be used with participants."},
+    "seed_label": {
+      "type": "string",
+      "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$",
+      "description": "The DEMO- seed itself, or sha256:<SHA-256 of the private master seed>."
+    },
+    "study": {"enum": ["A", "B"]},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "unit_id": {"type": "string", "pattern": "^(A-[PC][0-9]{2}|B-[PCS][0-9]{2})$"},
+    "unit_kind": {"enum": ["batch", "dyad", "spare"]},
+    "shared_by": {
+      "enum": ["batch", "dyad"],
+      "description": "batch: all three method books of the Study A batch; dyad: both members of the Study B dyad."
+    },
+    "seed": {"$ref": "#/$defs/sha256"},
+    "design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "block_id", "block_position", "cycle", "grid_row", "grid_col"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1},
+        "block_id": {"type": "string", "pattern": "^[AB]-[PC]-blk[0-9]{2}$"},
+        "block_position": {"type": "integer", "minimum": 1, "maximum": 4},
+        "cycle": {"type": "integer", "minimum": 1},
+        "grid_row": {"type": "integer", "minimum": 0, "maximum": 3},
+        "grid_col": {"type": "integer", "minimum": 0, "maximum": 3}
+      }
+    },
+    "swap_w1_w4": {"type": "boolean"},
+    "family_first": {"$ref": "#/$defs/family"},
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["K", "Q"],
+      "description": "Semantic labels at matrix indices 1..4 (array position i holds the label of index i+1).",
+      "properties": {
+        "K": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "referent"],
+          "properties": {
+            "action": {"$ref": "#/$defs/labelsK_action"},
+            "referent": {"$ref": "#/$defs/labelsK_referent"}
+          }
+        },
+        "Q": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "referent"],
+          "properties": {
+            "action": {"$ref": "#/$defs/labelsQ_action"},
+            "referent": {"$ref": "#/$defs/labelsQ_referent"}
+          }
+        }
+      }
+    },
+    "atoms": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["atom_id", "family", "role", "index", "semantic_label", "matrix_wave", "order_position"],
+        "properties": {
+          "atom_id": {"$ref": "#/$defs/atom_id"},
+          "family": {"$ref": "#/$defs/family"},
+          "role": {"enum": ["action", "referent"]},
+          "index": {"$ref": "#/$defs/index"},
+          "semantic_label": {"$ref": "#/$defs/label"},
+          "matrix_wave": {"$ref": "#/$defs/wave"},
+          "order_position": {"type": "integer", "minimum": 1, "maximum": 16}
+        }
+      }
+    },
+    "atom_order": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/atom_id"},
+      "description": "Atom introduction order. Study A: generation/commit and atomic-lesson order shared by the batch. Study B: wave 1, 2, 3 menu orders concatenated (also the bank traversal order)."
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "message_id",
+          "family",
+          "action_atom",
+          "referent_atom",
+          "semantic_action",
+          "semantic_referent",
+          "status",
+          "training_wave",
+          "heldout_set",
+          "novel_visit"
+        ],
+        "properties": {
+          "message_id": {"type": "string", "pattern": "^[KQ]-a[1-4]-r[1-4]$"},
+          "family": {"$ref": "#/$defs/family"},
+          "action_atom": {"type": "string", "pattern": "^[KQ]-a[1-4]$"},
+          "referent_atom": {"type": "string", "pattern": "^[KQ]-r[1-4]$"},
+          "semantic_action": {"$ref": "#/$defs/label"},
+          "semantic_referent": {"$ref": "#/$defs/label"},
+          "status": {"enum": ["trained", "heldout"]},
+          "training_wave": {"oneOf": [{"$ref": "#/$defs/wave"}, {"type": "null"}]},
+          "heldout_set": {"oneOf": [{"$ref": "#/$defs/heldout_set"}, {"type": "null"}]},
+          "novel_visit": {
+            "oneOf": [{"enum": ["D0", "D7", "unused", "V1", "V2", "V3", "W1", "W4"]}, {"type": "null"}]
+          }
+        }
+      }
+    },
+    "novel_by_visit": {
+      "type": "object",
+      "description": "Held-out message IDs tested at each visit after the swap (A: D0, D7; B: V1..W4).",
+      "propertyNames": {"enum": ["D0", "D7", "V1", "V2", "V3", "W1", "W4"]},
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string", "pattern": "^[KQ]-a[1-4]-r[1-4]$"}
+      }
+    },
+    "curriculum_csv_sha256": {"$ref": "#/$defs/sha256"},
+    "study_a": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile"],
+      "properties": {
+        "profile": {"enum": ["P1", "P2", "P3"]}
+      }
+    },
+    "study_b": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sq_arm", "structured_family", "dictionary_family", "wave_atom_order"],
+      "properties": {
+        "sq_arm": {"enum": ["SQ-1", "SQ-2"]},
+        "structured_family": {"$ref": "#/$defs/family"},
+        "dictionary_family": {"$ref": "#/$defs/family"},
+        "wave_atom_order": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["1", "2", "3"],
+          "properties": {
+            "1": {"type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/atom_id"}},
+            "2": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/atom_id"}},
+            "3": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/atom_id"}}
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"study": {"const": "A"}}},
+      "then": {
+        "required": ["study_a"],
+        "not": {"required": ["study_b"]},
+        "properties": {"unit_kind": {"const": "batch"}, "shared_by": {"const": "batch"}}
+      }
+    },
+    {
+      "if": {"properties": {"study": {"const": "B"}}},
+      "then": {
+        "required": ["study_b"],
+        "not": {"required": ["study_a"]},
+        "properties": {"unit_kind": {"enum": ["dyad", "spare"]}, "shared_by": {"const": "dyad"}}
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "family": {"enum": ["K", "Q"]},
+    "index": {"type": "integer", "minimum": 1, "maximum": 4},
+    "wave": {"type": "integer", "minimum": 1, "maximum": 3},
+    "atom_id": {"type": "string", "pattern": "^[KQ]-[ar][1-4]$"},
+    "heldout_set": {"enum": ["H-V1", "H-V2", "H-V3", "H-W1", "H-W4"]},
+    "label": {
+      "enum": ["ADD_ONE", "REMOVE_ONE", "FLIP_CARD", "ALIGN_ARROW", "A", "B", "C", "D", "SCAN", "TAG", "CLOSE", "QUARANTINE", "E", "F", "G", "H"]
+    },
+    "labelsK_action": {
+      "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true,
+      "items": {"enum": ["ADD_ONE", "REMOVE_ONE", "FLIP_CARD", "ALIGN_ARROW"]}
+    },
+    "labelsK_referent": {
+      "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true,
+      "items": {"enum": ["A", "B", "C", "D"]}
+    },
+    "labelsQ_action": {
+      "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true,
+      "items": {"enum": ["SCAN", "TAG", "CLOSE", "QUARANTINE"]}
+    },
+    "labelsQ_referent": {
+      "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true,
+      "items": {"enum": ["E", "F", "G", "H"]}
+    }
+  }
+}

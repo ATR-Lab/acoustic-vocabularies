@@ -1,0 +1,68 @@
+{
+  "balance_max_abs_deviation": {
+    "atom_position": {
+      "all": "0.8125"
+    },
+    "designer": {
+      "all": "0",
+      "profile=P1": "0.6667",
+      "profile=P2": "0.6667",
+      "profile=P3": "0.6667",
+      "swap_w1_w4=0": "0.6667",
+      "swap_w1_w4=1": "0.6667"
+    },
+    "family_first": {
+      "all": "0.5",
+      "profile=P1": "0.5",
+      "profile=P2": "0.5",
+      "profile=P3": "0.5",
+      "swap_w1_w4=0": "0.5",
+      "swap_w1_w4=1": "1"
+    },
+    "label_index": {
+      "all": "0.75",
+      "profile=P1": "0.75",
+      "profile=P2": "0.75",
+      "profile=P3": "0.75",
+      "swap_w1_w4=0": "0.75",
+      "swap_w1_w4=1": "0.5"
+    },
+    "profile": {
+      "all": "0",
+      "swap_w1_w4=0": "0.6667",
+      "swap_w1_w4=1": "0.6667"
+    },
+    "swap_w1_w4": {
+      "all": "0.5",
+      "profile=P1": "0.5",
+      "profile=P2": "0.5",
+      "profile=P3": "0.5"
+    }
+  },
+  "demo": true,
+  "files": {
+    "A-P01/curriculum.csv": "7e1e7693c1e55ebf47facba2a42737197cbd7cf81f6b67532589f7654ed51667",
+    "A-P01/permutation.json": "8b74e0d15cb7214f63f8dee39acb055a8f5564c6e6b4666a4fd4b62f482e3273",
+    "A-P02/curriculum.csv": "a3b6cdb90881da212ceac2917e89cffd01f1bd03284971bbb39aa5fadd76f912",
+    "A-P02/permutation.json": "01e0d5c327db32370070b8adf72c9b787f9fd8eb0700ffffd24f396c881dd244",
+    "A-P03/curriculum.csv": "09c7854b37a6e23c349e8c43c797c8ae9b33b480e16f005857725d5630ddb43d",
+    "A-P03/permutation.json": "f2b5ec228f458d5846f157393379fc3c814a303214eff8dd403309e0771f856d",
+    "pilot-balance.csv": "01f50dc309a6bb87565be6c5950460394218bd226041529a999d1710ca678b20",
+    "pilot-batch-table.csv": "5a2163effb1132711133ac7368973a442af13e8c6510aecfc46d2287fdef365f"
+  },
+  "format": "av-schedules/manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "A",
+  "units": [
+    "A-P01",
+    "A-P02",
+    "A-P03"
+  ]
+}

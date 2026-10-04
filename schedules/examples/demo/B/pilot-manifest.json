@@ -1,0 +1,90 @@
+{
+  "balance_max_abs_deviation": {
+    "family_first": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "label_index": {
+      "all": "0",
+      "sq_arm=SQ-1": "1",
+      "sq_arm=SQ-2": "1",
+      "swap_w1_w4=0": "1",
+      "swap_w1_w4=1": "1"
+    },
+    "sq_arm": {
+      "all": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "swap_w1_w4": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0"
+    },
+    "wave1_position": {
+      "all": "0",
+      "sq_arm=SQ-1": "0.5",
+      "sq_arm=SQ-2": "0.5",
+      "swap_w1_w4=0": "0.5",
+      "swap_w1_w4=1": "0.5"
+    },
+    "wave2_position": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "wave3_position": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    }
+  },
+  "demo": true,
+  "files": {
+    "B-P01/curriculum.csv": "ef1234e37cd9ac940fee6c9a997f1d5584cab925d340cf7134e18cc37973df6f",
+    "B-P01/permutation.json": "8f4c6673cbea78ea1c056769b94d93ce24016b39fb81c74857e1e9643f0f07fe",
+    "B-P02/curriculum.csv": "050ce1cf73acc2c09e472dd6533d67aa7c9740740d03f67b925d474c5e6c2ba3",
+    "B-P02/permutation.json": "6ff9b5cf01dfeebc1aee162c27204298d5b1a7825af945c8ef9cfae4e369628a",
+    "B-P03/curriculum.csv": "91f986844036c7d44b31917fe447f95173ef017cf24abaf1d100cb02cb183640",
+    "B-P03/permutation.json": "66a83b255cbc0128c8f86b9c4279bf9b284ca7c5a697d8fe51d495d35c619aeb",
+    "B-P04/curriculum.csv": "caaebc2989a66d45b04e874be3be67748f248ec4f357984867e815fc3c09349e",
+    "B-P04/permutation.json": "d25f7adb38fb7b5651bc2d60009a4ff4350e3db4c71200dc640aa13d210ff014",
+    "B-P05/curriculum.csv": "304d181ba2d98f2152c5fb5c1d14acf22a6e89c66e3f87d4ced67ce9a2b03778",
+    "B-P05/permutation.json": "9a1d87f83c2908517a768ef723f190f6e4289dbc0a1ddd81fafd52058f7574b8",
+    "B-P06/curriculum.csv": "fd97e55545bfbc79e2f71e04125e1fe29c9ad6e4b47d9a960743c18900a060d6",
+    "B-P06/permutation.json": "d6ce3e501e3582b5cbb75378a0192050ebd0fdf72bab1acbe79f4c359bace217",
+    "B-P07/curriculum.csv": "85af8357adfcc04415009d295d0f43a3131da1e03d389ecb5787f669c4e00665",
+    "B-P07/permutation.json": "7aa311033b197fc2f21c97c56ac601583c47dda189ad990da136f0f4b244967d",
+    "B-P08/curriculum.csv": "aafa357da67e0b110384b71add998c7b18178e2b538d45c296193b586db81855",
+    "B-P08/permutation.json": "b91979fc3d1a3336cb575db604862cea3fc2ae6b1c11d570184acbfc8b09eeb8",
+    "pilot-balance.csv": "0fcd5be5df50e3fd5e7c1b81691dc6e3643186b2c20e121f293437aee8402892",
+    "pilot-design-table.csv": "147a80d5db33ce1f40088693e000f98e78354f90edcbdbc92bdfa6a9d910d5eb"
+  },
+  "format": "av-schedules/manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "B",
+  "units": [
+    "B-P01",
+    "B-P02",
+    "B-P03",
+    "B-P04",
+    "B-P05",
+    "B-P06",
+    "B-P07",
+    "B-P08"
+  ]
+}
