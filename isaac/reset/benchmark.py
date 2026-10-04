@@ -108,6 +108,13 @@ def run_reset_check(adapter, output, cycles=1000, capture_image=None):
               "reset_snapshot_sha256": sha256(snapshot), "scene_sha256": adapter.scene_sha256,
               "joint_count": len(snapshot["state"]["robot"]["joint_names"]), "object_count": len(snapshot["state"]["objects"]),
               "forward_frames_per_reset": snapshot["fixed_steps"], "physics_integration_during_reset": False,
+              "max_deviation": {key: max(row[key] for row in rows) for key in rows[0]
+                                if key not in {"cycle", "reset_ok", "elapsed_ms_including_log", "sim_time"}},
+              "coverage": {"all_joint_positions_and_velocities": True,
+                           "all_object_poses_velocities_flags_and_discrete_states": True,
+                           "all_material_colors_roughness_and_light_colors_intensities": True,
+                           "all_observed_rigid_body_frames_verified": True,
+                           "root_perturbation": False},
               "elapsed_ms_including_log": {"median": statistics.median(times), "p95": times[math.ceil(.95*len(times))-1], "max": max(times)},
               "locked_joint_injection_rejected": not fault["reset_ok"], "explicit_recovery_ok": recovery["reset_ok"],
               "methodology_review_complete": False, "gaze_neutrality_review_complete": False,
