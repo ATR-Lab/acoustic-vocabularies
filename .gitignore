@@ -1,0 +1,47 @@
+# Unity generated state
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+.vs/
+*.csproj
+*.sln
+*.slnx
+*.user
+
+# Python / tools
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Private configuration, raw evidence, external assets and study material
+.env
+.env.*
+*.local.*
+.local/
+local-data/
+private/
+participant-data/
+study-material/
+codebooks/
+learner-packages/
+candidate-banks/
+allocation-lists/
+confirmatory-seeds/
+external-assets/
+recordings/
+raw-results/
+*.pem
+*.key
+*.pfx
+*.p12
