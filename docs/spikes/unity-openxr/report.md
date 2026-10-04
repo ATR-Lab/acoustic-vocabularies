@@ -20,10 +20,20 @@ changed. [Official Unity release description](https://discussions.unity.com/t/un
 ## Build evidence
 
 Headless package resolution and scene configuration succeeded. The Windows x64
-Mono/Direct3D 11 development player built with zero build errors. Android build
-status is recorded in the final validation update below. Three synthetic analysis
+Mono/Direct3D 11 development player and Android ARM64/IL2CPP/Vulkan development APK
+both built with zero build errors on 2026-10-04. Android packaging required short,
+process-local temporary and Gradle cache directories to avoid a Java local-socket
+failure and the bundled Ninja tool's path-length limit; the runbook documents the
+optional wrapper parameters. No new editor or system tooling was installed.
+Three synthetic analysis
 tests verify percentiles, unknown rates, monotonicity rejection and incomplete
 runs; these fixtures are not device measurements.
+
+Repository guard and JSON schema checks passed; all nine repository Python tests
+passed. The independent #48 audio and #49 input source sets compiled against this
+project after fixing #48's moved audio-importer preload setting. #49's editor
+self-check confirmed 32 legal commands, no preselection and action clearing after
+a target-family change. This is source/state validation, not device usability data.
 
 Both builds select the same scene. Its synthetic geometry totals 10,040 triangles
 and has not been matched to G1/Dex3; real robot load validation remains pending #46.
