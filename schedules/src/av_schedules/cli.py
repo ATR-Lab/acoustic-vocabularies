@@ -1,4 +1,7 @@
-"""Command line: ``python -m av_schedules {curriculum,schedules,check-planning,demo-examples}``."""
+"""Command line: ``python -m av_schedules <command>``.
+
+Commands: ``curriculum``, ``schedules``, ``allocate``, ``check-planning``, ``demo-examples``.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +14,8 @@ from pathlib import Path
 
 from . import __version__
 from ._paths import default_out_dir, examples_dir
+from .assign import allocation_seed, require_distinct_seeds
+from .assign_output import assign_files, existing_allocation_seed_label, manifest_name
 from .design import B_DEFAULT_SPARES, SET_NAMES, SetName
 from .matrix import Study
 from .output import demo_example_files, existing_seed_label, generate, write_files
@@ -70,6 +75,54 @@ def _refuse(message: str) -> int:
     return 2
 
 
+def _set_outputs(study_dir: Path, set_name: SetName) -> dict[str, str]:
+    """Seed labels of the outputs already written for one set, by kind."""
+    labels = {
+        "curriculum": existing_seed_label(study_dir, set_name),
+        "schedules": existing_schedules_seed_label(study_dir, set_name),
+        "allocation lists": existing_allocation_seed_label(study_dir, set_name),
+    }
+    return {kind: label for kind, label in labels.items() if label is not None}
+
+
+def _shared_seed(study_dir: Path, set_name: SetName, master: MasterSeed) -> str | None:
+    """Refusal message if another set in ``study_dir`` used this private master seed."""
+    if master.demo:
+        return None
+    for other in SET_NAMES:
+        if other != set_name and master.label in _set_outputs(study_dir, other).values():
+            return (
+                f"the {other} set in {study_dir} was generated from this master seed; "
+                "pilot and confirmatory sets need different master seeds"
+            )
+    return None
+
+
+def _derived_seed_conflict(
+    study_dir: Path, set_name: SetName, master: MasterSeed, kind: str, force: bool
+) -> str | None:
+    """Guard for outputs derived from a set's curriculum (schedules, allocation lists).
+
+    Refuses overwriting the same kind from another seed (unless ``force``), other outputs
+    of the same set from another seed (they must share one master seed) and a master seed
+    already used by the other set.
+    """
+    outputs = _set_outputs(study_dir, set_name)
+    previous = outputs.pop(kind, None)
+    if previous is not None and previous != master.label and not force:
+        return (
+            f"{study_dir} already holds {set_name} {kind} from another seed "
+            "(use --force to overwrite)"
+        )
+    for other_kind, label in outputs.items():
+        if label != master.label:
+            return (
+                f"the {set_name} {other_kind} in {study_dir} comes from another seed; "
+                f"{kind} must be built from the same master seed as the curriculum"
+            )
+    return _shared_seed(study_dir, set_name, master)
+
+
 def _cmd_curriculum(args: argparse.Namespace) -> int:
     master: MasterSeed
     studies: list[Study] = ["A", "B"] if args.study == "both" else [args.study]
@@ -99,14 +152,9 @@ def _cmd_curriculum(args: argparse.Namespace) -> int:
                     f"{study_dir} already holds a {set_name} set from another seed "
                     "(use --force to overwrite)"
                 )
-            for other in SET_NAMES:
-                if other == set_name or master.demo:
-                    continue
-                if existing_seed_label(study_dir, other) == master.label:
-                    return _refuse(
-                        f"the {other} set in {study_dir} was generated from this master seed; "
-                        "pilot and confirmatory sets need different master seeds"
-                    )
+            shared = _shared_seed(study_dir, set_name, master)
+            if shared is not None:
+                return _refuse(shared)
     for study in studies:
         study_dir = out / study
         for set_name in sets:
@@ -146,30 +194,9 @@ def _cmd_schedules(args: argparse.Namespace) -> int:
     for study in studies:
         study_dir = out / study
         for set_name in sets:
-            previous = existing_schedules_seed_label(study_dir, set_name)
-            if previous is not None and previous != master.label and not args.force:
-                return _refuse(
-                    f"{study_dir} already holds {set_name} schedules from another seed "
-                    "(use --force to overwrite)"
-                )
-            curriculum = existing_seed_label(study_dir, set_name)
-            if curriculum is not None and curriculum != master.label:
-                return _refuse(
-                    f"the {set_name} curriculum in {study_dir} comes from another seed; "
-                    "schedules must be built from the same master seed as the curriculum"
-                )
-            for other in SET_NAMES:
-                if other == set_name or master.demo:
-                    continue
-                labels = (
-                    existing_seed_label(study_dir, other),
-                    existing_schedules_seed_label(study_dir, other),
-                )
-                if master.label in labels:
-                    return _refuse(
-                        f"the {other} set in {study_dir} was generated from this master seed; "
-                        "pilot and confirmatory sets need different master seeds"
-                    )
+            problem = _derived_seed_conflict(study_dir, set_name, master, "schedules", args.force)
+            if problem is not None:
+                return _refuse(problem)
     for study in studies:
         study_dir = out / study
         for set_name in sets:
@@ -183,6 +210,54 @@ def _cmd_schedules(args: argparse.Namespace) -> int:
             )
     if master.demo:
         print(f"DEMO seed {master.value}: outputs are public examples, not study material")
+    return 0
+
+
+def _set_seed(args: argparse.Namespace, set_name: SetName) -> MasterSeed | None:
+    """Master seed for one set from ``--<set>-seed-file`` or ``--<set>-demo-seed``."""
+    demo = getattr(args, f"{set_name}_demo_seed")
+    if demo is not None:
+        return demo_seed(demo)
+    path = getattr(args, f"{set_name}_seed_file")
+    if path is None:
+        return None
+    seed_file = Path(path)
+    if _committable(seed_file):
+        raise ValueError(f"{seed_file} is inside a git work tree and not ignored")
+    return load_master_seed(seed_file)
+
+
+def _cmd_allocate(args: argparse.Namespace) -> int:
+    masters = {s: m for s in SET_NAMES if (m := _set_seed(args, s)) is not None}
+    if not masters:
+        print("error: give a pilot and/or confirmatory seed", file=sys.stderr)
+        return 2
+    if len(masters) == 2:
+        require_distinct_seeds(masters["pilot"], masters["confirmatory"])
+    out = Path(args.out) if args.out else default_out_dir()
+    if not all(m.demo for m in masters.values()) and _committable(out):
+        return _refuse(f"output {out} is inside a git work tree and not ignored")
+    studies: list[Study] = ["A", "B"] if args.study == "both" else [args.study]
+    # Check every requested set before writing any of them.
+    for study in studies:
+        study_dir = out / study
+        for set_name, master in masters.items():
+            kind = "allocation lists"
+            problem = _derived_seed_conflict(study_dir, set_name, master, kind, args.force)
+            if problem is not None:
+                return _refuse(problem)
+    for study in studies:
+        study_dir = out / study
+        for set_name, master in masters.items():
+            files = assign_files(master, study, set_name, spares=args.spares)
+            write_files(study_dir, files)
+            digest = hashlib.sha256(files[manifest_name(set_name)]).hexdigest()
+            print(
+                f"{study} {set_name}: {len(files)} files -> {study_dir} "
+                f"manifest sha256 {digest} allocation_seed {allocation_seed(master)}"
+            )
+    if any(m.demo for m in masters.values()):
+        print("DEMO seed: outputs are public examples, not study material")
     return 0
 
 
@@ -253,6 +328,22 @@ def build_parser() -> argparse.ArgumentParser:
     sch.add_argument("--out", help="output root (default: schedules/out)")
     sch.add_argument("--force", action="store_true", help="overwrite schedules from another seed")
     sch.set_defaults(func=_cmd_schedules)
+
+    alloc = sub.add_parser("allocate", help="generate concealed allocation lists")
+    for set_name in SET_NAMES:
+        group = alloc.add_mutually_exclusive_group()
+        group.add_argument(f"--{set_name}-seed-file", help=f"private {set_name} master seed file")
+        group.add_argument(f"--{set_name}-demo-seed", help=f"public {set_name} DEMO- seed")
+    alloc.add_argument("--study", choices=("A", "B", "both"), default="both")
+    alloc.add_argument(
+        "--spares",
+        type=int,
+        default=B_DEFAULT_SPARES,
+        help="Study B spare slots (multiple of 4, at most 96)",
+    )
+    alloc.add_argument("--out", help="output root (default: schedules/out)")
+    alloc.add_argument("--force", action="store_true", help="overwrite lists from another seed")
+    alloc.set_defaults(func=_cmd_allocate)
 
     chk = sub.add_parser("check-planning", help="compare external planning materials")
     chk.add_argument("directory", help="folder holding curriculum.csv and ontology.csv")

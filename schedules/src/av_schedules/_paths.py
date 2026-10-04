@@ -35,3 +35,8 @@ def default_out_dir() -> Path:
 def examples_dir() -> Path:
     """``schedules/examples/demo`` (committed DEMO outputs)."""
     return data_root() / "examples" / "demo"
+
+
+def allocation_examples_dir() -> Path:
+    """``schedules/examples/demo-allocation`` (committed DEMO allocation lists)."""
+    return data_root() / "examples" / "demo-allocation"

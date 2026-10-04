@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/reveal-log.schema.json",
+  "title": "Reveal log line (one JSON Lines record)",
+  "description": "One line of the append-only reveal log written by av_schedules.reveal.RevealLog. Lines are canonical JSON (sorted keys, no spaces) chained by prev_sha256. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "line", "at", "list_sha256", "prev_sha256", "event", "staff"],
+  "properties": {
+    "format": {"const": "av-schedules/reveal-log"},
+    "line": {"type": "integer", "minimum": 1},
+    "at": {"type": "string", "minLength": 1, "description": "Console clock, ISO 8601 (default UTC with seconds)."},
+    "list_sha256": {"$ref": "#/$defs/sha256"},
+    "prev_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the previous line's bytes including its newline; 64 zeros for line 1."},
+    "event": {"enum": ["eligibility", "bank_unavailable", "reveal"]},
+    "staff": {"$ref": "#/$defs/code"},
+    "eligibility_id": {"type": "string", "pattern": "^E[0-9]{4,}$"},
+    "participant_ids": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/code"}},
+    "checks": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "bank_id": {"type": "string", "pattern": "^bank-[PC][0-9]{3}$"},
+    "entry": {"anyOf": [{"$ref": "#/$defs/a_entry"}, {"$ref": "#/$defs/b_entry"}]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event": {"const": "eligibility"}}},
+      "then": {"required": ["eligibility_id", "participant_ids", "checks"]}
+    },
+    {
+      "if": {"properties": {"event": {"const": "bank_unavailable"}}},
+      "then": {"required": ["bank_id"]}
+    },
+    {
+      "if": {"properties": {"event": {"const": "reveal"}}},
+      "then": {"required": ["eligibility_id", "entry"]}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "code": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,32}$"},
+    "a_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_id", "unit_id", "slot", "order", "wave", "wave_position", "profile", "book_id", "participant_id"],
+      "properties": {
+        "slot_id": {"type": "string", "pattern": "^A-[PC][0-9]{2}-L[0-9]{2}$"},
+        "unit_id": {"type": "string", "pattern": "^A-[PC][0-9]{2}$"},
+        "slot": {"type": "string", "pattern": "^L[0-9]{2}$"},
+        "order": {"type": "integer", "minimum": 1},
+        "wave": {"type": "integer", "minimum": 1},
+        "wave_position": {"type": "integer", "minimum": 1, "maximum": 3},
+        "profile": {"enum": ["P1", "P2", "P3"]},
+        "book_id": {"type": "string", "pattern": "^BK-[PC]-[BCFGHJKMNPQRTVWXY4-9]{6}$"},
+        "participant_id": {"$ref": "#/$defs/code"}
+      }
+    },
+    "b_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id",
+        "kind",
+        "order",
+        "block_id",
+        "block_position",
+        "sq_arm",
+        "structured_family",
+        "swap_w1_w4",
+        "members",
+        "bank_id",
+        "profile_menu_order",
+        "replaces"
+      ],
+      "properties": {
+        "unit_id": {"type": "string", "pattern": "^B-[PCS][0-9]{2}$"},
+        "kind": {"enum": ["dyad", "spare"]},
+        "order": {"type": "integer", "minimum": 1},
+        "block_id": {"type": "string", "pattern": "^B-[PC]-blk[0-9]{2}$"},
+        "block_position": {"type": "integer", "minimum": 1, "maximum": 4},
+        "sq_arm": {"enum": ["SQ-1", "SQ-2"]},
+        "structured_family": {"enum": ["K", "Q"]},
+        "swap_w1_w4": {"type": "boolean"},
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot_id", "member", "role", "participant_id"],
+            "properties": {
+              "slot_id": {"type": "string", "pattern": "^B-[PCS][0-9]{2}-M[12]$"},
+              "member": {"enum": [1, 2]},
+              "role": {"enum": ["active", "yoked"]},
+              "participant_id": {"$ref": "#/$defs/code"}
+            }
+          }
+        },
+        "bank_id": {"type": "string", "pattern": "^bank-[PC][0-9]{3}$"},
+        "profile_menu_order": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["P1", "P2", "P3"]}},
+        "replaces": {"type": ["string", "null"], "pattern": "^B-[PC][0-9]{2}$", "description": "Main dyad slot this spare replaces (its bank is unavailable); null otherwise."}
+      }
+    }
+  }
+}

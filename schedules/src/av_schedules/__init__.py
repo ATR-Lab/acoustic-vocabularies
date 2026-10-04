@@ -5,11 +5,23 @@ and the portable random stream), ``latin`` (seeded Latin squares), ``design`` (S
 batch table, Study B design table), ``curriculum`` (per-unit tables and permutation
 documents), ``balance`` (balance report), ``output`` (rendering and writing), ``planning``
 (oracle constants and the external planning-materials check), ``orders`` (per-person
-visit schedules and the speech list), ``schedule_output`` (schedule files), ``cli``.
+visit schedules and the speech list), ``schedule_output`` (schedule files), ``assign``
+and ``assign_output`` (allocation lists), ``reveal`` (reveal-next stub), ``masking``
+(method string scan), ``cli``.
 """
 
 __version__ = "0.1.0"
 
+from .assign import (
+    AAllocation,
+    BAllocation,
+    allocation_seed,
+    build_a_allocation,
+    build_b_allocation,
+    check_a_allocation,
+    check_b_allocation,
+)
+from .assign_output import assign_files, load_list
 from .balance import BalanceRow, balance_csv, balance_rows, max_abs_deviation
 from .curriculum import (
     CURRICULUM_COLUMNS,
@@ -29,6 +41,7 @@ from .design import (
     build_b_design_table,
     build_units,
 )
+from .masking import find_method_strings
 from .matrix import (
     FAMILIES,
     HELDOUT_SETS,
@@ -62,6 +75,7 @@ from .orders import (
 )
 from .output import generate, render_set, table_csv, write_files
 from .planning import check_planning
+from .reveal import RevealError, RevealLog
 from .schedule_output import generate_schedules, render_schedules
 from .seeds import MasterSeed, SeedStream, demo_seed, derive_seed, load_master_seed, private_seed
 
@@ -73,37 +87,49 @@ __all__ = [
     "LABELS",
     "MATRIX",
     "ROLES",
+    "AAllocation",
     "ABatch",
+    "BAllocation",
     "BDyadSlot",
     "BalanceRow",
     "BlockPlan",
     "Cell",
     "MasterSeed",
     "Permutation",
+    "RevealError",
+    "RevealLog",
     "SeedStream",
     "SetName",
     "SpeechCommand",
     "Unit",
     "__version__",
+    "allocation_seed",
     "assessment_counts",
+    "assign_files",
     "atom_id",
     "balance_csv",
     "balance_rows",
+    "build_a_allocation",
     "build_a_batch_table",
+    "build_b_allocation",
     "build_b_design_table",
     "build_units",
     "build_visit_schedule",
     "cells",
+    "check_a_allocation",
+    "check_b_allocation",
     "check_planning",
     "check_visit_schedule",
     "curriculum_csv",
     "curriculum_rows",
     "demo_seed",
     "derive_seed",
+    "find_method_strings",
     "generate",
     "generate_schedules",
     "heldout_cells",
     "index_waves",
+    "load_list",
     "load_master_seed",
     "max_abs_deviation",
     "message_id",
