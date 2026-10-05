@@ -257,7 +257,7 @@ def test_exposure_health_requires_current_neutral_and_fresh_healthy_publisher():
     adapter, _, _, dispatcher, _, _ = setup()
     class Publisher:
         closed = False
-        status = {"fault": None, "stale": False}
+        status = {"fault": None, "stale": False, "age_ms": 0.}
         def health(self): return self.status
     assert not dispatcher.health()["exposure_ready"]
     dispatcher.publisher = Publisher()
@@ -268,4 +268,20 @@ def test_exposure_health_requires_current_neutral_and_fresh_healthy_publisher():
     assert not dispatcher.health()["exposure_ready"]
     dispatcher.publisher.status["stale"] = False
     adapter.state["objects"]["engineering_object_0"]["state"]["card_face"] = 1
+    dispatcher.reset_manager.verify_current()  # Protected loop owns full sampling.
     assert not dispatcher.health()["exposure_ready"]
+
+
+def test_health_cache_expires_without_scene_reads_or_new_ticks():
+    _, _, reset, dispatcher, _, _ = setup()
+    class Publisher:
+        closed = False
+        def health(self): return {"fault": None, "stale": False, "age_ms": 0.}
+    dispatcher.publisher = Publisher()
+    handoff = CommandQueue(dispatcher)
+    assert handoff.health()["exposure_ready"]
+    # A network health read must not invoke any simulator accessor.
+    reset.adapter.read_state = lambda: (_ for _ in ()).throw(AssertionError("unexpected scene traversal"))
+    assert handoff.health()["exposure_ready"]
+    handoff.cached_health["health_sample_host_mono_ms"] -= 251.
+    assert not handoff.health()["exposure_ready"]

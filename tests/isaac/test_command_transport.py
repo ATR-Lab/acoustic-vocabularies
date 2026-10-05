@@ -23,9 +23,14 @@ class SyntheticReset:
     exposure_ready = False
     def reset(self):
         self.exposure_ready = True
+        self.verified_at = time.monotonic_ns()/1e6
         return {"reset_ok": True}
     def verify_current(self):
         return {"reset_ok": True}
+    def verification_status(self):
+        stamp = getattr(self, "verified_at", None)
+        return {"verified": stamp is not None, "host_mono_ms": stamp,
+                "age_ms": None if stamp is None else time.monotonic_ns()/1e6-stamp}
 
 
 @unittest.skipUnless(importlib.util.find_spec("websockets"), "requires approved preinstalled websockets")

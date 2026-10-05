@@ -3,7 +3,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": "0.3.0"
+      "const": "0.3.1"
     },
     "session_id": {
       "type": "string",
@@ -149,6 +149,24 @@
                 },
                 "public_stream_recovered": {
                   "const": false
+                },
+                "neutral_verification_age_ms": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "publisher_age_ms": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "health_sample_host_mono_ms": {
+                  "type": "number",
+                  "minimum": 0
                 }
               },
               "required": [
@@ -160,7 +178,10 @@
                 "demo_active",
                 "publisher_ready",
                 "exposure_ready",
-                "public_stream_recovered"
+                "public_stream_recovered",
+                "neutral_verification_age_ms",
+                "publisher_age_ms",
+                "health_sample_host_mono_ms"
               ]
             }
           },

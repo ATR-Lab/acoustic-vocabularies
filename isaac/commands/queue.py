@@ -28,12 +28,24 @@ class CommandQueue:
 
     def health(self):
         with self.lock:
-            return deepcopy(self.cached_health)
+            value = deepcopy(self.cached_health)
+        now = time.monotonic_ns()/1e6
+        elapsed = max(0., now-value["health_sample_host_mono_ms"])
+        for key in ("neutral_verification_age_ms", "publisher_age_ms"):
+            if value[key] is not None:
+                value[key] += elapsed
+        value["health_sample_host_mono_ms"] = now
+        if value["publisher_age_ms"] is None or value["publisher_age_ms"] > 250:
+            value["publisher_ready"] = value["exposure_ready"] = False
+        if value["neutral_verification_age_ms"] is None or value["neutral_verification_age_ms"] > 250:
+            value["exposure_ready"] = False
+        return value
 
     def deny(self, raw, peer, reason):
         # No simulator access here. Production sink is thread-safe and durable.
+        health = self.health()
         with self.lock:
-            health, sim_time = deepcopy(self.cached_health), self.cached_sim_time
+            sim_time = self.cached_sim_time
         reply = dict(version=1, kind="private_reply", request_id=None, accepted=False, reason=reason,
                      mode=health["mode"], host_mono_ms=time.monotonic_ns()/1e6, sim_time=sim_time,
                      reset_ok=None, duplicate=False, health=health)

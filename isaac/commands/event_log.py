@@ -15,7 +15,7 @@ class DurableCommandLog:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.file = self.path.open("x", encoding="utf-8", newline="\n")
-        self.envelope = dict(schema_version="0.3.0", session_id=session_id, apparatus_version=apparatus_version,
+        self.envelope = dict(schema_version="0.3.1", session_id=session_id, apparatus_version=apparatus_version,
                              protocol_version=protocol_version, clock_id=clock_id, event_type="private_command_result")
         self.lock, self.sequence = threading.Lock(), 0
 

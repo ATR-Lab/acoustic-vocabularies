@@ -72,9 +72,13 @@ a new verification; callers must also check current health/exposure state.
 Reset never claims to recover a latched #54 publisher fault. Public stream
 recovery currently requires an explicit service restart.
 `health.exposure_ready` additionally requires a fresh, healthy attached publisher
-and an immediate complete neutral readback. With no publisher attached it stays
-false. This is a backend gate; client/source-clock and headset freshness checks
-remain necessary in the session engine.
+and a successful full neutral verification completed within 250 ms. Full
+verification belongs to the protected simulation loop/reset; health only reads
+its timestamped result, avoiding repeated USD traversal. Cached network health
+ages both verification and publication even if the simulation thread stops.
+With no publisher attached the gate stays false. This is a backend gate;
+client/source-clock and headset freshness checks remain necessary in the session
+engine.
 
 ## Simulation loop and neutral holding
 
@@ -108,7 +112,7 @@ on the isolated station network belongs to #57. Public `/state` is absent from
 this service, and commands are absent from the public service.
 
 `DurableCommandLog` exclusively creates an append-only JSONL with the ADR-007
-common envelope and engineering schema extension 0.3.0. Each received text
+common envelope and engineering schema extension 0.3.1. Each received text
 command, including a rejected or duplicate request, gets exactly one terminal
 event containing full raw text, arguments, mode, station, host monotonic and
 simulation time, outcome/reason and `reset_ok` where relevant. Therefore a

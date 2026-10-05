@@ -42,19 +42,24 @@ class CommandDispatcher:
 
     def health(self):
         self._thread()
-        neutral = self.mode == "test" and self.neutral_hold and self.reset_manager.exposure_ready
-        if neutral:
-            neutral = self.reset_manager.verify_current()["reset_ok"]
+        verified = self.reset_manager.verification_status()
+        neutral = (self.mode == "test" and self.neutral_hold and self.reset_manager.exposure_ready
+                   and verified["verified"] and verified["age_ms"] is not None and verified["age_ms"] <= 250)
         publisher_ready = False
+        publisher_age = None
         if self.publisher is not None:
             try:
                 status = self.publisher.health()
-                publisher_ready = not self.publisher.closed and status.get("fault") is None and status.get("stale") is False
+                publisher_age = status.get("age_ms")
+                publisher_ready = (not self.publisher.closed and status.get("fault") is None and status.get("stale") is False
+                                   and publisher_age is not None and publisher_age <= 250)
             except Exception:
                 publisher_ready = False
         return {"control_session_id": self.control_session_id, "mode": self.mode, "paused": self.paused, "stopped": self.stopped,
                 "fault": self.fault, "demo_active": self.active is not None,
                 "publisher_ready": publisher_ready,
+                "neutral_verification_age_ms": verified["age_ms"], "publisher_age_ms": publisher_age,
+                "health_sample_host_mono_ms": time.monotonic_ns()/1e6,
                 "exposure_ready": bool(neutral and publisher_ready and not self.fault and not self.paused and not self.stopped),
                 "public_stream_recovered": False}
 
