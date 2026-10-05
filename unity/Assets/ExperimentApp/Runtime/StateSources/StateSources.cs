@@ -71,7 +71,7 @@ namespace AcousticVocab.StateSources
         readonly SourceClock clock;
         SceneFrame latest, held, confirmedNeutral;
         double lastReceived, gapStart;
-        bool stale;
+        bool stale, sampleEligible;
         public string Kind => "live";
         public bool Stale => stale;
         public double SampleAgeSeconds { get; private set; }
@@ -90,21 +90,20 @@ namespace AcousticVocab.StateSources
         public bool Receive(SceneFrame frame, double received, double now)
         {
             if (!Finite(received) || !Finite(now) || received<started || now<received || now-received>.25)
-            { Event?.Invoke(new SourceEvent("STATE_QUEUED_TOO_LONG", received, now)); return false; }
+            { Invalidate("STATE_QUEUED_TOO_LONG",now); return false; }
             if(clock!=null && !clock.Fresh(frame,received,now))
             {
-                Tick(now); ResetConfirmed=false;
-                Event?.Invoke(new SourceEvent("STATE_CLOCK_OR_AGE_INVALID",received,now));
+                Invalidate("STATE_CLOCK_OR_AGE_INVALID",now); Tick(now);
                 return false;
             }
             if (latest != null)
             {
-                if (received<lastReceived) return false;
+                if (received<lastReceived) { Invalidate("STATE_NONPROGRESSING",now); return false; }
                 bool same=frame.SessionId==latest.SessionId;
                 if (retired.Contains(frame.SessionId) || (same &&
                     (frame.Sequence<=latest.Sequence || frame.SimStep<=latest.SimStep ||
                      frame.SimTime<=latest.SimTime || frame.PublishedNs<=latest.PublishedNs)))
-                { Event?.Invoke(new SourceEvent("STATE_NONPROGRESSING", received, now)); return false; }
+                { Invalidate("STATE_NONPROGRESSING",now); return false; }
                 if (!same)
                 {
                     if (retired.Count>=128) throw new StateFault("STATE_RESTART_LIMIT");
@@ -120,7 +119,7 @@ namespace AcousticVocab.StateSources
                 Event?.Invoke(new SourceEvent("STATE_RECOVERED", gapStart, now, received-gapStart));
                 stale=false;
             }
-            lastReceived=received; latest=frame;
+            lastReceived=received; latest=frame; sampleEligible=true;
             if(ResetConfirmed && !NeutralComparison.Matches(frame,confirmedNeutral)) ResetConfirmed=false;
             buffer.Add(new Sample { Frame=frame, Received=received });
             if (buffer.Count>128) buffer.RemoveAt(0);
@@ -129,12 +128,14 @@ namespace AcousticVocab.StateSources
             return true;
         }
         public void Invalidate(string code,double now)
-        { ResetConfirmed=false; SourceFresh=false; Event?.Invoke(new SourceEvent(code,now,now)); }
+        { sampleEligible=false; ResetConfirmed=false; SourceFresh=false; Event?.Invoke(new SourceEvent(code,now,now)); }
         void Tick(double now)
         {
             if (!Finite(now) || now<lastReceived) throw new StateFault("HOST_CLOCK_REGRESSED");
             SampleAgeSeconds=now-lastReceived;
-            SourceFresh=latest!=null && clock!=null && clock.Fresh(latest, lastReceived, now);
+            // A retained pose is display evidence only after a transport/parser
+            // fault. Only a newly accepted progressing sample can restore eligibility.
+            SourceFresh=sampleEligible && latest!=null && clock!=null && clock.Fresh(latest, lastReceived, now);
             if (SampleAgeSeconds>.25 && !stale)
             {
                 stale=true; gapStart=lastReceived; ResetConfirmed=false;

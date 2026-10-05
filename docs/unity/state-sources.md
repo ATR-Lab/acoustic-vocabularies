@@ -59,7 +59,11 @@ Reset comparison checks both the newest sample and the currently rendered pose:
 within 0.5 degrees, and exact visibility/enabled/visual-state values. It is a
 sensor-side confirmation, to be paired with #55's distinct private reset reply
 by the session engine. Receipt of a command reply alone cannot satisfy it.
-Any new nonneutral frame revokes a previous confirmation. The active-root
+Any new nonneutral frame revokes a previous confirmation. The source
+also revokes sample eligibility after transport, parser, queue or replay
+faults. A retained neutral image cannot regain readiness before a new valid,
+progressing sample arrives and another explicit reset confirmation occurs.
+The active-root
 `StateSourceHost` supplies `ConfirmReset()` and `CheckExposureReady()`; the latter
 synchronously pumps, ages and applies current state at the actual cue boundary.
 Its `ResetConfirmed` property invokes that same fresh check, so a stalled frame

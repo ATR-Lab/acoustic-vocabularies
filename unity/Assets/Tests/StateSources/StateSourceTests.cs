@@ -134,6 +134,31 @@ namespace AcousticVocab.Tests
             bytes[bytes.Length-2]^=1;
             Assert.Throws<StateFault>(()=>new SnapshotSource(bytes,Registry(hash),0));
         }
+        [TestCase("STATE_TRANSPORT_DISCONNECTED")][TestCase("STATE_RECEIVE_QUEUE_OVERFLOW")][TestCase("STATE_MALFORMED")]
+        public void FaultCannotRegrantFromRetainedNeutral(string fault)
+        {
+            var clock=new SourceClock(0,5,new string('d',64)); clock.Echo(0,0,0,0);
+            var source=new LiveIsaacSource(0,0,clock); source.Receive(Frame(),0,0);
+            Assert.That(source.ConfirmReset(Frame(),0),Is.True);
+            source.Invalidate(fault,.01);
+            Assert.That(source.Render(.01),Is.Not.Null); // Held image remains available.
+            Assert.That(source.SourceFresh,Is.False);
+            Assert.That(source.ConfirmReset(Frame(),.01),Is.False);
+            Assert.That(source.Receive(Frame(1,.02),.02,.02),Is.True);
+            Assert.That(source.ResetConfirmed,Is.False); // New data never grants implicitly.
+            Assert.That(source.ConfirmReset(Frame(),.02),Is.True);
+        }
+        [Test]
+        public void RejectedReplayRevokesGrantUntilNewProgress()
+        {
+            var clock=new SourceClock(0,5,new string('d',64)); clock.Echo(0,0,0,0);
+            var source=new LiveIsaacSource(0,0,clock); source.Receive(Frame(),0,0);
+            Assert.That(source.ConfirmReset(Frame(),0),Is.True);
+            Assert.That(source.Receive(Frame(),.01,.01),Is.False);
+            Assert.That(source.ConfirmReset(Frame(),.01),Is.False);
+            Assert.That(source.Receive(Frame(1,.02),.02,.02),Is.True);
+            Assert.That(source.ConfirmReset(Frame(),.02),Is.True);
+        }
         [Test]
         public void CorruptTrajectoryLogsFaultAndRequiresExplicitRecovery()
         {
