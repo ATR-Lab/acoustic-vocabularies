@@ -13,7 +13,8 @@ namespace AcousticVocab.Foundation
         public Transform seatedOrigin;
         public Camera observerCamera;
         public GameObject presentationRoot;
-        public bool Ready { get; private set; }
+        bool ready;
+        public bool Ready { get => isActiveAndEnabled && ready; private set => ready = value; }
         JObject configuration;
         public JObject Configuration => configuration == null ? null : (JObject)configuration.DeepClone();
         public event Action<string> Faulted;
@@ -25,6 +26,7 @@ namespace AcousticVocab.Foundation
         bool trackingWasValid;
         bool applicationFocused = true;
         bool applicationPaused;
+        bool componentDisabledLatch;
         string lastFault;
         Color presentationBackground;
 
@@ -74,7 +76,7 @@ namespace AcousticVocab.Foundation
                         if (system.running && system.GetTrackingOriginMode() != TrackingOriginModeFlags.Device) system.TrySetTrackingOriginMode(TrackingOriginModeFlags.Device);
                 eligible = eligible && subscribed.TrueForAll(x => !x.running || x.GetTrackingOriginMode() == TrackingOriginModeFlags.Device);
                 double now = (double)System.Diagnostics.Stopwatch.GetTimestamp() / System.Diagnostics.Stopwatch.Frequency;
-                if (startupOrigin.Observe(eligible, now))
+                if (startupOrigin.Observe(eligible, now) && !componentDisabledLatch)
                     initialRestore = !RestoreAtSafeBoundary("startup");
             }
         }
@@ -110,7 +112,7 @@ namespace AcousticVocab.Foundation
         // The argument is a bounded engineering reason, never trial content or participant information.
         public bool RestoreAtSafeBoundary(string boundary)
         {
-            if (configuration == null || log == null || !applicationFocused || applicationPaused || !IsTracked() || !reference.RestorePending) return false;
+            if (!isActiveAndEnabled || componentDisabledLatch && boundary != "operator_recovery" || configuration == null || log == null || !applicationFocused || applicationPaused || !IsTracked() || !reference.RestorePending) return false;
             if (initialRestore && !startupOrigin.Settled) return false;
             if (boundary != "startup" && boundary != "between_trials" && boundary != "operator_recovery") throw new ArgumentException("Unknown safe boundary");
             var headInOrigin = new Pose(seatedOrigin.InverseTransformPoint(observerCamera.transform.position), Quaternion.Inverse(seatedOrigin.rotation) * observerCamera.transform.rotation);
@@ -119,7 +121,7 @@ namespace AcousticVocab.Foundation
             catch (ConfigurationFault ex) { Fault(ex.Message); return false; }
             seatedOrigin.SetPositionAndRotation(pose.position, pose.rotation);
             if (!Record("observer_reference_restored", new JObject { ["boundary"] = boundary, ["calibration_id"] = configuration["observer_reference"]["calibration_id"] })) return false;
-            reference.Restored(); lastFault = null; ShowPresentation();
+            reference.Restored(); lastFault = null; componentDisabledLatch = false; initialRestore = false; ShowPresentation();
             return true;
         }
         void ShowPresentation()
@@ -138,6 +140,11 @@ namespace AcousticVocab.Foundation
             applicationPaused = paused;
             if (paused && initialRestore) startupOrigin.Reset();
             if (paused && !initialRestore) { reference.MarkRecenter(); Fault("application_paused"); }
+        }
+        void OnDisable()
+        {
+            componentDisabledLatch = true; startupOrigin.Reset(); reference.MarkRecenter();
+            Fault("foundation_component_disabled");
         }
         void OnDestroy() { foreach (var system in subscribed) system.trackingOriginUpdated -= OnTrackingOriginUpdated; log?.Dispose(); }
     }
