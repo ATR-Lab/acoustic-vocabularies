@@ -35,6 +35,18 @@ def run():
     else: raise AssertionError('Invalid state accepted')
     assert access.read_state()==measured
     access.apply_state(baseline)
+    single=deepcopy(baseline['container_E']);single['position_m'][0]+=.01
+    access.apply_subset({'container_E':single})
+    subset_expected=deepcopy(baseline);subset_expected['container_E']=single
+    assert access.read_state()==subset_expected
+    try: access.apply_subset({'unknown':single})
+    except ValueError: pass
+    else: raise AssertionError('Unknown subset accepted')
+    try: access.apply_subset({'container_E':{'position_m':[0.,0.,0.]}})
+    except ValueError: pass
+    else: raise AssertionError('Partial object field patch accepted')
+    assert access.read_state()==subset_expected
+    access.apply_state(baseline)
     visual=stage.GetPrimAtPath('/World/Workcell/Objects/tray_A__card/Visual')
     visual.GetAttribute('xformOp:rotateX').Set(180.)
     try: access.read_state()
