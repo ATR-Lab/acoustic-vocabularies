@@ -71,6 +71,83 @@ namespace AcousticVocab.Foundation.Tests
 
     public class ObserverAndBuildTests
     {
+        [Test] public void StartupWaitsForStableAcknowledgedOriginAfterDelayedEvent()
+        {
+            var gate=new StartupOriginGate();
+            Assert.That(gate.Observe(true,10),Is.False);
+            Assert.That(gate.Observe(true,10.019),Is.False);
+            gate.Reset(); // Actual simulator origin notification trailed acknowledgement by ~19 ms.
+            Assert.That(gate.Observe(true,10.020),Is.False);
+            Assert.That(gate.Observe(true,10.269),Is.False);
+            Assert.That(gate.Observe(true,10.271),Is.True);
+        }
+        [Test] public void InterruptedStartupMustEarnAnotherFullStableInterval()
+        {
+            var gate=new StartupOriginGate();gate.Observe(true,1);
+            Assert.That(gate.Observe(false,1.24),Is.False); // Tracking, origin mode, focus or pause eligibility lost.
+            Assert.That(gate.Observe(true,2),Is.False);Assert.That(gate.Observe(true,2.249),Is.False);
+            Assert.That(gate.Observe(true,2.25),Is.True);gate.Reset();Assert.That(gate.Settled,Is.False);
+        }
+        [Test] public void OriginEventsAfterStartupStillLatchARecenterFault()
+        {
+            var root=new GameObject("SyntheticRecenterLifecycle");var cameraObject=new GameObject("Camera");var view=new GameObject("View");
+            try
+            {
+                var bootstrap=root.AddComponent<FoundationBootstrap>();bootstrap.observerCamera=cameraObject.AddComponent<Camera>();bootstrap.presentationRoot=view;
+                var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+                var gate=(StartupOriginGate)typeof(FoundationBootstrap).GetField("startupOrigin",flags).GetValue(bootstrap);
+                gate.Observe(true,1);gate.Observe(true,1.3);
+                typeof(FoundationBootstrap).GetMethod("OnTrackingOriginUpdated",flags).Invoke(bootstrap,new object[]{null});Assert.That(gate.Settled,Is.False);
+                typeof(FoundationBootstrap).GetField("initialRestore",flags).SetValue(bootstrap,false);
+                var reference=(ObserverReference)typeof(FoundationBootstrap).GetField("reference",flags).GetValue(bootstrap);reference.Restored();
+                string reason=null;bootstrap.Faulted+=value=>reason=value;
+                typeof(FoundationBootstrap).GetMethod("OnTrackingOriginUpdated",flags).Invoke(bootstrap,new object[]{null});
+                Assert.That(reason,Is.EqualTo("tracking_origin_changed"));Assert.That(reference.RestorePending,Is.True);Assert.That(view.activeSelf,Is.False);
+            }
+            finally{UnityEngine.Object.DestroyImmediate(root);UnityEngine.Object.DestroyImmediate(cameraObject);UnityEngine.Object.DestroyImmediate(view);}
+        }
+        [Test] public void FocusLossLogsFaultAndRemainsNeutralAfterFocusReturns()
+        {
+            var root=new GameObject("SyntheticFocusTest"); var cameraObject=new GameObject("Camera"); var view=new GameObject("View");
+            string directory=Path.Combine(Path.GetTempPath(),"focus-test-"+Guid.NewGuid().ToString("N"));
+            FoundationLog testLog=null;
+            try
+            {
+                var bootstrap=root.AddComponent<FoundationBootstrap>();bootstrap.observerCamera=cameraObject.AddComponent<Camera>();bootstrap.presentationRoot=view;
+                var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+                testLog=new FoundationLog(directory,new JObject{["build_id"]="synthetic-focus-test",["commit_sha"]=new string('a',40),["protocol_version"]="engineering-test"},"synthetic-station");
+                typeof(FoundationBootstrap).GetField("log",flags).SetValue(bootstrap,testLog);
+                typeof(FoundationBootstrap).GetField("initialRestore",flags).SetValue(bootstrap,false);
+                var reference=(ObserverReference)typeof(FoundationBootstrap).GetField("reference",flags).GetValue(bootstrap);reference.Restored();
+                int faults=0;bootstrap.Faulted+=reason=>{Assert.That(reason,Is.EqualTo("application_focus_lost"));faults++;};
+                typeof(FoundationBootstrap).GetMethod("OnApplicationFocus",flags).Invoke(bootstrap,new object[]{false});typeof(FoundationBootstrap).GetMethod("OnApplicationFocus",flags).Invoke(bootstrap,new object[]{false});
+                Assert.That(faults,Is.EqualTo(1));Assert.That(view.activeSelf,Is.False);Assert.That(bootstrap.Ready,Is.False);Assert.That(reference.RestorePending,Is.True);
+                typeof(FoundationBootstrap).GetMethod("OnApplicationFocus",flags).Invoke(bootstrap,new object[]{true});Assert.That(view.activeSelf,Is.False);Assert.That(bootstrap.Ready,Is.False);
+                testLog.Dispose();
+                var records=File.ReadAllLines(Directory.GetFiles(directory).Single()).Select(JObject.Parse).ToArray();
+                Assert.That(records.Length,Is.EqualTo(2));Assert.That((string)records[1]["reason"],Is.EqualTo("application_focus_lost"));
+                Assert.That((bool)records[1]["restore_pending"],Is.True);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);UnityEngine.Object.DestroyImmediate(cameraObject);UnityEngine.Object.DestroyImmediate(view);
+                testLog?.Dispose();
+                if(Directory.Exists(directory)){foreach(string file in Directory.GetFiles(directory))File.Delete(file);Directory.Delete(directory);}
+            }
+        }
+        [Test] public void EarlyVisibilityLossCannotStartPresentation()
+        {
+            var root=new GameObject("SyntheticStartupVisibility");
+            try
+            {
+                var bootstrap=root.AddComponent<FoundationBootstrap>(); var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+                typeof(FoundationBootstrap).GetMethod("OnApplicationFocus",flags).Invoke(bootstrap,new object[]{false});typeof(FoundationBootstrap).GetMethod("OnApplicationPause",flags).Invoke(bootstrap,new object[]{true});
+                Assert.That((bool)typeof(FoundationBootstrap).GetField("applicationFocused",flags).GetValue(bootstrap),Is.False);
+                Assert.That((bool)typeof(FoundationBootstrap).GetField("applicationPaused",flags).GetValue(bootstrap),Is.True);
+                Assert.That(bootstrap.RestoreAtSafeBoundary("startup"),Is.False);
+            }
+            finally {UnityEngine.Object.DestroyImmediate(root);}
+        }
         [Test] public void NeutralRecoveryRestoresConfiguredSceneBackground()
         {
             var root=new GameObject("SyntheticPresentationTest"); var cameraObject=new GameObject("Camera"); var view=new GameObject("View");
