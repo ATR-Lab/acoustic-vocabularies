@@ -6,7 +6,7 @@
   "provisioning_status": "example_only",
   "topology": "standalone_quest",
   "robot_state_source": "live",
-  "isaac_endpoint": "ws://example.invalid:8765",
+  "isaac_endpoint": "ws://example.invalid:8765/state",
   "audio": {
     "route": "UNMEASURED_ROUTE",
     "buffer_samples": 1024,
