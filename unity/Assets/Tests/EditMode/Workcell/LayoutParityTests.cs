@@ -77,6 +77,25 @@ namespace AcousticVocab.Workcell.Tests
             Assert.That(registry.ApplyJoint("unknown",0),Is.False);
             Assert.That(joint.link.localRotation,Is.EqualTo(before));
         }
+        [Test] public void RobotUsesAuthoredVisualMaterialBindings()
+        {
+            var authored=JObject.Parse(File.ReadAllText(Path.Combine(FoundationBuild.RepositoryRoot,"docs/workcell/robot-material-bindings.json")));
+            var visible=authored["meshes"].Where(m=>(string)m["purpose"]=="default"&&((string)m["path"]).Contains("/visuals/")).ToArray();
+            Assert.That(visible.Length,Is.EqualTo(51));
+            foreach(var link in registry.links)
+            {
+                var visual=link.link.Find("Visual"); if(visual==null)continue;
+                var binding=visible.Single(x=>((string)x["rigid_body"]).Split('/').Last()==link.name);
+                var inputs=authored["materials"][(string)binding["material"]]["shaders"][0]["inputs"];
+                var rgb=inputs["diffuse_color_constant"]??inputs["diffuse_reflection_color"];
+                Color actual=visual.GetComponent<MeshRenderer>().sharedMaterial.color;
+                // Unity serializes material channels as float; allow one micro-unit
+                // rather than requiring double-JSON and serialized float bit equality.
+                Assert.That(Mathf.Abs(actual.r-(float)rgb[0]),Is.LessThan(1e-6f),link.name);
+                Assert.That(Mathf.Abs(actual.g-(float)rgb[1]),Is.LessThan(1e-6f),link.name);
+                Assert.That(Mathf.Abs(actual.b-(float)rgb[2]),Is.LessThan(1e-6f),link.name);
+            }
+        }
         [Test] public void InvalidObjectCannotPartiallyMutateScene()
         {
             var item=registry.objects.First(x=>x.kind=="card"); var before=item.root.localPosition;

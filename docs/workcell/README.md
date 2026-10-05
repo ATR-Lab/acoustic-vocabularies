@@ -78,10 +78,16 @@ response are not a photometric match to Isaac RTX; no per-trial light/material
 changes exist. The background is a fixed neutral 0.95 RGB. No ambient audio,
 colliders or rigid bodies are present in the workcell.
 
-The robot uses the reviewed URDF geometry/materials and authored USD sensor-frame
-corrections. USD wrist-camera bracket meshes are absent from the URDF. USD and
-URDF robot material assignments differ (notably dark hands/upper arms and the
-chest lettering). These are visible differences, not pose errors. Quest frame
+The robot uses reviewed URDF geometry, authored USD sensor-frame corrections,
+and the per-link visual material bindings exported in `robot-material-bindings.json`.
+The importer maps authored diffuse/base colors into Standard materials (including
+dark hands and light chest lettering). All 51 USD visual links have one mesh and
+one material; two are the absent wrist-camera brackets. The remaining 40 exported
+meshes are guide/collision purpose and never enter the display. This is an explicit
+approximation: MDL diffuse tint, metallic behavior and shader defaults are not
+evaluated by Unity. The authored inputs and source pin are retained for review.
+USD wrist-camera bracket meshes are absent from the URDF. Lighting, tessellation
+and renderer response remain visibly different; these are not pose errors. Quest frame
 budget, wearer comfort/legibility, eight-action protocol reconciliation, formal
 32-target leakage comparison (#79), and human side-by-side sign-off remain open.
 
@@ -94,3 +100,8 @@ writes a PNG plus a public-field pose/hash record. The camera is temporary edito
 code and is never saved in the participant scene. `capture-poses.json` records
 that reference and proposed matched offsets for #79; these are engineering
 capture viewpoints, not forced HMD poses or accepted calibration values.
+
+Licensed CI now includes both foundation and workcell edit-mode suites and the
+workcell Quest build. The configuration guard also requires the reviewed asset
+cache variable `UNITY_G1_DESCRIPTION_PATH`; no runner or license is provisioned
+by this change.

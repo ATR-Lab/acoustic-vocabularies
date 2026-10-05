@@ -47,6 +47,12 @@ namespace AcousticVocab.Workcell.Editor
                 throw new InvalidDataException("Converted description differs from the deterministic reviewed #46 conversion.");
             var manifest = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(source));
             var expectedMeshes = manifest["meshes"].ToDictionary(m => (string)m["file"], m => (string)m["converted_sha256"]);
+            string materialPath = Path.Combine(Foundation.Editor.FoundationBuild.RepositoryRoot, "docs/workcell/robot-material-bindings.json");
+            if (Foundation.Editor.FoundationBuild.Hash(File.ReadAllBytes(materialPath)) != "87318a34dce2ca6d5ffb84b11252d201054406ef9ba3973e62155c226f9fd67b")
+                throw new InvalidDataException("Authored USD material metadata differs from reviewed export.");
+            var authored = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(materialPath));
+            var visualMaterials = authored["meshes"].Where(m => (string)m["purpose"] == "default" && ((string)m["path"]).Contains("/visuals/"))
+                .ToDictionary(m => ((string)m["rigid_body"]).Split('/').Last(), m => (string)m["material"]);
             var description = JsonUtility.FromJson<RobotDescription>(File.ReadAllText(source));
             if (description.schema_version != 1) throw new InvalidDataException("Unsupported description version");
             Directory.CreateDirectory(Generated);
@@ -84,10 +90,16 @@ namespace AcousticVocab.Workcell.Editor
                     obj.transform.localRotation = OriginRotation(visual.origin.rpy);
                     obj.transform.localScale = new Vector3(visual.scale[1], visual.scale[2], visual.scale[0]);
                     obj.GetComponent<MeshFilter>().sharedMesh = mesh;
-                    var color = new Color(visual.color[0], visual.color[1], visual.color[2], visual.color[3]);
-                    string matPath = Generated + "/" + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
+                    if (!visualMaterials.TryGetValue(definition.name, out var materialName)) throw new InvalidDataException("No authored USD material for rendered link.");
+                    var inputs = authored["materials"][materialName]["shaders"][0]["inputs"];
+                    var diffuse = inputs["diffuse_color_constant"] ?? inputs["diffuse_reflection_color"];
+                    var color = new Color((float)diffuse[0], (float)diffuse[1], (float)diffuse[2], 1);
+                    string matPath = Generated + "/USD_" + materialName.Split('/').Last() + ".mat";
                     var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
-                    if (mat == null) { mat = new Material(Shader.Find("Standard")) { color = color }; AssetDatabase.CreateAsset(mat, matPath); }
+                    if (mat == null) { mat = new Material(Shader.Find("Standard")); AssetDatabase.CreateAsset(mat, matPath); }
+                    // Authored diffuse binding approximation only: OmniPBR tint, metallic,
+                    // MDL defaults and RTX response are not silently treated as equivalent.
+                    mat.color=color; mat.SetFloat("_Metallic",0); mat.SetFloat("_Glossiness",.3f); EditorUtility.SetDirty(mat);
                     obj.GetComponent<MeshRenderer>().sharedMaterial = mat;
                 }
             }
