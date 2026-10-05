@@ -33,6 +33,7 @@ namespace AcousticVocab.DataLogging
         {
             if(transport==null)throw new DataFault("DATA_STORE_UNCONFIGURED");
             DataJson.Require(bundle!=null&&bundle.HeadersQualified,"DATA_EXPORT_UNQUALIFIED");DataJson.Require(DataJson.Hash(transport.ApprovalEvidenceSha256),"DATA_STORE_APPROVAL_REQUIRED");
+            DataJson.Require(!bundle.ContainsPath(freshReceiptFile),"DATA_RECEIPT_INSIDE_EXPORT");
             DataJson.NoLinks(freshReceiptFile);DataJson.Require(!File.Exists(freshReceiptFile)&&Directory.Exists(Path.GetDirectoryName(Path.GetFullPath(freshReceiptFile))),"DATA_RECEIPT_PATH");
             bundle.VerifyAll();var verified=new JArray();
             foreach(var file in bundle.Files)

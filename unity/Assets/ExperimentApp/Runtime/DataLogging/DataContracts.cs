@@ -65,11 +65,11 @@ namespace AcousticVocab.DataLogging
         internal static byte[] Bytes(JObject v)=>new UTF8Encoding(false,true).GetBytes(v.ToString(Formatting.None)+"\n");
         internal static string HashBytes(byte[] b){using var h=SHA256.Create();return BitConverter.ToString(h.ComputeHash(b)).Replace("-","").ToLowerInvariant();}
         internal static string HashStream(Stream s){using var h=SHA256.Create();return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant();}
-        internal static JObject ParseCanonical(byte[] bytes)
+        internal static JObject ParseCanonical(byte[] bytes,int maximumBytes=MaxLine)
         {
             try
             {
-                Require(bytes.Length>0&&bytes.Length<=MaxLine,"DATA_LINE_LIMIT");
+                Require(bytes.Length>0&&bytes.Length<=maximumBytes,"DATA_LINE_LIMIT");
                 using var reader=new JsonTextReader(new StringReader(new UTF8Encoding(false,true).GetString(bytes))){DateParseHandling=DateParseHandling.None,FloatParseHandling=FloatParseHandling.Double,MaxDepth=32};
                 var value=JObject.Load(reader,new JsonLoadSettings{DuplicatePropertyNameHandling=DuplicatePropertyNameHandling.Error,CommentHandling=CommentHandling.Load});
                 Require(!reader.Read()&&Bytes(value).SequenceEqual(bytes),"DATA_NONCANONICAL_JSON");return value;
@@ -98,7 +98,7 @@ namespace AcousticVocab.DataLogging
                     Audio(p);DataJson.Require(c.AudioRequestId!=null,"DATA_AUDIO_CONTEXT");DataJson.Require(kind!="audio_request"||(string)p["code"]=="AUDIO_REQUESTED");break;
                 case "audio_evidence":
                     DataJson.Keys(p,"audible_status","evidence_sha256","evidence_kind","observed_mono_ms");
-                    DataJson.Require(c.AudioRequestId!=null&&new[]{"confirmed_audible","confirmed_no_onset"}.Contains(DataJson.Text(p["audible_status"]))&&DataJson.Hash(DataJson.Text(p["evidence_sha256"]))&&new[]{"acoustic_measurement","trusted_delivery_evidence"}.Contains(DataJson.Text(p["evidence_kind"])));DataJson.Number(p["observed_mono_ms"]);break;
+                    DataJson.Require(c.AudioRequestId!=null&&new[]{"confirmed_audible","confirmed_no_onset","uncertain"}.Contains(DataJson.Text(p["audible_status"]))&&DataJson.Hash(DataJson.Text(p["evidence_sha256"]))&&new[]{"acoustic_measurement","trusted_delivery_evidence"}.Contains(DataJson.Text(p["evidence_kind"])));DataJson.Number(p["observed_mono_ms"]);break;
                 case "panel_process": case "panel_response":
                     DataJson.Keys(p,"kind","observed_mono_ms","mode","role","input","selected_target","selected_action","response_code","response_target","response_action");
                     DataJson.Require(c.AttemptId!=null&&c.AudioRequestId==null&&DataJson.Id(DataJson.Text(p["kind"])));DataJson.Number(p["observed_mono_ms"]);
@@ -113,6 +113,8 @@ namespace AcousticVocab.DataLogging
                 case "choice":
                     DataJson.Keys(p,"candidate_id","accepted_or_rejected","yoked_source_event_id","pause_ms","matching_deviation_id");DataJson.Require(c.AudioRequestId!=null&&DataJson.Id(DataJson.Text(p["candidate_id"]))&&new[]{"accepted","rejected","pending"}.Contains(DataJson.Text(p["accepted_or_rejected"])));
                     foreach(string key in new[]{"yoked_source_event_id","matching_deviation_id"}){string s=DataJson.OptionalText(p[key]);DataJson.Require(s==null||DataJson.Id(s));}DataJson.Number(p["pause_ms"]);break;
+                case "deviation_reference":
+                    DataJson.Keys(p,"deviation_id","signed_log_sha256","observed_mono_ms");DataJson.Require(c.AttemptId!=null&&DataJson.Id(DataJson.Text(p["deviation_id"]))&&DataJson.Hash(DataJson.Text(p["signed_log_sha256"])));DataJson.Number(p["observed_mono_ms"]);break;
                 case "visit_exit":DataJson.Keys(p,"code");DataJson.Require(c.OpportunityId==null&&DataJson.Code(DataJson.Text(p["code"])));break;
                 case "recovery":
                     DataJson.Keys(p,"preserved_tails");DataJson.Require(c.OpportunityId==null&&p["preserved_tails"] is JArray tails&&tails.Count>0&&tails.Count<=32);foreach(JObject t in (JArray)p["preserved_tails"]){DataJson.Keys(t,"segment","tail_offset","tail_sha256","segment_sha256");DataJson.Require(Regex.IsMatch(DataJson.Text(t["segment"]),@"\Aevents-[0-9]{4}\.local\.jsonl\z")&&DataJson.Hash(DataJson.Text(t["tail_sha256"]))&&DataJson.Hash(DataJson.Text(t["segment_sha256"])));DataJson.Integer(t["tail_offset"]);}break;

@@ -15,6 +15,8 @@ namespace AcousticVocab.DataLogging.Tests
         public static SessionRecord Session(string trial,string state,string response=null,string retry=null,string audible="Uncertain",string kind="state_after",string requestId=null,double observed=0)
         {
             var p=new JObject{["event"]=kind,["clock_epoch"]=new string('2',32),["schedule_sha256"]=new string('b',64),["trial_id"]=trial,["retry_of"]=retry,["block_index"]=0,["item_index"]=0,["host_mono_ms"]=observed,["scheduled_onset_mono_ms"]=0,["state"]=state,["audible_status"]=audible,["exposure_consumed"]=audible=="Uncertain"||audible=="ConfirmedAudible",["reset_ok"]=state=="Done",["focus_ok"]=true,["technical_fault_code"]=null,["response_code"]=response,["evidence_sha256"]=kind=="onset_evidence"?new string('e',64):null,["opportunity_id"]=retry??trial,["audio_request_ids"]=requestId==null?new JArray():new JArray(requestId)};
+            foreach(var property in p.Properties().ToArray())
+                if(property.Value.Type==JTokenType.String&&(string)property.Value==null)property.Value=JValue.CreateNull();
             return SessionRecordCodec.FromJson(p);
         }
         public static EventDraft Audio(EventContext c,string code="AUDIO_REQUESTED",bool callback=false,bool estimated=false)=>new EventDraft(code=="AUDIO_REQUESTED"?"audio_request":"audio_observation",c,new JObject{
@@ -99,9 +101,24 @@ namespace AcousticVocab.DataLogging.Tests
             string raw=SyntheticData.Folder("conflicting-onset");var c=new EventContext("t","t",new string('5',32));using(var w=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>10)){w.Append(SyntheticData.Audio(c));w.Append(DataObservations.TrustedAudioEvidence(c,"confirmed_no_onset",new string('e',64),"trusted_delivery_evidence",11));w.Append(SyntheticData.Audio(c,"AUDIO_PLAYBACK_COMPLETED",true,true));}
             var row=DataDeriver.Derive(DataJournal.Verify(raw,SyntheticData.Identity),SyntheticData.Identity).Exposures.Single();Assert.That(row["exposure_consumed"],Is.EqualTo("true"));Assert.That(row["audible_status"],Is.EqualTo("uncertain"));Assert.That(row["technical_fault_code"],Does.Contain("DATA_ONSET_EVIDENCE_CONFLICT"));
         }
+        [Test] public void LaterSessionUncertaintyRestoresConsumedExposureAfterNoOnset()
+        {
+            string raw=SyntheticData.Folder("session-uncertainty");string id=new string('5',32);var c=new EventContext("t","t",id);
+            using(var w=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>1)){var session=new SessionDataJournal(w);w.Append(SyntheticData.Audio(c));session.Append(SyntheticData.Session("t","Closed",audible:"ConfirmedNoOnset",kind:"onset_evidence",requestId:id));session.Append(SyntheticData.Session("t","Closed",audible:"Uncertain",kind:"onset_evidence",requestId:id));}
+            var row=DataDeriver.Derive(DataJournal.Verify(raw,SyntheticData.Identity),SyntheticData.Identity).Exposures.Single();Assert.That(row["exposure_consumed"],Is.EqualTo("true"));Assert.That(row["audible_status"],Is.EqualTo("uncertain"));
+        }
+        [Test] public void ConfirmedAudibleThenUncertainThenNoOnsetCannotEraseExposure()
+        {
+            string raw=SyntheticData.Folder("ever-audible");var c=new EventContext("t","t",new string('5',32));
+            using(var w=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>1)){w.Append(SyntheticData.Audio(c));foreach(string status in new[]{"confirmed_audible","uncertain","confirmed_no_onset","confirmed_no_onset"})w.Append(DataObservations.TrustedAudioEvidence(c,status,new string('e',64),"trusted_delivery_evidence",1));}
+            var row=DataDeriver.Derive(DataJournal.Verify(raw,SyntheticData.Identity),SyntheticData.Identity).Exposures.Single();Assert.That(row["exposure_consumed"],Is.EqualTo("true"));Assert.That(row["audible_status"],Is.EqualTo("uncertain"));Assert.That(row["technical_fault_code"],Does.Contain("DATA_ONSET_EVIDENCE_CONFLICT"));
+        }
+        [Test] public void MissingFocusEvidenceNeverInventsAPass()
+        {string raw=SyntheticData.Folder("unknown-focus");using(var w=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>1))w.Append(SyntheticData.Audio(new EventContext("t","t",new string('5',32))));Assert.That(DataDeriver.Derive(DataJournal.Verify(raw,SyntheticData.Identity),SyntheticData.Identity).Trials.Single()["focus_ok"],Is.Empty);}
         [Test] public void EmptyVisitMakesNoTrialOrExposureRows()
         {string raw=SyntheticData.Folder("empty-visit");using(new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>0)){}var rows=DataDeriver.Derive(DataJournal.Verify(raw,SyntheticData.Identity),SyntheticData.Identity);Assert.That(rows.Trials,Is.Empty);Assert.That(rows.Exposures,Is.Empty);}
         [Test] public void ClosedSchemaRejectsPersonalFieldsAndUnknownEventKinds()
         {var value=DataObservations.Device(null,"focus",1,true).Payload;value["name"]="synthetic-not-allowed";Assert.Throws<DataFault>(()=>new EventDraft("device",null,value));Assert.Throws<DataFault>(()=>new EventDraft("unregistered",null,new JObject()));}
     }
 }
+

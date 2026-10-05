@@ -25,6 +25,7 @@ namespace AcousticVocab.DataLogging
         readonly DataIdentity identity;readonly string clockEpoch;readonly Func<double> clock;
         readonly FileStream output;readonly List<DataRecord> records;
         readonly Dictionary<string,double> clocks;
+        readonly int ownerThread=System.Threading.Thread.CurrentThread.ManagedThreadId;
         string previous;long sequence;bool failed,closed;
         internal Action BeforeDurableFlush; // Fault-injection seam, inaccessible outside this assembly/tests.
         public bool Failed=>failed;public bool Closed=>closed;
@@ -49,6 +50,7 @@ namespace AcousticVocab.DataLogging
             if(failed||closed)throw new DataFault("DATA_JOURNAL_UNAVAILABLE");
             try
             {
+                DataJson.Require(System.Threading.Thread.CurrentThread.ManagedThreadId==ownerThread,"DATA_WRONG_THREAD");
                 DataJson.Require(draft!=null,"DATA_DRAFT");double now=clock();CheckClock(clocks,clockEpoch,now);
                 var p=draft.Payload;DataEventSchema.Validate(draft.Kind,draft.Context,p);
                 if(draft.Kind=="session")CheckClock(clocks,"session:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
@@ -69,7 +71,7 @@ namespace AcousticVocab.DataLogging
         {
             DataJson.NoLinks(privateDirectory);
             var files=Directory.Exists(privateDirectory)?Directory.GetFiles(privateDirectory,"events-*.local.jsonl").OrderBy(x=>x,StringComparer.Ordinal).ToList():new List<string>();
-            DataJson.Require(files.Count<=1000,"DATA_SEGMENT_LIMIT");var records=new List<DataRecord>();var clocks=new Dictionary<string,double>(StringComparer.Ordinal);var sessionClocks=new Dictionary<string,double>(StringComparer.Ordinal);
+            DataJson.Require(files.Count<=1000,"DATA_SEGMENT_LIMIT");var records=new List<DataRecord>();var clocks=new Dictionary<string,double>(StringComparer.Ordinal);
             var pending=new JArray();string previous=new string('0',64);long sequence=0,total=0;var ids=new HashSet<string>(StringComparer.Ordinal);
             for(int i=0;i<files.Count;i++)
             {

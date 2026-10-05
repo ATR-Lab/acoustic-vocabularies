@@ -40,6 +40,7 @@ namespace AcousticVocab.DataLogging
     }
     public sealed class ExportBundle
     {
+        const int MaximumManifestBytes=1024*1024;
         readonly string directory;readonly IReadOnlyList<ExportFile> files;
         public string ManifestSha256 {get;} public bool HeadersQualified {get;} public IReadOnlyList<ExportFile> Files=>files;
         internal ExportBundle(string directory,IEnumerable<ExportFile> files,string manifestHash,bool qualified){this.directory=directory;this.files=files.ToList().AsReadOnly();ManifestSha256=manifestHash;HeadersQualified=qualified;}
@@ -50,6 +51,7 @@ namespace AcousticVocab.DataLogging
             byte[] bytes=File.ReadAllBytes(path);DataJson.Require(bytes.LongLength==entry.Bytes&&DataJson.HashBytes(bytes)==entry.Sha256,"DATA_EXPORT_CHANGED");return bytes;
         }
         public void VerifyAll(){foreach(var entry in files)VerifiedBytes(entry);}
+        internal bool ContainsPath(string path)=>Path.GetFullPath(path).StartsWith(Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);
         internal static void CreateFile(string path,byte[] bytes)
         {DataJson.NoLinks(path);using var f=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read,4096,FileOptions.WriteThrough);f.Write(bytes,0,bytes.Length);f.Flush(true);}
         public static ExportBundle Create(string rawDirectory,string freshOutputDirectory,DataIdentity identity,ExportHeaders headers)
@@ -66,13 +68,13 @@ namespace AcousticVocab.DataLogging
             Save("trial-log.csv",Csv(headers.Trials,tables.Trials));Save("exposure-ledger.csv",Csv(headers.Exposures,tables.Exposures));Save("header-contract.json",DataJson.Bytes(headers.ToJson()));
             bool qualified=headers.Qualified&&!snapshot.HasUnacknowledgedTail;
             var manifest=new JObject{["schema_version"]="data-export-provisional-1",["export_id"]=Guid.NewGuid().ToString("N"),["identity"]=identity.ToJson(),["headers_qualified"]=qualified,["unacknowledged_torn_tail"]=snapshot.HasUnacknowledgedTail,["record_count"]=snapshot.Records.Count,["last_record_sha256"]=snapshot.Previous,["trial_rows"]=tables.Trials.Count,["exposure_rows"]=tables.Exposures.Count,["files"]=new JArray(entries.Select(x=>x.ToJson()))};
-            byte[] manifestBytes=DataJson.Bytes(manifest);string hash=DataJson.HashBytes(manifestBytes);Save("manifest.json",manifestBytes);
+            byte[] manifestBytes=DataJson.Bytes(manifest);DataJson.Require(manifestBytes.Length<=MaximumManifestBytes,"DATA_MANIFEST_LIMIT");string hash=DataJson.HashBytes(manifestBytes);Save("manifest.json",manifestBytes);
             var bundle=new ExportBundle(freshOutputDirectory,entries,hash,qualified);bundle.VerifyAll();return bundle;
         }
         public static ExportBundle Load(string directory,string expectedManifestSha256)
         {
-            DataJson.Require(DataJson.Hash(expectedManifestSha256),"DATA_MANIFEST_HASH_REQUIRED");string path=Path.Combine(directory,"manifest.json");DataJson.NoLinks(path);DataJson.Require(new FileInfo(path).Length<=DataJson.MaxLine,"DATA_MANIFEST_LIMIT");byte[] bytes=File.ReadAllBytes(path);DataJson.Require(DataJson.HashBytes(bytes)==expectedManifestSha256,"DATA_MANIFEST_HASH");
-            var m=DataJson.ParseCanonical(bytes);DataJson.Keys(m,"schema_version","export_id","identity","headers_qualified","unacknowledged_torn_tail","record_count","last_record_sha256","trial_rows","exposure_rows","files");
+            DataJson.Require(DataJson.Hash(expectedManifestSha256),"DATA_MANIFEST_HASH_REQUIRED");string path=Path.Combine(directory,"manifest.json");DataJson.NoLinks(path);DataJson.Require(new FileInfo(path).Length<=MaximumManifestBytes,"DATA_MANIFEST_LIMIT");byte[] bytes=File.ReadAllBytes(path);DataJson.Require(DataJson.HashBytes(bytes)==expectedManifestSha256,"DATA_MANIFEST_HASH");
+            var m=DataJson.ParseCanonical(bytes,MaximumManifestBytes);DataJson.Keys(m,"schema_version","export_id","identity","headers_qualified","unacknowledged_torn_tail","record_count","last_record_sha256","trial_rows","exposure_rows","files");
             DataJson.Require((string)m["schema_version"]=="data-export-provisional-1"&&DataJson.Guid((string)m["export_id"])&&DataJson.Hash((string)m["last_record_sha256"]));DataIdentity.Parse(m["identity"] as JObject);
             bool qualified=DataJson.Boolean(m["headers_qualified"]),tail=DataJson.Boolean(m["unacknowledged_torn_tail"]);DataJson.Require(!qualified||!tail);foreach(string k in new[]{"record_count","trial_rows","exposure_rows"})DataJson.Integer(m[k]);
             DataJson.Require(m["files"] is JArray list&&list.Count>=4&&list.Count<=1003,"DATA_MANIFEST_FILES");var files=new List<ExportFile>();var seen=new HashSet<string>(StringComparer.Ordinal);

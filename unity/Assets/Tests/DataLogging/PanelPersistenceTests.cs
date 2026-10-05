@@ -23,8 +23,9 @@ namespace AcousticVocab.DataLogging.Tests
                 state.Open(new PanelRequest("synthetic-attempt",PanelMode.FullMessage,PanelRole.Command,0));state.SelectTarget("A");state.SelectAction("ADD_ONE");Assert.Throws<IOException>(()=>state.Commit());
                 Assert.That(state.Aborted,Is.True);Assert.That(state.Locked,Is.True);Assert.That(state.Result,Is.Null);Assert.That(confirmed,Is.False);Assert.That(state.Commit(),Is.False);
             }
-            finally{UnityEngine.Object.DestroyImmediate(go);}
+            finally{journal.Dispose();UnityEngine.Object.DestroyImmediate(go);}
             Assert.That(File.ReadAllText(Directory.GetFiles(directory,"*.jsonl")[0]),Does.Contain("\"event\":\"commit\""),"The original flushed decision evidence is preserved despite failed confirmation");
         }
     }
 }
+

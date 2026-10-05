@@ -66,10 +66,15 @@ namespace AcousticVocab.DataLogging.Tests
             var bundle=ExportBundle.Create(Raw(),SyntheticData.Folder("bad-upload-export"),SyntheticData.Identity,ReviewedSyntheticHeaders());var store=new MemoryStore{Corrupt=true};string directory=SyntheticData.Folder("bad-receipt");Directory.CreateDirectory(directory);string receipt=Path.Combine(directory,"never.json");
             var fault=Assert.ThrowsAsync<DataFault>(async()=>await VerifiedUpload.UploadAsync(bundle,store,receipt,CancellationToken.None));Assert.That(fault.Code,Is.EqualTo("DATA_UPLOAD_HASH_MISMATCH"));Assert.That(File.Exists(receipt),Is.False);Assert.That(store.objects.Count,Is.GreaterThan(0),"Failed remote artifacts are retained, not deleted");
         }
+        [Test] public void SyncReceiptCannotMutateAnExportDirectory()
+        {
+            string folder=SyntheticData.Folder("receipt-export");var bundle=ExportBundle.Create(Raw(),folder,SyntheticData.Identity,ReviewedSyntheticHeaders());var store=new MemoryStore();
+            var fault=Assert.ThrowsAsync<DataFault>(async()=>await VerifiedUpload.UploadAsync(bundle,store,Path.Combine(folder,"receipt.json"),CancellationToken.None));Assert.That(fault.Code,Is.EqualTo("DATA_RECEIPT_INSIDE_EXPORT"));Assert.That(store.objects,Is.Empty);
+        }
         [Test] public void CancellationLeavesNoFalseReceipt()
         {
             var bundle=ExportBundle.Create(Raw(),SyntheticData.Folder("cancel-export"),SyntheticData.Identity,ReviewedSyntheticHeaders());var store=new MemoryStore();string directory=SyntheticData.Folder("cancel-receipt");Directory.CreateDirectory(directory);string receipt=Path.Combine(directory,"never.json");var token=new CancellationToken(true);
-            Assert.ThrowsAsync<OperationCanceledException>(async()=>await VerifiedUpload.UploadAsync(bundle,store,receipt,token));Assert.That(File.Exists(receipt),Is.False);Assert.That(store.objects,Is.Empty);
+            Assert.CatchAsync<OperationCanceledException>(async()=>await VerifiedUpload.UploadAsync(bundle,store,receipt,token));Assert.That(File.Exists(receipt),Is.False);Assert.That(store.objects,Is.Empty);
         }
     }
 }
