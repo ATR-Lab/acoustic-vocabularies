@@ -74,6 +74,7 @@ def run_case(name, mutate, directory, *, noop=False):
         proof.bind_iteration(1, adapter.sim_time)
         assert manager.verify_current(capture=proof)['reset_ok']
         before = proof._capture.state_bytes
+        layer_before = stage.GetRootLayer().ExportToString()
         mutate(stage)
         try:
             _,_,value = proof.sample()
@@ -83,8 +84,18 @@ def run_case(name, mutate, directory, *, noop=False):
         row = dict(case=name, accepted_after_mutation=accepted, expected_noop=noop,
             mutation_generation=proof._generation, before_state_sha256=hashlib.sha256(before).hexdigest())
         if noop:
-            row['live_state_identical'] = adapter.read_state() == snapshot['state']
-            row['passed'] = row['live_state_identical'] and accepted
+            # Identical text can still emit USD metadata notices. Do not relax
+            # an existing reader fault or demand a synthetic fault for a no-op.
+            from isaac.workcell.state import StateAccessors
+            fresh = StateAccessors(stage, neutral_layout())
+            try:
+                row['live_state_identical'] = StructuralAdapter(fresh).read_state() == snapshot['state']
+            finally: fresh.close()
+            row['serialized_layer_identical'] = layer_before == stage.GetRootLayer().ExportToString()
+            row['observed_as_noop'] = accepted and proof._generation == 1
+            row['observed_conservative_rejection'] = not accepted and proof._generation > 1
+            row['passed'] = row['live_state_identical'] and row['serialized_layer_identical'] and (
+                row['observed_as_noop'] or row['observed_conservative_rejection'])
         else:
             row['passed'] = accepted is False
         return row
