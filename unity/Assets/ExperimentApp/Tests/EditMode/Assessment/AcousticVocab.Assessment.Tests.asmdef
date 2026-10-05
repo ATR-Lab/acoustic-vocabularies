@@ -1,6 +1,6 @@
 {
   "name": "AcousticVocab.Assessment.Tests",
-  "references": ["AcousticVocab.Assessment", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio", "AcousticVocab.ResponsePanel"],
+  "references": ["AcousticVocab.Assessment", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio", "AcousticVocab.ResponsePanel", "AcousticVocab.Teaching"],
   "includePlatforms": ["Editor"],
   "optionalUnityReferences": ["TestAssemblies"],
   "overrideReferences": true,

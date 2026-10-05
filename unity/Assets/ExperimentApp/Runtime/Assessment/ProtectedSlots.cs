@@ -70,7 +70,7 @@ namespace AcousticVocab.Assessment
             if(failed||disposed||item==null||!item.Protected||!new[]{"trained","novel","pre_old","atomic","speech","no_cue"}.Contains(item.TrialType)||
                 item.Plays!=(item.TrialType=="no_cue"?0:1)||item.SlotSeconds!=(item.TrialType=="atomic"?9:14))
                 throw new AssessmentFault("ASSESSMENT_SLOT_UNSUPPORTED");
-            if(item.Phase=="validity")stages.RequireValidity();
+            if(item.Phase=="validity")stages.ValidateValidityBank(speech);
             var slot=new ProtectedSlot(this);timeline.Add(slot);return slot;
         }
         void Responded(string code)
@@ -83,11 +83,19 @@ namespace AcousticVocab.Assessment
             }
             catch { Fail("ASSESSMENT_RESPONSE_LOG_FAILED"); }
         }
+        public bool ExposureGate=>!disposed&&!failed&&scene.NeutralReady&&scene.ModeReady&&scene.FocusOk&&panel.Ready;
         void Fail(string code)
         {
             if(failed)return;failed=true;
             foreach(var slot in timeline)slot.Interrupted=true;
-            panel.Hide();view.Neutral();audio.Stop(code);responseOwner=null;fault(code);
+            StopPorts(code);responseOwner=null;fault(code);
+        }
+        void StopPorts(string code)
+        {
+            // A failed cleanup must not prevent the other independent shutdowns.
+            try{audio.Stop(code);}catch{}
+            try{panel.Hide();}catch{}
+            try{view.Neutral();}catch{}
         }
         // FixedSlotEngine invokes this before its response and tail boundaries.
         public void Pump()=>Tick();
@@ -103,7 +111,14 @@ namespace AcousticVocab.Assessment
             catch(AssessmentFault error){Fail(error.Code);}
             catch(Exception){Fail("ASSESSMENT_RUNTIME_FAILED");}
         }
-        public void Dispose(){if(disposed)return;disposed=true;panel.Responded-=Responded;panel.Hide();view.Neutral();timeline.Clear();}
+        public void Dispose()
+        {
+            if(disposed)return;disposed=true;
+            bool active=timeline.Exists(x=>x.Prepared&&!x.Interrupted);
+            foreach(var slot in timeline)slot.Interrupted=true;
+            StopPorts("ASSESSMENT_DISPOSED");panel.Responded-=Responded;responseOwner=null;timeline.Clear();
+            if(active)fault("ASSESSMENT_DISPOSED");
+        }
         sealed class ProtectedSlot : ISlotContent
         {
             readonly ProtectedContentFactory owner;
@@ -143,7 +158,7 @@ namespace AcousticVocab.Assessment
             public void RequestReset(SlotContext context){resetRequested=true;owner.scene.RequestReset();}
             public void Interrupt(string code)
             {
-                Interrupted=true;owner.panel.Hide();owner.view.Neutral();owner.audio.Stop(code);
+                Interrupted=true;owner.StopPorts(code);
                 if(owner.responseOwner==this)owner.responseOwner=null;
             }
             public void Tick(double now)

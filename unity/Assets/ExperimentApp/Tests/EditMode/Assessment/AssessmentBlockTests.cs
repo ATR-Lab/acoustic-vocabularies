@@ -36,19 +36,19 @@ namespace AcousticVocab.Assessment.Tests
         sealed class Audio:IAssessmentAudio
         {
             public bool Ready{get;set;}=true;public double? QualifiedOnsetMonoMs{get;set;}
-            public string FaultCode{get;set;} public bool Confirm=true;public int Prepares,Requests;
+            public string FaultCode{get;set;} public bool Confirm=true;public int Prepares,Requests,Stops;
             public readonly List<string> Types=new List<string>();public INovelSlotAuthorization Novel;
             public void Prepare(SlotContext c){Prepares++;QualifiedOnsetMonoMs=null;}
             public void Request(SlotContext c,INovelSlotAuthorization novel,ISpeechSlotAuthorization speech)
             {Requests++;Types.Add(c.Item.TrialType);Novel=novel;if(Confirm)QualifiedOnsetMonoMs=c.OnsetMonoMs;}
-            public void Stop(string code){}
+            public void Stop(string code){Stops++;}
         }
         sealed class Panel:IAssessmentPanel
         {
             public readonly ResponseState State;public readonly List<PanelProcessEvent> Events=new List<PanelProcessEvent>();
-            public bool Ready{get;set;}=true;public event Action<string> Responded;
+            public bool Ready{get;set;}=true;public bool ThrowHide;public event Action<string> Responded;
             public Panel(Clock clock){State=new ResponseState(()=>clock.NowMs,Events.Add);State.Responded+=r=>Responded?.Invoke(r.Code==ResponseCode.Commit?"commit":r.Code==ResponseCode.DontKnow?"dont_know":"timeout");}
-            public void Tick()=>State.Tick();public void Open(PanelRequest r)=>State.Open(r);public void Hide()=>State.Abort();
+            public void Tick()=>State.Tick();public void Open(PanelRequest r)=>State.Open(r);public void Hide(){if(ThrowHide)throw new IOException();State.Abort();}
         }
         sealed class View:IAssessmentView
         {
@@ -143,6 +143,17 @@ namespace AcousticVocab.Assessment.Tests
         {var f=new Fixture();f.Start();f.At(750);f.Scene.NeutralReady=false;f.At(800);Assert.That(f.Panel.State.Aborted,Is.True);Assert.That(f.Journal.Rows.Any(x=>x.TechnicalFaultCode=="ASSESSMENT_NEUTRAL_LOST"),Is.True);}
         [Test] public void FailedDurableResponseNeverAcknowledges()
         {var f=new Fixture();f.Start();f.At(750);f.Journal.FailResponse=true;f.Respond();f.At(12750);Assert.That(f.View.Events.Any(x=>x.text=="Response recorded"),Is.False);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Faulted));}
+        [Test] public void ActiveDisposeStopsAudioEvenWhenPanelCleanupThrows()
+        {
+            var f=new Fixture(count:2);f.Start();f.At(750);f.Panel.ThrowHide=true;Assert.DoesNotThrow(()=>f.Factory.Dispose());
+            Assert.That(f.Audio.Stops,Is.GreaterThan(0));Assert.That(f.View.Visible,Is.Empty);Assert.That(f.Journal.Rows.Any(x=>x.TechnicalFaultCode=="ASSESSMENT_DISPOSED"),Is.True);
+            f.Through(14750);Assert.That(f.Audio.Requests,Is.EqualTo(1));Assert.Throws<AssessmentFault>(()=>f.Factory.Create(Schedule().Blocks[0].Items[0]));
+        }
+        [Test] public void FaultStopsAudioAndReachesEngineDespiteThrowingCleanup()
+        {
+            var f=new Fixture();f.Start();f.At(750);f.Panel.ThrowHide=true;f.Scene.NeutralReady=false;f.At(800);
+            Assert.That(f.Audio.Stops,Is.GreaterThan(0));Assert.That(f.Journal.Rows.Any(x=>x.TechnicalFaultCode=="ASSESSMENT_NEUTRAL_LOST"),Is.True);
+        }
         [Test] public void NovelPermissionIsIssuedOnceAtDurableCue()
         {var f=new Fixture(type:"novel");f.Start();Assert.That(f.Audio.Novel,Is.Not.Null);Assert.That(f.Audio.Novel.TryConsume(Package,"K-a1-r1"),Is.True);Assert.That(f.Audio.Novel.TryConsume(Package,"K-a1-r1"),Is.False);Assert.That(f.Journal.Rows.Single(x=>x.Event=="novel_buffer_authorized").ExposureConsumed,Is.True);}
         [Test] public void FormsWaitForTailBoundaryAndRemainAudioFree()
@@ -198,6 +209,35 @@ namespace AcousticVocab.Assessment.Tests
         {
             var schedule=Schedule();var rows=new StagesJournal();rows.Append(new AssessmentRecord("forms_started",Hash,0,"forms"));
             Assert.Throws<AssessmentFault>(()=>new AssessmentStages(schedule,new Journal(),rows,new Clock(),()=>true));
+        }
+        static Fixture OptionalFixture()
+        {
+            var schedule=new VisitSchedule(Hash,Package,"DEMO","W4",true,new[]{Schedule(study:"B",visit:"W4").Blocks[0],Schedule("no_cue",study:"B",visit:"W4").Blocks[0]},"B","A",Hash);
+            var f=new Fixture(schedule);f.Start();f.Through(14750);f.Stages.BeginForms();while(f.Stages.CurrentRating!=null)f.Stages.Rate(f.Stages.CurrentRating.Id,1);
+            f.Engine.ConfirmResume();f.At(14750);f.Through(29500);f.Stages.BeginOptional();return f;
+        }
+        [Test] public void DictionaryAuthorityIsOneUseAndCannotSurviveAnotherConsultation()
+        {
+            var f=OptionalFixture();f.Stages.RecordOptional("optional_help","K-a1","requested");var first=f.Stages.DictionaryPermit("K-a1");var stale=f.Stages.DictionaryPermit("K-a1");
+            Assert.That(first.TryConsume(Hash,Hash,"K-a1"),Is.False);Assert.That(first.TryConsume(Package,Hash,"K-a2"),Is.False);
+            Assert.That(first.TryConsume(Package,Hash,"K-a1"),Is.True);Assert.That(first.TryConsume(Package,Hash,"K-a1"),Is.False);
+            f.Stages.RecordOptional("optional_help","K-a1","completed");f.Stages.RecordOptional("optional_help","K-a1","requested");Assert.That(stale.TryConsume(Package,Hash,"K-a1"),Is.False);
+        }
+        [Test] public void InterruptedOptionalRequestsCannotRestartWithoutExplicitCancellation()
+        {
+            var f=OptionalFixture();f.Stages.RecordOptional("optional_execution","execute_A_ADD_ONE","requested");
+            Assert.Throws<AssessmentFault>(()=>f.Stages.RecordOptional("optional_help","K-a1","requested"));
+            Assert.Throws<AssessmentFault>(()=>f.Stages.RecordOptional("optional_execution","execute_B_ADD_ONE","completed"));
+            Assert.That(f.Stages.OptionalRequestPending,Is.True);f.Stages.CancelInterruptedOptional();Assert.That(f.StageJournal.Rows.Last().OutcomeCode,Is.EqualTo("cancelled"));
+            f.Stages.RecordOptional("optional_help","K-a1","requested");Assert.That(f.Stages.OptionalRequestPending,Is.True);
+        }
+        [Test] public void MissingReviewedSpeechBlocksWholeValidityBeforeAnyNoCueExposure()
+        {
+            var f=new Fixture(Producer("A","D7",false));f.Start();
+            for(int i=0;i<20000&&!f.Stages.ProtectedComplete;i++){if(f.Engine.Status==SessionState.Paused)f.Engine.ConfirmResume();f.At(f.Clock.NowMs+50);}
+            f.Through(f.Clock.NowMs+2000);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Paused));f.Stages.BeginForms();while(f.Stages.CurrentRating!=null)f.Stages.Rate(f.Stages.CurrentRating.Id,1);
+            f.Engine.ConfirmResume();f.Engine.Tick();Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Paused));
+            Assert.That(f.Journal.Rows.Where(x=>x.BlockIndex==3).Any(x=>x.State==ItemState.CueRequested),Is.False);
         }
         [Test] public void ReviewedScriptsArePinnedClosedAndCannotInterpolateAnswers()
         {
