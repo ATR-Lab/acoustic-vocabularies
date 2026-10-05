@@ -70,9 +70,10 @@ Rules:
   then the referent bytes) without making the message buffer.
 - For a trained message, the composite hash equals the `pcm_sha256` of its WAV
   file. It is not the `file_sha256`, which also covers the 44-byte header.
-- For a held-out message, the package (#13) carries the composite hash in the
-  hidden-answer manifest. `composite_hash()` computes it in memory and returns
-  no samples.
+- For a held-out message, the package (#13) carries the composite hash in its
+  audio index (`audio.json`,
+  [`package-format.md`](../../docs/interfaces/package-format.md)).
+  `composite_hash()` computes it in memory and returns no samples.
 
 ## 4. Held-out rule in the reference composer
 

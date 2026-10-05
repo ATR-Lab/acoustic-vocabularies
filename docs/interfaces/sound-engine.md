@@ -138,7 +138,7 @@ write_message_wav(message: Message, path: str | os.PathLike[str], *,
   `{event, operation, message_id, action_id, referent_id}`.
 - `composite_hash` has the same structural checks but is allowed for held-out
   messages. It hashes incrementally and returns only the lowercase hex digest
-  (the hidden-answer manifest value, #13).
+  (the expected hash in a package's `audio.json`, #13).
 - `message_length` uses metadata only and never renders: each argument is a
   `total_ms` int, a `Recipe` or recipe dict, or an object with `n_samples`,
   `recipe` or `pcm` (checked in that order).
@@ -260,7 +260,48 @@ snapshot_digest(snapshot) -> str
 - Publish only chain heads and `snapshot_digest` values of study books, never
   per-atom hashes (the recipe domain can be enumerated).
 
-## Fallback (#15), packages (#13)
+## Fallback (#15)
 
-*Pending.* Each pull request adds its section here: `scan_fallback()` and the
-package builder.
+*Pending.* The pull request for #15 adds its section here: `scan_fallback()`.
+
+## Packages (#13)
+
+Learner (Study A) and dyad (Study B) packages: the frozen, hashed bundle the app loads.
+Format, loader checks and slots: [`package-format.md`](package-format.md); schema
+`sound/schema/package.schema.json`.
+
+```python
+build_package(store: VocabularyStore, book_id: str, out_dir: str | os.PathLike[str], *,
+              expected_head: str | None = None, rerender: bool = True) -> PackageResult
+build_dyad_package(bank: DyadBank, out_dir: str | os.PathLike[str]) -> PackageResult
+seal(package_dir, *, permutation=None, schedules=None, allocation_extras=None) -> str
+load_package(package_dir, *, expected_package_sha256: str | None = None,
+             check_composites: bool = True) -> LoadedPackage
+scan_package(package_dir, *, forbidden_strings: Iterable[str] = ()) -> LeakReport
+novel_by_visit(study: str, swap_w1_w4: bool) -> dict[str, list[str]]
+permutation_matrix(doc: Mapping[str, Any]) -> dict[str, tuple[tuple[str, ...], ...]]
+package_sha256(manifest: Mapping[str, Any]) -> str
+```
+
+- A package: 16 atom WAVs, the 18 trained-message WAVs (`compose_message`),
+  `answers.json` (hidden answers), `audio.json` (composite hash and length of all 32
+  messages; held-out ones from `composite_hash` only) and `manifest.json` (SHA-256 and
+  size of every file, one `package_sha256`). B package: 192 option WAVs
+  (`options/<profile>/<atom_id>-<rank>.wav`), the wave manifest and the composite hash of
+  all 1,536 option combinations; no message WAVs.
+- `build_package` needs a frozen, non-void `study` or `synthetic` store book with 16
+  labelled atoms that passes `store.verify` anchored on the head of its `freeze` record
+  (`manifest.book.frozen_head`; `expected_head` must equal it); it refuses `fallback`
+  books (`E_BOOK`) and study packages inside the repository (`E_POLICY`). Same book,
+  same bytes and hash.
+- `seal()` adds `permutation.json` (#29; `demo: true` only for DEMO packages, cells
+  equal to `av_sound.grammar.MATRIX`), `allocation.json` (`{"swap_w1_w4": bool}` plus B
+  `structured_family`) and `schedules/<person_id>/<visit>.json` (#30), checks them
+  against `answers.json`, and returns the new package hash. Slots fill once (`E_SLOT`).
+- `load_package` raises `PackageIntegrityError` (`.problems`, `.codes`: `E_HASH_MISMATCH`,
+  `E_FILE_MISSING`, `E_FILE_EXTRA`, `E_PACKAGE_HASH`, `E_WAV_FORMAT`, `E_CONTENT`,
+  `E_COMPOSITE`, slot codes). `scan_package` returns a `LeakReport` (`ok`,
+  `heldout_audio`, `method_strings`, `findings`).
+- Study B input is PROVISIONAL until #26: `av_sound.dyad_bank.DyadBank`
+  (`sound/schema/provisional-bank.schema.json`), `load_dyad_bank(path)`,
+  `synthetic_dyad_bank(bank_id, labels=None)`.

@@ -103,3 +103,16 @@ jobs:
           path: ${{ runner.temp }}/reserved-assets/
           retention-days: 14
           if-no-files-found: error
+      - name: Example packages (synthetic; committed JSON check and full build)
+        run: |
+          uv run --project sound python sound/tools/build_example_package.py --check
+          uv run --project sound python sound/tools/build_example_package.py \
+            --out "$RUNNER_TEMP/package-demo" --dyad | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload the synthetic example packages (DEMO, with WAVs)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-demo
+          path: ${{ runner.temp }}/package-demo/
+          retention-days: 14
+          if-no-files-found: error

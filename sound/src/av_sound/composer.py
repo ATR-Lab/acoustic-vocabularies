@@ -284,7 +284,7 @@ def composite_hash(action: AtomAudioLike, referent: AtomAudioLike) -> str:
 
     Same role, family, profile and length checks as `compose_message`, but allowed
     for held-out messages: it hashes incrementally, returns no samples and writes
-    nothing. This is the expected hash in the hidden-answer manifest (#13).
+    nothing. This is the expected hash in a package's audio index (#13).
     """
     _message_ref(action, referent)
     _common_profile(action, referent)
