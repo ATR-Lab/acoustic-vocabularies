@@ -72,7 +72,7 @@ namespace AcousticVocab.StateIntegration
                 value["worker_phase"]=workerPhase;value["phase_started_local_mono_ms"]=phaseStarted;
                 value["last_completed_sent_local_mono_ms"]=lastSent<0?JValue.CreateNull():new JValue(lastSent);
                 value["last_completed_received_local_mono_ms"]=lastReceived<0?JValue.CreateNull():new JValue(lastReceived);
-                value["first_failure_code"]=firstFailureCode;value["first_failure_phase"]=firstFailurePhase;
+                value["first_failure_code"]=firstFailureCode==null?JValue.CreateNull():new JValue(firstFailureCode);value["first_failure_phase"]=firstFailurePhase==null?JValue.CreateNull():new JValue(firstFailurePhase);
                 value["first_failure_local_mono_ms"]=firstFailureCode==null?JValue.CreateNull():new JValue(firstFailureAt);
             }
             return value;
