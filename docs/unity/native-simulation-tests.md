@@ -32,11 +32,26 @@ Build005 preserves the original `AudioFault` code instead of masking it as
 exposure condition fails. The order, thresholds, and successful-path reads of
 those conditions are unchanged. Its focused tests reproduce gate revocation and
 audio-path change after durable request recording, with zero callbacks and no
-replay. The actual build004 refusal cause remains unresolved until a fresh native
-diagnostic run. See [diagnostic validation](native-grammar-diagnostics.validation.json)
-for the separate build005 inventory and test evidence. The earlier
+replay. Two build005 attempts lost focus before Start; one later process exited
+with an access violation after its incomplete cleanup/export receipt. A third
+attempt used console HTTP commands without UI calls and recorded
+`GRAMMAR_RESET_ACK_NOT_CURRENT`, then `AUDIO_EXPOSURE_BLOCKED`, after the reserved
+chime request and before a callback. The raw HTTP samples were not retained, so
+that evidence establishes a failed current-health gate, not its exact age or
+worker failure cause. See [diagnostic validation](native-grammar-diagnostics.validation.json)
+for the separate build005 inventory and original test evidence. The earlier
 [validation record](native-simulation-validation.json) is a historical snapshot
 through the blocked build003 attempt and pre-launch build004 checks.
+
+Build006 drains the already received bounded private-control batch on the owning
+main thread before each exposure-health read. It retains original receipt/send
+times, exact reset history, strict schema/session checks, and the 250 ms maximum;
+it does not wait for new network evidence or refresh duplicate sample timestamps.
+Failed grammar gates include bounded age and failed/disposed-state diagnostics.
+The repeated source reset-confirmation path is unchanged. Teaching and menu
+canvases also use the calibrated observer's world pose while retaining their
+focus-concealment parent. [Follow-up validation](native-control-refresh.validation.json)
+records the queue and actual-host placement tests and clean build006 inventory.
 
 ## Build and provision
 

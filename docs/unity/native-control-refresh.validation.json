@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST_private_health_and_view_correction",
+  "runtime_source_commit": "edf482a9d609c16d696a3cd47d2fd7bef393a61b",
+  "change_source_commit": "21b0296",
+  "tests": [
+    {
+      "run": "control-refresh-001",
+      "kind": "private_control_queue_health_and_actual_host_placement",
+      "total": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "66ee3b2515b370e3264a066284907bb726d9ec980f68dde57d1945c4a34de91f"
+    },
+    {
+      "run": "control-refresh-002",
+      "kind": "actual_AudioPlayer_and_host_lifecycle",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "125f4b718ba18ce402ceeaa518c49c0eba51906e829c929aac6097ad981c8c19"
+    }
+  ],
+  "native_build": {
+    "build_id": "simulation-native-006",
+    "result": "Succeeded",
+    "errors": 0,
+    "dirty_source": false,
+    "files": 205,
+    "total_bytes": 158699511,
+    "inventory": "native-simulation-builds/windows-006.json",
+    "inventory_sha256": "8939449f7821fb7f3fd11c13c64473f9e810a163e5aded57b9f9e58e8915c037",
+    "native_inventory_raw_sha256": "ed72a6b81074d2b3169358e145a61f860f34f01ca8a8fedb23ef3180efe4193c",
+    "native_launch_attempted": false
+  },
+  "prior_build005_attempts": [
+    {
+      "run": "build005-full-001",
+      "status": "JOIN_FOCUS_LOST",
+      "complete": false,
+      "cleanup_succeeded": true,
+      "export_succeeded": true,
+      "native_result_sha256": "514c0ed422ee17c7ca6a7b4b501c890149f24545ec9da0dbd1f246498656e3a2",
+      "process_exit": 0,
+      "process_result_sha256": "00da188bd29066eeaf2ca9741309d23c012c08d8bf3b7eb917d9e24b786efced"
+    },
+    {
+      "run": "build005-full-002",
+      "status": "JOIN_FOCUS_LOST",
+      "complete": false,
+      "cleanup_succeeded": true,
+      "export_succeeded": true,
+      "native_result_sha256": "f9a7ce355106e70d2f8109597b71d7ae4b3c4c0e25088ced9cff3c1405bb0bf5",
+      "process_exit": 3221225477,
+      "process_result_sha256": "aa35d64da9f18ca513d7a87c4e7116f281708a8384d739c54db00dcd773bd9e0"
+    },
+    {
+      "run": "build005-full-003",
+      "status": "AUDIO_EXPOSURE_BLOCKED",
+      "complete": false,
+      "cleanup_succeeded": true,
+      "export_succeeded": true,
+      "native_result_sha256": "a273d65b49933e56b2cf6035964668e1182d8a3d15154b405c288f7deca4c5b6",
+      "process_exit": 0,
+      "process_result_sha256": "524c73156dced286c91a64c675c0b843865d382bbf65166d2d37bd6c5cdb3e1c"
+    }
+  ],
+  "diagnosis": {
+    "observed": "current private-control health gate refused after durable reserved chime request",
+    "raw_http_health_samples_retained": false,
+    "queued_fresh_sample_at_failure_proven": false,
+    "audio_callbacks_observed": 0,
+    "study_cues_requested": 0
+  },
+  "invariants": [
+    "Original sent/received timestamps and exact durable reset history remain authoritative.",
+    "The 250 ms bound, strict schemas/session and queue-age checks remain unchanged.",
+    "A gate drains only the bounded batch already present; it never waits for network or renews duplicate freshness.",
+    "Per-frame source ConfirmReset behavior is unchanged.",
+    "View pose is observer-calibrated and remains under focus concealment."
+  ],
+  "limitations": [
+    "Build006 is prepared for a fresh native run; tests and compilation do not establish a completed visit.",
+    "Build005 full002 terminated with0xC0000005 after incomplete cleanup/export evidence; the independent process result is retained.",
+    "No participant, acoustic, physical headset, or issue81 qualification is established."
+  ]
+}
