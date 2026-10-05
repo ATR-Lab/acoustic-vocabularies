@@ -21,6 +21,8 @@ namespace AcousticVocab.ResponsePanel
         public bool FaultLatched { get; private set; }
         public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
         public event Action<PanelResponse> Responded;
+        // Synchronous durable subscriber boundary; failures propagate into ResponseState's abort latch.
+        public event Action<PanelProcessEvent> ProcessRecorded;
         public event Action<string> Faulted;
         sealed class Key { public string Kind, Value; public Transform Root; public BoxCollider Collider; public MeshRenderer Surface; public TextMesh Text; }
         readonly List<Key> keys = new List<Key>();
@@ -37,6 +39,11 @@ namespace AcousticVocab.ResponsePanel
         Vector3 previousTip;
         string lastFault;
 
+        void PersistProcess(PanelProcessEvent value)
+        {
+            journal.Process(value);
+            ProcessRecorded?.Invoke(value);
+        }
         void Start()
         {
             try
@@ -49,7 +56,7 @@ namespace AcousticVocab.ResponsePanel
                 settings.VerifyStationInput((string)config["input_method"]);
                 var identity = StationConfig.ParseStrict(Resources.Load<TextAsset>("BuildIdentity").text);
                 journal = new PanelJournal(Path.Combine(Application.persistentDataPath, "operator-logs"), identity, (string)config["station_id"], settings.RecordedConfiguration);
-                State = new ResponseState(() => PanelJournal.NowMs, journal.Process);
+                State = new ResponseState(() => PanelJournal.NowMs, PersistProcess);
                 State.Responded += value => { journal.Response(value); Responded?.Invoke(value); };
                 CreatePresentation(StationConfig.ReferencePose(config));
                 foundation.Faulted += FoundationFault;
