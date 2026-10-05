@@ -44,7 +44,7 @@ class CommandDispatcher:
         self._thread()
         return {"control_session_id": self.control_session_id, "mode": self.mode, "paused": self.paused, "stopped": self.stopped,
                 "fault": self.fault, "demo_active": self.active is not None,
-                "exposure_ready": self.mode == "test" and self.reset_manager.exposure_ready and not self.fault and not self.paused and not self.stopped,
+                "exposure_ready": self.mode == "test" and self.neutral_hold and self.reset_manager.exposure_ready and not self.fault and not self.paused and not self.stopped,
                 "public_stream_recovered": False}
 
     def _complete(self, job, accepted, reason, *, reset_ok=None, duplicate=False, remember=True):
@@ -74,6 +74,24 @@ class CommandDispatcher:
         return reply
 
     def submit(self, raw, peer):
+        self._thread()
+        try:
+            return self._submit(raw, peer)
+        except Exception as error:
+            if self.fault == "COMMAND_LOG_FAILED":
+                failed = Future()
+                failed.set_exception(error)
+                return failed
+            self.fault = "COMMAND_DISPATCH_FAILED"
+            try:
+                value = decode(raw)
+            except (ValueError, TypeError):
+                value = None
+            job = dict(raw=raw, peer=peer, value=value, future=Future())
+            self._complete(job, False, "COMMAND_FAILED", remember=False)
+            return job["future"]
+
+    def _submit(self, raw, peer):
         self._thread()
         job = {"raw": raw, "peer": peer, "value": None, "future": Future()}
         try:
@@ -114,6 +132,7 @@ class CommandDispatcher:
         if len(self.cache) >= self.cache_size:
             # Never evict a request and accidentally execute an old retry again.
             self.fault, self.paused = "IDEMPOTENCY_CAPACITY", True
+            self.neutral_hold = True
             self._interrupt_demo("CAPACITY_INTERRUPTED")
             self._complete(job, False, "IDEMPOTENCY_CAPACITY", remember=False)
             return job["future"]

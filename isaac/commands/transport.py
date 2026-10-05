@@ -88,6 +88,7 @@ class PrivateCommandTransport:
             pass
 
     def close(self):
+        self.handoff.close()  # Calling owner thread logs/completes pending jobs.
         if self.thread.is_alive():
             async def finish():
                 self.server.close()

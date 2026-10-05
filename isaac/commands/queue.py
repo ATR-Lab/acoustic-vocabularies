@@ -17,6 +17,7 @@ class CommandQueue:
         self.queue = queue.PriorityQueue(maxsize=capacity)
         self.sequence = itertools.count()
         self.lock = threading.Lock()
+        self.closed = False
         self.refresh_health()
 
     def refresh_health(self):
@@ -52,10 +53,17 @@ class CommandQueue:
         except (ValueError, TypeError):
             pass
         future = Future()
-        try:
-            self.queue.put_nowait((priority, next(self.sequence), raw, peer, future))
-        except queue.Full:
-            future.set_result(self.deny(raw, peer, "COMMAND_QUEUE_FULL"))
+        reason = None
+        with self.lock:
+            if self.closed:
+                reason = "SERVICE_STOPPING"
+            else:
+                try:
+                    self.queue.put_nowait((priority, next(self.sequence), raw, peer, future))
+                except queue.Full:
+                    reason = "COMMAND_QUEUE_FULL"
+        if reason:
+            future.set_result(self.deny(raw, peer, reason))
         return future
 
     def drain(self, limit=8):
@@ -79,3 +87,19 @@ class CommandQueue:
                 output.set_exception(exc)
         self.dispatcher.advance()
         self.refresh_health()
+
+    def close(self):
+        self.dispatcher._thread()
+        with self.lock:
+            self.closed = True
+        self.dispatcher.stopped = self.dispatcher.paused = True
+        self.dispatcher._interrupt_demo("SERVICE_STOPPING")
+        self.refresh_health()
+        while True:
+            try:
+                _, _, raw, peer, future = self.queue.get_nowait()
+            except queue.Empty:
+                break
+            reply = self.deny(raw, peer, "SERVICE_STOPPING")
+            if not future.done():
+                future.set_result(reply)
