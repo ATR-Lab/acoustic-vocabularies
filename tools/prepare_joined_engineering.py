@@ -30,6 +30,10 @@ OPTIONAL_FILES = (
     "audio_calibration", "menu_snapshot", "menu_bridge_config", "comfort_gain",
     "menu_replay_ledger",
 )
+YOKED_FILES = (
+    "yoked_active_schedule", "yoked_active_run_sheet_manifest",
+    "yoked_active_schedule_manifest", "yoked_active_run_sheet_csv",
+)
 CONTENT_DIRS = ("package", "teaching", "grammar", "speech", "menu_examples", "menu_scripts")
 OUTPUT_DIRS = ("menu_mailbox", "operator_mailbox", "evidence")
 PIN_NAMES = ("package_sha256", "bank_sha256", "menu_manifest_sha256", "menu_head_sha256", "menu_snapshot_sha256")
@@ -131,7 +135,18 @@ def relative(value):
 
 
 def cap(name):
-    return (32 if name == "menu_replay_ledger" else 16 if name in ("schedule", "neutral", "run_sheet_csv") else 1) * 1024**2
+    return (32 if name == "menu_replay_ledger" else 16 if name in (
+        "schedule", "neutral", "run_sheet_csv", "yoked_active_schedule", "yoked_active_run_sheet_csv"
+    ) else 1) * 1024**2
+
+
+def yoked_start_check(value):
+    if value is None:
+        return
+    exact(value, ("policy", "lead_ms"), "YOKED_START_SHAPE")
+    need(value["policy"] == "operator_start_plus_lead"
+         and type(value["lead_ms"]) is int and 2000 <= value["lead_ms"] <= 60000,
+         "YOKED_START_POLICY")
 
 
 def read_file(path, maximum, expected=None):
@@ -244,8 +259,15 @@ def prepare(map_path, map_sha256, output):
     map_path = local_path(map_path)
     need(is_hash(map_sha256), "MAP_PIN")
     doc = strict_json(read_file(map_path, MAX_MAP, map_sha256))
-    exact(doc, ("version", "scope", "protocol_version", "identity", "files", "directories", "pins", "control"))
-    need(type(doc["version"]) is int and doc["version"] == 1 and doc["scope"] == "DEMO_ENGINEERING", "MAP_SCOPE")
+    need(isinstance(doc, dict) and "version" in doc and "scope" in doc, "MAP_SHAPE")
+    need(type(doc.get("version")) is int and doc["version"] in (1, 2)
+         and doc.get("scope") == "DEMO_ENGINEERING", "MAP_SCOPE")
+    version = doc["version"]
+    exact(doc, ("version", "scope", "protocol_version", "identity", "files", "directories", "pins", "control")
+          + (("yoked_start",) if version == 2 else ()))
+    if version == 2:
+        yoked_start_check(doc["yoked_start"])
+    optional_files = OPTIONAL_FILES + (YOKED_FILES if version == 2 else ())
     need(opaque_id(doc["protocol_version"]), "PROTOCOL_ID")
     exact(doc["identity"], IDENTITY_NAMES, "IDENTITY_SHAPE")
     for key, value in doc["identity"].items():
@@ -255,16 +277,16 @@ def prepare(map_path, map_sha256, output):
     for key, value in doc["pins"].items():
         need(is_hash(value) or (key != "package_sha256" and value is None), "PIN_VALUE")
     need(isinstance(doc["files"], dict) and set(REQUIRED_FILES) <= set(doc["files"])
-         and set(doc["files"]) <= set(REQUIRED_FILES + OPTIONAL_FILES), "FILES_SHAPE")
+         and set(doc["files"]) <= set(REQUIRED_FILES + optional_files), "FILES_SHAPE")
     need(isinstance(doc["directories"], dict) and "package" in doc["directories"]
          and set(doc["directories"]) <= set(CONTENT_DIRS), "DIRECTORIES_SHAPE")
     output = local_path(output)
     need(not output.exists() and not inside(map_path, output), "OUTPUT_EXISTS_OR_OVERLAP")
     files, dirs, inventories = {}, {}, {}
-    for name in REQUIRED_FILES + OPTIONAL_FILES:
+    for name in REQUIRED_FILES + optional_files:
         row = doc["files"].get(name)
         if row is None:
-            need(name in OPTIONAL_FILES, "REQUIRED_FILE")
+            need(name in optional_files, "REQUIRED_FILE")
             files[name] = None
             continue
         exact(row, ("path", "sha256"), "FILE_SHAPE")
@@ -293,6 +315,10 @@ def prepare(map_path, map_sha256, output):
             need(read_file(expected, cap(role), digest(files[role][1])) == files[role][1], "DOMAIN_FILE_BINDING")
     output.mkdir(parents=True, exist_ok=False)
     config = {key: doc[key] for key in ("version", "scope", "protocol_version", "identity", "pins", "control")}
+    if version == 2:
+        # Copy explicit future-start policy only. An anchor cannot be authored
+        # by staging or copied from another process's monotonic clock.
+        config["yoked_start"] = doc["yoked_start"]
     config["files"], config["directories"] = {}, {}
     copied = {}
     for name in CONTENT_DIRS:
@@ -346,7 +372,7 @@ def prepare(map_path, map_sha256, output):
     report = {"version": 1, "scope": "DEMO_ENGINEERING", "participant_admission": False,
               "source_map_sha256": map_sha256, "config_sha256": config_sha,
               "package_sha256": staged.package_sha256, "package_combinations_checked": staged.combinations_checked,
-              "missing_optional_files": [k for k in OPTIONAL_FILES if files[k] is None],
+              "missing_optional_files": [k for k in optional_files if files[k] is None],
               "runtime_authority_decision": "REQUIRED_DOMAIN_VALIDATION_NOT_PERFORMED_BY_STAGER",
               "copied_directory_snapshots": copied, "manual_persistent_provisioning": persistent,
               "runtime_or_appdata_modified": False, "services_launched": False}
