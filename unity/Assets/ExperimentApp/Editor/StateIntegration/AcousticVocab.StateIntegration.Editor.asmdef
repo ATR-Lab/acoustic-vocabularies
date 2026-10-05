@@ -1,0 +1,5 @@
+{
+  "name": "AcousticVocab.StateIntegration.Editor",
+  "references": ["AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor", "AcousticVocab.StateIntegration", "AcousticVocab.Workcell", "AcousticVocab.Workcell.Editor"],
+  "includePlatforms": ["Editor"]
+}

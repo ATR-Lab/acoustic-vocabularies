@@ -1,0 +1,180 @@
+{
+  "issue": 62,
+  "qualification": "engineering_validation_only",
+  "source_commit": "e5bf8a067f863f65db3c68221d18aef6bb4a185a",
+  "tests": [
+    {
+      "kind": "editmode",
+      "build_id": "state-sources-editmode-15",
+      "passed": 90,
+      "failed": 0,
+      "skipped": 0,
+      "result_sha256": "f019e0e14285ae45c246a378bccb31301825de33f4bcba2b6fbab6af77c9c45d"
+    },
+    {
+      "kind": "playmode",
+      "build_id": "state-sources-playmode-04",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "result_sha256": "04f270b14ea99f39c11856d2ffa0f71ec27c222a611931499e44d3e56da41335"
+    }
+  ],
+  "builds": [
+    {
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "state-sources-link-004",
+        "commit_sha": "e5bf8a067f863f65db3c68221d18aef6bb4a185a",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "StandaloneWindows64",
+        "dirty_source": false,
+        "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+        "development_only": true
+      },
+      "result": "Succeeded",
+      "errors": 0,
+      "manifest_sha256": "0750a7b74e4c1bcd16a8bceff8d72eb3bc873e154a0c507ecee6642d72f9f3be",
+      "file_count": 193,
+      "verified_file_bytes": 157919521,
+      "primary_binary": {
+        "path": "experiment.exe",
+        "bytes": 667136,
+        "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
+      }
+    },
+    {
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "state-sources-quest-003",
+        "commit_sha": "e5bf8a067f863f65db3c68221d18aef6bb4a185a",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "Android",
+        "dirty_source": false,
+        "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+        "development_only": true
+      },
+      "result": "Succeeded",
+      "errors": 0,
+      "manifest_sha256": "6ebb2e7103c8f33d6d966864a36575bf30b19fdcda4b14409db9c17051c340f1",
+      "file_count": 1,
+      "verified_file_bytes": 54647992,
+      "primary_binary": {
+        "path": "experiment.apk",
+        "bytes": 54647992,
+        "sha256": "055665b07f34cbd9130f7c4d536d73560f4f186c1a53ab5a289055676c486f1c"
+      }
+    }
+  ],
+  "simulator": {
+    "version": "205.0.0.42.1262",
+    "runtime": "Meta XR Simulator",
+    "scenarios": [
+      {
+        "status": "failed-startup-origin-race",
+        "manual_close_requested": true,
+        "xr_exit_seen": true,
+        "native_shutdown_stalled": true,
+        "owned_process_force_stopped": true,
+        "qualification": "simulator-only",
+        "run_id": "snapshot-01",
+        "result_sha256": "de848dd7bec2c620a63bb15dc54c6b080446bdb294beacda770234dbdae1235a",
+        "event_codes": [
+          "STATE_SOURCE_INITIALIZED",
+          "configuration_validated",
+          "header",
+          "observer_reference_restored",
+          "state_source_identity",
+          "tracking_origin_changed"
+        ]
+      },
+      {
+        "build_id": "state-sources-link-002",
+        "source_commit": "789b2fcbd67f971bc0efa6cf53fcfad383c2cd1e",
+        "device_profile": "Meta Quest Pro",
+        "source_kind": "snapshot",
+        "initial_scene_visible": true,
+        "focus_loss_logged": true,
+        "application_blank_on_focus_return": true,
+        "automatic_restore": false,
+        "head_motion_verified": false,
+        "qualification": "simulator_only",
+        "exited_without_force": true,
+        "run_id": "snapshot-02",
+        "result_sha256": "05f129a420206b5da47f44ae15a63247e8383a3acfd2e02463c204bf3b513395",
+        "event_codes": [
+          "STATE_SOURCE_INITIALIZED",
+          "application_focus_lost",
+          "configuration_validated",
+          "header",
+          "observer_reference_restored",
+          "state_source_identity"
+        ]
+      },
+      {
+        "source_kind": "snapshot",
+        "startup_restore_logged": true,
+        "focus_loss_logged": true,
+        "head_motion_verified": false,
+        "qualification": "simulator_only",
+        "run_id": "snapshot-03",
+        "result_sha256": "a9a4ea0b824f4505fa163e57852d1405d26488a71d56cecac9e65c9f9145aab2",
+        "event_codes": [
+          "STATE_SOURCE_INITIALIZED",
+          "application_focus_lost",
+          "configuration_validated",
+          "header",
+          "observer_reference_restored",
+          "state_source_identity"
+        ]
+      },
+      {
+        "source_kind": "snapshot",
+        "supplied_hash": "zero-sha256",
+        "hash_mismatch_fault_logged": true,
+        "workcell_hidden": true,
+        "source_initialized": false,
+        "qualification": "simulator_only",
+        "run_id": "bad-hash-01",
+        "result_sha256": "9178167e287e7ecdac794c20862572a14825c13a6354e6a5595e8ec4fec066e0",
+        "event_codes": [
+          "HASH_MISMATCH",
+          "application_focus_lost",
+          "configuration_validated",
+          "header",
+          "observer_reference_restored",
+          "state_source_identity"
+        ]
+      },
+      {
+        "build_id": "state-sources-link-004",
+        "source_kind": "snapshot",
+        "headset_input_off_on": true,
+        "tracking_lost_event_seen": false,
+        "prior_focus_loss_latched": true,
+        "automatic_restore": false,
+        "qualification": "tracking_injection_inconclusive",
+        "run_id": "tracking-01",
+        "result_sha256": "78905b32d8e08adf05116a1865fad6cc26fd4c663870a4af57a03d0811953a3e",
+        "event_codes": [
+          "STATE_SOURCE_INITIALIZED",
+          "application_focus_lost",
+          "configuration_validated",
+          "header",
+          "observer_reference_restored",
+          "state_source_identity"
+        ]
+      }
+    ]
+  },
+  "remaining": [
+    "Actual protected neutral live stream and C# parity capture",
+    "Recorded #56 trajectory playback",
+    "Physical Quest30-minute run and timing/legibility checks",
+    "Qualified clock-drift and route evidence",
+    "Licensed CI runner",
+    "Formal G1/G2 sign-off"
+  ]
+}

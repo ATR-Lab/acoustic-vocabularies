@@ -67,18 +67,29 @@ namespace AcousticVocab.Workcell
             for (int i = 0; i < joints.Length; i++) { byJoint.Add(joints[i].name, joints[i]); names[i] = joints[i].name; }
             jointNames = Array.AsReadOnly(names);
         }
-        public bool ApplyJoint(string name, float radians)
+        public bool CanApplyJoint(string name, float radians)
         {
             EnsureLookup();
             if (name == null || !byJoint.TryGetValue(name, out var joint) || !SceneCoordinates.Finite(radians) ||
                 radians < joint.lowerRad - .00001f || radians > joint.upperRad + .00001f) return false;
-            joint.link.localRotation = Quaternion.AngleAxis(radians * Mathf.Rad2Deg, joint.unityAxis); return true;
+            return joint.link!=null;
+        }
+        public bool ApplyJoint(string name, float radians)
+        {
+            if(!CanApplyJoint(name,radians)) return false;
+            var joint=byJoint[name]; joint.link.localRotation = Quaternion.AngleAxis(radians * Mathf.Rad2Deg, joint.unityAxis); return true;
         }
         public bool TryGetObject(string id, out ObjectBinding binding) { EnsureLookup(); binding = null; return id != null && byId.TryGetValue(id, out binding); }
-        public bool ApplyObject(string id, Vector3 localPosition, Quaternion localRotation, bool visible, bool enabled, PublicVisualState state)
+        public bool CanApplyObject(string id, Vector3 localPosition, Quaternion localRotation, PublicVisualState state)
         {
             EnsureLookup();
-            if (!TryGetObject(id, out var item) || !SceneCoordinates.Finite(localPosition) || !SceneCoordinates.Unit(localRotation) || !ValidState(item, state)) return false;
+            return TryGetObject(id,out var item) && item.root!=null && item.visual!=null &&
+                SceneCoordinates.Finite(localPosition) && SceneCoordinates.Unit(localRotation) && ValidState(item,state);
+        }
+        public bool ApplyObject(string id, Vector3 localPosition, Quaternion localRotation, bool visible, bool enabled, PublicVisualState state)
+        {
+            if(!CanApplyObject(id,localPosition,localRotation,state)) return false;
+            var item=byId[id];
             // All checks precede mutation. Enabled is semantic and independent of visible.
             item.root.localPosition = localPosition; item.root.localRotation = localRotation;
             item.root.gameObject.SetActive(visible); item.semanticEnabled = enabled; item.currentState = state;

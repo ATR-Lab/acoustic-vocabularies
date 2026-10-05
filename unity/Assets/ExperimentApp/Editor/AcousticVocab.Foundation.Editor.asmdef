@@ -9,6 +9,7 @@
     "Unity.XR.OpenXR",
     "Unity.XR.OpenXR.Editor",
     "AcousticVocab.Workcell",
+    "AcousticVocab.StateIntegration",
     "AcousticVocab.ResponsePanel"
   ],
   "includePlatforms": [
