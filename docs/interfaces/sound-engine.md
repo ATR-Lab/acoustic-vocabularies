@@ -291,6 +291,33 @@ av_sound.store.validator_code_hash() -> str
 - Publish only chain heads and `snapshot_digest` values of study books, never
   per-atom hashes (the recipe domain can be enumerated).
 
+## Golden manifest (#12)
+
+[`tests/golden/manifest.json`](../../tests/golden/manifest.json) locks the bytes of 61
+synthetic recipes x 3 profiles, the synthetic books' atoms and 96 messages, the seven
+nonlexical assets and a store round trip per book (337 items). CI recomputes it on
+Linux, macOS and Windows, x86_64 and arm64, and fails if any runner differs. Format,
+coverage and the version rules: [`sound/docs/golden.md`](../../sound/docs/golden.md).
+
+```python
+from av_sound import golden
+golden.verify_manifest(golden.load_manifest(path)) -> list[Mismatch]  # [] = all reproduce
+golden.build_manifest() -> dict[str, Any]                             # from the definitions
+golden.compute_items(specs) -> list[GoldenItem]                       # .id, .inputs, .outputs, .pcm
+golden.check_wav_dir(items, wav_dir, *, require_all=False) -> list[Mismatch]
+golden.write_wavs(items, out_dir) -> int; golden.digests(items) -> dict[str, str]
+```
+
+- For #13: the package builder may rely on identical bytes across machines while the
+  `Sound goldens` workflow is green; `renderer_version` and `renderer_hash` in the
+  manifest name the renderer it was checked with.
+- For #25: the manifest is part of the renderer freeze. At G4, `RENDERER_VERSION`
+  becomes `1.0.0`, the manifest is regenerated in that pull request, and the guard
+  (`sound/tools/check_golden_bump.py`) blocks later changes without a bump.
+- Changing an existing item needs an increase of a governing version field
+  (`renderer_version`; plus `asset_spec_version` for nonlexical items and
+  `validator_version` or `store_record_version` for store items) and a reviewer note.
+
 ## Fallback (#15), packages (#13)
 
 *Pending.* Each pull request adds its section here: `scan_fallback()` and the
