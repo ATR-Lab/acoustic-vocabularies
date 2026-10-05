@@ -9,7 +9,8 @@
   "builds_included": [
     "simulation-native-004",
     "simulation-native-005",
-    "simulation-native-006"
+    "simulation-native-006",
+    "simulation-native-007"
   ],
   "reviewer_source_commit": "880cf2a30fc6c6dbd94b6ecb6ca49582418e68e0",
   "verification_method": [
@@ -337,6 +338,98 @@
         }
       },
       "runtime_desktop_capture": null
+    },
+    {
+      "attempt": "007-full-001",
+      "source_commit": "19bab511b8c752bba8bd659510b6b69d72165987",
+      "build_manifest_sha256": "af91822eb2c3a4f97b7971ae24ec03af728cf72662d17426fe689a0630276081",
+      "run_manifest_sha256": "3ee024e99ea9064ba19e0d4855a4253b1dce3ac90ede4983a3928fd11bfa2ff6",
+      "export_manifest_sha256": "583bfce24b393f247cfc1604298af9ff5b241cf77d6d89ad85c87722cc993e25",
+      "process_elapsed_seconds": 82.021403,
+      "process_exit": 0,
+      "terminal": {
+        "status": "AUDIO_EXPOSURE_INTERRUPTED",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 14,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 2,
+      "grammar_audio_event_codes": [
+        "AUDIO_REQUESTED",
+        "SIMULATION_DELIVERY_OBSERVED",
+        "AUDIO_PLAYBACK_COMPLETED",
+        "AUDIO_REQUESTED",
+        "AUDIO_EXPOSURE_INTERRUPTED"
+      ],
+      "grammar_observed_callbacks": 31,
+      "grammar_observed_delivered_samples": 15360,
+      "grammar_software_completed_examples": 1,
+      "grammar_examples": [
+        {
+          "example_ordinal": 1,
+          "event_codes": [
+            "AUDIO_REQUESTED",
+            "SIMULATION_DELIVERY_OBSERVED",
+            "AUDIO_PLAYBACK_COMPLETED"
+          ],
+          "max_observed_callback_count": 31,
+          "max_observed_delivered_samples": 15360,
+          "event_record_sha256": [
+            "fd24df8b07d0d5d6b42a553f76841c55087a8330c94b1f2462a003c1cadd1c3f",
+            "d734fd6720985860ac0ebb178dac14a1fcf86351f9a9d5491d60770dda06b7a0",
+            "48aa51c00dbae83373eeb504908e0e5657eb325bab0d5d15ff20f7c96e8c99c0"
+          ],
+          "acoustic_onset_estimate": null,
+          "acoustic_onset_uncertainty": null
+        },
+        {
+          "example_ordinal": 2,
+          "event_codes": [
+            "AUDIO_REQUESTED",
+            "AUDIO_EXPOSURE_INTERRUPTED"
+          ],
+          "max_observed_callback_count": 0,
+          "max_observed_delivered_samples": 0,
+          "event_record_sha256": [
+            "f71a43f48939ca7db6e100ab799b1af32fbb01adaa3c89763134ac317e746ae9",
+            "0352e48d9e75d259860b92a9a6b557616aafe6776825309be1ea8ebea79daaac"
+          ],
+          "acoustic_onset_estimate": null,
+          "acoustic_onset_uncertainty": null
+        }
+      ],
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "native_log": {
+          "sha256": "86b1c94da6235f0a05718a2e5486b9faf18ddad5e56ab9dde8978e1268a95895",
+          "bytes": 41326
+        },
+        "process_result": {
+          "sha256": "2497a90f83e8880bee7527e6b72b2a23895dce701fc04745b17f394d0272d6c4",
+          "bytes": 325
+        },
+        "joined_journal": {
+          "sha256": "c3b52885e53868b0b95efadecf195b74a3e871f4394aa9a3d23e485276f03a77",
+          "bytes": 5928
+        },
+        "native_result": {
+          "sha256": "754895fda8e41ee816797338865393e72233522d6bcf755ce0e146235cfe090a",
+          "bytes": 602
+        },
+        "data_journal": {
+          "sha256": "ca91cd657adec37febbc01bdad5b9039b2ee7f41d4e51803ae2cc5802aa64eec",
+          "bytes": 19921
+        }
+      },
+      "runtime_desktop_capture": null
     }
   ],
   "process_overlap": {
@@ -362,12 +455,12 @@
     "limit_was_relaxed": false
   },
   "limits": [
-    "All six mock attempts are incomplete; zero study trial/exposure CSV rows do not erase separately retained uncertain grammar requests.",
-    "No observed callback or completion is not proof of physical inaudibility; no free replay authority is established.",
+    "All seven mock attempts are incomplete; zero study trial/exposure CSV rows do not erase separately retained uncertain grammar requests.",
+    "Builds 004\u2013006 have no observed callback/completion; build 007 has one software-completed example with 31 callbacks and 15,360 samples, followed by an interrupted second request. None establishes physical audibility or free replay authority.",
     "Empty frame interval data is not a timing pass.",
     "005-full-002 has nonzero observed OS exit despite retained export/cleanup success; shutdown cause remains unassigned.",
     "Black desktop captures and later partially occluded G1 capture do not establish physical HMD visibility, full leakage coverage, or a unique rendering cause.",
-    "005 lacked periodic health diagnostics;006 records a single refusal snapshot with effective age255.732507ms above250ms. Historical reset acceptance remained present. No retrospective005 cause assignment or successful fix is claimed.",
+    "005 lacked periodic health diagnostics; 006 and 007 each retain refusal snapshots with conservative ages 255.732507 ms and 257.031909 ms above 250 ms. Historical reset acceptance remained present. No retrospective 005 cause assignment or successful fix is claimed.",
     "Build inventory metadata is pinned; this audit did not independently rehash the executable or embedded identity.",
     "No process interval is a trial duration or acoustic/source/display calibration.",
     "These were not the seven prescribed fault injections; no injection custody or scenario acceptance is credited.",
@@ -409,5 +502,26 @@
     148,
     149,
     150
-  ]
+  ],
+  "007_full001_audio_gate": {
+    "record_sha256": "725f49480b82bb1c092883a6d3a0efc382b89a1727675ae80eceec37d01e94f3",
+    "sequence": 6,
+    "code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+    "control_health": {
+      "health_progressing_and_valid": true,
+      "observed_local_mono_ms": 23081.0917,
+      "receipt_elapsed_ms": 119.90719999999783,
+      "round_trip_ms": 102.44330000000264,
+      "neutral_age_ms": 34.681409021743775,
+      "publisher_age_ms": 15.790850021743774,
+      "effective_age_ms": 257.03190902174424,
+      "maximum_age_ms": 250,
+      "failed": false,
+      "disposed": false,
+      "mode_acknowledged": true,
+      "exact_reset_recorded": true,
+      "queued_arrivals": 0
+    },
+    "interpretation": "After one software-completed example, the second example was interrupted. Exact reset identity remained recorded, no queued arrival or failed worker was reported, and conservative current-health age exceeded 250 ms. The transport cadence correction did not resolve this actual refusal. No acoustic authority or whole grammar completion is established."
+  }
 }
