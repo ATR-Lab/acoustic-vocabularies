@@ -952,3 +952,16 @@ def test_doc_lists_the_demo_hashes(demo):
             f"`{book.book_sha256}` |"
         )
         assert row in doc
+
+
+def test_fallback_schemas_are_valid_and_closed():
+    from jsonschema import Draft202012Validator
+
+    from av_sound._schemas import load_schema
+
+    for name in ("fallback-manifest.schema.json", "fallback-scan.schema.json"):
+        schema = load_schema(name)
+        Draft202012Validator.check_schema(schema)
+        assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+        assert schema["additionalProperties"] is False
+        assert schema["$id"].endswith("/sound/schema/" + name)

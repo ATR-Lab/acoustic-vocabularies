@@ -986,18 +986,19 @@ def freeze_fallback_books(
     """Commit each fallback book to a new store book (`kind="fallback"`, no meanings,
     `source` = `BookAtom.source`, waveform asserted), in stored order, and freeze it.
 
-    The store refuses fallback books inside the repository (`StoreError`, `E_POLICY`) and
-    validates every commit again (book threshold = the set's threshold, reserved
-    signals). The store's snapshot digest must equal `book_sha256`.
+    The store refuses fallback books inside any git work tree (`StoreError`, `E_POLICY`)
+    and validates every commit again (book threshold = the set's threshold, reserved
+    signals). Each write passes the previous chain head as `expected_head`. The store's
+    snapshot digest must equal `book_sha256`.
     """
     frozen: list[FrozenFallbackBook] = []
     for book in fallback.books:
         book_id = fallback_book_id(fallback, book.profile)
-        store.create_book(
+        head = store.create_book(
             book_id, book.profile, kind="fallback", threshold=format_fraction(fallback.threshold)
         )
         for atom in book.atoms:
-            store.commit(
+            _, head = store.commit(
                 book_id,
                 atom.atom_id,
                 None,
@@ -1005,8 +1006,9 @@ def freeze_fallback_books(
                 source=atom.source,
                 profile=book.profile,
                 pcm_sha256=atom.pcm_sha256,
+                expected_head=head,
             )
-        head = store.freeze(book_id)
+        head = store.freeze(book_id, expected_head=head)
         digest = snapshot_digest(store.snapshot_hashes(book_id))
         if digest != book.book_sha256:  # pragma: no cover - commit order is the stored order
             raise FallbackError(E_INTEGRITY, f"{book_id}: store snapshot differs from the book")

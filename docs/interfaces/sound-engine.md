@@ -354,7 +354,9 @@ fallback_bank_hash(manifest: Mapping) -> str
   substitute `fset.book(profile)` and flag `failed_generation`), `log` (`ScanStep`:
   `index`, `recipe_sha256`, `pcm_sha256`, `outcome` `used`/`rejected`/`selected`,
   `codes`, `messages`), `validation` (the passing `ValidationResult`), `to_dict()`
-  (the scan record, logged apart from the 12 slots). The scan changes nothing.
+  (the scan record, logged apart from the 12 slots). The scan changes nothing. On
+  `exhausted`, commit the fallback book's atoms to a new book and
+  `store.void(failed_book, cause="failed_generation", ..., superseded_by=new_book)`.
 - Commit a selected recipe with `store.commit(book_id, atom_id, label, sel.recipe,
   source=sel.source, pcm_sha256=sel.pcm_sha256)`.
 - Errors: `FallbackError` with `.code` `E_SEED`, `E_EXHAUSTED`, `E_MANIFEST`,

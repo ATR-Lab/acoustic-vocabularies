@@ -130,9 +130,10 @@ The orchestrator (#20) then does one of these:
   a per-atom fallback for the audit (#24).
 - **Exhausted**: flag the book `failed_generation`. Commit the 16 atoms of
   `fallback.book(profile)` in stored order, with the batch's meanings, to a new
-  store book that keeps the method label in the allocation key. A store book is
-  append-only, so the failed book stays archived. Use `source=atom.source`
-  (`fallback-book-P1-K-a1`).
+  store book that keeps the method label in the allocation key. Use
+  `source=atom.source` (`fallback-book-P1-K-a1`). Then mark the failed book with
+  `store.void(book_id, cause="failed_generation", reason=..., superseded_by=<new
+  book>)`. Nothing is deleted, so the failed book stays archived.
 
 ## 6. Freezing and storage
 
@@ -149,8 +150,9 @@ the chain heads of the frozen fallback books.
   restricted-seed set is refused inside any git work tree (`E_POLICY`).
 - `freeze_fallback_books(store, fset)` commits each book to a store book of kind
   `fallback` with ID `FB-<profile>-<first 12 hex of fallback_bank_hash>`. The entries
-  have no meaning and the waveform is asserted. Then it freezes the book. The store
-  refuses fallback books inside the repository (`E_POLICY`). A store book holds at
+  have no meaning and the waveform is asserted. Each write is anchored with the
+  previous chain head (`expected_head`). Then it freezes the book. The store refuses
+  fallback books inside any git work tree (`E_POLICY`). A store book holds at
   most the 16 atom IDs, so the banks are not store books: they are frozen as the
   hashed manifest and read-only files.
 - Public examples use the seed `DEMO-fallback-v1`. Only the JSON manifest
