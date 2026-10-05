@@ -322,13 +322,34 @@ namespace AcousticVocab.SessionIntegration
             }
             public void Pump()
             {
-                if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
-                if(control==null){if(!SealBeforePostMenu())return;StartControl();}
-                control.Pump();if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
-                if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
-                if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
-                if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
-                if(Ready)wasReady=true;
+                string phase="timeout";
+                try
+                {
+                    if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
+                    phase="control_start";if(control==null){if(!SealBeforePostMenu())return;StartControl();}
+                    phase="control_pump";control.Pump();
+                    phase="request_reset";if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
+                    phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
+                    phase="finish_grammar";if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
+                    phase="prepare_factory";if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
+                    phase="ready_check";if(Ready)wasReady=true;
+                }
+                catch(Exception error)
+                {
+                    // StagedModuleCoordinator cancels this candidate before its
+                    // outer fault is reported. Observe the original failure and
+                    // non-pumping control snapshot while resources still exist.
+                    // Evidence failure must never mask or replace that exception.
+                    try
+                    {
+                        string code=error is ControlFault controlError?controlError.Code:error is SessionFault sessionError?sessionError.Code:
+                            error is AudioFault audioError?audioError.Code:error is IOException?"PREFLIGHT_IO_FAILED":"PREFLIGHT_UNEXPECTED_EXCEPTION";
+                        host.audit.Write("module",new JObject{["kind"]="preflight_failure",["code"]=code,["phase"]=phase,["block"]=block,["module"]=kind.ToString(),
+                            ["observed_mono_ms"]=host.clock.NowMs,["control_health"]=control?.ReadinessDiagnostic(reset)});
+                    }
+                    catch{}
+                    throw;
+                }
             }
             bool ControlReady=>ControlReadinessFailure()==null;
             string ControlReadinessFailure()

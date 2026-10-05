@@ -3,6 +3,7 @@
   "references": [
     "AcousticVocab.SessionIntegration",
     "AcousticVocab.SessionEngine",
+    "AcousticVocab.StateIntegration",
     "AcousticVocab.StudyAudio",
     "AcousticVocab.FrameBudget",
     "AcousticVocab.Foundation",
