@@ -8,9 +8,9 @@
   ],
   "builds_included": [
     "simulation-native-004",
-    "simulation-native-005"
+    "simulation-native-005",
+    "simulation-native-006"
   ],
-  "build006_status": "not included; append only after actual retained artifacts are independently reconciled",
   "reviewer_source_commit": "880cf2a30fc6c6dbd94b6ecb6ca49582418e68e0",
   "verification_method": [
     "Re-ran strict mock_visit.reconcile against each independently supplied frozen manifest hash.",
@@ -287,6 +287,56 @@
         "bytes": 40889,
         "observation": "G1 and portions of workcell visible on light background; simulator/help window overlaps desktop view; physical HMD view unverified."
       }
+    },
+    {
+      "attempt": "006-full-001",
+      "source_commit": "edf482a9d609c16d696a3cd47d2fd7bef393a61b",
+      "build_manifest_sha256": "ed72a6b81074d2b3169358e145a61f860f34f01ca8a8fedb23ef3180efe4193c",
+      "run_manifest_sha256": "aca50810c545d1f77854c65f7a5371749eaa48aa851a5b77133ca740aaf8ebcc",
+      "export_manifest_sha256": "b26c6fcf0c798e834d16920c03eb5211549b2a7f75da4edee72eba5a06407991",
+      "process_elapsed_seconds": 78.616671,
+      "process_exit": 0,
+      "terminal": {
+        "status": "AUDIO_EXPOSURE_INTERRUPTED",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 9,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 1,
+      "grammar_audio_event_codes": [
+        "AUDIO_REQUESTED",
+        "AUDIO_EXPOSURE_INTERRUPTED"
+      ],
+      "grammar_observed_callbacks": 0,
+      "grammar_observed_delivered_samples": 0,
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "native_log": {
+          "sha256": "4e243cbc629c9bece2164587c92bafa4b15b9dadd2dc9d142b38f48350b961a3",
+          "bytes": 44822
+        },
+        "process_result": {
+          "sha256": "969fb65c8a90a0e63eec8f7e3dac9db1445f645800be7e93bb11db65e316720a",
+          "bytes": 324
+        },
+        "joined_journal": {
+          "sha256": "06ef98a3a511d86fffd61c05272eddb208bb03353f24d2c2e7bcdfe1a0dbd38a",
+          "bytes": 5922
+        },
+        "native_result": {
+          "sha256": "edbbff6a5a9ba285cbc7c81fb0b77b854d9b0b244b65ec8956c38248c1191139",
+          "bytes": 609
+        }
+      },
+      "runtime_desktop_capture": null
     }
   ],
   "process_overlap": {
@@ -312,12 +362,12 @@
     "limit_was_relaxed": false
   },
   "limits": [
-    "All five mock attempts are incomplete; zero study trial/exposure CSV rows do not erase separately retained uncertain grammar requests.",
+    "All six mock attempts are incomplete; zero study trial/exposure CSV rows do not erase separately retained uncertain grammar requests.",
     "No observed callback or completion is not proof of physical inaudibility; no free replay authority is established.",
     "Empty frame interval data is not a timing pass.",
     "005-full-002 has nonzero observed OS exit despite retained export/cleanup success; shutdown cause remains unassigned.",
     "Black desktop captures and later partially occluded G1 capture do not establish physical HMD visibility, full leakage coverage, or a unique rendering cause.",
-    "A current-health gate refusal is not evidence that historical reset identity expired; periodic health receipts were not persisted.",
+    "005 lacked periodic health diagnostics;006 records a single refusal snapshot with effective age255.732507ms above250ms. Historical reset acceptance remained present. No retrospective005 cause assignment or successful fix is claimed.",
     "Build inventory metadata is pinned; this audit did not independently rehash the executable or embedded identity.",
     "No process interval is a trial duration or acoustic/source/display calibration.",
     "These were not the seven prescribed fault injections; no injection custody or scenario acceptance is credited.",
@@ -328,5 +378,36 @@
   "issue82_closed": false,
   "participant_qualified": false,
   "acoustic_onset_qualified": false,
-  "physical_hmd_visibility_qualified": false
+  "physical_hmd_visibility_qualified": false,
+  "further_runs_status": "not included until actual closed artifacts are independently reconciled",
+  "006_full001_audio_gate": {
+    "record_sha256": "ac4517c957bc94f2d2a2640f2a5b78feb5c6245079161c8836b5859205f50795",
+    "sequence": 6,
+    "code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+    "control_health": {
+      "health_progressing_and_valid": true,
+      "observed_local_mono_ms": 22773.1803,
+      "receipt_elapsed_ms": 139.99209999999948,
+      "round_trip_ms": 80.92150000000038,
+      "neutral_age_ms": 34.818907181793215,
+      "publisher_age_ms": 15.108730181793213,
+      "effective_age_ms": 255.73250718179307,
+      "maximum_age_ms": 250,
+      "failed": false,
+      "disposed": false,
+      "mode_acknowledged": true,
+      "exact_reset_recorded": true,
+      "queued_arrivals": 0
+    },
+    "retained_audio_codes": [
+      "AUDIO_REQUESTED",
+      "AUDIO_EXPOSURE_INTERRUPTED"
+    ],
+    "interpretation": "At this observation the exact reset remained recorded and no queued arrival or failed worker explained refusal; conservative current-health age exceeded250ms. No limit relaxation or completion is claimed."
+  },
+  "related_blocking_issues": [
+    148,
+    149,
+    150
+  ]
 }
