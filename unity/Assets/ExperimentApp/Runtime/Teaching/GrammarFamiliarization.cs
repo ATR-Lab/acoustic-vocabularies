@@ -49,7 +49,7 @@ namespace AcousticVocab.Teaching
             player.Event+=OnAudio;
             try{player.Configure(route,neutralFocusGate);player.SetComfortableGain(gain);player.Preload(assets.Preload(flow.ReadyId,flow.ClicksId),1024*1024);}catch{player.Event-=OnAudio;throw;}
         }
-        public void Tick(){if(disposed)return;try{flow.Tick(AudioPlayer.Now*1000);}catch(SessionFault e){Abort(e.Code);}catch{Abort("GRAMMAR_FAILED");}}
+        public void Tick(){if(disposed)return;try{flow.Tick(AudioPlayer.Now*1000);}catch(AudioFault e){Abort(e.Code);}catch(SessionFault e){Abort(e.Code);}catch{Abort("GRAMMAR_FAILED");}}
         void OnAudio(AudioPlaybackEvent value)
         {
             audioSink(value);LessonTimeline.Require(value.AudioId==flow.ReadyId||value.AudioId==flow.ClicksId,"GRAMMAR_AUDIO_CONTEXT");
