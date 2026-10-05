@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "configuration_status": "example_only",
+  "protocol_version": "engineering-pending-review",
+  "input_method": "controller_ray",
+  "hand": "right",
+  "distance_m": 0.7,
+  "vertical_offset_m": -0.18,
+  "text_angle_deg": 0.6,
+  "button_width_m": 0.135,
+  "button_height_m": 0.065,
+  "gap_m": 0.012,
+  "engineering_mode": "practice",
+  "engineering_role": "command",
+  "practice_window_ms": 60000
+}
