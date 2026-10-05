@@ -41,7 +41,7 @@ namespace AcousticVocab.Assessment
         void Acknowledgment();
     }
 
-    public sealed class ProtectedContentFactory : ISlotContentFactory,IDisposable
+    public sealed class ProtectedContentFactory : ISlotContentFactory,ISessionContentPump,IDisposable
     {
         readonly ISessionClock clock;
         readonly IProtectedState scene;
@@ -79,7 +79,7 @@ namespace AcousticVocab.Assessment
             try
             {
                 response(code); // #67 persists before participant confirmation.
-                responseOwner.HasResponse=true;panel.Hide();responseOwner=null;view.Neutral();
+                responseOwner.HasResponse=true;panel.Hide();responseOwner=null;
             }
             catch { Fail("ASSESSMENT_RESPONSE_LOG_FAILED"); }
         }
@@ -89,7 +89,8 @@ namespace AcousticVocab.Assessment
             foreach(var slot in timeline)slot.Interrupted=true;
             panel.Hide();view.Neutral();audio.Stop(code);responseOwner=null;fault(code);
         }
-        // Call before FixedSlotEngine.Tick so timeout and display updates precede transitions.
+        // FixedSlotEngine invokes this before its response and tail boundaries.
+        public void Pump()=>Tick();
         public void Tick()
         {
             if(failed||disposed)return;

@@ -18,18 +18,20 @@ namespace AcousticVocab.Assessment
         public string EventKind { get; }
         public string ScheduleSha256 { get; }
         public double HostMonoMs { get; }
+        public string ClockEpoch { get; }
         public string Stage { get; }
         public string ItemId { get; }
         public int? Value { get; }
         public string OutcomeCode { get; }
-        public AssessmentRecord(string kind,string schedule,double mono,string stage,string item=null,int? value=null,string outcome=null)
+        public AssessmentRecord(string kind,string schedule,double mono,string stage,string item=null,int? value=null,string outcome=null,string clockEpoch=null)
         {
+            clockEpoch??=Guid.NewGuid().ToString("N");
             if(!new[]{"forms_started","rating","forms_completed","optional_started","optional_help","optional_execution"}.Contains(kind)||
                 schedule==null||!Regex.IsMatch(schedule,@"\A[0-9a-f]{64}\z")||double.IsNaN(mono)||double.IsInfinity(mono)||mono<0||
-                stage is not ("forms" or "post_w4_optional")||item!=null&&!Regex.IsMatch(item,@"\A[a-z][a-z0-9_]{0,63}\z")||
+                !Regex.IsMatch(clockEpoch,@"\A[0-9a-f]{32}\z")||stage is not ("forms" or "post_w4_optional")||item!=null&&!Regex.IsMatch(item,@"\A[A-Za-z][A-Za-z0-9_-]{0,63}\z")||
                 outcome!=null&&!new[]{"requested","completed","failed","cancelled"}.Contains(outcome))
                 throw new AssessmentFault("ASSESSMENT_RECORD_INVALID");
-            EventKind=kind;ScheduleSha256=schedule;HostMonoMs=mono;Stage=stage;ItemId=item;Value=value;OutcomeCode=outcome;
+            EventKind=kind;ScheduleSha256=schedule;HostMonoMs=mono;ClockEpoch=clockEpoch;Stage=stage;ItemId=item;Value=value;OutcomeCode=outcome;
         }
     }
 
@@ -77,12 +79,16 @@ namespace AcousticVocab.Assessment
         readonly ISessionClock clock;
         readonly bool wordingReviewed;
         readonly Func<bool> safeBoundary;
+        readonly string clockEpoch=Guid.NewGuid().ToString("N");
+        readonly Dictionary<string,double> epochClocks=new Dictionary<string,double>(StringComparer.Ordinal);
         readonly HashSet<string> ratings=new HashSet<string>(StringComparer.Ordinal);
         double lastTime=-1;
         bool failed;
+        string pendingOptionalKind,pendingOptionalItem;
         public bool FormsStarted { get; private set; }
         public bool FormsComplete { get; private set; }
         public bool OptionalStarted { get; private set; }
+        public bool OptionalRequestPending=>pendingOptionalKind!=null;
         public IReadOnlyList<RatingItem> RatingItems { get; }
         public RatingItem CurrentRating => FormsStarted&&!FormsComplete?RatingItems.FirstOrDefault(x=>!ratings.Contains(x.Id)):null;
         public bool FinalDelayed => schedule.Study=="A"&&schedule.Visit=="D7"||schedule.Study=="B"&&schedule.Visit=="W4";
@@ -109,15 +115,17 @@ namespace AcousticVocab.Assessment
         }
         public bool ProtectedComplete => Completed("protected");
         public bool ValidityComplete => FinalDelayed&&Completed("validity");
+        public void RequireSafeBoundary()=>Need(safeBoundary(),"ASSESSMENT_BOUNDARY_REQUIRED");
         void Write(string kind,string stage,string item=null,int? value=null,string outcome=null)
         {
-            var record=new AssessmentRecord(kind,schedule.Sha256,Now(),stage,item,value,outcome);
+            var record=new AssessmentRecord(kind,schedule.Sha256,Now(),stage,item,value,outcome,clockEpoch);
             try { journal.Append(record); } catch { failed=true;throw new AssessmentFault("ASSESSMENT_JOURNAL_FAILED"); }
             Apply(record);
         }
         void Apply(AssessmentRecord record)
         {
             Need(record!=null&&record.ScheduleSha256==schedule.Sha256,"ASSESSMENT_HISTORY_SCOPE");
+            Need(!epochClocks.TryGetValue(record.ClockEpoch,out double previous)||record.HostMonoMs>=previous,"ASSESSMENT_CLOCK_INVALID");epochClocks[record.ClockEpoch]=record.HostMonoMs;
             switch(record.EventKind)
             {
                 case "forms_started":
@@ -131,7 +139,8 @@ namespace AcousticVocab.Assessment
                     Need(!OptionalStarted&&FormsComplete&&ValidityComplete&&schedule.Study=="B"&&schedule.Visit=="W4"&&record.Stage=="post_w4_optional"&&record.ItemId==null&&record.Value==null&&record.OutcomeCode==null,"ASSESSMENT_HISTORY_ORDER");OptionalStarted=true;break;
                 case "optional_help":
                 case "optional_execution":
-                    Need(OptionalStarted&&record.Stage=="post_w4_optional"&&record.ItemId!=null&&record.Value==null&&record.OutcomeCode!=null,"ASSESSMENT_HISTORY_ORDER");break;
+                    Need(OptionalStarted&&record.Stage=="post_w4_optional"&&record.ItemId!=null&&record.Value==null&&CanOptionalRecord(record.EventKind,record.ItemId,record.OutcomeCode),"ASSESSMENT_HISTORY_ORDER");
+                    if(record.OutcomeCode=="requested"){pendingOptionalKind=record.EventKind;pendingOptionalItem=record.ItemId;}else{pendingOptionalKind=null;pendingOptionalItem=null;}break;
             }
         }
         public void BeginForms()
@@ -173,8 +182,15 @@ namespace AcousticVocab.Assessment
         }
         public void RecordOptional(string kind,string itemId,string outcome)
         {
-            Need(safeBoundary()&&OptionalStarted&&kind is ("optional_help" or "optional_execution"),"ASSESSMENT_OPTIONAL_BLOCKED");
+            Need(safeBoundary()&&OptionalStarted&&kind is ("optional_help" or "optional_execution")&&CanOptionalRecord(kind,itemId,outcome),"ASSESSMENT_OPTIONAL_BLOCKED");
             Write(kind,"post_w4_optional",itemId,null,outcome);
+        }
+        bool CanOptionalRecord(string kind,string item,string outcome)=>item!=null&&(outcome=="requested"?pendingOptionalKind==null:
+            outcome is ("completed" or "failed" or "cancelled")&&pendingOptionalKind==kind&&pendingOptionalItem==item);
+        public void CancelInterruptedOptional()
+        {
+            Need(safeBoundary()&&OptionalStarted&&OptionalRequestPending,"ASSESSMENT_OPTIONAL_BLOCKED");
+            Write(pendingOptionalKind,"post_w4_optional",pendingOptionalItem,null,"cancelled");
         }
     }
 }

@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$BuildId,
     [ValidateSet('Foundation','Workcell','StateSources','Calibration','ResponsePanel')][string]$Scene = 'Foundation',
     [string]$G1Description,
+    [switch]$GraphicsTests,
     [switch]$AllowDirty,
     [string]$TemporaryDirectory,
     [string]$GradleCache
@@ -29,7 +30,9 @@ if ($TemporaryDirectory) { New-Item -ItemType Directory -Path $TemporaryDirector
 if ($GradleCache) { New-Item -ItemType Directory -Path $GradleCache -Force | Out-Null; $environment.GRADLE_USER_HOME=$GradleCache }
 $log = Join-Path $output ($Target + '.log')
 if (Test-Path -LiteralPath $log) { throw 'Use a fresh build identifier; existing logs will not be overwritten.' }
-$unityArguments = @('-batchmode','-nographics','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log+'"'))
+if ($GraphicsTests -and $Target -ne 'TestPlayMode') { throw 'GraphicsTests is valid only for TestPlayMode' }
+$unityArguments = @('-batchmode','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log+'"'))
+if (-not $GraphicsTests) { $unityArguments += '-nographics' }
 if ($Target -eq 'Android') { $unityArguments += @('-buildTarget','Android') }
 if ($Target -eq 'Windows') { $unityArguments += @('-buildTarget','Win64') }
 if ($Target -in @('Test','TestPlayMode')) {
@@ -46,6 +49,7 @@ if ($Target -in @('Test','TestPlayMode')) {
     })
     if ($testAssemblies.Count -lt 1) { throw 'No project test assemblies found for target platform' }
     $unityArguments += @('-runTests','-testPlatform',$platform,'-assemblyNames',($testAssemblies -join ';'),'-testResults',('"'+$results+'"'))
+    $unityArguments += @('-testCategory',$(if ($GraphicsTests) { 'GraphicsRequired' } else { '!GraphicsRequired' }))
 } else {
     $method = if ($Target -eq 'Configure') { 'Configure' } else { 'Build'+$Target }
     $builder = switch ($Scene) { 'Calibration' { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }

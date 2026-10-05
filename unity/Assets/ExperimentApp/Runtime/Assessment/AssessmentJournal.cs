@@ -49,12 +49,12 @@ namespace AcousticVocab.Assessment
         {Require(value!=null&&(value.Type==JTokenType.String||nullable&&value.Type==JTokenType.Null));return(string)value;}
         static AssessmentRecord Parse(JObject r)
         {
-            Keys(r,"event_kind","schedule_sha256","host_mono_ms","stage","item_id","value","outcome_code");
+            Keys(r,"event_kind","schedule_sha256","host_mono_ms","clock_epoch","stage","item_id","value","outcome_code");
             Require(r["host_mono_ms"].Type is JTokenType.Integer or JTokenType.Float);Require(r["value"].Type is JTokenType.Integer or JTokenType.Null);
-            return new AssessmentRecord(Text(r["event_kind"]),Text(r["schedule_sha256"]),(double)r["host_mono_ms"],Text(r["stage"]),Text(r["item_id"],true),(int?)r["value"],Text(r["outcome_code"],true));
+            return new AssessmentRecord(Text(r["event_kind"]),Text(r["schedule_sha256"]),(double)r["host_mono_ms"],Text(r["stage"]),Text(r["item_id"],true),(int?)r["value"],Text(r["outcome_code"],true),Text(r["clock_epoch"]));
         }
         JObject Row(AssessmentRecord r)=>new JObject{["version"]=1,["sequence"]=records.Count+1,["previous"]=previous,["record"]=new JObject{
-            ["event_kind"]=r.EventKind,["schedule_sha256"]=r.ScheduleSha256,["host_mono_ms"]=r.HostMonoMs,["stage"]=r.Stage,["item_id"]=r.ItemId,["value"]=r.Value,["outcome_code"]=r.OutcomeCode}};
+            ["event_kind"]=r.EventKind,["schedule_sha256"]=r.ScheduleSha256,["host_mono_ms"]=r.HostMonoMs,["clock_epoch"]=r.ClockEpoch,["stage"]=r.Stage,["item_id"]=r.ItemId,["value"]=r.Value,["outcome_code"]=r.OutcomeCode}};
         static string Tip(int sequence,string hash)=>new JObject{["sequence"]=sequence,["sha256"]=hash}.ToString(Formatting.None);
         public void Append(AssessmentRecord record)
         {

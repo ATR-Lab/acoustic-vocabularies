@@ -18,11 +18,12 @@ namespace AcousticVocab.Assessment
         public Shader unlitShader;
         public ResponsePanelController inputSource;
         public event Action<string> Faulted;
-        public string VisibleText { get; private set; }="";
+        public string VisibleText => root!=null&&root.gameObject.activeInHierarchy?text.text:"";
         public bool FormsVisible=>formsVisible;
         AssessmentStages stages;
         Transform root;
         TextMesh text;
+        AssessmentAcknowledgmentView acknowledgment;
         readonly List<(BoxCollider collider,int value)> buttons=new List<(BoxCollider,int)>();
         readonly List<Material> materials=new List<Material>();
         readonly List<XRHandSubsystem> hands=new List<XRHandSubsystem>();
@@ -36,7 +37,7 @@ namespace AcousticVocab.Assessment
             stages=value;var pose=StationConfig.ReferencePose(foundation.Configuration);
             root=new GameObject("Assessment surface").transform;root.SetParent(foundation.presentationRoot.transform,false);
             root.SetPositionAndRotation(pose.position+pose.rotation*new Vector3(0,.05f,1.05f),pose.rotation);
-            text=Label(root,"",Vector3.zero,.75f,.04f);
+            acknowledgment=new AssessmentAcknowledgmentView(root,font);text=acknowledgment.Text;
             Neutral();
         }
         TextMesh Label(Transform parent,string value,Vector3 position,float width,float height)
@@ -47,12 +48,7 @@ namespace AcousticVocab.Assessment
             Fit(label,width,height);return label;
         }
         static void Fit(TextMesh label,float width,float height)
-        {
-            label.transform.localScale=Vector3.one;if(label.text.Length==0)return;
-            var bounds=label.GetComponent<MeshRenderer>().localBounds.size;
-            if(bounds.x<=0||bounds.y<=0)throw new AssessmentFault("ASSESSMENT_GLYPH_BOUNDS");
-            label.transform.localScale=Vector3.one*Math.Min(width/bounds.x,height/bounds.y);
-        }
+            =>AssessmentAcknowledgmentView.Fit(label,width,height);
         void ClearButtons()
         {
             foreach(var item in buttons)if(item.collider!=null){item.collider.gameObject.SetActive(false);Destroy(item.collider.gameObject);}
@@ -62,15 +58,20 @@ namespace AcousticVocab.Assessment
         void Show(string value)
         {
             if(root==null||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");
-            VisibleText=value;text.text=value;Fit(text,.75f,.05f);root.gameObject.SetActive(value.Length>0||formsVisible);
+            text.text=value;Fit(text,.75f,.05f);root.gameObject.SetActive(value.Length>0||formsVisible);
         }
-        public void Neutral(){formsVisible=false;ClearButtons();if(root!=null&&!failed)Show("");}
-        public void Acknowledgment(){formsVisible=false;ClearButtons();Show("Response recorded");}
+        public void Neutral(){formsVisible=false;ClearButtons();if(root!=null&&!failed)acknowledgment.Neutral();}
+        public void Acknowledgment(){formsVisible=false;ClearButtons();if(root==null||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");acknowledgment.Acknowledgment();}
         public void BeginForms()
         {
             if(!foundation.Ready||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");
             if(!stages.FormsStarted)stages.BeginForms();
             ShowRating();
+        }
+        public void ShowInstruction(AssessmentScripts scripts,string block)
+        {
+            if(scripts==null||!foundation.Ready||failed)throw new AssessmentFault("ASSESSMENT_SCRIPT_UNAVAILABLE");
+            stages.RequireSafeBoundary();formsVisible=false;ClearButtons();Show(scripts.For(block));
         }
         void ShowRating()
         {
@@ -142,7 +143,7 @@ namespace AcousticVocab.Assessment
         }
         static bool Finite(Vector3 value)=>float.IsFinite(value.x)&&float.IsFinite(value.y)&&float.IsFinite(value.z);
         void Fail(string reason)
-        { failed=true;formsVisible=false;VisibleText="";if(root!=null)root.gameObject.SetActive(false);Faulted?.Invoke(reason); }
+        { failed=true;formsVisible=false;if(root!=null)root.gameObject.SetActive(false);Faulted?.Invoke(reason); }
         void OnApplicationFocus(bool value){focused=value;if(!value&&formsVisible)Fail("ASSESSMENT_FOCUS_LOST");}
         void OnDisable(){if(root!=null)Fail("ASSESSMENT_VIEW_DISABLED");}
         void OnDestroy(){foreach(var material in materials)if(material!=null)Destroy(material);}

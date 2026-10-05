@@ -69,7 +69,7 @@ namespace AcousticVocab.Assessment.Tests
                 Engine=new FixedSlotEngine(schedule,Clock,Journal,Factory);
             }
             public void Start(){Engine.ConfirmResume();At(Clock.NowMs);}
-            public void At(double time){Clock.NowMs=time;Factory.Tick();Engine.Tick();}
+            public void At(double time){Clock.NowMs=time;Engine.Tick();}
             public void Through(double time){while(Clock.NowMs<time){At(Math.Min(time,Clock.NowMs+50));}}
             public void Respond(string code="commit",string target="A")
             {
@@ -134,7 +134,7 @@ namespace AcousticVocab.Assessment.Tests
             }
         }
         [Test] public void PreparingNextSlotCannotErasePreviousAcknowledgment()
-        {var f=new Fixture(count:2);f.Start();f.At(750);f.At(12750);Assert.That(f.Audio.Prepares,Is.EqualTo(2));Assert.That(f.View.Visible,Is.EqualTo("Response recorded"));f.At(14749);Assert.That(f.View.Visible,Is.EqualTo("Response recorded"));f.At(14750);Assert.That(f.View.Visible,Is.Empty);}
+        {var f=new Fixture(count:2);f.Start();f.At(750);f.At(12750);Assert.That(f.Audio.Prepares,Is.EqualTo(2));Assert.That(f.View.Visible,Is.EqualTo("Response recorded"));f.Through(14749);Assert.That(f.View.Visible,Is.EqualTo("Response recorded"));f.At(14750);Assert.That(f.View.Visible,Is.Empty);}
         [Test] public void MissingQualifiedOnsetNeverOpensResponseOrCompletesAsNormal()
         {var f=new Fixture();f.Audio.Confirm=false;f.Start();f.At(750);Assert.That(f.Panel.State.Request,Is.Null);f.At(12750);Assert.That(f.Journal.Rows.Any(x=>x.TechnicalFaultCode=="ASSESSMENT_ONSET_UNCONFIRMED"),Is.True);Assert.That(f.Journal.Rows.Any(x=>x.Event=="response"),Is.False);}
         [Test] public void MismatchedQualifiedOnsetIsRejected()
@@ -184,6 +184,33 @@ namespace AcousticVocab.Assessment.Tests
         }
         [Test] public void JournalFailureLocksLaterFormsAndOptionalOperations()
         {var f=new Fixture();f.Start();f.Through(14750);f.StageJournal.Fail=true;Assert.Throws<AssessmentFault>(()=>f.Stages.BeginForms());f.StageJournal.Fail=false;Assert.Throws<AssessmentFault>(()=>f.Stages.BeginForms());Assert.That(f.StageJournal.Rows,Is.Empty);}
+        [Test] public void OptionalStageRequiresCompletedBW4ValidityAndWritesItsOwnStage()
+        {
+            var trained=Schedule(study:"B",visit:"W4").Blocks[0];var validity=Schedule("no_cue",study:"B",visit:"W4").Blocks[0];
+            var schedule=new VisitSchedule(Hash,Package,"DEMO","W4",true,new[]{trained,validity},"B","A",Hash);var f=new Fixture(schedule);
+            Assert.Throws<AssessmentFault>(()=>f.Stages.BeginOptional());f.Start();f.Through(14750);f.Stages.BeginForms();while(f.Stages.CurrentRating!=null)f.Stages.Rate(f.Stages.CurrentRating.Id,1);
+            Assert.Throws<AssessmentFault>(()=>f.Stages.BeginOptional());f.Engine.ConfirmResume();f.At(14750);f.Through(27500);Assert.That(f.Stages.ValidityComplete,Is.True);
+            Assert.Throws<AssessmentFault>(()=>f.Stages.BeginOptional());f.Through(29500);f.Stages.BeginOptional();f.Stages.RecordOptional("optional_help","K-a1","requested");f.Stages.RecordOptional("optional_help","K-a1","completed");
+            Assert.That(f.StageJournal.Rows.Where(x=>x.EventKind.StartsWith("optional",StringComparison.Ordinal)).All(x=>x.Stage=="post_w4_optional"),Is.True);
+            Assert.That(f.Journal.Rows.Count(x=>x.Event=="response"),Is.EqualTo(2));
+        }
+        [Test] public void UnfinishedProtectedHistoryCannotRestoreStartedForms()
+        {
+            var schedule=Schedule();var rows=new StagesJournal();rows.Append(new AssessmentRecord("forms_started",Hash,0,"forms"));
+            Assert.Throws<AssessmentFault>(()=>new AssessmentStages(schedule,new Journal(),rows,new Clock(),()=>true));
+        }
+        [Test] public void ReviewedScriptsArePinnedClosedAndCannotInterpolateAnswers()
+        {
+            var scripts=new JObject();foreach(string key in new[]{"pre_old","trained","novel","atomic","validity","break","forms","post_w4_optional"})scripts[key]="DEMO "+key;
+            byte[] Bytes(JObject obj)=>System.Text.Encoding.UTF8.GetBytes(obj.ToString(Newtonsoft.Json.Formatting.None));
+            var doc=new JObject{["version"]=1,["scripts"]=scripts};byte[] bytes=Bytes(doc);
+            var review=new JObject{["version"]=1,["approved"]=true,["scripts_sha256"]=PcmWave.Hash(bytes),["methodology_sha256"]=Hash};byte[] reviewBytes=Bytes(review);
+            var loaded=AssessmentScripts.Load(bytes,PcmWave.Hash(bytes),reviewBytes,PcmWave.Hash(reviewBytes));Assert.That(loaded.For("break"),Is.EqualTo("DEMO break"));
+            Assert.Throws<AssessmentFault>(()=>loaded.For("answer"));Assert.Throws<AssessmentFault>(()=>AssessmentScripts.Load(bytes,Hash,reviewBytes,PcmWave.Hash(reviewBytes)));
+            review["approved"]=false;reviewBytes=Bytes(review);Assert.Throws<AssessmentFault>(()=>AssessmentScripts.Load(bytes,PcmWave.Hash(bytes),reviewBytes,PcmWave.Hash(reviewBytes)));
+            review["approved"]=true;scripts["trained"]="DEMO {answer}";bytes=Bytes(doc);review["scripts_sha256"]=PcmWave.Hash(bytes);reviewBytes=Bytes(review);
+            Assert.Throws<AssessmentFault>(()=>AssessmentScripts.Load(bytes,PcmWave.Hash(bytes),reviewBytes,PcmWave.Hash(reviewBytes)));
+        }
         [Test] public void StageJournalRejectsEditedFinalRecordTruncationAndBlankLine()
         {
             foreach(string mutation in new[]{"edit","truncate","blank"})

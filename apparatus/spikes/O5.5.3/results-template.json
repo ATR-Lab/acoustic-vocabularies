@@ -1,0 +1,18 @@
+{
+  "status": "not_run",
+  "source_commit": null,
+  "build_manifest_sha256": null,
+  "protocol_version": null,
+  "methodology_sha256": null,
+  "wording_review_sha256": null,
+  "topology": null,
+  "simulator_only": null,
+  "private_run_sheet_manifest_sha256": null,
+  "visit_reports": [],
+  "acknowledgment_frame_comparison_sha256": null,
+  "qualified_audio_evidence_sha256": null,
+  "post_w4_execution_library_sha256": null,
+  "private_w4_recording_sha256": null,
+  "faults": [],
+  "operator_signoff": null
+}
