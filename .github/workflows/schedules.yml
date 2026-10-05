@@ -50,6 +50,19 @@ jobs:
       - name: Type check
         working-directory: schedules
         run: uv run mypy
+      - name: Preserve formatter and type diagnostics after a failed check
+        if: failure()
+        run: |
+          uv run --project schedules ruff check --config schedules/pyproject.toml --fix schedules/src/av_schedules/admission.py schedules/src/av_schedules/admission_io.py schedules/src/av_schedules/admission_cli.py tests/schedules/test_admission.py || true
+          uv run --project schedules ruff format --config schedules/pyproject.toml schedules/src/av_schedules/admission.py schedules/src/av_schedules/admission_io.py schedules/src/av_schedules/admission_cli.py tests/schedules/test_admission.py
+          git diff -- schedules/src/av_schedules/admission.py schedules/src/av_schedules/admission_io.py schedules/src/av_schedules/admission_cli.py tests/schedules/test_admission.py > "$RUNNER_TEMP/schedules-lint.patch"
+          (cd schedules && uv run mypy) || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: schedules-check-diagnostics-${{ matrix.os }}
+          path: ${{ runner.temp }}/schedules-lint.patch
+          if-no-files-found: ignore
       - name: Tests
         run: >
           uv run --project schedules pytest --import-mode=importlib -p no:cacheprovider tests/schedules
