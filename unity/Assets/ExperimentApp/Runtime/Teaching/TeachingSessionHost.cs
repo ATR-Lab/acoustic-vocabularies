@@ -106,6 +106,7 @@ namespace AcousticVocab.Teaching
         }
         Text TextAt(string name,Vector2 position,Vector2 size)
         {
+            PresentationTextBacking.Add(canvas.transform,name,position,size);
             var node=new GameObject(name,typeof(RectTransform),typeof(CanvasRenderer),typeof(Text));node.transform.SetParent(canvas.transform,false);
             var rect=(RectTransform)node.transform;rect.anchoredPosition=position;rect.sizeDelta=size;
             var text=node.GetComponent<Text>();text.font=font;text.fontSize=27;text.alignment=TextAnchor.MiddleCenter;text.color=Color.white;text.supportRichText=false;text.raycastTarget=false;return text;
