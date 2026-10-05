@@ -46,6 +46,8 @@ class DemoLibrary:
         return self._play(plan)
 
     def _play(self, plan):
+        if self.active:
+            raise ValueError('Another visualization started before this iterator')
         self.active = True
         self.last_result = None
         primary = plan['primary']

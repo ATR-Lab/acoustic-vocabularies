@@ -103,6 +103,11 @@ def run_demo_check(manager, layout, output, *, preflight_only=False, capture_ima
                         raise RuntimeError('Demo ended before its fixed sample count: '+future.result()['reason'])
                     writer.append(encoder.build(backend.positions(), adapter.accessors.read_public_state(),
                                                 float(adapter.sim.current_time), index+1))
+                # The last sample normally lands at 299/30 s. Hold that state
+                # through the nominal10 s boundary without inventing samples.
+                remaining = started+NOMINAL_DURATION_SECONDS-time.monotonic()
+                if remaining > 0:
+                    time.sleep(remaining)
                 dispatcher.advance()  # Terminal check after the last actual sample.
                 completed = future.result()['accepted'] and library.last_result['execution_ok']
             except Exception:
@@ -112,6 +117,9 @@ def run_demo_check(manager, layout, output, *, preflight_only=False, capture_ima
             result = deepcopy(library.last_result)
             row = dict(group=group, action=action, target=target, capture=record,
                        execution=result, error=error, reset_ok=False, replay_end_state_ok=False)
+            row['expected_objects_sha256'] = hashlib.sha256(json.dumps(
+                plans[(action, target)]['expected'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            row['private_plan_key'] = action+'/'+target
             # Replay validates file hash and every v2 frame, then applies the
             # recorded measured joint/prop states to the actual articulation/USD.
             if completed:
