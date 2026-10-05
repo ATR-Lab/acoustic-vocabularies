@@ -109,5 +109,9 @@ workload was left idle, with the unrelated existing container/process preserved.
 
 Windows verification: 243 backend tests passed with seven explicit existing
 platform/dependency skips. The focused projection/schema/published-state tests
-passed 57/57. The actual separate receiver ran in all eight Linux phases. No
-dependency was installed and no acceptance threshold changed.
+passed 57/57. After the normal CI fixture-generation step, the full repository
+suite passed 291 tests with eight explicit platform/dependency skips; the first
+full invocation had reported a missing generated STL fixture. All 12 schemas,
+six synthetic examples and the public repository guard passed. The actual
+separate receiver ran in all eight Linux phases. No dependency was installed
+and no acceptance threshold changed.
