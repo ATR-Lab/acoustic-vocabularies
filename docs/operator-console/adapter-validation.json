@@ -10,7 +10,7 @@
   },
   "schemas": 22,
   "registered_examples": 2,
-  "repository_guard": "pass_before_evidence_commit",
+  "repository_guard": "pass_including_evidence_commit_84bf77c",
   "unity_tests": {
     "edit": {
       "passed": 177,
