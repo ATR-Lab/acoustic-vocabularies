@@ -76,13 +76,6 @@
       "process_result_sha256": "524c73156dced286c91a64c675c0b843865d382bbf65166d2d37bd6c5cdb3e1c"
     }
   ],
-  "diagnosis": {
-    "observed": "current private-control health gate refused after durable reserved chime request",
-    "raw_http_health_samples_retained": false,
-    "queued_fresh_sample_at_failure_proven": false,
-    "audio_callbacks_observed": 0,
-    "study_cues_requested": 0
-  },
   "invariants": [
     "Original sent/received timestamps and exact durable reset history remain authoritative.",
     "The 250 ms bound, strict schemas/session and queue-age checks remain unchanged.",
@@ -92,7 +85,7 @@
     "Sequential health polling targets75 ms including actual request duration, with at least1 ms asynchronous yield; no parallel network requests."
   ],
   "limitations": [
-    "Actual build007 still refused the strict private-health bound; no complete grammar segment or visit is established. Transport latency diagnosis remains open.",
+    "Actual build007 completed the first reserved chime with 31 observed callbacks, then refused the strict private-health bound during the second request. No complete grammar familiarization or visit is established; transport latency diagnosis remains open.",
     "Build005 full002 terminated with0xC0000005 after incomplete cleanup/export evidence; the independent process result is retained.",
     "No participant, acoustic, physical headset, or issue81 qualification is established."
   ],
@@ -168,5 +161,12 @@
       "AUDIO_EXPOSURE_INTERRUPTED"
     ],
     "maximum_observed_callback_count": 31
+  },
+  "build005_diagnosis": {
+    "observed": "current private-control health gate refused after durable reserved chime request",
+    "raw_http_health_samples_retained": false,
+    "queued_fresh_sample_at_failure_proven": false,
+    "audio_callbacks_observed": 0,
+    "study_cues_requested": 0
   }
 }

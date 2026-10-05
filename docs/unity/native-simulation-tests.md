@@ -68,7 +68,10 @@ reset and no queued observations or worker failure. It stopped grammar with
 `AUDIO_EXPOSURE_INTERRUPTED` and exited normally after incomplete export. The
 polling and queue corrections do not establish that this transport can sustain
 the required bound; transport latency diagnosis remains open. No completed
-grammar segment or visit is claimed from these attempts.
+grammar familiarization or visit is claimed from these attempts. In build007,
+the first reserved chime did complete with 31 observed audio callbacks; the
+second reserved request was interrupted. Those are software output observations,
+not acoustic onset qualification.
 
 ## Build and provision
 
