@@ -81,6 +81,12 @@ station/scene/neutral identity, and executes every command type plus all 32 demo
 on one station at a time. Before and after each command it hashes every other
 station's complete public joints/objects. Any change stops the test immediately
 and preserves the failed event without a cleanup reset that could conceal it.
+These are exact endpoint snapshots: there is no tolerance that could hide a
+small change, and physical jitter conservatively fails this narrow contract.
+A transient excursion that returns before the command reply is not observed.
+Live reports therefore keep `passed=false` even when
+`snapshot_contract_passed=true`; a continuous independent per-station trace
+with measured coverage and an explicit physical tolerance is still required.
 
 The wrong-station test intentionally validates another station's full frame
 against the intended registry. It proves application-level identity refusal,
@@ -88,7 +94,7 @@ not socket-level authentication. The report makes that distinction explicit.
 Client authentication, namespace/process separation and physical routing need
 their own deployment evidence.
 
-The 24 pure tests include four synthetic stations, all command types and 32 legal
+The 26 pure tests include four synthetic stations, all command types and 32 legal
 pairs per station, all 12 directed wrong-station mappings, an injected shared-state
 bug, unsafe config rejection, config/hash binding and actual Linux route shapes.
 They are not four Isaac processes. GPU/driver inventory, peak VRAM and step-time

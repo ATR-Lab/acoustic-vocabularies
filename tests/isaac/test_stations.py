@@ -44,6 +44,12 @@ def test_hash_and_canonical_configuration_binding(tmp_path):
         load(path, digest(value))
 
 
+def test_station_identity_matches_public_and_foundation_grammar():
+    assert validate({**config(), 'station_id':'s.'+'a'*78})['station_id'] == 's.'+'a'*78
+    with pytest.raises(ValueError):
+        validate({**config(), 'station_id':'s'*81})
+
+
 def test_reviewable_plan_never_publishes_ports_or_uses_host_namespace(tmp_path):
     value = config()
     plan = container_plan(value, config_file=tmp_path/'c.json', config_sha256=digest(value),
@@ -121,6 +127,17 @@ def test_cross_talk_is_reported_and_not_erased_by_following_reset():
     assert not report['passed'] and report['changed_other_count']==1
     assert events[-1]['changed_stations']==['engineering-2']
     assert clients['engineering-2'].q[0]==.2
+
+
+def test_live_endpoint_snapshots_never_claim_continuous_isolation():
+    configurations=[config(1),config(2)]
+    clients={v['station_id']:Client(v) for v in configurations}
+    for client in clients.values():
+        client.encoder=StateEncoder(client.registry,source_kind='live')
+    report=run_cross_talk(configurations,clients,lambda event:None)
+    assert report['snapshot_contract_passed'] and not report['passed']
+    assert not report['continuous_trace_complete']
+    assert report['evidence_scope']=='exact_endpoint_snapshots_only'
 
 
 def test_wrong_endpoint_frame_fails_actual_public_registry():

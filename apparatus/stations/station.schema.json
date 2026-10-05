@@ -30,11 +30,11 @@
     },
     "station_id": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
     },
     "logical_host": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
     },
     "gpu_index": {
       "type": "integer",

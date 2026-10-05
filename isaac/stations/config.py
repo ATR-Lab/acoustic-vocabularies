@@ -10,7 +10,7 @@ FIELDS = {'version', 'station_id', 'logical_host', 'gpu_index', 'publisher_port'
           'dds_domain_id', 'ros_domain_id', 'allowed_client', 'allowed_uid', 'scene_sha256',
           'reset_snapshot_sha256', 'layout_sha256', 'image_digest', 'source_revision',
           'publisher_hz', 'network_mode', 'ipc_mode', 'unitree_dds_enabled'}
-ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,47}\Z')
+ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z')
 HASH = re.compile(r'[0-9a-f]{64}\Z')
 
 

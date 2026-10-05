@@ -85,7 +85,12 @@ def run_cross_talk(configurations, clients, event_sink):
                             source_kind=next(iter(kinds)), wrong_station_rejected=sum(x['rejected'] for x in wrong))
         if render_hash(read(station)) != baselines[station]:
             raise ValueError('Station did not return to neutral after stop')
-    return dict(passed=not changed_others and all(row['rejected'] for row in wrong), cases=cases,
+    snapshot_ok = not changed_others and all(row['rejected'] for row in wrong)
+    # Endpoint hashes cannot detect a transient excursion that returns before
+    # the synchronous reply. A live audit needs a continuous independent trace.
+    return dict(passed=snapshot_ok and kinds == {'synthetic'}, cases=cases,
+                snapshot_contract_passed=snapshot_ok, continuous_trace_complete=False,
+                evidence_scope='exact_endpoint_snapshots_only',
                 changed_other_count=0, source_kind=next(iter(kinds)),
                 station_count=len(clients), config_hashes={key:digest(value) for key,value in expected.items()},
                 wrong_station_rejected=sum(row['rejected'] for row in wrong),
