@@ -1,0 +1,211 @@
+[
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/joints/left_hand_camera_base_joint",
+    "type": "PhysicsFixedJoint",
+    "attributes": {
+      "physics:localPos0": "(0.0415, 0.003, 0)",
+      "physics:localPos1": "(0, 0, 0)",
+      "physics:localRot0": "(1, 0, 0, 0)",
+      "physics:localRot1": "(1, 0, 0, 0)"
+    },
+    "relationships": {
+      "physics:body0": [
+        "/g1_29dof_with_hand_rev_1_0/left_wrist_yaw_link"
+      ],
+      "physics:body1": [
+        "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/joints/mid360_joint",
+    "type": "PhysicsFixedJoint",
+    "attributes": {
+      "physics:localPos0": "(0.0002835, 0.00003, 0.41618)",
+      "physics:localPos1": "(0, 0, 0)",
+      "physics:localRot0": "(0.9997986, 0, 0.02006994, 0)",
+      "physics:localRot1": "(1, 0, 0, 0)"
+    },
+    "relationships": {
+      "physics:body0": [
+        "/g1_29dof_with_hand_rev_1_0/torso_link"
+      ],
+      "physics:body1": [
+        "/g1_29dof_with_hand_rev_1_0/mid360_link"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/joints/right_hand_camera_base_joint",
+    "type": "PhysicsFixedJoint",
+    "attributes": {
+      "physics:localPos0": "(0.0415, -0.003, 0)",
+      "physics:localPos1": "(0, 0, 0)",
+      "physics:localRot0": "(1, 0, 0, 0)",
+      "physics:localRot1": "(1, 0, 0, 0)"
+    },
+    "relationships": {
+      "physics:body0": [
+        "/g1_29dof_with_hand_rev_1_0/right_wrist_yaw_link"
+      ],
+      "physics:body1": [
+        "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link",
+    "type": "Xform",
+    "attributes": {
+      "xformOp:orient": "(1, 0.000029981136322021484, 0.000027471625799080357, -0.00009579582547303289)",
+      "xformOp:scale": "(1, 1, 1)",
+      "xformOp:translate": "(0.2412748634815216, 0.15165375173091888, 0.09523072838783264)",
+      "xformOpOrder": "[xformOp:translate, xformOp:orient, xformOp:scale]"
+    },
+    "relationships": {
+      "physics:simulationOwner": [],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link/visuals",
+    "type": "Xform",
+    "attributes": {},
+    "relationships": {
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link/visuals/left_camera_base_link",
+    "type": "Xform",
+    "attributes": {
+      "xformOp:orient": "(1, 0, 0, 0)",
+      "xformOp:scale": "(1, 1, 1)",
+      "xformOp:translate": "(0, 0, 0)",
+      "xformOpOrder": "[xformOp:translate, xformOp:orient, xformOp:scale]"
+    },
+    "relationships": {
+      "material:binding": [
+        "/g1_29dof_with_hand_rev_1_0/Looks/material_CAD1EE"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link/visuals/left_camera_base_link/mesh",
+    "type": "Mesh",
+    "attributes": {},
+    "relationships": {
+      "material:binding": [
+        "/g1_29dof_with_hand_rev_1_0/Looks/DefaultMaterial"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link/collisions",
+    "type": "Xform",
+    "attributes": {},
+    "relationships": {
+      "collection:collisionmeshes:includes": [
+        "/g1_29dof_with_hand_rev_1_0/left_hand_camera_base_link/collisions"
+      ],
+      "physics:simulationOwner": [],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/mid360_link",
+    "type": "Xform",
+    "attributes": {
+      "xformOp:orient": "(0.999798595905304, 0, 0.020069940015673637, 0)",
+      "xformOp:scale": "(1, 1, 1)",
+      "xformOp:translate": "(-0.0036799998488277197, 0.000029999999242136255, 0.46018001437187195)",
+      "xformOpOrder": "[xformOp:translate, xformOp:orient, xformOp:scale]"
+    },
+    "relationships": {
+      "physics:simulationOwner": [],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/mid360_link/visuals",
+    "type": "Xform",
+    "attributes": {},
+    "relationships": {
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/mid360_link/collisions",
+    "type": "Xform",
+    "attributes": {},
+    "relationships": {
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link",
+    "type": "Xform",
+    "attributes": {
+      "xformOp:orient": "(1, -0.000029981136322021484, 0.000027471625799080357, 0.00009579582547303289)",
+      "xformOp:scale": "(1, 1, 1)",
+      "xformOp:translate": "(0.2412748634815216, -0.1516437530517578, 0.09523072838783264)",
+      "xformOpOrder": "[xformOp:translate, xformOp:orient, xformOp:scale]"
+    },
+    "relationships": {
+      "physics:simulationOwner": [],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link/visuals",
+    "type": "Xform",
+    "attributes": {},
+    "relationships": {
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link/visuals/right_hand_camera_base_link",
+    "type": "Xform",
+    "attributes": {
+      "xformOp:orient": "(1, 0, 0, 0)",
+      "xformOp:scale": "(1, 1, 1)",
+      "xformOp:translate": "(0, 0, 0)",
+      "xformOpOrder": "[xformOp:translate, xformOp:orient, xformOp:scale]"
+    },
+    "relationships": {
+      "material:binding": [
+        "/g1_29dof_with_hand_rev_1_0/Looks/material_CAD1EE"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link/visuals/right_hand_camera_base_link/mesh",
+    "type": "Mesh",
+    "attributes": {},
+    "relationships": {
+      "material:binding": [
+        "/g1_29dof_with_hand_rev_1_0/Looks/DefaultMaterial"
+      ],
+      "proxyPrim": []
+    }
+  },
+  {
+    "path": "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link/collisions",
+    "type": "Xform",
+    "attributes": {},
+    "relationships": {
+      "collection:collisionmeshes:includes": [
+        "/g1_29dof_with_hand_rev_1_0/right_hand_camera_base_link/collisions"
+      ],
+      "physics:simulationOwner": [],
+      "proxyPrim": []
+    }
+  }
+]

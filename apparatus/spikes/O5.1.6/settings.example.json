@@ -1,0 +1,20 @@
+{
+  "route": "headset-speakers",
+  "mode": "plain",
+  "capture_kind": "acoustic",
+  "volume_step": null,
+  "app_sample_rate_hz": null,
+  "buffer_frames": null,
+  "buffer_count": null,
+  "capture_sample_rate_hz": null,
+  "observed_underruns": null,
+  "underrun_evidence": "Pending platform diagnostics; missing pulses are not underrun counts",
+  "sync_reference": "independent_hardware",
+  "sync_external_bound_ms": null,
+  "sync_calibration_evidence": "",
+  "interface_model": "",
+  "mic_and_coupler": "",
+  "electrical_loopback_available": null,
+  "notification_and_volume_lock_checked": false,
+  "room_and_route_notes": ""
+}

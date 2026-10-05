@@ -1,0 +1,59 @@
+{
+  "source_kind": "live",
+  "source": "loaded_isaac_articulation_and_real_unix_websocket",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "initial_reset_ok": true,
+  "protected_rejections": 32,
+  "received_frames": 33,
+  "received_after_rejection": 32,
+  "joint_count": 43,
+  "object_count": 60,
+  "all_received_neutral": true,
+  "all_rejections_full_state_unchanged": true,
+  "transport_sequence_gaps": 0,
+  "physics_steps": 67,
+  "elapsed_seconds": 5.919162393,
+  "drift": {
+    "hold_rejected": true,
+    "publication_suppressed": true,
+    "count_unchanged": true,
+    "publisher_fault": "NEUTRAL_DIVERGED",
+    "object_not_silently_restored": true
+  },
+  "explicit_recovery_reset_ok": true,
+  "fault": null,
+  "actual_demo_execution": false,
+  "rate_qualification": false,
+  "max_deviation": {
+    "joint_rad": 0.0,
+    "position_m": 0.0,
+    "orientation_rad": 0.0
+  },
+  "passed": true,
+  "hashes": {
+    "received-frames.json": "9099b1bdebd22f88cce4567f0876442fab6ec7f012f33d0162f74ddb4cecae02",
+    "command-events.jsonl": "c5017985e165b0168c127870d5ce4266851dcfe3a05842c26d928d7ee72df026",
+    "publish.csv": "5476965b96456038c6f67b21c27691f976be66f27e8d1ce10e180c15041bae94",
+    "rejections.json": "67605469eca5981e52e7b4665e7dba5e3e4c2000a51c4c04fa4d6a35813497e7"
+  },
+  "measured_date": "2026-10-05",
+  "source_commit": "8d394307a90c36e83c6125b2da715aa140529c5b",
+  "base_runtime_commit": "522dbe4971899b0cd3da22ccbf84e1a10c6d5d38",
+  "source_overlay_sha256": "6488b3849395bf8e6b43f6f1f55f2b46171db135af73cb1e43016011b60c26b7",
+  "raw_archive_sha256": "1803f70c39aaa5876576414b848cdc030d5f27489da18a05de70a2f13bfaf7f2",
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "container_exit_code": 0,
+  "network": "none; Unix WebSocket only; existing loopback-only guard verified",
+  "independent_artifact_hashes_verified": true,
+  "independent_received_payload_comparison": true,
+  "terminal_command_events_verified": 34,
+  "canonical_rendered_scene_binding": true,
+  "task_container_removed": true,
+  "limitations": [
+    "No actual demo implementation or execution; all target-bearing commands were rejected",
+    "No publisher rate, source-clock, headset or participant exposure qualification",
+    "Raw command/received-frame evidence remains private and ignored",
+    "Earlier camera-free diagnostic also passed but used different scene/snapshot hashes; it is retained separately in the same raw archive"
+  ]
+}

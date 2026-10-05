@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "measured_date": "2026-10-05",
+  "source_commit": "f83dfca",
+  "scope": [
+    "tests/isaac",
+    "spikes/O5.1.5/test_transport_unix.py"
+  ],
+  "runtime": {
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "python": "3.11",
+    "pytest": "9.1.1",
+    "websockets": "12.0",
+    "network": "none",
+    "gpu_requested": false,
+    "new_packages_installed": false
+  },
+  "raw_archive_sha256": "742cfcea61250331fbffa073d755ee09e1e45f9593a6f7b3b180c1c03159d3aa",
+  "source_archive_sha256": "ad8228e1af483272bd09a28cb15832840d2e44593029a42b422e0e1abf0c5980",
+  "initial_attempts_retained": [
+    {
+      "result": "collection_error",
+      "reason": "jsonschema not installed in approved image"
+    },
+    {
+      "result": "188 passed, 4 failed",
+      "reasons": [
+        "Three additional jsonschema-dependent tests lack that dependency",
+        "One staged documentation fixture was absent; restored from the exact source commit before final scoped run"
+      ]
+    }
+  ],
+  "final_scope": {
+    "passed": 189,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "deselected": 3,
+    "ignored_modules": [
+      "tests/isaac/test_publisher_schema.py"
+    ],
+    "deselected_tests": [
+      "tests/isaac/test_command_lock.py::test_wire_schemas_and_durable_full_command_log",
+      "tests/isaac/test_reset.py::test_durable_log_and_failure_never_open_gate",
+      "tests/isaac/test_reset.py::test_published_snapshot_schema_matches_runtime_fixture"
+    ],
+    "seconds": 10.11,
+    "exit_code": 0
+  },
+  "narrow_monitor_fault_fix": {
+    "base": "f83dfca",
+    "overlay": "0fd8e86",
+    "scope": "tests/isaac/test_soak_native.py",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 0.55,
+    "exit_code": 0
+  },
+  "task_test_containers_removed": true,
+  "limitations": [
+    "Explicit schema omissions are not passing Linux schema tests; existing Windows schema verification remains separate",
+    "Transport and file protocol tests use synthetic application data; no eight-hour, headset, motion or physical fault qualification",
+    "No simulator/GPU run was required for these software tests"
+  ],
+  "artifact_sha256": {
+    "backend-linux-tests-f83dfca-scoped.txt": "c7c53ad1f3693d1d6c45f8216fd527e314e0c31fd4fddd6399953e922ee2c494",
+    "backend-linux-tests-f83dfca-scoped.xml": "aa916692369abef9808e0ebc2e86f2e6c462a3d14fedea9ff10551192f1d9f6b",
+    "backend-linux-tests-f83dfca-without-jsonschema.txt": "c6da03f72250d3aa77a4c55ca99eba96f398a4823b1e7b41bdcb06ce33bd5882",
+    "backend-linux-tests-f83dfca-without-jsonschema.xml": "39a3912991bf0e8280bec6004a1431efc8a8e37c0617364961c4fffbfa28b529",
+    "backend-linux-tests-f83dfca.txt": "f12c0e0b5d29923a98eabbdad05c8e75173e39c7adca8ea6ac548df86d29be65",
+    "backend-linux-tests-f83dfca.xml": "5b2341e6de5e3f1d92d57524f5e7941eaf49e8b9e02ef475f74a6bfa1ae528ef",
+    "soak-fault-fix-0fd8e86.txt": "1cc2d4c9f8f05ffd7d2d078562705701dc5f0379e4d15b54b417f3ef0eefa396",
+    "soak-fault-fix-0fd8e86.xml": "bbda3c0e4e377b2fe56657f7b4689da733f101c8fbb7d64de896bb1d0f78361d"
+  },
+  "linux-test-docs-f83dfca_sha256": "973cf207c6239683849c54931bad78b47859b62f78d924092d5d05437a50ada7",
+  "soak-fault-fix-0fd8e86_sha256": "e16244016fa6067033daec87e0da4a226a1ab2ea51037b79d76345f4d3d0cba1"
+}
