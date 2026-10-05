@@ -8,15 +8,20 @@ make them writable again before pytest removes the directory (needed on Windows)
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib
 import importlib.util
 import json
 import os
 import stat
+import sys
 import tempfile
+import threading
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -45,24 +50,32 @@ from av_sound import (
     message_length,
     persistence_violations,
     render,
+    renderer_hash,
     snapshot_digest,
 )
 from av_sound._schemas import schema_validator
 from av_sound.grammar import ATOM_IDS, parse_atom_id
 from av_sound.store import (
+    E_CONCURRENT,
     E_LABEL,
     E_POLICY,
     E_PROFILE,
+    E_RECOVERY,
     E_VERSION,
+    E_VOID,
     E_WAVEFORM,
+    FROZEN_MARKER,
     GENESIS_SHA256,
     SEMANTIC_LABELS,
+    VOID_MARKER,
     BookExists,
     InvalidIdentifier,
     NotFound,
+    StoreLocked,
     canonical_json,
     check_book_id,
     record_sha256,
+    validator_code_hash,
 )
 from av_sound.synthetic import synthetic_recipes
 
@@ -212,6 +225,8 @@ def test_create_book_twice_or_in_another_case_is_refused(store: VocabularyStore)
         pytest.param("CON", id="win-con"),
         pytest.param("nul", id="win-nul"),
         pytest.param("lpt1", id="win-lpt1"),
+        pytest.param("COM0", id="win-com0"),
+        pytest.param("lpt0", id="win-lpt0"),
         pytest.param("BK-A1-07", id="method-a1"),
         pytest.param("bk-a3", id="method-a3"),
         pytest.param("HANDMADE-1", id="method-hand"),
@@ -255,14 +270,48 @@ def test_synthetic_prefix_rule_and_kinds(root: Path):
     assert s.books() == []
 
 
-def test_study_books_cannot_live_in_the_repository():
-    target = REPO / "sound" / "never-created-store"
-    s = make_store(target)
-    for kind in ("study", "fallback"):
-        with pytest.raises(StoreError) as err:
-            s.create_book("BK-0001", P, kind=kind)
-        assert err.value.code == E_POLICY
-    assert not target.exists()
+def test_study_books_cannot_live_in_this_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    fake_repo = tmp_path / "checkout"  # stands in for the source tree; nothing is written there
+    monkeypatch.setattr(store_mod, "_repo_root", lambda: fake_repo.resolve())
+    for target in (fake_repo, fake_repo / "sound" / "store"):
+        s = make_store(target)
+        for kind in ("study", "fallback"):
+            with pytest.raises(StoreError) as err:
+                s.create_book("BK-0001", P, kind=kind)
+            assert err.value.code == E_POLICY
+    assert not fake_repo.exists()
+    make_store(fake_repo / "fixtures").create_book(BOOK, P, kind="synthetic")  # fixtures may
+
+
+@pytest.mark.parametrize("marker", ["dir", "file"])
+def test_study_books_cannot_live_in_any_git_work_tree(root: Path, marker: str):
+    tree = root.parent / "other-checkout"
+    tree.mkdir()
+    if marker == "dir":
+        (tree / ".git").mkdir()
+    else:  # git worktrees and submodules have a .git file
+        (tree / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8", newline="\n")
+    s = make_store(tree / "deep" / "store")
+    with pytest.raises(StoreError) as err:
+        s.create_book("BK-0001", P)
+    assert err.value.code == E_POLICY and "work tree" in str(err.value)
+    assert not (tree / "deep").exists()
+
+
+def test_git_work_tree_check_fails_closed(root: Path, monkeypatch: pytest.MonkeyPatch):
+    real_stat = Path.stat
+
+    def guarded(self: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        if self.name == ".git":
+            raise PermissionError(errno.EACCES, "denied", str(self))
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", guarded)
+    with pytest.raises(StoreError) as err:
+        make_store(root).create_book("BK-0001", P)
+    assert err.value.code == E_POLICY and "cannot check" in str(err.value)
 
 
 def test_study_and_fallback_books_outside_the_repository(root: Path):
@@ -799,13 +848,33 @@ def test_truncation_and_deleted_lines(sealed: VocabularyStore):
         assert not report.ok, name
         with pytest.raises(StoreIntegrityError):
             sealed.snapshot_hashes(BOOK)
-    # Whole lines removed from the end leave a valid prefix: only an anchor detects it.
-    write_bytes(path, b"\n".join(log[:-2]) + b"\n")
+    # Whole lines removed from the end leave a valid prefix: only an anchor detects it ...
+    write_bytes(path, b"\n".join(log[:-1]) + b"\n")
     assert sealed.verify(BOOK).ok
     report = sealed.verify(BOOK, expected_head=head)
     assert report.codes == ("E_ANCHOR",) and report.anchored_seq is None
+    for read in (
+        lambda: sealed.get(BOOK, "K-a1", expected_head=head),
+        lambda: sealed.list(BOOK, expected_head=head),
+        lambda: sealed.snapshot(BOOK, expected_head=head),
+        lambda: sealed.snapshot_hashes(BOOK, expected_head=head),
+        lambda: sealed.records(BOOK, expected_head=head),
+        lambda: sealed.book(BOOK, expected_head=head),
+        lambda: commit(sealed, "K-a3", expected_head=head),
+        lambda: sealed.freeze(BOOK, expected_head=head),
+    ):
+        with pytest.raises(StoreIntegrityError) as err:
+            read()
+        assert [i.code for i in err.value.issues] == ["E_ANCHOR"]
     with pytest.raises(InvalidIdentifier):
         sealed.verify(BOOK, expected_head="nope")
+    with pytest.raises(InvalidIdentifier):
+        sealed.get(BOOK, "K-a1", expected_head="nope")
+    # ... unless the removed lines include the freeze record: the FROZEN marker names it.
+    write_bytes(path, b"\n".join(log[:-2]) + b"\n")
+    assert sealed.verify(BOOK).codes == ("E_MARKER",)
+    with pytest.raises(StoreIntegrityError):
+        commit(sealed, "K-a3")
     os.chmod(path, stat.S_IWRITE)
     path.unlink()
     report = sealed.verify(BOOK)
@@ -814,35 +883,80 @@ def test_truncation_and_deleted_lines(sealed: VocabularyStore):
         sealed.get(BOOK, "K-a1")
 
 
-def test_torn_tail_recovery_by_removing_the_incomplete_bytes(grown: VocabularyStore):
+def test_recover_torn_tail_removes_only_the_incomplete_line(grown: VocabularyStore):
     path = grown.log_path(BOOK)
     data = path.read_bytes()
-    write_bytes(path, data + b'{"atom_id":"K-a3","book_')  # interrupted append
+    torn = b'{"atom_id":"K-a3","book_'  # an interrupted append (for example a power cut)
+    write_bytes(path, data + torn)
     report = grown.verify(BOOK)
     assert report.codes == ("E_LOG_TORN",) and report.chain_head == grown_head(data)
     with pytest.raises(StoreIntegrityError):
         commit(grown, "K-a3")
-    write_bytes(path, data)  # documented recovery: drop the bytes after the last LF
+    with pytest.raises(InvalidIdentifier):
+        grown.recover_torn_tail(BOOK, reason=" padded ")
+    head = grown.recover_torn_tail(BOOK, reason="DEV-0001 power cut during append")
+    assert path.read_bytes().startswith(data) and is_read_only(path)
+    record = check_log_format(grown)[-1]
+    assert record["event"] == "deviation" and record["deviation"] == "torn_tail_removed"
+    assert record["removed_bytes"] == len(torn)
+    assert record["removed_sha256"] == hashlib.sha256(torn).hexdigest()
+    assert record["reason"] == "DEV-0001 power cut during append" and head == grown.head(BOOK)
+    assert grown.verify(BOOK, expected_head=grown_head(data)).ok
     commit(grown, "K-a3")
-    assert grown.verify(BOOK).ok
+    with pytest.raises(StoreError) as err:
+        grown.recover_torn_tail(BOOK, reason="DEV-0002")
+    assert err.value.code == E_RECOVERY
+
+
+def test_recover_torn_tail_refuses_other_damage(grown: VocabularyStore):
+    path = grown.log_path(BOOK)
+    data = bytearray(path.read_bytes())
+    data[30] ^= 0x01  # damage inside line 0
+    write_bytes(path, bytes(data) + b'{"partial')
+    with pytest.raises(StoreIntegrityError) as err:
+        grown.recover_torn_tail(BOOK, reason="DEV-0003")
+    assert "E_LOG_TORN" not in {i.code for i in err.value.issues}
+    write_bytes(path, b'{"only a torn line')
+    with pytest.raises(StoreError) as err2:
+        grown.recover_torn_tail(BOOK, reason="DEV-0004")
+    assert err2.value.code == E_RECOVERY
 
 
 def grown_head(data: bytes) -> str:
     return hashlib.sha256(data[:-1].split(b"\n")[-1]).hexdigest()
 
 
-def forge(store: VocabularyStore, records: list[dict[str, Any]], book: str = BOOK) -> None:
-    """Rewrite the log from records with consistent hashes, chain and seq (a forger)."""
+def forge(
+    store: VocabularyStore,
+    records: list[dict[str, Any]],
+    book: str = BOOK,
+    seqs: list[int] | None = None,
+) -> None:
+    """Rewrite the log from records with consistent hashes and chain, and rewrite the
+    FROZEN and VOID markers to match (a forger with full write access). `seqs` overrides
+    the line numbers written into the records."""
     head = GENESIS_SHA256
     out = []
-    for seq, rec in enumerate(records):
+    hashes = []
+    for i, rec in enumerate(records):
         rec = {k: v for k, v in rec.items() if k != "record_sha256"}
-        rec.update(seq=seq, prev_sha256=head)
+        rec.update(seq=i if seqs is None else seqs[i], prev_sha256=head)
         rec["record_sha256"] = record_sha256(rec)
         line = canonical_json(rec)
         out.append(line)
         head = hashlib.sha256(line).hexdigest()
+        hashes.append(head)
     write_bytes(store.log_path(book), b"\n".join(out) + b"\n")
+    events = [r.get("event") for r in records]
+    closing = next((i for i, e in enumerate(events) if e in ("freeze", "void")), None)
+    void = next((i for i, e in enumerate(events) if e == "void"), None)
+    for name, seq in ((FROZEN_MARKER, closing), (VOID_MARKER, void)):
+        path = store.book_dir(book) / name
+        if path.exists():
+            os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+            path.unlink()
+        if seq is not None:
+            path.write_bytes(store_mod._marker_bytes(book, events[seq], seq, hashes[seq]))
 
 
 def _swap_recipe(records: list[dict[str, Any]]) -> None:
@@ -851,58 +965,164 @@ def _swap_recipe(records: list[dict[str, Any]]) -> None:
     records[1]["recipe_sha256"] = RECIPES["Q-r1"].sha256()
 
 
-FORGERIES: dict[str, tuple[Callable[[list[dict[str, Any]]], Any], str]] = {
-    "commit-after-freeze": (lambda r: r.insert(len(r) - 1, r.pop(3)), "E_EVENT"),
-    "second-create": (lambda r: r.append(dict(r[0])), "E_EVENT"),
-    "missing-create": (lambda r: r.pop(0), "E_EVENT"),
-    "second-commit-same-atom": (lambda r: r.insert(4, {**r[1], "commit_index": 3}), "E_EVENT"),
-    "noop-unknown-atom": (lambda r: r[4].update(atom_id="Q-r4"), "E_EVENT"),
-    "noop-mismatch": (lambda r: r[4].update(pcm_sha256="1" * 64), "E_RECORD"),
-    "noop-original-seq": (lambda r: r[4].update(original_seq=2), "E_RECORD"),
-    "overwrite-reasons": (lambda r: r[5].update(reasons=["profile"]), "E_RECORD"),
-    "overwrite-sha": (lambda r: r[5].update(attempted_recipe_sha256="2" * 64), "E_RECORD"),
-    "overwrite-after-freeze": (lambda r: r.append(dict(r[5])), "E_EVENT"),
-    "frozen-reject-unfrozen": (lambda r: r.insert(4, dict(r[7])), "E_EVENT"),
-    "frozen-reject-seq": (lambda r: r[7].update(freeze_seq=1), "E_RECORD"),
-    "second-freeze": (lambda r: r.append(dict(r[6])), "E_EVENT"),
-    "freeze-count": (lambda r: r[6].update(n_entries=2), "E_RECORD"),
-    "freeze-snapshot": (lambda r: r[6].update(snapshot_sha256="3" * 64), "E_RECORD"),
-    "commit-index": (lambda r: r[2].update(commit_index=5), "E_RECORD"),
-    "atom-fields": (lambda r: r[2].update(matrix_index=4), "E_RECORD"),
-    "label-off-family": (lambda r: r[2].update(semantic_label="TAG"), "E_RECORD"),
-    "label-duplicate": (lambda r: r[2].update(semantic_label="ADD_ONE"), "E_RECORD"),
-    "label-null": (lambda r: r[2].update(semantic_label=None), "E_RECORD"),
-    "profile": (lambda r: r[2].update(profile="P2"), "E_RECORD"),
-    "threshold": (lambda r: r[2].update(threshold="0.2"), "E_RECORD"),
-    "renderer-version": (lambda r: r[2].update(renderer_version="0.0.1"), "E_RECORD"),
-    "recipe-sha": (lambda r: r[2].update(recipe_sha256="4" * 64), "E_RECORD"),
-    "n-samples": (lambda r: r[2].update(n_samples=43200), "E_RECORD"),
-    "file-sha": (lambda r: r[2].update(file_sha256="5" * 64), "E_BLOB_FILE_HASH"),
-    "float-total-ms": (
-        lambda r: r[2]["recipe"].update(total_ms=float(r[2]["recipe"]["total_ms"])),
-        "E_RECORD",
+Mutation = Callable[[list[dict[str, Any]]], Any]
+Expected = list[tuple[str, int | None, str]]
+"""Every issue `verify` must report: (code, seq, message fragment)."""
+
+FORGERIES: dict[str, tuple[Mutation, Expected]] = {
+    "commit-after-freeze": (
+        lambda r: r.append(r.pop(3)),
+        [
+            ("E_RECORD", 5, "n_entries 3 is not 2"),
+            ("E_RECORD", 5, "snapshot_sha256"),
+            ("E_RECORD", 6, "freeze_seq"),  # the frozen reject moved up one line
+            ("E_EVENT", 7, "commit after freeze"),
+        ],
     ),
-    "book-id": (lambda r: r[2].update(book_id="DEMO-OTHER"), "E_BOOK_ID"),
-    "kind-prefix": (lambda r: r[0].update(kind="study"), "E_RECORD"),
-    "schema": (lambda r: r[2].update(extra_field=1), "E_LOG_SCHEMA"),
-    "recipe-swapped": (_swap_recipe, "E_RERENDER"),
+    "second-create": (lambda r: r.append(dict(r[0])), [("E_EVENT", 8, "create_book after")]),
+    "missing-create": (
+        lambda r: r.pop(0),
+        [("E_EVENT", 0, "line 0 must be")]
+        + [("E_EVENT", i, "before create_book") for i in range(7)]
+        + [("E_MARKER", None, "FROZEN marker exists")],
+    ),
+    "second-commit-same-atom": (
+        lambda r: r.insert(4, {**r[1], "commit_index": 3}),
+        [("E_EVENT", 4, "second commit record"), ("E_RECORD", 8, "freeze_seq")],
+    ),
+    "noop-unknown-atom": (
+        lambda r: r[4].update(atom_id="Q-r4"),
+        [("E_EVENT", 4, "not committed")],
+    ),
+    "noop-mismatch": (
+        lambda r: r[4].update(pcm_sha256="1" * 64),
+        [("E_RECORD", 4, "different pcm_sha256")],
+    ),
+    "noop-original-seq": (
+        lambda r: r[4].update(original_seq=2),
+        [("E_RECORD", 4, "original_seq")],
+    ),
+    "overwrite-reasons": (
+        lambda r: r[5].update(reasons=["profile"]),
+        [("E_RECORD", 5, "should be ['recipe', 'waveform']")],
+    ),
+    "overwrite-sha": (
+        lambda r: r[5].update(attempted_recipe_sha256="2" * 64),
+        [("E_RECORD", 5, "attempted_recipe_sha256")],
+    ),
+    "overwrite-after-freeze": (
+        lambda r: r.append(dict(r[5])),
+        [("E_EVENT", 8, "overwrite_rejected after freeze")],
+    ),
+    "frozen-reject-unfrozen": (
+        lambda r: r.insert(4, dict(r[7])),
+        [("E_EVENT", 4, "not frozen"), ("E_RECORD", 8, "freeze_seq")],
+    ),
+    "frozen-reject-seq": (
+        lambda r: r[7].update(freeze_seq=1),
+        [("E_RECORD", 7, "freeze_seq")],
+    ),
+    "second-freeze": (lambda r: r.append(dict(r[6])), [("E_EVENT", 8, "freeze after freeze")]),
+    "freeze-count": (lambda r: r[6].update(n_entries=2), [("E_RECORD", 6, "n_entries 2")]),
+    "freeze-snapshot": (
+        lambda r: r[6].update(snapshot_sha256="3" * 64),
+        [("E_RECORD", 6, "snapshot_sha256")],
+    ),
+    "commit-index": (
+        lambda r: r[2].update(commit_index=5),
+        [("E_RECORD", 2, "commit_index 5 is not 1")],
+    ),
+    "atom-fields": (
+        lambda r: r[2].update(matrix_index=4),
+        [("E_RECORD", 2, "matrix_index does not match")],
+    ),
+    "label-off-family": (
+        lambda r: r[2].update(semantic_label="TAG"),
+        [("E_RECORD", 2, "TAG is not a K action label"), ("E_RECORD", 5, "should be")],
+    ),
+    "label-clash": (
+        lambda r: r[2].update(semantic_label="ADD_ONE"),
+        [("E_RECORD", 2, "ADD_ONE is already bound to K-a1"), ("E_RECORD", 5, "should be")],
+    ),
+    "label-null": (
+        lambda r: r[2].update(semantic_label=None),
+        [("E_RECORD", 2, "None is not a K action label"), ("E_RECORD", 5, "should be")],
+    ),
+    "profile": (
+        lambda r: r[3].update(profile="P2"),
+        [("E_RECORD", 3, "profile P2 differs from the book's P1")],
+    ),
+    "threshold": (
+        lambda r: r[3].update(threshold="0.2"),
+        [("E_RECORD", 3, "threshold differs")],
+    ),
+    "renderer-version": (
+        lambda r: r[3].update(renderer_version="0.0.1"),
+        [("E_RECORD", 3, "renderer_version 0.0.1 differs")],
+    ),
+    "recipe-sha": (
+        lambda r: r[3].update(recipe_sha256="4" * 64),
+        [("E_RECORD", 3, "recipe_sha256 does not match")],
+    ),
+    "n-samples": (
+        lambda r: r[3].update(n_samples=43200),
+        [("E_RECORD", 3, "does not match total_ms"), ("E_RECORD", 3, "does not match the blob")],
+    ),
+    "file-sha": (
+        lambda r: r[3].update(file_sha256="5" * 64),
+        [("E_BLOB_FILE_HASH", 3, "file_sha256")],
+    ),
+    "float-total-ms": (
+        lambda r: r[3]["recipe"].update(total_ms=float(r[3]["recipe"]["total_ms"])),
+        [
+            ("E_RECORD", 3, "malformed record"),
+            ("E_RECORD", 6, "n_entries 3 is not 2"),
+            ("E_RECORD", 6, "snapshot_sha256"),
+        ],
+    ),
+    "book-id": (lambda r: r[3].update(book_id="DEMO-OTHER"), [("E_BOOK_ID", 3, "DEMO-OTHER")]),
+    "kind-prefix": (lambda r: r[0].update(kind="study"), [("E_RECORD", 0, "DEMO-")]),
+    "schema": (
+        lambda r: r[3].update(extra_field=1),
+        [
+            ("E_LOG_SCHEMA", 3, "extra_field"),
+            ("E_RECORD", 6, "n_entries 3 is not 2"),
+            ("E_RECORD", 6, "snapshot_sha256"),
+        ],
+    ),
+    "recipe-swapped": (
+        _swap_recipe,
+        [("E_RERENDER", 1, "re-rendering"), ("E_RECORD", 4, "different recipe_sha256")],
+    ),
     "duplicate-entry": (
-        lambda r: r[2].update(
+        lambda r: r[3].update(
             {
                 k: r[1][k]
                 for k in ("recipe", "recipe_sha256", "pcm_sha256", "file_sha256", "n_samples")
             }
         ),
-        "E_ADMISSIBILITY",
+        [
+            ("E_ADMISSIBILITY", 3, "E_DUPLICATE"),
+            ("E_RECORD", 6, "snapshot_sha256"),
+        ],
     ),
 }
+
+
+def assert_issues(report: Any, expected: Expected) -> None:
+    """`report.issues` are exactly `expected`, in any order."""
+    actual = sorted((i.code, -1 if i.seq is None else i.seq, i.message) for i in report.issues)
+    wanted = sorted((c, -1 if s is None else s, m) for c, s, m in expected)
+    assert len(actual) == len(wanted), report.issues
+    for (code, seq, message), (w_code, w_seq, fragment) in zip(actual, wanted, strict=True):
+        assert (code, seq) == (w_code, w_seq) and fragment in message, report.issues
 
 
 @pytest.mark.parametrize("name", list(FORGERIES))
 def test_forged_logs_with_valid_hashes_are_caught_by_record_checks(
     sealed: VocabularyStore, name: str
 ):
-    mutate, code = FORGERIES[name]
+    mutate, expected = FORGERIES[name]
     records = [json.loads(line) for line in lines(sealed)]
     assert [r["event"] for r in records] == [
         "create_book",
@@ -916,9 +1136,7 @@ def test_forged_logs_with_valid_hashes_are_caught_by_record_checks(
     ]
     mutate(records)
     forge(sealed, records)
-    report = sealed.verify(BOOK)
-    assert code in report.codes, report.issues
-    assert "E_CHAIN" not in report.codes and "E_RECORD_HASH" not in report.codes
+    assert_issues(sealed.verify(BOOK), expected)
 
 
 def test_rerender_catches_a_consistent_recipe_swap(sealed: VocabularyStore):
@@ -965,22 +1183,39 @@ def test_blobs_are_write_once_and_read_only(grown: VocabularyStore):
     assert not list(blob.parent.glob("*.partial"))
 
 
-def test_existing_blob_with_other_bytes_blocks_the_commit(store: VocabularyStore):
+@pytest.mark.parametrize(
+    "junk",
+    [
+        pytest.param(b"not the waveform", id="junk"),
+        pytest.param(b"truncated", id="truncated"),
+    ],
+)
+def test_blob_with_other_bytes_is_quarantined_and_replaced(store: VocabularyStore, junk: bytes):
+    # For example a crash during an exclusive create left a truncated file under the name.
     rendered = render(RECIPES["K-a1"], P)
     blob = store.blob_path(rendered.pcm_sha256)
     blob.parent.mkdir(parents=True)
-    blob.write_bytes(b"not the waveform")
-    before = store.log_path(BOOK).read_bytes()
-    with pytest.raises(StoreIntegrityError) as err:
-        commit(store, "K-a1")
-    assert err.value.issues[0].code == "E_BLOB_HASH"
-    assert store.log_path(BOOK).read_bytes() == before
-    assert blob.read_bytes() == b"not the waveform"  # never replaced
+    if junk == b"truncated":
+        junk = store_mod.wav_bytes(rendered.pcm)[:5000]
+    blob.write_bytes(junk)
+    os.chmod(blob, stat.S_IREAD)
+    entry, _ = commit(store, "K-a1")
+    assert blob.read_bytes() == store_mod.wav_bytes(rendered.pcm) and is_read_only(blob)
+    kept = blob.parent / "quarantine" / f"{blob.name}.{hashlib.sha256(junk).hexdigest()}"
+    assert kept.read_bytes() == junk  # kept for the audit
+    assert store.verify(BOOK).ok and entry.pcm_sha256 == rendered.pcm_sha256
+    # The same junk again: the quarantined copy already exists, the new one is dropped.
+    write_bytes(blob, junk)
+    store.create_book("DEMO-T2", P, kind="synthetic")
+    commit(store, "K-a1", book="DEMO-T2")
+    assert sorted(p.name for p in kept.parent.iterdir()) == [kept.name]
+    assert store.verify(BOOK).ok and store.verify("DEMO-T2").ok
 
 
 def test_leftover_partial_file_is_replaced(store: VocabularyStore):
     rendered = render(RECIPES["K-a1"], P)
-    partial = store.blob_path(rendered.pcm_sha256).with_suffix(".wav.partial")
+    final = store.blob_path(rendered.pcm_sha256)
+    partial = final.with_name(f"{final.name}.{os.getpid()}-{threading.get_ident()}.partial")
     partial.parent.mkdir(parents=True)
     partial.write_bytes(b"interrupted")
     os.chmod(partial, stat.S_IREAD)
@@ -995,6 +1230,32 @@ def test_blob_publish_without_hard_links(store: VocabularyStore, monkeypatch: py
     monkeypatch.setattr(store_mod.os, "link", no_links)
     entry, _ = commit(store, "K-a1")
     assert store.verify(BOOK).ok and is_read_only(store.blob_path(entry.pcm_sha256))
+    assert not list(store.blob_path(entry.pcm_sha256).parent.glob("*.partial"))
+
+
+def test_publish_without_hard_links_onto_a_read_only_blob(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    def no_links(src: Any, dst: Any) -> None:
+        raise OSError("hard links not supported")
+
+    def windows_replace(src: Any, dst: Any) -> None:
+        Path(dst).write_bytes(Path(src).read_bytes())  # another writer won the race
+        raise PermissionError(errno.EACCES, "read-only target", str(dst))
+
+    monkeypatch.setattr(store_mod.os, "link", no_links)
+    monkeypatch.setattr(store_mod.os, "replace", windows_replace)
+    partial, final = tmp_path / "a.partial", tmp_path / "a.wav"
+    partial.write_bytes(b"x")
+    store_mod._publish(partial, final)
+    assert final.read_bytes() == b"x"
+
+    def failing_replace(src: Any, dst: Any) -> None:
+        raise PermissionError(errno.EACCES, "denied", str(dst))
+
+    monkeypatch.setattr(store_mod.os, "replace", failing_replace)
+    with pytest.raises(PermissionError):
+        store_mod._publish(partial, tmp_path / "b.wav")
 
 
 def test_concurrent_identical_blob_is_accepted(
@@ -1109,3 +1370,393 @@ def _run_sequence(root: Path, ops: list[tuple[str, str, str]]) -> None:
     assert sum(r["event"] == "commit_rejected_frozen" for r in records) == rejected_frozen
     assert list(s.snapshot_hashes(BOOK)) == list(model)
     assert s.verify(BOOK).ok
+
+
+# --- Exact issue sets (each check is load-bearing) ---------------------------------------
+
+
+def test_middle_line_replaced_by_a_self_consistent_record_breaks_only_the_chain(
+    sealed: VocabularyStore,
+):
+    data = lines(sealed)
+    record = json.loads(data[4])  # the no-op record
+    record["source"] = "forged-source"
+    record["record_sha256"] = record_sha256(record)  # seq and prev_sha256 stay right
+    data[4] = canonical_json(record)
+    write_bytes(sealed.log_path(BOOK), b"\n".join(data) + b"\n")
+    assert_issues(sealed.verify(BOOK), [("E_CHAIN", 5, "prev_sha256")])
+
+
+def test_reserialized_last_line_is_only_noncanonical(sealed: VocabularyStore):
+    data = lines(sealed)
+    data[-1] = json.dumps(json.loads(data[-1])).encode("ascii")  # spaces after separators
+    write_bytes(sealed.log_path(BOOK), b"\n".join(data) + b"\n")
+    assert_issues(sealed.verify(BOOK), [("E_LOG_NONCANONICAL", 7, "canonical JSON")])
+
+
+def test_duplicated_seq_is_only_a_seq_error(sealed: VocabularyStore):
+    records = [json.loads(line) for line in lines(sealed)]
+    seqs = list(range(len(records)))
+    seqs[4] = 3  # duplicates line 3's seq; hashes and chain recomputed
+    forge(sealed, records, seqs=seqs)
+    assert_issues(sealed.verify(BOOK), [("E_SEQ", 4, "seq is 3, expected 4")])
+
+
+def test_label_swap_with_fresh_hashes_needs_an_anchor(sealed: VocabularyStore):
+    """Swapping two meanings and recomputing every hash and marker is internally
+    consistent; only a chain head recorded elsewhere detects it (sound/docs/store.md)."""
+    anchor = sealed.head(BOOK)
+    records = [json.loads(line) for line in lines(sealed)]
+    records[1]["semantic_label"], records[2]["semantic_label"] = "REMOVE_ONE", "ADD_ONE"
+    records[4]["semantic_label"] = "REMOVE_ONE"  # the no-op record of K-a1
+    records[5]["attempted_semantic_label"] = "ADD_ONE"  # and the overwrite of K-a2
+    forge(sealed, records)
+    assert sealed.verify(BOOK).ok
+    assert sealed.get(BOOK, "K-a1").semantic_label == "REMOVE_ONE"
+    assert sealed.verify(BOOK, expected_head=anchor).codes == ("E_ANCHOR",)
+    with pytest.raises(StoreIntegrityError):
+        sealed.get(BOOK, "K-a1", expected_head=anchor)
+
+
+# --- Locking and failed writes -------------------------------------------------------------
+
+
+def _run_threads(target: Callable[[int], None], n: int) -> list[BaseException]:
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(n)
+
+    def run(i: int) -> None:
+        try:
+            barrier.wait()
+            target(i)
+        except BaseException as err:  # noqa: BLE001 - reported to the main thread
+            errors.append(err)
+
+    threads = [threading.Thread(target=run, args=(i,)) for i in range(n)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    return errors
+
+
+def test_concurrent_writers_are_serialized(root: Path):
+    make_store(root).create_book(BOOK, P, kind="synthetic")
+    atoms = list(WAVES[0])
+
+    def write(i: int) -> None:  # one store object per thread, like separate processes
+        commit(VocabularyStore(root, reserved=()), atoms[i])
+
+    assert _run_threads(write, len(atoms)) == []
+    s = make_store(root)
+    records = check_log_format(s)
+    assert sorted(r["atom_id"] for r in records[1:]) == sorted(atoms)
+    assert [r["commit_index"] for r in records[1:]] == list(range(len(atoms)))
+    assert s.verify(BOOK).ok
+
+
+def test_concurrent_commits_of_one_atom_give_one_commit(root: Path):
+    s = VocabularyStore(root, reserved=())
+    s.create_book(BOOK, P, kind="synthetic")
+    assert _run_threads(lambda i: commit(s, "K-a1"), 5) == []
+    events = [r["event"] for r in check_log_format(s)]
+    assert events == ["create_book", "commit"] + ["recommit_noop"] * 4
+    assert s.verify(BOOK).ok
+
+
+def test_lock_timeout(store: VocabularyStore):
+    impatient = make_store(store.root, lock_timeout=0.05)
+    with store._lock(BOOK):
+        with pytest.raises(StoreLocked) as err:
+            commit(impatient, "K-a1")
+        assert err.value.code == "E_LOCKED"
+        with pytest.raises(StoreLocked):
+            impatient.get(BOOK, "K-a1")
+    commit(impatient, "K-a1")  # released
+    assert store.verify(BOOK).ok
+
+
+def test_append_refuses_a_log_that_changed_after_the_scan(
+    store: VocabularyStore, monkeypatch: pytest.MonkeyPatch
+):
+    real_run = store_mod._Scanner.run
+
+    def run_then_write(self: Any) -> Any:
+        state = real_run(self)
+        path = self.store.log_path(self.state.book_id)
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+        with open(path, "ab") as f:  # a writer that ignores the lock
+            f.write(b"x")
+        return state
+
+    before = store.log_path(BOOK).read_bytes()
+    monkeypatch.setattr(store_mod._Scanner, "run", run_then_write)
+    with pytest.raises(StoreError) as err:
+        commit(store, "K-a1")
+    assert err.value.code == E_CONCURRENT
+    monkeypatch.undo()
+    assert store.log_path(BOOK).read_bytes() == before + b"x"
+
+
+def _failing_write(real: Callable[..., None], failing_mode: str) -> Callable[..., None]:
+    def write(path: Path, data: bytes, mode: str) -> None:
+        if mode != failing_mode:
+            return real(path, data, mode)
+        with open(path, mode) as f:
+            f.write(data[: len(data) // 2])
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    return write
+
+
+def test_failed_append_is_rolled_back(grown: VocabularyStore, monkeypatch: pytest.MonkeyPatch):
+    path = grown.log_path(BOOK)
+    before = path.read_bytes()
+    monkeypatch.setattr(store_mod, "_write_new", _failing_write(store_mod._write_new, "ab"))
+    with pytest.raises(OSError) as err:
+        commit(grown, "K-a3")
+    assert err.value.errno == errno.ENOSPC
+    assert path.read_bytes() == before and is_read_only(path)
+    monkeypatch.undo()
+    assert grown.verify(BOOK).ok
+    commit(grown, "K-a3")
+    assert grown.verify(BOOK).ok
+
+
+def test_failed_create_leaves_no_book(root: Path, monkeypatch: pytest.MonkeyPatch):
+    s = make_store(root)
+    monkeypatch.setattr(store_mod, "_write_new", _failing_write(store_mod._write_new, "xb"))
+    with pytest.raises(OSError):
+        s.create_book(BOOK, P, kind="synthetic")
+    monkeypatch.undo()
+    assert s.books() == [] and not s.log_path(BOOK).exists()
+    s.create_book(BOOK, P, kind="synthetic")
+    assert s.verify(BOOK).ok
+
+
+@pytest.mark.skipif(sys.platform == "win32" or IS_ROOT, reason="POSIX permissions, non-root")
+def test_read_only_store_copy_can_be_read(grown: VocabularyStore):
+    lock = grown.book_dir(BOOK) / ".lock"
+    os.chmod(lock, stat.S_IREAD)  # an audit copy where nothing is writable
+    dirs = [grown.book_dir(BOOK), grown.root / "blobs"]
+    try:
+        for d in dirs:
+            os.chmod(d, 0o555)
+        assert grown.verify(BOOK).ok and len(grown.list(BOOK)) == 3  # read-only lock file
+        with pytest.raises(PermissionError):
+            commit(grown, "K-a3")
+        os.chmod(grown.book_dir(BOOK), 0o755)
+        lock.unlink()
+        os.chmod(grown.book_dir(BOOK), 0o555)
+        assert grown.get(BOOK, "K-a1").atom_id == "K-a1"  # no lock file and none can be made
+    finally:
+        for d in dirs:
+            os.chmod(d, 0o755)
+
+
+# --- Freeze and void markers -------------------------------------------------------------
+
+
+def test_frozen_marker_names_the_freeze_record(grown: VocabularyStore):
+    head = grown.freeze(BOOK)
+    marker = grown.book_dir(BOOK) / FROZEN_MARKER
+    freeze = check_log_format(grown)[-1]
+    assert marker.read_bytes() == store_mod._marker_bytes(BOOK, "freeze", freeze["seq"], head)
+    assert is_read_only(marker) and not (grown.book_dir(BOOK) / VOID_MARKER).exists()
+    path = grown.log_path(BOOK)
+    data = path.read_bytes()
+    write_bytes(path, b"\n".join(data[:-1].split(b"\n")[:-1]) + b"\n")  # drop the freeze line
+    assert_issues(grown.verify(BOOK), [("E_MARKER", None, "FROZEN marker exists")])
+    with pytest.raises(StoreIntegrityError):
+        commit(grown, "K-a3")  # never accepted as an open book
+    write_bytes(path, data)
+    write_bytes(marker, marker.read_bytes().replace(b'"seq":4', b'"seq":3'))
+    assert_issues(grown.verify(BOOK), [("E_MARKER", 4, "does not match")])
+    with pytest.raises(StoreIntegrityError):
+        grown.freeze(BOOK)  # a wrong marker is not repaired
+    os.chmod(marker, stat.S_IWRITE | stat.S_IREAD)
+    marker.unlink()
+    assert_issues(grown.verify(BOOK), [("E_MARKER", 4, "missing")])
+    with pytest.raises(StoreIntegrityError):
+        grown.get(BOOK, "K-a1")
+    assert grown.freeze(BOOK) == head  # completes the marker, appends nothing
+    assert grown.verify(BOOK, expected_head=head).ok
+
+
+def test_interrupted_freeze_is_completed_by_freeze(
+    grown: VocabularyStore, monkeypatch: pytest.MonkeyPatch
+):
+    def crash(*args: Any) -> None:
+        raise OSError(errno.EIO, "power cut")
+
+    monkeypatch.setattr(VocabularyStore, "_write_marker", crash)
+    with pytest.raises(OSError):
+        grown.freeze(BOOK)
+    monkeypatch.undo()
+    assert grown.verify(BOOK).codes == ("E_MARKER",)
+    with pytest.raises(StoreIntegrityError):
+        commit(grown, "K-a3")
+    head = grown.freeze(BOOK)
+    assert grown.verify(BOOK).ok and grown.book(BOOK).frozen and head == grown.head(BOOK)
+
+
+def test_void_book(grown: VocabularyStore):
+    snapshot = grown.snapshot_hashes(BOOK)
+    with pytest.raises(InvalidIdentifier):
+        grown.void(BOOK, cause="lost", reason="DEV-0005")
+    with pytest.raises(InvalidIdentifier):
+        grown.void(BOOK, cause="other", reason="")
+    with pytest.raises(InvalidIdentifier):
+        grown.void(BOOK, cause="other", reason="DEV-0005", superseded_by=BOOK)
+    with pytest.raises(InvalidIdentifier):
+        grown.void(BOOK, cause="other", reason="DEV-0005", superseded_by="BK-A2-1")
+    head = grown.void(
+        BOOK,
+        cause="failed_generation",
+        reason="DEV-0005 no eligible bank recipe",
+        superseded_by="DEMO-T9",
+    )
+    record = check_log_format(grown)[-1]
+    assert record["event"] == "void" and record["cause"] == "failed_generation"
+    assert record["superseded_by"] == "DEMO-T9" and record["n_entries"] == 3
+    assert record["snapshot_sha256"] == snapshot_digest(snapshot)
+    for name in (FROZEN_MARKER, VOID_MARKER):
+        marker = grown.book_dir(BOOK) / name
+        assert marker.read_bytes() == store_mod._marker_bytes(BOOK, "void", record["seq"], head)
+    info = grown.book(BOOK)
+    assert info.void and info.frozen and grown.verify(BOOK).void
+    with pytest.raises(BookFrozen) as err:
+        commit(grown, "K-a3")
+    assert err.value.void and "void" in str(err.value)
+    assert check_log_format(grown)[-1]["freeze_seq"] == record["seq"]
+    assert grown.freeze(BOOK) == grown.head(BOOK)  # closed already: nothing appended
+    with pytest.raises(StoreError) as err2:
+        grown.void(BOOK, cause="other", reason="DEV-0006")
+    assert err2.value.code == E_VOID
+    assert grown.snapshot_hashes(BOOK) == snapshot and grown.verify(BOOK).ok
+    grown.create_book("DEMO-T9", P, kind="synthetic")
+    assert grown.books() == [BOOK, "DEMO-T9"]
+    assert grown.books(void=True) == [BOOK] and grown.books(void=False) == ["DEMO-T9"]
+
+
+def test_void_after_freeze_and_removed_void_line(grown: VocabularyStore):
+    freeze_head = grown.freeze(BOOK)
+    grown.void(BOOK, cause="batch_rebuild", reason="DEV-0007 rater withdrew")
+    records = check_log_format(grown)
+    frozen = grown.book_dir(BOOK) / FROZEN_MARKER
+    assert frozen.read_bytes() == store_mod._marker_bytes(
+        BOOK, "freeze", records[-2]["seq"], freeze_head
+    )
+    assert grown.verify(BOOK).ok and grown.book(BOOK).void
+    path = grown.log_path(BOOK)
+    write_bytes(path, b"\n".join(lines(grown)[:-1]) + b"\n")  # drop the void line
+    assert_issues(grown.verify(BOOK), [("E_MARKER", None, "VOID marker exists")])
+    with pytest.raises(StoreIntegrityError):
+        grown.books(void=False)
+
+
+# --- Versions, thresholds and lookups -------------------------------------------------------
+
+
+def test_book_records_code_hashes(store: VocabularyStore):
+    info = store.book(BOOK)
+    assert info.renderer_hash == renderer_hash()
+    assert info.validator_hash == validator_code_hash()
+    record = store.records(BOOK)[0]
+    assert (record["renderer_hash"], record["validator_hash"]) == (
+        info.renderer_hash,
+        info.validator_hash,
+    )
+
+
+@pytest.mark.parametrize("which", [0, 1], ids=["renderer-hash", "validator-hash"])
+def test_code_change_blocks_new_commits(
+    grown: VocabularyStore, monkeypatch: pytest.MonkeyPatch, which: int
+):
+    hashes = list(store_mod._code_hashes())
+    hashes[which] = "f" * 64
+    monkeypatch.setattr(store_mod, "_code_hashes", lambda: tuple(hashes))
+    with pytest.raises(StoreError) as err:
+        commit(grown, "K-a3")
+    assert err.value.code == E_VERSION
+    with pytest.raises(OverwriteRejected):  # old entries are still protected and logged
+        commit(grown, "K-a1", recipe=RECIPES["K-a3"])
+
+
+@pytest.mark.parametrize(
+    ("threshold", "text"),
+    [
+        pytest.param(Fraction(1, 8), "0.125", id="fraction"),
+        pytest.param(Decimal("0.15"), "0.15", id="decimal"),
+        pytest.param("0.10", "0.1", id="str"),
+        pytest.param(0, "0", id="int"),
+    ],
+)
+def test_thresholds_are_stored_as_decimals(root: Path, threshold: Any, text: str):
+    s = make_store(root)
+    s.create_book(BOOK, P, kind="synthetic", threshold=threshold)
+    assert s.records(BOOK)[0]["threshold"] == text
+    commit(s, "K-a1")
+    assert s.verify(BOOK).ok
+
+
+def test_non_terminating_threshold_is_refused(root: Path):
+    s = make_store(root)
+    with pytest.raises(ValueError, match="finite decimal"):
+        s.create_book(BOOK, P, kind="synthetic", threshold=Fraction(1, 3))
+    assert s.books() == []
+
+
+def test_book_ids_match_exactly_on_every_platform(grown: VocabularyStore):
+    for other in ("demo-t1", "Demo-T1", "DEMO-t1"):
+        with pytest.raises(NotFound):
+            grown.get(other, "K-a1")
+        with pytest.raises(NotFound):
+            grown.head(other)
+        with pytest.raises(NotFound):
+            commit(grown, "K-a3", book=other)
+        assert grown.verify(other).codes == ("E_LOG_MISSING",)
+    assert grown.books() == [BOOK]
+
+
+def test_gitignore_covers_store_layouts():
+    text = (REPO / ".gitignore").read_text(encoding="utf-8")
+    python_block = text.split("# Python / tools", 1)[1].split("\n\n", 1)[0]
+    for pattern in (
+        "**/books/*/log.jsonl",
+        "**/books/*/FROZEN",
+        "**/books/*/VOID",
+        "**/books/*/.lock",
+        "**/blobs/*.wav",
+        "**/blobs/quarantine/",
+        "*.partial",
+    ):
+        assert pattern in python_block.splitlines(), pattern
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected"),
+    [
+        pytest.param(
+            lambda r: r.append(dict(r[-1])),
+            [("E_EVENT", 5, "second void record")],
+            id="second-void",
+        ),
+        pytest.param(
+            lambda r: r[-1].update(superseded_by=BOOK),
+            [("E_RECORD", 4, "cannot supersede itself")],
+            id="self-supersede",
+        ),
+        pytest.param(
+            lambda r: r[-1].update(n_entries=1),
+            [("E_RECORD", 4, "n_entries 1 is not 3")],
+            id="void-count",
+        ),
+    ],
+)
+def test_forged_void_records(grown: VocabularyStore, mutate: Mutation, expected: Expected):
+    grown.void(BOOK, cause="other", reason="DEV-0008")
+    records = [json.loads(line) for line in lines(grown)]
+    mutate(records)
+    forge(grown, records)
+    assert_issues(grown.verify(BOOK), expected)

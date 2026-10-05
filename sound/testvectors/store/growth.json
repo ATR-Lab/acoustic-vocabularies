@@ -2,7 +2,7 @@
   "books": [
     {
       "book_id": "DEMO-P1",
-      "create_head": "1a982f08e2d987f6cc8b346d52daeeac66cde790b4721bc2af183f0c66507966",
+      "create_head": "a562b70f498c3a836fb9ff895e832f74bda1f5a71f863b07ed1bfa97c57b3b1d",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -30,12 +30,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "4a385c93ca9617f5ca46ccc84da388287234df5da3da783d20a4a6eaca71dbf9",
-      "freeze_head": "fa802ad70897a9783d23b98273bdeaa157b3ac2f24a7b66207359e4742dbfb66",
+      "final_head": "283c8a1b58afc81e276dae17fd3328062b3f5c288ce6ddabe61c6ebaf0131289",
+      "freeze_head": "d30208c0fa98ff56775362ccdd4ac85e452e2df5c3b2f6831debf98372b461bb",
       "frozen_rejected": true,
-      "log_bytes": 20375,
+      "log_bytes": 20542,
       "n_records": 24,
-      "noop_head": "d89b6a1885df1326d3646303a7e774e561513a5c0fab0431f4c06e41d1863546",
+      "noop_head": "ab765426bf9814da3ccf39e6b26bcbeab850b24d892abec7eff44815dbbca0eb",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -91,7 +91,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "a6e1e3295eb4d7d17b59eb89f0bc1493674f7c296d4510835ce876b29ce7ab61",
+          "chain_head": "576c257fc001e4e087f8325b0087352a186dcece7d1f52d9dcae999af5c03d56",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -116,7 +116,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "9712c52abfeefc1d66e13f37ceae3b1e467f2041e308cf08da0a1e8d35c67024",
+          "chain_head": "b4077dacfc19e1dc85509608cdc8708ac3baf186365d37ec65a4d9bf2139688a",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -145,7 +145,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "4df55c6f0466735f6bdb3e50a94c20ae601b93c6a0af2b2448102cc3df6489ae",
+          "chain_head": "dea94b2dd6d78533a93c28a026c77329701e8a051f712204e6d4d345eaf2818a",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
@@ -175,7 +175,7 @@
     },
     {
       "book_id": "DEMO-P2",
-      "create_head": "01f4db3d647bd6781d50ff21abeabc17d2fd49785ecece81c4ed9a0355dc6405",
+      "create_head": "b4ca11efc6f6c6c79c6eabdb098e45e81d9b8d31fbad9da7007f6eb2ce5466ce",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -203,12 +203,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "3a10fa824502383fe493b7d13eb05bdcaf0ec1c8131daebe2d177a141bd8c8c7",
-      "freeze_head": "5a4ec725efeb7a0a8f42ed0ef823e88db34fab37b3a42cba511b5f95ea65aa3e",
+      "final_head": "53d8d6d661a3a70692337c5c44fb5b9967a7046dae769343fa5d7ae835756d79",
+      "freeze_head": "dda088e5c9b3e39923a9b050b9d7be99bcbf37c103f242ecde92098e6e3206b1",
       "frozen_rejected": true,
-      "log_bytes": 20379,
+      "log_bytes": 20546,
       "n_records": 24,
-      "noop_head": "b2598c87ec6c6cd2299e98e814da764b387417d4fced7c3fae000a38a1200a86",
+      "noop_head": "70c250b1d9a7fe63cb158a715d6c9d6a6ece25318cd87fefaf6db69b033aa037",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -264,7 +264,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "56b706bf082d4560d2cf0a8b0ece39c89b97a92ee9bf6c95e8fc0223e90098d7",
+          "chain_head": "42f09fa31d21245d7614cf1fd9085f033137d4559fee8161567c5ad370e1c069",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -289,7 +289,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "7ff3b69ed93f76f71e57dbd1d980c60a5cf0ce9688f9c6f89551289db0bfcb4d",
+          "chain_head": "318d286f9252263ac14d31fae93dc887bf74c08b8b27b8204895fcb9b500bad8",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -318,7 +318,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "6370cc6fbc23db3e9932fa11c042f5d90bc6602a8b0f61c28a9bb86cea64ca48",
+          "chain_head": "16277f8c9d53e7a8b56ed26f8ed9580ab112b7cc158afdaaf163f603c25d7133",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
@@ -348,7 +348,7 @@
     },
     {
       "book_id": "DEMO-P3",
-      "create_head": "846b45a516e0d3da14f638e39967587ce582f41edbd95b56a649b31e9e3ae477",
+      "create_head": "396fff5e919287e7ddae7c72cbbad65fa4b9c08152bae1b153febd0b14529d27",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -376,12 +376,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "4905d59bd8395769b71477b6f29a62f6efe530fb6d1d6014a56df7c65e493deb",
-      "freeze_head": "c7069ca32125cf5dd157604409ae015956252ad41231d9c1428d942f2f40d553",
+      "final_head": "3d9b7d33278b18d9a02f2fb3f77971769fa28e19a99c0870293c2d13c2d8a0fb",
+      "freeze_head": "e523d94f5095bd059d81e8bbc3ec44456a6f574a56d00769434c1c966ae49ce4",
       "frozen_rejected": true,
-      "log_bytes": 20380,
+      "log_bytes": 20547,
       "n_records": 24,
-      "noop_head": "ec89a8655a68d990f943736b8acf1a939d7e0222b52ed45deab77a4e893c27be",
+      "noop_head": "61d582802a61afbe69559deac60857d3d31632fb8819cc97d8b529eb492a9cf3",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -437,7 +437,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "1a0ef636e8b329919822f30874448dcd8b4ad387c61dc3f76826aff1f881e187",
+          "chain_head": "b2c83bd88a74195205aefa019892b36384ce10ff30894dcedd2d2fa73739ae98",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -462,7 +462,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "6591bd98b5b66d9555f23cd31662ebcd6431770bcb32302ba612818780bee80b",
+          "chain_head": "43c39fd40f9e6ee67a53e846913d5357cd9c1fe452d1ce6adab1c8c926f41efb",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -491,7 +491,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "cf66ae65262eb21c96433f41ae0c34a72de4ade9d0f1ada5ef8431e98d3e94af",
+          "chain_head": "677507a9844c12090dd0faf600c676a9aabd586dc9b9e891c1184a10f25c4dff",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
