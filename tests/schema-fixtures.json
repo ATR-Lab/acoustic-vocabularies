@@ -18,5 +18,13 @@
   {
     "schema": "apparatus/schemas/state-source.schema.json",
     "instance": "apparatus/examples/state-source.example.json"
+  },
+  {
+    "schema": "apparatus/schemas/apparatus-manifest-input.schema.json",
+    "instance": "apparatus/examples/apparatus-manifest-input.example.json"
+  },
+  {
+    "schema": "apparatus/schemas/apparatus-manifest.schema.json",
+    "instance": "apparatus/examples/apparatus-manifest.example.json"
   }
 ]
