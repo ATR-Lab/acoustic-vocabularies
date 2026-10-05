@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import stat
 import sys
@@ -35,8 +36,22 @@ def parse(data: bytes) -> object:
     def nonfinite(_: str) -> None:
         raise RevealError("NONFINITE_JSON")
 
+    def walk(value: object, depth: int = 0) -> None:
+        if depth > 20:
+            raise RevealError("JSON_DEPTH_LIMIT")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise RevealError("NONFINITE_JSON")
+        if isinstance(value, (dict, list)):
+            for child in value.values() if isinstance(value, dict) else value:
+                walk(child, depth + 1)
+
     try:
-        return cast(object, json.loads(data.decode("utf-8"), object_pairs_hook=pairs, parse_constant=nonfinite))
+        result = cast(
+            object,
+            json.loads(data.decode("utf-8"), object_pairs_hook=pairs, parse_constant=nonfinite),
+        )
+        walk(result)
+        return result
     except (UnicodeError, ValueError, RecursionError) as exc:
         raise RevealError("INVALID_JSON") from exc
 
@@ -119,9 +134,11 @@ class WriterLock:
                 import fcntl
 
                 fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError as exc:
+        except (OSError, RevealError) as exc:
             os.close(self.fd)
             self.fd = -1
+            if isinstance(exc, RevealError):
+                raise
             raise RevealError("WRITER_BUSY") from exc
         return self
 

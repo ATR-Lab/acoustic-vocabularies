@@ -91,8 +91,13 @@ def read_orientation(receipt_path: Path, raw_sha256: str, journal_path: Path) ->
         raise RevealError("ORIENTATION_JOURNAL_HASH")
     if not journal.endswith(b"\n"):
         raise RevealError("ORIENTATION_JOURNAL_PARTIAL")
-    rows = [parse(line) for line in journal.splitlines()]
-    if not rows or any(not isinstance(row, dict) for row in rows):
+    rows: list[dict[str, Any]] = []
+    for line in journal.splitlines():
+        row = parse(line)
+        if not isinstance(row, dict):
+            raise RevealError("ORIENTATION_JOURNAL_BINDING")
+        rows.append(row)
+    if not rows:
         raise RevealError("ORIENTATION_JOURNAL_BINDING")
     header, final = rows[0], rows[-1]
     if (
@@ -323,7 +328,9 @@ class DurableRevealLog:
             people = policy.get("participant_ids")
             receipts = evidence["orientation_receipts"]
             self._validate_people(people, policy.get("checks"), receipts)
-            self.policy.log_eligibility(policy["participant_ids"], staff=policy["staff"], checks=policy["checks"])
+            self.policy.log_eligibility(
+                policy["participant_ids"], staff=policy["staff"], checks=policy["checks"]
+            )
         elif event == "reveal":
             _exact(evidence, {"eligibility_receipt_sha256"})
             previous = self.eligibility.get(policy["eligibility_id"])

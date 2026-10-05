@@ -329,7 +329,10 @@ def test_stale_in_memory_owner_reloads_and_allocates_distinct_next_slot(private)
 
 def test_os_lock_blocks_a_different_process_without_partial_write(private):
     log = open_log(private)
-    script = "from pathlib import Path;from av_schedules.admission_io import WriterLock;\nwith WriterLock(Path(__import__('sys').argv[1])): print('acquired')"
+    script = (
+        "from pathlib import Path;from av_schedules.admission_io import WriterLock;\n"
+        "with WriterLock(Path(__import__('sys').argv[1])): print('acquired')"
+    )
     with WriterLock(log.lock_path):
         result = subprocess.run(
             [sys.executable, "-c", script, str(log.lock_path)],
@@ -369,9 +372,12 @@ def test_local_links_and_public_journal_refused(private):
     with pytest.raises(RevealError, match="REGULAR_UNLINKED_FILE_REQUIRED"):
         DurableRevealLog(path, pin, private / "private.jsonl", expected_head=GENESIS)
 
+
 def test_process_death_after_append_recovers_without_second_slot(private):
-    log=open_log(private);e=eligible(log,private);old=log.head
-    code="""
+    log = open_log(private)
+    e = eligible(log, private)
+    old = log.head
+    code = """
 import os,sys
 from pathlib import Path
 from av_schedules.admission import DurableRevealLog
@@ -379,40 +385,139 @@ log=DurableRevealLog(Path(sys.argv[1]),sys.argv[2],Path(sys.argv[3]),expected_he
 log._write_checkpoint=lambda value:os._exit(73)
 log.reveal_next(sys.argv[5],eligibility_receipt_sha256=sys.argv[6],staff='DEMO-operator')
 """
-    result=subprocess.run([sys.executable,"-c",code,str(log.list_path),log.list_file_sha256,
-                           str(log.journal_path),old,e["eligibility_id"],e["receipt_sha256"]],timeout=10)
-    assert result.returncode==73
-    with pytest.raises(RevealError,match="RECOVERY_REQUIRED"):open_log(private,head=old)
-    recovered=open_log(private,head=old,recover=True)
-    assert reveal(recovered,e)["journal_line"]==2
-    assert len(recovered.rows)==2
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(log.list_path),
+            log.list_file_sha256,
+            str(log.journal_path),
+            old,
+            e["eligibility_id"],
+            e["receipt_sha256"],
+        ],
+        timeout=10,
+    )
+    assert result.returncode == 73
+    with pytest.raises(RevealError, match="RECOVERY_REQUIRED"):
+        open_log(private, head=old)
+    recovered = open_log(private, head=old, recover=True)
+    assert reveal(recovered, e)["journal_line"] == 2
+    assert len(recovered.rows) == 2
 
 
-def test_cli_private_eligibility_reveal_receipt_and_collision(private,capsys):
-    list_path,list_pin=make_list(private)
-    receipt,pin,journal=orientation(private)
-    request={"schema_version":1,"operation":"eligibility","screening_ids":["DEMO-person"],
-             "staff":"DEMO-operator","checks":dict.fromkeys(A_CHECKS,True),
-             "orientation_files":[{"receipt_path":str(receipt),"receipt_file_sha256":pin,"journal_path":str(journal)}]}
-    request_path=private/"request.json";request_path.write_bytes(canonical(request))
-    output=private/"eligibility.json"
-    args=["--allocation-list",str(list_path),"--list-file-sha256",list_pin,"--journal",str(private/"cli.jsonl"),
-          "--expected-head",GENESIS,"--request",str(request_path),"--request-sha256",sha(request_path.read_bytes()),"--output",str(output)]
-    assert main(args)==0
-    report=json.loads(capsys.readouterr().out)
-    e=json.loads(output.read_bytes())
-    assert report["receipt_file_sha256"]==sha(output.read_bytes())
-    before=(private/"cli.jsonl").read_bytes()
-    assert main(args)==2
-    assert (private/"cli.jsonl").read_bytes()==before
-    request={"schema_version":1,"operation":"reveal","eligibility_id":e["eligibility_id"],
-             "eligibility_receipt_sha256":e["receipt_sha256"],"staff":"DEMO-operator"}
+def test_cli_private_eligibility_reveal_receipt_and_collision(private, capsys):
+    list_path, list_pin = make_list(private)
+    receipt, pin, journal = orientation(private)
+    request = {
+        "schema_version": 1,
+        "operation": "eligibility",
+        "screening_ids": ["DEMO-person"],
+        "staff": "DEMO-operator",
+        "checks": dict.fromkeys(A_CHECKS, True),
+        "orientation_files": [
+            {"receipt_path": str(receipt), "receipt_file_sha256": pin, "journal_path": str(journal)}
+        ],
+    }
+    request_path = private / "request.json"
     request_path.write_bytes(canonical(request))
-    args[args.index("--expected-head")+1]=report["current_journal_head_sha256"]
-    args[args.index("--request-sha256")+1]=sha(request_path.read_bytes())
-    args[-1]=str(private/"reveal.json")
-    assert main(args)==0
-    result=json.loads((private/"reveal.json").read_bytes())
-    assert result["entry"]["participant_id"]=="DEMO-person"
-    args[args.index("--request-sha256")+1]="0"*64;args[-1]=str(private/"bad.json")
-    assert main(args)==2 and not (private/"bad.json").exists()
+    output = private / "eligibility.json"
+    args = [
+        "--allocation-list",
+        str(list_path),
+        "--list-file-sha256",
+        list_pin,
+        "--journal",
+        str(private / "cli.jsonl"),
+        "--expected-head",
+        GENESIS,
+        "--request",
+        str(request_path),
+        "--request-sha256",
+        sha(request_path.read_bytes()),
+        "--output",
+        str(output),
+    ]
+    assert main(args) == 0
+    report = json.loads(capsys.readouterr().out)
+    e = json.loads(output.read_bytes())
+    assert report["receipt_file_sha256"] == sha(output.read_bytes())
+    before = (private / "cli.jsonl").read_bytes()
+    assert main(args) == 2
+    assert (private / "cli.jsonl").read_bytes() == before
+    request = {
+        "schema_version": 1,
+        "operation": "reveal",
+        "eligibility_id": e["eligibility_id"],
+        "eligibility_receipt_sha256": e["receipt_sha256"],
+        "staff": "DEMO-operator",
+    }
+    request_path.write_bytes(canonical(request))
+    args[args.index("--expected-head") + 1] = report["current_journal_head_sha256"]
+    args[args.index("--request-sha256") + 1] = sha(request_path.read_bytes())
+    args[-1] = str(private / "reveal.json")
+    assert main(args) == 0
+    result = json.loads((private / "reveal.json").read_bytes())
+    assert result["entry"]["participant_id"] == "DEMO-person"
+    args[args.index("--request-sha256") + 1] = "0" * 64
+    args[-1] = str(private / "bad.json")
+    assert main(args) == 2 and not (private / "bad.json").exists()
+
+
+@pytest.mark.parametrize("study,people", [("A", ("DEMO-a",)), ("B", ("DEMO-b1", "DEMO-b2"))])
+def test_closed_receipt_schema_matches_actual_apis(private, study, people):
+    from jsonschema import Draft202012Validator
+    validator = Draft202012Validator(
+        json.loads((ROOT / "schedules/schema/admission-receipt.schema.json").read_text())
+    )
+    log = open_log(private, study)
+    e = eligible(log, private, people)
+    r = reveal(log, e)
+    for value in [e, r, *[json.loads(orientation(private, p)[0].read_bytes()) for p in people]]:
+        validator.validate(value)
+        changed = dict(value, extra="refused")
+        assert list(validator.iter_errors(changed))
+
+
+def test_two_processes_cannot_issue_two_entries_for_one_eligibility(private):
+    log = open_log(private)
+    e = eligible(log, private)
+    old = log.head
+    code = """
+import json,sys
+from pathlib import Path
+from av_schedules.admission import DurableRevealLog
+try:
+ log=DurableRevealLog(Path(sys.argv[1]),sys.argv[2],Path(sys.argv[3]),expected_head=sys.argv[4])
+ receipt=log.reveal_next(
+     sys.argv[5],eligibility_receipt_sha256=sys.argv[6],staff='DEMO-operator')
+ print(json.dumps(receipt))
+except Exception as error:
+ print(type(error).__name__);sys.exit(2)
+"""
+    args = [
+        sys.executable,
+        "-c",
+        code,
+        str(log.list_path),
+        log.list_file_sha256,
+        str(log.journal_path),
+        old,
+        e["eligibility_id"],
+        e["receipt_sha256"],
+    ]
+    children = [
+        subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for _ in range(2)
+    ]
+    results = [child.communicate(timeout=10) for child in children]
+    successes = [
+        json.loads(out)
+        for child, (out, _) in zip(children, results, strict=True)
+        if child.returncode == 0
+    ]
+    assert successes
+    assert all(value == successes[0] for value in successes)
+    reopened = open_log(private, head=old)
+    assert len(reopened.rows) == 2 and reveal(reopened, e) == successes[0]
