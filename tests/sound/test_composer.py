@@ -40,6 +40,7 @@ from av_sound import (
     write_message_wav,
 )
 from av_sound.composer import (
+    E_BOOK_MISMATCH,
     E_FAMILY_MISMATCH,
     E_HELDOUT,
     E_INTEGRITY,
@@ -138,29 +139,30 @@ def test_every_total_ms_combination(t_action, t_referent):
 
 @pytest.mark.parametrize("profile", PROFILES)
 def test_gap_is_exactly_9600_zero_samples_in_every_composed_message(books, profile):
+    # Every composed message is a trained one: held-out messages are never composed.
+    # Their bytes are covered by composite_hash against the reference concatenation
+    # (test_message_record_and_composite_hash_match_reference).
     book = books[profile]
     composed = 0
-    # Trained messages with the default table, plus every message of this synthetic book
-    # with an empty held-out table (synthetic fixtures are not study material).
-    for heldout, subset in ((None, TRAINED_MESSAGE_IDS), ((), [m.message_id for m in MESSAGES])):
-        for mid in subset:
-            m = next(x for x in MESSAGES if x.message_id == mid)
-            action, referent = _atoms(book, m)
-            msg = compose_message(action, referent, heldout=heldout)
-            samples = np.frombuffer(msg.pcm, dtype="<i2")
-            na = action.n_samples
-            gap = samples[na : na + GAP_SAMPLES]
-            assert GAP_SAMPLES == 9_600 and gap.size == 9_600
-            assert not gap.any()
-            # The motifs' own end and start samples are zero too, so the zero run is
-            # longer than the gap: the boundary is positional (composition.md rule 2).
-            assert samples[na - 1] == 0 and samples[na + 9_600] == 0
-            assert msg.referent_onset == na + 9_600
-            assert samples[:na].tobytes() == action.pcm
-            assert samples[na + 9_600 :].tobytes() == referent.pcm
-            assert msg.pcm == _reference_concat(action.pcm, referent.pcm)
-            composed += 1
-    assert composed == 18 + 32
+    for m in MESSAGES:
+        if m.message_id not in TRAINED_MESSAGE_IDS:
+            continue
+        action, referent = _atoms(book, m)
+        msg = compose_message(action, referent)
+        samples = np.frombuffer(msg.pcm, dtype="<i2")
+        na = action.n_samples
+        gap = samples[na : na + GAP_SAMPLES]
+        assert GAP_SAMPLES == 9_600 and gap.size == 9_600
+        assert not gap.any()
+        # The motifs' own end and start samples are zero too, so the zero run is
+        # longer than the gap: the boundary is positional (composition.md rule 2).
+        assert samples[na - 1] == 0 and samples[na + 9_600] == 0
+        assert msg.referent_onset == na + 9_600
+        assert samples[:na].tobytes() == action.pcm
+        assert samples[na + 9_600 :].tobytes() == referent.pcm
+        assert msg.pcm == _reference_concat(action.pcm, referent.pcm)
+        composed += 1
+    assert composed == 18
 
 
 @pytest.mark.parametrize("profile", PROFILES)
@@ -231,14 +233,23 @@ def test_heldout_refusal_never_reads_samples():
         compose_message(NoSamples("Q-a2"), NoSamples("Q-r1"))
 
 
-def test_heldout_table_override(books):
+def test_heldout_set_can_only_grow(books):
     book = books[Profile.P2]
     k11 = (book["K-a1"], book["K-r1"])  # trained in the fixed matrix
     k12 = (book["K-a1"], book["K-r2"])  # H-V1 in the fixed matrix
+    # An added ID is refused.
     with pytest.raises(HeldOutMessageError):
         compose_message(*k11, heldout={"K-a1-r1"})
-    assert compose_message(*k12, heldout=["K-a1-r1"]).message_id == "K-a1-r2"
+    # The fixed 14 stay held out whatever table is passed, including an empty one.
+    for table in ((), frozenset(), ["K-a1-r1"], TRAINED_MESSAGE_IDS):
+        with pytest.raises(HeldOutMessageError):
+            compose_message(*k12, heldout=table)
+    for mid in HELDOUT_MESSAGE_IDS:
+        m = next(x for x in MESSAGES if x.message_id == mid)
+        with pytest.raises(HeldOutMessageError):
+            compose_message(*_atoms(book, m), heldout=())
     assert compose_message(*k11, heldout=frozenset()).message_id == "K-a1-r1"
+    assert compose_message(*k11, heldout=["Q-a1-r1"]).message_id == "K-a1-r1"
     with pytest.raises(TypeError):
         compose_message(*k11, heldout="K-a1-r1")
     with pytest.raises(TypeError):
@@ -259,6 +270,10 @@ def test_write_message_wav_trained_only(books, tmp_path):
     forged = dataclasses.replace(msg, message_id="Q-a3-r2")  # H-W1
     with pytest.raises(HeldOutMessageError):
         write_message_wav(forged, tmp_path / "forged.wav", audit=events.append)
+    with pytest.raises(HeldOutMessageError):
+        write_message_wav(forged, tmp_path / "forged.wav", heldout=())
+    with pytest.raises(HeldOutMessageError):
+        write_message_wav(msg, tmp_path / "added.wav", heldout={"Q-a3-r3"})
     assert events[0]["operation"] == "write_message_wav"
     assert events[0]["message_id"] == "Q-a3-r2"
     tampered = dataclasses.replace(msg, pcm=msg.pcm[:-2] + b"\x01\x00")
@@ -313,6 +328,38 @@ def test_protocol_objects_are_accepted(books):
     assert av_sound.compose is compose_message
 
 
+@pytest.mark.parametrize("fn", [compose_message, composite_hash])
+def test_atoms_must_come_from_one_book(books, fn):
+    book = books[Profile.P1]
+    a, r = book["K-a1"], book["K-r1"]
+    assert (a.book_id, r.book_id) == ("DEMO-P1", "DEMO-P1")
+    other = dataclasses.replace(r, book_id="DEMO-other")
+    with pytest.raises(CompositionError) as info:
+        fn(a, other)
+    assert info.value.code == E_BOOK_MISMATCH
+    entry_a = SimpleNamespace(atom_id="K-a1", profile="P1", pcm=a.pcm, book_id="B-1")
+    entry_r = SimpleNamespace(atom_id="K-r1", profile="P1", pcm=r.pcm, book_id="B-2")
+    with pytest.raises(CompositionError) as info:
+        fn(entry_a, entry_r)
+    assert info.value.code == E_BOOK_MISMATCH
+    # Only checked when both atoms expose a book; the bytes do not depend on it.
+    no_book = AtomAudio("K-r1", Profile.P1, r.pcm)
+    expected = composite_hash(a, r)
+    result = fn(a, no_book)
+    assert (result if fn is composite_hash else result.pcm_sha256) == expected
+
+
+def test_message_records_the_book(books):
+    book = books[Profile.P3]
+    assert compose_message(book["Q-a1"], book["Q-r1"]).book_id == "DEMO-P3"
+    plain = AtomAudio("Q-a1", Profile.P3, book["Q-a1"].pcm)
+    assert compose_message(plain, book["Q-r1"]).book_id == "DEMO-P3"
+    assert compose_message(plain, AtomAudio("Q-r1", "P3", book["Q-r1"].pcm)).book_id is None
+    # The held-out guard runs before the book check.
+    with pytest.raises(HeldOutMessageError):
+        compose_message(book["Q-a1"], dataclasses.replace(book["Q-r2"], book_id="DEMO-x"))
+
+
 def test_atom_audio():
     rendered = render(Recipe(450, (0, 1, 2), (1, 1, 1), (20, 20), (1.0, 0.8, 0.6)), "P2")
     atom = AtomAudio.from_rendered("Q-r4", rendered)
@@ -328,6 +375,11 @@ def test_atom_audio():
         AtomAudio("K-a1", Profile.P1, b"\x00")
     with pytest.raises(TypeError):
         AtomAudio("K-a1", Profile.P1, [0, 0])
+    with pytest.raises(ValueError):
+        AtomAudio("K-a1", Profile.P1, b"", book_id="")
+    with pytest.raises(ValueError):
+        AtomAudio("K-a1", Profile.P1, b"", book_id=7)
+    assert AtomAudio.from_rendered("K-a1", rendered, book_id="B").book_id == "B"
 
 
 # --- Metadata only ---------------------------------------------------------------------

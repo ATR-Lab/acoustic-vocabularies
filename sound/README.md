@@ -48,8 +48,8 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `RENDERER_VERSION`, `renderer_hash()`, `renderer_recipe_schema_hash()` | Provenance for store records and the apparatus manifest (pinned in `testvectors/renderer/vectors.json`) |
 | `self_test()` | Renders two pinned reference vectors; call at start-up on a generation host |
 | `SAMPLE_RATE`, `SAMPLES_PER_MS`, `MIN_EVENT_SAMPLES`, `RMS_TARGET` | Constants (48,000; 48; 2,880; 7,336) |
-| `AtomAudio(atom_id, profile, pcm)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` also works |
-| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; refuses held-out IDs (`HeldOutMessageError`) and mixed profiles, families or roles (`CompositionError`) |
+| `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
+| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
 | `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
 | `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |

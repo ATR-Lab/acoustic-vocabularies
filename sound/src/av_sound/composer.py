@@ -7,7 +7,9 @@ message has 52,800-96,000 samples (1.1-2.0 s) by construction.
 
 Held-out messages never exist as complete audio (Protocol constants):
 `compose_message` and `write_message_wav` refuse them, while `composite_hash` and
-`message_length` work for every legal message because they return no samples.
+`message_length` work for every legal message because they return no samples. The
+14 held-out IDs of the fixed matrix are always refused; callers can add IDs to the
+held-out set but never remove one.
 """
 
 from __future__ import annotations
@@ -43,6 +45,7 @@ _DEFAULT_HELDOUT: Final = frozenset(HELDOUT_MESSAGE_IDS)
 E_ROLE_ORDER = "E_ROLE_ORDER"
 E_FAMILY_MISMATCH = "E_FAMILY_MISMATCH"
 E_PROFILE_MISMATCH = "E_PROFILE_MISMATCH"
+E_BOOK_MISMATCH = "E_BOOK_MISMATCH"
 E_MOTIF_LENGTH = "E_MOTIF_LENGTH"
 E_HELDOUT = "E_HELDOUT"
 E_INTEGRITY = "E_INTEGRITY"
@@ -101,14 +104,17 @@ MotifMetadata = int | Recipe | Mapping[str, Any] | _HasNSamples | _HasRecipe | A
 
 @dataclass(frozen=True, slots=True)
 class AtomAudio:
-    """One committed atom: its ID (`K-a1` .. `Q-r4`), profile and samples."""
+    """One committed atom: its ID (`K-a1` .. `Q-r4`), profile, samples and optional book."""
 
     atom_id: str
     profile: Profile
     pcm: bytes = field(repr=False)
+    book_id: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         parse_atom_id(self.atom_id)
+        if self.book_id is not None and (not isinstance(self.book_id, str) or not self.book_id):
+            raise ValueError(f"{self.atom_id}: book_id must be a non-empty string or None")
         object.__setattr__(self, "profile", Profile(self.profile))
         pcm = self.pcm
         if isinstance(pcm, bytearray | memoryview):
@@ -120,9 +126,11 @@ class AtomAudio:
         object.__setattr__(self, "pcm", pcm)
 
     @classmethod
-    def from_rendered(cls, atom_id: str, rendered: Rendered) -> AtomAudio:
+    def from_rendered(
+        cls, atom_id: str, rendered: Rendered, *, book_id: str | None = None
+    ) -> AtomAudio:
         """Wrap a render result. Raises `OverflowError` if the motif overflowed."""
-        return cls(atom_id, rendered.profile, rendered.pcm)
+        return cls(atom_id, rendered.profile, rendered.pcm, book_id=book_id)
 
     @property
     def n_samples(self) -> int:
@@ -148,6 +156,8 @@ class Message:
     pcm: bytes = field(repr=False)
     pcm_sha256: str
     n_samples: int
+    book_id: str | None = None
+    """Book of both atoms when they expose one (`None` otherwise)."""
 
     @property
     def duration_s(self) -> float:
@@ -161,14 +171,15 @@ class Message:
 
 
 def _heldout_ids(heldout: Iterable[str] | None) -> frozenset[str]:
+    """The fixed 14 held-out IDs plus any IDs the caller adds. Nothing can be removed."""
     if heldout is None:
         return _DEFAULT_HELDOUT
     if isinstance(heldout, str | bytes | Mapping):
         raise TypeError("heldout must be a collection of message IDs, e.g. a set or a tuple")
-    ids = frozenset(heldout)
-    for value in sorted(ids, key=repr):
+    extra = frozenset(heldout)
+    for value in sorted(extra, key=repr):
         parse_message_id(value)
-    return ids
+    return _DEFAULT_HELDOUT | extra
 
 
 def _message_ref(action: AtomAudioLike, referent: AtomAudioLike) -> MessageRef:
@@ -196,6 +207,19 @@ def _common_profile(action: AtomAudioLike, referent: AtomAudioLike) -> Profile:
             "a message uses one profile",
         )
     return a
+
+
+def _common_book(action: AtomAudioLike, referent: AtomAudioLike) -> str | None:
+    """Both atoms must come from one book when both expose a `book_id`."""
+    a, r = getattr(action, "book_id", None), getattr(referent, "book_id", None)
+    if a is not None and r is not None and a != r:
+        raise CompositionError(
+            E_BOOK_MISMATCH,
+            f"{action.atom_id} is from book {a} but {referent.atom_id} is from book {r}; "
+            "a message uses one book",
+        )
+    book = a if a is not None else r
+    return None if book is None else str(book)
 
 
 def _check_motif_samples(n: int, what: str) -> int:
@@ -246,18 +270,20 @@ def compose_message(
 
     Checks, in order: roles are action then referent (`E_ROLE_ORDER`), one family
     (`E_FAMILY_MISMATCH`), the message is not held out (`HeldOutMessageError`), one
-    profile (`E_PROFILE_MISMATCH`) and legal motif lengths (`E_MOTIF_LENGTH`).
+    profile (`E_PROFILE_MISMATCH`), one book when both atoms expose `book_id`
+    (`E_BOOK_MISMATCH`) and legal motif lengths (`E_MOTIF_LENGTH`).
 
-    `heldout` is the set of held-out message IDs (the curriculum status table); the
-    default is the 14 held-out IDs of the fixed matrix. A refusal is logged on the
-    `av_sound.composer` logger and passed to `audit`; no samples are concatenated
-    and nothing is written.
+    The 14 held-out IDs of the fixed matrix are always refused. `heldout` adds
+    message IDs to that set (for example a message whose wave is not taught yet); it
+    can never remove one. A refusal is logged on the `av_sound.composer` logger and
+    passed to `audit`; no samples are read or concatenated and nothing is written.
     """
     heldout_ids = _heldout_ids(heldout)
     ref = _message_ref(action, referent)
     if ref.message_id in heldout_ids:
         _refuse("compose_message", ref, audit)
     profile = _common_profile(action, referent)
+    book_id = _common_book(action, referent)
     a_pcm, r_pcm = _motif_pcm(action), _motif_pcm(referent)
     pcm = b"".join((a_pcm, _GAP_BYTES, r_pcm))
     return Message(
@@ -272,6 +298,7 @@ def compose_message(
         pcm=pcm,
         pcm_sha256=hashlib.sha256(pcm).hexdigest(),
         n_samples=len(pcm) // 2,
+        book_id=book_id,
     )
 
 
@@ -282,12 +309,13 @@ compose = compose_message
 def composite_hash(action: AtomAudioLike, referent: AtomAudioLike) -> str:
     """SHA-256 of action + 19,200 zero bytes + referent, without building the message.
 
-    Same role, family, profile and length checks as `compose_message`, but allowed
-    for held-out messages: it hashes incrementally, returns no samples and writes
-    nothing. This is the expected hash in the hidden-answer manifest (#13).
+    Same role, family, profile, book and length checks as `compose_message`, but
+    allowed for held-out messages: it hashes incrementally, returns no samples and
+    writes nothing. This is the expected hash in the hidden-answer manifest (#13).
     """
     _message_ref(action, referent)
     _common_profile(action, referent)
+    _common_book(action, referent)
     digest = hashlib.sha256()
     digest.update(_motif_pcm(action))
     digest.update(_GAP_BYTES)
@@ -342,8 +370,9 @@ def write_message_wav(
 ) -> str:
     """Write a trained message as a canonical WAV file and return its `file_sha256`.
 
-    Refuses a held-out message ID (same `heldout` and `audit` rules as
-    `compose_message`) and a message whose samples do not match its hash.
+    Refuses a held-out message ID (the fixed 14 plus any added through `heldout`;
+    same `audit` rule as `compose_message`) and a message whose samples do not match
+    its hash.
     """
     heldout_ids = _heldout_ids(heldout)
     ref = parse_message_id(message.message_id)
