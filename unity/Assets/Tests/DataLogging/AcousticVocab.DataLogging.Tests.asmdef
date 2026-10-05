@@ -1,0 +1,8 @@
+{
+  "name": "AcousticVocab.DataLogging.Tests",
+  "references": ["AcousticVocab.DataLogging", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio", "AcousticVocab.ResponsePanel"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
+}
