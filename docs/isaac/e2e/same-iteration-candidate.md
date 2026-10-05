@@ -62,3 +62,30 @@ Before a candidate benchmark, run the same notice/readback checks in the
 existing isolated runtime, review any failure, then compare short baseline
 and candidate phases using the same scene, snapshot, checks and receiver.
 A full-hour run is inappropriate until a useful short screen is demonstrated.
+# Bounded actual runner
+
+`tests/isaac/usd_same_iteration_check.py --output <fresh.json>` runs in the
+approved pinned USD runtime without a GPU. Its articulation values are explicitly
+synthetic; objects/environment and notice behavior are real USD. It refuses to
+continue after a restored mutation is accepted. A byte-identical import is checked
+separately as a possible no-op, never counted as rejection evidence.
+
+After that structural screen passes, the explicit `run_scene.py
+--same-iteration-check` hook runs `isaac.e2e.diagnostic.run_same_iteration_check`.
+It requires the usual actual `--reset-check --reset-cycles 1 --capture --skip-reach`
+scene setup. Four 30-second phases run baseline/candidate/candidate/baseline in
+one isolated process, with a fresh durable reset and fresh private Unix listeners
+before each phase. The original service `advance_once` remains the baseline.
+No host relay, DDS or TCP listener is needed.
+
+Each phase uses the same separate-process strict v2 receiver and private command
+client, full state comparator, neutral hold, 60 Hz physics configuration, 30 Hz
+publication target, default GC, and telemetry wrappers. At 1/3/5/7/8/9 seconds the
+client requests teaching, test, reset, pause, resume, and a protected demo rejection.
+Actual correlated replies and Unix round-trip durations are retained; these are
+not Windows/network latency measurements. The output includes every receive time,
+publication log, command/reset logs, iteration times, full-read/comparator/hold
+inclusive durations, physics-only durations and observed GC pauses. Telemetry
+overhead is retained equally in all phases. The first failure stops later phases;
+the final full reset is recorded independently. Completion means the diagnostic
+finished, not that timing or participant acceptance criteria passed.

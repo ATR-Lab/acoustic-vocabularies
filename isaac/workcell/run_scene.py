@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--e2e-control-session-id')
     parser.add_argument('--e2e-public-socket',type=Path)
     parser.add_argument('--e2e-private-socket',type=Path)
+    parser.add_argument('--same-iteration-check',action='store_true')
     early,_=parser.parse_known_args()
     verify_loopback_only()
     pins=json.loads((ROOT/'spikes/O5.1.2/pins.json').read_text())
@@ -236,6 +237,22 @@ def main():
                     joint_csv=ROOT/'docs/spikes/isaac/joint_inventory.csv')
                 if not e2e['service_completed']: raise RuntimeError('JOINED_E2E_SERVICE_FAILED')
             finally: event_log.close()
+        same_iteration=None
+        if args.same_iteration_check:
+            if reset is None: raise ValueError('Same-iteration diagnostic requires actual reset snapshot')
+            import uuid
+            from isaac.e2e.diagnostic import run_same_iteration_check
+            from isaac.reset.snapshot import load_snapshot
+            from isaac.reset.manager import ResetManager
+            from isaac.reset.event_log import DurableResetLog
+            snapshot=load_snapshot(args.output/'reset-check/neutral_v1.json',reset['reset_snapshot_sha256'])
+            event_log=DurableResetLog(args.output/'same-iteration-reset-events.jsonl',session_id=uuid.uuid4().hex,
+                apparatus_version='same-iteration-diagnostic',protocol_version='SIMULATION_TEST')
+            try:
+                manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
+                same_iteration=run_same_iteration_check(manager,layout,args.output/'same-iteration-check')
+                if not same_iteration['completed']: raise RuntimeError('SAME_ITERATION_DIAGNOSTIC_INCOMPLETE')
+            finally: event_log.close()
         actual=accessors.read_state()
         conditions=preconditions(layout,actual)
         if conditions['possible_count']!=32: raise RuntimeError('Neutral preconditions incomplete')
@@ -247,11 +264,12 @@ def main():
             semantic_objects=len(actual),joint_names=list(robot.joint_names),joint_count=len(robot.joint_names),
             fixed_base=robot.is_fixed_base,preconditions_possible=conditions['possible_count'],
             simulation_time=float(sim.current_time),
-            physics_integrated=bool(publisher or commands or published_commands or disconnect or protected or e2e or (demos and demos.get('rows'))),
+            physics_integrated=bool(publisher or commands or published_commands or disconnect or protected or e2e or same_iteration or (demos and demos.get('rows'))),
             unitree_dds_started=False,network_interfaces=['lo'],methodology_review_complete=False,
             reach_summary={k:v for k,v in reach.items() if k!='results'} if reach else None,
             reset_summary=reset,publisher_summary=publisher,command_summary=commands,published_command_summary=published_commands,disconnect_summary=disconnect,
             demo_summary=demos,grip_summary=grip,protected_stream_summary=protected,joined_e2e_summary=e2e,
+            same_iteration_summary=same_iteration,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))
