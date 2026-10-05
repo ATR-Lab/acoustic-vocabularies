@@ -75,7 +75,7 @@ namespace AcousticVocab.Teaching
         // Pins are provided by the trusted admission/configuration boundary;
         // neither a local "reviewed" flag nor a self-asserted hash grants access.
         public static TeachingCatalog Load(string directory,string catalogSha,string reviewSha,LoadedAudioPackage package,VisitSchedule schedule,
-            byte[] packageManifest,byte[] permutationBytes,byte[] allocationBytes=null,string allocationSha=null)
+            byte[] packageManifest,byte[] permutationBytes,byte[] allocationBytes=null,string allocationSha=null,SimulationTestAuthority simulation=null)
         {
             try
             {
@@ -87,10 +87,11 @@ namespace AcousticVocab.Teaching
                 Require(PcmWave.Hash(permutationBytes)==(string)manifest["files"]?["permutation.json"]?["sha256"]);
                 var permutation=Json(permutationBytes);
                 Keys(document,"format","package_sha256","content","images","feedback");Require((string)document["format"]=="av-teaching/1"&&(string)document["package_sha256"]==package.PackageSha256);
-                Keys(review,"version","catalog_sha256","approved","methodology_sha256");
-                Require(review["version"].Type==JTokenType.Integer&&(int)review["version"]==1&&review["approved"].Type==JTokenType.Boolean&&(bool)review["approved"]&&(string)review["catalog_sha256"]==catalogSha&&Hash((string)review["methodology_sha256"]));
+                if(simulation!=null){Require(package.Demo&&schedule.Demo);simulation.Attest(review,"teaching",new JObject{["catalog_sha256"]=catalogSha});}
+                else{Keys(review,"version","catalog_sha256","approved","methodology_sha256");
+                Require(review["version"].Type==JTokenType.Integer&&(int)review["version"]==1&&review["approved"].Type==JTokenType.Boolean&&(bool)review["approved"]&&(string)review["catalog_sha256"]==catalogSha&&Hash((string)review["methodology_sha256"]));}
                 string family=ResolveAlignedFamily(package.Study,schedule.PersonSlot,schedule.Demo,allocationBytes,allocationSha);
-                var result=new TeachingCatalog(package,permutation,document,catalogSha,reviewSha,(string)review["methodology_sha256"],schedule.Sha256,family,schedule.Visit);
+                var result=new TeachingCatalog(package,permutation,document,catalogSha,reviewSha,simulation?.FixtureSetSha256??(string)review["methodology_sha256"],schedule.Sha256,family,schedule.Visit);
                 Require(document["content"] is JArray&&document["images"] is JObject);
                 var expected=new HashSet<string>(permutation["atoms"].Select(x=>(string)x["atom_id"]).Concat(permutation["messages"].Where(x=>(string)x["status"]=="trained").Select(x=>(string)x["message_id"])),StringComparer.Ordinal);
                 Require(expected.Count==34);var usedImages=new HashSet<string>(StringComparer.Ordinal);var expectedFiles=new HashSet<string>(new[]{"catalog.local.json","review.local.json"},StringComparer.Ordinal);

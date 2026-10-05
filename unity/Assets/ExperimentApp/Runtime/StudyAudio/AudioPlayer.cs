@@ -43,12 +43,21 @@ namespace AcousticVocab.StudyAudio
         float gain=.1f;
         public bool Ready => isActiveAndEnabled && configured && !failed && !scheduling && prepared.Count>0 && current==null;
         public bool Playing => current!=null;
-        public bool TrialReady => Ready && route.IsQualified;
+        public bool TrialReady => Ready && route.CanScheduleSoftware;
         public float CurrentGain => gain;
         public long EstimatedPreloadBytes { get; private set; }
         public long UnityAllocatedBytes { get; private set; }
         public event Action<AudioPlaybackEvent> Event;
         public static double Now => (double)Stopwatch.GetTimestamp()/Stopwatch.Frequency;
+        public static void ConfigureSimulationDevice(AcousticVocab.Foundation.SimulationTestAuthority authority)
+        {
+            if(authority==null||!AcousticVocab.Foundation.SimulationTestAuthority.CompiledCapability)throw new AudioFault("AUDIO_SIMULATION_AUTHORITY");
+            var request=AudioSettings.GetConfiguration();request.sampleRate=48000;request.dspBufferSize=512;
+            if(!AudioSettings.Reset(request))throw new AudioFault("AUDIO_SIMULATION_DEVICE_REQUEST");
+            AudioSettings.GetDSPBufferSize(out int frames,out int count);
+            if(AudioSettings.outputSampleRate!=48000||frames<=0||frames>512||count<=0)throw new AudioFault("AUDIO_SIMULATION_DEVICE_FORMAT");
+            UnityEngine.Debug.Log("SIMULATION_AUDIO_DEVICE sample_rate="+AudioSettings.outputSampleRate+" dsp_frames="+frames+" dsp_count="+count+" acoustic_qualified=false");
+        }
 
         void Awake()
         {
@@ -150,7 +159,7 @@ namespace AcousticVocab.StudyAudio
                 if(ticket.Delivery.Status==AudioDelivery.Underrun || ticket.Delivery.Status==AudioDelivery.InvalidCallback)
                 { Abort(ticket.Delivery.DeadlineFault());return; }
                 if(!ticket.OnsetReported && ticket.Delivery.CallbackCount>0)
-                { Emit(ticket.Timing.CalibrationOnly?"CALIBRATION_DELIVERY_OBSERVED":"AUDIO_ONSET_ESTIMATED",ticket);ticket.OnsetReported=true; }
+                { Emit(ticket.Timing.SimulationOnly?"SIMULATION_DELIVERY_OBSERVED":ticket.Timing.CalibrationOnly?"CALIBRATION_DELIVERY_OBSERVED":"AUDIO_ONSET_ESTIMATED",ticket);ticket.OnsetReported=true; }
                 // Processing ahead in the DSP does not mean the audible interval
                 // has elapsed; completion is withheld through estimated offset.
                 double end=(ticket.Timing.OnsetEstimateMonoSeconds??ticket.Timing.ScheduledMonoSeconds)+(double)ticket.Samples/48000;

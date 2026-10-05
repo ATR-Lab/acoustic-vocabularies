@@ -40,6 +40,8 @@ namespace AcousticVocab.Assessment
         void Neutral();
         void Acknowledgment();
     }
+    public interface IAssessmentViewEvidence
+    {void ObserveView(string attemptId,string phase,double observedMonoMs);}
 
     public sealed class ProtectedContentFactory : ISlotContentFactory,ISessionContentPump,IDisposable
     {
@@ -167,7 +169,7 @@ namespace AcousticVocab.Assessment
                 if(double.IsNaN(now)||double.IsInfinity(now))throw new AssessmentFault("ASSESSMENT_CLOCK_INVALID");
                 if(now>=Context.EndMonoMs)
                 {
-                    if(!ended){if(owner.responseOwner==this){owner.panel.Hide();owner.responseOwner=null;}if(shown)owner.view.Neutral();ended=true;}
+                    if(!ended){if(owner.responseOwner==this){owner.panel.Hide();owner.responseOwner=null;}if(shown){owner.view.Neutral();(owner.view as IAssessmentViewEvidence)?.ObserveView(Context.Item.TrialId,"tail_end",now);}ended=true;}
                     return;
                 }
                 if(!requested||now<Context.OnsetMonoMs)return;
@@ -181,7 +183,7 @@ namespace AcousticVocab.Assessment
                     // estimate. Never silently substitute a different clock.
                     if(anchor.HasValue&&Math.Abs(anchor.Value-Context.OnsetMonoMs)>.001)throw new AssessmentFault("ASSESSMENT_ONSET_MISMATCH");
                 }
-                if(!shown){owner.view.Neutral();shown=true;}
+                if(!shown){owner.view.Neutral();(owner.view as IAssessmentViewEvidence)?.ObserveView(Context.Item.TrialId,"protected_neutral",now);shown=true;}
                 if(anchor.HasValue&&openRequested&&!panelOpened&&!HasResponse)
                 {
                     var role=Context.Item.TrialType=="atomic"?(Context.Item.Role=="action"?PanelRole.Action:PanelRole.Target):PanelRole.Command;
@@ -192,7 +194,7 @@ namespace AcousticVocab.Assessment
                 if(now>=deadline&&!acknowledged)
                 {
                     if(!anchor.HasValue)throw new AssessmentFault("ASSESSMENT_ONSET_UNCONFIRMED");
-                    owner.panel.Hide();owner.view.Acknowledgment();acknowledged=true;
+                    owner.panel.Hide();owner.view.Acknowledgment();(owner.view as IAssessmentViewEvidence)?.ObserveView(Context.Item.TrialId,"acknowledgment",now);acknowledged=true;
                 }
             }
         }

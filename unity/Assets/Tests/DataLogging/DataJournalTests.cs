@@ -84,6 +84,29 @@ namespace AcousticVocab.DataLogging.Tests
             string raw=SyntheticData.Folder("missing-onset");using(var w=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>10)){var s=new SessionDataJournal(w);s.Append(SyntheticData.Session("t","CueRequested"));w.Append(SyntheticData.Audio(new EventContext("t","t",new string('5',32))));}
             var t=DataDeriver.Derive(DataJournal.Verify(raw,SyntheticData.Identity),SyntheticData.Identity);Assert.That(t.Exposures.Single()["playback_status"],Is.EqualTo("uncertain"));Assert.That(t.Exposures.Single()["exposure_consumed"],Is.EqualTo("true"));Assert.That(t.Exposures.Single()["audio_onset_estimate_mono_ms"],Is.Empty);
         }
+        [Test] public void SimulationSoftwareAnchorNeverFillsAcousticColumnsOrGrantsUnheardReplay()
+        {
+            string raw=SyntheticData.Folder("simulation-observation");var context=new EventContext("t","t",new string('5',32));
+            // Synthetic unit observations test the real codec/deriver, not a native callback claim.
+            EventDraft Observation(string code,bool callback)
+            {
+                var original=SyntheticData.Audio(context,code,callback,false);var payload=original.Payload;
+                payload["simulation_test"]=true;payload["software_output_estimate_mono_ms"]=1000;payload["software_output_uncertainty_ms"]=11;
+                return new EventDraft(original.Kind,context,payload);
+            }
+            using(var writer=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>10))
+            {
+                writer.Append(Observation("AUDIO_REQUESTED",false));writer.Append(Observation("SIMULATION_DELIVERY_OBSERVED",true));writer.Append(Observation("AUDIO_PLAYBACK_COMPLETED",true));
+                new SessionDataJournal(writer).Append(SyntheticData.Session("t","Done",requestId:context.AudioRequestId));
+            }
+            var snapshot=DataJournal.Verify(raw,SyntheticData.Identity);var tables=DataDeriver.Derive(snapshot,SyntheticData.Identity);
+            foreach(var row in new[]{tables.Trials.Single(),tables.Exposures.Single()})
+            {Assert.That(row["audio_onset_estimate_mono_ms"],Is.Empty);Assert.That(row["onset_uncertainty_ms"],Is.Empty);Assert.That(row["exposure_consumed"],Is.EqualTo("true"));}
+            Assert.That(tables.Exposures.Single()["audible_status"],Is.EqualTo("uncertain"));Assert.That(tables.Exposures.Single()["callback_observed"],Is.EqualTo("true"));
+            Assert.That(tables.Exposures.Single()["technical_fault_code"],Is.Empty);
+            Assert.That((double)snapshot.Records.First(r=>r.Kind=="audio_observation").Payload["software_output_estimate_mono_ms"],Is.EqualTo(1000));
+            var bundle=ExportBundle.Create(raw,raw+"-export",SyntheticData.Identity,ExportHeaders.Provisional());bundle.VerifyAll();Assert.That(bundle.HeadersQualified,Is.False);
+        }
         [Test] public void ConfirmedNoOnsetRetryRetainsBothAttemptsAndSeparateAudioRequests()
         {
             string raw=SyntheticData.Folder("retry");string request=new string('5',32);var c=new EventContext("t","t",request);

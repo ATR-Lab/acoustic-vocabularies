@@ -139,6 +139,24 @@ namespace AcousticVocab.Tests
             Assert.That(source.ConfirmReset(Frame(),.251),Is.False);
         }
         [Test]
+        public void LocalProgressObservationNeverGrantsRemoteClockQualification()
+        {
+            var source=new LiveIsaacSource(0,0);
+            Assert.That(source.LocalProgressFresh(0),Is.False);
+            Assert.That(source.Receive(Frame(),0,0),Is.True);
+            Assert.That(source.LocalProgressFresh(.2),Is.True);
+            Assert.That(source.SourceFresh,Is.False);
+            Assert.That(source.ConfirmReset(Frame(),.2),Is.False);
+            Assert.That(source.Receive(Frame(),.21,.21),Is.False);
+            Assert.That(source.LocalProgressFresh(.21),Is.False);
+            Assert.That(source.Receive(Frame(1,.22),.22,.22),Is.True);
+            Assert.That(source.LocalProgressFresh(.22),Is.True);
+            Assert.That(source.LocalProgressFresh(.471),Is.False);
+            Assert.That(source.SourceFresh,Is.False);
+            source.Invalidate("STATE_TRANSPORT_DISCONNECTED",.48);
+            Assert.That(source.LocalProgressFresh(.48),Is.False);
+        }
+        [Test]
         public void WrongHashRefusedAndSnapshotEqualsNeutral()
         {
             byte[] bytes=Snapshot(); string hash=SceneRegistry.Hash(bytes);

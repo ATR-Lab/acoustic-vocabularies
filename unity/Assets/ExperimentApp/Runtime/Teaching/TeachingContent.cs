@@ -75,10 +75,10 @@ namespace AcousticVocab.Teaching
             var content=live.SingleOrDefault(x=>x.Context.AudioRequestIds?.Contains(value.AudioId)==true);
             if(content==null)throw new SessionFault("LESSON_AUDIO_CONTEXT");
             if(value.Code=="AUDIO_REQUESTED")return;
-            if(value.Code=="AUDIO_ONSET_ESTIMATED")
+            if(value.Code is "AUDIO_ONSET_ESTIMATED" or "SIMULATION_DELIVERY_OBSERVED")
             {
-                LessonTimeline.Require(!value.Timing.CalibrationOnly&&value.CallbackCount>0&&value.Timing.OnsetEstimateMonoSeconds.HasValue&&value.Timing.OnsetUncertaintyMs.HasValue&&value.Timing.RouteOffsetMs.HasValue,"LESSON_ONSET_AUTHORITY");
-                content.Timeline.Onset(value.AudioId,value.Timing.OnsetEstimateMonoSeconds.Value*1000,value.Timing.OnsetUncertaintyMs.Value,value.ObservedMonoSeconds*1000);
+                LessonTimeline.Require(!value.Timing.CalibrationOnly&&value.CallbackCount>0&&value.Timing.PresentationAnchorMonoSeconds.HasValue&&value.Timing.PresentationUncertaintyMs.HasValue&&(value.Timing.RouteOffsetMs.HasValue||value.Timing.SimulationOnly),"LESSON_ONSET_AUTHORITY");
+                content.Timeline.Onset(value.AudioId,value.Timing.PresentationAnchorMonoSeconds.Value*1000,value.Timing.PresentationUncertaintyMs.Value,value.ObservedMonoSeconds*1000);
             }
             else if(value.Code=="AUDIO_PLAYBACK_COMPLETED")content.Timeline.Completed(value.AudioId,value.ObservedMonoSeconds*1000);
             else {content.Interrupt(value.Code);faultSink(value.Code);}

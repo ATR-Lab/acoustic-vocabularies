@@ -52,9 +52,15 @@ def writer_locks(audit_path, mailbox=None):
             path.unlink(missing_ok=True)
 
 
-def make_server(console, port=0, demo=False):
+def make_server(console, port=0, demo=False, simulation=False):
     token = secrets.token_hex(32)
     static = Path(__file__).with_name("static")
+
+    def snapshot():
+        value = dict(console.snapshot(), token=token, demo_transport=demo)
+        if simulation:
+            value["simulation_test"] = True
+        return masked(value)
 
     class Handler(BaseHTTPRequestHandler):
         def setup(self):
@@ -93,7 +99,7 @@ def make_server(console, port=0, demo=False):
                     mime = {"/": "text/html; charset=utf-8", "/app.js": "text/javascript", "/style.css": "text/css"}[self.path]
                     self.send(200, (static/name).read_bytes(), mime)
                 elif self.path == "/api/state":
-                    self.send(200, encoded(masked(dict(console.snapshot(), token=token, demo_transport=demo))))
+                    self.send(200, encoded(snapshot()))
                 elif self.path == "/api/run-sheet.csv":
                     require(console.visit is not None, "visit_not_loaded")
                     self.send(200, console.run_sheet(), "text/csv", "visit-run-sheet.csv")
@@ -125,7 +131,7 @@ def make_server(console, port=0, demo=False):
                     console.engine.fault = body["payload"]["fault"]
                 else:
                     console.command(body["action"], staff, body["payload"])
-                self.send(200, encoded(masked(dict(console.snapshot(), token=token, demo_transport=demo))))
+                self.send(200, encoded(snapshot()))
             except ConsoleFault as fault:
                 self.send(409, encoded(dict(error=str(fault))))
             except Exception:
@@ -141,12 +147,20 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--demo", action="store_true")
     group.add_argument("--config", type=Path)
+    group.add_argument("--simulation-config", type=Path)
+    parser.add_argument("--simulation-config-sha256")
     parser.add_argument("--audit", required=True, type=Path)
     parser.add_argument("--protocol", default="engineering-pending-review")
     parser.add_argument("--port", type=int, default=8769)
     args = parser.parse_args()
     if args.demo:
         catalog, engine = demo_catalog(), DemoEngine()
+        mailbox = None
+    elif args.simulation_config:
+        from .simulation import load_catalog
+        catalog, mailbox = load_catalog(args.simulation_config, args.simulation_config_sha256, args.audit, args.protocol)
+        mailbox.mkdir(parents=True, exist_ok=True)
+        engine = Mailbox(mailbox)
     else:
         config = strict_json(args.config.read_bytes())
         require(set(config) == {"mailbox", "visits"} and isinstance(config["visits"], dict), "config_invalid")
@@ -158,10 +172,11 @@ def main():
                 return load_bundle(entry, reveals)
             catalog[alias] = load
         engine = Mailbox(config["mailbox"])
+        mailbox = config["mailbox"]
     # Read/replay only after both writer locks are held.
-    with writer_locks(args.audit, None if args.demo else config["mailbox"]):
+    with writer_locks(args.audit, mailbox):
         audit = Audit(args.audit, args.protocol)
-        server = make_server(Console(catalog, engine, audit), args.port, args.demo)
+        server = make_server(Console(catalog, engine, audit), args.port, args.demo, bool(args.simulation_config))
         print(f"Operator console: http://127.0.0.1:{server.server_port}", flush=True)
         server.serve_forever()
 
