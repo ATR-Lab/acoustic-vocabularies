@@ -1,0 +1,93 @@
+# macOS demo app (sound/demo/macos): the Python bridge tests, the Swift package build and
+# tests (including the live bridge suite), the app bundle, and the headless self-check
+# against this checkout. Synthetic DEMO data only; nothing is uploaded.
+name: Sound demo (macOS)
+
+on:
+  pull_request:
+    paths:
+      - "sound/demo/**"
+      - "sound/src/**"
+      - "sound/pyproject.toml"
+      - "sound/uv.lock"
+      - "tests/sound/test_demo_bridge.py"
+      - ".github/workflows/sound-demo.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sound/demo/**"
+      - "sound/src/**"
+      - "sound/pyproject.toml"
+      - "sound/uv.lock"
+      - "tests/sound/test_demo_bridge.py"
+      - ".github/workflows/sound-demo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sound-demo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    name: demo (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      PACKAGE: sound/demo/macos/AVSoundDemo
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: sound/uv.lock
+      - name: Install the engine (Python 3.11, locked)
+        run: uv sync --project sound --locked
+      - name: Bridge tests
+        run: uv run --project sound pytest --import-mode=importlib -p no:cacheprovider tests/sound/test_demo_bridge.py -q
+
+      # The package needs the Swift 6 toolchain (swift-tools-version 6.0, Xcode 16 or
+      # later; tested with Xcode 27.1). Use the newest stable Xcode on the runner.
+      - name: Select the newest Xcode
+        run: |
+          echo "Default toolchain:"; swift --version
+          newest="$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -v -i -e beta -e _rc | sort -V | tail -n 1 || true)"
+          if [[ -n "$newest" ]]; then
+            echo "Selecting $newest"
+            sudo xcode-select -s "$newest/Contents/Developer"
+          else
+            echo "No /Applications/Xcode_*.app found; keeping the default Xcode"
+          fi
+          xcodebuild -version
+          swift --version
+      - name: Swift build
+        run: swift build --package-path "$PACKAGE"
+      - name: Swift tests (unit tests, spec vectors, live bridge)
+        env:
+          AV_SOUND_BRIDGE_TESTS: "1"
+        run: swift test --package-path "$PACKAGE"
+      - name: Build the app bundle
+        run: sound/demo/macos/build-app.sh
+      - name: Headless self-check against this checkout
+        run: |
+          app="$PACKAGE/build/AV Sound Demo.app"
+          summary="$RUNNER_TEMP/self-check.json"
+          "$app/Contents/MacOS/AVSoundDemo" --self-check --repo "$GITHUB_WORKSPACE" --count 25 | tee "$summary"
+          {
+            echo "### AV Sound Demo self-check (${{ matrix.os }})"
+            echo '```json'
+            cat "$summary"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
