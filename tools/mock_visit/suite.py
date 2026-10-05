@@ -15,14 +15,13 @@ from .records import EvidenceError, exact, require, strict, verify_chain
 from .reconcile import capture_pin, no_links, pinned, read, reconcile, relative, MAX_RUN_BYTES
 from .native import compare_yoked
 from .store import compare_growth
+from .faults import FAULTS, verify_case
 
-FAULTS = {"headset_disconnect", "input_loss", "presentation_stall", "audio_underrun",
-          "corrupt_file_hash", "failed_reset", "missing_response_log"}
 REQUIRED = {("A", "D0", "reference"), ("A", "D7", "reference")} | {
     ("B", visit, role) for visit in ("V1", "V2", "V3", "W1", "W4") for role in ("active", "yoked")}
 
 
-def coverage(reports):
+def coverage(reports, fault_reports=()):
     normal, faults = {}, {}
     for scenario, report in reports:
         if scenario == "normal":
@@ -32,6 +31,12 @@ def coverage(reports):
         else:
             require(scenario in FAULTS and scenario not in faults, "MOCK_SUITE_FAULT_SCENARIO")
             faults[scenario] = report
+    checked = {}
+    for result in fault_reports:
+        scenario = result["scenario"]
+        require(scenario in faults and scenario not in checked, "MOCK_SUITE_FAULT_CASE")
+        require(result["manifest_sha256"] == faults[scenario]["manifest_sha256"], "MOCK_SUITE_FAULT_MANIFEST")
+        checked[scenario] = result
     return {
         "normal_visits_required": 12, "normal_visits_present": len(normal),
         "normal_software_complete": len(normal) == 12 and set(normal) == REQUIRED and all(r["software_reconciliation_complete"] for r in normal.values()),
@@ -39,11 +44,15 @@ def coverage(reports):
         "fault_scenarios_required": sorted(FAULTS), "fault_scenarios_present": sorted(faults),
         "missing_fault_scenarios": sorted(FAULTS - faults.keys()),
         "fault_observations": {k: r["fault_codes"] for k,r in faults.items()},
+        "fault_evidence_bindings_verified": set(checked) == FAULTS and all(r["injection_artifact_bindings_verified"] for r in checked.values()),
+        "native_fault_sequences_complete": set(checked) == FAULTS and all(r["native_sequence_complete"] for r in checked.values()),
+        "fault_cases": [checked[k] for k in sorted(checked)],
+        "missing_fault_case_evidence": sorted(FAULTS - checked.keys()),
         # A named scenario does not prove that its injection happened. The
         # external harness must retain requested/observed injection evidence.
         "fault_injection_provenance_verified": False,
         "suite_complete": False,
-        "incomplete_reasons": ["FAULT_INJECTION_PROVENANCE_NOT_VERIFIED", "SUPPLEMENTARY_EVIDENCE_REVIEW_REQUIRED"],
+        "incomplete_reasons": ["PHYSICAL_INJECTION_AND_PREDECLARATION_CUSTODY_UNVERIFIED", "SUPPLEMENTARY_EVIDENCE_REVIEW_REQUIRED"],
         "acoustic_qualified": False, "participant_qualified": False,
         "issue81_accepted": False,
     }
@@ -52,10 +61,10 @@ def coverage(reports):
 def verify_suite(path, expected):
     path = Path(path).absolute(); root = path.parent
     plan = strict(read(path, expected, 1024**2))
-    exact(plan, "version scope runs screening_artifacts screen_recordings external_script_reports")
-    require(type(plan["version"]) is int and plan["version"] == 1 and plan["scope"] == "SIMULATION_TEST", "MOCK_SUITE_SCOPE")
+    exact(plan, "version scope runs screening_artifacts screen_recordings external_script_reports" + (" fault_cases" if plan.get("version") == 2 else ""))
+    require(type(plan["version"]) is int and plan["version"] in {1, 2} and plan["scope"] == "SIMULATION_TEST", "MOCK_SUITE_SCOPE")
     require(isinstance(plan["runs"], list) and 1 <= len(plan["runs"]) <= 64, "MOCK_SUITE_RUNS")
-    reports, seen, ledgers, snapshots = [], set(), {}, {}
+    reports, seen, ledgers, snapshots, fault_runs = [], set(), {}, {}, {}
     for run in plan["runs"]:
         exact(run, "scenario manifest")
         require(run["scenario"] == "normal" or run["scenario"] in FAULTS, "MOCK_SUITE_SCENARIO")
@@ -64,6 +73,9 @@ def verify_suite(path, expected):
         require(pin not in seen, "MOCK_SUITE_REUSED_RUN"); seen.add(pin)
         run_path=root / relative(run["manifest"]["path"])
         report=reconcile(run_path,pin);reports.append((run["scenario"], report))
+        if run["scenario"] != "normal":
+            require(run["scenario"] not in fault_runs, "MOCK_SUITE_FAULT_SCENARIO")
+            fault_runs[run["scenario"]] = (run_path, pin)
         if run["scenario"] == "normal" and report["study"] == "B" and report["selection_snapshot_sha256"] is not None:
             rm=strict(read(run_path,pin));c=strict(pinned(run_path.parent,rm["config"]));cp=(run_path.parent/rm["config"]["path"]).parent
             candidates=[strict(pinned(cp,c["files"]["menu_snapshot"]))]
@@ -98,7 +110,20 @@ def verify_suite(path, expected):
                 if report["study"] == "B" and report["visit"] == visit and report["role"] == "yoked":
                     report["incomplete_reasons"]=[r for r in report["incomplete_reasons"] if r!="ACTIVE_LEDGER_COMPARISON_REQUIRED"]
                     report["software_reconciliation_complete"]=not report["incomplete_reasons"]
-    result = coverage(reports)
+    fault_reports = []
+    cases = plan.get("fault_cases", [])
+    require(isinstance(cases, list) and len(cases) <= 7, "MOCK_SUITE_FAULT_CASE_LIMIT")
+    for case in cases:
+        exact(case, "scenario plan observation")
+        scenario = case["scenario"]
+        require(scenario in fault_runs, "MOCK_SUITE_FAULT_CASE")
+        exact(case["plan"], "path sha256"); exact(case["observation"], "path sha256")
+        run_path, pin = fault_runs[scenario]
+        checked = verify_case(root / relative(case["plan"]["path"]), case["plan"]["sha256"],
+                              root / relative(case["observation"]["path"]), case["observation"]["sha256"], run_path, pin)
+        require(checked["scenario"] == scenario, "MOCK_SUITE_FAULT_CASE")
+        fault_reports.append(checked)
+    result = coverage(reports, fault_reports)
     growth=compare_growth(snapshots)
     result["normal_software_complete"] = result["normal_software_complete"] and growth["cross_visit_growth_verified"]
     result.update(version=1, scope="SIMULATION_TEST", suite_plan_sha256=expected,
