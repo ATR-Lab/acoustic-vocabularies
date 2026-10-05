@@ -57,6 +57,15 @@ mailbox transport. The operator must explicitly start grammar and then explicitl
 start the visit after grammar completion. Every later block still requires the
 normal explicit boundary command. No slot duration or clock is compressed.
 
+If the twelve scheduled A/B visits are exercised on one engineering day, retain
+their actual calendar UTC values and previous-visit anchors. Use the normal
+console's explicit `visit_window` or `pair_window` simulation deviation when an
+interval is outside its permitted window. Missing anchors still refuse startup.
+Never backdate an anchor or change a clock to pretend that days or weeks elapsed.
+The delayed-visit fixture loader checks currently recorded here do not constitute
+those later console sessions; their console configurations and interval deviations
+must be prepared and retained before execution.
+
 ## Dummy responses and observations
 
 First exercise representative panel controls manually in the Simulator. Keep the
