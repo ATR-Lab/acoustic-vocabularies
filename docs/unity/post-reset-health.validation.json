@@ -39,6 +39,17 @@
     }
   ],
   "count_note": "The 76-case client run is included in the 267-case combined run; counts are not additive.",
-  "native_build": null,
+  "native_build": {
+    "build_id": "simulation-native-010",
+    "source_commit": "6b79e5756d469ac90583936f2a0038e30ec5a7a6",
+    "dirty_source": false,
+    "target": "StandaloneWindows64",
+    "result": "Succeeded",
+    "errors": 0,
+    "duration_seconds": 27.0066408,
+    "total_bytes": 158712359,
+    "manifest_sha256": "b18e6f00918f559f7408ffbceb9c855806eef49e6bdb51c76ddb351a2e123335",
+    "inventory_independently_rehashed": true
+  },
   "affected_segment_native_validation": "pending"
 }
