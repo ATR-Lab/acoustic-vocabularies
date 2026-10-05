@@ -40,6 +40,12 @@ namespace AcousticVocab.StateIntegration
                 var setup=StateSourceConfiguration.Load(ReadBounded(Path.Combine(Application.persistentDataPath,"state-source.local.json"),65536));
                 if(workcell.ImportedLayout==null || workcell.LayoutSha256!=setup.LayoutHash) throw new StateFault("LAYOUT_HASH_MISMATCH");
                 var registry=setup.Registry((string)station["station_id"],workcell.ImportedLayout.text,workcell.CanonicalJointNames);
+                string kind=(string)station["robot_state_source"];
+                var identity=Resources.Load<TextAsset>("BuildIdentity");
+                if(identity==null) throw new StateFault("SOURCE_BUILD_IDENTITY");
+                // Open evidence before reading the snapshot, so a bad snapshot
+                // hash or schema is recorded durably as well as in the player log.
+                journal=new StateSourceJournal(Path.Combine(Application.persistentDataPath,"operator-logs"),StateParser.Json(identity.text),registry,kind);
                 byte[] neutralBytes=setup.LoadNeutralBytes(Application.persistentDataPath);
                 double now=LiveSocketClient.Now;
                 snapshot=new SnapshotSource(neutralBytes,registry,now);
@@ -54,10 +60,6 @@ namespace AcousticVocab.StateIntegration
                 renderer=new WorkcellStateRenderer(workcell);
                 renderer.VerifyImportedNeutral(snapshot.Neutral);
                 renderer.Apply(snapshot.Neutral);
-                string kind=(string)station["robot_state_source"];
-                var identity=Resources.Load<TextAsset>("BuildIdentity");
-                if(identity==null) throw new StateFault("SOURCE_BUILD_IDENTITY");
-                journal=new StateSourceJournal(Path.Combine(Application.persistentDataPath,"operator-logs"),StateParser.Json(identity.text),registry,kind);
                 if(kind=="snapshot") source=snapshot;
                 else if(kind=="live")
                 {
