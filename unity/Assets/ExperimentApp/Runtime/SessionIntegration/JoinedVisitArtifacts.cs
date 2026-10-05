@@ -35,6 +35,8 @@ namespace AcousticVocab.SessionIntegration
         public IReadOnlyDictionary<string,JoinedModuleKind> Blocks{get;}public TeachingCatalog Teaching{get;private set;}public MenuCatalog Menus{get;private set;}
         public AssessmentScripts Scripts{get;private set;}public SpeechBank Speech{get;private set;}public AudioRouteCalibration Route{get;private set;}public float Gain{get;private set;}
         public bool RatingsReviewed{get;private set;}
+        public VisitSchedule YokedActiveSchedule{get;private set;}
+        public MenuLedgerBinding YokedActiveBinding{get;private set;}
         public string MissingAuthority{get;private set;}readonly byte[] permutation;public byte[] Permutation=>(byte[])permutation.Clone();
         public static JObject Json(byte[] bytes)=>StationConfig.ParseStrict(new UTF8Encoding(false,true).GetString(bytes));
         byte[] Read(string name)=>Config.RequireFile(name).ReadVerified();
@@ -71,7 +73,16 @@ namespace AcousticVocab.SessionIntegration
                 if(!Have("menu_script","menu_review","menu_allocation","reserved_registry","menu_snapshot","menu_bridge_config"))return;
                 Menus=MenuCatalog.Load(config.Directory("menu_scripts"),config.RequireFile("menu_script").Sha256,config.RequireFile("menu_review").Sha256,Package,Schedule,Teaching,manifest,Permutation,
                     Read("menu_allocation"),config.RequireFile("menu_allocation").Sha256,config.Pin("bank_sha256"),config.Directory("menu_examples"),Read("reserved_registry"),config.RequireFile("reserved_registry").Sha256,true);
-                if(Menus.Role=="yoked"){MissingAuthority="JOIN_YOKED_REPLAY_ANCHOR_REQUIRED";return;}
+                if(Menus.Role=="yoked")
+                {
+                    if(!Have("menu_replay_ledger","yoked_active_schedule","yoked_active_run_sheet_manifest","yoked_active_schedule_manifest","yoked_active_run_sheet_csv"))return;
+                    if(!config.YokedAnchorLeadMs.HasValue){MissingAuthority="JOIN_YOKED_ANCHOR_POLICY_MISSING";return;}
+                    var activeRun=new RunSheetEvidence(Read("yoked_active_run_sheet_manifest"),Read("yoked_active_schedule_manifest"),Read("yoked_active_run_sheet_csv"),config.RequireFile("yoked_active_run_sheet_manifest").Sha256,Read("run_sheet_schema"));
+                    YokedActiveSchedule=ScheduleLoader.Load(Read("yoked_active_schedule"),Permutation,manifest,Package,activeRun,Read("schedule_schema"),Read("permutation_schema"),true);
+                    ValidateYokedPair(Schedule,YokedActiveSchedule,Read("menu_allocation"),Menus.MenuKeys);
+                    string unit=JoinedSelections.SharedUnitBindingSha256(Package.PackageSha256,config.RequireFile("permutation").Sha256,config.Pin("bank_sha256"),config.UnitId);
+                    YokedActiveBinding=new MenuLedgerBinding(Menus.PackageSha256,Menus.BankSha256,Menus.AllocationSha256,YokedActiveSchedule.Sha256,unit,Menus.ReviewSha256,Menus.Visit,"active",Menus.MenuKeys);
+                }
             }
             if(Package.Study=="B"&&!Have("menu_snapshot","menu_bridge_config"))return;
             if(Blocks.Values.Contains(JoinedModuleKind.Assessment))
@@ -83,6 +94,15 @@ namespace AcousticVocab.SessionIntegration
                 if(!Schedule.Demo&&Schedule.Blocks.SelectMany(b=>b.Items).Any(i=>i.TrialType=="speech"))
                 {if(!Have("speech_manifest","speech_review"))return;Speech=SpeechBank.LoadReviewed(config.Directory("speech"),config.RequireFile("speech_manifest").Sha256,config.RequireFile("speech_review").Sha256,Schedule.SpeechListSha256);}
             }
+        }
+        public static void ValidateYokedPair(VisitSchedule yoked,VisitSchedule active,byte[] pinnedAllocation,IReadOnlyList<string> expectedMenuKeys)
+        {
+            if(yoked==null||active==null||!active.Demo||!yoked.Demo||active.Study!="B"||yoked.Study!="B"||active.PackageSha256!=yoked.PackageSha256||active.Visit!=yoked.Visit||active.PersonSlot==yoked.PersonSlot)throw new SessionFault("JOIN_YOKED_PAIR");
+            var allocation=Json(pinnedAllocation);if(allocation["demo"]?.Type!=JTokenType.Boolean||!(bool)allocation["demo"]||allocation["dyads"] is not JArray)throw new SessionFault("JOIN_YOKED_PAIR");
+            var dyads=allocation["dyads"].Where(d=>d["members"] is JArray&&d["members"].Any(m=>(string)m["slot_id"]==yoked.PersonSlot)).ToArray();
+            if(dyads==null||dyads.Length!=1||dyads[0]["members"].Count(m=>(string)m["slot_id"]==yoked.PersonSlot&&(string)m["role"]=="yoked")!=1||dyads[0]["members"].Count(m=>(string)m["slot_id"]==active.PersonSlot&&(string)m["role"]=="active")!=1)throw new SessionFault("JOIN_YOKED_PAIR");
+            var keys=active.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").Select(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
+            if(expectedMenuKeys==null||!keys.SequenceEqual(expectedMenuKeys))throw new SessionFault("JOIN_YOKED_PAIR");
         }
     }
 }

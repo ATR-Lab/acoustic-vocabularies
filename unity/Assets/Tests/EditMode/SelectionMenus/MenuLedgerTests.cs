@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using AcousticVocab.SessionEngine;
+using AcousticVocab.SessionIntegration;
 using AcousticVocab.StudyAudio;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -37,6 +38,32 @@ namespace AcousticVocab.SelectionMenus.Tests
         string Write(IReadOnlyList<MenuEvent> events,bool seal=true,MenuLedgerBinding binding=null)
         {string path=Path.Combine(directory,Guid.NewGuid().ToString("N")+".jsonl");using(var writer=new MenuLedger(path,binding??Binding(),created)){foreach(var row in events)writer.Append(row);if(seal)writer.Seal(Verification());}return path;}
         MenuReplaySequence Load(string path,DateTimeOffset? now=null,MenuLedgerVerification verification=null)=>MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),verification??Verification(),now??created.AddHours(1),1000,()=>0);
+        [Test]public void ExplicitJoinedAnchorIsDurableBeforeRealReplayLoadAndNeverReanchors()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));double now=1000;var records=new List<YokedAnchorRecord>();
+            var authority=new YokedReplayAuthority(5000,new string('b',32),pin,Hash,()=>now,records.Add,anchor=>
+            {Assert.That(records.Count,Is.EqualTo(1));Assert.That(records[0].AnchorMonoMs,Is.EqualTo(anchor));return MenuReplaySequence.Load(path,pin,Binding(),Verification(),created.AddHours(1),anchor,()=>now);});
+            string id=Guid.NewGuid().ToString("N");var replay=authority.BindForExplicitStart(id,2,"resume");
+            Assert.That(records[0].OperatorRequestId,Is.EqualTo(id));Assert.That(records[0].ClockEpoch,Is.EqualTo(new string('b',32)));Assert.That(records[0].AnchorMonoMs,Is.EqualTo(6000));
+            var first=new SlotItem("DEMO-first","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);
+            Assert.That(replay.MinimumGapBeforeMs(first,1750),Is.EqualTo(4250));Assert.That(authority.Replay,Is.SameAs(replay));
+            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),3,"resume"));
+            now=6000;Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(first,now));Assert.That(records.Count,Is.EqualTo(1));
+            var report=replay.CompareYoked(Events(replay),Binding("yoked"),Verification());Assert.That(report.AudioPlays,Is.EqualTo(32));
+        }
+        [Test]public void FailedDurableAnchorNeverLoadsAndCannotRetryIntoANewClock()
+        {
+            int loads=0;var authority=new YokedReplayAuthority(2000,Guid.NewGuid().ToString("N"),Hash,Hash,()=>100,_=>throw new IOException("Synthetic journal failure"),_=>{loads++;return null;});
+            Assert.Throws<IOException>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(loads,Is.Zero);
+            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"resume"));
+        }
+        [Test]public void WrongIndependentActiveScheduleCannotBeAuthorizedByLedgerHeader()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var wrong=new MenuLedgerBinding(Hash,Hash,Hash,new string('f',64),Hash,Hash,"V2","active",Keys);int writes=0;
+            var authority=new YokedReplayAuthority(5000,Guid.NewGuid().ToString("N"),pin,wrong.ScheduleSha256,()=>100,_=>writes++,anchor=>MenuReplaySequence.Load(path,pin,wrong,Verification(),created.AddHours(1),anchor,()=>100));
+            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(writes,Is.EqualTo(1));Assert.That(authority.Replay,Is.Null);
+            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start"));
+        }
         [Test]public void SealedIndependentAssetBoundLedgerPreservesAllPlaysSourceIdsAndPauses()
         {
             var events=Events();string path=Write(events);var loaded=Load(path);Assert.That(loaded.SourceSpanMs,Is.EqualTo(195000));

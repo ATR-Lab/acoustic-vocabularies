@@ -31,8 +31,9 @@ namespace AcousticVocab.SessionIntegration
         public FixedSlotEngine Engine=>owner?.Engine;
         public AssessmentSessionHost ActiveAssessment{get;private set;}
         JoinedEngineeringConfig config;JoinedVisitArtifacts assets;DataJournal data;JoinedAudit audit;FileMenuStore store;JoinedSelections selections;MenuLedger menuLedger;bool menuSealed;
-        SessionIntegrationOwner owner;StagedModuleCoordinator staged;OperatorMailbox mailbox;FileOperatorCommandJournal commands;
+        SessionIntegrationOwner owner;StagedModuleCoordinator staged;OperatorMailbox mailbox;FileOperatorCommandJournal commands;CompletedFormsRecovery formsRecovery;YokedReplayAuthority yokedAuthority;OperatorRequest resumeRequest;
         readonly ModuleConstructionScope visit=new ModuleConstructionScope();bool attempted,installedFrames,closed,failed,formsShown;string evidenceRoot,nonce;
+        double? diagnosticQuitAt;
         sealed class Clock:ISessionClock{public double NowMs=>AudioPlayer.Now*1000;}
         readonly Clock clock=new Clock();
         static string Argument(string key)
@@ -47,7 +48,13 @@ namespace AcousticVocab.SessionIntegration
                 config=JoinedEngineeringConfig.Load(path,pin,(string)identity["protocol_version"]);
                 if(config.BuildId!=(string)identity["build_id"])throw new SessionFault("JOIN_BUILD_IDENTITY");
                 assets=new JoinedVisitArtifacts(config);ValidateProvisioned();
-                if(assets.MissingAuthority!=null){Report(assets.MissingAuthority);return;}
+                if(assets.MissingAuthority!=null)
+                {
+                    Report(assets.MissingAuthority);string quit=Argument("-joinedDiagnosticExitSeconds");
+                    if(quit!=null){if(!int.TryParse(quit,out int seconds)||seconds<1||seconds>30)throw new SessionFault("JOIN_DIAGNOSTIC_EXIT_INVALID");diagnosticQuitAt=Time.realtimeSinceStartupAsDouble+seconds;}
+                    return;
+                }
+                if(Argument("-joinedDiagnosticExitSeconds")!=null)throw new SessionFault("JOIN_DIAGNOSTIC_EXIT_REQUIRES_BLOCKED_STARTUP");
                 attempted=true;Report("JOIN_WAITING_FOUNDATION");
             }
             catch(SessionFault error){Fail(error.Code);}catch{Fail("JOIN_CONFIGURATION_INVALID");}
@@ -69,6 +76,8 @@ namespace AcousticVocab.SessionIntegration
         }
         void Update()
         {
+            if(diagnosticQuitAt.HasValue&&Time.realtimeSinceStartupAsDouble>=diagnosticQuitAt.Value)
+            {diagnosticQuitAt=null;Report("JOIN_DIAGNOSTIC_QUIT_REQUESTED");Close();Application.Quit(0);return;}
             if(closed||failed||!attempted)return;
             try
             {
@@ -96,12 +105,22 @@ namespace AcousticVocab.SessionIntegration
                     }
                     selections=new JoinedSelections(assets.Package,assets.Permutation,store);
                     if(assets.Menus!=null)menuLedger=visit.Own(new MenuLedger(Path.Combine(evidenceRoot,"menus.local.jsonl"),assets.Menus.Binding(JoinedSelections.SharedUnitBindingSha256(assets.Package.PackageSha256,config.RequireFile("permutation").Sha256,config.Pin("bank_sha256"),config.UnitId)),DateTimeOffset.UtcNow));
+                    if(assets.YokedActiveBinding!=null)
+                    {
+                        var ledger=config.RequireFile("menu_replay_ledger");
+                        yokedAuthority=new YokedReplayAuthority(config.YokedAnchorLeadMs.Value,nonce,ledger.Sha256,assets.YokedActiveSchedule.Sha256,()=>clock.NowMs,
+                            record=>audit.Write("module",record.ToJson()),anchor=>
+                            {
+                                if(store==null||!store.Ready||!store.OldHashesVerified)throw new SessionFault("JOIN_YOKED_STORE_NOT_READY");
+                                ledger.ReadVerified();return MenuReplaySequence.Load(ledger.Path,ledger.Sha256,assets.YokedActiveBinding,MenuVerification(),DateTimeOffset.UtcNow,anchor,()=>clock.NowMs);
+                            });
+                    }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders);
                     var routes=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<ModuleConstructionScope,IModulePreflight>)(scope=>new Preflight(this,p.Key,p.Value,scope)));
                     staged=new StagedModuleCoordinator(owner.Engine,owner.Modules,routes);
                     Directory.CreateDirectory(config.Directory("operator_mailbox"));commands=visit.Own(new FileOperatorCommandJournal(evidenceRoot,nonce));
-                    mailbox=new OperatorMailbox(config.Directory("operator_mailbox"),nonce,config.RequireFile("run_sheet_manifest").Sha256,owner.Engine,commands,Admission,Health,()=>clock.NowMs,prepareResume:staged.CommitForResume);
+                    mailbox=new OperatorMailbox(config.Directory("operator_mailbox"),nonce,config.RequireFile("run_sheet_manifest").Sha256,owner.Engine,commands,Admission,Health,()=>clock.NowMs,prepareRequestResume:CommitOperatorResume);
                     Report("JOIN_PREFLIGHT");
                 }
                 store?.Pump();bool stageHold=HandleAssessmentBoundary();if(!stageHold)staged.Pump();mailbox.Tick(); // sole engine.Tick owner
@@ -110,13 +129,27 @@ namespace AcousticVocab.SessionIntegration
             }
             catch(SessionFault error){Fail(error.Code);}catch{Fail("JOIN_RUNTIME_FAILED");}
         }
+        void CommitOperatorResume(FixedSlotEngine engine,OperatorRequest request)
+        {
+            if(resumeRequest!=null||request==null)throw new SessionFault("JOIN_OPERATOR_REENTRANCY");resumeRequest=request;
+            try{staged.CommitForResume(engine);}finally{resumeRequest=null;}
+        }
+        MenuLedgerVerification MenuVerification()
+        {
+            var items=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
+            return new MenuLedgerVerification(key=>assets.Menus.Prepare(items[key],store.Profile).Options.ToArray(),
+                (key,index,receipt)=>store.VerifyRecordedSelection(key,index,receipt,assets.Menus),key=>assets.Menus.Prepare(items[key],store.Profile).MeaningDisplayId);
+        }
         bool HandleAssessmentBoundary()
         {
             if(owner.Engine.Status!=SessionState.Complete&&!owner.Engine.NeedsOperatorConfirmation)return false;
             var assessment=ActiveAssessment;if(assessment?.Stages==null)
             {
                 if(owner.Engine.Status==SessionState.Complete)
-                {var recovered=new AssessmentStages(assets.Schedule,owner.SessionJournal,owner.StageJournal,clock,()=>true,assets.RatingsReviewed);Report(recovered.FormsComplete?"JOIN_COMPLETE_FORMS_RECORDED":"JOIN_FORMS_RECOVERY_REQUIRED");return true;}
+                {
+                    formsRecovery??=visit.Own(new CompletedFormsRecovery(assets.Schedule,owner.Engine,clock,owner.SessionJournal,owner.StageJournal,assets.RatingsReviewed,PresentRecoveredForms));
+                    formsRecovery.Pump();Report(formsRecovery.Complete?"JOIN_COMPLETE_FORMS_RECORDED":"JOIN_FORMS_RECOVERY_ACTIVE");return true;
+                }
                 return false;
             }
             if(assessment.Stages.ProtectedComplete&&!assessment.Stages.FormsComplete)
@@ -128,6 +161,19 @@ namespace AcousticVocab.SessionIntegration
             if(owner.Engine.Status==SessionState.Complete)
             {owner.PumpRetainedAtBoundary();Report(assessment.Stages.FormsComplete?"JOIN_COMPLETE_FORMS_RECORDED":"JOIN_FORMS_REQUIRED");return true;}
             return false;
+        }
+        IDisposable PresentRecoveredForms(AssessmentStages stages)
+        {
+            var scope=new ModuleConstructionScope();
+            try
+            {
+                var go=new GameObject("Recovered forms only");scope.RegisterCleanup(()=>UnityEngine.Object.Destroy(go));
+                var screen=go.AddComponent<AssessmentScreen>();scope.RegisterCleanup(screen.ReleaseView);
+                screen.foundation=foundation;screen.trackingSpace=foundation.observerCamera.transform.parent;screen.inputSource=panel;
+                screen.font=font;screen.unlitShader=unlitShader;screen.dictionaryShader=dictionaryShader;screen.Faulted+=Fail;
+                scope.RegisterCleanup(()=>screen.Faulted-=Fail);screen.Configure(stages);screen.BeginForms();return scope;
+            }
+            catch{scope.Dispose();throw;}
         }
         OperatorAdmission Admission()=>new OperatorAdmission(!failed&&assets?.MissingAuthority==null,store==null||store.OldHashesVerified,!failed&&data!=null&&!data.Failed);
         OperatorHealth Health()
@@ -173,10 +219,13 @@ namespace AcousticVocab.SessionIntegration
                 if(!host.store.Ready)return false;
                 if(host.menuLedger!=null&&host.assets.Schedule.Blocks.Where(b=>host.assets.Blocks[b.Name]==JoinedModuleKind.Menus).All(b=>host.owner.Engine.CompletedCounts[host.assets.Schedule.Blocks.ToList().IndexOf(b)]==b.Items.Count))
                 {
-                    var items=host.assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
-                    var verification=new MenuLedgerVerification(key=>host.assets.Menus.Prepare(items[key],host.store.Profile).Options.ToArray(),
-                        (key,index,receipt)=>host.store.VerifyRecordedSelection(key,index,receipt,host.assets.Menus),key=>host.assets.Menus.Prepare(items[key],host.store.Profile).MeaningDisplayId);
-                    host.menuLedger.Seal(verification);host.menuSealed=true;
+                    var verification=host.MenuVerification();
+                    if(host.assets.Menus.Role=="yoked")
+                    {
+                        var comparison=host.menuLedger.SealYoked(host.yokedAuthority.Replay,verification);
+                        host.audit.Write("module",new JObject{["kind"]="yoked_sealed",["active_ledger_sha256"]=comparison.ActiveLedgerSha256,["yoked_event_sha256"]=comparison.YokedEventSha256,["menus"]=comparison.Menus,["audio_plays"]=comparison.AudioPlays});
+                    }
+                    else host.menuLedger.Seal(verification);host.menuSealed=true;
                 }
                 if(!host.menuSealed)throw new SessionFault("JOIN_MENU_LEDGER_INCOMPLETE");return true;
             }
@@ -191,14 +240,22 @@ namespace AcousticVocab.SessionIntegration
                 if(control==null){if(!SealBeforePostMenu())return;StartControl();}
                 control.Pump();if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
                 if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
-                if(ControlReady&&preparedFactory==null){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
+                if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
                 if(Ready)wasReady=true;
             }
             bool ControlReady=>control!=null&&reset!=null&&control.ResetAcknowledged(reset)&&renderer&&host.source.CheckExposureReady()&&host.foundation.Ready&&host.panel.ReadyForTrial&&host.frames.Ready&&(host.store==null||host.store.OldHashesVerified);
-            public bool Ready=>!committed&&preparedFactory!=null&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo);
+            bool AwaitingYokedAnchor=>kind==JoinedModuleKind.Menus&&host.yokedAuthority!=null&&host.yokedAuthority.Replay==null;
+            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingYokedAnchor)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo);
             public ISlotContentFactory Commit(ModuleConstructionScope target)
             {
-                if(!ReferenceEquals(target,scope)||!Ready)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");committed=true;
+                if(!ReferenceEquals(target,scope)||!Ready)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");
+                if(AwaitingYokedAnchor)
+                {
+                    var request=host.resumeRequest??throw new SessionFault("JOIN_YOKED_OPERATOR_REQUIRED");
+                    host.yokedAuthority.BindForExplicitStart(request.RequestId,request.Sequence,request.Command);
+                    preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);
+                }
+                committed=true;
                 host.audit.Write("module",new JObject{["kind"]="commit",["block"]=block,["module"]=kind.ToString()});return preparedFactory;
             }
             ISlotContentFactory CreateFactory()
@@ -222,7 +279,7 @@ namespace AcousticVocab.SessionIntegration
                 else
                 {
                     var view=go.AddComponent<MenuSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.presentationParent=host.foundation.presentationRoot.transform;view.font=host.font;view.Faulted+=host.Fail;scope.RegisterCleanup(view.Uninstall);
-                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,engineeringPreview:true,bindAudio:shared.BindAudio);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay,engineeringPreview:true,bindAudio:shared.BindAudio);view.BindEngine(host.owner.Engine);
                 }
                 host.audit.Write("module",new JObject{["kind"]="prepared_view",["block"]=block,["module"]=kind.ToString()});return result;
             }

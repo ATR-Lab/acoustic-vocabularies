@@ -23,6 +23,17 @@ namespace AcousticVocab.SessionIntegration.Tests
             var map=JoinedBlockMap.Build(Schedule(New<ScheduleBlock>("block",new[]{Item(type)})));Assert.That(map["block"],Is.EqualTo(expected));
             Assert.Throws<NotSupportedException>(()=>((IDictionary<string,JoinedModuleKind>)map).Add("injected",JoinedModuleKind.Menus));
         }
+        [Test]public void YokedScheduleMustBeTheIndependentlyAllocatedPartnerWithTheSameMenuOrder()
+        {
+            var keys=new[]{"K-a3","K-r3","Q-a3","Q-r3"};
+            VisitSchedule Visit(string person,IEnumerable<string> order)=>New<VisitSchedule>(new string(person.EndsWith("1")?'a':'c',64),new string('b',64),person,"V2",true,new[]{New<ScheduleBlock>("menus",order.Select((key,i)=>New<SlotItem>("DEMO-menu-"+i,"atom_menu",key,null,"selection","selection",false,45,8,1)).ToArray())},"B","pilot",null);
+            var allocation=new JObject{["demo"]=true,["dyads"]=new JArray(new JObject{["members"]=new JArray(new JObject{["slot_id"]="B-C01-M1",["role"]="active"},new JObject{["slot_id"]="B-C01-M2",["role"]="yoked"})})};
+            byte[] bytes=Encoding.UTF8.GetBytes(allocation.ToString());var active=Visit("B-C01-M1",keys);var yoked=Visit("B-C01-M2",keys);
+            Assert.DoesNotThrow(()=>JoinedVisitArtifacts.ValidateYokedPair(yoked,active,bytes,keys));
+            Assert.Throws<SessionFault>(()=>JoinedVisitArtifacts.ValidateYokedPair(active,yoked,bytes,keys));
+            Assert.Throws<SessionFault>(()=>JoinedVisitArtifacts.ValidateYokedPair(yoked,Visit("B-C02-M1",keys),bytes,keys));
+            Assert.Throws<SessionFault>(()=>JoinedVisitArtifacts.ValidateYokedPair(yoked,Visit("B-C01-M1",keys.Reverse()),bytes,keys));
+        }
         [Test]public void MixedEmptyAndUnknownBlocksCannotCreateAmbiguousOwners()
         {
             foreach(var items in new[]{new[]{Item("profile_menu"),Item("atomic_lesson")},Array.Empty<SlotItem>(),new[]{Item("invented")}})

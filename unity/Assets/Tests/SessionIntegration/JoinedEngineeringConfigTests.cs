@@ -47,6 +47,19 @@ namespace AcousticVocab.SessionIntegration.Tests
             byte[] bytes=new UTF8Encoding(false).GetBytes(text??value.ToString(Formatting.None));File.WriteAllBytes(path,bytes);return PcmWave.Hash(bytes);
         }
         JoinedEngineeringConfig Load()=>JoinedEngineeringConfig.Load(path,Save(),Protocol);
+        void Version2(int? lead=5000)
+        {
+            value["version"]=2;value["yoked_start"]=lead.HasValue?new JObject{["policy"]="operator_start_plus_lead",["lead_ms"]=lead.Value}:JValue.CreateNull();
+            foreach(string name in new[]{"yoked_active_schedule","yoked_active_run_sheet_manifest","yoked_active_schedule_manifest","yoked_active_run_sheet_csv"})value["files"][name]=JValue.CreateNull();
+        }
+        [Test]public void Version2AnchorPolicyIsExplicitWithoutInventingAnAnchor()
+        {Version2();var config=Load();Assert.That(config.ConfigVersion,Is.EqualTo(2));Assert.That(config.YokedAnchorLeadMs,Is.EqualTo(5000));Assert.That(config.TryFile("yoked_active_schedule",out _),Is.False);Assert.That(config.ParticipantAdmission,Is.False);Version2(null);Assert.That(Load().YokedAnchorLeadMs,Is.Null);}
+        [TestCase(1999)][TestCase(60001)]public void AnchorLeadOutsideEngineeringBoundsIsRefused(int lead)
+        {Version2(lead);Assert.Throws<SessionFault>(()=>Load());}
+        [Test]public void PriorClockAnchorOrImplicitPolicyCannotEnterVersion2()
+        {Version2();value["yoked_start"]["anchor_mono_ms"]=10000;Assert.Throws<SessionFault>(()=>Load());Version2();value["yoked_start"]["policy"]="automatic_now";Assert.Throws<SessionFault>(()=>Load());Version2();value["yoked_start"]["lead_ms"]=5000.5;Assert.Throws<SessionFault>(()=>Load());}
+        [Test]public void Version1DoesNotGainAnchorAuthority()
+        {var config=Load();Assert.That(config.ConfigVersion,Is.EqualTo(1));Assert.That(config.YokedAnchorLeadMs,Is.Null);Assert.That(config.TryFile("yoked_active_schedule",out _),Is.False);value["yoked_start"]=JValue.CreateNull();Assert.Throws<SessionFault>(()=>Load());}
         void Refused(Action<JObject> change,string code=null)
         {
             change(value);var fault=Assert.Throws<SessionFault>(()=>Load());if(code!=null)Assert.That(fault.Code,Is.EqualTo(code));
