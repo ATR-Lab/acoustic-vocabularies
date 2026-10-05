@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "record_kind": "proposed_gate_evidence_packet",
+  "gate": "G2",
+  "issue": 63,
+  "wbs": "O5.3.5",
+  "evidence_review_date_utc": "2026-10-05",
+  "decision": null,
+  "chosen_source": null,
+  "signed": false,
+  "developer_approval": null,
+  "advisor_approval": null,
+  "operational_live_authorized": false,
+  "operational_snapshot_fallback_shipped": false,
+  "station_configuration_changes": false,
+  "protocol_amendment_authored": false,
+  "g3_dependency_resolved": false,
+  "eight_hour_simultaneous_soak_completed": false,
+  "gate_criteria": [
+    {
+      "id": "eight_hour_all_stations",
+      "status": "PENDING",
+      "reason": "No actual eight-hour simultaneous station evidence"
+    },
+    {
+      "id": "zero_protected_stale",
+      "status": "PENDING",
+      "reason": "No qualified protected-block station run; preview faults retained"
+    },
+    {
+      "id": "all_trial_resets_mirrored_before_cue",
+      "status": "PENDING",
+      "reason": "Backend reset and recorded parity evidence do not cover all station trial boundaries"
+    },
+    {
+      "id": "all_test_commands_rejected_logged_not_executed",
+      "status": "PENDING",
+      "reason": "32-pair component test does not cover deployed all-station protected blocks"
+    },
+    {
+      "id": "crash_and_network_drop_paused_recovery",
+      "status": "PENDING",
+      "reason": "Natural disconnect is not an integrated controlled crash/network fault recovery test"
+    }
+  ],
+  "live_engineering_rate_screen": "FAIL",
+  "snapshot_library_readiness": "FAIL",
+  "evidence": [
+    {
+      "id": "reset",
+      "status": "PASS_COMPONENT_ONLY",
+      "commit": "00edca8972f20a118308a507d090e5aa37cb1520",
+      "path": "docs/isaac/reset/actual-reset-results.json",
+      "artifact_sha256": "0df97b3ddc7ba6398209ae1eb60c4f4f153a9fffbf5307e7de9c8b26f108e2a6",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/00edca8972f20a118308a507d090e5aa37cb1520/docs/isaac/reset/actual-reset-results.json"
+    },
+    {
+      "id": "hour_original",
+      "status": "FAIL",
+      "commit": "fae58baa4c954c3675571748e8586925ca7f01a6",
+      "path": "docs/isaac/publisher/actual-hour-results.json",
+      "artifact_sha256": "1bc5a88c5c393602f61ef61053512b865378bf522c997c4d85251ddb9a7e5dbe",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/fae58baa4c954c3675571748e8586925ca7f01a6/docs/isaac/publisher/actual-hour-results.json"
+    },
+    {
+      "id": "hour_receiver_process",
+      "status": "FAIL_HOUR_PASS_UNPACED_DISCONNECT",
+      "commit": "fae58baa4c954c3675571748e8586925ca7f01a6",
+      "path": "docs/isaac/publisher/receiver-process-hour-results.json",
+      "artifact_sha256": "7c1d86656933c9ff1de9b343d9a56945cb4471148de7c023f98da2589f71d71a",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/fae58baa4c954c3675571748e8586925ca7f01a6/docs/isaac/publisher/receiver-process-hour-results.json"
+    },
+    {
+      "id": "flush_diagnostic",
+      "status": "DIAGNOSTIC_BELOW_REQUIRED_PROTECTED_THROUGHPUT",
+      "commit": "fae58baa4c954c3675571748e8586925ca7f01a6",
+      "path": "docs/isaac/publisher/flush-diagnostic.json",
+      "artifact_sha256": "8e668355f2d362c91922e9c7eaba57c6bb00dfa6fedd44b895647aace13f2b98",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/fae58baa4c954c3675571748e8586925ca7f01a6/docs/isaac/publisher/flush-diagnostic.json"
+    },
+    {
+      "id": "command_lock",
+      "status": "PASS_COMPONENT_ONLY",
+      "commit": "a8349efb10aa0b2673254c3704a80a0b1b961ded",
+      "path": "docs/isaac/commands/actual-state-diagnostic.json",
+      "artifact_sha256": "ebc625d3d3504fbf7296380eebe02c962665910666a7c0fcc93924811922eb51",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/a8349efb10aa0b2673254c3704a80a0b1b961ded/docs/isaac/commands/actual-state-diagnostic.json"
+    },
+    {
+      "id": "demo_library",
+      "status": "FAIL_READINESS",
+      "commit": "a8349efb10aa0b2673254c3704a80a0b1b961ded",
+      "path": "docs/isaac/demo-diagnostics.json",
+      "artifact_sha256": "da09886a4bd4ef77e013f805fc47765d256a7dff687e570e77506cb4f731ebdc",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/a8349efb10aa0b2673254c3704a80a0b1b961ded/docs/isaac/demo-diagnostics.json"
+    },
+    {
+      "id": "station_isolation",
+      "status": "PENDING_DEPLOYMENT",
+      "commit": "66ff55481a59a61f648c4ebf68d859768fa995a9",
+      "path": "docs/isaac/stations.md",
+      "artifact_sha256": "5a4d6657c156256ecb87d496a5cc2cddbb4c1b03e118c83d66fd8885b206a8fa",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/66ff55481a59a61f648c4ebf68d859768fa995a9/docs/isaac/stations.md"
+    },
+    {
+      "id": "soak_contract",
+      "status": "NOT_RUN",
+      "commit": "888fc6a9e2c541b861ad08bbd8a4515aeaf4e383",
+      "path": "docs/tests/soak/README.md",
+      "artifact_sha256": "237988f9fe20ad629512876bf10048f810aba979d6cc385f3409019e28ea3cac",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/888fc6a9e2c541b861ad08bbd8a4515aeaf4e383/docs/tests/soak/README.md"
+    },
+    {
+      "id": "unity_live_preview",
+      "status": "FUNCTIONAL_DIAGNOSTIC_WITH_TIMING_FAILURES",
+      "commit": "ee5a621e4970cb81001df3f1d7bf02b40e2adf40",
+      "path": "docs/unity/state-sources-validation.json",
+      "artifact_sha256": "058eeb682de9e8e3b94914ee5fb7c242a14dcdb3eab10ed20dfb525176e6243d",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/ee5a621e4970cb81001df3f1d7bf02b40e2adf40/docs/unity/state-sources-validation.json"
+    }
+  ],
+  "bindings": {
+    "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e"
+  },
+  "limitations": [
+    "Review packet only; not an automated source/deployment authority",
+    "Read-only methodology unavailable; no protocol apparatus text invented or changed",
+    "All referenced implementation PRs remain draft review dependencies",
+    "Unsigned no-go proposal cannot substitute for complete verified snapshot deployment, motion hashes, apparatus amendment and approved-range review"
+  ]
+}
