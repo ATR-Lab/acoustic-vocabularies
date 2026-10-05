@@ -24,6 +24,8 @@ if ($GradleCache) { New-Item -ItemType Directory -Path $GradleCache -Force | Out
 $log = Join-Path $output ($Target + '.log')
 if (Test-Path -LiteralPath $log) { throw 'Use a fresh build identifier; existing logs will not be overwritten.' }
 $unityArguments = @('-batchmode','-nographics','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log+'"'))
+if ($Target -eq 'Android') { $unityArguments += @('-buildTarget','Android') }
+if ($Target -eq 'Windows') { $unityArguments += @('-buildTarget','Win64') }
 if ($Target -eq 'Test') {
     $results = Join-Path $output 'editmode.xml'
     $unityArguments += @('-runTests','-testPlatform','EditMode','-assemblyNames','AcousticVocab.Foundation.Tests','-testResults',('"'+$results+'"'))
@@ -41,7 +43,7 @@ if ($Target -in @('Android','Windows')) {
     $binary = if ($Target -eq 'Android') { 'experiment.apk' } else { 'experiment.exe' }
     $buildDirectory = Join-Path $project "Builds/$BuildId/$Target"
     $manifest = Get-Content -Raw -LiteralPath (Join-Path $buildDirectory ($binary+'.build.json')) | ConvertFrom-Json
-    if ($manifest.result -ne 'Succeeded' -or $manifest.build_identity.commit_sha -ne $revision -or $manifest.build_identity.build_id -ne $BuildId -or $manifest.files.Count -lt 1) { throw 'Build record or identity mismatch.' }
+    if ($manifest.result -ne 'Succeeded' -or $manifest.errors -ne 0 -or $manifest.build_identity.commit_sha -ne $revision -or $manifest.build_identity.build_id -ne $BuildId -or $manifest.files.Count -lt 1) { throw 'Build record, error count, or identity mismatch.' }
     foreach ($entry in $manifest.files) {
         $file = Join-Path $buildDirectory $entry.path
         if ((Get-Item -LiteralPath $file).Length -ne $entry.bytes -or (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant() -ne $entry.sha256) { throw 'Built file failed manifest verification.' }

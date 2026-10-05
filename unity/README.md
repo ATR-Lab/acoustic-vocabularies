@@ -43,6 +43,8 @@ Outputs are ignored under `unity/Builds/<build-id>/<target>/`. Each player has a
 
 Both player builds use `BuildOptions.None`: no development build, script debugging, or profiler connection. The foundation scene has a strict component allowlist and an automated check for unexpected components, missing scripts, extra cameras, or `OnGUI` developer overlays. Later issues must deliberately extend that check when adding reviewed production components. Tests cover strict station validation, schema/example drift, reference transform math with natural movement, recenter latching, scene stripping, and log identity. Test execution fails on zero discovered tests, failed XML results, or a Unity process failure.
 
+The launcher selects `-buildTarget Android` or `Win64` before editor initialization. The builder also synchronizes the selected target group because OpenXR 1.18.0's Meta validation reads that selection. Builds fail on any reported error count, even if Unity labels the overall result `Succeeded`.
+
 ## Deploy a named Quest
 
 Use the Android SDK's existing `adb`, Python with the repository's approved `jsonschema` dependency, a provisioned private config, and the device's explicit locally observed identifier:

@@ -173,6 +173,9 @@ namespace AcousticVocab.Foundation.Editor
         public static void BuildWindows() => Build(BuildTarget.StandaloneWindows64, "Builds/Windows/experiment.exe");
         static void Build(BuildTarget target, string output)
         {
+            if (EditorUserBuildSettings.activeBuildTarget != target)
+                throw new BuildFailedException("Launch Unity with -buildTarget Android or Win64 before invoking the build method.");
+            EditorUserBuildSettings.selectedBuildTargetGroup = BuildPipeline.GetBuildTargetGroup(target);
             Configure(); VerifyParticipantScene();
             string protocol = RequiredEnvironment("EXPERIMENT_PROTOCOL_VERSION");
             string commit = RequiredEnvironment("EXPERIMENT_COMMIT_SHA");
@@ -198,7 +201,7 @@ namespace AcousticVocab.Foundation.Editor
                     ["path"] = Path.GetRelativePath(Path.GetDirectoryName(output), x).Replace('\\', '/'), ["bytes"] = new FileInfo(x).Length, ["sha256"] = Hash(File.ReadAllBytes(x)) })) };
             File.WriteAllText(output + ".build.json", record.ToString() + "\n");
             Debug.Log("FOUNDATION_BUILD target=" + target + " result=" + report.summary.result + " errors=" + report.summary.totalErrors);
-            if (report.summary.result != BuildResult.Succeeded) throw new BuildFailedException("Foundation player build failed.");
+            if (report.summary.result != BuildResult.Succeeded || report.summary.totalErrors != 0) throw new BuildFailedException("Foundation player build failed or reported errors.");
         }
         static string RequiredEnvironment(string key) => Environment.GetEnvironmentVariable(key) ?? throw new BuildFailedException("Missing " + key);
         public static string Hash(byte[] value) { using var hash = SHA256.Create(); return BitConverter.ToString(hash.ComputeHash(value)).Replace("-", "").ToLowerInvariant(); }
