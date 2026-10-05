@@ -60,7 +60,7 @@ async def relay(path, port, seconds):
             for stream in (writer,upstream):
                 if stream is not None:
                     peers.discard(stream);stream.close()
-                    try:await stream.wait_closed()
+                    try:await asyncio.wait_for(stream.wait_closed(),2)
                     except Exception:pass
             tasks.discard(task)
     server=await asyncio.start_server(handle,'127.0.0.1',port,limit=65536)
@@ -77,6 +77,7 @@ async def relay(path, port, seconds):
         for stream in tuple(peers):stream.close()
         for task in tuple(tasks):task.cancel()
         await asyncio.gather(*tuple(tasks),return_exceptions=True)
+        for sig in (signal.SIGTERM,signal.SIGINT):loop.remove_signal_handler(sig)
         print(json.dumps(dict(event='closed',connections=count,connection_errors=failures,
                               elapsed_seconds=time.monotonic()-started)),flush=True)
 
