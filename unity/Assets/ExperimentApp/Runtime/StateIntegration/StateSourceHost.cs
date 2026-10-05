@@ -35,6 +35,7 @@ namespace AcousticVocab.StateIntegration
         bool failed, confirmedAtBoundary, refreshing;
         SimulationTestAuthority simulation;
         public bool RemoteClockQualified=>source is LiveIsaacSource live&&live.SourceFresh;
+        public double SimulationLocalReceiptAgeSeconds {get{if(simulation==null||!RefreshSource()||source is not LiveIsaacSource live||live.Latest==null)return double.PositiveInfinity;return LiveSocketClient.Now-live.LastReceivedMonoSeconds;}}
         public void EnableSimulationChecks(SimulationTestAuthority authority)
         {if(authority==null||!SimulationTestAuthority.CompiledCapability||simulation!=null||confirmedAtBoundary)throw new StateFault("SIMULATION_SOURCE_BINDING");simulation=authority;}
         double nextSample;

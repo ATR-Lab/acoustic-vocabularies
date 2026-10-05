@@ -13,7 +13,7 @@ namespace AcousticVocab.SessionIntegration.Tests
         string root,path;JObject config;
         [SetUp]public void Setup()
         {
-            root=Path.Combine(Path.GetTempPath(),"simulation-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);path=Path.Combine(root,"capability.json");
+            root=Path.Combine(Path.GetTempPath(),".local","simulation-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);path=Path.Combine(root,"capability.json");
             config=new JObject{["version"]=1,["scope"]="SIMULATION_TEST",["fixture_set_sha256"]=new string('a',64),["package_sha256"]=new string('b',64),["schedule_sha256"]=new string('c',64),["build_id"]="mock-build",["protocol_version"]="simulation-test-v1",["output_directory"]=Path.Combine(root,"evidence"),["audio_gain"]=.05,["participant_admission"]=false,["acoustic_qualification"]=false};
         }
         [TearDown]public void Cleanup(){Directory.Delete(root,true);}
@@ -33,6 +33,8 @@ namespace AcousticVocab.SessionIntegration.Tests
         public void WrongScopeIdentityAndGainFail(string key,object value){config[key]=JToken.FromObject(value);Assert.Throws<InvalidDataException>(()=>Load());}
         [Test]public void NonDemoAndWrongPinsNeverBind()
         {var a=Load();Assert.Throws<InvalidDataException>(()=>a.Bind(new string('b',64),new string('c',64),false,true,a.OutputDirectory));Assert.Throws<InvalidDataException>(()=>a.Bind(new string('d',64),new string('c',64),true,true,a.OutputDirectory));}
+        [Test]public void OrdinaryPublicOutputPathRefusedDespiteSimulationName()
+        {config["output_directory"]=Path.Combine(Path.GetTempPath(),"simulation-test-public");Assert.Throws<InvalidDataException>(()=>Load());}
         [Test]public void AttestationCannotPretendToBeHumanReview()
         {
             var a=Load();var bindings=new JObject{["scripts_sha256"]=new string('d',64)};var p=new JObject{["version"]=1,["scope"]="SIMULATION_TEST",["role"]="assessment",["fixture_set_sha256"]=a.FixtureSetSha256,["bindings"]=bindings};a.Attest(p,"assessment",bindings);

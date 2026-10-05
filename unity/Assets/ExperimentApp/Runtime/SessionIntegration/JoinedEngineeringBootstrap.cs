@@ -71,7 +71,7 @@ namespace AcousticVocab.SessionIntegration
                 string simPath=Argument("-simulationTestConfig"),simPin=Argument("-simulationTestConfigSha256");
                 if(simulationTestScene){if(simPath==null||simPin==null||!SimulationTestAuthority.CompiledCapability)throw new SessionFault("JOIN_SIMULATION_CAPABILITY_REQUIRED");simulation=SimulationTestAuthority.Load(simPath,simPin,config.BuildId,config.ProtocolVersion);CreateSimulationWatermark();}
                 else if(simPath!=null||simPin!=null)throw new SessionFault("JOIN_SIMULATION_BUILD_REQUIRED");
-                assets=new JoinedVisitArtifacts(config,simulation);ValidateProvisioned();if(simulation!=null)source.EnableSimulationChecks(simulation);
+                assets=new JoinedVisitArtifacts(config,simulation);ValidateProvisioned();if(simulation!=null){source.EnableSimulationChecks(simulation);AudioPlayer.ConfigureSimulationDevice(simulation);}
                 if(allocation!=null&&assets.Menus!=null&&allocation.Role!=assets.Menus.Role)throw new SessionFault("JOIN_ALLOCATION_ROLE");
                 if(assets.MissingAuthority!=null)
                 {
@@ -158,7 +158,7 @@ namespace AcousticVocab.SessionIntegration
                 store?.Pump();bool stageHold=HandleAssessmentBoundary();if(!stageHold)staged.Pump();mailbox.Tick(); // sole engine.Tick owner
                 if(grammarInterrupted){Fail("JOIN_GRAMMAR_INTERRUPTED");return;}
                 simulationInputs?.Tick(clock.NowMs);
-                if(stageHold){staged.PumpPending();if(simulation!=null&&StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"&&Flag("-simulationQuitOnComplete")){Close();Application.Quit(0);}return;}
+                if(stageHold){staged.PumpPending();if(simulation!=null&&StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"&&Flag("-simulationQuitOnComplete")){Close();Application.Quit(StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"?0:1);}return;}
                 if(grammarStage?.Running==true){Report("JOIN_GRAMMAR_RUNNING");return;}
                 Report(owner.Engine.NeedsOperatorConfirmation?(staged.Ready?"JOIN_READY_EXPLICIT_RESUME":"JOIN_PREFLIGHT"):"JOIN_"+owner.Engine.Status.ToString().ToUpperInvariant());
             }
@@ -215,7 +215,7 @@ namespace AcousticVocab.SessionIntegration
         OperatorAdmission Admission()=>new OperatorAdmission(!failed&&assets?.MissingAuthority==null,store==null||store.OldHashesVerified,!failed&&data!=null&&!data.Failed);
         OperatorHealth Health()
         {
-            double age=source.SampleAgeSeconds*1000;if(!double.IsFinite(age)||age<0)age=1000000;
+            double age=(simulation!=null?source.SimulationLocalReceiptAgeSeconds:source.SampleAgeSeconds)*1000;if(!double.IsFinite(age)||age<0)age=1000000;
             return owner.Health(new OperatorHealth(foundation.Ready,assets.Route.CanScheduleSoftware&&assets.Route.UncertaintyMs<=20,staged.Ready&&source.CheckExposureReady(),panel.ReadyForTrial,age,0,0));
         }
         void CreateSimulationWatermark()

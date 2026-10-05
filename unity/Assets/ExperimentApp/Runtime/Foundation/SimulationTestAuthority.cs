@@ -45,6 +45,7 @@ namespace AcousticVocab.Foundation
             // A dedicated unmistakably named root is mandatory, never a normal
             // pilot/confirmatory journal directory selected by a browser.
             Need(Path.GetFullPath(output).Split(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar).Any(x=>x.StartsWith("simulation-test-",StringComparison.Ordinal)));
+            Need(Path.GetFullPath(output).Split(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar).Any(x=>new[]{".local","private","local-data"}.Contains(x,StringComparer.OrdinalIgnoreCase)));
             return new SimulationTestAuthority(rawPin,p);
         }
         public void Bind(string package,string schedule,bool packageDemo,bool scheduleDemo,string output)

@@ -49,6 +49,15 @@ namespace AcousticVocab.StudyAudio
         public long UnityAllocatedBytes { get; private set; }
         public event Action<AudioPlaybackEvent> Event;
         public static double Now => (double)Stopwatch.GetTimestamp()/Stopwatch.Frequency;
+        public static void ConfigureSimulationDevice(AcousticVocab.Foundation.SimulationTestAuthority authority)
+        {
+            if(authority==null||!AcousticVocab.Foundation.SimulationTestAuthority.CompiledCapability)throw new AudioFault("AUDIO_SIMULATION_AUTHORITY");
+            var request=AudioSettings.GetConfiguration();request.sampleRate=48000;request.dspBufferSize=512;
+            if(!AudioSettings.Reset(request))throw new AudioFault("AUDIO_SIMULATION_DEVICE_REQUEST");
+            AudioSettings.GetDSPBufferSize(out int frames,out int count);
+            if(AudioSettings.outputSampleRate!=48000||frames<=0||frames>512||count<=0)throw new AudioFault("AUDIO_SIMULATION_DEVICE_FORMAT");
+            UnityEngine.Debug.Log("SIMULATION_AUDIO_DEVICE sample_rate="+AudioSettings.outputSampleRate+" dsp_frames="+frames+" dsp_count="+count+" acoustic_qualified=false");
+        }
 
         void Awake()
         {
