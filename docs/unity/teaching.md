@@ -43,6 +43,11 @@ measured apparatus qualification. Observed display/highlight timestamps and
 expected edges are logged separately; a late frame is never backdated. Images
 decode before the cue. Display/highlight intents persist before changing the
 view; success timestamps sample the clock after the software visibility call.
+Failure cleanup attempts concealment, journal interruption, panel close, audio
+abort and control interruption independently. A broken observer cannot skip the
+remaining cleanup stages. Disposal latches before callbacks, preserves bounded
+first-failure information, and detaches the durable audio observer only after
+abort attempts.
 
 Study A permits aligned whole-message lessons only. Study B binds the supplied
 allocation bytes by their independently trusted SHA-256, finds the exact stored
@@ -83,6 +88,10 @@ There is no automatic reconnect or command retry. A teaching health record need
 not say `exposure_ready` (the server reserves that for protected mode); a test
 mode client requires it. Loopback SSH forwarding remains an explicitly separate
 operator-provisioned diagnostic transport and carries no timing qualification.
+The complete health response has a 200 ms deadline. Reset acknowledgement
+freshness includes the entire request round trip; a reset taking more than
+250 ms is intentionally refused, including the previously observed simulator
+reset outliers. No observed reset is silently promoted to a fresh receipt.
 
 Every play gets its own `audio_request_id` and `presentation_index` 1–3, alongside
 the stable opportunity ID and distinct attempt ID. `LessonEvent` carries
@@ -94,6 +103,9 @@ persists #64's full request/onset/callback/completion fields. Callbacks are
 synchronous durable transactions: exceptions prevent scheduling or abort the
 ticket. #72 must retain its distinction between estimated onset, acoustic evidence
 and uncertain consumed exposure. No hidden semantic answer enters these events.
+The typed #72 lesson-event adapter and actual exposure-ledger integration are
+still pending; this module supplies and requires durable callbacks rather than
+claiming that an arbitrary callback already writes the final ledger schema.
 
 The #14 `GrammarAssets` loader admits only the pinned `ready-cue` and
 `click-grammar-demo` canonical WAVs and validates file/PCM hashes and sample

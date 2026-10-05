@@ -58,7 +58,13 @@ namespace AcousticVocab.Teaching
             else if(value.Code!="AUDIO_REQUESTED"&&value.Code!="AUDIO_ONSET_ESTIMATED"&&value.Code!="CALIBRATION_DELIVERY_OBSERVED")Abort(value.Code);
         }
         void Abort(string code)
-        {if(disposed||aborting)return;aborting=true;try{flow.Abort(AudioPlayer.Now*1000);player.Abort(code);fault(code);}finally{aborting=false;}}
-        public void Dispose(){if(disposed)return;if(!Complete)Abort("GRAMMAR_SHUTDOWN");disposed=true;player.Event-=OnAudio;}
+        {if(disposed||aborting)return;aborting=true;try{TeachingCleanup.ThrowFirst(TeachingCleanup.Attempt(()=>flow.Abort(AudioPlayer.Now*1000),()=>player.Abort(code),()=>fault(code)));}finally{aborting=false;}}
+        public void Dispose()
+        {
+            if(disposed)return;bool stop=!Complete&&!aborting;disposed=true;Exception first=null;
+            try{if(stop)first=TeachingCleanup.Attempt(()=>flow.Abort(AudioPlayer.Now*1000),()=>player.Abort("GRAMMAR_SHUTDOWN"),()=>fault("GRAMMAR_SHUTDOWN"));}
+            finally{player.Event-=OnAudio;}
+            TeachingCleanup.ThrowFirst(first);
+        }
     }
 }
