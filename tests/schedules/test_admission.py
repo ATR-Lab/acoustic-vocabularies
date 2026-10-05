@@ -468,6 +468,7 @@ def test_cli_private_eligibility_reveal_receipt_and_collision(private, capsys):
 @pytest.mark.parametrize("study,people", [("A", ("DEMO-a",)), ("B", ("DEMO-b1", "DEMO-b2"))])
 def test_closed_receipt_schema_matches_actual_apis(private, study, people):
     from jsonschema import Draft202012Validator
+
     validator = Draft202012Validator(
         json.loads((ROOT / "schedules/schema/admission-receipt.schema.json").read_text())
     )
