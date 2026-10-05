@@ -132,7 +132,7 @@ def main():
             scene_reload_sha256=reloaded_hash,reload_state_identical=original_state==reload_state,
             semantic_objects=len(actual),joint_names=list(robot.joint_names),joint_count=len(robot.joint_names),
             fixed_base=robot.is_fixed_base,preconditions_possible=conditions['possible_count'],
-            simulation_time=float(sim.current_time),physics_integrated=False,
+            simulation_time=float(sim.current_time),physics_integrated=bool(publisher),
             unitree_dds_started=False,network_interfaces=['lo'],methodology_review_complete=False,
             reach_summary={k:v for k,v in reach.items() if k!='results'} if reach else None,
             reset_summary=reset,publisher_summary=publisher,
