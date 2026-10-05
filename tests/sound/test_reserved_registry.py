@@ -80,6 +80,17 @@ def test_entry_round_trip_and_features():
     assert no_recipe.features is None and no_recipe.profile is None
 
 
+def test_asset_spec_version_is_optional_and_round_trips():
+    without = ReservedRegistry.from_dict(registry_doc(demo_entry()))
+    assert without.asset_spec_version is None
+    assert without.to_dict() == registry_doc(demo_entry())
+    doc = registry_doc(demo_entry(), asset_spec_version="0.1.0")
+    with_version = ReservedRegistry.from_dict(doc)
+    assert with_version.asset_spec_version == "0.1.0"
+    assert with_version.to_dict() == doc
+    assert validate(DEMO, Profile.P3, reserved=with_version).codes == ("E_RESERVED",)
+
+
 def test_load_registry_file_and_cache_invalidation(tmp_path):
     path = tmp_path / "registry.json"
     path.write_text(json.dumps(registry_doc(demo_entry())), encoding="utf-8", newline="\n")
@@ -100,6 +111,8 @@ def test_load_registry_file_and_cache_invalidation(tmp_path):
     [
         registry_doc(registry_version=2),
         registry_doc(renderer_version="pilot"),
+        registry_doc(asset_spec_version="pilot"),
+        registry_doc(asset_spec_version=1),
         registry_doc(extra=True),
         {"registry_version": 1, "renderer_version": RENDERER_VERSION},
         registry_doc(demo_entry(kind="music")),

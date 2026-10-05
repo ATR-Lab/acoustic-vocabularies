@@ -1,4 +1,5 @@
 {
+  "asset_spec_version": "0.1.0",
   "entries": [
     {
       "description": "Calibration example for P1: 2.000 s steady tone at f0 = 300 Hz (pitch 0), partials 1/0.15/0.05, 10/30 ms raised-cosine envelope, RMS 7336 LSB (the motif target). Nonsemantic; used for comfort screening, gain calibration and the profile menu.",

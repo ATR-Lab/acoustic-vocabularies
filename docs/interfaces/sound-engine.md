@@ -88,7 +88,7 @@ Feature metric (Study A protocol §3.2), for the listening tool (#23) and report
 | `parse_threshold(value)`, `load_separation_threshold(path=None)` | Exact threshold (`"0.10"` -> 1/10) |
 
 Reserved signals: `load_reserved_registry(path=None) -> ReservedRegistry`
-(`registry_version`, `renderer_version`, `entries`), `ReservedEntry` (`id`, `kind`,
+(`registry_version`, `renderer_version`, `entries`, optional `asset_spec_version`), `ReservedEntry` (`id`, `kind`,
 `profile`, `n_samples`, `pcm_sha256`, `file_sha256`, `recipe`, `description`).
 Format: `sound/schema/reserved-registry.schema.json`. Details:
 [`sound/docs/validator.md`](../../sound/docs/validator.md).

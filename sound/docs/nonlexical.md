@@ -148,8 +148,10 @@ single 2.000-s event: 96,000 samples, longer than any motif (at most 43,200).
 ## 6. Registry and validator path
 
 `build_reserved_registry()` returns the registry that `registry.json` must equal
-(`registry_version` 1, `renderer_version` = `RENDERER_VERSION`, one entry per asset
-in the order of section 2). `validate(..., reserved=None)` loads this file, so every
+(`registry_version` 1, `renderer_version` = `RENDERER_VERSION`,
+`asset_spec_version` = `ASSET_SPEC_VERSION`, one entry per asset in the order of
+section 2). `asset_spec_version` makes a change of asset design visible in the
+registry itself; the schema keeps it optional, so a registry without it still loads. `validate(..., reserved=None)` loads this file, so every
 proposer and bank builder that uses the default gets the reserved check. The
 fallback banks (#15) use this path; #15 adds the test that every bank recipe passes
 it.
@@ -168,9 +170,9 @@ Linux, macOS and Windows, fails if any hash differs from `registry.json`, and
 uploads the Linux WAVs as the workflow artifact `reserved-assets-wav` (kept 14
 days), so reviewers can listen without running code.
 
-Any change to asset bytes regenerates `registry.json` and this table in the same
-pull request and bumps `ASSET_SPEC_VERSION` (or `RENDERER_VERSION` for a renderer
-change). `tests/sound/test_nonlexical.py` fails otherwise.
+Any change to asset design or bytes regenerates `registry.json` and this table in
+the same pull request and bumps `ASSET_SPEC_VERSION` (recorded in the registry), or
+`RENDERER_VERSION` for a renderer change. `tests/sound/test_nonlexical.py` fails otherwise.
 
 ## 8. Comfort listening check
 
