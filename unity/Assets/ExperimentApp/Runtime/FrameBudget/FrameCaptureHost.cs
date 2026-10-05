@@ -94,7 +94,7 @@ namespace AcousticVocab.FrameBudget
         {
             Check.That(Ready&&context.Item!=null,"FRAME_CAPTURE_UNAVAILABLE");lock(timingLock)
                 monitor.Register(new FrameAttempt(context.OpportunityId,context.Item.TrialId,context.OnsetMonoMs,context.EndMonoMs,context.Item.Plays),
-                    new FrameWindow("response","response",context.OnsetMonoMs+context.Item.ResponseOpensSeconds*1000,context.OnsetMonoMs+context.Item.ResponseClosesSeconds*1000),Now);
+                    new FrameWindow("response","response",context.OnsetMonoMs+context.Item.ChoiceOpensSeconds*1000,context.OnsetMonoMs+context.Item.ChoiceClosesSeconds*1000),Now);
         }
         public void RegisterCue(string attempt,FrameWindow cue){Check.That(installed&&!closed,"FRAME_CAPTURE_UNAVAILABLE");lock(timingLock)monitor.Cue(attempt,cue,Now);}
         public void Cancel(string attempt,bool cueRequested=true){if(!installed||closed)return;lock(timingLock)monitor.Cancel(attempt,Now,cueRequested);}

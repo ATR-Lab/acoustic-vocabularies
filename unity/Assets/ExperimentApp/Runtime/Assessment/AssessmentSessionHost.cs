@@ -28,7 +28,7 @@ namespace AcousticVocab.Assessment
         FixedSlotEngine engine;
         VisitSchedule schedule;
         AssessmentScripts scripts;
-        bool failed,handlingFault,disposed;
+        bool failed,handlingFault,disposed,viewOwned;
         public ProtectedContentFactory Install(VisitSchedule visit,LoadedAudioPackage package,ISessionClock clock,ISessionJournal sessionJournal,
             IAssessmentJournal stageJournal,PrivateModeResetClient testControl,AudioRouteCalibration qualifiedRoute,float storedGain,
             SpeechBank speech,IAssessmentSelections selections,AssessmentScripts reviewedScripts,bool ratingWordingReviewed,
@@ -42,7 +42,7 @@ namespace AcousticVocab.Assessment
             try
             {
                 Stages=new AssessmentStages(visit,sessionJournal,stageJournal,clock,()=>engine!=null&&engine.Status is (SessionState.AwaitingOperator or SessionState.Paused or SessionState.Complete),ratingWordingReviewed);
-                screen.Configure(Stages);screen.Faulted+=Fail;panel.Faulted+=Fail;foundation.Faulted+=Fail;
+                viewOwned=true;screen.Configure(Stages);screen.Faulted+=Fail;panel.Faulted+=Fail;foundation.Faulted+=Fail;
                 audio=new UnityAssessmentAudio(package,player,speech,selections,durableAudioSink,beforeSchedule);responsePanel=new UnityAssessmentPanel(panel);
                 factory=new ProtectedContentFactory(clock,new UnityProtectedState(testControl,source,foundation),audio,responsePanel,screen,Stages,speech,
                     code=>{if(engine==null)throw new AssessmentFault("ASSESSMENT_ENGINE_UNBOUND");engine.RecordResponse(code);},Fail,
@@ -75,17 +75,23 @@ namespace AcousticVocab.Assessment
             }
             finally{handlingFault=false;}
         }
-        void Shutdown()
+        // Terminal detach: a subsequent lease constructs a fresh host/screen,
+        // backend and factory, reconstructing stages from the retained journal.
+        public void Uninstall()
         {
-            if(disposed)return;disposed=true;
-            try{factory?.Dispose();}catch{}
-            try{audio?.Dispose();}catch{}
-            responsePanel?.Dispose();
+            if(disposed)return;disposed=true;var formerFactory=factory;var formerAudio=audio;var formerPanel=responsePanel;
+            factory=null;audio=null;responsePanel=null;engine=null;schedule=null;scripts=null;Stages=null;
+            Exception first=null;
+            try{formerFactory?.Dispose();}catch(Exception e){first=e;}
+            try{formerAudio?.Dispose();}catch(Exception e){first??=e;}
+            try{formerPanel?.Dispose();}catch(Exception e){first??=e;}
+            try{if(viewOwned)screen?.ReleaseView();}catch(Exception e){first??=e;}viewOwned=false;
             if(screen!=null)screen.Faulted-=Fail;if(panel!=null)panel.Faulted-=Fail;if(foundation!=null)foundation.Faulted-=Fail;
+            if(first!=null){failed=true;throw new AssessmentFault("ASSESSMENT_UNINSTALL_FAILED");}
         }
         void OnApplicationFocus(bool value){if(!value&&factory!=null)Fail("ASSESSMENT_FOCUS_LOST");}
         void OnApplicationPause(bool value){if(value&&factory!=null)Fail("ASSESSMENT_APPLICATION_PAUSED");}
         void OnDisable(){if(factory!=null)Fail("ASSESSMENT_HOST_DISABLED");}
-        void OnDestroy()=>Shutdown();
+        void OnDestroy(){try{Uninstall();}catch{}}
     }
 }

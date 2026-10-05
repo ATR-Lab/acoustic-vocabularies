@@ -166,6 +166,15 @@ namespace AcousticVocab.Assessment
         { failed=true;formsVisible=false;if(root!=null)root.gameObject.SetActive(false);Faulted?.Invoke(reason); }
         void OnApplicationFocus(bool value){focused=value;if(!value&&formsVisible)Fail("ASSESSMENT_FOCUS_LOST");}
         void OnDisable(){if(root!=null)Fail("ASSESSMENT_VIEW_DISABLED");}
-        void OnDestroy(){ClearDictionary();foreach(var material in materials)if(material!=null)Destroy(material);}
+        // Host leases own their generated surface, even though it is parented
+        // under the common presentation root rather than this component.
+        public void ReleaseView()
+        {
+            formsVisible=false;failed=true;stages=null;ClearButtons();ClearDictionary();
+            var former=root;root=null;text=null;acknowledgment=null;
+            if(former!=null){former.gameObject.SetActive(false);Destroy(former.gameObject);}
+            foreach(var material in materials)if(material!=null)Destroy(material);materials.Clear();
+        }
+        void OnDestroy()=>ReleaseView();
     }
 }

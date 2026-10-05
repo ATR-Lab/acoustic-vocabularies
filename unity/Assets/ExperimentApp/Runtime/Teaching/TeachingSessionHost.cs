@@ -30,7 +30,7 @@ namespace AcousticVocab.Teaching
         RawImage image;
         readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>(StringComparer.Ordinal);
         string visibleOwner,visibleImageHash,scheduleHash,packageHash;
-        bool failed,focused=true,paused,handlingFault;
+        bool failed,focused=true,paused,handlingFault,uninstalled;
         public bool Installed => factory!=null&&!failed&&isActiveAndEnabled;
         public string FaultCode {get;private set;}
         public string CleanupFailureCode {get;private set;}
@@ -39,7 +39,7 @@ namespace AcousticVocab.Teaching
             AudioRouteCalibration qualifiedRoute,float storedComfortableGain,Action<LessonEvent> durableLessonSink,
             Action<AudioPlaybackEvent> durableAudioSink,Action<string> responseSink,Action<string> faultSink,bool engineeringPreview=false,Action<SlotContext,int,PcmWave> beforeSchedule=null)
         {
-            LessonTimeline.Require(factory==null&&!failed&&foundation!=null&&foundation.Ready&&panel!=null&&source!=null&&player!=null&&
+            LessonTimeline.Require(factory==null&&!uninstalled&&!failed&&foundation!=null&&foundation.Ready&&panel!=null&&source!=null&&player!=null&&
                 qualifiedRoute!=null&&qualifiedRoute.IsQualified&&qualifiedRoute.UncertaintyMs<=20&&Faulted!=null&&(!catalog.Demo||engineeringPreview)&&(grammar==null||grammar.Complete),"LESSON_HOST_NOT_READY");
             grammar?.Dispose();grammar=null;if(canvas==null)CreateView();
             scheduleHash=catalog.ScheduleSha256;packageHash=catalog.PackageSha256;
@@ -69,7 +69,7 @@ namespace AcousticVocab.Teaching
         public void BeginGrammar(GrammarAssets assets,AudioRouteCalibration route,float gain,Func<bool> independentNeutralControlGate,
             Action<Newtonsoft.Json.Linq.JObject> durableGrammarSink,Action<AudioPlaybackEvent> durableAudioSink)
         {
-            LessonTimeline.Require(factory==null&&grammar==null&&!failed&&isActiveAndEnabled&&foundation!=null&&foundation.Ready&&panel!=null&&panel.ReadyForTrial&&source!=null&&source.CheckExposureReady()&&Faulted!=null&&independentNeutralControlGate!=null,"GRAMMAR_HOST_NOT_READY");
+            LessonTimeline.Require(factory==null&&grammar==null&&!uninstalled&&!failed&&isActiveAndEnabled&&foundation!=null&&foundation.Ready&&panel!=null&&panel.ReadyForTrial&&source!=null&&source.CheckExposureReady()&&Faulted!=null&&independentNeutralControlGate!=null,"GRAMMAR_HOST_NOT_READY");
             if(canvas==null)CreateView();
             grammar=new GrammarFamiliarization(assets,player,route,gain,
                 ()=>isActiveAndEnabled&&focused&&!paused&&!failed&&foundation.Ready&&panel.ReadyForTrial&&source.CheckExposureReady()&&independentNeutralControlGate(),
@@ -122,7 +122,7 @@ namespace AcousticVocab.Teaching
         {if(visibleOwner!=owner)return;actionWords.color=value==LessonHighlight.Action?Color.yellow:Color.white;targetWords.color=value==LessonHighlight.Target?Color.yellow:Color.white;}
         internal void Fail(string code)
         {
-            if(failed||handlingFault)return;handlingFault=true;failed=true;
+            if(uninstalled||failed||handlingFault)return;handlingFault=true;failed=true;
             FaultCode=new SessionFault(code).Code;
             try
             {
@@ -136,10 +136,23 @@ namespace AcousticVocab.Teaching
         void OnApplicationFocus(bool value){focused=value;if(!value&&(factory!=null||grammar!=null))Fail("LESSON_FOCUS_LOST");}
         void OnApplicationPause(bool value){paused=value;if(value&&(factory!=null||grammar!=null))Fail("LESSON_APPLICATION_PAUSED");}
         void OnDisable(){if(factory!=null||grammar!=null)Fail("LESSON_HOST_DISABLED");}
+        // The construction scope invokes this before another module acquires
+        // the player. Fresh leases use a fresh host and fresh backend. Clearing
+        // ownership first makes deferred Unity callbacks inert for later leases.
+        public void Uninstall()
+        {
+            if(uninstalled)return;uninstalled=true;var formerFactory=factory;var formerGrammar=grammar;
+            factory=null;grammar=null;engine=null;scheduleHash=null;packageHash=null;
+            bool owned=formerFactory!=null||formerGrammar!=null;
+            var formerCanvas=canvas;canvas=null;
+            var error=TeachingCleanup.Attempt(()=>{if(formerCanvas!=null){formerCanvas.gameObject.SetActive(false);Destroy(formerCanvas.gameObject);}},
+                ()=>formerGrammar?.Dispose(),()=>formerFactory?.Dispose(),()=>{if(owned)player?.Abort("LESSON_HOST_UNINSTALLED");});
+            if(error!=null){failed=true;CleanupFailureCode=TeachingCleanup.Code(error);TeachingCleanup.ThrowFirst(error);}
+        }
         void OnDestroy()
         {
-            Fail("LESSON_HOST_DESTROYED");
-            TeachingCleanup.Attempt(()=>grammar?.Dispose(),()=>factory?.Dispose(),()=>player?.Abort("LESSON_HOST_DESTROYED"));
+            if(!uninstalled&&(factory!=null||grammar!=null))Fail("LESSON_HOST_DESTROYED");
+            TeachingCleanup.Attempt(Uninstall);
             foreach(var texture in textures.Values)if(texture!=null)Destroy(texture);textures.Clear();
         }
     }

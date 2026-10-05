@@ -12,6 +12,15 @@ namespace AcousticVocab.Assessment.Tests
 {
     public sealed class AssessmentBlockTests
     {
+        [Test]public void UninstalledHostCannotAbortSubsequentSharedPlayerOwner()
+        {
+            var playerObject=new UnityEngine.GameObject("Shared audio owner");var player=playerObject.AddComponent<AudioPlayer>();
+            var root=new UnityEngine.GameObject("Released assessment owner");var host=root.AddComponent<AssessmentSessionHost>();host.player=player;
+            host.Uninstall();Assert.That(host.Installed,Is.False);
+            var failed=typeof(AudioPlayer).GetField("failed",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);failed.SetValue(player,false);
+            host.SendMessage("OnApplicationFocus",false);host.enabled=false;UnityEngine.Object.DestroyImmediate(root);
+            Assert.That((bool)failed.GetValue(player),Is.False);UnityEngine.Object.DestroyImmediate(playerObject);
+        }
         const string Hash="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         const string Package="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
         sealed class Clock:ISessionClock { public double NowMs{get;set;} }

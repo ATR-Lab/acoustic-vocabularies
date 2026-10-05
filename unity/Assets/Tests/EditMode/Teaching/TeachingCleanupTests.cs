@@ -31,5 +31,16 @@ namespace AcousticVocab.Teaching.Tests
             Assert.That(host.CleanupFailureCode,Is.EqualTo("LESSON_OBSERVER_FAILED"));Assert.That(host.Installed,Is.False);
             UnityEngine.Object.DestroyImmediate(root);
         }
+        [Test]public void DeferredDestroyAfterUninstallCannotAbortSubsequentSharedPlayerOwner()
+        {
+            var playerObject=new GameObject("Shared audio owner");var player=playerObject.AddComponent<AcousticVocab.StudyAudio.AudioPlayer>();
+            var root=new GameObject("Released teaching owner");var host=root.AddComponent<TeachingSessionHost>();host.player=player;
+            host.Uninstall();Assert.That(host.Installed,Is.False);
+            // Abort has a real irreversible failure side effect even without a
+            // playing clip; reset it to represent the subsequent owner's Configure.
+            var failed=typeof(AcousticVocab.StudyAudio.AudioPlayer).GetField("failed",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            failed.SetValue(player,false);host.SendMessage("OnApplicationFocus",false);host.enabled=false;UnityEngine.Object.DestroyImmediate(root);
+            Assert.That((bool)failed.GetValue(player),Is.False,"Released host must never call Abort on its former player");UnityEngine.Object.DestroyImmediate(playerObject);
+        }
     }
 }

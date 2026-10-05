@@ -17,7 +17,7 @@ namespace AcousticVocab.SessionIntegration
     public sealed class ExclusiveContentMultiplexer:ISlotContentFactory,ISessionContentPump,ISlotStartPlan,IDisposable
     {
         readonly VisitSchedule schedule;readonly ISessionClock clock;readonly IReadOnlyDictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>> routes;readonly Action<SlotContext> prepared;
-        ISlotContentFactory current;ModuleConstructionScope scope;string block;double tailEnd,last=-1;bool failed,closed;FixedSlotEngine engine;
+        ISlotContentFactory current;ModuleConstructionScope scope;string block;double tailEnd,last=-1;bool failed,closed,interrupted;FixedSlotEngine engine;
         public string ActiveBlock=>block;public bool Failed=>failed;public double RetainedTailEndMs=>tailEnd;
         public ExclusiveContentMultiplexer(VisitSchedule schedule,ISessionClock clock,IReadOnlyDictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>> routes,Action<SlotContext> prepared=null)
         {
@@ -34,9 +34,11 @@ namespace AcousticVocab.SessionIntegration
             Need(!closed&&!failed&&value!=null&&value.NeedsOperatorConfirmation&&value.ScheduleSha256==schedule.Sha256&&value.PackageSha256==schedule.PackageSha256,"SESSION_MODULE_BOUNDARY");
             if(engine!=null)Need(ReferenceEquals(engine,value),"SESSION_MODULE_ENGINE");engine=value;
             double now=Now();Need(now>=tailEnd,"SESSION_MODULE_TAIL_ACTIVE");string next=value.CurrentBlock;Need(next!=null&&routes.ContainsKey(next),"SESSION_MODULE_BLOCK");
-            if(current!=null&&block==next)return;
+            // Interrupt invalidates backend/readiness and prepared request IDs.
+            // Even an unplayed same-block pause requires a fresh owned lease.
+            if(current!=null&&block==next&&!interrupted)return;
             var old=scope;current=null;scope=null;block=null;
-            try{old?.Dispose();var candidate=new ModuleConstructionScope();try{var factory=routes[next](candidate);Need(factory is IDisposable,"SESSION_MODULE_LIFETIME");candidate.Own((IDisposable)factory);current=factory;scope=candidate;block=next;}catch{candidate.Dispose();throw;}}
+            try{old?.Dispose();var candidate=new ModuleConstructionScope();try{var factory=routes[next](candidate);Need(factory is IDisposable,"SESSION_MODULE_LIFETIME");candidate.Own((IDisposable)factory);current=factory;scope=candidate;block=next;interrupted=false;}catch{candidate.Dispose();throw;}}
             catch{failed=true;throw new SessionFault("SESSION_MODULE_CREATION_FAILED");}
         }
         void Available(){Need(!closed&&!failed&&current!=null&&engine!=null&&engine.Status==SessionState.Running&&engine.CurrentBlock==block,"SESSION_MODULE_UNPREPARED");}
@@ -55,7 +57,8 @@ namespace AcousticVocab.SessionIntegration
             public void Prepare(SlotContext c){owner.Available();owner.prepared?.Invoke(c);inner.Prepare(c);}
             public SlotReadiness Readiness=>inner.Readiness;public bool ResetComplete=>inner.ResetComplete;
             public void RequestCue(SlotContext c,INovelSlotAuthorization p){owner.Available();owner.tailEnd=Math.Max(owner.tailEnd,c.EndMonoMs);inner.RequestCue(c,p);}
-            public void OpenResponse(SlotContext c)=>inner.OpenResponse(c);public void CloseResponse(SlotContext c)=>inner.CloseResponse(c);public void RequestReset(SlotContext c)=>inner.RequestReset(c);public void Interrupt(string code)=>inner.Interrupt(code);
+            public void OpenResponse(SlotContext c)=>inner.OpenResponse(c);public void CloseResponse(SlotContext c)=>inner.CloseResponse(c);public void RequestReset(SlotContext c)=>inner.RequestReset(c);
+            public void Interrupt(string code){owner.interrupted=true;inner.Interrupt(code);}
         }
     }
 }

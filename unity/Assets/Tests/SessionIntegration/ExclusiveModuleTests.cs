@@ -14,14 +14,16 @@ namespace AcousticVocab.SessionIntegration.Tests
         sealed class Journal:ISessionJournal{readonly List<SessionRecord> rows=new List<SessionRecord>();public IReadOnlyList<SessionRecord> Records=>rows;public void Append(SessionRecord r)=>rows.Add(r);}
         sealed class Factory:ISlotContentFactory,ISessionContentPump,ISlotStartPlan,IDisposable
         {
-            internal int Pumps,Closes;internal bool ThrowClose;internal readonly List<string> Order;internal string Name;
+            internal int Pumps,Closes;internal bool ThrowClose,BackendFailed;internal readonly List<string> Order;internal string Name;
+            readonly HashSet<string> prepared=new HashSet<string>();
             internal Factory(string name,List<string> order){Name=name;Order=order;Order.Add("create:"+name);}
-            public ISlotContent Create(SlotItem i)=>new Content();public void Pump()=>Pumps++;
+            public ISlotContent Create(SlotItem i){if(BackendFailed)throw new SessionFault("TEST_BACKEND_INTERRUPTED");return new Content(this);}public void Pump()=>Pumps++;
+            internal void Prepare(SlotContext c){if(BackendFailed||!prepared.Add(c.Item.TrialId))throw new SessionFault("TEST_REUSED_CONTENT");}
             public double MinimumGapBeforeMs(SlotItem item,double start)=>0;
             public void Dispose(){Closes++;Order.Add("dispose:"+Name);if(ThrowClose)throw new InvalidOperationException();}
         }
         sealed class Content:ISlotContent
-        {public SlotReadiness Readiness=>new SlotReadiness(true,true,true,true,true,true,true,true);public bool ResetComplete=>true;public void Prepare(SlotContext c){}public void RequestCue(SlotContext c,INovelSlotAuthorization p){}public void OpenResponse(SlotContext c){}public void CloseResponse(SlotContext c){}public void RequestReset(SlotContext c){}public void Interrupt(string code){}}
+        {readonly Factory owner;internal Content(Factory owner){this.owner=owner;}public SlotReadiness Readiness=>new SlotReadiness(true,true,!owner.BackendFailed,true,true,true,true,!owner.BackendFailed);public bool ResetComplete=>!owner.BackendFailed;public void Prepare(SlotContext c)=>owner.Prepare(c);public void RequestCue(SlotContext c,INovelSlotAuthorization p){}public void OpenResponse(SlotContext c){}public void CloseResponse(SlotContext c){}public void RequestReset(SlotContext c){}public void Interrupt(string code){owner.BackendFailed=true;}}
         sealed class Capture:IFrameCapture,IFrameEvidence
         {
             readonly Clock clock;internal readonly FrameMonitor Monitor;internal int Cancelled;
@@ -70,8 +72,13 @@ namespace AcousticVocab.SessionIntegration.Tests
             f.Engine.RequestPause();Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Paused));Assert.That(f.Mux.RetainedTailEndMs,Is.Zero);
             Assert.That(f.Capture.Ready,Is.True);Assert.That(f.Capture.Cancelled,Is.EqualTo(1));
             f.Mux.PrepareBlockAtBoundary(f.Engine);f.Engine.ConfirmResume();f.Engine.Tick();
-            Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Capture.Ready,Is.True);Assert.That(f.Made.Count,Is.EqualTo(1));f.Mux.Dispose();
+            Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Capture.Ready,Is.True);Assert.That(f.Made.Count,Is.EqualTo(2));
+            Assert.That(f.Made[0].BackendFailed,Is.True);Assert.That(f.Made[0].Closes,Is.EqualTo(1));Assert.That(f.Made[1].BackendFailed,Is.False);
+            Assert.That(f.Order,Is.EqualTo(new[]{"create:first","dispose:first","create:first"}));f.Mux.Dispose();
         }
+        [TestCase("atom_menu",22,32)][TestCase("profile_menu",30,45)][TestCase("atomic_lesson",6,13)][TestCase("message_lesson",8,17)]
+        public void ChoiceWindowsRetainParticipantTimingApartFromResetBoundary(string type,double open,double close)
+        {var item=New<SlotItem>("one",type,"K-a1","action","atomic","learning",false,60,3,1);Assert.That(item.ChoiceOpensSeconds,Is.EqualTo(open));Assert.That(item.ChoiceClosesSeconds,Is.EqualTo(close));if(type.EndsWith("menu"))Assert.That(item.ResponseClosesSeconds,Is.GreaterThan(close));}
         [Test] public void SameBoundaryPreparationReusesOneLeaseAndScopeOwnershipIsIdempotent()
         {var f=new Fixture();f.Mux.PrepareBlockAtBoundary(f.Engine);f.Mux.PrepareBlockAtBoundary(f.Engine);Assert.That(f.Made.Count,Is.EqualTo(1));f.Mux.Dispose();f.Mux.Dispose();Assert.That(f.Made[0].Closes,Is.EqualTo(1));}
     }
