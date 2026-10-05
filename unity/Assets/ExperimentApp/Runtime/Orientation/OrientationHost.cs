@@ -176,7 +176,7 @@ namespace AcousticVocab.Orientation
             display=new GameObject("Silent orientation screen").transform;display.SetParent(foundation.presentationRoot.transform,false);
             display.SetPositionAndRotation(reference.position+reference.rotation*new Vector3(0,.24f,.95f),reference.rotation);
             textBackingMaterial=new Material(shader){color=new Color(.035f,.045f,.06f)};
-            var backing=GameObject.CreatePrimitive(PrimitiveType.Cube);backing.transform.SetParent(display,false);backing.transform.localScale=new Vector3(.72f,.28f,.012f);Destroy(backing.GetComponent<Collider>());backing.GetComponent<Renderer>().sharedMaterial=textBackingMaterial;
+            var backing=GameObject.CreatePrimitive(PrimitiveType.Cube);backing.transform.SetParent(display,false);backing.transform.localScale=new Vector3(.72f,.28f,.012f);DisposeObject(backing.GetComponent<Collider>());backing.GetComponent<Renderer>().sharedMaterial=textBackingMaterial;
             title=Label(display,new Vector3(0,.095f,-.012f),.012f);body=Label(display,new Vector3(0,.015f,-.012f),.008f);
             var key=GameObject.CreatePrimitive(PrimitiveType.Cube);key.transform.SetParent(display,false);key.transform.localPosition=new Vector3(0,-.102f,-.005f);key.transform.localScale=new Vector3(.32f,.045f,.015f);
             button=key.GetComponent<BoxCollider>();buttonSurface=key.GetComponent<MeshRenderer>();surfaceMaterial=new Material(shader);buttonSurface.sharedMaterial=surfaceMaterial;
@@ -217,12 +217,13 @@ namespace AcousticVocab.Orientation
         static bool Finite(Vector3 p)=>float.IsFinite(p.x)&&float.IsFinite(p.y)&&float.IsFinite(p.z);
         void OnApplicationFocus(bool value) { focused=value;if(!value&&Flow!=null&&Flow.Stage!=OrientationStage.NotStarted&&Flow.Stage!=OrientationStage.RecordedOutcome)Fail("ORIENTATION_FOCUS_LOST"); }
         void OnApplicationPause(bool value) { paused=value;if(value&&Flow!=null&&Flow.Stage!=OrientationStage.NotStarted&&Flow.Stage!=OrientationStage.RecordedOutcome)Fail("ORIENTATION_PAUSED"); }
-        void OnDisable() { if(Flow!=null)Fail("ORIENTATION_COMPONENT_DISABLED"); }
+        void OnDisable() { if(Application.isPlaying && Flow!=null)Fail("ORIENTATION_COMPONENT_DISABLED"); }
         void OnDestroy()
         {
             if(foundation!=null)foundation.Faulted-=FoundationFault;if(stateSource!=null)stateSource.Event-=SourceEvent;
             if(panel!=null){panel.Responded-=Response;panel.Faulted-=PanelFault;}
-            journal?.Dispose();if(surfaceMaterial!=null)Destroy(surfaceMaterial);if(textBackingMaterial!=null)Destroy(textBackingMaterial);
+            journal?.Dispose();if(surfaceMaterial!=null)DisposeObject(surfaceMaterial);if(textBackingMaterial!=null)DisposeObject(textBackingMaterial);
         }
+        static void DisposeObject(UnityEngine.Object value) { if(Application.isPlaying)Destroy(value);else DestroyImmediate(value); }
     }
 }
