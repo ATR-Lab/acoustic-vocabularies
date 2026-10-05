@@ -56,6 +56,13 @@ namespace AcousticVocab.SessionIntegration.Tests
             Assert.That(assets.MissingAuthority,Is.Null);Assert.That(assets.Route.IsQualified,Is.False);Assert.That(assets.Route.SimulationOnly,Is.True);
             Assert.That(assets.Package.Demo&&assets.Schedule.Demo,Is.True);Assert.That(assets.Scripts,Is.Not.Null);
             if(assets.Blocks.Values.Contains(JoinedModuleKind.Teaching)){Assert.That(assets.Teaching,Is.Not.Null);Assert.That(assets.Grammar,Is.Not.Null);}
+            if(assets.Blocks.Values.Contains(JoinedModuleKind.Menus))
+            {
+                Assert.That(assets.Menus,Is.Not.Null);
+                string expectedRole=Environment.GetEnvironmentVariable("AV_SIMULATION_EXPECT_MENU_ROLE");
+                if(expectedRole!=null)Assert.That(assets.Menus.Role,Is.EqualTo(expectedRole));
+                if(assets.Schedule.Visit=="V1")Assert.That(assets.Menus.MenuKeys.Count,Is.EqualTo(9));
+            }
             if(assets.Schedule.Blocks.SelectMany(b=>b.Items).Any(i=>i.TrialType=="speech"))
             {Assert.That(assets.Speech,Is.Not.Null);Assert.That(assets.Speech.SimulationOnly,Is.True);Assert.That(assets.Speech.CanPresentValidity,Is.True);Assert.That(assets.Speech.Reviewed,Is.False);Assert.That(assets.Speech.Demo,Is.True);}
             Assert.That(new JoinedVisitArtifacts(c).MissingAuthority,Is.EqualTo("JOIN_AUDIO_CALIBRATION_MISSING"));
