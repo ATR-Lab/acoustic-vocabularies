@@ -18,10 +18,13 @@ namespace AcousticVocab.Foundation
         public JObject Configuration => configuration == null ? null : (JObject)configuration.DeepClone();
         public event Action<string> Faulted;
         readonly ObserverReference reference = new ObserverReference();
+        readonly StartupOriginGate startupOrigin = new StartupOriginGate();
         readonly List<XRInputSubsystem> subscribed = new List<XRInputSubsystem>();
         FoundationLog log;
         bool initialRestore = true;
         bool trackingWasValid;
+        bool applicationFocused = true;
+        bool applicationPaused;
         string lastFault;
         Color presentationBackground;
 
@@ -60,12 +63,16 @@ namespace AcousticVocab.Foundation
             bool tracked = IsTracked();
             if (trackingWasValid && !tracked) { reference.MarkRecenter(); Fault("tracking_lost"); }
             trackingWasValid = tracked;
-            if (initialRestore && configuration != null && tracked && subscribed.Exists(x => x.running))
+            if (initialRestore)
             {
                 // Device mode is explicit, and only accepted after the runtime reports it.
-                foreach (var system in subscribed)
-                    if (system.running && system.GetTrackingOriginMode() != TrackingOriginModeFlags.Device) system.TrySetTrackingOriginMode(TrackingOriginModeFlags.Device);
-                if (subscribed.Exists(x => x.running && x.GetTrackingOriginMode() == TrackingOriginModeFlags.Device))
+                bool eligible = applicationFocused && !applicationPaused && configuration != null && tracked && subscribed.Exists(x => x.running);
+                if (eligible)
+                    foreach (var system in subscribed)
+                        if (system.running && system.GetTrackingOriginMode() != TrackingOriginModeFlags.Device) system.TrySetTrackingOriginMode(TrackingOriginModeFlags.Device);
+                eligible = eligible && subscribed.TrueForAll(x => !x.running || x.GetTrackingOriginMode() == TrackingOriginModeFlags.Device);
+                double now = (double)System.Diagnostics.Stopwatch.GetTimestamp() / System.Diagnostics.Stopwatch.Frequency;
+                if (startupOrigin.Observe(eligible, now))
                     initialRestore = !RestoreAtSafeBoundary("startup");
             }
         }
@@ -77,7 +84,11 @@ namespace AcousticVocab.Foundation
                 device.TryGetFeatureValue(CommonUsages.trackingState, out InputTrackingState state) &&
                 (state & (InputTrackingState.Position | InputTrackingState.Rotation)) == (InputTrackingState.Position | InputTrackingState.Rotation);
         }
-        void OnTrackingOriginUpdated(XRInputSubsystem _) { if (reference.MarkRecenter()) Fault("tracking_origin_changed"); }
+        void OnTrackingOriginUpdated(XRInputSubsystem _)
+        {
+            if (initialRestore) { startupOrigin.Reset(); return; }
+            if (reference.MarkRecenter()) Fault("tracking_origin_changed");
+        }
         void Neutral() { Ready = false; if (presentationRoot != null) presentationRoot.SetActive(false); if (observerCamera != null) { observerCamera.clearFlags = CameraClearFlags.SolidColor; observerCamera.backgroundColor = Color.black; } }
         bool Record(string kind, JObject fields)
         {
@@ -97,7 +108,8 @@ namespace AcousticVocab.Foundation
         // The argument is a bounded engineering reason, never trial content or participant information.
         public bool RestoreAtSafeBoundary(string boundary)
         {
-            if (configuration == null || log == null || !IsTracked() || !reference.RestorePending) return false;
+            if (configuration == null || log == null || !applicationFocused || applicationPaused || !IsTracked() || !reference.RestorePending) return false;
+            if (initialRestore && !startupOrigin.Settled) return false;
             if (boundary != "startup" && boundary != "between_trials" && boundary != "operator_recovery") throw new ArgumentException("Unknown safe boundary");
             var headInOrigin = new Pose(seatedOrigin.InverseTransformPoint(observerCamera.transform.position), Quaternion.Inverse(seatedOrigin.rotation) * observerCamera.transform.rotation);
             Pose pose;
@@ -113,7 +125,16 @@ namespace AcousticVocab.Foundation
             observerCamera.backgroundColor = presentationBackground;
             Ready = true; presentationRoot.SetActive(true);
         }
-        void OnApplicationPause(bool paused) { if (paused && !initialRestore) { reference.MarkRecenter(); Fault("application_paused"); } }
+        void OnApplicationFocus(bool focused)
+        {
+            applicationFocused = focused;
+            if (!focused && !initialRestore) { reference.MarkRecenter(); Fault("application_focus_lost"); }
+        }
+        void OnApplicationPause(bool paused)
+        {
+            applicationPaused = paused;
+            if (paused && !initialRestore) { reference.MarkRecenter(); Fault("application_paused"); }
+        }
         void OnDestroy() { foreach (var system in subscribed) system.trackingOriginUpdated -= OnTrackingOriginUpdated; log?.Dispose(); }
     }
 }
