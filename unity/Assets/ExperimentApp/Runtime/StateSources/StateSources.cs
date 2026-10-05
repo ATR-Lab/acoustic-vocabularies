@@ -69,7 +69,7 @@ namespace AcousticVocab.StateSources
         readonly HashSet<string> retired = new HashSet<string>();
         readonly double delay, started;
         readonly SourceClock clock;
-        SceneFrame latest, held;
+        SceneFrame latest, held, confirmedNeutral;
         double lastReceived, gapStart;
         bool stale;
         public string Kind => "live";
@@ -121,6 +121,7 @@ namespace AcousticVocab.StateSources
                 stale=false;
             }
             lastReceived=received; latest=frame;
+            if(ResetConfirmed && !NeutralComparison.Matches(frame,confirmedNeutral)) ResetConfirmed=false;
             buffer.Add(new Sample { Frame=frame, Received=received });
             if (buffer.Count>128) buffer.RemoveAt(0);
             SourceFresh=clock!=null && clock.Fresh(frame, received, now);
@@ -160,6 +161,7 @@ namespace AcousticVocab.StateSources
             Tick(now);
             ResetConfirmed=!stale && SourceFresh && NeutralComparison.Matches(latest, neutral) &&
                 NeutralComparison.Matches(Render(now), neutral);
+            confirmedNeutral=ResetConfirmed?neutral:null;
             return ResetConfirmed;
         }
     }

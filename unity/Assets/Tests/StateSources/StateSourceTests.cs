@@ -39,7 +39,8 @@ namespace AcousticVocab.Tests
                     robot=new { joint_names=Names,joint_positions_rad=new double[43],joint_velocities_rad_s=new double[43],
                         root_position_m=new[]{0,0,0},root_rotation_xyzw=new[]{0,0,0,1},
                         root_linear_velocity_m_s=new[]{0,0,0},root_angular_velocity_rad_s=new[]{0,0,0} },
-                    objects=new Dictionary<string,JObject> { ["card"]=obj },environment=new { materials=new{},lights=new{} },frames=new{}
+                    objects=new Dictionary<string,JObject> { ["card"]=obj },environment=new { materials=new{},lights=new{} },
+                    frames=Enumerable.Range(0,3).ToDictionary(i=>"link"+i,i=>new { position_m=new[]{0,0,0},rotation_xyzw=new[]{0,0,0,1} })
                 }
             });
             return Encoding.UTF8.GetBytes(root.ToString(Formatting.None)+"\n");
@@ -145,21 +146,50 @@ namespace AcousticVocab.Tests
             Assert.That(source.ConfirmReset(Frame(),1),Is.False);
         }
         [Test]
+        public void FreshMovementRevokesEarlierResetConfirmation()
+        {
+            var clock=new SourceClock(0,5,new string('d',64));clock.Echo(0,0,0,0);
+            var source=new LiveIsaacSource(0,0,clock);source.Receive(Frame(),0,0);
+            Assert.That(source.ConfirmReset(Frame(),0),Is.True);
+            source.Receive(Frame(1,.1,1,1),.1,.1);
+            Assert.That(source.ResetConfirmed,Is.False);
+        }
+        [Test]
         public void HashedTrajectoryUsesHostOffsetsAndNeverAutoConfirmsReset()
         {
             byte[] bytes=Snapshot(); string hash=SceneRegistry.Hash(bytes); var source=new SnapshotSource(bytes,Registry(hash),10);
-            var first=Raw(0,100,0,0,hash); var last=Raw(1,101,1,1,hash);
+            var first=Raw(0,100,0,0,hash); var last=Raw(1,100.2,1,1,hash);
             first["sim_time"]=700; last["sim_time"]=900;
             byte[] trajectory=Encoding.UTF8.GetBytes(first.ToString(Formatting.None)+"\n"+last.ToString(Formatting.None)+"\n");
-            source.PlayTrajectory(trajectory,SceneRegistry.Hash(trajectory),10,1.1);
-            Assert.That(source.Render(10.5).Objects[0].Position.x,Is.EqualTo(.5f).Within(1e-6));
+            source.PlayTrajectory(trajectory,SceneRegistry.Hash(trajectory),10,.3);
+            Assert.That(source.Render(10.1).Objects[0].Position.x,Is.EqualTo(.5f).Within(1e-6));
             Assert.That(source.ResetConfirmed,Is.False);
-            Assert.That(source.ConfirmReset(source.Neutral,11),Is.False);
+            Assert.That(source.ConfirmReset(source.Neutral,10.21),Is.False);
             Assert.That(source.PlaybackFinished,Is.False);
-            source.Render(11.11);
+            source.Render(10.31);
             Assert.That(source.PlaybackFinished,Is.True);
-            source.RestoreNeutral(11.11);
-            Assert.That(source.ConfirmReset(source.Neutral,11.11),Is.True);
+            source.RestoreNeutral(10.31);
+            Assert.That(source.ConfirmReset(source.Neutral,10.31),Is.True);
+        }
+        [TestCase("velocity")][TestCase("fixed_steps")][TestCase("root_rotation")][TestCase("environment")][TestCase("frames")]
+        public void EvenCorrectlyHashedMalformedNeutralIsRefused(string field)
+        {
+            var raw=JObject.Parse(Encoding.UTF8.GetString(Snapshot()));
+            if(field=="velocity") raw["state"]["robot"]["joint_velocities_rad_s"][0]=.1;
+            if(field=="fixed_steps") raw["fixed_steps"]=0;
+            if(field=="root_rotation") raw["state"]["robot"]["root_rotation_xyzw"][3]=0;
+            if(field=="environment") raw["state"]["environment"]["lights"]["bad"]="text";
+            if(field=="frames") raw["state"]["frames"]=new JObject();
+            var bytes=Encoding.UTF8.GetBytes(raw.ToString(Formatting.None));
+            Assert.Throws<StateFault>(()=>new SnapshotSource(bytes,Registry(SceneRegistry.Hash(bytes)),0));
+        }
+        [TestCase(.251,10)][TestCase(.2,double.NaN)][TestCase(.2,9)][TestCase(.2,double.PositiveInfinity)]
+        public void TrajectoryStallsAndInvalidStartClockAreRefused(double span,double now)
+        {
+            var bytes=Snapshot();var hash=SceneRegistry.Hash(bytes);var source=new SnapshotSource(bytes,Registry(hash),10);
+            var data=Encoding.UTF8.GetBytes(Raw(0,100,0,0,hash).ToString(Formatting.None)+"\n"+Raw(1,100+span,0,0,hash).ToString(Formatting.None));
+            Assert.Throws<StateFault>(()=>source.PlayTrajectory(data,SceneRegistry.Hash(data),now));
+            Assert.That(source.ResetConfirmed,Is.False);
         }
         [TestCase(.2,0)][TestCase(.3,1)][TestCase(2,1)]
         public void SnapshotDropInjectionReportsRealHostGap(double gap,int expected)

@@ -31,12 +31,30 @@ namespace AcousticVocab.StateSources
             StateParser.Require(StateParser.Text(snapshot["schema_version"])=="1.0.0" &&
                 StateParser.Text(snapshot["coordinate_frame"])=="usd_world_rh_z_up_xyzw" &&
                 StateParser.Text(snapshot["scene_sha256"])==registry.SceneHash,"SNAPSHOT_IDENTITY");
+            StateParser.Require(snapshot["fixed_steps"].Type==JTokenType.Integer &&
+                (int)snapshot["fixed_steps"]>=1 && (int)snapshot["fixed_steps"]<=10,"SNAPSHOT_FIXED_STEPS");
+            CheckTime(now, double.NegativeInfinity);
             var state=snapshot["state"] as JObject;
             StateParser.Keys(state,"robot","objects","environment","frames");
             var robot=state["robot"] as JObject;
             StateParser.Keys(robot,"joint_names","joint_positions_rad","joint_velocities_rad_s","root_position_m",
                 "root_rotation_xyzw","root_linear_velocity_m_s","root_angular_velocity_rad_s");
             StateParser.Require(robot["joint_names"] is JArray names && names.Select(StateParser.Text).SequenceEqual(registry.JointNames),"STATE_JOINT_ORDER");
+            Zero(robot["joint_velocities_rad_s"],43);
+            Zero(robot["root_linear_velocity_m_s"],3); Zero(robot["root_angular_velocity_rad_s"],3);
+            StateParser.Vector(robot["root_position_m"],3); Quaternion(robot["root_rotation_xyzw"]);
+            var environment=state["environment"] as JObject;
+            StateParser.Keys(environment,"materials","lights");
+            foreach(var category in environment.Properties())
+            { StateParser.Require(category.Value is JObject,"SNAPSHOT_ENVIRONMENT"); PrimitiveTree(category.Value); }
+            var links=state["frames"] as JObject;
+            StateParser.Require(links!=null && links.Count>=3,"SNAPSHOT_FRAMES");
+            foreach(var link in links.Properties())
+            {
+                StateParser.Require(link.Name.Length>0,"SNAPSHOT_FRAMES");
+                var pose=link.Value as JObject; StateParser.Keys(pose,"position_m","rotation_xyzw");
+                StateParser.Vector(pose["position_m"],3); Quaternion(pose["rotation_xyzw"]);
+            }
             var objects=state["objects"] as JObject;
             StateParser.Keys(objects,registry.ObjectKeys.Keys.ToArray());
             var parsed=new List<SceneObject>();
@@ -45,6 +63,8 @@ namespace AcousticVocab.StateSources
                 var source=objects[pair.Key] as JObject;
                 StateParser.Keys(source,"position_m","rotation_xyzw","visible","enabled","collision_enabled",
                     "linear_velocity_m_s","angular_velocity_rad_s","state");
+                StateParser.Require(source["collision_enabled"].Type==JTokenType.Boolean,"SNAPSHOT_COLLISION");
+                Zero(source["linear_velocity_m_s"],3); Zero(source["angular_velocity_rad_s"],3);
                 var visual=new JObject { ["id"]=pair.Key };
                 foreach(string key in new[]{"position_m","rotation_xyzw","visible","enabled","state"})
                     visual[key]=source[key].DeepClone();
@@ -58,6 +78,7 @@ namespace AcousticVocab.StateSources
         {
             try
             {
+                CheckTime(now,lastValid);
                 StateParser.Require(bytes!=null && bytes.Length<=64*1024*1024 &&
                     StateParser.IsHash(expectedHash) && SceneRegistry.Hash(bytes)==expectedHash,"HASH_MISMATCH");
                 string text=new UTF8Encoding(false,true).GetString(bytes);
@@ -73,6 +94,7 @@ namespace AcousticVocab.StateSources
                         StateParser.Require(frame.SessionId==previous.SessionId && frame.Sequence==previous.Sequence+1 &&
                             frame.PublishedNs>previous.PublishedNs && frame.SimStep>previous.SimStep &&
                             frame.SimTime>previous.SimTime,"TRAJECTORY_NONPROGRESSING");
+                        StateParser.Require(frame.PublishedNs-previous.PublishedNs<=250000000,"TRAJECTORY_STALE_GAP");
                     }
                     loaded.Add(frame);
                 }
@@ -92,7 +114,7 @@ namespace AcousticVocab.StateSources
         }
         public void RestoreNeutral(double now)
         {
-            if(double.IsNaN(now) || double.IsInfinity(now) || now<lastValid) throw new StateFault("HOST_CLOCK_REGRESSED");
+            CheckTime(now,lastValid);
             frames=null; held=neutral; lastValid=now; ResetConfirmed=true; PlaybackFinished=true; stale=failed=false; gapAt=double.PositiveInfinity;
             Event?.Invoke(new SourceEvent("SNAPSHOT_NEUTRAL_RESTORED",now,now));
         }
@@ -142,6 +164,21 @@ namespace AcousticVocab.StateSources
             Render(now);
             ResetConfirmed=!failed && !stale && frames==null && NeutralComparison.Matches(held,expectedNeutral);
             return ResetConfirmed;
+        }
+        static void CheckTime(double now,double previous)
+        { StateParser.Require(!double.IsNaN(now) && !double.IsInfinity(now) && now>=previous,"HOST_CLOCK_REGRESSED"); }
+        static void Zero(JToken value,int length)
+        { StateParser.Require(StateParser.Vector(value,length).All(x=>x==0),"SNAPSHOT_NONZERO_VELOCITY"); }
+        static void Quaternion(JToken value)
+        { StateParser.Require(Math.Abs(StateParser.Vector(value,4).Sum(x=>x*x)-1)<=1e-5,"STATE_QUATERNION"); }
+        static void PrimitiveTree(JToken value)
+        {
+            if(value is JObject obj)
+                foreach(var property in obj.Properties())
+                { StateParser.Require(property.Name.Length>0,"SNAPSHOT_ENVIRONMENT"); PrimitiveTree(property.Value); }
+            else if(value is JArray array)
+            { StateParser.Require(array.Count>=1 && array.Count<=4,"SNAPSHOT_ENVIRONMENT"); foreach(var item in array) StateParser.Number(item); }
+            else if(value.Type!=JTokenType.Boolean) StateParser.Number(value);
         }
     }
 }

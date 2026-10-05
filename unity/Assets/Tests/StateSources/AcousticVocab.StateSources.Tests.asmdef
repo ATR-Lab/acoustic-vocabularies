@@ -1,6 +1,6 @@
 {
   "name": "AcousticVocab.StateSources.Tests",
-  "references": ["AcousticVocab.StateSources"],
+  "references": ["AcousticVocab.StateSources", "AcousticVocab.StateIntegration", "AcousticVocab.Workcell"],
   "includePlatforms": ["Editor"],
   "optionalUnityReferences": ["TestAssemblies"],
   "overrideReferences": true,
