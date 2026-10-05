@@ -9,12 +9,12 @@
   },
   "description": "Golden hashes for the cross-machine determinism tests (#12): synthetic recipes, synthetic DEMO books, nonlexical assets and a store round trip. Written by sound/tools/make_goldens.py; not study material.",
   "digests": {
-    "all": "f9f90bf57fe5378c1a081a7a2245db1994833f6e6cbf4565d064957d24a86b44",
+    "all": "58015b6e0b887257d2f194d295712aec3a9cf4a6180567ff156fbd83c2eeb0a0",
     "atom": "3b9251df475b87204e7d13deeb81143bdef771604ce63be4852d08f67e41b62a",
     "message": "0ad853ffaf17aa4efd33900186a3082eb80ace031cc6f5f0b6c1b50d820870d6",
     "nonlexical": "fc3498eb96616c69154ec6e633fdb4690305663c6431a7744fed628158dee826",
     "recipe": "1bb12cdc8a3ac0811e83077644ca80024942e05f8d2ae79da9086d1f54421e1c",
-    "store": "e65e750034f612b234c9d5d5ee227e32606bfa1b5998fe8956bd7dfc069000dd"
+    "store": "7f60000286c4ceeff28c8b66dfe7e6237b1351f9ef7080ffc1b3591a614cf22f"
   },
   "format": "av-sound golden manifest",
   "format_version": "1.0.0",
@@ -11575,9 +11575,9 @@
       },
       "outputs": {
         "atoms_match": true,
-        "commit_head": "87302c29a9ab15e81cbf8a1b22753c60253f16374a7bec6bdc58bcb741855048",
-        "create_head": "1a982f08e2d987f6cc8b346d52daeeac66cde790b4721bc2af183f0c66507966",
-        "freeze_head": "79863b951cb19df8734e01f66ec43fbd90fdb39b2fafc76fcc75e62db4abdd49",
+        "commit_head": "a4c15e6373e7b44041ba0572dfb0f4446528a178f2139c98c72acd8aaef9d431",
+        "create_head": "e51009a7b56e00c3975708f8b4f1d04cd5431c49e85467ba696553989813ed13",
+        "freeze_head": "cd7178d76b4bddd690ff7bdf2281e868cc7e3730512bd712c3041d018d3aa5aa",
         "messages_checked": 32,
         "messages_match": true,
         "n_entries": 16,
@@ -11621,9 +11621,9 @@
       },
       "outputs": {
         "atoms_match": true,
-        "commit_head": "4687728d2593fa800329a01e9de65b300cc254f121c5c1b1eef2498a995ee745",
-        "create_head": "01f4db3d647bd6781d50ff21abeabc17d2fd49785ecece81c4ed9a0355dc6405",
-        "freeze_head": "4cd6f0736c7a86a7c86959f4cc00ec25c433e8c5883e555f5f33e0cb9516e4b5",
+        "commit_head": "6ecad407c0308c1afb09f64b80fe5cdd2f101da7f112dee88ba5bdc2df112e86",
+        "create_head": "63e4edc1aa939222d0904161fcad1c3449fbf6e6e76c15204f19fc4c79931616",
+        "freeze_head": "88681f0cdb486b7fc795f8c3255763fd0df4f33fc448aed62e5c82058749cfd6",
         "messages_checked": 32,
         "messages_match": true,
         "n_entries": 16,
@@ -11667,9 +11667,9 @@
       },
       "outputs": {
         "atoms_match": true,
-        "commit_head": "7710131a47e50bb2b55569374c086b8b1d60c8ca6fb0d48e237080fd7ef44e59",
-        "create_head": "846b45a516e0d3da14f638e39967587ce582f41edbd95b56a649b31e9e3ae477",
-        "freeze_head": "930bfa1855c0d237a9eecf692abba9b26c3681b39061690a6d5a150f90c1c886",
+        "commit_head": "93f21757dec20d2299c6fe42067edc8c690681e1a911ec2ba9847a6dc6eac639",
+        "create_head": "8cfe149921e70dd553c79a69d4e795abc854d43891cb885bd343f368d0be276a",
+        "freeze_head": "9122ea9a5e811b50e94e827d72ba733772653a7d7cb99edb3f8e9958f8214aad",
         "messages_checked": 32,
         "messages_match": true,
         "n_entries": 16,
@@ -11685,6 +11685,7 @@
   "renderer_version": "0.1.0",
   "store_record_version": 1,
   "synthetic": true,
+  "validator_hash": "fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650",
   "validator_version": "0.1.0",
   "version_rules": {
     "atom": [
@@ -11703,7 +11704,9 @@
     "store": [
       "renderer_version",
       "validator_version",
-      "store_record_version"
+      "store_record_version",
+      "renderer_hash",
+      "validator_hash"
     ]
   }
 }
