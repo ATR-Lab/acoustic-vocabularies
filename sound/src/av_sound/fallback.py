@@ -993,7 +993,9 @@ def freeze_fallback_books(
     frozen: list[FrozenFallbackBook] = []
     for book in fallback.books:
         book_id = fallback_book_id(fallback, book.profile)
-        store.create_book(book_id, book.profile, kind="fallback", threshold=fallback.threshold)
+        store.create_book(
+            book_id, book.profile, kind="fallback", threshold=format_fraction(fallback.threshold)
+        )
         for atom in book.atoms:
             store.commit(
                 book_id,
