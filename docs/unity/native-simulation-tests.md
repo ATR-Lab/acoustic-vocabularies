@@ -12,6 +12,10 @@ does not establish that a native visit ran. The first attempted launch of build
 process or player log existed. The installed policy must permit execution through
 the normal operator approval path before native validation can proceed. The
 implementation does not alter that policy or provide an alternate launch path.
+The actual backend and owned relays were subsequently stopped cleanly, and the
+four temporary persistent files were restored. A later approved attempt requires
+fresh backend readiness, its actual control-session pin, and newly pinned run
+configuration; the blocked attempt's configuration is retained as evidence.
 
 ## Build and provision
 
