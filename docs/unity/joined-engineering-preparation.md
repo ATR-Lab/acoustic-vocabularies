@@ -114,6 +114,21 @@ to block the corresponding joined host path.
 
 ## Explicit runtime provisioning and launch
 
+Version 2 maps retain the version 1 fields and require an additional nullable
+`yoked_start` field. A non-null value has exactly
+`{"policy":"operator_start_plus_lead","lead_ms":2000}`; `lead_ms` must be an
+explicit integer from 2000 through 60000, with no default. Version 2 adds four
+optional independently pinned file roles: `yoked_active_schedule`,
+`yoked_active_run_sheet_manifest`, `yoked_active_schedule_manifest`, and
+`yoked_active_run_sheet_csv`. Supply the paired active visit's actual artifacts;
+the runtime verifies their role, visit, unit and run-sheet chain together with
+the separately pinned replay ledger. Successful copying does not approve them.
+The stager never generates a monotonic anchor. Only explicit operator start at
+runtime can consume the configured policy and durably bind an anchor for the
+current process. Old anchors, automatic starts and inferred source pins are not
+accepted. Version 1 retains its original closed shape and cannot carry version 2
+authority fields.
+
 The tool prints the exact launch arguments and a manual source-to-filename list:
 
 | Role | Preprovisioned file under the application's actual `persistentDataPath` |
