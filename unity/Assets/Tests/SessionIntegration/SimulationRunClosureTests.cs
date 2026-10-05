@@ -65,6 +65,7 @@ namespace AcousticVocab.SessionIntegration.Tests
             var context=new SlotContext(item,1000,null);var readiness=new SlotReadiness(true,true,false,true,true,true,true,true);
             var refusal=New<SlotGateRefusal>("SESSION_CUE_GATE_REFUSED","lessons",context,readiness,264d,150d);
             typeof(JoinedEngineeringBootstrap).GetMethod("RecordGateRefusal",Flags).Invoke(host,new object[]{refusal});
+            audit.Dispose();Set("audit",null);
             var row=JObject.Parse(File.ReadAllLines(path)[0]);var payload=row["payload"];
             Assert.That((string)payload["kind"],Is.EqualTo("slot_gate_refused"));Assert.That((string)payload["attempt_id"],Is.EqualTo("DEMO-gate"));
             Assert.That((double)payload["remaining_lead_ms"],Is.EqualTo(736));Assert.That((bool)payload["readiness"]["reset_acknowledged"],Is.False);
