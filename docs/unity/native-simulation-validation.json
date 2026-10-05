@@ -97,9 +97,11 @@
     "result": "Succeeded",
     "errors": 0,
     "inventory": "native-simulation-builds/windows-003.json",
-    "inventory_sha256": "6375bf1339c850f327edef52e4854f1fbc239eb1ccc006c5ad9a922eed61c9a4",
+    "inventory_sha256": "b83b81f63a82639231de9e53f5d013e5def3cfd5f1814bba6adbc300912637a4",
     "source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
-    "dirty_source": false
+    "dirty_source": false,
+    "native_inventory_raw_sha256": "6375bf1339c850f327edef52e4854f1fbc239eb1ccc006c5ad9a922eed61c9a4",
+    "public_inventory_encoding": "UTF8 LF; same parsed inventory, original native CRLF bytes separately pinned"
   },
   "native_launch": {
     "native_process_created": false,
