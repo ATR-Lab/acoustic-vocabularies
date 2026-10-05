@@ -184,7 +184,7 @@ def reconcile_records(records, trials, exposures, items, schedule_hash):
     incomplete, requests, observations, attempts = set(), {}, defaultdict(list), {}
     done, authorized, forms, grammar = set(), set(), [], []
     cue_order, completed_epochs = [], set()
-    faults = []
+    faults, resumes = [], {}
     for row in records:
         validate_data_payload(row, schedule_hash)
         p, kind = row["payload"], row["event_type"]
@@ -192,6 +192,7 @@ def reconcile_records(records, trials, exposures, items, schedule_hash):
             require(row["opportunity_id"] in items, "MOCK_UNKNOWN_OPPORTUNITY")
         if kind == "session":
             aid = p["trial_id"]
+            if p["event"] == "operator_resume": resumes[p["clock_epoch"]] = row
             if p["event"] == "visit_complete": completed_epochs.add(p["clock_epoch"])
             if p["event"] in {"item_fault", "boundary_late"}: faults.append(p["technical_fault_code"] or p["event"])
             if aid is None: continue
@@ -201,7 +202,7 @@ def reconcile_records(records, trials, exposures, items, schedule_hash):
             require(isinstance(p["audio_request_ids"], list) and len(p["audio_request_ids"]) == item["plays"]
                     and all(guid(x) for x in p["audio_request_ids"]) and len(set(p["audio_request_ids"])) == item["plays"], "MOCK_SLOT_AUDIO_IDS")
             if aid not in attempts:
-                attempts[aid] = {"first": row, "last": row, "states": [], "pending": None, "response": None, "fault": False, "consumed": False, "retired_unplayed_contexts": 0}
+                attempts[aid] = {"first": row, "last": row, "records": [], "states": [], "pending": None, "response": None, "fault": False, "consumed": False, "retired_unplayed_contexts": 0, "retired_contexts": []}
             a = attempts[aid]
             first = a["first"]["payload"]
             changed = any(p[k] != first[k] for k in ("scheduled_onset_mono_ms", "clock_epoch", "audio_request_ids"))
@@ -210,9 +211,26 @@ def reconcile_records(records, trials, exposures, items, schedule_hash):
                 # after a safe pre-cue pause, with a new context/IDs. A durable
                 # cue intent (even without its after-record) forbids this path.
                 require(p["event"] == "state_before" and p["state"] == "Loaded" and not a["consumed"]
-                        and "CueRequested" not in a["states"] and not any(q["attempt_id"] == aid for q in requests.values()), "MOCK_CONSUMED_CONTEXT_REPLAY")
+                        and a["pending"] is None and not any(r["payload"]["state"] == "CueRequested" for r in a["records"])
+                        and not any(q["attempt_id"] == aid for q in requests.values()), "MOCK_CONSUMED_CONTEXT_REPLAY")
+                resume = resumes.get(p["clock_epoch"])
+                require(resume is not None
+                        and a["last"]["sequence"] < resume["sequence"] < row["sequence"]
+                        and resume["payload"]["host_mono_ms"] <= p["host_mono_ms"]
+                        and p["scheduled_onset_mono_ms"] >= p["host_mono_ms"], "MOCK_CONTEXT_REPLAN_ORDER")
+                if p["clock_epoch"] == first["clock_epoch"]:
+                    require(a["last"]["payload"]["host_mono_ms"] <= resume["payload"]["host_mono_ms"]
+                            and p["scheduled_onset_mono_ms"] > first["scheduled_onset_mono_ms"], "MOCK_CONTEXT_REPLAN_ORDER")
+                else:
+                    # Recovery may create a new engine epoch. Preserve the
+                    # unplayed history but do not infer a shared time origin.
+                    incomplete.add("PLANNING_CLOCK_EPOCH_UNBOUND")
+                used_ids = {key for context in [a] + a["retired_contexts"] for key in context["first"]["payload"]["audio_request_ids"]}
+                require(not used_ids.intersection(p["audio_request_ids"]), "MOCK_CONTEXT_AUDIO_ID_REUSE")
+                a["retired_contexts"].append({"first": a["first"], "last": a["last"], "records": tuple(a["records"]),
+                                              "states": tuple(a["states"]), "resume": resume, "replacement": row})
                 retired = a["retired_unplayed_contexts"] + 1
-                a.update(first=row, last=row, states=[], pending=None, response=None, fault=False, retired_unplayed_contexts=retired)
+                a.update(first=row, last=row, records=[], states=[], pending=None, response=None, fault=False, retired_unplayed_contexts=retired)
                 first = p
             for key in ("opportunity_id", "retry_of", "scheduled_onset_mono_ms", "clock_epoch", "audio_request_ids"):
                 require(p[key] == first[key], "MOCK_ATTEMPT_BINDING")
@@ -246,6 +264,7 @@ def reconcile_records(records, trials, exposures, items, schedule_hash):
                 require(a["response"] is None and p["response_code"] in {"commit", "dont_know", "timeout"}, "MOCK_RESPONSE_DUPLICATE")
                 a["response"] = p["response_code"]
             elif p["event"] == "item_fault": a["fault"] = True
+            a["records"].append(row)
             a["last"] = row
         elif kind == "audio_request":
             key = row["audio_request_id"]

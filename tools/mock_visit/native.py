@@ -156,6 +156,7 @@ def grammar(rows, requests):
 
 def menu(chains, attempts, items, requests, role, schedule_hash, package_hash):
     incomplete, seen, seals = set(), set(), 0
+    retired_interruptions = set()
     for chain in chains:
         require(chain and chain[0]["record"].get("kind") == "header", "MOCK_MENU_HEADER")
         header = chain[0]["record"]
@@ -180,7 +181,23 @@ def menu(chains, attempts, items, requests, role, schedule_hash, package_hash):
             require(p["kind"] in {"menu_start","choice_revised","choice_final","selection_verified","display_request","display_changed","play_request","onset_authority","play_complete","menu_interrupted"}, "MOCK_MENU_EVENT_KIND")
             require(p["menu_key"] == ("profile" if items[aid]["block"] == "profile_menu" else items[aid]["atom_id"])
                     and p["menu_key"] in binding["menu_keys"], "MOCK_MENU_CONTENT_KEY")
-            require(p["slot_start_mono_ms"] == attempts[aid]["first"]["payload"]["scheduled_onset_mono_ms"], "MOCK_MENU_ANCHOR")
+            if p["slot_start_mono_ms"] != attempts[aid]["first"]["payload"]["scheduled_onset_mono_ms"]:
+                matches = [(index, c) for index, c in enumerate(attempts[aid].get("retired_contexts", []))
+                           if p["slot_start_mono_ms"] == c["first"]["payload"]["scheduled_onset_mono_ms"]]
+                require(len(matches) == 1, "MOCK_MENU_ANCHOR")
+                index, context = matches[0]
+                require((aid, index) not in retired_interruptions and aid not in events and p["kind"] == "menu_interrupted"
+                        and p["matching_deviation_id"] == p["event_id"]
+                        and all(p[k] is None for k in ("expected_mono_ms", "onset_uncertainty_ms", "audio_request_id",
+                            "presentation_index", "candidate_id", "pcm_sha256", "file_sha256", "yoked_source_event_id",
+                            "selected_index", "defaulted", "phase", "receipt_sha256")), "MOCK_MENU_RETIRED_CONTENT")
+                require(number(p["mono_ms"]) and _loaded_time(context) <= p["mono_ms"] < p["slot_start_mono_ms"]
+                        and p["mono_ms"] < context["resume"]["payload"]["host_mono_ms"]
+                        and not any(r["payload"]["state"] == "CueRequested" or r["payload"]["exposure_consumed"] for r in context["records"]),
+                        "MOCK_MENU_RETIRED_BOUNDARY")
+                retired_interruptions.add((aid, index))
+                incomplete.update({"MENU_EVENTS_INCOMPLETE", "MENU_RETIRED_PLANNING_INTERRUPTION"})
+                continue
             if role == "yoked" and p["kind"] != "menu_interrupted": require(guid(p["yoked_source_event_id"]), "MOCK_YOKED_SOURCE_EVENT")
             if p["audio_request_id"] is not None:
                 require(p["audio_request_id"] in attempts[aid]["first"]["payload"]["audio_request_ids"], "MOCK_MENU_AUDIO_ID")
@@ -212,6 +229,7 @@ def menu(chains, attempts, items, requests, role, schedule_hash, package_hash):
             if role=="active":
                 bounds=[0,6000,30000,45000,58000,60000] if items[aid]["block"]=="profile_menu" else [0,4000,22000,32000,40000,45000]
                 if any(abs(r["mono_ms"]-r["slot_start_mono_ms"]-offset)>20 for r,offset in zip(displays,bounds)): incomplete.add("MENU_DISPLAY_TIMING_SCREEN_FAILED")
+    require(not retired_interruptions or not seals, "MOCK_MENU_RETIRED_SEAL")
     if not seals: incomplete.add("MENU_SEAL_MISSING")
     if role == "yoked": incomplete.add("ACTIVE_LEDGER_COMPARISON_REQUIRED")
     return incomplete
@@ -258,8 +276,16 @@ def compare_yoked(active, yoked, active_file_hash):
             "software_trace_timing_matched":True,"acoustic_timing_qualified":False}
 
 
+def _loaded_time(context):
+    rows = [r["payload"] for r in context["records"]
+            if r["payload"]["event"] == "state_after" and r["payload"]["state"] == "Loaded"]
+    require(len(rows) == 1 and number(rows[0]["host_mono_ms"]), "MOCK_FRAME_CONTEXT_LOADED")
+    return rows[0]["host_mono_ms"]
+
+
 def frames(root, entries, attempts, table, read, relative):
     incomplete, summaries, interval_count, maximum = set(), set(), 0, 0.0
+    summary_counts, retired_verified = defaultdict(int), []
     for artifact, raw in entries:
         parent = root / relative(artifact["path"])
         m = strict(raw)
@@ -276,6 +302,12 @@ def frames(root, entries, attempts, table, read, relative):
         metadata = strict(files["metadata.json"])
         nominal_rate = metadata.get("selected_refresh_hz")
         require(number(nominal_rate) and nominal_rate > 0 and metadata.get("physical_qualification") is False, "MOCK_FRAME_METADATA")
+        if any(a.get("retired_contexts") for a in attempts.values()):
+            # The integrated engine and capture both use AudioPlayer.Now. Their
+            # component epoch IDs differ; an arbitrary clock cannot be joined.
+            require(metadata.get("clock") == "Unity_process_Stopwatch_ms" and guid(metadata.get("clock_epoch")), "MOCK_FRAME_CONTEXT_CLOCK")
+            require(all(c["first"]["payload"]["clock_epoch"] == c["replacement"]["payload"]["clock_epoch"]
+                        for a in attempts.values() for c in a.get("retired_contexts", [])), "MOCK_FRAME_CONTEXT_CLOCK")
         rows = table(files["frames.csv"])
         grouped = defaultdict(list)
         for r in rows:
@@ -286,20 +318,64 @@ def frames(root, entries, attempts, table, read, relative):
             start, end, gap, overlap, rate = values
             require(end > start and abs((end - start) - gap) <= 1e-6 and 0 < overlap <= gap + 1e-6 and rate > 0, "MOCK_FRAME_INTERVAL")
             require(r["window_kind"] in {"cue", "response"}, "MOCK_FRAME_WINDOW")
-            grouped[aid].append((int(r["frame_index"]), gap, rate)); interval_count += 1; maximum = max(maximum, gap)
+            if attempts[aid].get("retired_contexts"):
+                # The physical render interval may start before registration
+                # during a stall. Only its attributed overlap must be within
+                # the current window; the full interval still counts as a gap.
+                current = attempts[aid]["first"]["payload"]
+                require((r["window_kind"] == "response" and r["window_id"] == "response") or
+                        (r["window_kind"] == "cue" and r["window_id"] in current["audio_request_ids"]), "MOCK_FRAME_CONTEXT_WINDOW")
+                require(end > current["scheduled_onset_mono_ms"]
+                        and overlap <= end-max(start, current["scheduled_onset_mono_ms"])+1e-6, "MOCK_FRAME_RETIRED_INTERVAL")
+            grouped[aid].append((int(r["frame_index"]), gap, rate, end)); interval_count += 1; maximum = max(maximum, gap)
         require(not files["events.jsonl"] or files["events.jsonl"].endswith(b"\n"), "MOCK_FRAME_TORN_EVENTS")
+        previous_stamp = -1
         for line in files["events.jsonl"].splitlines():
             p = strict(line)
+            aid, stamp = p.get("attempt_id"), p.get("observed_mono_ms")
+            require(aid in attempts and p.get("opportunity_id") == aid and number(stamp) and stamp >= previous_stamp, "MOCK_FRAME_EVENT_ORDER")
+            previous_stamp = stamp
             if p.get("kind") == "fault":
                 exact(p, "kind attempt_id opportunity_id observed_mono_ms technical_fault_code render_gap_ms watchdog")
+                if attempts[aid].get("retired_contexts"):
+                    require(stamp >= _loaded_time(attempts[aid]), "MOCK_FRAME_RETIRED_STARTED")
                 incomplete.add("FRAME_FAULT_PRESENT"); continue
             exact(p, "kind attempt_id opportunity_id observed_mono_ms frame_freeze_ms frame_count within_1_5x_count capture_complete cancelled_before_window")
-            aid = p["attempt_id"]
-            require(p["kind"] == "summary" and aid in attempts and p["opportunity_id"] == aid and aid not in summaries, "MOCK_FRAME_SUMMARY")
+            require(p["kind"] == "summary" and aid not in summaries, "MOCK_FRAME_SUMMARY")
+            require(type(p["capture_complete"]) is bool and type(p["cancelled_before_window"]) is bool
+                    and type(p["frame_count"]) is int and type(p["within_1_5x_count"]) is int, "MOCK_FRAME_SUMMARY_TYPES")
+            retired = attempts[aid].get("retired_contexts", [])
+            index = summary_counts[aid]
+            if index < len(retired):
+                context = retired[index]; first = context["first"]["payload"]
+                require(p["cancelled_before_window"] is True and p["capture_complete"] is False
+                        and p["frame_count"] == p["within_1_5x_count"] == 0 and p["frame_freeze_ms"] is None,
+                        "MOCK_FRAME_RETIRED_STARTED")
+                require(_loaded_time(context) <= stamp < first["scheduled_onset_mono_ms"]
+                        and stamp < context["resume"]["payload"]["host_mono_ms"]
+                        and stamp < context["replacement"]["payload"]["host_mono_ms"], "MOCK_FRAME_RETIRED_BOUNDARY")
+                require(not any(r["payload"]["state"] == "CueRequested" or r["payload"]["exposure_consumed"] for r in context["records"]),
+                        "MOCK_FRAME_RETIRED_STARTED")
+                retired_verified.append({"attempt_id": aid, "planning_epoch_index": index,
+                    "context_clock_epoch": first["clock_epoch"], "scheduled_onset_mono_ms": first["scheduled_onset_mono_ms"],
+                    "audio_request_ids": list(first["audio_request_ids"]), "loaded_mono_ms": _loaded_time(context),
+                    "cancelled_mono_ms": stamp, "replacement_loaded_mono_ms": context["replacement"]["payload"]["host_mono_ms"]})
+                summary_counts[aid] += 1
+                incomplete.add("FRAME_CAPTURE_INCOMPLETE")
+                continue
+            if retired:
+                require(stamp >= _loaded_time(attempts[aid]), "MOCK_FRAME_CONTEXT_BOUNDARY")
+                if p["cancelled_before_window"]:
+                    context = attempts[aid]
+                    require(p["capture_complete"] is False and p["frame_count"] == p["within_1_5x_count"] == 0
+                            and p["frame_freeze_ms"] is None and stamp < context["first"]["payload"]["scheduled_onset_mono_ms"]
+                            and not any(r["payload"]["state"] == "CueRequested" or r["payload"]["exposure_consumed"] for r in context["records"]),
+                            "MOCK_FRAME_CANCELLED_AFTER_CUE")
             # The monitor attributes a frame to all intersecting windows but
             # summary statistics count each physical frame index only once.
             unique = {}
-            for index, gap, rate in grouped[aid]:
+            for index, gap, rate, end in grouped[aid]:
+                require(end <= stamp, "MOCK_FRAME_SUMMARY_BEFORE_INTERVAL")
                 require(index not in unique or unique[index] == (gap, rate), "MOCK_FRAME_DUPLICATE_CHANGED")
                 unique[index] = gap, rate
             require(type(p["frame_count"]) is int and p["frame_count"] == len(unique)
@@ -309,5 +385,10 @@ def frames(root, entries, attempts, table, read, relative):
             if p["capture_complete"] is not True or p["cancelled_before_window"] is True: incomplete.add("FRAME_CAPTURE_INCOMPLETE")
             if unique and (p["within_1_5x_count"] / len(unique) < .99 or p["frame_freeze_ms"] > 250): incomplete.add("FRAME_BUDGET_SCREEN_FAILED")
             summaries.add(aid)
+            summary_counts[aid] += 1
+    for aid, attempt in attempts.items():
+        require(summary_counts[aid] >= len(attempt.get("retired_contexts", [])), "MOCK_FRAME_RETIRED_SUMMARY_MISSING")
     if summaries != set(attempts): incomplete.add("FRAME_ATTEMPT_COVERAGE_INCOMPLETE")
-    return incomplete, {"raw_attributed_intervals": interval_count, "max_render_interval_ms": maximum, "physical_display_timing_qualified": False}
+    return incomplete, {"raw_attributed_intervals": interval_count, "max_render_interval_ms": maximum,
+                        "retired_unplayed_planning_epochs": retired_verified, "final_attempt_summaries": len(summaries),
+                        "physical_display_timing_qualified": False}
