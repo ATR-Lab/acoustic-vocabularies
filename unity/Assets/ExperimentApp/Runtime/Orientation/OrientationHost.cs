@@ -29,7 +29,21 @@ namespace AcousticVocab.Orientation
         OrientationSetup setup;OrientationDemos demos;OrientationJournal journal;PanelSettings input;
         OrientationDemo activeDemo;Transform display;TextMesh title,body,buttonText;BoxCollider button;MeshRenderer buttonSurface;LineRenderer pointer;
         Material surfaceMaterial,textBackingMaterial;readonly List<XRHandSubsystem> hands=new List<XRHandSubsystem>();
-        bool initialized,failed,focused=true,paused,held,armed,haveTip,pokeArmed,buttonEnabled;
+        bool initialized,failed,released,focused=true,paused,held,armed,haveTip,pokeArmed,buttonEnabled;
+        public string JournalPath=>journal?.JournalPath;
+        string screeningId;
+        public void BindScreening(string value)
+        {if(journal!=null||screeningId!=null||!System.Text.RegularExpressions.Regex.IsMatch(value??"",@"\A[A-Za-z0-9._-]{1,32}\z"))throw new OrientationFault("ORIENTATION_SCREENING_BINDING");screeningId=value;}
+        public OrientationReceipt FinalizeOutcome(string screeningId)
+        {if(failed||released||Flow?.Stage!=OrientationStage.RecordedOutcome)throw new OrientationFault("ORIENTATION_HANDOFF_UNAVAILABLE");return journal.SealOutcome(screeningId,Flow.Outcome);}
+        public void ReleaseForHandoff()
+        {
+            if(released)return;released=true;enabled=false;Exception first=null;
+            if(foundation!=null)foundation.Faulted-=FoundationFault;if(stateSource!=null)stateSource.Event-=SourceEvent;
+            if(panel!=null){panel.Responded-=Response;panel.Faulted-=PanelFault;}
+            foreach(Action action in new Action[]{()=>{if(display!=null)display.gameObject.SetActive(false);},()=>panel?.CloseAtBoundary(),()=>journal?.Dispose()})try{action();}catch(Exception error){first??=error;}
+            if(first!=null)throw first;
+        }
         Vector3 previousTip;double started;string faultCode;
 
         void Awake()
@@ -45,7 +59,7 @@ namespace AcousticVocab.Orientation
                 if(foundation==null || panel==null || stateSource==null || workcell==null || foundation.Configuration==null) throw new OrientationFault("ORIENTATION_FOUNDATION_MISSING");
                 var station=foundation.Configuration;var identity=Resources.Load<TextAsset>("BuildIdentity");
                 setup=OrientationSetup.Load(Application.persistentDataPath,(string)station["protocol_version"]);
-                journal=new OrientationJournal(Path.Combine(Application.persistentDataPath,"operator-logs"),StationConfig.ParseStrict(identity.text),(string)station["station_id"],setup.PlanHash,setup.DemoIndexHash);
+                journal=new OrientationJournal(Path.Combine(Application.persistentDataPath,"operator-logs"),StationConfig.ParseStrict(identity.text),(string)station["station_id"],setup.PlanHash,setup.DemoIndexHash,screeningId);
                 input=PanelSettings.Parse(File.ReadAllText(Path.Combine(Application.persistentDataPath,"response-panel.local.json")),Resources.Load<TextAsset>("ResponsePanelSchema").text,(string)station["protocol_version"]);
                 input.VerifyStationInput((string)station["input_method"]);
                 if(input.EngineeringMode!="disabled") throw new OrientationFault("ORIENTATION_PANEL_MUST_BE_EXTERNALLY_OWNED");
@@ -217,7 +231,7 @@ namespace AcousticVocab.Orientation
         static bool Finite(Vector3 p)=>float.IsFinite(p.x)&&float.IsFinite(p.y)&&float.IsFinite(p.z);
         void OnApplicationFocus(bool value) { focused=value;if(!value&&Flow!=null&&Flow.Stage!=OrientationStage.NotStarted&&Flow.Stage!=OrientationStage.RecordedOutcome)Fail("ORIENTATION_FOCUS_LOST"); }
         void OnApplicationPause(bool value) { paused=value;if(value&&Flow!=null&&Flow.Stage!=OrientationStage.NotStarted&&Flow.Stage!=OrientationStage.RecordedOutcome)Fail("ORIENTATION_PAUSED"); }
-        void OnDisable() { if(Application.isPlaying && Flow!=null)Fail("ORIENTATION_COMPONENT_DISABLED"); }
+        void OnDisable() { if(!released && Application.isPlaying && Flow!=null)Fail("ORIENTATION_COMPONENT_DISABLED"); }
         void OnDestroy()
         {
             if(foundation!=null)foundation.Faulted-=FoundationFault;if(stateSource!=null)stateSource.Event-=SourceEvent;

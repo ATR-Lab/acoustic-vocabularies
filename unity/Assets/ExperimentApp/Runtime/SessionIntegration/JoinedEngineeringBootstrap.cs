@@ -15,6 +15,7 @@ using AcousticVocab.StateIntegration;
 using AcousticVocab.StateSources;
 using AcousticVocab.StudyAudio;
 using AcousticVocab.Teaching;
+using AcousticVocab.Soak;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 namespace AcousticVocab.SessionIntegration
@@ -26,10 +27,25 @@ namespace AcousticVocab.SessionIntegration
     {
         public FoundationBootstrap foundation;public StateSourceHost source;public ResponsePanelController panel;public AudioPlayer player;public FrameCaptureHost frames;
         public Font font;public Shader unlitShader,dictionaryShader;
+        public bool requirePreallocation;
+        AllocationJoinBinding allocation;string authorizedConfig,authorizedPin;
+        internal void StartAllocated(AllocationJoinBinding binding,string configPath,string rawPin)
+        {if(enabled||!requirePreallocation||allocation!=null||binding==null||attempted||assets!=null)throw new SessionFault("JOIN_ALLOCATION_ALREADY_CONSUMED");allocation=binding;authorizedConfig=configPath;authorizedPin=rawPin;enabled=true;}
         public string StatusCode{get;private set;}="JOIN_NOT_STARTED";
         public bool ParticipantAdmission=>false;
         public FixedSlotEngine Engine=>owner?.Engine;
         public AssessmentSessionHost ActiveAssessment{get;private set;}
+        internal JoinedEngineeringConfig ObservationConfig=>config;
+        internal JoinedVisitArtifacts ObservationAssets=>assets;
+        internal void ObservationFailed(string code)=>Fail(code);
+        internal SoakContext ObservationContext()
+        {
+            if(owner?.Engine==null)return new SoakContext("paused","startup",StatusCode,null);
+            var engine=owner.Engine;string kind="paused",block=engine.CurrentBlock??"complete";
+            if(engine.Status==SessionState.Running&&assets.Blocks.TryGetValue(block,out var module))
+                kind=module==JoinedModuleKind.Teaching?"teaching":module==JoinedModuleKind.Assessment?"protected":"selection";
+            return new SoakContext(kind,block,engine.Status.ToString(),engine.CurrentTrialId);
+        }
         JoinedEngineeringConfig config;JoinedVisitArtifacts assets;DataJournal data;JoinedAudit audit;FileMenuStore store;JoinedSelections selections;MenuLedger menuLedger;bool menuSealed;
         SessionIntegrationOwner owner;StagedModuleCoordinator staged;OperatorMailbox mailbox;FileOperatorCommandJournal commands;CompletedFormsRecovery formsRecovery;YokedReplayAuthority yokedAuthority;OperatorRequest resumeRequest;
         readonly ModuleConstructionScope visit=new ModuleConstructionScope();bool attempted,installedFrames,closed,failed,formsShown;string evidenceRoot,nonce;
@@ -40,14 +56,17 @@ namespace AcousticVocab.SessionIntegration
         {var args=Environment.GetCommandLineArgs();for(int i=0;i<args.Length-1;i++)if(args[i]==key)return args[i+1];return null;}
         void Start()
         {
-            string path=Argument("-joinedConfig"),pin=Argument("-joinedConfigSha256");
+            if(requirePreallocation&&allocation==null){Fail("JOIN_PREALLOCATION_REQUIRED");return;}
+            string path=authorizedConfig??Argument("-joinedConfig"),pin=authorizedPin??Argument("-joinedConfigSha256");
             if(path==null&&pin==null){Report("JOIN_CONFIG_REQUIRED");return;}
             try
             {
                 var build=Resources.Load<TextAsset>("BuildIdentity");if(build==null)throw new SessionFault("JOIN_BUILD_IDENTITY");var identity=JoinedVisitArtifacts.Json(Encoding.UTF8.GetBytes(build.text));
                 config=JoinedEngineeringConfig.Load(path,pin,(string)identity["protocol_version"]);
                 if(config.BuildId!=(string)identity["build_id"])throw new SessionFault("JOIN_BUILD_IDENTITY");
+                allocation?.Validate(config);
                 assets=new JoinedVisitArtifacts(config);ValidateProvisioned();
+                if(allocation!=null&&assets.Menus!=null&&allocation.Role!=assets.Menus.Role)throw new SessionFault("JOIN_ALLOCATION_ROLE");
                 if(assets.MissingAuthority!=null)
                 {
                     Report(assets.MissingAuthority);string quit=Argument("-joinedDiagnosticExitSeconds");
@@ -91,6 +110,7 @@ namespace AcousticVocab.SessionIntegration
                     var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.CodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
                     audit=visit.Own(new JoinedAudit(Path.Combine(evidenceRoot,"joined.local.jsonl"),()=>clock.NowMs));
                     audit.Write("configuration",new JObject{["config_sha256"]=config.ConfigSha256,["schedule_sha256"]=assets.Schedule.Sha256,["package_sha256"]=assets.Package.PackageSha256,["scope"]="DEMO_ENGINEERING",["participant_admission"]=false});
+                    if(allocation!=null)audit.Write("configuration",new JObject{["orientation_receipt_sha256"]=allocation.OrientationReceiptSha256,["allocation_receipt_sha256"]=allocation.RevealReceiptSha256,["slot_id"]=allocation.SlotId,["unit_id"]=allocation.UnitId});
                     installedFrames=true;frames.Install(config.RequireFile("frame").ReadVerified(),Path.Combine(evidenceRoot,"frames"),data,Fail);Report("JOIN_WAITING_RENDER_BASELINE");
                 }
                 if(owner==null)

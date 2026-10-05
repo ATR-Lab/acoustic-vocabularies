@@ -13,6 +13,8 @@
     "AcousticVocab.StateSources",
     "AcousticVocab.Teaching",
     "AcousticVocab.SelectionMenus",
+    "AcousticVocab.Soak",
+    "AcousticVocab.Orientation",
     "UnityEngine.UI"
   ],
   "autoReferenced": true,

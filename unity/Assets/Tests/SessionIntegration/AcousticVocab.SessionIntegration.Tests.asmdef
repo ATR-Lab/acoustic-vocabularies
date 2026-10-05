@@ -9,7 +9,8 @@
     "AcousticVocab.Teaching",
     "AcousticVocab.SelectionMenus",
     "AcousticVocab.Assessment",
-    "AcousticVocab.DataLogging"
+    "AcousticVocab.DataLogging",
+    "AcousticVocab.Orientation"
   ],
   "includePlatforms": [
     "Editor"

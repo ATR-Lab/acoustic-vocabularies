@@ -54,6 +54,22 @@ namespace AcousticVocab.Orientation.Tests
         }
         [Test] public void DraftSuccessIsRecordedButNeverAuthorizesAllocation()
         { Setup(true);Introduction(true);Check();Assert.That(flow.Outcome.Passed,Is.True);Assert.That(flow.Outcome.EngineeringDraft,Is.True);Assert.That(flow.EligibleOutcomeRecorded,Is.False); }
+        [TestCase(false)][TestCase(true)]
+        public void FinalizedReceiptBindsActualDurableJournalAndCannotChangeEligibility(bool draft)
+        {
+            string directory=Path.Combine(FoundationBuild.RepositoryRoot,".local","orientation-receipt-"+Guid.NewGuid().ToString("N"));
+            using(var journal=new OrientationJournal(directory,new JObject{["protocol_version"]="engineering-pending-review"},"synthetic-station",new string('a',64),new string('b',64),"SYNTHETIC-01"))
+            {
+                Setup(draft,journal.Record);Introduction(true);Check();
+                var proof=journal.SealOutcome("SYNTHETIC-01",flow.Outcome);var json=proof.Json;
+                Assert.That(proof.Eligible,Is.EqualTo(!draft));Assert.That(ReceiptCanonical.Valid(json),Is.True);
+                byte[] bytes=File.ReadAllBytes(journal.JournalPath);Assert.That((long)json["journal_bytes"],Is.EqualTo(bytes.Length));
+                Assert.That((string)json["journal_sha256"],Is.EqualTo(AcousticVocab.StateSources.SceneRegistry.Hash(bytes)));
+                var header=JObject.Parse(File.ReadLines(journal.JournalPath).First());Assert.That((string)header["orientation_id"],Is.EqualTo(proof.OrientationId));Assert.That((string)header["screening_id"],Is.EqualTo(proof.ScreeningId));
+                json["eligible"]=!proof.Eligible;Assert.That(proof.Eligible,Is.EqualTo(!draft));
+                Assert.Throws<OrientationFault>(()=>journal.Record(new JObject{["event"]="late"}));Assert.Throws<OrientationFault>(()=>journal.SealOutcome("SYNTHETIC-01",flow.Outcome));
+            }
+        }
         [Test] public void FailedOutcomeWriteCannotPublishOrGrantEligibility()
         {
             bool notified=false;Setup(false,row=> { if((string)row["event"]=="eligibility_outcome")throw new IOException("synthetic"); });flow.OutcomeRecorded+=_=>notified=true;Introduction(true);
