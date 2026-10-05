@@ -50,9 +50,14 @@ namespace AcousticVocab.SessionEngine
         public string PersonSlot { get; }
         public string Visit { get; }
         public bool Demo { get; }
+        public string Study { get; }
+        public string SetName { get; }
+        public string SpeechListSha256 { get; }
         public IReadOnlyList<ScheduleBlock> Blocks { get; }
-        internal VisitSchedule(string hash,string package,string person,string visit,bool demo,ScheduleBlock[] blocks)
-        { Sha256=hash;PackageSha256=package;PersonSlot=person;Visit=visit;Demo=demo;Blocks=Array.AsReadOnly((ScheduleBlock[])blocks.Clone()); }
+        internal VisitSchedule(string hash,string package,string person,string visit,bool demo,ScheduleBlock[] blocks,
+            string study=null,string setName=null,string speechListSha256=null)
+        { Sha256=hash;PackageSha256=package;PersonSlot=person;Visit=visit;Demo=demo;Blocks=Array.AsReadOnly((ScheduleBlock[])blocks.Clone());
+          Study=study;SetName=setName;SpeechListSha256=speechListSha256; }
     }
 
     // All gates are independently provided by the integration. A rendered

@@ -108,7 +108,9 @@ namespace AcousticVocab.SessionEngine
                 (string)files["permutation.json"]?["sha256"]==PcmWave.Hash(permutationBytes),"SESSION_PACKAGE_SCHEDULE_BINDING");
             var result=ValidateBlocks(doc,permutation);
             evidence.Verify(doc,hash,package.PackageSha256,result);
-            return new VisitSchedule(hash,package.PackageSha256,person,visit,(bool)doc["demo"],result);
+            var validity=((JArray)doc["blocks"]).SingleOrDefault(x=>(string)x["block"]=="validity");
+            return new VisitSchedule(hash,package.PackageSha256,person,visit,(bool)doc["demo"],result,study,(string)doc["set"],
+                (string)validity?["validity"]?["speech_list_sha256"]);
         }
         internal static ScheduleBlock[] ValidateBlocks(JObject doc,JObject permutation)
         {
