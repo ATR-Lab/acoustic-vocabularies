@@ -17,7 +17,7 @@ namespace AcousticVocab.SessionIntegration
     public sealed class ExclusiveContentMultiplexer:ISlotContentFactory,ISessionContentPump,ISlotStartPlan,IDisposable
     {
         readonly VisitSchedule schedule;readonly ISessionClock clock;readonly IReadOnlyDictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>> routes;readonly Action<SlotContext> prepared;
-        ISlotContentFactory current;ModuleConstructionScope scope;string block;double tailEnd,last=-1;bool failed,closed,interrupted;FixedSlotEngine engine;
+        ISlotContentFactory current;ModuleConstructionScope scope;string block;double tailEnd,last=-1;bool failed,closed,interrupted;FixedSlotEngine engine;BoundaryPreparation pending;
         public string ActiveBlock=>block;public bool Failed=>failed;public double RetainedTailEndMs=>tailEnd;
         public ExclusiveContentMultiplexer(VisitSchedule schedule,ISessionClock clock,IReadOnlyDictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>> routes,Action<SlotContext> prepared=null)
         {
@@ -36,11 +36,41 @@ namespace AcousticVocab.SessionIntegration
             double now=Now();Need(now>=tailEnd,"SESSION_MODULE_TAIL_ACTIVE");string next=value.CurrentBlock;Need(next!=null&&routes.ContainsKey(next),"SESSION_MODULE_BLOCK");
             // Interrupt invalidates backend/readiness and prepared request IDs.
             // Even an unplayed same-block pause requires a fresh owned lease.
-            if(current!=null&&block==next&&!interrupted)return;
+            Need(pending==null,"SESSION_MODULE_PREPARATION_PENDING");if(current!=null&&block==next&&!interrupted)return;
             var old=scope;current=null;scope=null;block=null;
             try{old?.Dispose();var candidate=new ModuleConstructionScope();try{var factory=routes[next](candidate);Need(factory is IDisposable,"SESSION_MODULE_LIFETIME");candidate.Own((IDisposable)factory);current=factory;scope=candidate;block=next;interrupted=false;}catch{candidate.Dispose();throw;}}
             catch{failed=true;throw new SessionFault("SESSION_MODULE_CREATION_FAILED");}
         }
+        public sealed class BoundaryPreparation:IDisposable
+        {
+            internal readonly ExclusiveContentMultiplexer Owner;internal readonly FixedSlotEngine Engine;internal readonly string Block;internal bool Consumed;
+            public ModuleConstructionScope Scope{get;}=new ModuleConstructionScope();
+            internal BoundaryPreparation(ExclusiveContentMultiplexer owner,FixedSlotEngine engine,string block){Owner=owner;Engine=engine;Block=block;}
+            public void Dispose(){if(Consumed)return;Consumed=true;Scope.Dispose();}
+        }
+        public bool CanPrepare(FixedSlotEngine value)=>!closed&&!failed&&pending==null&&value!=null&&value.NeedsOperatorConfirmation&&value.ScheduleSha256==schedule.Sha256&&value.PackageSha256==schedule.PackageSha256&&value.CurrentBlock!=null&&Now()>=tailEnd;
+        public bool NeedsPreparation(FixedSlotEngine value)=>current==null||interrupted||block!=value?.CurrentBlock;
+        // Releases the previous audio/view/backend owner before any new mode
+        // request. The returned capability is single-use and owns partial work.
+        public BoundaryPreparation BeginPreparation(FixedSlotEngine value)
+        {
+            Need(CanPrepare(value),"SESSION_MODULE_BOUNDARY");if(engine!=null)Need(ReferenceEquals(engine,value),"SESSION_MODULE_ENGINE");engine=value;
+            var old=scope;scope=null;current=null;block=null;
+            try{old?.Dispose();pending=new BoundaryPreparation(this,value,value.CurrentBlock);return pending;}
+            catch{failed=true;throw new SessionFault("SESSION_MODULE_DISPOSE_FAILED");}
+        }
+        public void CommitPreparation(BoundaryPreparation preparation,Func<ModuleConstructionScope,ISlotContentFactory> create)
+        {
+            Need(preparation!=null&&ReferenceEquals(preparation,pending)&&ReferenceEquals(preparation.Owner,this)&&!preparation.Consumed&&create!=null&&!closed&&!failed&&
+                preparation.Engine.NeedsOperatorConfirmation&&preparation.Engine.CurrentBlock==preparation.Block&&Now()>=tailEnd,"SESSION_MODULE_PREPARATION_STALE");
+            try
+            {
+                var factory=create(preparation.Scope);Need(factory is IDisposable,"SESSION_MODULE_LIFETIME");preparation.Scope.Own((IDisposable)factory);
+                current=factory;scope=preparation.Scope;block=preparation.Block;interrupted=false;preparation.Consumed=true;pending=null;
+            }
+            catch{failed=true;pending=null;preparation.Dispose();throw new SessionFault("SESSION_MODULE_CREATION_FAILED");}
+        }
+        public void CancelPreparation(BoundaryPreparation value){if(!ReferenceEquals(value,pending))return;pending=null;try{value.Dispose();}catch{failed=true;throw;}}
         void Available(){Need(!closed&&!failed&&current!=null&&engine!=null&&engine.Status==SessionState.Running&&engine.CurrentBlock==block,"SESSION_MODULE_UNPREPARED");}
         public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)
         {
@@ -49,7 +79,7 @@ namespace AcousticVocab.SessionIntegration
         }
         public ISlotContent Create(SlotItem item){Available();return new Content(this,current.Create(item)??throw new SessionFault("SESSION_MODULE_MISSING"));}
         public void Pump(){if(closed||failed)return;Now();if(current is ISessionContentPump pump)try{pump.Pump();}catch{failed=true;throw;}}
-        public void Dispose(){if(closed)return;closed=true;var old=scope;scope=null;current=null;block=null;try{old?.Dispose();}catch{failed=true;throw;}}
+        public void Dispose(){if(closed)return;closed=true;var old=scope;scope=null;current=null;block=null;try{try{old?.Dispose();}finally{pending?.Dispose();pending=null;}}catch{failed=true;throw;}}
         sealed class Content:ISlotContent
         {
             readonly ExclusiveContentMultiplexer owner;readonly ISlotContent inner;

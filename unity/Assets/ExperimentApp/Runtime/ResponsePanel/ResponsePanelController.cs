@@ -18,6 +18,7 @@ namespace AcousticVocab.ResponsePanel
         public Font panelFont;
         public ResponseState State { get; private set; }
         public bool InputAvailable { get; private set; }
+        public string LoadedConfigurationSha256{get;private set;}
         public bool InputConfigured => settings!=null;
         public bool UsesLeftHand => settings!=null&&settings.LeftHand;
         public bool FaultLatched { get; private set; }
@@ -55,7 +56,9 @@ namespace AcousticVocab.ResponsePanel
                 var config = foundation.Configuration;
                 var schema = Resources.Load<TextAsset>("ResponsePanelSchema");
                 if (schema == null) throw new ConfigurationFault("panel_schema_missing");
-                settings = PanelSettings.Parse(File.ReadAllText(Path.Combine(Application.persistentDataPath, "response-panel.local.json")), schema.text, (string)config["protocol_version"]);
+                byte[] settingsBytes=File.ReadAllBytes(Path.Combine(Application.persistentDataPath,"response-panel.local.json"));
+                using(var sha=System.Security.Cryptography.SHA256.Create())LoadedConfigurationSha256=BitConverter.ToString(sha.ComputeHash(settingsBytes)).Replace("-","").ToLowerInvariant();
+                settings = PanelSettings.Parse(new System.Text.UTF8Encoding(false,true).GetString(settingsBytes), schema.text, (string)config["protocol_version"]);
                 settings.VerifyStationInput((string)config["input_method"]);
                 var identity = StationConfig.ParseStrict(Resources.Load<TextAsset>("BuildIdentity").text);
                 journal = new PanelJournal(Path.Combine(Application.persistentDataPath, "operator-logs"), identity, (string)config["station_id"], settings.RecordedConfiguration);

@@ -17,6 +17,7 @@ namespace AcousticVocab.SessionIntegration
         readonly AudioDataAdapter audioData;readonly FrameAudioAdapter audioFrames;readonly PanelDataAdapter panelData;
         readonly Dictionary<string,AudioRequestContext> audio=new Dictionary<string,AudioRequestContext>();readonly Dictionary<string,FrameCueBinding> cues=new Dictionary<string,FrameCueBinding>();readonly Dictionary<string,EventContext> attempts=new Dictionary<string,EventContext>();
         bool closed,disposing;
+        public ExclusiveContentMultiplexer Modules=>mux;public Resources Shared{get;}
         public FixedSlotEngine Engine{get;}public IAssessmentJournal StageJournal{get;}public ISessionJournal SessionJournal{get;}
         public sealed class Resources
         {
@@ -38,7 +39,7 @@ namespace AcousticVocab.SessionIntegration
         {
             data=journal??throw new ArgumentNullException(nameof(journal));player=sharedPlayer??throw new ArgumentNullException(nameof(sharedPlayer));frames=capture??throw new ArgumentNullException(nameof(capture));
             if(!capture.Ready||player.Playing||panel==null||factories==null)throw new SessionFault("SESSION_JOIN_NOT_READY");
-            StageJournal=new AssessmentDataJournal(data,schedule.Sha256);SessionJournal=new SessionDataJournal(data);var resources=new Resources(this);
+            StageJournal=new AssessmentDataJournal(data,schedule.Sha256);SessionJournal=new SessionDataJournal(data);var resources=new Resources(this);Shared=resources;
             var routes=new Dictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>>();foreach(var entry in factories){var creator=entry.Value;routes.Add(entry.Key,scope=>{if(player.Playing)throw new SessionFault("SESSION_AUDIO_LEASE_BUSY");return creator(resources,scope);});}
             mux=new ExclusiveContentMultiplexer(schedule,clock,routes,c=>attempts[c.Item.TrialId]=new EventContext(c.OpportunityId,c.Item.TrialId));
             Engine=new FixedSlotEngine(schedule,clock,SessionJournal,new FrameContentFactory(mux,capture));
@@ -47,6 +48,7 @@ namespace AcousticVocab.SessionIntegration
             panelData=new PanelDataAdapter(data,panel,id=>attempts.TryGetValue(id,out var value)?value:null);
         }
         void PersistAudio(AudioPlaybackEvent value){if(closed)throw new SessionFault("SESSION_JOIN_CLOSED");audioData.Record(value);audioFrames.Record(value);}
+        public void PumpRetainedAtBoundary(){if(closed||Engine.Status==SessionState.Running)throw new SessionFault("SESSION_MODULE_BOUNDARY");mux.Pump();}
         public void PrepareResume(FixedSlotEngine engine){if(closed||!ReferenceEquals(engine,Engine))throw new SessionFault("SESSION_JOIN_BINDING");mux.PrepareBlockAtBoundary(engine);}
         // Install as OperatorMailbox's prepareResume hook. Mailbox remains the
         // only engine.Tick owner; no MonoBehaviour Update is introduced.

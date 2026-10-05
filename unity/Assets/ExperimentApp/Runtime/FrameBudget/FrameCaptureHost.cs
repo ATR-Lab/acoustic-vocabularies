@@ -107,6 +107,7 @@ namespace AcousticVocab.FrameBudget
             if(closed)return;failed=true;
             try{Shutdown(code);}finally{engineFault?.Invoke(code);}
         }
+        public void FinishCapture()=>Shutdown("FRAME_OWNER_CLOSED");
         void Shutdown(string code)
         {
             if(closed)return;closed=true;Application.onBeforeRender-=BeforeRender;watchdog?.Dispose();watchdog=null;

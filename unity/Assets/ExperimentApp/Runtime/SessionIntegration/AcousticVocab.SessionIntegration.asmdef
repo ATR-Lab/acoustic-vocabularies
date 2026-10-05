@@ -7,7 +7,17 @@
     "AcousticVocab.OperatorConsole",
     "AcousticVocab.DataLogging",
     "AcousticVocab.Assessment",
-    "AcousticVocab.FrameBudget"
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateSources",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.SelectionMenus",
+    "UnityEngine.UI"
   ],
-  "autoReferenced": true
+  "autoReferenced": true,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ]
 }

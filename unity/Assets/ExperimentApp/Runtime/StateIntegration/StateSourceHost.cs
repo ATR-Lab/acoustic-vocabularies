@@ -15,6 +15,7 @@ namespace AcousticVocab.StateIntegration
     {
         public FoundationBootstrap foundation;
         public WorkcellRegistry workcell;
+        public string LoadedConfigurationSha256{get;private set;}public string LoadedNeutralSha256{get;private set;}
         public string Kind => source?.Kind ?? "unresolved";
         public bool Initialized => isActiveAndEnabled && source!=null && !failed;
         public bool ResetConfirmed => CheckExposureReady();
@@ -38,7 +39,8 @@ namespace AcousticVocab.StateIntegration
             {
                 if(foundation==null || workcell==null || foundation.Configuration==null) throw new StateFault("SOURCE_FOUNDATION_UNAVAILABLE");
                 var station=foundation.Configuration;
-                var setup=StateSourceConfiguration.Load(ReadBounded(Path.Combine(Application.persistentDataPath,"state-source.local.json"),65536));
+                byte[] setupBytes=File.ReadAllBytes(Path.Combine(Application.persistentDataPath,"state-source.local.json"));if(setupBytes.Length>65536)throw new StateFault("SOURCE_CONFIG_MISSING_OR_LARGE");
+                LoadedConfigurationSha256=SceneRegistry.Hash(setupBytes);var setup=StateSourceConfiguration.Load(new System.Text.UTF8Encoding(false,true).GetString(setupBytes));
                 if(workcell.ImportedLayout==null || workcell.LayoutSha256!=setup.LayoutHash) throw new StateFault("LAYOUT_HASH_MISMATCH");
                 var registry=setup.Registry((string)station["station_id"],workcell.ImportedLayout.text,workcell.CanonicalJointNames);
                 string kind=(string)station["robot_state_source"];
@@ -47,7 +49,7 @@ namespace AcousticVocab.StateIntegration
                 // Open evidence before reading the snapshot, so a bad snapshot
                 // hash or schema is recorded durably as well as in the player log.
                 journal=new StateSourceJournal(Path.Combine(Application.persistentDataPath,"operator-logs"),StateParser.Json(identity.text),registry,kind);
-                byte[] neutralBytes=setup.LoadNeutralBytes(Application.persistentDataPath);
+                byte[] neutralBytes=setup.LoadNeutralBytes(Application.persistentDataPath);LoadedNeutralSha256=SceneRegistry.Hash(neutralBytes);
                 double now=LiveSocketClient.Now;
                 snapshot=new SnapshotSource(neutralBytes,registry,now);
                 // The public wire intentionally has no movable root. Bind the

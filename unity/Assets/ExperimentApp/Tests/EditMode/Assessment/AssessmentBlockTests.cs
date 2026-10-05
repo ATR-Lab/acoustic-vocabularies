@@ -219,6 +219,19 @@ namespace AcousticVocab.Assessment.Tests
             var schedule=Schedule();var rows=new StagesJournal();rows.Append(new AssessmentRecord("forms_started",Hash,0,"forms"));
             Assert.Throws<AssessmentFault>(()=>new AssessmentStages(schedule,new Journal(),rows,new Clock(),()=>true));
         }
+        [Test] public void CompletedTrialRecoveryRejectsUnorderedOrIncompleteFormHistory()
+        {
+            var schedule=Schedule();var f=new Fixture(schedule);f.Start();f.Through(14750);
+            Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Complete));
+            foreach(var records in new[]{
+                new[]{new AssessmentRecord("forms_completed",Hash,0,"forms")},
+                new[]{new AssessmentRecord("forms_started",Hash,0,"forms"),new AssessmentRecord("forms_completed",Hash,1,"forms")},
+                new[]{new AssessmentRecord("forms_started",Hash,0,"forms"),new AssessmentRecord("rating",Hash,1,"forms","pleasantness",1)}})
+            {
+                var rows=new StagesJournal();foreach(var record in records)rows.Append(record);
+                Assert.Throws<AssessmentFault>(()=>new AssessmentStages(schedule,f.Journal,rows,f.Clock,()=>true));
+            }
+        }
         static Fixture OptionalFixture()
         {
             var schedule=new VisitSchedule(Hash,Package,"DEMO","W4",true,new[]{Schedule(study:"B",visit:"W4").Blocks[0],Schedule("no_cue",study:"B",visit:"W4").Blocks[0]},"B","A",Hash);

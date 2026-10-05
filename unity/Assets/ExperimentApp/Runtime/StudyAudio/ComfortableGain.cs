@@ -54,6 +54,11 @@ namespace AcousticVocab.StudyAudio
             }
             return gain;
         }
+        public static float RestoreVerified(byte[] bytes,string expectedRawSha256,string codedId)
+        {
+            if(bytes==null||bytes.Length==0||bytes.Length>1048576||PcmWave.Hash(bytes)!=expectedRawSha256||codedId==null||!Regex.IsMatch(codedId,@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z"))throw new AudioFault("GAIN_HISTORY_INVALID");
+            string text=new UTF8Encoding(false,true).GetString(bytes);if(string.IsNullOrWhiteSpace(text))throw new AudioFault("GAIN_HISTORY_INVALID");return Read(text,codedId);
+        }
         public float Restore(string codedId)
         {
             string path=FileFor(codedId);

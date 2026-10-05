@@ -4,12 +4,21 @@
     "AcousticVocab.SessionIntegration",
     "AcousticVocab.SessionEngine",
     "AcousticVocab.StudyAudio",
-    "AcousticVocab.FrameBudget"
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.SelectionMenus",
+    "AcousticVocab.Assessment",
+    "AcousticVocab.DataLogging"
   ],
   "includePlatforms": [
     "Editor"
   ],
   "optionalUnityReferences": [
     "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
   ]
 }
