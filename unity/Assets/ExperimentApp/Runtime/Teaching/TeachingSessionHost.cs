@@ -32,6 +32,8 @@ namespace AcousticVocab.Teaching
         string visibleOwner,visibleImageHash,scheduleHash,packageHash;
         bool failed,focused=true,paused,handlingFault;
         public bool Installed => factory!=null&&!failed&&isActiveAndEnabled;
+        public string FaultCode {get;private set;}
+        public string CleanupFailureCode {get;private set;}
         public event Action<string> Faulted;
         public TeachingContentFactory Install(TeachingCatalog catalog,ITeachingSelections selections,ITeachingBackend backend,
             AudioRouteCalibration qualifiedRoute,float storedComfortableGain,Action<LessonEvent> durableLessonSink,
@@ -118,14 +120,27 @@ namespace AcousticVocab.Teaching
         {if(visibleOwner!=owner)return;canvas.gameObject.SetActive(false);visibleOwner=null;visibleImageHash=null;}
         public void Highlight(string owner,LessonHighlight value)
         {if(visibleOwner!=owner)return;actionWords.color=value==LessonHighlight.Action?Color.yellow:Color.white;targetWords.color=value==LessonHighlight.Target?Color.yellow:Color.white;}
-        void Fail(string code)
+        internal void Fail(string code)
         {
             if(failed||handlingFault)return;handlingFault=true;failed=true;
-            try{if(canvas!=null)canvas.gameObject.SetActive(false);engine?.Fault(code);grammar?.Dispose();factory?.Dispose();Faulted?.Invoke(code);}finally{handlingFault=false;}
+            FaultCode=new SessionFault(code).Code;
+            try
+            {
+                var error=TeachingCleanup.Attempt(()=>{if(canvas!=null)canvas.gameObject.SetActive(false);},
+                    ()=>engine?.Fault(FaultCode),()=>grammar?.Dispose(),()=>factory?.Dispose(),
+                    ()=>player?.Abort(FaultCode),()=>TeachingCleanup.Notify(Faulted,FaultCode));
+                if(error!=null)CleanupFailureCode=TeachingCleanup.Code(error);
+            }
+            finally{handlingFault=false;}
         }
         void OnApplicationFocus(bool value){focused=value;if(!value&&(factory!=null||grammar!=null))Fail("LESSON_FOCUS_LOST");}
         void OnApplicationPause(bool value){paused=value;if(value&&(factory!=null||grammar!=null))Fail("LESSON_APPLICATION_PAUSED");}
         void OnDisable(){if(factory!=null||grammar!=null)Fail("LESSON_HOST_DISABLED");}
-        void OnDestroy(){grammar?.Dispose();factory?.Dispose();foreach(var texture in textures.Values)if(texture!=null)Destroy(texture);textures.Clear();}
+        void OnDestroy()
+        {
+            Fail("LESSON_HOST_DESTROYED");
+            TeachingCleanup.Attempt(()=>grammar?.Dispose(),()=>factory?.Dispose(),()=>player?.Abort("LESSON_HOST_DESTROYED"));
+            foreach(var texture in textures.Values)if(texture!=null)Destroy(texture);textures.Clear();
+        }
     }
 }

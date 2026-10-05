@@ -92,9 +92,17 @@ namespace AcousticVocab.Teaching
         public void Dispose()
         {
             if(disposed)return;
-            // Abort while the durable sink and ticket owner still exist.
-            foreach(var item in live.ToArray())item.Interrupt("LESSON_SHUTDOWN");
-            disposed=true;audio.Event-=AudioEvent;panel.Responded-=PanelResponse;panel.Faulted-=PanelFault;live.Clear();
+            // Latch first, but retain every durable observer and ticket owner
+            // until all aborts have been attempted, even if one sink failed.
+            disposed=true;Exception first=null;
+            try
+            {
+                foreach(var item in live.ToArray())
+                {var error=TeachingCleanup.Attempt(()=>item.Interrupt("LESSON_SHUTDOWN"));if(first==null)first=error;}
+                var fallback=TeachingCleanup.Attempt(()=>audio.Abort("LESSON_SHUTDOWN"),()=>backend.Interrupt());if(first==null)first=fallback;
+            }
+            finally{audio.Event-=AudioEvent;panel.Responded-=PanelResponse;panel.Faulted-=PanelFault;live.Clear();}
+            TeachingCleanup.ThrowFirst(first);
         }
         sealed class Content : ISlotContent
         {
@@ -143,7 +151,9 @@ namespace AcousticVocab.Teaching
             public void Interrupt(string boundedCode)
             {
                 if(interrupting||interrupted)return;interrupting=true;interrupted=true;
-                try{Timeline?.Interrupt(AudioPlayer.Now*1000);owner.view.Hide(Context.Item.TrialId);owner.panel.CloseAtBoundary();owner.audio.Abort(boundedCode);owner.backend.Interrupt();}
+                try{TeachingCleanup.ThrowFirst(TeachingCleanup.Attempt(()=>Timeline?.Interrupt(AudioPlayer.Now*1000),
+                    ()=>owner.view.Hide(Context.Item?.TrialId),()=>owner.panel.CloseAtBoundary(),
+                    ()=>owner.audio.Abort(boundedCode),()=>owner.backend.Interrupt()));}
                 finally{interrupting=false;}
             }
         }
