@@ -1,0 +1,68 @@
+name: Schedules
+
+on:
+  pull_request:
+    paths:
+      - "schedules/**"
+      - "tests/schedules/**"
+      - ".github/workflows/schedules.yml"
+  push:
+    branches: [main]
+    paths:
+      - "schedules/**"
+      - "tests/schedules/**"
+      - ".github/workflows/schedules.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schedules-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: schedules (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: schedules/uv.lock
+      - name: Install (Python 3.11, locked)
+        run: uv sync --project schedules --locked
+      - name: Lint and format
+        run: |
+          uv run --project schedules ruff check --config schedules/pyproject.toml schedules tests/schedules
+          uv run --project schedules ruff format --config schedules/pyproject.toml --check schedules tests/schedules
+      - name: Type check
+        working-directory: schedules
+        run: uv run mypy
+      - name: Tests
+        run: >
+          uv run --project schedules pytest --import-mode=importlib -p no:cacheprovider tests/schedules
+          --cov=av_schedules --cov-report=term --cov-fail-under=90
+      - name: DEMO determinism fingerprint
+        run: |
+          uv run --project schedules python - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import hashlib, platform, sys
+          from av_schedules import __version__
+          from av_schedules.output import EXAMPLE_DEMO_SEED, demo_example_files
+          files = demo_example_files()
+          joined = "".join(f"{k}:{hashlib.sha256(v).hexdigest()}\n" for k, v in sorted(files.items()))
+          print(f"### Schedules on {platform.system()} {platform.machine()}")
+          print(f"- Python {sys.version.split()[0]}, av-schedules {__version__}, seed `{EXAMPLE_DEMO_SEED}`")
+          print(f"- DEMO example digest `{hashlib.sha256(joined.encode()).hexdigest()}` ({len(files)} files)")
+          EOF
