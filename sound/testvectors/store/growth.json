@@ -3,6 +3,7 @@
     {
       "book_id": "DEMO-P1",
       "create_head": "a562b70f498c3a836fb9ff895e832f74bda1f5a71f863b07ed1bfa97c57b3b1d",
+      "create_line": "{\"book_id\":\"DEMO-P1\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P1\",\"record_sha256\":\"75542df0272d4526aa3a34058f7e88e7f377dca2534bbde9eeab25dff7564d5b\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"85389bc00f7e91c6bccbf22fd39dace876052a2b3f964059a4096419d28081f7\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -176,6 +177,7 @@
     {
       "book_id": "DEMO-P2",
       "create_head": "b4ca11efc6f6c6c79c6eabdb098e45e81d9b8d31fbad9da7007f6eb2ce5466ce",
+      "create_line": "{\"book_id\":\"DEMO-P2\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P2\",\"record_sha256\":\"8b065a9075e3c09b8f6e0d174a821526d0412643540402520314409afdf81283\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"85389bc00f7e91c6bccbf22fd39dace876052a2b3f964059a4096419d28081f7\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -349,6 +351,7 @@
     {
       "book_id": "DEMO-P3",
       "create_head": "396fff5e919287e7ddae7c72cbbad65fa4b9c08152bae1b153febd0b14529d27",
+      "create_line": "{\"book_id\":\"DEMO-P3\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P3\",\"record_sha256\":\"ffeba0c664a53b5e45a281a1cb753627159b8974877315054d366c9f159edc18\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"85389bc00f7e91c6bccbf22fd39dace876052a2b3f964059a4096419d28081f7\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",

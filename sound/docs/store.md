@@ -277,12 +277,13 @@ fixed clock and no reserved signals, the log bytes are identical on every platfo
 ```bash
 uv run --project sound python sound/tools/store_growth_demo.py          # report
 uv run --project sound python sound/tools/store_growth_demo.py --check  # vectors
+uv run --project sound python sound/tools/store_growth_demo.py --write  # regenerate
 ```
 
 A change to the record format, to canonical JSON, to rendered bytes, or to the
 code of the renderer or validator modules (it changes `renderer_hash` or
-`validator_hash` in line 0) changes these vectors. Regenerate them with `--write`
-in the same pull request and say why.
+`validator_hash` in line 0) changes these vectors and the example in section 2.
+`--write` regenerates both; do it in the same pull request and say why.
 
 ## 7. Storage policy
 

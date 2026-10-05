@@ -720,9 +720,10 @@ def test_growth_vectors_reproduce_on_this_platform():
     assert "**8/8**" in report and "**12/12**" in report and "**NO**" not in report
     # The example line in sound/docs/store.md is line 0 of DEMO-P1 in these vectors.
     doc = (SOUND / "docs" / "store.md").read_text(encoding="utf-8")
+    assert tool.document(fresh, doc) == doc
     [example] = [x for x in doc.splitlines() if x.startswith('{"book_id":"DEMO-P1"')]
     assert hashlib.sha256(example.encode("ascii")).hexdigest() == fresh["books"][0]["create_head"]
-    assert fresh["books"][0]["create_head"] in doc
+    assert f"`{fresh['books'][0]['create_head']}` (`create_head` in" in doc
 
 
 # --- Tampering ---------------------------------------------------------------------------
