@@ -1,0 +1,7 @@
+{
+  "name": "AcousticVocab.Orientation.PlayModeTests",
+  "references": ["AcousticVocab.Orientation", "AcousticVocab.ResponsePanel", "UnityEngine.TestRunner"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
+}

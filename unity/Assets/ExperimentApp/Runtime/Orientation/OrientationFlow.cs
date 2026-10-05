@@ -25,7 +25,7 @@ namespace AcousticVocab.Orientation
         readonly OrientationPlan plan;readonly Func<double> clock;readonly Action<JObject> persist;
         readonly List<bool> first=new List<bool>(),second=new List<bool>();
         double last=-1, demoStart;int card,index;bool demoComplete;
-        string requestId;bool handling;
+        string requestId;PanelRequest activeRequest;bool handling;
         public OrientationStage Stage { get; private set; }
         public int Attempt { get; private set; }=1;
         public int Reexplanations { get; private set; }
@@ -87,17 +87,17 @@ namespace AcousticVocab.Orientation
             if(Stage!=OrientationStage.Practice || requestId!=null) throw new OrientationFault("ORIENTATION_PRACTICE_STATE");
             double now=Now();requestId="orientation-"+Attempt+"-"+index;
             Write("practice_open",now,new JObject { ["item_id"]=CurrentItem.Id,["trial_id"]=requestId,["ordinal"]=index+1 });
-            return new PanelRequest(requestId,PanelMode.Practice,PanelRole.Command,now,plan.PracticeWindowMs);
+            return activeRequest=new PanelRequest(requestId,PanelMode.Practice,PanelRole.Command,now,plan.PracticeWindowMs);
         }
         public void Respond(PanelResponse response)
         {
-            if(handling || Stage!=OrientationStage.Practice || response==null || requestId==null || response.Request.TrialId!=requestId || response.Request.Mode!=PanelMode.Practice || response.Request.Role!=PanelRole.Command)
+            if(handling || Stage!=OrientationStage.Practice || response==null || requestId==null || !ReferenceEquals(response.Request,activeRequest) || response.Request.Mode!=PanelMode.Practice || response.Request.Role!=PanelRole.Command)
                 throw new OrientationFault("ORIENTATION_RESPONSE_STATE");
             handling=true;
             try
             {
                 double now=Now();bool correct=response.Code==ResponseCode.Commit && response.Target==CurrentItem.Target && response.Action==CurrentItem.Action;
-                Write("practice_response",now,new JObject { ["item_id"]=CurrentItem.Id,["ordinal"]=index+1,["trial_id"]=requestId,["response_code"]=response.Code.ToString(),
+                Write("practice_response",now,new JObject { ["item_id"]=CurrentItem.Id,["ordinal"]=index+1,["trial_id"]=requestId,["response_code"]=response.Code==ResponseCode.Commit?"COMMIT":response.Code==ResponseCode.DontKnow?"DONT_KNOW":"TIMEOUT",
                     ["response_target"]=response.Target,["response_action"]=response.Action,["selected_target"]=response.SelectedTarget,["selected_action"]=response.SelectedAction,["response_mono_ms"]=response.ResponseMonoMs,["correct"]=correct });
                 (Attempt==1?first:second).Add(correct);LastCorrect=correct;Stage=OrientationStage.Feedback;
             }
@@ -110,7 +110,7 @@ namespace AcousticVocab.Orientation
             if(values.Any(x=>!x) && Attempt==1) { Stage=OrientationStage.Reexplanation;return; }
             var code=values.All(x=>x)?Attempt==1?EligibilityCode.PassFirst:EligibilityCode.PassSecond:EligibilityCode.Fail;
             var result=new OrientationOutcome(code,plan.EngineeringDraft,now,first,second);
-            Write("eligibility_outcome",now,new JObject { ["outcome"]=code.ToString(),["first_correct"]=new JArray(first),["second_correct"]=new JArray(second),["reexplanations"]=Reexplanations,["preallocation"]=true,["learning_result"]=false });
+            Write("eligibility_outcome",now,new JObject { ["outcome"]=code==EligibilityCode.PassFirst?"pass_first":code==EligibilityCode.PassSecond?"pass_second":"fail",["first_correct"]=new JArray(first),["second_correct"]=new JArray(second),["reexplanations"]=Reexplanations,["preallocation"]=true,["learning_result"]=false });
             Outcome=result;Stage=OrientationStage.RecordedOutcome;
             try { OutcomeRecorded?.Invoke(result); } catch { Stage=OrientationStage.Fault;throw new OrientationFault("ORIENTATION_OUTCOME_DELIVERY_FAILED"); }
         }

@@ -56,8 +56,9 @@ jobs:
           G1_DESCRIPTION_JSON: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
         run: |
           $base = 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Configure -ProtocolVersion engineering-pending-review -BuildId "$base-configure"
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Test -ProtocolVersion engineering-pending-review -BuildId "$base-tests"
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target TestPlayMode -ProtocolVersion engineering-pending-review -BuildId "$base-playmode"
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene StateSources -G1Description $env:G1_DESCRIPTION_JSON -Target Android -ProtocolVersion engineering-pending-review -BuildId "$base-android"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Orientation -G1Description $env:G1_DESCRIPTION_JSON -Target Configure -ProtocolVersion engineering-pending-review -BuildId "$base-configure"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Orientation -G1Description $env:G1_DESCRIPTION_JSON -Target Test -ProtocolVersion engineering-pending-review -BuildId "$base-tests"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Orientation -G1Description $env:G1_DESCRIPTION_JSON -Target TestPlayMode -ProtocolVersion engineering-pending-review -BuildId "$base-playmode"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Orientation -G1Description $env:G1_DESCRIPTION_JSON -Target Android -ProtocolVersion engineering-pending-review -BuildId "$base-android"
       # Raw Unity logs can contain runner paths/account details; publish sanitized derivatives after review.
+

@@ -81,7 +81,16 @@ namespace AcousticVocab.Orientation
                 double span=OrientationPlan.Number(capture["measured_first_to_last_host_seconds"]);OrientationPlan.Require(span>0 && span<=duration,"ORIENTATION_DEMO_DURATION");
                 string file=OrientationSetup.Basename(capture["file"],"ndjson"),hash=OrientationPlan.Text(capture["sha256"],64);
                 byte[] data=OrientationSetup.Read(Path.Combine(directory,file),64*1024*1024);total+=data.Length;OrientationPlan.Require(total<=128*1024*1024,"ORIENTATION_DEMO_MEMORY_BUDGET");
-                OrientationPlan.Require(OrientationSetup.Utf8(data).Split('\n').Count(line=>!string.IsNullOrWhiteSpace(line))==300,"ORIENTATION_DEMO_FRAME_COUNT");
+                string[] lines=OrientationSetup.Utf8(data).Split('\n').Where(line=>!string.IsNullOrWhiteSpace(line)).ToArray();
+                OrientationPlan.Require(lines.Length==300,"ORIENTATION_DEMO_FRAME_COUNT");
+                var frames=lines.Select(line=>StateParser.Parse(line,registry)).ToArray();
+                var intervals=new List<double>();
+                for(int i=1;i<frames.Length;i++) { OrientationPlan.Require(frames[i].PublishedNs>frames[i-1].PublishedNs,"ORIENTATION_DEMO_TIMESTAMPS");intervals.Add((frames[i].PublishedNs-frames[i-1].PublishedNs)/1e6); }
+                OrientationPlan.Require(Math.Abs((frames[frames.Length-1].PublishedNs-frames[0].PublishedNs)/1e9-span)<=1e-9,"ORIENTATION_DEMO_TIMING_METADATA");
+                var stats=capture["interval_ms"] as JObject;OrientationPlan.Keys(stats,"min","max","p95","mean");var ordered=intervals.OrderBy(x=>x).ToArray();
+                var expected=new[]{ordered[0],ordered[ordered.Length-1],ordered[(95*ordered.Length+99)/100-1],intervals.Average()};
+                int stat=0;foreach(string key in new[]{"min","max","p95","mean"})OrientationPlan.Require(Math.Abs(OrientationPlan.Number(stats[key])-expected[stat++])<=1e-6,"ORIENTATION_DEMO_TIMING_METADATA");
+                OrientationPlan.Require(ordered[ordered.Length-1]<=250,"ORIENTATION_DEMO_GAP");
                 // Validate every retained timestamp/frame against the real #62 parser and exact neutral before showing any meaning.
                 var source=new SnapshotSource(neutral,registry,0);source.PlayTrajectory(data,hash,0,duration);
                 results.Add(action,new OrientationDemo(action,target,hash,data,duration,30));
