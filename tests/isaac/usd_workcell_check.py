@@ -15,6 +15,8 @@ def run():
     layout=neutral_layout();stage=Usd.Stage.CreateInMemory()
     access=build_workcell(stage,layout);baseline=access.read_state();environment=access.read_environment()
     assert preconditions(layout,baseline)['possible_count']==32
+    public=access.read_public_state()
+    assert all(public[k]=={field:value for field,value in baseline[k].items() if field not in ('collision_enabled','linear_velocity_m_s','angular_velocity_rad_s')} for k in baseline)
     changed=deepcopy(baseline)
     for value in changed.values():
         value['visible']=False;value['enabled']=False;value['collision_enabled']=True
@@ -47,6 +49,11 @@ def run():
         scene=Path(folder)/'workcell.usda';stage.GetRootLayer().Export(str(scene))
         reopened=Usd.Stage.Open(str(scene));assert StateAccessors(reopened,layout).read_state()==baseline
         again=Path(folder)/'again.usda';reopened.GetRootLayer().Export(str(again));assert scene.read_bytes()==again.read_bytes()
+    # Hidden child geometry is not represented by root visibility and must fail.
+    UsdGeom.Imageable(stage.GetPrimAtPath('/World/Workcell/Objects/tray_A__card/Visual/Card')).GetVisibilityAttr().Set('invisible')
+    try: access.read_public_state()
+    except ValueError: pass
+    else: raise AssertionError('Unexpected child visibility accepted')
     print(json.dumps({'passed':True,'semantic_objects':len(baseline),'preconditions':32,'checks':['actual USD state mutation','atomic invalid rejection','stale card visual rejection','appearance readback and restore','stable USD save/reload bytes']}))
 
 

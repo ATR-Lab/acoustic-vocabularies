@@ -62,6 +62,20 @@ class StateAccessors:
                          self._collision_prims(stage.GetPrimAtPath(definition["prim_path"]))]
             for identifier, definition in self.definitions.items()}
         self._structure_changed = False
+        self._allowed_changes = set()
+        for identifier, definition in self.definitions.items():
+            path=definition["prim_path"]
+            names=["xformOp:translate","xformOp:orient","visibility","workcell:enabled",
+                   "workcell:linearVelocity","workcell:angularVelocity"]
+            names += ["workcell:"+key for key in definition["state"]]
+            self._allowed_changes.update(path+"."+name for name in names)
+            for key,operation in (("card_face","rotateX"),("arrow_angle_rad","rotateZ"),("lid_open_fraction","rotateY")):
+                if key in definition["state"]: self._allowed_changes.add(path+"/Visual.xformOp:"+operation)
+            self._allowed_changes.update(str(attribute.GetPath()) for attribute in self._collision_attributes[identifier])
+        for name in layout["materials"]:
+            self._allowed_changes.update("/World/Workcell/Materials/"+name+"/Shader.inputs:"+key for key in ("diffuseColor","roughness"))
+        for light in layout["lights"]:
+            self._allowed_changes.update("/World/Workcell/Lights/"+light["id"]+".inputs:"+key for key in ("color","intensity"))
         from pxr import Tf, Usd
         self._notice = Tf.Notice.Register(Usd.Notice.ObjectsChanged, self._on_stage_changed, stage)
 
@@ -69,6 +83,10 @@ class StateAccessors:
         # Cached geometry handles remain safe only while topology is unchanged.
         if any(path.IsPrimPath() and str(path).startswith("/World/Workcell") for path in notice.GetResyncedPaths()):
             self._structure_changed = True
+        for path in notice.GetChangedInfoOnlyPaths():
+            value=str(path)
+            if value.startswith("/World/Workcell") and value not in self._allowed_changes:
+                self._structure_changed = True
 
     def read_public_state(self):
         from pxr import UsdGeom, UsdPhysics
