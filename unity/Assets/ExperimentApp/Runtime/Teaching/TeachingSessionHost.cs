@@ -67,12 +67,21 @@ namespace AcousticVocab.Teaching
         // trial replay. The provided gate must include independently verified
         // neutral/control readiness. The host adds focus, input and foundation.
         public void BeginGrammar(GrammarAssets assets,AudioRouteCalibration route,float gain,Func<bool> independentNeutralControlGate,
-            Action<Newtonsoft.Json.Linq.JObject> durableGrammarSink,Action<AudioPlaybackEvent> durableAudioSink)
+            Action<Newtonsoft.Json.Linq.JObject> durableGrammarSink,Action<AudioPlaybackEvent> durableAudioSink,Action<string> gateRefused=null)
         {
             LessonTimeline.Require(factory==null&&grammar==null&&!uninstalled&&!failed&&isActiveAndEnabled&&foundation!=null&&foundation.Ready&&panel!=null&&panel.ReadyForTrial&&source!=null&&source.CheckExposureReady()&&Faulted!=null&&independentNeutralControlGate!=null,"GRAMMAR_HOST_NOT_READY");
             if(canvas==null)CreateView();
+            bool Gate()
+            {
+                // Preserve the original short-circuit order and source reads.
+                // Only a failed check emits its bounded diagnostic.
+                string code=!isActiveAndEnabled?"GRAMMAR_HOST_INACTIVE":!focused?"GRAMMAR_FOCUS_LOST":paused?"GRAMMAR_PAUSED":failed?"GRAMMAR_HOST_FAULTED":
+                    !foundation.Ready?"GRAMMAR_FOUNDATION_NOT_READY":!panel.ReadyForTrial?"GRAMMAR_INPUT_NOT_READY":
+                    !source.CheckExposureReady()?"GRAMMAR_SOURCE_NOT_READY":!independentNeutralControlGate()?"GRAMMAR_PRIVATE_CONTROL_NOT_READY":null;
+                if(code==null)return true;gateRefused?.Invoke(code);return false;
+            }
             grammar=new GrammarFamiliarization(assets,player,route,gain,
-                ()=>isActiveAndEnabled&&focused&&!paused&&!failed&&foundation.Ready&&panel.ReadyForTrial&&source.CheckExposureReady()&&independentNeutralControlGate(),
+                Gate,
                 ShowGrammar,durableGrammarSink,durableAudioSink,Fail);
         }
         void ShowGrammar(string phase)

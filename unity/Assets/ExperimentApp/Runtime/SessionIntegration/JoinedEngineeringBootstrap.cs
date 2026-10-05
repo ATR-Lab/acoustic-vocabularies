@@ -303,7 +303,29 @@ namespace AcousticVocab.SessionIntegration
                 if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
                 if(Ready)wasReady=true;
             }
-            bool ControlReady=>control!=null&&reset!=null&&control.ResetAcknowledged(reset)&&renderer&&host.source.CheckExposureReady()&&host.foundation.Ready&&host.panel.ReadyForTrial&&host.frames.Ready&&(host.store==null||host.store.OldHashesVerified);
+            bool ControlReady=>ControlReadinessFailure()==null;
+            string ControlReadinessFailure()
+            {
+                // The original condition order is retained; a failed check
+                // does not trigger extra source or private-control reads.
+                if(control==null)return "GRAMMAR_CONTROL_MISSING";
+                if(reset==null)return "GRAMMAR_RESET_NOT_REQUESTED";
+                if(!control.ResetAcknowledged(reset))return "GRAMMAR_RESET_ACK_NOT_CURRENT";
+                if(!renderer)return "GRAMMAR_RENDER_RESET_NOT_CONFIRMED";
+                if(!host.source.CheckExposureReady())return "GRAMMAR_SOURCE_NOT_READY";
+                if(!host.foundation.Ready)return "GRAMMAR_FOUNDATION_NOT_READY";
+                if(!host.panel.ReadyForTrial)return "GRAMMAR_INPUT_NOT_READY";
+                if(!host.frames.Ready)return "GRAMMAR_FRAME_CAPTURE_NOT_READY";
+                if(host.store!=null&&!host.store.OldHashesVerified)return "GRAMMAR_STORE_NOT_VERIFIED";
+                return null;
+            }
+            void GrammarGateRefused(string code)=>host.audit.Write("module",new JObject{["kind"]="grammar_gate_refused",["code"]=code});
+            bool GrammarControlGate()
+            {
+                string code=ControlReadinessFailure();
+                if(code==null&&!control.NeutralHoldHealthy)code="GRAMMAR_PRIVATE_HOLD_NOT_CURRENT";
+                if(code==null)return true;GrammarGateRefused(code);return false;
+            }
             bool AwaitingGrammar=>kind==JoinedModuleKind.Teaching&&host.grammarStage!=null&&!host.grammarStage.Complete;
             bool AwaitingGrammarStart=>AwaitingGrammar&&!host.grammarStage.Started;
             bool AwaitingYokedAnchor=>kind==JoinedModuleKind.Menus&&host.yokedAuthority!=null&&host.yokedAuthority.Replay==null;
@@ -315,7 +337,7 @@ namespace AcousticVocab.SessionIntegration
                 if(!AwaitingGrammarStart||!host.assets.Route.CanScheduleSoftware)throw new SessionFault("JOIN_GRAMMAR_NOT_READY");
                 host.grammarStage.Begin(request); // consumes exposure before any player setup
                 EnsureTeachingView();
-                teachingView.BeginGrammar(host.assets.Grammar,host.assets.Route,host.assets.Gain,()=>ControlReady&&control.NeutralHoldHealthy,host.grammarStage.Observe,host.grammarStage.Audio);
+                teachingView.BeginGrammar(host.assets.Grammar,host.assets.Route,host.assets.Gain,GrammarControlGate,host.grammarStage.Observe,host.grammarStage.Audio,GrammarGateRefused);
                 host.Report("JOIN_GRAMMAR_RUNNING");return false;
             }
             void EnsureTeachingView()

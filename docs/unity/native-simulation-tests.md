@@ -9,15 +9,34 @@ is created by a simulated visit.
 The current Windows build is an engineering test artifact. A successful build
 does not establish that a native visit ran. The first attempted launch of build
 `simulation-native-003` was blocked by Windows Application Control before a
-process or player log existed. The installed policy must permit execution through
-the normal operator approval path before native validation can proceed. The
-implementation does not alter that policy or provide an alternate launch path.
+process or player log existed. That historical blocked attempt is retained.
+The owner subsequently changed the OS policy, and build004 was launched through
+the normal path; the application did not change the policy or bypass it.
 The actual backend and owned relays were subsequently stopped cleanly, and the
 four temporary persistent files were restored. A later approved attempt requires
 fresh backend readiness, its actual control-session pin, and newly pinned run
 configuration; the blocked attempt's configuration is retained as evidence.
-The later `simulation-native-004` build adds durable post-cleanup evidence and
-passed compilation and focused component tests. It has not been launched.
+The later `simulation-native-004` build was actually exercised with Meta XR
+Simulator. Missing-configuration startup refused admission. A configured smoke
+reached explicit-resume readiness, then switching focus to the Simulator window
+produced `JOIN_FOCUS_LOST`. A separate A D0 attempt accepted the normal grammar
+Start command, durably recorded one reserved-chime `AUDIO_REQUESTED`, and failed
+with `GRAMMAR_FAILED` before a callback or study cue. Neither attempt completed a
+visit. Cleanup and export succeeded with `complete:false`. An initial overlap
+between the smoke and full-attempt processes is retained in the evidence; the
+smoke process ended more than one minute before the grammar request. These runs
+are not a clean single-client timing benchmark.
+
+Build005 preserves the original `AudioFault` code instead of masking it as
+`GRAMMAR_FAILED`, and records bounded `grammar_gate_refused` codes when a grammar
+exposure condition fails. The order, thresholds, and successful-path reads of
+those conditions are unchanged. Its focused tests reproduce gate revocation and
+audio-path change after durable request recording, with zero callbacks and no
+replay. The actual build004 refusal cause remains unresolved until a fresh native
+diagnostic run. See [diagnostic validation](native-grammar-diagnostics.validation.json)
+for the separate build005 inventory and test evidence. The earlier
+[validation record](native-simulation-validation.json) is a historical snapshot
+through the blocked build003 attempt and pre-launch build004 checks.
 
 ## Build and provision
 

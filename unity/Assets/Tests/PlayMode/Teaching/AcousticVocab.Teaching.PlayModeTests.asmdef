@@ -1,5 +1,7 @@
 {
   "name": "AcousticVocab.Teaching.PlayModeTests",
   "references": ["AcousticVocab.Teaching", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio"],
-  "optionalUnityReferences": ["TestAssemblies"]
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
 }
