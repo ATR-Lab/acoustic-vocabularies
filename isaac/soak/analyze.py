@@ -66,7 +66,7 @@ def analyze_events(events):
         previous = t
         kind = event["kind"]
         if kind == "heartbeat":
-            require(event.get("block") in {"teaching", "protected", "paused"}, "Unknown block")
+            require(event.get("block") in {"teaching", "selection", "protected", "paused"}, "Unknown block")
             require(type(event.get("block_id")) is str and event["block_id"], "Block identity missing")
             require(finite(event.get("state_age_ms")) and finite(event.get("frame_age_ms")), "Missing actual receiver ages")
             require(type(event.get("mirrored_frames")) is int and event["mirrored_frames"] >= 0, "Missing mirror counter")
@@ -82,7 +82,7 @@ def analyze_events(events):
                 if event["state_age_ms"] > STALE_MS: failures.append("protected_stale_sample")
                 if event["frame_age_ms"] > STALE_MS: failures.append("protected_freeze_sample")
         elif kind in {"stale_gap", "frame_freeze"}:
-            require(event.get("block") in {"teaching", "protected", "paused"} and finite(event.get("duration_ms")), "Invalid gap event")
+            require(event.get("block") in {"teaching", "selection", "protected", "paused"} and finite(event.get("duration_ms")), "Invalid gap event")
             if event["duration_ms"] > STALE_MS:
                 stale += kind == "stale_gap"
                 freezes += kind == "frame_freeze"

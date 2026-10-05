@@ -1,6 +1,6 @@
 # O5.2.7 evidence preparation
 
-The eight-hour multi-station soak has **not run**. This package is an evidence analyzer and collection contract, not a station driver, fault injector, signed G2 gate or substitute for actual Unity mirroring. Its unit tests use synthetic in-memory records and make no elapsed-time or hardware claim. Phase 2 development authorization does not authorize unplugging participant stations, changing Wi-Fi, killing unrelated processes or signing a gate.
+The eight-hour multi-station soak has **not run**. This package contains the evidence analyzer, continuous Unity receiver monitor, native byte verifier, causal-clock collection driver, and read-only host sampler. It is not a fault injector or signed G2 gate. The tests use explicit synthetic fixtures and make no eight-hour or hardware claim. Phase 2 development authorization does not authorize unplugging participant stations, changing Wi-Fi, killing unrelated processes or signing a gate.
 
 Run the eventual analysis with standard Python:
 
@@ -12,7 +12,7 @@ Use a fresh output path; existing reports are never overwritten. Exit 0 means `C
 
 ## Collection and normalization contract
 
-Freeze an explicit inventory of every intended station, scene/snapshot hashes, receiver-detector source hash and client type before a real run. Record which stations use a justified headset-equivalent client. Prepare non-study synthetic schedules through the real Unity application, fresh reset acknowledgements before trials, protected lock probes, and a continuous receiver stale/freeze detector. These driver and normalization adapters still need implementation and validation; this PR does not claim they exist.
+Freeze an explicit inventory of every intended station, scene/snapshot hashes, receiver-detector source hash and client type before a real run. Record which stations use a justified headset-equivalent client. Prepare non-study synthetic schedules through the real Unity application, fresh reset acknowledgements before trials, and protected lock probes. The receiver monitor and observation driver are implemented; complete schedule input and command/data semantic normalization remain integration requirements. The collection driver deliberately emits `native_collection_only` and `NO_GO`, even when its measured window completes. It never substitutes a heartbeat for a reset, lock rejection, retained response or audible cue.
 
 Record a common `coordinator_clock_id` and each station's `coordinator_start_s`/`coordinator_end_s` in that actual coordinator clock. Their shared overlap must be at least eight hours; sequential eight-hour station runs cannot pass. Retain the coordinator's observations in the native logs and review alignment with the receiver/resource windows. Do not invent clock offsets to populate these fields.
 
@@ -22,7 +22,7 @@ Normalized JSONL events have contiguous integer `seq`, finite nondecreasing `t_s
 
 | Kind | Additional fields |
 |---|---|
-| `heartbeat` | `block` teaching/protected/paused, `block_id`, `state_age_ms`, `frame_age_ms`, monotonic `mirrored_frames` |
+| `heartbeat` | `block` teaching/selection/protected/paused, `block_id`, `state_age_ms`, `frame_age_ms`, monotonic `mirrored_frames` |
 | `stale_gap`, `frame_freeze` | `block`, measured `duration_ms` |
 | `record_commit` | committed durable record `sha256` |
 | `fault` | unique `fault_id`, `fault_type` isaac_crash/wifi_drop/uplink_disconnect, `last_committed_sha256` |
@@ -44,4 +44,4 @@ Before actual operation, obtain approval for the named station set, power/coolin
 
 During recovery, keep exposure paused until the source restarts, the correct neutral snapshot resets successfully, and the operator resumes. Preserve audible-cue history. Collect and retain all source logs, hashes and power/thermal events. Run analysis only after every station's full window ends. Any failed criterion recommends no-go for live Isaac; the issue's recorded-trajectory/snapshot fallback needs separate validated artifacts and an apparatus amendment, never an automatic substitution.
 
-Actual eight-hour station operation, receiver normalization/driver integration, physical fault injections, headset endurance, native-log review and signed G2 remain open. `report-template.md` intentionally contains no invented measurements.
+Actual eight-hour station operation, complete command/data normalization and automatic synthetic schedule inputs, physical fault injections, headset endurance, native-log review and signed G2 remain open. `report-template.md` intentionally contains no invented measurements. See [native collection commands and integration](collection.md) for the executable path and its explicit boundaries.
