@@ -60,6 +60,13 @@ namespace AcousticVocab.SessionIntegration.Tests
         {Version2();value["yoked_start"]["anchor_mono_ms"]=10000;Assert.Throws<SessionFault>(()=>Load());Version2();value["yoked_start"]["policy"]="automatic_now";Assert.Throws<SessionFault>(()=>Load());Version2();value["yoked_start"]["lead_ms"]=5000.5;Assert.Throws<SessionFault>(()=>Load());}
         [Test]public void Version1DoesNotGainAnchorAuthority()
         {var config=Load();Assert.That(config.ConfigVersion,Is.EqualTo(1));Assert.That(config.YokedAnchorLeadMs,Is.Null);Assert.That(config.TryFile("yoked_active_schedule",out _),Is.False);value["yoked_start"]=JValue.CreateNull();Assert.Throws<SessionFault>(()=>Load());}
+        [Test]public void Version3PinsGrammarReviewWithoutPromotingPriorVersions()
+        {
+            Assert.That(Load().TryFile("grammar_review",out _),Is.False);Version2();Assert.That(Load().TryFile("grammar_review",out _),Is.False);
+            value["version"]=3;value["files"]["grammar_review"]=JValue.CreateNull();Assert.That(Load().TryFile("grammar_review",out _),Is.False);
+            value["files"]["grammar_review"]=value["files"]["station"].DeepClone();Assert.That(Load().RequireFile("grammar_review").ReadVerified(),Is.Not.Empty);
+            value["version"]=2;Assert.Throws<SessionFault>(()=>Load());
+        }
         void Refused(Action<JObject> change,string code=null)
         {
             change(value);var fault=Assert.Throws<SessionFault>(()=>Load());if(code!=null)Assert.That(fault.Code,Is.EqualTo(code));

@@ -35,6 +35,7 @@ namespace AcousticVocab.SessionIntegration
         public IReadOnlyDictionary<string,JoinedModuleKind> Blocks{get;}public TeachingCatalog Teaching{get;private set;}public MenuCatalog Menus{get;private set;}
         public AssessmentScripts Scripts{get;private set;}public SpeechBank Speech{get;private set;}public AudioRouteCalibration Route{get;private set;}public float Gain{get;private set;}
         public bool RatingsReviewed{get;private set;}
+        public GrammarAssets Grammar{get;private set;}public JoinedGrammarReview GrammarReview{get;private set;}
         public VisitSchedule YokedActiveSchedule{get;private set;}
         public MenuLedgerBinding YokedActiveBinding{get;private set;}
         public string MissingAuthority{get;private set;}readonly byte[] permutation;public byte[] Permutation=>(byte[])permutation.Clone();
@@ -67,6 +68,13 @@ namespace AcousticVocab.SessionIntegration
                 if(!Have("teaching_manifest","teaching_review"))return;
                 Teaching=TeachingCatalog.Load(config.Directory("teaching"),config.RequireFile("teaching_manifest").Sha256,config.RequireFile("teaching_review").Sha256,Package,Schedule,manifest,Permutation,
                     config.TryFile("teaching_allocation",out var allocation)?allocation.ReadVerified():null,allocation?.Sha256);
+            }
+            if(Blocks.Values.Contains(JoinedModuleKind.Teaching))
+            {
+                if(!Have("grammar_review","reserved_registry"))return;
+                if(config.Directory("grammar")==null){MissingAuthority="JOIN_GRAMMAR_DIRECTORY_MISSING";return;}
+                Grammar=GrammarAssets.Load(config.Directory("grammar"),Read("reserved_registry"),config.RequireFile("reserved_registry").Sha256);
+                GrammarReview=JoinedGrammarReview.Load(Read("grammar_review"),config.RequireFile("grammar_review").Sha256,Grammar.RegistrySha256,Teaching.MethodologySha256);
             }
             if(Blocks.Values.Contains(JoinedModuleKind.Menus))
             {

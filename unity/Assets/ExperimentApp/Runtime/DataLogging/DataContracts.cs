@@ -90,6 +90,9 @@ namespace AcousticVocab.DataLogging
         {
             switch(kind)
             {
+                case "grammar_stage":
+                    DataJson.Require(c.OpportunityId==null&&c.AttemptId==null&&c.AudioRequestId==null,"DATA_GRAMMAR_CONTEXT");
+                    GrammarStageCodec.Validate(p);break;
                 case "assessment_stage":
                     DataJson.Require(c.OpportunityId==null&&c.AttemptId==null&&c.AudioRequestId==null,"DATA_ASSESSMENT_CONTEXT");
                     try{AcousticVocab.Assessment.AssessmentRecordCodec.FromJson(p);}catch{throw new DataFault("DATA_ASSESSMENT_PAYLOAD");}break;
@@ -124,7 +127,7 @@ namespace AcousticVocab.DataLogging
                 default:throw new DataFault("DATA_EVENT_KIND");
             }
         }
-        static void Audio(JObject p)
+        internal static void Audio(JObject p)
         {
             DataJson.Keys(p,"code","audio_id","waveform_sha256","pcm_sha256","action_pcm_sha256","referent_pcm_sha256","observed_mono_ms","request_mono_ms","scheduled_mono_ms","scheduled_dsp_s","onset_estimate_mono_ms","onset_uncertainty_ms","first_callback_dsp_s","delivered_samples","callback_count");
             DataJson.Require(DataJson.Code(DataJson.Text(p["code"]))&&DataJson.Id(DataJson.Text(p["audio_id"]))&&DataJson.Hash(DataJson.Text(p["pcm_sha256"])));

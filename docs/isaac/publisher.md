@@ -64,3 +64,97 @@ samples for independent JSON Schema validation. This measures paced publisher
 timing, not maximum simulator throughput, Wi-Fi latency, headset rendering or
 audio onset. A full run needs at least 3,600 measured seconds; shortened tests
 can report diagnostic timing but cannot pass the one-hour acceptance screen.
+
+## Actual revised-scene run
+
+The completed 3,600.012913-second run published and locally received 107,917
+actual frames with contiguous sequence and advancing simulation. Both retained
+samples passed independent JSON Schema validation, and the CSV summary was
+independently recomputed. The strict timing/rate result is **FAIL**: 84 missed
+deadlines and 3.575965 ms p99 absolute period error exceed the zero-miss and
+3.333333 ms error limits. Median interval was 33.340162 ms; maximum gap was
+45.270001 ms. There were no queue overwrites or gaps above 250 ms.
+
+The separate 120.015493-second unpaced disconnect diagnostic also **FAILS** its
+5% screen. Physics throughput was 83.033333 steps/s without a client,
+74.066667 connected, 83.333333 disconnected and 74.3 reconnected. The initial
+connection reduced throughput by 10.798876%; reconnect remained 10.517864%
+below the initial baseline. No main-loop client wait occurred, but the local
+receiver and Python worker share the process, so this run cannot isolate their
+individual costs. No threshold was relaxed and no failed run was discarded.
+
+The [sanitized measured record](publisher/actual-hour-results.json) retains
+metrics, phase comparisons, exact scene/snapshot binding and raw-artifact hashes.
+This was an unprotected engineering workload on the documented Ubuntu 24.04
+deviation. It does not qualify neutral hold, network clocks, headset rendering,
+audio or G2. Protected streaming and the Windows receiver are measured separately.
+
+## Frozen publisher with a separate diagnostic receiver
+
+The second completed run changed only the strict diagnostic receiver from a
+thread in the simulator process to a separate process. Publisher protocol,
+runtime, transport and analyzer bytes matched the original run. The scene,
+snapshot, 30 Hz deadline policy, 60 Hz physics and qualification limits stayed
+fixed. Neither the experimental workcell handle cache nor the later reset
+comparator refactor was present. The receiver still validated every complete
+frame and checked sequence continuity.
+
+| Measurement | Original receiver thread | Separate receiver process |
+|---|---:|---:|
+| Measured duration (s) | 3600.012913 | 3600.013084 |
+| Published and received frames | 107917 | 108001 |
+| Missed deadlines | 84 | 0 |
+| P99 absolute period error (ms) | 3.575965 | 6.069881 |
+| Maximum gap (ms) | 45.270001 | 43.906904 |
+| Queue overwrites / gaps above 250 ms | 0 / 0 | 0 / 0 |
+| Strict timing/rate screen | FAIL | FAIL |
+
+The rerun completed 216,002 actual physics steps and received all 108,001 frames
+with no sequence gap or publisher fault. Independent CSV analysis reproduced
+the summary, and both retained samples passed JSON Schema validation. Its p99
+absolute period error still exceeds the unchanged 3.333333 ms limit. Zero missed
+deadlines does not override that failure. Sequential runs include background
+workload variation, so the table does not establish a causal jitter improvement.
+
+The separate 120.020712-second **unpaced disconnect diagnostic passed** all five
+5% comparisons. Its no-client, connected, disconnected and reconnected phases
+measured 82.833333, 80.266667, 83.166667 and 80.6 physics steps/s. Initial connection
+was 3.098592% below baseline; reconnect was 2.696177% below it. The largest tested
+change was 3.612957%. Each connected window received 896 frames with no sequence
+gap or receiver error, and the simulation never waited for a client. This pass
+describes that measured unpaced workload; it does not qualify protected throughput,
+headset/network performance or a paced station deployment.
+
+The additive [receiver-process measured record](publisher/receiver-process-hour-results.json)
+retains exact source revisions, runtime source hashes, independent checks and
+raw evidence hashes. The original record remains unchanged. The one-hour rate
+screen remains **FAIL**, and no acceptance threshold or deployment gate changed.
+
+## Bounded protected-loop diagnostics
+
+The later [flush diagnostic](publisher/flush-diagnostic.json) is engineering
+evidence only. It enabled the experimentally guarded workcell handle cache and
+the equivalence-tested reset comparator in an isolated copy. Twelve original
+before/after flush pairs had bitwise-equal values across 36 requested, simulation,
+PhysX and actuator buffers, equal full-state hashes, and passing neutral checks.
+All five actuator groups were exact implicit actuators and both wrench composers
+were inactive. Generic `write_data_to_sim` is not universally idempotent: other
+actuator models have history, and the call applies/consumes external wrenches.
+
+Only the diagnostic's redundant pre-step flush was omitted after an unchanged
+completed hold. The first pre-step flush, every hold flush, full live state reads,
+neutral checks and default GC remained in place. Per-step checks rejected writer
+epochs, buffer/parameter changes, active wrenches or changed actuator identity.
+Both comparison sides paid that guard cost. Four 12-second phases measured
+42.573 → 44.559 steps/s without a receiver and 41.398 → 44.859 with the separate
+receiver; two additional 5-second cProfile phases retained call counts. All
+phases and the following reset completed without a neutral fault. The live guard
+check alone cost roughly 1.6–1.9 ms per step, so these results are not directly
+comparable to prior unguarded profiles.
+
+The earlier projected saving of about 8.6% could not close the 60 steps/s gap,
+and neither measured guarded configuration reached that target. No generic
+articulation, hold, reset or production publisher implementation was changed.
+No optimized hour, station deployment or G2 pass is inferred. The completed
+diagnostic container was removed after its evidence was retained; the task GPU
+workload was left idle.

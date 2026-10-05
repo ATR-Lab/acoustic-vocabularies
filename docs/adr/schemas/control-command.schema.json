@@ -1,0 +1,11 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Proposed separate engineering control channel; no API implementation",
+  "type":"object","additionalProperties":false,
+  "required":["version","kind","request_id","command"],
+  "properties":{
+    "version":{"const":1},"kind":{"const":"engineering_control"},
+    "request_id":{"type":"string","pattern":"^[a-f0-9]{32}$"},
+    "command":{"enum":["reset","pause","resume","health"]}
+  }
+}

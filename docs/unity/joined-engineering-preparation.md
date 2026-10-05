@@ -160,6 +160,15 @@ the stager's chain checks are not a replacement.
 
 ## Focused checks
 
+Version 3 preserves the version 2 policy and roles and adds the nullable,
+independently pinned `files.grammar_review` role (maximum 1 MiB). Missing input
+becomes an explicit null in the staged configuration; the stager never creates
+a review. Versions 1 and 2 reject this new role to keep their closed shapes.
+The runtime must validate the actual review against the reserved grammar
+registry, labels and teaching methodology before familiarization. File identity
+alone is not review approval. Familiarization start and later teaching resume
+remain separate explicit operator commands; staging starts neither.
+
 ```
 uv run --project sound pytest --import-mode=importlib -p no:cacheprovider tests/test_prepare_joined_engineering.py
 ```
