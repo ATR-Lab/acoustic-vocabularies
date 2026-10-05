@@ -75,7 +75,8 @@ evidence for their recorded sources.
 
 The [machine-readable derivative](encoder-projection-results.json) includes
 source/image/scene/snapshot hashes, all eight CSV and sample hashes, raw timer
-aggregates and GC events. Runtime source was `2d9eb176d51cbf08b11749411576fd579afb76f0`;
+aggregates, GC totals and pauses above 1 ms. Every individual GC event remains
+in the hash-bound raw phase summaries. Runtime source was `2d9eb176d51cbf08b11749411576fd579afb76f0`;
 the baseline protocol was exported from `819760f`. Baseline and candidate files
 are SHA-checked before comparison. The diagnostic hook was an ignored runner
 overlay; its exact hash and archive hash are retained. No asset USD is published.
