@@ -1,15 +1,19 @@
 {
   "evidence_hashes": {
-    "containers-detail.png": "54566b9e87c42235a08ec696cf5c488277caa82384b0c5efce275f127c703645",
-    "observer.png": "77b971a8c415add6d655ecb2b52d6258939b0e9e1c1ee03ac99b57aa95e4c8bb",
+    "command-reset-events.jsonl": "bd562ed4714cf832b138a185c5bfe61bbc374479a33e7578d9132f6c177345bc",
+    "containers-detail.png": "07551f409e73a929b796f49b06326cb68d910744797ab06908d9e3b4275170f2",
+    "environment.json": "41169068ae17da27d097377ade8b09920dcec5c377d11c2347dbadcdf9e54a4a",
+    "observer.png": "dbd8b569e243cf7423194ffa50e8cc6d26e1a999f5fd2d75963f998031b05eb4",
+    "preconditions.json": "e697679a442483bf0dbe611a8a2ac2643046bff3389c7b24abbac1dfeaa2b533",
     "reach.json": "1572dceeb442d0874f950fec0c4bae2a286de57d77df87b2c8581c9e5012321a",
-    "reset-check/neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
-    "trays-detail.png": "d11257ea7436f8e4645168800c557b7777d0c73bb22a0118205a9e543ba1c97b",
-    "workcell-reloaded.usda": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
-    "workcell.usda": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e"
+    "state.json": "bcb0c21dd0bd89db84799cd551f89ee59420b25aa64efb506d057c53974be227",
+    "summary.json": "a029cba89b64d947bddef0e987005e39fa3bf840228eb432ba4044f09da672b1",
+    "trays-detail.png": "d79c7096c843791f8c460ae780e1ea5a69bb6dd2c670a75f59e9fbbf8da4879e",
+    "workcell-reloaded.usda": "1ce875bfe42d2199d1a265a1b77b69b30464ebd685242c0dd141306b133bca9f",
+    "workcell.usda": "1ce875bfe42d2199d1a265a1b77b69b30464ebd685242c0dd141306b133bca9f"
   },
   "fixed_base": true,
-  "independent_generation_scene_hash_match": null,
+  "independent_generation_scene_hash_match": true,
   "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
   "joint_count": 43,
   "joint_names": [
@@ -57,20 +61,15 @@
     "left_hand_thumb_2_joint",
     "right_hand_thumb_2_joint"
   ],
-  "label_style": {
-    "card_face_pixel_m": 0.004,
-    "primary_label_pixel_m": 0.0038,
-    "primary_labels": "A-H and printed target codes",
-    "secondary_cup_max_pixel_m": 0.003
-  },
-  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "layout_sha256": "6343f1cdf2c4f9b06d5d907f9ee58cc5e0fbb70009d322a67c974bda52213424",
   "methodology_review_complete": false,
   "observer_human_legibility_qualified": false,
   "observer_limits": [
-    "Supply word partially occluded by broad front tray placard",
-    "Flat quarantine letters partly occluded",
+    "Supply label appears clipped in observer view",
+    "Quarantine letters lie flat and are partially occluded",
     "Seated observer calibration and human legibility remain unqualified"
   ],
+  "physics_integration_in_optional_downstream_diagnostics": true,
   "pins": {
     "archive": "assets.zip",
     "archive_bytes": 1305090539,
@@ -87,7 +86,6 @@
     "unitree_commit": "e30c25b1dffdf92ada1d6c8c1fe9a47bdde0fecc"
   },
   "preconditions_possible": 32,
-  "prior_scene_evidence": "scene-evidence.initial-labels.json",
   "reach_summary": {
     "approach_offset_m": [
       0.0,
@@ -105,10 +103,10 @@
     "torso_and_legs_at_default": true
   },
   "reload_state_identical": true,
-  "scene_reload_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
-  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "scene_reload_sha256": "1ce875bfe42d2199d1a265a1b77b69b30464ebd685242c0dd141306b133bca9f",
+  "scene_sha256": "1ce875bfe42d2199d1a265a1b77b69b30464ebd685242c0dd141306b133bca9f",
   "semantic_objects": 60,
-  "source_revision": "8802e2e",
-  "source_run": "workcell-52-labels-v2",
-  "status": "scene_loaded_downstream_integration_in_progress"
+  "source_revision": "20f4465",
+  "source_run": "workcell-52e",
+  "status": "completed"
 }
