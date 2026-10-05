@@ -75,7 +75,11 @@ three real private mode/reset acknowledgements and a five-second Windows
 loopback state check. It preserves the hashes of the private raw evidence.
 The native application attempt was blocked by Windows Application Control
 before process creation; no native visit is demonstrated by this derivative.
-The backend remains below the target publication rate. The running service
-window and its eventual cleanup must be evaluated separately from this startup
-evidence. A later visit uses a fresh output directory and independently pinned
+The backend remains below the target publication rate. The [final service
+window](e2e/2026-10-05-service-window.json) ended by an accepted operator stop
+after 1,427.868 seconds, with 23,109 steps/frames and 19,725 missed deadlines.
+The simulator exited successfully; owned relays, sockets, listeners, container
+and SSH forward were closed, with unrelated workloads preserved. This is an
+operator-ended backend window, not a completed hour or native visit.
+A later visit uses a fresh output directory and independently pinned
 control session, after the previous client and owned service are closed.
