@@ -138,3 +138,23 @@ is superseded. No old snapshot was relabeled as evidence for the current scene.
 Actual #56 demonstration sequences, private methodology, gaze neutrality review
 and final pilot tolerance approval remain pending. Protected hold while physics
 advances is measured separately by #55.
+
+The later comparator lifetime correction moves the recursive comparator to a
+module function, with the same explicit failures, worst deviations and tolerance
+values. This avoids a nested recursive closure retaining its manager/adapter
+until cyclic collection. Twenty reset tests pass, including immediate manager
+release and exact failure ordering. An independent synthetic comparison of 500
+valid/invalid states produced identical status, failure ordering and worst values
+without mutating input (result digest
+`0cf481fb5895d8a8d000646d94c4994247e78c58788915dc20408297f4ff7834`).
+The allocation probe observed one self-cycle per initial call before the change
+and none afterward, with GC enabled and its thresholds unchanged. This is object
+lifetime evidence, not a new timing/throughput qualification or a rerun of the
+historical 1,000-cycle apparatus result.
+
+The subsequent [bounded actual profile](reset/comparator-profile.json), using
+the same cached state reader, observed protected throughput without a receiver
+at 44.875 → 47.310 steps/s and with the process receiver at 45.454 → 46.287.
+Both remain below 60 steps/s. The short after-run observed no generation-2
+collection; it does not establish that long pauses are gone. No full hour or
+1,000-cycle reset rerun is inferred from this diagnostic.
