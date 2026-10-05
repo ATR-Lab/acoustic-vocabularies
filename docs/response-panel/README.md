@@ -162,3 +162,13 @@ Before qualification, complete #49's controller/hand comparison and text ladder,
 review atomic submission/onset policy and all wording against the protocol,
 integrate #67's slot controller and perform the physical seated checks. Every
 Acceptance criterion remains for human review.
+
+## Recorded engineering evidence
+
+[Validation report](validation.json) records 110 passing Unity edit-mode tests,
+clean Windows and Android builds from runtime commit `8737bb5`, and exact package
+and file hashes. Seven synthetic offscreen previews are indexed in
+[the capture manifest](preview-captures.json). A [synthetic process trace](synthetic-process-log.jsonl)
+shows an uncommitted SCAN selection retained separately from TIMEOUT. Its header
+uses the test host clock; request/process timestamps use the injected test clock.
+None of these traces is a participant observation or a measured acoustic onset.
