@@ -96,12 +96,78 @@ namespace AcousticVocab.SelectionMenus.Tests
         }
         [Test]public void ExposureHandoffRetainsRejectedCandidatesAndPauseFacts()
         {var rows=MenuExposureProjection.Derive(Events());Assert.That(rows.Count,Is.EqualTo(32));Assert.That(rows.Count(x=>x.AcceptedOrRejected=="rejected"),Is.EqualTo(16));Assert.That(rows.All(x=>x.ActiveChoiceOrDefault=="default"&&x.PlaybackStatus=="software_completed"),Is.True);Assert.That(rows.Skip(8).All(x=>x.PauseMs==5000),Is.True);}
-        [Test]public void PauseBeforeCueNeedsNewSegmentAndNeverPretendsCompleteReplay()
+        [Test]public void StartedMenuBeforeFirstDisplayStillNeedsNewSegmentAndCannotReplay()
         {
             var item=new SlotItem("DEMO-pause","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);var context=new SlotContext(item,1000,null);var rows=new List<MenuEvent>();var timeline=new MenuTimeline(context,Options(Keys[0]),"DEMO-meaning",rows.Add);
-            timeline.Interrupt(0);Assert.That(rows.Single().MatchingDeviationId,Is.EqualTo(rows.Single().EventId));Assert.That(MenuExposureProjection.Derive(rows),Is.Empty);
-            string path=Path.Combine(directory,"partial.jsonl");using(var ledger=new MenuLedger(path,Binding(),created)){ledger.Append(rows.Single());Assert.Throws<SessionFault>(()=>ledger.Seal(Verification()));Assert.Throws<SessionFault>(()=>ledger.Append(rows.Single()));}
+            timeline.Start(0);timeline.Interrupt(0);Assert.That(rows.Last().MatchingDeviationId,Is.EqualTo(rows.Last().EventId));Assert.That(MenuExposureProjection.Derive(rows),Is.Empty);
+            string path=Path.Combine(directory,"partial.jsonl");using(var ledger=new MenuLedger(path,Binding(),created)){foreach(var row in rows)ledger.Append(row);Assert.Throws<SessionFault>(()=>ledger.Seal(Verification()));Assert.Throws<SessionFault>(()=>ledger.Append(rows.Last()));}
             Assert.That(File.Exists(path),Is.True);Assert.Throws<SessionFault>(()=>Load(path));Assert.DoesNotThrow(()=>Load(Write(Events())));
+        }
+        [Test]public void NeverStartedCancellationLeavesVisitLedgerAvailableButOldTimelineCannotRestart()
+        {
+            string path=Path.Combine(directory,"not-started.jsonl");
+            using(var ledger=new MenuLedger(path,Binding(),created))
+            {
+                var item=new SlotItem("DEMO-cancel","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);
+                var timeline=new MenuTimeline(new SlotContext(item,750,null),Options(Keys[0]),"DEMO-meaning",ledger.Append);
+                var views=new List<MenuPhase>();timeline.DisplayChanged+=(phase,_)=>views.Add(phase);
+                timeline.Interrupt(100);timeline.Interrupt(101);timeline.Tick(1000);
+                Assert.That(timeline.Interrupted,Is.True);Assert.That(timeline.Complete,Is.False);
+                Assert.That(views,Is.EqualTo(new[]{MenuPhase.Hidden}));
+                Assert.That(File.ReadAllLines(path).Length,Is.EqualTo(1),"No menu_start or interruption may be invented for a never-started view");
+                Assert.Throws<SessionFault>(()=>timeline.Start(1001));
+                foreach(var row in Events())ledger.Append(row);ledger.Seal(Verification());
+            }
+            Assert.DoesNotThrow(()=>Load(path),"Only the complete replacement wave, with its original timing checks, can be sealed");
+        }
+        [TestCase(false)][TestCase(true)]public void ActualEnginePreCueRefusalReplacesLeaseAndKeepsUntouchedVisitLedger(bool profile)
+        {
+            var binding=profile?new MenuLedgerBinding(Hash,Hash,Hash,Hash,Hash,Hash,"V1","active",new[]{"profile","K-a1","K-a2","K-r1","K-r2","Q-a1","Q-a2","Q-r1","Q-r2"}):Binding();
+            string path=Path.Combine(directory,"engine-cancel.jsonl");using var ledger=new MenuLedger(path,binding,created);
+            var clock=new Clock();var journal=new Journal();var leases=new List<Lease>();
+            string block=profile?"profile_menu":"atom_menus";
+            var item=new SlotItem("DEMO-engine-cancel",profile?"profile_menu":"atom_menu",profile?null:Keys[0],null,"selection","selection",false,profile?60:45,8,1);
+            var schedule=new VisitSchedule(Hash,Hash,"DEMO",profile?"V1":"V2",true,new[]{new ScheduleBlock(block,new[]{item})});
+            var routes=new Dictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>>{[block]=_=>{var lease=new Lease(clock,ledger,leases.Count>0);leases.Add(lease);return lease;}};
+            using var mux=new ExclusiveContentMultiplexer(schedule,clock,routes);var engine=new FixedSlotEngine(schedule,clock,journal,mux);
+            mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();engine.Tick();clock.Time=601;engine.Tick();
+            Assert.That(engine.Status,Is.EqualTo(SessionState.Paused));Assert.That(leases[0].Current.Timeline.Interrupted,Is.True);
+            Assert.That(journal.Records.Any(x=>x.Event=="item_fault"&&x.TechnicalFaultCode=="SESSION_READY_DEADLINE_MISSED"),Is.True);
+            Assert.That(journal.Records.All(x=>!x.ExposureConsumed),Is.True);
+            Assert.That(File.ReadAllLines(path).Length,Is.EqualTo(1));
+            clock.Time=1000;mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();engine.Tick();
+            Assert.That(leases.Count,Is.EqualTo(2));Assert.That(leases[0].Disposed,Is.True);
+            Assert.That(engine.CurrentState,Is.EqualTo(ItemState.CueRequested));Assert.That(engine.CompletedOpportunities,Is.Zero);
+            Assert.That(leases[1].Current.Context.OpportunityId,Is.EqualTo(leases[0].Current.Context.OpportunityId));
+            Assert.That(leases[1].Current.Context.AudioRequestIds.Intersect(leases[0].Current.Context.AudioRequestIds),Is.Empty);
+            var rows=File.ReadAllLines(path).Select(x=>JObject.Parse(x)["record"]).ToArray();
+            Assert.That(rows.Select(x=>(string)x["kind"]),Is.EqualTo(new[]{"header","menu_start"}));
+            Assert.That((double)rows[1]["slot_start_mono_ms"],Is.EqualTo(1750),"Explicit resume gets the normal engine lead, not a compressed old slot");
+            Assert.That(journal.Records.Any(x=>x.State==ItemState.CueRequested&&x.ExposureConsumed),Is.True,"A started replacement stays consumed/uncertain");
+        }
+        sealed class Clock:ISessionClock{public double Time;public double NowMs=>Time;}
+        sealed class Journal:ISessionJournal
+        {
+            readonly List<SessionRecord> rows=new List<SessionRecord>();public IReadOnlyList<SessionRecord> Records=>rows;
+            public void Append(SessionRecord value)=>rows.Add(value);
+        }
+        sealed class Lease:ISlotContentFactory,IDisposable
+        {
+            readonly Clock clock;readonly MenuLedger ledger;readonly bool ready;public bool Disposed;public Content Current;
+            public Lease(Clock clock,MenuLedger ledger,bool ready){this.clock=clock;this.ledger=ledger;this.ready=ready;}
+            public ISlotContent Create(SlotItem item)=>Current=new Content(clock,ledger,ready);
+            public void Dispose(){if(Disposed)return;Disposed=true;Current?.Interrupt("SYNTHETIC_LEASE_RETIRED");}
+            public sealed class Content:ISlotContent
+            {
+                readonly Clock clock;readonly MenuLedger ledger;readonly bool ready;public MenuTimeline Timeline;public SlotContext Context;
+                public Content(Clock clock,MenuLedger ledger,bool ready){this.clock=clock;this.ledger=ledger;this.ready=ready;}
+                public void Prepare(SlotContext value){Context=value;Timeline=new MenuTimeline(value,Options(value.Item.TrialType=="profile_menu"?"profile":Keys[0]),"DEMO-meaning",ledger.Append);}
+                public SlotReadiness Readiness=>new SlotReadiness(true,true,ready,true,true,true,true,true);
+                public bool ResetComplete=>true;
+                public void RequestCue(SlotContext value,INovelSlotAuthorization permit)=>Timeline.Start(clock.NowMs);
+                public void OpenResponse(SlotContext value){}public void CloseResponse(SlotContext value){}public void RequestReset(SlotContext value){}
+                public void Interrupt(string code)=>Timeline?.Interrupt(clock.NowMs);
+            }
         }
         [Test]public void PartialOrExpiredOrFutureOrWrongReceiptLedgerCannotReplay()
         {

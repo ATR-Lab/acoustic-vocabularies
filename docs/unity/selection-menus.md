@@ -176,8 +176,14 @@ and software completion. These fields never upgrade software completion into an
 acoustic measurement. This typed derivation is available to #72; it is not a
 claim that the missing read-only methodology's exact CSV headers were validated.
 
-A safe pause before any cue can still invalidate the current ledger segment.
-The partial segment is preserved and cannot seal; a fresh complete segment and
+Cancellation before `MenuTimeline.Start` writes no menu event because preparation
+has not displayed a menu, requested a play, or committed a selection. The engine
+and frame/data journals retain the pre-cue cancellation. Explicit resume must
+replace the invalidated module/backend lease; its new timeline can use the
+untouched visit ledger and fresh audio request IDs. It does not restart the old
+timeline or compress the slot. Once `Start` is attempted, interruption still
+permanently invalidates the segment, even before the first display or audio.
+That partial segment is preserved and cannot seal; a fresh complete segment and
 explicit reconstruction/admission are required before yoked replay. The separate
 module-lease restart must also create a fresh backend authority. The joined owner
 calls `MenuSessionHost.Uninstall` before creating another module so delayed host
