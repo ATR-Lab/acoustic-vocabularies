@@ -88,14 +88,15 @@ the engine boundary. Pause/stop remain available after admission or health fails
 The snapshot counts completed original scheduled IDs in producer block order;
 retries do not double-count them. No trial or answer fields leave the adapter.
 
-The qualified implementation target is same-PC Windows Link. State publication
+The implemented transport target is same-PC Windows Link. State publication
 flushes a fresh temporary file and uses same-directory `MoveFileExW` replacement.
-Only Windows errors 5/32/33 permit up to ten 2 ms waits for transient contention;
+Only Windows errors 5/32/33 permit up to ten requested 2 ms waits for contention;
 the same file publication is retried, never an engine action. Persistent failure
 retains the temporary file, latches the engine and leaves old state to become stale.
 The Python reader opens one file generation with delete sharing and validates its
 type/byte bound through the opened descriptor. Freshness, nonce and sequence checks
-are unchanged. See Microsoft's [MoveFileExW contract](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
+are unchanged. The OS may extend wait duration; this is not a real-time timing
+guarantee. See Microsoft's [MoveFileExW contract](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
 This is software recovery behavior, not a power-loss durability qualification.
 Android IL2CPP compilation does not provision this Windows transport; invoking
 publication on an unqualified platform fails closed.

@@ -39,10 +39,10 @@
     "Actual engine/scene integration and matched private control service",
     "Full protocol mock-visit paired headset capture",
     "Actual fault detection delays",
-    "Native adapter tests and builds",
     "External deviation-template header",
     "Actual per-block timestamps",
     "Mirroring/casting/notification settings",
     "Physical device, clock, audio and multi-station qualification"
-  ]
+  ],
+  "native_adapter_evidence": "adapter-validation.json"
 }
