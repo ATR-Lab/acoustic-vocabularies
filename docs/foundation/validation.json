@@ -54,7 +54,7 @@
       "file_bytes_total": 104491765,
       "primary_artifact_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
       "primary_artifact_bytes": 667136,
-      "build_manifest_public_path": "docs/foundation/builds/experiment.exe.build.json",
+      "build_manifest_public_path": "docs/foundation/build-manifests/experiment.exe.build.json",
       "raw_manifest_sha256": "9681ca0078dcc849f85a2d9ce9a475796051a22c174451e5996870b9f7f36e0f"
     },
     {
@@ -67,7 +67,7 @@
       "file_bytes_total": 36901782,
       "primary_artifact_sha256": "5874f5ca1d9d5131055494431762619f779d338b361ef2cae36ee3012f691d6e",
       "primary_artifact_bytes": 36901782,
-      "build_manifest_public_path": "docs/foundation/builds/experiment.apk.build.json",
+      "build_manifest_public_path": "docs/foundation/build-manifests/experiment.apk.build.json",
       "raw_manifest_sha256": "b564bb84480f2739d39e5608c56a8a08f262fac6c1a7f323c6e2dd9ec0b935fe",
       "apk_zip_crc": "passed",
       "android_permission_internet": true,
