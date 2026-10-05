@@ -149,6 +149,10 @@ passed neutral verification under explicit robot-only hold. An injected card
 change caused a fault and was not silently restored. The explicit recovery
 reset passed while the service fault stayed latched. All 68 terminal events and
 their raw-log SHA were independently checked. Teaching completions in this run
-used a synthetic no-motion hook. The report names the exact historical source
-revisions; later queue/health review changes are covered separately by unit
-tests and must not be inferred to have run in that earlier measurement.
+used a synthetic no-motion hook. The final corrected-label run used commands
+`825e628`, reset `f319440` and scene `8802e2e`, including the queue-boundary and
+cached-health implementation. Its 68 log events use schema 0.3.1; verified raw
+log SHA-256 is `c14dacc3d292f770db78853dc71984fc2151cd4a05113bde0fa5d048f9236cdb`.
+The test does not establish full publisher-bound exposure readiness: that needs
+fresh attached publisher health, independently qualified source clocks and the
+downstream client/session gate. Actual #56 motion content remains pending.
