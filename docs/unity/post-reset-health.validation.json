@@ -6,6 +6,8 @@
   "timing_qualification": false,
   "runtime_source_commit": "48b469bcc18fd7130557648f5c16a01cb9cacb5a",
   "reset_probe_source_commit": "ba797d5bd4ac54fa73b8ad64ba99254b9e7e45f0",
+  "preflight_diagnostic_source_commit": "e0f8171ea2f3a12ad5d831270f476d73104a5f90",
+  "preflight_diagnostic_coverage": "Preflight.Pump exception path only; separate Ready/Commit/PrepareExplicitResume calls are not covered",
   "freshness_limit_ms": 250,
   "probe_deadline_ms": 200,
   "poll_period_ms": 75,
@@ -36,6 +38,16 @@
       "failed": 0,
       "skipped": 0,
       "sha256": "c792fea736e48f6e2b327136d5624bb03c07ad277428a96581e30e3f96cd0cb3"
+    },
+    {
+      "source_commit": "e0f8171ea2f3a12ad5d831270f476d73104a5f90",
+      "kind": "EditMode",
+      "scope": "actual_preflight_failure_and_staged_owner_closure_gate_regressions",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "a4a6a76b6f648b429b3ecf20273b00f93930c351e7e18c4c41904d09a0d66c07",
+      "note": "Includes three new actual nested-Preflight failure cases; earlier overlapping cases were rerun, not counted as new."
     }
   ],
   "count_note": "The 76-case client run is included in the 267-case combined run; counts are not additive.",
@@ -51,5 +63,19 @@
     "manifest_sha256": "b18e6f00918f559f7408ffbceb9c855806eef49e6bdb51c76ddb351a2e123335",
     "inventory_independently_rehashed": true
   },
-  "affected_segment_native_validation": "pending"
+  "retained_native_build010": {
+    "study": "B",
+    "role": "active",
+    "visit": "V1",
+    "post_reset_probe_admission_reached": true,
+    "operator_start_sent": false,
+    "study_audio_requests": 0,
+    "status": "SESSION_PREFLIGHT_FAILED",
+    "original_exception_category_known": false,
+    "complete": false,
+    "cleanup_succeeded": true,
+    "export_succeeded": true,
+    "native_result_sha256": "9159f883520679c8fa5c2d49827a1765ba0a6f15b43f9bf0ef19c4a37a29cf9c"
+  },
+  "affected_segment_native_validation": "incomplete; no menu or study audio started"
 }

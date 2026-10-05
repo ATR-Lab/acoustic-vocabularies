@@ -47,3 +47,24 @@ Exact software test and native build evidence is recorded in the adjacent
 validation record. A fresh affected-segment native run remains necessary;
 software tests do not establish acoustic onset, physical legibility, timing
 qualification or a complete visit.
+
+## Build 010 preflight observation
+
+The first native B010 run reached `JOIN_READY_EXPLICIT_RESUME` and constructed
+its menu view after the new post-reset probe gate. It later failed in preflight
+before any operator Start, slot or audio request. Its closed native result
+records `SESSION_PREFLIGHT_FAILED`, successful cleanup/export and incomplete
+status. The candidate had not been committed, so the terminal control snapshot
+was null after cancellation. The retained evidence cannot establish the
+original exception category or a transport timeout. Separately observed source
+publication slowdown does not prove that category.
+
+The next diagnostic records module `preflight_failure` inside the original
+`Preflight.Pump` exception path, before candidate cancellation. It includes the
+bounded operation phase, original typed control/session/audio code (or a fixed
+IO/unexpected category), observation time and non-pumping control snapshot.
+It then rethrows the original exception. A failing diagnostic sink cannot
+replace that exception; the existing staged failure and cleanup still run.
+There are no new successful-path writes or health reads. This coverage is
+limited to `Pump`; exceptions in separate `Ready`, explicit-resume or commit
+calls outside it are not claimed to have this snapshot.
