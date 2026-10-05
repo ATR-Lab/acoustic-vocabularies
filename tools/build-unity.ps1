@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('Configure','Test','Android','Windows')][string]$Target,
     [Parameter(Mandatory)][string]$ProtocolVersion,
     [Parameter(Mandatory)][string]$BuildId,
-    [ValidateSet('Foundation','Workcell')][string]$Scene = 'Foundation',
+    [ValidateSet('Foundation','Workcell','Calibration')][string]$Scene = 'Foundation',
     [string]$G1Description,
     [switch]$AllowDirty,
     [string]$TemporaryDirectory,
@@ -34,11 +34,11 @@ if ($Target -eq 'Android') { $unityArguments += @('-buildTarget','Android') }
 if ($Target -eq 'Windows') { $unityArguments += @('-buildTarget','Win64') }
 if ($Target -eq 'Test') {
     $results = Join-Path $output 'editmode.xml'
-    $assemblies = if ($Scene -eq 'Workcell') { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests' } else { 'AcousticVocab.Foundation.Tests' }
+    $assemblies = if ($Scene -eq 'Workcell') { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.Foundation.Tests;AcousticVocab.StudyAudio.Tests' } else { 'AcousticVocab.Foundation.Tests' }
     $unityArguments += @('-runTests','-testPlatform','EditMode','-assemblyNames',$assemblies,'-testResults',('"'+$results+'"'))
 } else {
     $method = if ($Target -eq 'Configure') { 'Configure' } else { 'Build'+$Target }
-    $builder = if ($Scene -eq 'Workcell') { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } else { 'AcousticVocab.Foundation.Editor.FoundationBuild.' }
+    $builder = if ($Scene -eq 'Workcell') { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } else { 'AcousticVocab.Foundation.Editor.FoundationBuild.' }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
 $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru
