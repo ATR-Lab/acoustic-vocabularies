@@ -92,9 +92,10 @@ namespace AcousticVocab.Teaching
         }
         void CreateView()
         {
-            LessonTimeline.Require(presentationParent!=null&&font!=null,"LESSON_VIEW_UNAVAILABLE");
+            LessonTimeline.Require(presentationParent!=null&&font!=null&&foundation!=null&&foundation.Configuration!=null,"LESSON_VIEW_UNAVAILABLE");
+            var reference=StationConfig.ReferencePose(foundation.Configuration);
             var root=new GameObject("Teaching presentation",typeof(RectTransform),typeof(Canvas));root.transform.SetParent(presentationParent,false);
-            root.transform.localPosition=new Vector3(0,.05f,1.05f);root.transform.localScale=Vector3.one*.001f;
+            root.transform.SetPositionAndRotation(reference.position+reference.rotation*new Vector3(0,.05f,1.05f),reference.rotation);root.transform.localScale=Vector3.one*.001f;
             canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.WorldSpace;((RectTransform)root.transform).sizeDelta=new Vector2(800,540);
             definition=TextAt("Definition",new Vector2(0,220),new Vector2(780,100));
             actionWords=TextAt("Action words",new Vector2(-190,140),new Vector2(370,70));targetWords=TextAt("Target words",new Vector2(190,140),new Vector2(370,70));
