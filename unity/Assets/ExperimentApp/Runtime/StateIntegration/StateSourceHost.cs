@@ -16,7 +16,7 @@ namespace AcousticVocab.StateIntegration
         public FoundationBootstrap foundation;
         public WorkcellRegistry workcell;
         public string Kind => source?.Kind ?? "unresolved";
-        public bool Initialized => source!=null && !failed;
+        public bool Initialized => isActiveAndEnabled && source!=null && !failed;
         public bool ResetConfirmed => CheckExposureReady();
         public double LastSimTime => source?.LastSimTime ?? 0;
         public double SampleAgeSeconds { get { RefreshSource(); return source?.SampleAgeSeconds ?? double.PositiveInfinity; } }
@@ -33,6 +33,7 @@ namespace AcousticVocab.StateIntegration
         void Awake() { if(workcell!=null) workcell.gameObject.SetActive(false); }
         void Start()
         {
+            if(failed) return;
             try
             {
                 if(foundation==null || workcell==null || foundation.Configuration==null) throw new StateFault("SOURCE_FOUNDATION_UNAVAILABLE");
@@ -79,7 +80,7 @@ namespace AcousticVocab.StateIntegration
         void OnEvent(SourceEvent value) { journal.Record(value); Event?.Invoke(value); }
         void Fail(string code)
         {
-            if(failed) return; failed=true; if(workcell!=null) workcell.gameObject.SetActive(false); socket?.Dispose();
+            if(failed) return; failed=true; confirmedAtBoundary=false; if(workcell!=null) workcell.gameObject.SetActive(false); socket?.Dispose();
             var value=new SourceEvent(code,LiveSocketClient.Now,LiveSocketClient.Now);
             try { journal?.Record(value); } catch(Exception) { }
             // Bounded codes only; no private paths, endpoint or exception text.
@@ -145,5 +146,6 @@ namespace AcousticVocab.StateIntegration
             socket?.Dispose(); if(source!=null) source.Event-=OnEvent;
             try { journal?.Dispose(); } catch(Exception) { Debug.LogError("STATE_SOURCE_FAULT STATE_LOG_NOT_FINALIZED"); }
         }
+        void OnDisable() { if(source!=null && !failed) Fail("STATE_HOST_DISABLED"); }
     }
 }
