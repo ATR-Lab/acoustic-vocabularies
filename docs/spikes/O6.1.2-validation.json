@@ -13,9 +13,9 @@
   "schemas_checked": 34,
   "registered_synthetic_examples": 8,
   "source_files": {
-    "tools\\view_leakage.py": "442c73981099549fe8afd1a23ae5569bf5f9a55c2b62e1f54291ea483d3a0305",
-    "tools\\leakage_png.py": "9f0fdc12cbf6b6a419e69987316cdabfca7ef942cd0239a264b16550579ba415",
-    "tests\\test_view_leakage.py": "24348ee94d21226d84bb3f4317b8771939cb1d50137c2f5bcdf91d073004fbe0"
+    "tools/view_leakage.py": "442c73981099549fe8afd1a23ae5569bf5f9a55c2b62e1f54291ea483d3a0305",
+    "tools/leakage_png.py": "9f0fdc12cbf6b6a419e69987316cdabfca7ef942cd0239a264b16550579ba415",
+    "tests/test_view_leakage.py": "24348ee94d21226d84bb3f4317b8771939cb1d50137c2f5bcdf91d073004fbe0"
   },
   "historical_acknowledgment_decode_check": {
     "existing_png_files": 8,
@@ -49,5 +49,19 @@
     "Independent plan predeclaration custody and source qualification",
     "Robot appearance outside registered workcell accessor and natural head motion",
     "Acoustic routing measurement and unavailable external methodology reconciliation"
-  ]
+  ],
+  "bounded_source_review": {
+    "review_type": "separate_agent_read_only_engineering_review_not_issue_signoff",
+    "finding": "The initial parser permitted one pose and a 255-channel tolerance, which could produce a vacuous successful screen.",
+    "resolution": "Current profile requires the five named, measurably distinct poses and exactly zero channel tolerance. Placeholder build/scene/panel pins are refused.",
+    "regressions": [
+      "single pose refused",
+      "different IDs with equivalent head poses refused",
+      "channel tolerance255 refused",
+      "channel tolerance1 refused",
+      "unconfigured build pin refused"
+    ],
+    "focused_profile_tests_passed": 5,
+    "independent_code_path_signoff": false
+  }
 }
