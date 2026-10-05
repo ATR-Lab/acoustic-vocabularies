@@ -73,6 +73,16 @@ the first reserved chime did complete with 31 observed audio callbacks; the
 second reserved request was interrupted. Those are software output observations,
 not acoustic onset qualification.
 
+The next transport correction uses correlated `private_health_probe` transactions
+on the already open private command WebSocket. These are separate from dispatcher
+commands and do not consume command history. There is no HTTP fallback. One
+transaction owns the socket at a time, each health transaction has a 200 ms
+send-through-receive deadline, and the existing 250 ms effective-age calculation
+still includes the full measured round trip, source ages, and receipt age. A
+malformed, rejected, mismatched, late, or stalled reply blocks readiness. The
+backend must support this exact probe protocol before attempting the new player.
+This source correction does not establish a completed native grammar or visit.
+
 ## Build and provision
 
 Use `tools/build-unity.ps1 -Target Windows -Scene SimulationTest` with a fresh
