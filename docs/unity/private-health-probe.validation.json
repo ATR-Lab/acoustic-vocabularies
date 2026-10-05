@@ -62,5 +62,29 @@
     "inventory_sha256": "d8440ca4b4e037a64d01970ebd3ad0e2ed827fd082febd044264d5a91cec89d9",
     "native_inventory_raw_sha256": "888712c3a021ae07c6276d5a5e94181f58faf5f36266617aadfa1d5f4d6d626b",
     "native_launch_attempted": false
+  },
+  "websocket_diagnostic": {
+    "native_player": false,
+    "installed_mono_process_bits": 32,
+    "actual_player_code": [
+      "PrivateControlExchange",
+      "PrivateHealthProbe",
+      "StationConfig.ParseStrict",
+      "ControlHealthGate",
+      "ControlPollCadence"
+    ],
+    "client_source_commit": "4ddd7f65d2f7648fe7a60ec5e3d853659996646f",
+    "client_assembly_sha256": "efe751c2d8e15d38c49b80aa023969b0a17cf87f5cc85aa8cefb5aea01c45f31",
+    "backend_source_commit": "27e970315f09a31a3022e676dd0e4934fce310f3",
+    "completed_probes": 20,
+    "round_trip_ms": {
+      "median": 56.196,
+      "min": 32.558,
+      "max": 80.2567
+    },
+    "progressing_valid_health_after_initial_baseline": 19,
+    "result_sha256": "a5b124216443bc7606bce83deb533f432e1dac0200a69e2561ba26413f1e265c",
+    "dispatcher_commands_sent": 0,
+    "qualification": false
   }
 }
