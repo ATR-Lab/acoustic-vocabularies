@@ -100,6 +100,8 @@ def neutral_layout():
                    "arrow": [.12, .14, .16], "tag": [.52, .54, .56],
                    "label": [.96, .96, .94], "quarantine": [.68, .68, .66],
                    "ink": [.015, .015, .015]},
+        label_style=dict(primary_label_pixel_m=.0038, primary_labels="A-H and printed target codes",
+                         secondary_cup_max_pixel_m=.003, card_face_pixel_m=.004),
         lights=[dict(id="fixed_dome", kind="dome", intensity=2000., color=[1., 1., 1.])],
         mutable_materials=[], mutable_lights=[], anchor_ids=sorted([*anchors, *hand_anchors]),
         anchors=anchors, articulation_anchors=hand_anchors,

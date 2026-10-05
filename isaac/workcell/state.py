@@ -163,8 +163,22 @@ class StateAccessors:
         return (prim for prim in Usd.PrimRange(root) if prim.IsA(UsdGeom.Gprim))
 
     def apply_state(self, states):
+        self._apply_validated(validate_states(self.layout, states))
+
+    def apply_subset(self, states):
+        """Atomically validate a selected semantic registry before any USD writes.
+
+        Values are complete per-object state records; partial field patches and
+        unknown IDs are rejected. Used for small carried groups in scripted motion.
+        """
+        if not isinstance(states, dict) or set(states) - set(self.definitions):
+            raise ValueError("Unknown semantic object subset")
+        selected = {**self.layout, "objects": [self.definitions[key] for key in states]}
+        self._apply_validated(validate_states(selected, states))
+
+    def _apply_validated(self, states):
         from pxr import Gf, UsdGeom, UsdPhysics
-        states = validate_states(self.layout, states)  # Entire payload before mutation.
+        if self._structure_changed: raise ValueError("Workcell static geometry changed")
         for identifier, item in states.items():
             prim = self.stage.GetPrimAtPath(self.definitions[identifier]["prim_path"])
             prim.GetAttribute("xformOp:translate").Set(Gf.Vec3d(*item["position_m"]))
