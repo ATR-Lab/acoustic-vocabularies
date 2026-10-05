@@ -135,3 +135,10 @@ producer B check, set `AV_PACKAGE_DEMO_ROOT` to the verified DEMO-only #13 artif
 containing `package-demo` and `dyad-demo`. No participant package is a fallback.
 The PlayMode timeline test uses an explicitly simulated clock and no acoustic
 output; it is not a device timing measurement.
+
+[teaching-validation.json](teaching-validation.json) records 122 focused edit
+tests (49 teaching, 57 session engine, 16 private control), two bounded PlayMode
+checks, the synthetic variant comparison, and clean Windows x64 Mono / Android
+ARM64 IL2CPP builds at `369b99b`. Both native builds completed with zero errors;
+their complete private build manifests were verified file by file. No participant
+content or physical device timing was exercised by these builds.
