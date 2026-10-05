@@ -219,7 +219,7 @@ class DurableRevealLog:
     ) -> None:
         self.journal_path = checked_path(journal_path, missing=True)
         if not any(
-            p.lower() in {"private", ".local", "local-data"} for p in journal_path.parent.parts
+            p.lower() in {"private", ".local", "local-data"} for p in journal_path.parent.parts[2:]
         ):
             raise RevealError("PRIVATE_JOURNAL_REQUIRED")
         self.checkpoint_path = journal_path.with_name(journal_path.name + ".head.json")

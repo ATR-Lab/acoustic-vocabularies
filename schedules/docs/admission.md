@@ -7,7 +7,8 @@ independently pinned allocation list, private allocation journal and orientation
 receipts/journals. It does not open a study package, schedule or audio file.
 
 The caller provisions a local private directory under `.local`, `private` or
-`local-data`, with restricted OS permissions. Constructor arguments are
+`local-data`, below a user-provisioned parent, with restricted OS permissions.
+A top-level directory such as macOS `/private` is not a privacy marker. Constructor arguments are
 `(list_path, list_file_sha256, journal_path, expected_head=...)`. The list pin is
 SHA-256 of the actual raw producer file. `expected_head` is an independently
 retained latest acknowledged allocation-journal head, or 64 zeroes only for a new

@@ -14,7 +14,7 @@ from .reveal import RevealError
 
 def write_receipt(path: Path, value: dict[str, Any]) -> None:
     checked_path(path, missing=True)
-    if not any(p.lower() in {"private", ".local", "local-data"} for p in path.parent.parts):
+    if not any(p.lower() in {"private", ".local", "local-data"} for p in path.parent.parts[2:]):
         raise RevealError("PRIVATE_RECEIPT_REQUIRED")
     with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as stream:
         stream.write(canonical(value))
@@ -41,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         output = checked_path(Path(args.output), missing=True)
         if output.exists():
             raise RevealError("OUTPUT_EXISTS")
-        if not any(p.lower() in {"private", ".local", "local-data"} for p in output.parent.parts):
+        if not any(p.lower() in {"private", ".local", "local-data"} for p in output.parent.parts[2:]):
             raise RevealError("PRIVATE_RECEIPT_REQUIRED")
         raw = read(Path(args.request), 65536)
         if sha(raw) != _hash(args.request_sha256):
