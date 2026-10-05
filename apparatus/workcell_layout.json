@@ -264,6 +264,12 @@
   },
   "authority": "GitHub issue52 only; Common procedures sections2/3 require human reconciliation",
   "coordinate_frame": "isaac_world_rh_z_up",
+  "label_style": {
+    "card_face_pixel_m": 0.004,
+    "primary_label_pixel_m": 0.0038,
+    "primary_labels": "A-H and printed target codes",
+    "secondary_cup_max_pixel_m": 0.003
+  },
   "left_right_reference": "observer looking toward robot; left is negative world Y",
   "length_unit": "m",
   "lights": [
