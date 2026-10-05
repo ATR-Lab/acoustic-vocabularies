@@ -21,6 +21,12 @@ namespace AcousticVocab.SelectionMenus.Tests
         static MenuLedgerBinding Binding(string role="active")=>new MenuLedgerBinding(Hash,Hash,Hash,Hash,Hash,Hash,"V2",role,Keys);
         static MenuOption[] Options(string unused)=>Enumerable.Range(1,3).Select(i=>new MenuOption("DEMO-candidate-"+i,SelectionMenuTests.Wave(unused=="profile"?96000:21600,i*100))).ToArray();
         static MenuLedgerVerification Verification()=>new MenuLedgerVerification(Options,(_,index,hash)=>index==1&&hash==Hash,_=>"DEMO-meaning");
+        static string[] ReadLiveLines(string path)
+        {
+            using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite);
+            using var reader=new StreamReader(stream);var rows=new List<string>();string line;
+            while((line=reader.ReadLine())!=null)rows.Add(line);return rows.ToArray();
+        }
         static List<MenuEvent> Events(MenuReplaySequence replay=null,string[] keys=null,double observedDelay=0)
         {
             var result=new List<MenuEvent>();keys??=Keys;double start=750;
@@ -114,7 +120,7 @@ namespace AcousticVocab.SelectionMenus.Tests
                 timeline.Interrupt(100);timeline.Interrupt(101);timeline.Tick(1000);
                 Assert.That(timeline.Interrupted,Is.True);Assert.That(timeline.Complete,Is.False);
                 Assert.That(views,Is.EqualTo(new[]{MenuPhase.Hidden}));
-                Assert.That(File.ReadAllLines(path).Length,Is.EqualTo(1),"No menu_start or interruption may be invented for a never-started view");
+                Assert.That(ReadLiveLines(path).Length,Is.EqualTo(1),"No menu_start or interruption may be invented for a never-started view");
                 Assert.Throws<SessionFault>(()=>timeline.Start(1001));
                 foreach(var row in Events())ledger.Append(row);ledger.Seal(Verification());
             }
@@ -134,13 +140,13 @@ namespace AcousticVocab.SelectionMenus.Tests
             Assert.That(engine.Status,Is.EqualTo(SessionState.Paused));Assert.That(leases[0].Current.Timeline.Interrupted,Is.True);
             Assert.That(journal.Records.Any(x=>x.Event=="item_fault"&&x.TechnicalFaultCode=="SESSION_READY_DEADLINE_MISSED"),Is.True);
             Assert.That(journal.Records.All(x=>!x.ExposureConsumed),Is.True);
-            Assert.That(File.ReadAllLines(path).Length,Is.EqualTo(1));
+            Assert.That(ReadLiveLines(path).Length,Is.EqualTo(1));
             clock.Time=1000;mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();engine.Tick();
             Assert.That(leases.Count,Is.EqualTo(2));Assert.That(leases[0].Disposed,Is.True);
             Assert.That(engine.CurrentState,Is.EqualTo(ItemState.CueRequested));Assert.That(engine.CompletedOpportunities,Is.Zero);
             Assert.That(leases[1].Current.Context.OpportunityId,Is.EqualTo(leases[0].Current.Context.OpportunityId));
             Assert.That(leases[1].Current.Context.AudioRequestIds.Intersect(leases[0].Current.Context.AudioRequestIds),Is.Empty);
-            var rows=File.ReadAllLines(path).Select(x=>JObject.Parse(x)["record"]).ToArray();
+            var rows=ReadLiveLines(path).Select(x=>JObject.Parse(x)["record"]).ToArray();
             Assert.That(rows.Select(x=>(string)x["kind"]),Is.EqualTo(new[]{"header","menu_start"}));
             Assert.That((double)rows[1]["slot_start_mono_ms"],Is.EqualTo(1750),"Explicit resume gets the normal engine lead, not a compressed old slot");
             Assert.That(journal.Records.Any(x=>x.State==ItemState.CueRequested&&x.ExposureConsumed),Is.True,"A started replacement stays consumed/uncertain");
