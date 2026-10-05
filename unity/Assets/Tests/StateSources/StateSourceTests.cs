@@ -81,6 +81,16 @@ namespace AcousticVocab.Tests
             var copy=mid.Objects[0].VisualState; copy["card_face"]=99;
             Assert.That((int)mid.Objects[0].VisualState["card_face"],Is.Zero);
         }
+        [Test]
+        public void CardReleaseRepresentationDoesNotAddAVisibleTurn()
+        {
+            SceneFrame Make(Quaternion q,int face) => new SceneFrame(new string('a',32),0,0,0,0,"synthetic",new double[43],
+                new[]{new SceneObject("card",Vector3.zero,q,true,true,new JObject { ["card_face"]=face })});
+            var turned=Quaternion.AngleAxis(180,Vector3.right);
+            var middle=SceneFrame.Interpolate(Make(turned,0),Make(Quaternion.identity,1),.5);
+            Assert.That((int)middle.Objects[0].VisualState["card_face"],Is.Zero);
+            Assert.That(Quaternion.Angle(middle.Objects[0].Rotation,turned),Is.LessThan(.001f));
+        }
         [TestCase(.2,0)][TestCase(.3,1)][TestCase(2,1)]
         public void InjectedGapProducesOneFaultAndFullGapDuration(double gap,int expected)
         {

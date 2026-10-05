@@ -16,7 +16,10 @@ copied; callers cannot mutate a buffered frame's discrete state.
 Joint coordinates interpolate linearly, positions linearly and rotations
 spherically. Coordinates remain Isaac RH Z-up until the workcell adapter's
 single conversion. Discrete state uses the earlier sample until the newer sample
-is reached. There is no extrapolation. The provisional interpolation delay is
+is reached. Arrow angle and lid fraction interpolate continuously. A card's
+effective visible rotation is interpolated across the recorded release that
+transfers its half-turn from the root pose to `card_face`, avoiding a spurious
+second turn. There is no extrapolation. The provisional interpolation delay is
 two 30 Hz periods (66.7 ms), configurable from 0 to 200 ms. It must be revisited
 after a qualified headset path supplies its jitter measurements.
 
@@ -44,13 +47,24 @@ line. Files are hash checked before use; sequence, session, simulation progress
 and host timestamp order must be consistent. Playback uses elapsed host-stamp
 offsets, never simulation time. The first frame must match neutral. A completed
 trajectory holds its final frame and does not implicitly confirm a reset.
-Returning to neutral is an explicit operation.
+Returning to neutral is an explicit operation. Snapshot validation also checks
+the complete #53 field structure, exactly zero commanded velocities, root/frame
+quaternions and finite environment values. Internal recorded gaps above 250 ms
+are refused. Nonfinite/regressing playback start clocks are refused. An optional
+nominal duration holds the last sample through the declared boundary; a capture
+that overruns that boundary is refused rather than compressed.
 
 Reset comparison checks both the newest sample and the currently rendered pose:
 43 joints within 0.5 degrees, object positions within 1 mm, object rotations
 within 0.5 degrees, and exact visibility/enabled/visual-state values. It is a
 sensor-side confirmation, to be paired with #55's distinct private reset reply
 by the session engine. Receipt of a command reply alone cannot satisfy it.
+Any new nonneutral frame revokes a previous confirmation. The active-root
+`StateSourceHost` supplies `ConfirmReset()` and `CheckExposureReady()`; the latter
+synchronously pumps, ages and applies current state at the actual cue boundary.
+Its `ResetConfirmed` property invokes that same fresh check, so a stalled frame
+cannot expose an old grant before `LateUpdate`. Tracking/foundation unavailability
+revokes the host's boundary grant; recovery needs another explicit confirmation.
 
 Private `state-source.local.json` follows
 `apparatus/schemas/state-source.schema.json`. It identifies the generated scene,
@@ -58,8 +72,20 @@ exact imported layout bytes, neutral file/hash, interpolation delay and clock
 evidence. The neutral filename is a basename in the provisioned private asset
 directory; traversal is rejected. The public example has placeholder hashes
 and cannot load an actual neutral file.
+Both this file and its neutral asset belong in `Application.persistentDataPath`,
+beside `station.local.json`. A live endpoint must explicitly end in `/state`.
 
-Source events are durably logged. Per-render receive-age samples go through a
+Build the integrated scene with `-Scene StateSources -G1Description <verified-description>`.
+The builder places the host outside the hidden presentation hierarchy. The
+renderer validates the complete frame before changing any transform, converts
+coordinates once and refuses unknown objects or out-of-range joints. It checks
+the fixed-base root and imported neutral against the captured snapshot. Exact
+semantic values remain in the hashed layout; float conversion in Unity is not
+used to redefine the neutral state. Initialization, rendering or evidence-writer
+failure hides the workcell and prevents readiness. A stale stream holds its last
+rendered pose and exposes its fault to the session controller.
+
+Source events are durably logged. Receive-age samples at up to 30 Hz go through a
 bounded writer to a private CSV; writer failure or overflow is a fault. These
 ages describe local validated arrival, not an independently established
 end-to-end network latency. Record the source configuration and clock evidence
@@ -71,5 +97,7 @@ private `STATE_SOURCE_EVIDENCE` directory is supplied. Play-mode tests advance
 an injected 90 Hz clock once per actual Unity test frame and check 200 ms,
 300 ms and 2-second gaps. Those tests are deterministic fault injections, not
 elapsed-time network/headset measurements. The 30-minute headset capture,
-source switching on-device and final neutral render comparison remain separate
-operator evidence.
+source switching on-device and a matched live/headset neutral recording remain
+separate operator evidence. The captured #53 neutral is checked against all
+43 imported joints and 60 objects in Unity. A synthetic wire projection of that
+snapshot also exercises source parity; it is not a measured live-neutral run.

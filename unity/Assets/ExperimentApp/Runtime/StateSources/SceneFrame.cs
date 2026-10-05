@@ -51,10 +51,25 @@ namespace AcousticVocab.StateSources
             {
                 var first = a.Objects[i]; var last = b.Objects[i];
                 if (first.Id != last.Id) throw new StateFault("STATE_INVENTORY_CHANGED");
-                // Discrete state is left-continuous: never reveal the future sample.
+                // Discrete state is left-continuous. Continuous public hinge
+                // and arrow coordinates interpolate on the same host timeline.
+                var visual=first.VisualState; var endVisual=last.VisualState;
+                foreach(string key in new[]{"arrow_angle_rad","lid_open_fraction"})
+                    if(visual[key]!=null && endVisual[key]!=null)
+                        visual[key]=(double)visual[key]+((double)endVisual[key]-(double)visual[key])*fraction;
+                Quaternion rotation=Quaternion.SlerpUnclamped(first.Rotation,last.Rotation,t);
+                if(visual["card_face"]!=null && endVisual["card_face"]!=null)
+                {
+                    // At release Isaac can transfer a physical half-turn from
+                    // the root into card_face without changing the visible card.
+                    // Interpolate that effective pose, then retain the earlier
+                    // discrete face so this representation change cannot spin it.
+                    Quaternion faceA=Quaternion.AngleAxis((int)visual["card_face"]*180,Vector3.right);
+                    Quaternion faceB=Quaternion.AngleAxis((int)endVisual["card_face"]*180,Vector3.right);
+                    rotation=Quaternion.SlerpUnclamped(first.Rotation*faceA,last.Rotation*faceB,t)*Quaternion.Inverse(faceA);
+                }
                 objects.Add(new SceneObject(first.Id, Vector3.LerpUnclamped(first.Position, last.Position, t),
-                    Quaternion.SlerpUnclamped(first.Rotation, last.Rotation, t),
-                    first.Visible, first.Enabled, first.VisualState));
+                    rotation,first.Visible, first.Enabled, visual));
             }
             // Joint coordinates are limited articulation coordinates, not circular headings.
             var joints = a.Joints.Select((value, i) => value + (b.Joints[i]-value)*fraction);
