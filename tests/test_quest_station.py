@@ -89,6 +89,14 @@ def test_same_package_version_does_not_mask_wrong_apk(tmp_path):
     assert q.compare(output, output)["changed_fields"] == ["installed_artifact_match"]
 
 
+def test_unknown_source_cleanliness_is_not_a_verified_release(tmp_path):
+    path, _ = manifest(tmp_path)
+    value = json.loads(path.read_text()); value["build_identity"]["dirty_source"] = None
+    path.write_text(json.dumps(value))
+    with pytest.raises(q.ObservationError, match="invalid_verified_android_manifest"):
+        q.expected_artifact(path)
+
+
 def test_public_or_existing_output_rejected(tmp_path):
     with pytest.raises(q.ObservationError): q.private_output(tmp_path / "public.csv")
     path = tmp_path / "existing.local.csv"; path.write_text("preserve")

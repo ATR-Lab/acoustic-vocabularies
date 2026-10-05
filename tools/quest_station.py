@@ -129,7 +129,9 @@ def expected_artifact(manifest_path: Path) -> tuple[dict, str]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
         identity = manifest["build_identity"]
         files = [f for f in manifest["files"] if f["path"] == "experiment.apk"]
-        if manifest["result"] != "Succeeded" or manifest["errors"] != 0 or manifest["development_build"] or identity["dirty_source"] or identity["target"] != "Android" or len(files) != 1:
+        if (manifest["result"] != "Succeeded" or type(manifest["errors"]) is not int or manifest["errors"] != 0
+                or manifest["development_build"] is not False or identity["dirty_source"] is not False
+                or identity["target"] != "Android" or len(files) != 1):
             raise ValueError()
         digest = files[0]["sha256"]
         if not re.fullmatch(r"[0-9a-f]{64}", digest) or not re.fullmatch(r"[0-9a-f]{40}", identity["commit_sha"]):
