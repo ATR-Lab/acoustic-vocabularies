@@ -40,7 +40,7 @@
   "builds": [
     {
       "target": "Windows",
-      "manifest_sha256": "4c0f849a96b09c88e6de6c111bb6cbc27581a34de3a68957e7a5be87ff4f6ab8",
+      "manifest_sha256": "4ffd6422905307a8edb7a430c21e2f3bb35273bc0a86f5714dc5b7458a72e45e",
       "result": "Succeeded",
       "errors": 0,
       "development_build": false,
@@ -60,11 +60,12 @@
         "bytes": 667136,
         "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
       },
-      "unity_reported_total_bytes": 157859013
+      "unity_reported_total_bytes": 157859013,
+      "raw_manifest_sha256": "4c0f849a96b09c88e6de6c111bb6cbc27581a34de3a68957e7a5be87ff4f6ab8"
     },
     {
       "target": "Android",
-      "manifest_sha256": "8fb1178938ce2df689eaa66c00b7c94955d47b80f545e40e56d34525ee6ee859",
+      "manifest_sha256": "0ea0da6605be9719045ef773494f611055537a18b8f2d44d1926b64d38d5e68c",
       "result": "Succeeded",
       "errors": 0,
       "development_build": false,
@@ -84,7 +85,8 @@
         "bytes": 54424416,
         "sha256": "680eb249ec94092c0792ae06e099b853ba11298133e2baf61cd94d9cbbf880a0"
       },
-      "unity_reported_total_bytes": 752254642
+      "unity_reported_total_bytes": 752254642,
+      "raw_manifest_sha256": "8fb1178938ce2df689eaa66c00b7c94955d47b80f545e40e56d34525ee6ee859"
     }
   ],
   "android": {
