@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "scope": "software_post_reset_probe_admission",
+  "participant_admission": false,
+  "native_visit_complete": false,
+  "timing_qualification": false,
+  "runtime_source_commit": "48b469bcc18fd7130557648f5c16a01cb9cacb5a",
+  "reset_probe_source_commit": "ba797d5bd4ac54fa73b8ad64ba99254b9e7e45f0",
+  "freshness_limit_ms": 250,
+  "probe_deadline_ms": 200,
+  "poll_period_ms": 75,
+  "runs": [
+    {
+      "source_commit": "ba797d5bd4ac54fa73b8ad64ba99254b9e7e45f0",
+      "kind": "EditMode",
+      "scope": "control_transport_health_and_reset_probe",
+      "passed": 76,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "d95d7263989407efbd92f5ffbcc84e46c36aad52390bc762ea0f03b513630a98"
+    },
+    {
+      "source_commit": "48b469bcc18fd7130557648f5c16a01cb9cacb5a",
+      "kind": "EditMode",
+      "scope": "combined_engine_control_menu_teaching_staged_owner_closure",
+      "passed": 267,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "6293b272d8cdc8f91b08b7d6803e0f78417bfcfaaf34baa806b47a8c4a9194cc"
+    },
+    {
+      "source_commit": "48b469bcc18fd7130557648f5c16a01cb9cacb5a",
+      "kind": "PlayMode",
+      "scope": "engine_teaching_menu_lifecycle",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "c792fea736e48f6e2b327136d5624bb03c07ad277428a96581e30e3f96cd0cb3"
+    }
+  ],
+  "count_note": "The 76-case client run is included in the 267-case combined run; counts are not additive.",
+  "native_build": null,
+  "affected_segment_native_validation": "pending"
+}
