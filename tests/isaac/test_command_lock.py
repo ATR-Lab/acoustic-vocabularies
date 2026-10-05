@@ -285,3 +285,21 @@ def test_health_cache_expires_without_scene_reads_or_new_ticks():
     assert handoff.health()["exposure_ready"]
     handoff.cached_health["health_sample_host_mono_ms"] -= 251.
     assert not handoff.health()["exposure_ready"]
+
+
+def test_rejected_commands_preserve_public_v2_render_fields():
+    from isaac.publisher.protocol import PublicRegistry, StateEncoder, encode
+    adapter, _, reset, dispatcher, _, _ = setup()
+    state = adapter.read_state()
+    registry = PublicRegistry("engineering-fixture", adapter.scene_sha256, reset.reset_snapshot_sha256,
+                              tuple(state["robot"]["joint_names"]),
+                              tuple((key, tuple(sorted(value["state"]))) for key, value in sorted(state["objects"].items())),
+                              ("fixture_anchor",))
+    encoder = StateEncoder(registry, source_kind="synthetic")
+    neutral = encoder.build(state["robot"]["joint_positions_rad"], state["objects"], 0., 0)
+    for index, (action, target) in enumerate(sorted(LEGAL_PAIRS), 1):
+        assert not send(dispatcher, "demo", {"action": action, "target": target})["accepted"]
+        current = adapter.read_state()
+        public = encoder.build(current["robot"]["joint_positions_rad"], current["objects"], index/30, index)
+        assert public["objects"] == neutral["objects"] and public["joint_positions"] == neutral["joint_positions"]
+        assert '"command"' not in encode(public) and '"target"' not in encode(public) and '"action"' not in encode(public)
