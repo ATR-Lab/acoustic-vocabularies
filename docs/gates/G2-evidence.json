@@ -117,6 +117,38 @@
       "path": "docs/unity/state-sources-validation.json",
       "artifact_sha256": "058eeb682de9e8e3b94914ee5fb7c242a14dcdb3eab10ed20dfb525176e6243d",
       "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/ee5a621e4970cb81001df3f1d7bf02b40e2adf40/docs/unity/state-sources-validation.json"
+    },
+    {
+      "id": "reset_refresh",
+      "status": "PASS_COMPONENT_ONLY",
+      "commit": "bd55e195b8565cd5e27777c069f4124933f333a3",
+      "path": "docs/isaac/reset/reverification-20261005.json",
+      "artifact_sha256": "60e412ef4a52cc4ac9441b0fb21f3ecc5ca5895acdf314cc0874ff60187195dd",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/bd55e195b8565cd5e27777c069f4124933f333a3/docs/isaac/reset/reverification-20261005.json"
+    },
+    {
+      "id": "published_command_lock",
+      "status": "PASS_SOFTWARE_SCOPE_ONLY",
+      "commit": "bd55e195b8565cd5e27777c069f4124933f333a3",
+      "path": "docs/isaac/commands/published-neutral-reverification-20261005.json",
+      "artifact_sha256": "9a60b8f8b22f6717e8febcf059f349331523ca1cfe085b52baf1216f15318226",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/bd55e195b8565cd5e27777c069f4124933f333a3/docs/isaac/commands/published-neutral-reverification-20261005.json"
+    },
+    {
+      "id": "soak_collection",
+      "status": "IMPLEMENTED_NOT_QUALIFIED",
+      "commit": "bd55e195b8565cd5e27777c069f4124933f333a3",
+      "path": "docs/tests/soak/collection.md",
+      "artifact_sha256": "8e654fa7a4463b8cec469d512950cbe761065a26a6a2d0b98c278e49db7fd045",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/bd55e195b8565cd5e27777c069f4124933f333a3/docs/tests/soak/collection.md"
+    },
+    {
+      "id": "linux_software_verification",
+      "status": "PASS_WITH_DOCUMENTED_DEPENDENCY_EXCLUSIONS",
+      "commit": "bd55e195b8565cd5e27777c069f4124933f333a3",
+      "path": "docs/tests/soak/linux-verification-20261005.json",
+      "artifact_sha256": "a906ffff0fa9257040951a1adc5b3784617281e0fef1360e108ec5404f58aa7f",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/bd55e195b8565cd5e27777c069f4124933f333a3/docs/tests/soak/linux-verification-20261005.json"
     }
   ],
   "bindings": {
@@ -127,7 +159,7 @@
   "limitations": [
     "Review packet only; not an automated source/deployment authority",
     "Read-only methodology unavailable; no protocol apparatus text invented or changed",
-    "All referenced implementation PRs remain draft review dependencies",
+    "Backend engineering integrated through PR124; unqualified station and motion evidence remains pending",
     "Unsigned no-go proposal cannot substitute for complete verified snapshot deployment, motion hashes, apparatus amendment and approved-range review"
   ]
 }
