@@ -9,7 +9,9 @@
     "Unity.XR.OpenXR",
     "Unity.XR.OpenXR.Editor",
     "AcousticVocab.Workcell",
-    "AcousticVocab.ResponsePanel"
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.StudyAudio",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [
     "Editor"

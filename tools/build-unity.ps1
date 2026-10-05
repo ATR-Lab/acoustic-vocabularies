@@ -1,9 +1,9 @@
 param(
     [Parameter(Mandatory)][string]$Unity,
-    [Parameter(Mandatory)][ValidateSet('Configure','Test','Android','Windows')][string]$Target,
+    [Parameter(Mandatory)][ValidateSet('Configure','Test','TestPlayMode','Android','Windows')][string]$Target,
     [Parameter(Mandatory)][string]$ProtocolVersion,
     [Parameter(Mandatory)][string]$BuildId,
-    [ValidateSet('Foundation','Workcell','ResponsePanel')][string]$Scene = 'Foundation',
+    [ValidateSet('Foundation','Workcell','ResponsePanel','Calibration')][string]$Scene = 'Foundation',
     [string]$G1Description,
     [switch]$AllowDirty,
     [string]$TemporaryDirectory,
@@ -32,13 +32,15 @@ if (Test-Path -LiteralPath $log) { throw 'Use a fresh build identifier; existing
 $unityArguments = @('-batchmode','-nographics','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log+'"'))
 if ($Target -eq 'Android') { $unityArguments += @('-buildTarget','Android') }
 if ($Target -eq 'Windows') { $unityArguments += @('-buildTarget','Win64') }
-if ($Target -eq 'Test') {
-    $results = Join-Path $output 'editmode.xml'
-    $assemblies = if ($Scene -in @('Workcell','ResponsePanel')) { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests;AcousticVocab.ResponsePanel.Tests' } else { 'AcousticVocab.Foundation.Tests' }
-    $unityArguments += @('-runTests','-testPlatform','EditMode','-assemblyNames',$assemblies,'-testResults',('"'+$results+'"'))
+if ($Target -in @('Test','TestPlayMode')) {
+    $platform = if ($Target -eq 'Test') { 'EditMode' } else { 'PlayMode' }
+    if ($platform -eq 'PlayMode' -and $Scene -ne 'Calibration') { throw 'This branch provides play-mode tests for Calibration only.' }
+    $results = Join-Path $output ($platform.ToLowerInvariant()+'.xml')
+    $assemblies = if ($platform -eq 'PlayMode') { 'AcousticVocab.StudyAudio.PlayModeTests' } elseif ($Scene -in @('Workcell','ResponsePanel')) { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests;AcousticVocab.ResponsePanel.Tests' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.Foundation.Tests;AcousticVocab.StudyAudio.Tests' } else { 'AcousticVocab.Foundation.Tests' }
+    $unityArguments += @('-runTests','-testPlatform',$platform,'-assemblyNames',$assemblies,'-testResults',('"'+$results+'"'))
 } else {
     $method = if ($Target -eq 'Configure') { 'Configure' } else { 'Build'+$Target }
-    $builder = if ($Scene -eq 'ResponsePanel') { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } elseif ($Scene -eq 'Workcell') { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } else { 'AcousticVocab.Foundation.Editor.FoundationBuild.' }
+    $builder = if ($Scene -eq 'ResponsePanel') { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } elseif ($Scene -eq 'Workcell') { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } else { 'AcousticVocab.Foundation.Editor.FoundationBuild.' }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
 $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru
@@ -46,9 +48,9 @@ $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environ
 # Start-Process -Wait waits the entire process tree (PowerShell documentation).
 $process.WaitForExit()
 if ($process.ExitCode -ne 0) { throw "Unity failed with exit code $($process.ExitCode). Inspect the private build log." }
-if ($Target -eq 'Test') {
+if ($Target -in @('Test','TestPlayMode')) {
     [xml]$result = Get-Content -Raw -LiteralPath $results
-    if ($result.'test-run'.result -ne 'Passed' -or [int]$result.'test-run'.total -lt 1) { throw 'Unity edit-mode suite did not pass or discovered zero tests.' }
+    if ($result.'test-run'.result -ne 'Passed' -or [int]$result.'test-run'.total -lt 1) { throw 'Unity test suite did not pass or discovered zero tests.' }
 }
 if ($Target -in @('Android','Windows')) {
     $binary = if ($Target -eq 'Android') { 'experiment.apk' } else { 'experiment.exe' }
