@@ -68,3 +68,14 @@ field is explicitly `service_completed`; `native_visit_completed` stays false.
 A clean service exit is not a completed study visit or rate
 qualification. The native journal and joined application evidence must be
 evaluated separately.
+
+The [2026-10-05 startup derivative](e2e/2026-10-05-startup-evidence.json)
+records the actual isolated simulator, matching canonical scene/snapshot,
+three real private mode/reset acknowledgements and a five-second Windows
+loopback state check. It preserves the hashes of the private raw evidence.
+The native application attempt was blocked by Windows Application Control
+before process creation; no native visit is demonstrated by this derivative.
+The backend remains below the target publication rate. The running service
+window and its eventual cleanup must be evaluated separately from this startup
+evidence. A later visit uses a fresh output directory and independently pinned
+control session, after the previous client and owned service are closed.

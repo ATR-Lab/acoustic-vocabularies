@@ -1,0 +1,91 @@
+{
+  "evidence_version": 1,
+  "scope": "SIMULATION_TEST",
+  "participant": false,
+  "qualification": false,
+  "status": "partial_backend_startup_and_loopback_diagnostic",
+  "native_visit_completed": false,
+  "native_launch_result": "Windows Application Control blocked the native executable before process creation; reported separately by the native owner.",
+  "source_git": "c6bec1058591d4e67497638adac810bc7388a52f",
+  "source_archive_sha256": "c29bd45e565627cbf74aecbb8a9fc4a5c164b4db783752e005de6a10ea84aac8",
+  "base_git": "a72a8d47a797dbc7d98eb8655d52dc315c2a2ad3",
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "network_mode": "none",
+  "host_relays": "literal loopback only; permission0600 Unix sockets with actual peer UID checks; SSH local forwards",
+  "station_id": "station-01",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "initial_actual_health": {
+    "mode": "test",
+    "fault": null,
+    "publisher_ready": true,
+    "exposure_ready": true,
+    "neutral_verification_age_ms": 9.196933977081299,
+    "publisher_age_ms": 8.980484977081298
+  },
+  "commands": [
+    {
+      "command": "set_mode",
+      "mode": "teaching",
+      "accepted": true,
+      "reason": "MODE_CHANGED",
+      "reset_ok": null,
+      "roundtrip_ms": 119.30180000490509,
+      "within_native_250ms": true
+    },
+    {
+      "command": "set_mode",
+      "mode": "test",
+      "accepted": true,
+      "reason": "MODE_CHANGED",
+      "reset_ok": true,
+      "roundtrip_ms": 136.93480000074487,
+      "within_native_250ms": true
+    },
+    {
+      "command": "reset",
+      "mode": "test",
+      "accepted": true,
+      "reason": "RESET_COMPLETE",
+      "reset_ok": true,
+      "roundtrip_ms": 165.48239999974612,
+      "within_native_250ms": true
+    }
+  ],
+  "public_receive": {
+    "frames": 81,
+    "elapsed_seconds": 4.993026900003315,
+    "missing_sequences": 0,
+    "max_arrival_gap_ms": 79.0326999995159,
+    "joint_count": 43,
+    "object_count": 60
+  },
+  "tests": {
+    "windows_backend_passed": 263,
+    "windows_backend_skipped": 10,
+    "skip_reasons": {
+      "linux_unix_relay": 3,
+      "preinstalled_websockets_absent": 2,
+      "linux_process_collector": 4,
+      "windows_symlink_privilege": 1
+    },
+    "actual_approved_linux_service_and_relay_passed": 23,
+    "public_repository_guard": "passed"
+  },
+  "hashes": {
+    "ready.json": "fd36bbc8a75bb7f972a4695ed2702e4268ebbef54e588e613cdc8234ab326563",
+    "neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "sample-first.json": "49e8f5d715a4624fe6686f64486bc5cee440e6bc3c03f7bc66fa4200f2a75c8f",
+    "diagnostic-first.json": "9fdee4d75dd4d07549482c6bcfeff138ce3de76d9e7fef0ee150b5677689dc57",
+    "diagnostic-last.json": "39e18db6fa4a06700479fc9d8d5f97892510e5091cedaa5669b7c049bb7ec5b9",
+    "diagnostic-report.json": "3bfd828a3b0db7c0576e8ef8a7fae01f1aab94f150cae7cd37e715ebd21d6059",
+    "backend-tests.xml": "4e7166f3793248706212efdf33e1fe20f972e486b7624c85f72866babfa8062b"
+  },
+  "limitations": [
+    "Service window and cleanup were still pending at this derivative; no final service-completion claim.",
+    "The nominal30Hz publisher misses deadlines; this diagnostic is not a timing or throughput pass.",
+    "Actual local arrival age and neutral state are not independently qualified remote clock drift.",
+    "No physical acoustic/headset measurement, participant admission, completed visit, or motion qualification.",
+    "Three diagnostic commands preceded attempted native launch; they are not native application evidence."
+  ]
+}
