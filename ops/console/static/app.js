@@ -63,6 +63,10 @@ async function command(action, payload={}) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     byId('error').hidden = true; render(data);
+    if (action === 'load') {
+      byId('comfort').checked = data.comfort;
+      byId('phone').checked = data.phone;
+    }
     if (action === 'deviation') byId('note').value = '';
   } catch (error) { failure(error); }
   finally { busy = false; }
