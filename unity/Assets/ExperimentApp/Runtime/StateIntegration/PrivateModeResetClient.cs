@@ -36,27 +36,41 @@ namespace AcousticVocab.StateIntegration
         readonly HashSet<string> resets=new HashSet<string>(StringComparer.Ordinal);
         readonly CancellationTokenSource lifetime=new CancellationTokenSource();
         readonly Action<JObject> persist;
+        readonly Func<double> now;
         readonly Task worker;
         ClientWebSocket socket;
         volatile bool failed;
-        bool disposed,modeAcknowledged;
+        bool disposed,modeAcknowledged,pumping;
         int queued;
         readonly ControlHealthGate healthGate;
         public PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink)
+            :this(endpoint,independentlyPinnedControlSessionId,requiredMode,durableControlSink,()=>NowMs,true){}
+        // The deterministic transport boundary exercises the real receive queue
+        // and persistence path without opening a network connection in tests.
+        internal PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink,Func<double> monotonicClock,bool connect)
         {
             Require(Uri.TryCreate(endpoint,UriKind.Absolute,out var uri)&&uri.Scheme=="ws"&&IPAddress.TryParse(uri.Host,out var ip)&&IPAddress.IsLoopback(ip)&&uri.AbsolutePath=="/commands"&&uri.Query.Length==0&&uri.Fragment.Length==0&&uri.UserInfo.Length==0,"CONTROL_ENDPOINT");
             Require(independentlyPinnedControlSessionId!=null&&Regex.IsMatch(independentlyPinnedControlSessionId,@"\A[0-9a-f]{32}\z"),"CONTROL_SESSION");
-            Require(requiredMode=="teaching"||requiredMode=="test","CONTROL_MODE_INVALID");mode=requiredMode;session=independentlyPinnedControlSessionId;persist=durableControlSink??throw new ArgumentNullException(nameof(durableControlSink));healthGate=new ControlHealthGate(session,mode,()=>NowMs);worker=Task.Run(()=>Run(uri));
+            Require(requiredMode=="teaching"||requiredMode=="test","CONTROL_MODE_INVALID");mode=requiredMode;session=independentlyPinnedControlSessionId;persist=durableControlSink??throw new ArgumentNullException(nameof(durableControlSink));now=monotonicClock??throw new ArgumentNullException(nameof(monotonicClock));healthGate=new ControlHealthGate(session,mode,now);worker=connect?Task.Run(()=>Run(uri)):Task.CompletedTask;
         }
         public bool ModeAcknowledged => !failed&&!disposed&&modeAcknowledged;
         public string RequiredMode => mode;
-        public bool NeutralHoldHealthy => ModeAcknowledged&&healthGate.Fresh;
-        public bool ResetAcknowledged(string exactRequestId) => exactRequestId!=null&&resets.Contains(exactRequestId)&&NeutralHoldHealthy;
+        // Exposure reads run on the owning main thread. A durable write or a
+        // different Unity Update order can leave newer real replies queued.
+        // Drain that bounded batch before testing freshness; never wait for the
+        // network, invent a receive time, or extend the 250 ms bound.
+        public bool NeutralHoldHealthy {get{if(failed||disposed)return false;Pump();return ModeAcknowledged&&healthGate.Fresh;}}
+        public bool ResetAcknowledged(string exactRequestId) => exactRequestId!=null&&NeutralHoldHealthy&&resets.Contains(exactRequestId);
+        public JObject ReadinessDiagnostic(string exactRequestId)
+        {
+            var value=healthGate.Diagnostic();value["failed"]=failed;value["disposed"]=disposed;value["mode_acknowledged"]=modeAcknowledged;
+            value["exact_reset_recorded"]=exactRequestId!=null&&resets.Contains(exactRequestId);value["queued_arrivals"]=Volatile.Read(ref queued);return value;
+        }
         string Request(string command)
         {
             Require(!failed&&!disposed&&pending.Count<4,"CONTROL_UNAVAILABLE");
             string id=Guid.NewGuid().ToString("N");var request=new JObject{["version"]=1,["kind"]="private_command",["control_session_id"]=session,["request_id"]=id,["command"]=command,["args"]=command=="set_mode"?new JObject{["mode"]=mode}:new JObject()};
-            persist(new JObject{["kind"]="control_request",["local_mono_ms"]=NowMs,["request"]=request.DeepClone()});
+            persist(new JObject{["kind"]="control_request",["local_mono_ms"]=now(),["request"]=request.DeepClone()});
             pending.Add(id,command);outgoing.Enqueue(request.ToString(Formatting.None));return id;
         }
         public void RequestMode(){Require(!modeAcknowledged&&!pending.Values.Contains("set_mode"),"CONTROL_MODE_PENDING");Request("set_mode");}
@@ -71,12 +85,16 @@ namespace AcousticVocab.StateIntegration
         public void Pump()
         {
             Require(!failed&&!disposed,"CONTROL_UNAVAILABLE");
-            while(incoming.TryDequeue(out var item))
+            Require(!pumping,"CONTROL_REENTRANCY");pumping=true;
+            try
+            {
+            int batch=Math.Min(8,Volatile.Read(ref queued));
+            for(int i=0;i<batch&&incoming.TryDequeue(out var item);i++)
             {
                 Interlocked.Decrement(ref queued);
                 try
                 {
-                    Require(NowMs-item.Received<=250,"CONTROL_QUEUED");
+                    double readAt=now();Require(readAt>=item.Received&&readAt-item.Received<=250,"CONTROL_QUEUED");
                     var value=StationConfig.ParseStrict(item.Raw);
                     if(item.Health){healthGate.Observe(value,item.Sent,item.Received);continue;}
                     Keys(value,"version","kind","request_id","accepted","reason","mode","host_mono_ms","sim_time","reset_ok","duplicate","health");
@@ -92,7 +110,11 @@ namespace AcousticVocab.StateIntegration
                 }
                 catch{Interrupt();throw;}
             }
+            }
+            finally{pumping=false;}
         }
+        internal void ReceiveHealth(string raw,double sent,double received)=>Offer(new Arrival{Health=true,Raw=raw,Sent=sent,Received=received});
+        internal void ReceiveReply(string id,string raw,double sent,double received)=>Offer(new Arrival{Id=id,Raw=raw,Sent=sent,Received=received});
         void Offer(Arrival item)
         {if(Interlocked.Increment(ref queued)>8){Interlocked.Decrement(ref queued);failed=true;lifetime.Cancel();return;}incoming.Enqueue(item);}
         async Task Run(Uri endpoint)
@@ -107,19 +129,19 @@ namespace AcousticVocab.StateIntegration
                 {
                     if(outgoing.TryDequeue(out var raw))
                     {
-                        string id=(string)StationConfig.ParseStrict(raw)["request_id"];double sent=NowMs;
+                        string id=(string)StationConfig.ParseStrict(raw)["request_id"];double sent=now();
                         using var timeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);timeout.CancelAfter(3000);
                         byte[] bytes=Encoding.UTF8.GetBytes(raw);await client.SendAsync(new ArraySegment<byte>(bytes),WebSocketMessageType.Text,true,timeout.Token);
                         using var message=new MemoryStream();var buffer=new byte[4096];WebSocketReceiveResult part;
                         do{part=await client.ReceiveAsync(new ArraySegment<byte>(buffer),timeout.Token);if(part.MessageType!=WebSocketMessageType.Text||message.Length+part.Count>16384)throw new IOException();message.Write(buffer,0,part.Count);}while(!part.EndOfMessage);
-                        Offer(new Arrival{Id=id,Raw=new UTF8Encoding(false,true).GetString(message.ToArray()),Sent=sent,Received=NowMs});
+                        ReceiveReply(id,new UTF8Encoding(false,true).GetString(message.ToArray()),sent,now());
                     }
-                    double before=NowMs;
+                    double before=now();
                     using var healthTimeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);healthTimeout.CancelAfter(200);
                     using var response=await http.GetAsync(healthEndpoint,HttpCompletionOption.ResponseHeadersRead,healthTimeout.Token);response.EnsureSuccessStatusCode();
                     using var stream=await response.Content.ReadAsStreamAsync();using var health=new MemoryStream();var chunk=new byte[4096];int count;
                     while((count=await stream.ReadAsync(chunk,0,chunk.Length,healthTimeout.Token))>0){if(health.Length+count>16384)throw new IOException();health.Write(chunk,0,count);}
-                    Offer(new Arrival{Health=true,Raw=new UTF8Encoding(false,true).GetString(health.ToArray()),Sent=before,Received=NowMs});
+                    ReceiveHealth(new UTF8Encoding(false,true).GetString(health.ToArray()),before,now());
                     await Task.Delay(75,lifetime.Token);
                 }
             }
