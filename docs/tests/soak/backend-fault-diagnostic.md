@@ -12,9 +12,13 @@ Unix sockets must be permission0600 and owned by the UID running the diagnostic;
 no host relays, TCP listeners or network settings are needed. Do not run this
 beside a native visit or another task GPU workload.
 
-After actual startup, pin the raw `joined-e2e/ready.json` SHA and the actual
-scene/snapshot hashes. Run in the same isolated namespace using the existing
-approved Python and websockets dependency:
+Start a bounded readiness watcher immediately with the source. Once the actual
+`joined-e2e/ready.json` exists, hash those raw bytes and start the driver in the
+same isolated namespace using the existing approved Python and websockets
+dependency. Pin scene/snapshot identities independently of that readiness file.
+The driver requires at least 75 seconds of remaining source lease on the shared
+host monotonic clock before it opens any control socket. A delayed manual launch
+therefore refuses admission rather than overrunning the source lease.
 
 ```text
 python -m isaac.e2e.fault_check
@@ -63,3 +67,31 @@ The driver cannot establish Unity pause-before-exposure, audio-ledger preservati
 no novel-cue replay, headset recovery, Isaac restart, Wi-Fi/uplink recovery, clock
 qualification or eight-hour stability. Those remain separate required native and
 apparatus tests. No station power or network fault is injected here.
+
+## Measured bounded result, 2026-10-05
+
+[The sanitized evidence](backend-fault-results.json) retains both attempts and
+their source, archive and artifact hashes. Attempt001 failed before the planned
+fault injection because the driver's event metadata collided with its event-name
+parameter. Its final real Stop/reset succeeded. The regression correction also
+added remaining-lease admission and automatic startup coordination. This failed
+attempt remains failed evidence.
+
+Attempt002 completed the 60.188-second recovery sequence. The first receiver
+durably validated 148 frames before its intentional SIGKILL; the fresh receiver
+validated 622 frames and closed cleanly. Both journals have contiguous sequences
+within their own observation windows and zero measured public-neutral deviation
+for all 43 joints and 60 objects. Publication continued during the ten-second
+receiver absence. Reset-event counts were 1,2,2,2 before reset, after its unconsumed
+ACK, after exact replay, and after conflicting reuse: only one reset execution.
+The final Stop/reset and container exit succeeded; the dedicated sockets and
+container were removed. No host relay was used.
+
+**The timing screen failed.** The source published 939 frames over 60.499 seconds
+and recorded 873 missed deadlines. The first receiver had one 451.407ms arrival
+gap; the reconnected receiver's maximum gap was 122.867ms. Six consumed command
+ACKs had a maximum measured Unix RTT of 93.477ms. The deliberately unconsumed ACK
+has no measured application RTT. These short observations do not qualify timing
+or establish #58/#81 acceptance. The source's accepted-reset-event count includes
+the successful duplicate receipt; the independent reset journal establishes the
+execution count.
