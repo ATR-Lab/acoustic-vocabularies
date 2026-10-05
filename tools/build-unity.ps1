@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('Configure','Test','TestPlayMode','Android','Windows')][string]$Target,
     [Parameter(Mandatory)][string]$ProtocolVersion,
     [Parameter(Mandatory)][string]$BuildId,
-    [ValidateSet('Foundation','Workcell','StateSources','Calibration','ResponsePanel','Teaching','Assessment','SelectionMenus','JoinedEngineering','FrameBudget','FrameProbe')][string]$Scene = 'Foundation',
+    [ValidateSet('Foundation','Workcell','StateSources','Calibration','ResponsePanel','Teaching','Assessment','SelectionMenus','JoinedEngineering','FrameBudget','FrameProbe','Orientation')][string]$Scene = 'Foundation',
     [string]$G1Description,
     [switch]$GraphicsTests,
     [switch]$AllowDirty,
@@ -22,7 +22,7 @@ $dirty = [bool](& git -C $repo status --porcelain)
 if ($dirty -and -not $AllowDirty) { throw 'Working tree is dirty. Commit reviewed source or explicitly mark a local engineering build with -AllowDirty.' }
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 $environment = @{ EXPERIMENT_PROTOCOL_VERSION=$ProtocolVersion; EXPERIMENT_BUILD_ID=$BuildId; EXPERIMENT_COMMIT_SHA=$revision; EXPERIMENT_DIRTY_SOURCE=$dirty.ToString().ToLowerInvariant() }
-if ($Scene -in @('Workcell','StateSources','ResponsePanel','Teaching','Assessment','SelectionMenus','JoinedEngineering','FrameBudget','FrameProbe')) {
+if ($Scene -in @('Workcell','StateSources','ResponsePanel','Teaching','Assessment','SelectionMenus','JoinedEngineering','FrameBudget','FrameProbe','Orientation')) {
     if (-not $G1Description -or -not (Test-Path -LiteralPath $G1Description -PathType Leaf)) { throw 'Workcell requires the reviewed converted G1 description via -G1Description.' }
     $environment.G1_DESCRIPTION_JSON=(Resolve-Path -LiteralPath $G1Description).Path
 }
@@ -55,7 +55,7 @@ if ($Target -in @('Test','TestPlayMode')) {
     if ($Scene -eq 'FrameProbe' -and $Target -eq 'Android') { throw 'Engineering probe is a Windows-only diagnostic' }
     if ($Scene -eq 'FrameProbe' -and $Target -eq 'Windows') { $method = 'BuildProbeWindows' }
     if ($Scene -eq 'FrameProbe' -and $Target -eq 'Configure') { $method = 'ConfigureProbe' }
-    $builder = switch ($Scene) { 'JoinedEngineering' { 'AcousticVocab.SessionIntegration.Editor.JoinedEngineeringBuild.' } 'SelectionMenus' { 'AcousticVocab.SelectionMenus.Editor.MenuBuild.' } 'FrameBudget' { 'AcousticVocab.FrameBudget.Editor.FrameBudgetBuild.' } 'FrameProbe' { 'AcousticVocab.FrameBudget.Editor.FrameBudgetBuild.' } 'Assessment' { 'AcousticVocab.Assessment.Editor.AssessmentBuild.' } 'Teaching' { 'AcousticVocab.Teaching.Editor.TeachingBuild.' } 'Calibration' { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
+    $builder = switch ($Scene) { 'Orientation' { 'AcousticVocab.Orientation.Editor.OrientationBuild.' } 'JoinedEngineering' { 'AcousticVocab.SessionIntegration.Editor.JoinedEngineeringBuild.' } 'SelectionMenus' { 'AcousticVocab.SelectionMenus.Editor.MenuBuild.' } 'FrameBudget' { 'AcousticVocab.FrameBudget.Editor.FrameBudgetBuild.' } 'FrameProbe' { 'AcousticVocab.FrameBudget.Editor.FrameBudgetBuild.' } 'Assessment' { 'AcousticVocab.Assessment.Editor.AssessmentBuild.' } 'Teaching' { 'AcousticVocab.Teaching.Editor.TeachingBuild.' } 'Calibration' { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
 $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru

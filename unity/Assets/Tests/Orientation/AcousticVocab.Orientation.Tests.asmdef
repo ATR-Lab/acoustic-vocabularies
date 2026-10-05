@@ -1,0 +1,8 @@
+{
+  "name": "AcousticVocab.Orientation.Tests",
+  "references": ["AcousticVocab.Orientation", "AcousticVocab.Orientation.Editor", "AcousticVocab.ResponsePanel", "AcousticVocab.StateSources", "AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
+}
