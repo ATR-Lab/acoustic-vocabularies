@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--disconnect-check',action='store_true')
     parser.add_argument('--demo-check',action='store_true')
     parser.add_argument('--demo-preflight',action='store_true')
+    parser.add_argument('--grip-check',action='store_true')
     parser.add_argument('--protected-stream-seconds',type=float,default=0.)
     parser.add_argument('--protected-socket',type=Path)
     parser.add_argument('--protected-station-id',default='simulator-01')
@@ -166,6 +167,22 @@ def main():
                 demos=run_demo_check(manager,layout,args.output/'demo-check',
                     preflight_only=args.demo_preflight,capture_image=capture if args.capture else None)
             finally: event_log.close()
+        grip=None
+        if args.grip_check:
+            if reset is None: raise ValueError('Grip diagnostic requires actual reset snapshot')
+            import uuid
+            from isaac.demos.grip_probe import run_grip_check
+            from isaac.reset.snapshot import load_snapshot
+            from isaac.reset.manager import ResetManager
+            from isaac.reset.event_log import DurableResetLog
+            snapshot=load_snapshot(args.output/'reset-check/neutral_v1.json',reset['reset_snapshot_sha256'])
+            event_log=DurableResetLog(args.output/'grip-reset-events.jsonl',session_id=uuid.uuid4().hex,
+                apparatus_version='workcell-development-v1',protocol_version='unresolved-methodology')
+            try:
+                manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
+                grip=run_grip_check(manager,layout,args.output/'grip-check',
+                    capture_image=capture if args.capture else None)
+            finally: event_log.close()
         protected=None
         if args.protected_stream_seconds:
             if reset is None or args.protected_socket is None:
@@ -201,7 +218,7 @@ def main():
             unitree_dds_started=False,network_interfaces=['lo'],methodology_review_complete=False,
             reach_summary={k:v for k,v in reach.items() if k!='results'} if reach else None,
             reset_summary=reset,publisher_summary=publisher,command_summary=commands,disconnect_summary=disconnect,
-            demo_summary=demos,protected_stream_summary=protected,
+            demo_summary=demos,grip_summary=grip,protected_stream_summary=protected,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))
