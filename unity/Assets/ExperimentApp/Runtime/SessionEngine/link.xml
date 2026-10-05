@@ -1,0 +1,5 @@
+<linker>
+  <!-- Keep the pure engine/record codec in engineering builds so native AOT
+       compilation covers it before the content-module scene integration. -->
+  <assembly fullname="AcousticVocab.SessionEngine" preserve="all" />
+</linker>
