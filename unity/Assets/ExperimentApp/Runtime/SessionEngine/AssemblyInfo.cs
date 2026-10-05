@@ -5,3 +5,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("AcousticVocab.Assessment.PlayModeTests")]
 [assembly: InternalsVisibleTo("AcousticVocab.Teaching.Tests")]
 [assembly: InternalsVisibleTo("AcousticVocab.Teaching.PlayModeTests")]
+[assembly: InternalsVisibleTo("AcousticVocab.SelectionMenus.Tests")]

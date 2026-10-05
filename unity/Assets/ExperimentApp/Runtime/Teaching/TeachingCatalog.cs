@@ -21,6 +21,8 @@ namespace AcousticVocab.Teaching
     // Supplied only by the future verified Study B selection/admission path.
     // This module neither allocates profiles nor selects candidate ranks.
     public interface ITeachingSelections { string PackageSha256 {get;} bool OldHashesVerified {get;} TeachingSelection Get(string atomId); }
+    public interface ISelectionMeaningAuthorization
+    { bool TryConsume(string packageSha256,string scheduleSha256,string atomId); }
     public interface IPostStudyDictionaryAuthorization
     { bool TryConsume(string packageSha256,string scheduleSha256,string atomId); }
     public sealed class TeachingDisplay
@@ -49,6 +51,7 @@ namespace AcousticVocab.Teaching
         readonly JObject permutation,content;
         readonly Dictionary<string,TeachingDisplay> displays=new Dictionary<string,TeachingDisplay>(StringComparer.Ordinal);
         readonly string alignedFamily,visit;
+        readonly HashSet<string> selectionAtoms=new HashSet<string>(StringComparer.Ordinal);
         public string Sha256 { get; }
         public string ReviewSha256 { get; }
         public string MethodologySha256 { get; }
@@ -111,6 +114,7 @@ namespace AcousticVocab.Teaching
                 {var attributes=File.GetAttributes(path);Require(++entries<=128&&(attributes&FileAttributes.ReparsePoint)==0);if((attributes&FileAttributes.Directory)!=0)directories.Enqueue(path);else actualFiles.Add(Path.GetRelativePath(root,path).Replace('\\','/'));}
                 Require(expectedFiles.SetEquals(actualFiles));
                 foreach(var item in schedule.Blocks.SelectMany(x=>x.Items).Where(x=>x.Phase=="teaching"))result.Validate(item);
+                foreach(var item in schedule.Blocks.SelectMany(x=>x.Items).Where(x=>x.TrialType=="atom_menu"&&x.Phase=="selection"))result.selectionAtoms.Add(item.ContentId);
                 return result;
             }
             catch(SessionFault){throw;}catch{throw new SessionFault("LESSON_CATALOG_INVALID");}
@@ -159,6 +163,11 @@ namespace AcousticVocab.Teaching
         }
         public string FeedbackText(string id)
         {var rows=((JObject)content["feedback"]).Properties().Where(x=>(string)x.Value["id"]==id).ToArray();Require(rows.Length==1);return(string)rows[0].Value["text"];}
+        public TeachingDisplay ReadSelectionAtom(string atomId,ISelectionMeaningAuthorization authorization)
+        {
+            LessonTimeline.Require(package.Study=="B"&&new[]{"V1","V2","V3"}.Contains(visit)&&atomId!=null&&selectionAtoms.Contains(atomId)&&authorization!=null,"MENU_MEANING_REFUSED");
+            LessonTimeline.Require(authorization.TryConsume(PackageSha256,ScheduleSha256,atomId),"MENU_MEANING_REFUSED");return displays[atomId];
+        }
         // No PCM or phrase lookup exists here. The stage engine provides one
         // consultation token only after its B W4 final forms/validity boundary.
         public TeachingDisplay ReadPostStudyDictionaryAtom(string atomId,IPostStudyDictionaryAuthorization authorization)

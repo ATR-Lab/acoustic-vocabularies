@@ -21,6 +21,7 @@ namespace AcousticVocab.ResponsePanel
         public bool InputConfigured => settings!=null;
         public bool UsesLeftHand => settings!=null&&settings.LeftHand;
         public bool FaultLatched { get; private set; }
+        public bool? ConfiguredLeftHand => settings?.LeftHand;
         public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
         public event Action<PanelResponse> Responded;
         // Synchronous durable subscriber boundary; failures propagate into ResponseState's abort latch.

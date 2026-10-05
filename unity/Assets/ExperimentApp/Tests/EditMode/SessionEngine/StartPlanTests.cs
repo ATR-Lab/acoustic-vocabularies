@@ -47,6 +47,17 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.That(log.Rows.Any(x=>x.TrialId=="DEMO-1"),Is.False);
             var resumed=new Factory();var recovered=Make(c,log,resumed);Assert.That(recovered.CompletedOpportunities,Is.EqualTo(1));recovered.ConfirmResume();Assert.That(resumed.Values.Single().Context.Item.TrialId,Is.EqualTo("DEMO-1"));
         }
+        [TestCase(false)][TestCase(true)]public void MenusResetInNeutralTailAndKeepFollowingFixedStart(bool profile)
+        {
+            var clock=new Clock();var log=new Log();var factory=new Factory();int seconds=profile?60:45;
+            var items=Enumerable.Range(0,2).Select(i=>new SlotItem("DEMO-menu-"+i,profile?"profile_menu":"atom_menu",profile?null:"K-a1",null,"selection","selection",false,seconds,8,1)).ToArray();
+            var engine=new FixedSlotEngine(new VisitSchedule(new string('a',64),new string('b',64),"DEMO","V1",true,new[]{new ScheduleBlock("menus",items)}),clock,log,factory);engine.ConfirmResume();
+            for(;clock.Time<750+seconds*1000;clock.Time+=50)engine.Tick();
+            Assert.That(factory.Values.Count,Is.EqualTo(2));Assert.That(factory.Values[1].Context.OnsetMonoMs,Is.EqualTo(750+seconds*1000));Assert.That(factory.Values.All(x=>x.Context.AudioRequestIds.Count==8),Is.True);
+            Assert.That(log.Rows.First(x=>x.TrialId=="DEMO-menu-0"&&x.State==ItemState.Closed).MonoMs,Is.EqualTo(750+(profile?58000:40000)));
+            Assert.That(log.Rows.First(x=>x.TrialId=="DEMO-menu-1"&&x.State==ItemState.CueRequested).MonoMs,Is.GreaterThanOrEqualTo(seconds*1000));
+            Assert.That(engine.Status,Is.EqualTo(SessionState.Running));Assert.That(log.Rows.Any(x=>x.Event=="boundary_late"),Is.False);
+        }
         [Test]public void ResumeUsesOriginalAnchorInsteadOfAddingPauseAgain()
         {var c=new Clock();var log=new Log();var f=new Planned{Plan=(_,baseline)=>Math.Max(0,10750-baseline)};var e=Make(c,log,f,1);e.ConfirmResume();e.RequestPause();c.Time=3000;e.ConfirmResume();Assert.That(f.Values.Select(x=>x.Context.OnsetMonoMs),Is.EqualTo(new[]{10750d,10750}));Assert.That(f.Values.All(x=>x.Cues==0),Is.True);}
         [Test]public void MissedAnchorRequiresExplicitReconstructionAndNeverConsumesCue()

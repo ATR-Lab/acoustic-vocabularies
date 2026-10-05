@@ -35,7 +35,7 @@ namespace AcousticVocab.SessionEngine
         public bool Protected => Phase=="protected" || Phase=="pre_test" || Phase=="validity";
         public double ResponseOpensSeconds => TrialType=="atomic_lesson"?6:TrialType=="message_lesson"?8:0;
         public double ResponseClosesSeconds => TrialType=="atomic"?7:TrialType=="atomic_lesson"?13:TrialType=="message_lesson"?17:
-            TrialType=="profile_menu" || TrialType=="atom_menu"?SlotSeconds:12;
+            TrialType=="profile_menu"?58:TrialType=="atom_menu"?40:12;
         // Participant choice windows are distinct from menu engine reset/tail
         // boundaries. Frame evidence must not label instruction/neutral as choice.
         public double ChoiceOpensSeconds => TrialType=="atom_menu"?22:TrialType=="profile_menu"?30:ResponseOpensSeconds;

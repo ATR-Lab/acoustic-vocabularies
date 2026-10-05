@@ -1,0 +1,20 @@
+{
+  "name": "AcousticVocab.SelectionMenus.Tests",
+  "references": [
+    "AcousticVocab.SelectionMenus",
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Teaching"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ]
+}

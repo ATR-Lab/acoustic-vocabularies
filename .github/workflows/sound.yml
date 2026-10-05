@@ -5,6 +5,10 @@ on:
     paths:
       - "sound/**"
       - "tests/sound/**"
+      - "tests/test_menu_store_bridge.py"
+      - "tools/menu_store_bridge.py"
+      - "tools/menu_store_fixture.py"
+      - "apparatus/schemas/menu-store-bridge.schema.json"
       - "tests/golden/**"
       - ".github/workflows/sound.yml"
       - ".gitattributes"
@@ -13,6 +17,10 @@ on:
     paths:
       - "sound/**"
       - "tests/sound/**"
+      - "tests/test_menu_store_bridge.py"
+      - "tools/menu_store_bridge.py"
+      - "tools/menu_store_fixture.py"
+      - "apparatus/schemas/menu-store-bridge.schema.json"
       - "tests/golden/**"
       - ".github/workflows/sound.yml"
       - ".gitattributes"
@@ -62,6 +70,10 @@ jobs:
         run: >
           uv run --project sound coverage report --rcfile=sound/pyproject.toml
           --include='*/av_sound/renderer.py' --fail-under=90
+      - name: Actual menu/store bridge and private mailbox
+        run: >
+          uv run --project sound pytest --import-mode=importlib -p no:cacheprovider
+          tests/test_menu_store_bridge.py
       - name: Determinism fingerprint
         run: |
           uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"

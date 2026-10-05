@@ -15,7 +15,8 @@
     "AcousticVocab.StateIntegration",
     "AcousticVocab.Teaching",
     "AcousticVocab.Assessment",
-    "AcousticVocab.FrameBudget"
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.SelectionMenus"
   ],
   "includePlatforms": [
     "Editor"
