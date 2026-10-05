@@ -36,7 +36,7 @@ namespace AcousticVocab.Assessment
         {
             if(factory!=null||disposed||failed||!isActiveAndEnabled||foundation==null||!foundation.Ready||source==null||panel==null||!panel.ReadyForTrial||player==null||screen==null||
                 visit==null||package==null||visit.PackageSha256!=package.PackageSha256||visit.Demo!=package.Demo||visit.Demo&&!engineeringPreview||
-                testControl==null||testControl.RequiredMode!="test"||!testControl.ModeAcknowledged||qualifiedRoute==null||!qualifiedRoute.IsQualified||qualifiedRoute.UncertaintyMs>20||
+                testControl==null||testControl.RequiredMode!="test"||!testControl.ModeAcknowledged||qualifiedRoute==null||!qualifiedRoute.CanScheduleSoftware||qualifiedRoute.UncertaintyMs>20||
                 reviewedScripts==null||Faulted==null)throw new AssessmentFault("ASSESSMENT_HOST_NOT_READY");
             schedule=visit;scripts=reviewedScripts;
             try

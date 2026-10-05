@@ -49,10 +49,10 @@ namespace AcousticVocab.FrameBudget
         public FrameAudioAdapter(FrameCaptureHost host,Func<AudioPlaybackEvent,FrameCueBinding> resolve){this.host=host??throw new ArgumentNullException(nameof(host));this.resolve=resolve??throw new ArgumentNullException(nameof(resolve));}
         public static FrameWindow PlannedWindow(string audioId,AudioScheduleTiming timing,FrameCueBinding binding)
         {
-            Check.That(timing!=null&&!timing.CalibrationOnly&&timing.OnsetEstimateMonoSeconds.HasValue&&binding!=null,"FRAME_AUDIO_BINDING");
+            Check.That(timing!=null&&!timing.CalibrationOnly&&timing.PresentationAnchorMonoSeconds.HasValue&&binding!=null,"FRAME_AUDIO_BINDING");
             // The protected window follows the qualified planned onset anchor.
             // ScheduledMonoSeconds precedes it by the measured route offset.
-            double start=timing.OnsetEstimateMonoSeconds.Value*1000;
+            double start=timing.PresentationAnchorMonoSeconds.Value*1000;
             return new FrameWindow(audioId,"cue",start,start+binding.SampleCount*1000d/binding.SampleRate);
         }
         public void Record(AudioPlaybackEvent value)

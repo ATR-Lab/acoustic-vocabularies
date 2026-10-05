@@ -43,7 +43,7 @@ namespace AcousticVocab.StudyAudio
         float gain=.1f;
         public bool Ready => isActiveAndEnabled && configured && !failed && !scheduling && prepared.Count>0 && current==null;
         public bool Playing => current!=null;
-        public bool TrialReady => Ready && route.IsQualified;
+        public bool TrialReady => Ready && route.CanScheduleSoftware;
         public float CurrentGain => gain;
         public long EstimatedPreloadBytes { get; private set; }
         public long UnityAllocatedBytes { get; private set; }
@@ -150,7 +150,7 @@ namespace AcousticVocab.StudyAudio
                 if(ticket.Delivery.Status==AudioDelivery.Underrun || ticket.Delivery.Status==AudioDelivery.InvalidCallback)
                 { Abort(ticket.Delivery.DeadlineFault());return; }
                 if(!ticket.OnsetReported && ticket.Delivery.CallbackCount>0)
-                { Emit(ticket.Timing.CalibrationOnly?"CALIBRATION_DELIVERY_OBSERVED":"AUDIO_ONSET_ESTIMATED",ticket);ticket.OnsetReported=true; }
+                { Emit(ticket.Timing.SimulationOnly?"SIMULATION_DELIVERY_OBSERVED":ticket.Timing.CalibrationOnly?"CALIBRATION_DELIVERY_OBSERVED":"AUDIO_ONSET_ESTIMATED",ticket);ticket.OnsetReported=true; }
                 // Processing ahead in the DSP does not mean the audible interval
                 // has elapsed; completion is withheld through estimated offset.
                 double end=(ticket.Timing.OnsetEstimateMonoSeconds??ticket.Timing.ScheduledMonoSeconds)+(double)ticket.Samples/48000;

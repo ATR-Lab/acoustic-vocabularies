@@ -1,6 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
+using AcousticVocab.Foundation;
 
 namespace AcousticVocab.StudyAudio
 {
@@ -11,6 +12,10 @@ namespace AcousticVocab.StudyAudio
         public double OffsetMs { get; }
         public double UncertaintyMs { get; }
         public bool IsQualified { get; }
+        public bool SimulationOnly { get; private set; }
+        public bool CanScheduleSoftware => IsQualified || SimulationOnly;
+        public static AudioRouteCalibration ForSimulation(SimulationTestAuthority authority)
+        { if(authority==null || !SimulationTestAuthority.CompiledCapability)throw new AudioFault("AUDIO_SIMULATION_AUTHORITY");return new AudioRouteCalibration("simulation-software-output"){SimulationOnly=true}; }
         public AudioRouteCalibration(string route,double offsetMs,double uncertaintyMs,string evidenceSha256)
         {
             if(route==null || !Regex.IsMatch(route,"\\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\z") || !Finite(offsetMs) || Math.Abs(offsetMs)>1000 ||
@@ -77,14 +82,16 @@ namespace AcousticVocab.StudyAudio
                 requestMonoSeconds-observed>.25 || !AudioRouteCalibration.Finite(requestedOnsetMonoSeconds) ||
                 !AudioRouteCalibration.Finite(minimumLeadSeconds) || minimumLeadSeconds<.02)
                 throw new AudioFault("AUDIO_CLOCK_UNAVAILABLE");
-            if(calibration==null || !calibrationOnly && !calibration.IsQualified) throw new AudioFault("AUDIO_ROUTE_UNCALIBRATED");
+            if(calibration==null || !calibrationOnly && !calibration.CanScheduleSoftware) throw new AudioFault("AUDIO_ROUTE_UNCALIBRATED");
             double scheduledMono=requestedOnsetMonoSeconds-(calibrationOnly?0:calibration.OffsetMs/1000);
             if(scheduledMono-requestMonoSeconds<minimumLeadSeconds+uncertainty || scheduledMono-requestMonoSeconds>30)
                 throw new AudioFault("AUDIO_SCHEDULE_LATE");
             return new AudioScheduleTiming(requestMonoSeconds,scheduledMono,dsp+scheduledMono-mono,
-                calibrationOnly?(double?)null:requestedOnsetMonoSeconds,
-                calibrationOnly?(double?)null:(uncertainty*1000)+calibration.UncertaintyMs,
-                calibrationOnly?(double?)null:calibration.OffsetMs);
+                calibrationOnly||calibration.SimulationOnly?(double?)null:requestedOnsetMonoSeconds,
+                calibrationOnly||calibration.SimulationOnly?(double?)null:(uncertainty*1000)+calibration.UncertaintyMs,
+                calibrationOnly||calibration.SimulationOnly?(double?)null:calibration.OffsetMs,
+                calibration.SimulationOnly&&!calibrationOnly?requestedOnsetMonoSeconds:(double?)null,
+                calibration.SimulationOnly&&!calibrationOnly?uncertainty*1000:(double?)null);
         }
     }
 
@@ -96,8 +103,15 @@ namespace AcousticVocab.StudyAudio
         public double? OnsetEstimateMonoSeconds { get; }
         public double? OnsetUncertaintyMs { get; }
         public double? RouteOffsetMs { get; }
-        public bool CalibrationOnly => !OnsetEstimateMonoSeconds.HasValue;
+        public double? SoftwareOutputEstimateMonoSeconds { get; }
+        public double? SoftwareOutputUncertaintyMs { get; }
+        public bool SimulationOnly => SoftwareOutputEstimateMonoSeconds.HasValue;
+        public bool CalibrationOnly => !OnsetEstimateMonoSeconds.HasValue&&!SimulationOnly;
+        public double? PresentationAnchorMonoSeconds=>OnsetEstimateMonoSeconds??SoftwareOutputEstimateMonoSeconds;
+        public double? PresentationUncertaintyMs=>OnsetUncertaintyMs??SoftwareOutputUncertaintyMs;
         internal AudioScheduleTiming(double request,double mono,double dsp,double? onset,double? uncertainty,double? offset)
-        { RequestMonoSeconds=request;ScheduledMonoSeconds=mono;ScheduledDspSeconds=dsp;OnsetEstimateMonoSeconds=onset;OnsetUncertaintyMs=uncertainty;RouteOffsetMs=offset; }
+            :this(request,mono,dsp,onset,uncertainty,offset,null,null){}
+        internal AudioScheduleTiming(double request,double mono,double dsp,double? onset,double? uncertainty,double? offset,double? software,double? softwareUncertainty)
+        { RequestMonoSeconds=request;ScheduledMonoSeconds=mono;ScheduledDspSeconds=dsp;OnsetEstimateMonoSeconds=onset;OnsetUncertaintyMs=uncertainty;RouteOffsetMs=offset;SoftwareOutputEstimateMonoSeconds=software;SoftwareOutputUncertaintyMs=softwareUncertainty; }
     }
 }

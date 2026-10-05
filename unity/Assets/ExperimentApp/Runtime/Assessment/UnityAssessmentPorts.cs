@@ -131,8 +131,8 @@ namespace AcousticVocab.Assessment
         {
             if(context.Item==null||value.AudioId!=context.AudioRequestIds[0])return;
             persist(value); // durable before granting the response anchor
-            if(value.Code=="AUDIO_ONSET_ESTIMATED"&&value.Timing.OnsetEstimateMonoSeconds.HasValue)
-                QualifiedOnsetMonoMs=value.Timing.OnsetEstimateMonoSeconds.Value*1000;
+            if((value.Code is "AUDIO_ONSET_ESTIMATED" or "SIMULATION_DELIVERY_OBSERVED")&&value.Timing.PresentationAnchorMonoSeconds.HasValue)
+                QualifiedOnsetMonoMs=value.Timing.PresentationAnchorMonoSeconds.Value*1000;
             else if(value.Code is not ("AUDIO_REQUESTED" or "AUDIO_PLAYBACK_COMPLETED"))FaultCode=value.Code;
         }
         public void Stop(string fault)=>player.Abort(fault);

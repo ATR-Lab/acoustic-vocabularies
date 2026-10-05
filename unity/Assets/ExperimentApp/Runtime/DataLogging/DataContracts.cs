@@ -129,7 +129,10 @@ namespace AcousticVocab.DataLogging
         }
         internal static void Audio(JObject p)
         {
-            DataJson.Keys(p,"code","audio_id","waveform_sha256","pcm_sha256","action_pcm_sha256","referent_pcm_sha256","observed_mono_ms","request_mono_ms","scheduled_mono_ms","scheduled_dsp_s","onset_estimate_mono_ms","onset_uncertainty_ms","first_callback_dsp_s","delivered_samples","callback_count");
+            var keys=new[]{"code","audio_id","waveform_sha256","pcm_sha256","action_pcm_sha256","referent_pcm_sha256","observed_mono_ms","request_mono_ms","scheduled_mono_ms","scheduled_dsp_s","onset_estimate_mono_ms","onset_uncertainty_ms","first_callback_dsp_s","delivered_samples","callback_count"};
+            bool simulation=p?["simulation_test"]!=null;
+            DataJson.Keys(p,simulation?keys.Concat(new[]{"simulation_test","software_output_estimate_mono_ms","software_output_uncertainty_ms"}).ToArray():keys);
+            if(simulation){DataJson.Require(p["simulation_test"].Type==JTokenType.Boolean&&(bool)p["simulation_test"]&&p["onset_estimate_mono_ms"].Type==JTokenType.Null&&p["onset_uncertainty_ms"].Type==JTokenType.Null);DataJson.Number(p["software_output_estimate_mono_ms"]);DataJson.Number(p["software_output_uncertainty_ms"]);}
             DataJson.Require(DataJson.Code(DataJson.Text(p["code"]))&&DataJson.Id(DataJson.Text(p["audio_id"]))&&DataJson.Hash(DataJson.Text(p["pcm_sha256"])));
             foreach(string k in new[]{"waveform_sha256","action_pcm_sha256","referent_pcm_sha256"}){string h=DataJson.OptionalText(p[k]);DataJson.Require(h==null||DataJson.Hash(h));}
             foreach(string k in new[]{"observed_mono_ms","request_mono_ms","scheduled_mono_ms","scheduled_dsp_s"})DataJson.Number(p[k]);

@@ -3,8 +3,9 @@ let token = '', busy = false;
 const pretty = value => String(value).replaceAll('_', ' ');
 function render(data) {
   token = data.token || token;
-  byId('mode').textContent = data.demo_transport || data.demo ? 'Engineering DEMO' : 'Local station';
-  byId('demoNotice').hidden = !data.demo_transport;
+  byId('mode').textContent = data.simulation_test ? 'SIMULATION TEST' : (data.demo_transport || data.demo ? 'Engineering DEMO' : 'Local station');
+  byId('demoNotice').hidden = !data.demo_transport && !data.simulation_test;
+  byId('demoNotice').textContent = data.simulation_test ? 'SIMULATION TEST · synthetic materials and responses · no participants · audio output timing is uncalibrated' : 'DEMO transport · synthetic progress · no headset or audio connected';
   byId('demoTools').hidden = !data.demo_transport;
   const selected = byId('visit').value;
   byId('visit').replaceChildren(...data.choices.map(value => new Option(pretty(value), value)));

@@ -27,7 +27,8 @@ namespace AcousticVocab.SessionIntegration
     {
         public FoundationBootstrap foundation;public StateSourceHost source;public ResponsePanelController panel;public AudioPlayer player;public FrameCaptureHost frames;
         public Font font;public Shader unlitShader,dictionaryShader;
-        public bool requirePreallocation;
+        public bool requirePreallocation;public bool simulationTestScene;
+        SimulationTestAuthority simulation;TextMesh simulationWatermark;SimulationInputDriver simulationInputs;
         AllocationJoinBinding allocation;string authorizedConfig,authorizedPin;
         internal void StartAllocated(AllocationJoinBinding binding,string configPath,string rawPin)
         {if(enabled||!requirePreallocation||allocation!=null||binding==null||attempted||assets!=null)throw new SessionFault("JOIN_ALLOCATION_ALREADY_CONSUMED");allocation=binding;authorizedConfig=configPath;authorizedPin=rawPin;enabled=true;}
@@ -55,6 +56,7 @@ namespace AcousticVocab.SessionIntegration
         readonly Clock clock=new Clock();
         static string Argument(string key)
         {var args=Environment.GetCommandLineArgs();for(int i=0;i<args.Length-1;i++)if(args[i]==key)return args[i+1];return null;}
+        static bool Flag(string key)=>Environment.GetCommandLineArgs().Contains(key);
         void Start()
         {
             if(requirePreallocation&&allocation==null){Fail("JOIN_PREALLOCATION_REQUIRED");return;}
@@ -66,7 +68,10 @@ namespace AcousticVocab.SessionIntegration
                 config=JoinedEngineeringConfig.Load(path,pin,(string)identity["protocol_version"]);
                 if(config.BuildId!=(string)identity["build_id"])throw new SessionFault("JOIN_BUILD_IDENTITY");
                 allocation?.Validate(config);
-                assets=new JoinedVisitArtifacts(config);ValidateProvisioned();
+                string simPath=Argument("-simulationTestConfig"),simPin=Argument("-simulationTestConfigSha256");
+                if(simulationTestScene){if(simPath==null||simPin==null||!SimulationTestAuthority.CompiledCapability)throw new SessionFault("JOIN_SIMULATION_CAPABILITY_REQUIRED");simulation=SimulationTestAuthority.Load(simPath,simPin,config.BuildId,config.ProtocolVersion);CreateSimulationWatermark();}
+                else if(simPath!=null||simPin!=null)throw new SessionFault("JOIN_SIMULATION_BUILD_REQUIRED");
+                assets=new JoinedVisitArtifacts(config,simulation);ValidateProvisioned();if(simulation!=null)source.EnableSimulationChecks(simulation);
                 if(allocation!=null&&assets.Menus!=null&&allocation.Role!=assets.Menus.Role)throw new SessionFault("JOIN_ALLOCATION_ROLE");
                 if(assets.MissingAuthority!=null)
                 {
@@ -110,7 +115,8 @@ namespace AcousticVocab.SessionIntegration
                     nonce=Guid.NewGuid().ToString("N");evidenceRoot=Path.Combine(config.Directory("evidence"),"joined-"+nonce);Directory.CreateDirectory(evidenceRoot);
                     var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.CodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
                     audit=visit.Own(new JoinedAudit(Path.Combine(evidenceRoot,"joined.local.jsonl"),()=>clock.NowMs));
-                    audit.Write("configuration",new JObject{["config_sha256"]=config.ConfigSha256,["schedule_sha256"]=assets.Schedule.Sha256,["package_sha256"]=assets.Package.PackageSha256,["scope"]="DEMO_ENGINEERING",["participant_admission"]=false});
+                    if(simulation!=null)simulationInputs=new SimulationInputDriver(simulation,panel,nonce,p=>audit.Write("simulation_input",p),Flag("-simulationDummyResponses"));
+                    audit.Write("configuration",new JObject{["config_sha256"]=config.ConfigSha256,["schedule_sha256"]=assets.Schedule.Sha256,["package_sha256"]=assets.Package.PackageSha256,["scope"]=simulation==null?"DEMO_ENGINEERING":"SIMULATION_TEST",["participant_admission"]=false,["simulation_capability_sha256"]=simulation?.RawSha256,["acoustic_qualification"]=false});
                     if(allocation!=null)audit.Write("configuration",new JObject{["orientation_receipt_sha256"]=allocation.OrientationReceiptSha256,["allocation_receipt_sha256"]=allocation.RevealReceiptSha256,["slot_id"]=allocation.SlotId,["unit_id"]=allocation.UnitId});
                     installedFrames=true;frames.Install(config.RequireFile("frame").ReadVerified(),Path.Combine(evidenceRoot,"frames"),data,Fail);Report("JOIN_WAITING_RENDER_BASELINE");
                 }
@@ -151,7 +157,8 @@ namespace AcousticVocab.SessionIntegration
                 }
                 store?.Pump();bool stageHold=HandleAssessmentBoundary();if(!stageHold)staged.Pump();mailbox.Tick(); // sole engine.Tick owner
                 if(grammarInterrupted){Fail("JOIN_GRAMMAR_INTERRUPTED");return;}
-                if(stageHold){staged.PumpPending();return;}
+                simulationInputs?.Tick(clock.NowMs);
+                if(stageHold){staged.PumpPending();if(simulation!=null&&StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"&&Flag("-simulationQuitOnComplete")){Close();Application.Quit(0);}return;}
                 if(grammarStage?.Running==true){Report("JOIN_GRAMMAR_RUNNING");return;}
                 Report(owner.Engine.NeedsOperatorConfirmation?(staged.Ready?"JOIN_READY_EXPLICIT_RESUME":"JOIN_PREFLIGHT"):"JOIN_"+owner.Engine.Status.ToString().ToUpperInvariant());
             }
@@ -171,6 +178,7 @@ namespace AcousticVocab.SessionIntegration
         bool HandleAssessmentBoundary()
         {
             if(owner.Engine.Status!=SessionState.Complete&&!owner.Engine.NeedsOperatorConfirmation)return false;
+            if(clock.NowMs<owner.Modules.RetainedTailEndMs){owner.PumpRetainedAtBoundary();Report("JOIN_RETAINED_TAIL");return true;}
             var assessment=ActiveAssessment;if(assessment?.Stages==null)
             {
                 if(owner.Engine.Status==SessionState.Complete)
@@ -184,7 +192,7 @@ namespace AcousticVocab.SessionIntegration
             {
                 owner.PumpRetainedAtBoundary();if(!formsShown){assessment.BeginForms();formsShown=true;}Report("JOIN_FORMS_REQUIRED");return true;
             }
-            if(owner.Engine.CurrentBlock=="validity"&&assets.Schedule.Demo)
+            if(owner.Engine.CurrentBlock=="validity"&&assets.Schedule.Demo&&simulation==null)
             {owner.PumpRetainedAtBoundary();Report("JOIN_DEMO_VALIDITY_UNSUPPORTED");return true;}
             if(owner.Engine.Status==SessionState.Complete)
             {owner.PumpRetainedAtBoundary();Report(assessment.Stages.FormsComplete?"JOIN_COMPLETE_FORMS_RECORDED":"JOIN_FORMS_REQUIRED");return true;}
@@ -199,6 +207,7 @@ namespace AcousticVocab.SessionIntegration
                 var screen=go.AddComponent<AssessmentScreen>();scope.RegisterCleanup(screen.ReleaseView);
                 screen.foundation=foundation;screen.trackingSpace=foundation.observerCamera.transform.parent;screen.inputSource=panel;
                 screen.font=font;screen.unlitShader=unlitShader;screen.dictionaryShader=dictionaryShader;screen.Faulted+=Fail;
+                BindViewEvidence(screen,scope);
                 scope.RegisterCleanup(()=>screen.Faulted-=Fail);screen.Configure(stages);screen.BeginForms();return scope;
             }
             catch{scope.Dispose();throw;}
@@ -207,7 +216,18 @@ namespace AcousticVocab.SessionIntegration
         OperatorHealth Health()
         {
             double age=source.SampleAgeSeconds*1000;if(!double.IsFinite(age)||age<0)age=1000000;
-            return owner.Health(new OperatorHealth(foundation.Ready,assets.Route.IsQualified&&assets.Route.UncertaintyMs<=20,staged.Ready&&source.CheckExposureReady(),panel.ReadyForTrial,age,0,0));
+            return owner.Health(new OperatorHealth(foundation.Ready,assets.Route.CanScheduleSoftware&&assets.Route.UncertaintyMs<=20,staged.Ready&&source.CheckExposureReady(),panel.ReadyForTrial,age,0,0));
+        }
+        void CreateSimulationWatermark()
+        {
+            if(foundation?.observerCamera==null||font==null)throw new SessionFault("JOIN_SIMULATION_VIEW_REQUIRED");
+            simulationWatermark=new GameObject("SIMULATION TEST watermark").AddComponent<TextMesh>();simulationWatermark.transform.SetParent(foundation.observerCamera.transform,false);simulationWatermark.transform.localPosition=new Vector3(0,.23f,1);
+            simulationWatermark.font=font;simulationWatermark.GetComponent<MeshRenderer>().sharedMaterial=font.material;simulationWatermark.fontSize=90;simulationWatermark.characterSize=.006f;simulationWatermark.anchor=TextAnchor.MiddleCenter;simulationWatermark.color=Color.yellow;simulationWatermark.text="SIMULATION TEST — NO PARTICIPANTS";
+        }
+        void BindViewEvidence(AssessmentScreen screen,ModuleConstructionScope scope)
+        {
+            void Observe(string attempt,string phase,double now)=>audit.Write("view",new JObject{["kind"]="assessment_view_command",["attempt_id"]=attempt,["phase"]=phase,["observed_mono_ms"]=now,["text_sha256"]=PcmWave.Hash(Encoding.UTF8.GetBytes(screen.VisibleText)),["visible"]=screen.VisibleText.Length>0,["evidence_level"]="native_view_command_not_physical_capture"});
+            screen.ViewObserved+=Observe;scope.RegisterCleanup(()=>screen.ViewObserved-=Observe);
         }
         void Report(string code){if(StatusCode==code)return;StatusCode=code;Debug.Log("JOINED_ENGINEERING_STATUS "+code+" participant_admission=false");}
         void Fail(string code)
@@ -222,9 +242,11 @@ namespace AcousticVocab.SessionIntegration
         void OnDestroy()=>Close();
         void Close()
         {
-            if(closed)return;closed=true;Exception first=null;
+            if(closed)return;closed=true;Exception first=null;bool completed=StatusCode=="JOIN_COMPLETE_FORMS_RECORDED";
+            if(simulation!=null&&audit!=null)try{audit.Write("module",new JObject{["kind"]="native_run_end",["status"]=StatusCode,["complete"]=completed,["scope"]="SIMULATION_TEST",["participant_admission"]=false});}catch(Exception e){first=e;}
             foreach(Action action in new Action[]{()=>mailbox?.Dispose(),()=>staged?.Dispose(),()=>owner?.Dispose(),()=>{if(installedFrames)frames.FinishCapture();},()=>visit.Dispose()})try{action();}catch(Exception e){first??=e;}
             if(first!=null)Report("JOIN_DISPOSE_FAILED");
+            if(simulation!=null&&data!=null)try{ExportBundle.Create(Path.Combine(config.Directory("evidence"),"data"),Path.Combine(config.Directory("evidence"),"export-"+nonce),data.Identity,ExportHeaders.Provisional());}catch{Report("JOIN_EXPORT_FAILED");}
         }
         sealed class TeachingControl:ITeachingBackend
         {
@@ -319,6 +341,7 @@ namespace AcousticVocab.SessionIntegration
                 else if(kind==JoinedModuleKind.Assessment)
                 {
                     var screen=go.AddComponent<AssessmentScreen>();screen.foundation=host.foundation;screen.trackingSpace=host.foundation.observerCamera.transform.parent;screen.inputSource=host.panel;screen.font=host.font;screen.unlitShader=host.unlitShader;screen.dictionaryShader=host.dictionaryShader;
+                    host.BindViewEvidence(screen,scope);
                     var view=go.AddComponent<AssessmentSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.screen=screen;view.Faulted+=host.Fail;
                     scope.RegisterCleanup(()=>{host.ActiveAssessment=null;view.Uninstall();});
                     result=view.Install(host.assets.Schedule,host.assets.Package,host.clock,host.owner.SessionJournal,shared.StageJournal,control,host.assets.Route,host.assets.Gain,host.assets.Speech,host.selections,host.assets.Scripts,host.assets.RatingsReviewed,shared.DurableAudioSink,true,shared.BindAudio);view.BindEngine(host.owner.Engine);host.ActiveAssessment=view;

@@ -35,10 +35,7 @@ namespace AcousticVocab.DataLogging
             string id=binding.Context.AudioRequestId;bool request=value.Code=="AUDIO_REQUESTED";
             DataJson.Require(request?requested.Add(id):requested.Contains(id),"DATA_AUDIO_REQUEST_ORDER");
             var t=value.Timing??throw new DataFault("DATA_AUDIO_TIMING");
-            journal.Append(new EventDraft(request?"audio_request":"audio_observation",binding.Context,new JObject{
-                ["code"]=value.Code,["audio_id"]=value.AudioId,["waveform_sha256"]=binding.WaveformSha256,["pcm_sha256"]=value.PcmSha256,["action_pcm_sha256"]=value.ActionPcmSha256,["referent_pcm_sha256"]=value.ReferentPcmSha256,
-                ["observed_mono_ms"]=value.ObservedMonoSeconds*1000,["request_mono_ms"]=t.RequestMonoSeconds*1000,["scheduled_mono_ms"]=t.ScheduledMonoSeconds*1000,["scheduled_dsp_s"]=t.ScheduledDspSeconds,
-                ["onset_estimate_mono_ms"]=t.OnsetEstimateMonoSeconds*1000,["onset_uncertainty_ms"]=t.OnsetUncertaintyMs,["first_callback_dsp_s"]=value.FirstOutputCallbackDspSeconds,["delivered_samples"]=value.DeliveredSamples,["callback_count"]=value.CallbackCount}));
+            journal.Append(new EventDraft(request?"audio_request":"audio_observation",binding.Context,GrammarStageCodec.Audio(value,binding.WaveformSha256)));
         }
         public void Dispose(){if(player!=null)player.Event-=Record;}
     }
