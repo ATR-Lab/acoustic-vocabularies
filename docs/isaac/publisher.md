@@ -64,3 +64,27 @@ samples for independent JSON Schema validation. This measures paced publisher
 timing, not maximum simulator throughput, Wi-Fi latency, headset rendering or
 audio onset. A full run needs at least 3,600 measured seconds; shortened tests
 can report diagnostic timing but cannot pass the one-hour acceptance screen.
+
+## Actual revised-scene run
+
+The completed 3,600.012913-second run published and locally received 107,917
+actual frames with contiguous sequence and advancing simulation. Both retained
+samples passed independent JSON Schema validation, and the CSV summary was
+independently recomputed. The strict timing/rate result is **FAIL**: 84 missed
+deadlines and 3.575965 ms p99 absolute period error exceed the zero-miss and
+3.333333 ms error limits. Median interval was 33.340162 ms; maximum gap was
+45.270001 ms. There were no queue overwrites or gaps above 250 ms.
+
+The separate 120.015493-second unpaced disconnect diagnostic also **FAILS** its
+5% screen. Physics throughput was 83.033333 steps/s without a client,
+74.066667 connected, 83.333333 disconnected and 74.3 reconnected. The initial
+connection reduced throughput by 10.798876%; reconnect remained 10.517864%
+below the initial baseline. No main-loop client wait occurred, but the local
+receiver and Python worker share the process, so this run cannot isolate their
+individual costs. No threshold was relaxed and no failed run was discarded.
+
+The [sanitized measured record](publisher/actual-hour-results.json) retains
+metrics, phase comparisons, exact scene/snapshot binding and raw-artifact hashes.
+This was an unprotected engineering workload on the documented Ubuntu 24.04
+deviation. It does not qualify neutral hold, network clocks, headset rendering,
+audio or G2. Protected streaming and the Windows receiver are measured separately.
