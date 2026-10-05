@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems><OutputPath>$(ProbeOutput)/</OutputPath></PropertyGroup>
+  <ItemGroup><Compile Include="Program.cs" />
+    <Reference Include="AcousticVocab.DataLogging"><HintPath>$(UnityProject)/Library/ScriptAssemblies/AcousticVocab.DataLogging.dll</HintPath></Reference>
+    <Reference Include="AcousticVocab.SessionEngine"><HintPath>$(UnityProject)/Library/ScriptAssemblies/AcousticVocab.SessionEngine.dll</HintPath></Reference>
+    <Reference Include="AcousticVocab.StudyAudio"><HintPath>$(UnityProject)/Library/ScriptAssemblies/AcousticVocab.StudyAudio.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(NewtonsoftAssembly)</HintPath></Reference>
+  </ItemGroup>
+</Project>
+

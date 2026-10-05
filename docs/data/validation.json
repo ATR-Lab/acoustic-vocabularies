@@ -1,0 +1,69 @@
+{
+  "qualification": "engineering_software_validation_not_protocol_device_or_storage_approval",
+  "editor": "6000.6.0f1",
+  "unity_test_framework": "1.8.0 (installed editor builtin)",
+  "nunit": "2.1.0 (installed editor builtin)",
+  "newtonsoft_json": "3.2.2 (already approved)",
+  "edit_mode_commit": "ea12d36b230650e333863c82cc5e92d483e4e78a",
+  "edit_mode": {
+    "total": 254,
+    "passed": 254,
+    "failed": 0,
+    "skipped": 0,
+    "xml_sha256": "d6be8030b67dbe2f00967292fbd427957ee0358100dfa67d05469fb9c37a3bf4"
+  },
+  "stacked_play_mode_commit": "a781fcd2c35ced62205ac44e513210027855dc62",
+  "play_mode": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "xml_sha256": "4b0438ce2efec7e36b8a5f859ee7aa889c15a9d46c56fc8e8f5ed1cafacade25"
+  },
+  "python": {
+    "passed": 45,
+    "failed": 0
+  },
+  "schemas": 24,
+  "registered_schema_fixtures": 3,
+  "reachable_history_guard": "passed",
+  "process_kill": {
+    "qualification": "synthetic_writer_process_kill_not_device_runtime",
+    "process_exit_code": -1,
+    "verification_exit": 0,
+    "segment_before_sha256": "7b04e0378dc7551d83a49259c8ed18dbea861988c51995cc558b26117e376d29",
+    "segment_after_sha256": "7b04e0378dc7551d83a49259c8ed18dbea861988c51995cc558b26117e376d29",
+    "unchanged": true
+  },
+  "synthetic_store_only": true,
+  "actual_logs_uploaded": false,
+  "protocol_templates_present": false,
+  "approved_encrypted_transport_present": false,
+  "joined_participant_host": false,
+  "device_runtime_qualified": false,
+  "native_builds": {
+    "source_commit": "a781fcd2c35ced62205ac44e513210027855dc62",
+    "windows": {
+      "result": "passed",
+      "errors": 0,
+      "scripting_backend": "Mono",
+      "total_bytes": 104787284
+    },
+    "android": {
+      "result": "passed",
+      "errors": 0,
+      "scripting_backend": "IL2CPP",
+      "architecture": "ARM64",
+      "apk_bytes": 37457696,
+      "apk_sha256": "749c24ebb39fc0233f94953c837db6be34c8451fc06629433d933eb122a020df",
+      "zip_crc": "passed"
+    }
+  },
+  "limitations": [
+    "Raw and derived schemas are provisional; exact reviewed template bytes and expected hashes are required.",
+    "Assessment #69 stage/rating adapter remains a later typed integration; no such rows are fabricated.",
+    "Actual headset storage latency, crash/power loss, mock visit, acoustic delivery and runtime integration remain pending.",
+    "Process-kill proof uses actual Unity-built writer DLL in an owned .NET subprocess, not a headset player."
+  ],
+  "connected_authorized_adb_devices": 0
+}

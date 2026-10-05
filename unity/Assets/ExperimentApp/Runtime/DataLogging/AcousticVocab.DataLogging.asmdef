@@ -1,0 +1,6 @@
+{
+  "name": "AcousticVocab.DataLogging",
+  "references": ["AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio", "AcousticVocab.ResponsePanel"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"]
+}
