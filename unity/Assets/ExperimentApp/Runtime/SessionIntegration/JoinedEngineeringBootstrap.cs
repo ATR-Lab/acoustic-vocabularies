@@ -298,12 +298,12 @@ namespace AcousticVocab.SessionIntegration
             bool AwaitingGrammar=>kind==JoinedModuleKind.Teaching&&host.grammarStage!=null&&!host.grammarStage.Complete;
             bool AwaitingGrammarStart=>AwaitingGrammar&&!host.grammarStage.Started;
             bool AwaitingYokedAnchor=>kind==JoinedModuleKind.Menus&&host.yokedAuthority!=null&&host.yokedAuthority.Replay==null;
-            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingYokedAnchor||AwaitingGrammarStart)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo);
+            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingYokedAnchor||AwaitingGrammarStart)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo&&host.simulation==null);
             public bool PrepareExplicitResume(OperatorRequest request)
             {
                 if(!Ready)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");
                 if(!AwaitingGrammar)return true;
-                if(!AwaitingGrammarStart||!host.assets.Route.IsQualified)throw new SessionFault("JOIN_GRAMMAR_NOT_READY");
+                if(!AwaitingGrammarStart||!host.assets.Route.CanScheduleSoftware)throw new SessionFault("JOIN_GRAMMAR_NOT_READY");
                 host.grammarStage.Begin(request); // consumes exposure before any player setup
                 EnsureTeachingView();
                 teachingView.BeginGrammar(host.assets.Grammar,host.assets.Route,host.assets.Gain,()=>ControlReady&&control.NeutralHoldHealthy,host.grammarStage.Observe,host.grammarStage.Audio);
