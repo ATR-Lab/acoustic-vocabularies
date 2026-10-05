@@ -37,8 +37,13 @@ def test_seeded_typed_public_projection_matches_original_deepcopy_bytes():
         frame=encoder.build(positions,objects,sequence/30,sequence*2)
         # This independent contract projection retains the prior deepcopy
         # semantics as an oracle, including field order and float spellings.
-        expected={**frame,'objects':[{'id':identifier,**{k:deepcopy(objects[identifier][k]) for k in fields}}
-                                   for identifier,_ in registry.object_states]}
+        expected=dict(version=2,kind='state',source_kind='synthetic',
+            station_id=registry.station_id,scene_sha256=registry.scene_sha256,
+            reset_snapshot_sha256=registry.reset_snapshot_sha256,session_id='c'*32,
+            seq=sequence,host_monotonic_ns='1234567',sim_time=sequence/30,sim_step=sequence*2,
+            joint_names=list(registry.joint_names),joint_positions=list(positions),
+            objects=[{'id':identifier,**{k:deepcopy(objects[identifier][k]) for k in fields}}
+                     for identifier,_ in registry.object_states])
         assert encode(frame)==encode(expected)
         assert frame['joint_positions']==positions and frame['seq']==sequence
         objects[next(iter(objects))]['position_m'][0]+=100
