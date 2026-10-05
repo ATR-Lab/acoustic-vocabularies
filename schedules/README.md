@@ -9,6 +9,8 @@ Package `av_schedules` (distribution `av-schedules`, Python 3.11, `uv` project).
 Formats for other components: [`docs/interfaces/schedules.md`](../docs/interfaces/schedules.md).
 Design and balance argument: [`docs/curriculum.md`](docs/curriculum.md).
 Visit schedules (lesson and trial orders): [`docs/orders.md`](docs/orders.md).
+Allocation lists and the reveal-next stub: [`docs/allocation.md`](docs/allocation.md).
+Run sheets and the schedule validation suite: [`docs/run-sheets.md`](docs/run-sheets.md).
 
 ## Use
 
@@ -26,6 +28,17 @@ uv run --project schedules python -m av_schedules schedules --demo-seed DEMO-loc
 uv run --project schedules python -m av_schedules check-planning <planning-materials dir>
 # Regenerate the committed DEMO examples
 uv run --project schedules python -m av_schedules demo-examples
+# Allocation lists: separate private seed files for pilot and confirmatory (same seed
+# as that set's curriculum); output to restricted storage
+uv run --project schedules python -m av_schedules allocate \
+    --confirmatory-seed-file <path outside the repo> --out <restricted folder>
+# Run sheets (checked before writing; real sets to restricted storage) and the
+# validation report (exit 1 on any finding)
+uv run --project schedules python -m av_schedules run-sheets --demo-seed DEMO-local \
+    --set pilot --demo-placeholder-hashes
+uv run --project schedules python -m av_schedules check --demo-seed DEMO-local
+# Regenerate the committed DEMO run sheets
+uv run --project schedules python -m av_schedules run-sheet-examples
 ```
 
 Options of `curriculum`: `--study A|B|both`, `--set pilot|confirmatory|both` (`both` only
@@ -53,11 +66,23 @@ the batch/design tables, balance reports and manifests of real sets are restrict
 | `orders` | `seed_tokens(...)` (for `derive_seed`), `pass_orders`, `alternating_passes`, `sample_with_replacement` | seed tokens and order primitives | #30 |
 | `orders` | `speech_commands(master, study, set)`, `speech_list_document(...)`, `SpeechCommand` | frozen speech list for the validity block | #30 |
 | `schedule_output` | `generate_schedules(master, study, set)`, `render_schedules(units, master)`, `schedule_example_files(seed)` | schedule files of a set, summary, manifest | #30 |
+| `assign` | `build_a_allocation(master, set)`, `build_b_allocation(master, set, *, spares=8)`, `check_a_allocation`, `check_b_allocation`, `allocation_seed(master)`, `a_slot_ids`, `b_slot_ids`, `bank_id` | Study A waves, learner slots and book key; Study B roles, banks and menu orders; balance checks | #31 |
+| `assign_output` | `assign_files(master, study, set)`, `load_list(path)`, `demo_allocation_files()` | list documents, balance report, manifest | #31 |
+| `reveal` | `RevealLog(list, log)`: `log_eligibility`, `reveal_next`, `log_bank_unavailable`, `RevealError` | reveal-next stub for the console | #31 |
+| `masking` | `find_method_strings(text)`, `assert_masked(text)` | method-string scan for learner-facing files | #31 |
+| `run_sheets` | `run_sheet_csv(doc, hash_cell)`, `run_sheet_findings(data, doc, hash_cell)`, `read_run_sheet`, `PackageHashes`, `load_package_hashes`, `parse_package_hashes`, `placeholder_package_hashes`, `hash_cells`, `package_keys` | run-sheet CSV per person and visit; package-hash mapping | #32 |
+| `run_sheet_output` | `generate_run_sheets(master, study, set, *, package_hashes=None)`, `render_run_sheets(run)`, `run_sheet_example_files()`, `RunSheetCheckError` | checked run-sheet files and manifest | #32 |
+| `checks` | `run_all(master, study, set)`, `build_set`, `check_set`, `SetRun`, `design_check_values`, `assessment_values`, `report`, `RULES` | validation suite over every generated schedule, run sheet and list | #32 |
+| `findings` | `Finding(unit, person, visit, rule, detail)`, `format_findings` | check results (also from `orders.visit_schedule_findings`) | #32 |
+| `planning` | `design_checks_oracle()`, `RUN_SHEET_COLUMNS`, `TEMPLATE_SHA256`, `FULL_MESSAGE_SLOT_S`, `ATOMIC_SLOT_S`, `ALLOCATION_CHECKS`, `B_SCREENING_MINUTES`, `check_planning(dir, templates=...)` | every design-checks.json field, template header, slot and booking oracles | #32 |
 
 Schemas: [`schema/permutation.schema.json`](schema/permutation.schema.json),
 [`schema/curriculum-unit.schema.json`](schema/curriculum-unit.schema.json),
 [`schema/visit-schedule.schema.json`](schema/visit-schedule.schema.json) (hidden-answer
-material), [`schema/speech-list.schema.json`](schema/speech-list.schema.json).
+material), [`schema/speech-list.schema.json`](schema/speech-list.schema.json);
+allocation: `schema/a-slots`, `a-book-key`, `b-dyads`, `assign-manifest`, `reveal-log`
+(`.schema.json`); run sheets: `schema/run-sheet-row`, `run-sheets-manifest`,
+`package-hashes` (`.schema.json`).
 
 ## Development
 
@@ -68,5 +93,6 @@ uv run --project schedules ruff format --config schedules/pyproject.toml --check
 uv run --project schedules pytest --import-mode=importlib -p no:cacheprovider tests/schedules
 ```
 
-Set `AV_PLANNING_DIR` to the external planning-materials folder to also run the two
-tests that compare it with the matrix constant; they are skipped otherwise.
+Set `AV_PLANNING_DIR` to the external planning-materials folder to also run the tests
+that compare it with the source constants (the run-sheet template is read from
+`AV_TEMPLATES_DIR`, default `../templates` next to it); they are skipped otherwise.

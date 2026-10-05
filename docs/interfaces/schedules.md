@@ -319,3 +319,217 @@ Notes for consumers:
   slots allocated to the book; B: both members), then calls `seal()`.
 - #32 builds run sheets from `visit_plan` / `<set>-schedule-summary.csv` and the
   allocation lists.
+
+## Allocation lists and reveal API (#31)
+
+Producer: allocation lists (#31). Consumers: operator console (#73, reveal API), run
+sheets (#32), analysis pipeline (#34, unmasking key), bank builder and register (#26,
+#28, dyad slot to bank ID). Design and balance argument:
+[`schedules/docs/allocation.md`](../../schedules/docs/allocation.md). **Pending:** the
+file-format agreement with the console owner (#73).
+
+`python -m av_schedules allocate [--pilot-seed-file P | --pilot-demo-seed DEMO-...]
+[--confirmatory-seed-file C | --confirmatory-demo-seed DEMO-...]` writes, under
+`<out>/<study>/` (restricted storage; pilot and confirmatory need different master
+seeds, each the same as that set's curriculum seed):
+
+| Path | Audience | Content |
+| --- | --- | --- |
+| `A/<set>-slots.json` | learner-facing | learner slots in reveal order: slot, batch, wave, profile, anonymous book ID |
+| `A/<set>-book-key.json` | restricted (study coordinator) | book ID -> batch, method `A1`/`A2`/`A3`, A1 designer, slots |
+| `B/<set>-dyads.json` | concealed until revealed | dyad slots with SQ arm, swap, roles by member slot, bank ID, profile-menu order |
+| `<study>/<set>-assign-balance.csv` | coordinator | balance report (curriculum balance-report columns) |
+| `<study>/<set>-assign-manifest.json` | publishable | `allocation_seed`, generator, `list_sha256` per list, SHA-256 per file |
+
+Schemas: [`a-slots`](../../schedules/schema/a-slots.schema.json),
+[`a-book-key`](../../schedules/schema/a-book-key.schema.json),
+[`b-dyads`](../../schedules/schema/b-dyads.schema.json),
+[`assign-manifest`](../../schedules/schema/assign-manifest.schema.json),
+[`reveal-log`](../../schedules/schema/reveal-log.schema.json) (one log line). Synthetic
+examples: [`schedules/examples/demo-allocation/`](../../schedules/examples/demo-allocation/README.md).
+
+Common list fields: `format` (`av-schedules/a-slots`, `av-schedules/a-book-key`,
+`av-schedules/b-dyads`), `format_version` = 1, `audience`, `generator`, `demo`,
+`seed_label`, `allocation_seed` (`sha256:` + SHA-256 of the master seed, the apparatus
+manifest value; never the seed), `study`, `set`, `design_table_sha256` (SHA-256 of the
+`<set>-batch-table.csv` or `<set>-design-table.csv` used) and `list_sha256` (SHA-256 of
+the canonical JSON of the document without `list_sha256`: sorted keys, separators `,`
+and `:`, UTF-8). `load_list(path)` verifies format and hash.
+
+### IDs
+
+| Item | Format | Notes |
+| --- | --- | --- |
+| Study A learner slot | `A-C07-L03` | `L01`..`L12`, pilot `L01`..`L06` |
+| Study B member slot | `B-C12-M1` | `M1` = partner who finished screening first |
+| Book ID | `BK-C-7QX4MN` | set code + 6 characters without `A` or `D`; no method meaning |
+| Bank ID | `bank-C001` | placeholder by dyad-slot sequence (no draw, not concealed: #26 may use it before allocation); spares `bank-C065`..; pilot `bank-P001`.. |
+
+Pilot and confirmatory IDs never overlap (set code in every ID). Concealed draws (waves,
+method permutations, book IDs, roles, menu orders) derive from the master seed with
+`alloc:*` purpose parts, never from a unit's public `seed`.
+
+### Entries
+
+`<set>-slots.json`: `counts` (`batches`, `waves`, `slots`, `slots_per_batch`), `waves`
+(`wave`, `units` in recruitment order) and `slots`, each with `slot_id`, `unit_id`,
+`slot`, `order` (reveal order), `wave`, `wave_position`, `profile`, `book_id`.
+
+`<set>-book-key.json`: `slots_list_sha256` and `books`, each with `book_id`, `unit_id`,
+`method`, `designer` (`D1`..`D3` for A1, else null), `slots`.
+
+`<set>-dyads.json`: `counts` (`dyads`, `spares`) and `dyads` (main slots, then spares),
+each with `unit_id`, `kind` (`dyad`/`spare`), `order`, `block_id`, `block_position`,
+`sq_arm`, `structured_family`, `swap_w1_w4`, `members` (`slot_id`, `member` 1/2,
+`role` `active`/`yoked`), `bank_id`, `profile_menu_order` (3 profiles; the first is the
+default).
+
+### Reveal API (for #73)
+
+```python
+from av_schedules import RevealLog, RevealError
+
+console = RevealLog(list_path, log_path)   # slots or dyads list; clock= defaults to UTC now
+rid = console.log_eligibility(["P-0412"], staff="S03",
+                              checks={"consent": True, "compatibility": True, "orientation": True})
+entry = console.reveal_next(rid, staff="S03")              # next entry, bound to P-0412
+console.log_bank_unavailable("bank-C017", staff="S01")     # Study B, before the first reveal
+console.revealed(); console.pending(); console.remaining()
+```
+
+- Study A: one participant per record; checks `consent`, `compatibility`,
+  `orientation`. The entry is the slot entry plus `participant_id`; it never contains a
+  method label or designer ID (scanned before return).
+- Study B: two participants per record, first the one who finished screening first;
+  checks `consent`, `screening`, `compatibility`, `scheduling`. The entry is the dyad
+  entry with `participant_id` in each member, plus `replaces` (the main slot a spare
+  replaces because its bank is unavailable, else null).
+- Entries are revealed in list order (Study A: waves, batches, slots; Study B: design-table
+  `sequence`, i.e. complete permuted blocks), each once; a vacancy is never refilled. Errors
+  raise `RevealError` (no eligibility record, record already used, list exhausted, no
+  spare left, damaged list or log, restricted key).
+- The log is JSON Lines: canonical JSON per line with `format`
+  (`av-schedules/reveal-log`), `line`, `event` (`eligibility`, `bank_unavailable`,
+  `reveal`), `at`, `staff`, `list_sha256`, `prev_sha256` (SHA-256 of the previous line,
+  64 zeros for the first) and the event fields (`eligibility_id`, `participant_ids`,
+  `checks`, `bank_id`, `entry`).
+
+Masking: `find_method_strings(text)` (`av_schedules.masking`) is the automated scan for
+learner-facing files and console payloads: case-sensitive `A1`-`A3` and `D1`-`D3`
+substrings and method words (case-insensitive). Atom IDs such as `K-a1` do not match.
+
+### Python API (for #32 and #34)
+
+```python
+build_a_allocation(master, set_name) -> AAllocation   # .waves, .slots (ASlot), .books (ABook), .method_of(slot_id)
+build_b_allocation(master, set_name, *, spares=8) -> BAllocation   # .dyads (BDyad: members, bank_id, profile_menu_order, active_member)
+check_a_allocation(alloc) -> list[str]; check_b_allocation(alloc) -> list[str]   # count and balance checks, [] = pass
+assign_files(master, study, set_name, *, spares=8) -> dict[str, bytes]
+allocation_seed(master); load_list(path)
+# av_schedules.assign: a_slot_ids(unit_id, set_name), b_slot_ids(unit_id), bank_id(set_name, sequence)
+```
+
+Run sheets (#32) take the slot IDs and, for Study A, the book ID from the learner-facing
+list (never the key). The analyst (#34) joins the key on `book_id` at unmasking.
+
+## Run sheets and checks (#32)
+
+Producer: run sheets and schedule validation tests (#32). Consumers: operator console
+(#73, run sheets), reconciliation (#33, expected counts), analysis pipeline on synthetic
+data (#34) and integrity test suite (#78) (validation suite, synthetic sets), mock
+visits (#81). Design and rule list: [`schedules/docs/run-sheets.md`](../../schedules/docs/run-sheets.md).
+
+### Files
+
+`python -m av_schedules run-sheets (--master-seed-file PATH --set pilot|confirmatory | --demo-seed DEMO-...)
+[--study A|B|both] [--package-hashes MAPPING ...] [--demo-placeholder-hashes] [--out DIR] [--force]`
+generates every schedule, the allocation lists and the run sheets of each set in
+memory, runs the validation suite and writes only if it reports no finding (exit 1
+otherwise). Same seed rules as `schedules`: the set's curriculum seed, one private seed
+per set, output outside any non-ignored work-tree path. Under `<out>/<study>/`:
+
+| Path | Content | Status |
+| --- | --- | --- |
+| `<unit>/run-sheets/<person_id>/<visit>.csv` | one run sheet per person slot and visit | restricted (follows the schedules) |
+| `<set>-run-sheets-manifest.json` | template hash, schedules-manifest SHA-256, package-hash mapping SHA-256, bookings, SHA-256 per sheet ([schema](../../schedules/schema/run-sheets-manifest.schema.json)) | restricted; publish its SHA-256 |
+| `<set>-package-hashes.json` | DEMO placeholder mapping (only with `--demo-placeholder-hashes`) | DEMO only |
+
+Synthetic examples: [`schedules/examples/demo-run-sheets/`](../../schedules/examples/demo-run-sheets/README.md).
+
+### Run-sheet CSV
+
+UTF-8, `\n` line endings, header exactly the methodology template:
+`participant_id,visit,block,expected_count,actual_count,start_time,end_time,comfort_check,phone_locked,hash_check,deviations,operator_signoff`.
+One row per block of the person's visit schedule, in block order. Row schema:
+[`run-sheet-row.schema.json`](../../schedules/schema/run-sheet-row.schema.json).
+
+| Column | Generated value |
+| --- | --- |
+| `participant_id` | person slot ID (`A-C07-L03`, `B-C12-M1`); the console substitutes or displays the coded participant ID that the reveal API bound to the slot |
+| `visit` | `D0`, `D7`, `V1`, `V2`, `V3`, `W1`, `W4` |
+| `block` | schedule block name (`profile_menu`, `atom_menus`, `atomic_lessons`, `message_lessons`, `pre_old`, `trained`, `novel`, `atomic`, `validity`) |
+| `expected_count` | items in the block |
+| `hash_check` | `sha256:<64 hex>` expected package hash (Study A: the slot's book; Study B: the dyad), `DEMO-placeholder:<64 hex>` for DEMO placeholders, or empty without a mapping; same value on every row |
+| other columns | empty, for the operator or console |
+
+A run sheet never contains a method label, designer, role, scaffold arm, swap flag or
+intended answer (Study A sheets are scanned with `find_method_strings`).
+
+### Package-hash mapping (input, from #13)
+
+[`package-hashes.schema.json`](../../schedules/schema/package-hashes.schema.json):
+`{"format": "av-schedules/package-hashes", "format_version": 1, "study": "A"|"B",
+"set": "pilot"|"confirmatory", "demo": bool, "placeholder": bool, "packages": {key:
+sha256}}`. Keys: Study A book IDs as in the learner-facing slot list (`BK-C-7QX4MN`),
+Study B dyad slot IDs (`B-C01`, spares `B-S01`). The mapping must match the study, set
+and the seed's DEMO status, cover every main unit and name nothing outside the set
+(spare slots may be missing; their cells stay empty). `placeholder: true` requires
+`demo: true`. #13 should emit this file next to its package manifests.
+
+### Validation suite
+
+```python
+from av_schedules.checks import build_set, check_set, run_all, design_check_values, assessment_values, report, RULES
+from av_schedules.findings import Finding, format_findings
+
+run_all(master, study, set_name, *, spares=8, package_hashes=None) -> list[Finding]  # [] = pass
+build_set(master, study, set_name, *, spares=8, package_hashes=None) -> SetRun
+#   SetRun: units, docs[person][visit] (schedule documents), unit_of[person], allocation,
+#           hash_cells[person], run_sheets[person][visit] (CSV bytes), prefix ("A-C")
+check_set(run) -> list[Finding]               # schedules, history, allocation, run sheets
+design_check_values(runs) -> dict[str, list[int]]   # design-checks.json field -> distinct generated values
+assessment_values(runs) -> dict[(study, visit), dict[str, list[int]]]
+report(runs, findings) -> str                 # Markdown report (also: python -m av_schedules check)
+Finding(unit, person, visit, rule, detail)    # str(): "<unit> <person> <visit>: <rule>: <detail>"
+```
+
+Rules: `blocks`, `order`, `once-per-pass`, `content`, `heldout`, `slots`, `seconds`,
+`validity`, `trial-ids` (per schedule, #30) and `assessment`, `plays`,
+`heldout-exposure`, `component-availability`, `training-coverage`, `matrix-partition`,
+`train-novel-overlap`, `design-checks`, `booking`, `allocation`, `allocation-coverage`,
+`run-sheet`, `masking` (#32); `RULES` maps each to a one-line description.
+`orders.visit_schedule_findings(doc)` returns the #30 rules as `Finding` values
+(`check_visit_schedule` keeps returning their strings). Run sheets alone:
+`run_sheets.run_sheet_findings(csv_bytes, schedule_doc, hash_cell)`.
+
+`python -m av_schedules check (--demo-seed ... | --master-seed-file ... --set ...)`
+prints the report and exits 1 on any finding. A report of a private set names
+held-out message IDs and visits when it fails, so it stays in restricted storage.
+
+Oracles (`av_schedules.planning`): `design_checks_oracle()` (the 32 numeric fields of
+planning `design-checks.json`, flattened), `ASSESSMENT_SCHEDULE`, `RUN_SHEET_COLUMNS`,
+`TEMPLATE_SHA256`, `FULL_MESSAGE_SLOT_S` (14), `ATOMIC_SLOT_S` (9),
+`ALLOCATION_CHECKS`, `PILOT_ALLOCATION_COUNTS`, `B_SCREENING_MINUTES`.
+`python -m av_schedules check-planning <planning-materials> [--templates <templates>]`
+compares an external copy (every numeric field of `design-checks.json`, the
+`assessment-schedule.csv` rows and the template header) with them.
+
+Notes for consumers:
+
+- #73 loads the run sheet of the revealed slot and visit, compares the loaded package
+  hash with `hash_check`, fills the operator columns and exports with the same header.
+  Its masking scan applies to Study A exports.
+- #33 takes expected per-block counts from the run sheet (or `visit_plan`) and can call
+  `visit_assessment(doc)` for the counted oracle row.
+- #34 and #78 can build complete synthetic sets with `build_set(demo_seed(...), ...)`
+  and use `run_all` as a regression check; findings name the rule.

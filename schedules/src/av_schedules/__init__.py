@@ -5,12 +5,26 @@ and the portable random stream), ``latin`` (seeded Latin squares), ``design`` (S
 batch table, Study B design table), ``curriculum`` (per-unit tables and permutation
 documents), ``balance`` (balance report), ``output`` (rendering and writing), ``planning``
 (oracle constants and the external planning-materials check), ``orders`` (per-person
-visit schedules and the speech list), ``schedule_output`` (schedule files), ``cli``.
+visit schedules and the speech list), ``schedule_output`` (schedule files), ``assign``
+and ``assign_output`` (allocation lists), ``reveal`` (reveal-next stub), ``masking``
+(method string scan), ``run_sheets`` and ``run_sheet_output`` (per-visit run sheets),
+``checks`` and ``findings`` (schedule validation suite), ``cli``.
 """
 
 __version__ = "0.1.0"
 
+from .assign import (
+    AAllocation,
+    BAllocation,
+    allocation_seed,
+    build_a_allocation,
+    build_b_allocation,
+    check_a_allocation,
+    check_b_allocation,
+)
+from .assign_output import assign_files, load_list
 from .balance import BalanceRow, balance_csv, balance_rows, max_abs_deviation
+from .checks import SetRun, build_set, check_set, design_check_values, run_all
 from .curriculum import (
     CURRICULUM_COLUMNS,
     curriculum_csv,
@@ -29,6 +43,8 @@ from .design import (
     build_b_design_table,
     build_units,
 )
+from .findings import Finding, format_findings
+from .masking import find_method_strings
 from .matrix import (
     FAMILIES,
     HELDOUT_SETS,
@@ -58,10 +74,14 @@ from .orders import (
     study_visits,
     unit_schedules,
     visit_plan,
+    visit_schedule_findings,
     visit_schedule_json,
 )
 from .output import generate, render_set, table_csv, write_files
 from .planning import check_planning
+from .reveal import RevealError, RevealLog
+from .run_sheet_output import RunSheetCheckError, generate_run_sheets
+from .run_sheets import PackageHashes, load_package_hashes, run_sheet_csv, run_sheet_findings
 from .schedule_output import generate_schedules, render_schedules
 from .seeds import MasterSeed, SeedStream, demo_seed, derive_seed, load_master_seed, private_seed
 
@@ -73,38 +93,60 @@ __all__ = [
     "LABELS",
     "MATRIX",
     "ROLES",
+    "AAllocation",
     "ABatch",
+    "BAllocation",
     "BDyadSlot",
     "BalanceRow",
     "BlockPlan",
     "Cell",
+    "Finding",
     "MasterSeed",
+    "PackageHashes",
     "Permutation",
+    "RevealError",
+    "RevealLog",
+    "RunSheetCheckError",
     "SeedStream",
     "SetName",
+    "SetRun",
     "SpeechCommand",
     "Unit",
     "__version__",
+    "allocation_seed",
     "assessment_counts",
+    "assign_files",
     "atom_id",
     "balance_csv",
     "balance_rows",
+    "build_a_allocation",
     "build_a_batch_table",
+    "build_b_allocation",
     "build_b_design_table",
+    "build_set",
     "build_units",
     "build_visit_schedule",
     "cells",
+    "check_a_allocation",
+    "check_b_allocation",
     "check_planning",
+    "check_set",
     "check_visit_schedule",
     "curriculum_csv",
     "curriculum_rows",
     "demo_seed",
     "derive_seed",
+    "design_check_values",
+    "find_method_strings",
+    "format_findings",
     "generate",
+    "generate_run_sheets",
     "generate_schedules",
     "heldout_cells",
     "index_waves",
+    "load_list",
     "load_master_seed",
+    "load_package_hashes",
     "max_abs_deviation",
     "message_id",
     "novel_by_visit",
@@ -115,6 +157,9 @@ __all__ = [
     "private_seed",
     "render_schedules",
     "render_set",
+    "run_all",
+    "run_sheet_csv",
+    "run_sheet_findings",
     "speech_commands",
     "speech_list_document",
     "study_visits",
@@ -122,6 +167,7 @@ __all__ = [
     "trained_cells",
     "unit_schedules",
     "visit_plan",
+    "visit_schedule_findings",
     "visit_schedule_json",
     "wave_atoms",
     "write_files",
