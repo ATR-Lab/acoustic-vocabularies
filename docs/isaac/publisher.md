@@ -129,3 +129,32 @@ The additive [receiver-process measured record](publisher/receiver-process-hour-
 retains exact source revisions, runtime source hashes, independent checks and
 raw evidence hashes. The original record remains unchanged. The one-hour rate
 screen remains **FAIL**, and no acceptance threshold or deployment gate changed.
+
+## Bounded protected-loop diagnostics
+
+The later [flush diagnostic](publisher/flush-diagnostic.json) is engineering
+evidence only. It enabled the experimentally guarded workcell handle cache and
+the equivalence-tested reset comparator in an isolated copy. Twelve original
+before/after flush pairs had bitwise-equal values across 36 requested, simulation,
+PhysX and actuator buffers, equal full-state hashes, and passing neutral checks.
+All five actuator groups were exact implicit actuators and both wrench composers
+were inactive. Generic `write_data_to_sim` is not universally idempotent: other
+actuator models have history, and the call applies/consumes external wrenches.
+
+Only the diagnostic's redundant pre-step flush was omitted after an unchanged
+completed hold. The first pre-step flush, every hold flush, full live state reads,
+neutral checks and default GC remained in place. Per-step checks rejected writer
+epochs, buffer/parameter changes, active wrenches or changed actuator identity.
+Both comparison sides paid that guard cost. Four 12-second phases measured
+42.573 → 44.559 steps/s without a receiver and 41.398 → 44.859 with the separate
+receiver; two additional 5-second cProfile phases retained call counts. All
+phases and the following reset completed without a neutral fault. The live guard
+check alone cost roughly 1.6–1.9 ms per step, so these results are not directly
+comparable to prior unguarded profiles.
+
+The earlier projected saving of about 8.6% could not close the 60 steps/s gap,
+and neither measured guarded configuration reached that target. No generic
+articulation, hold, reset or production publisher implementation was changed.
+No optimized hour, station deployment or G2 pass is inferred. The completed
+diagnostic container was removed after its evidence was retained; the task GPU
+workload was left idle.
