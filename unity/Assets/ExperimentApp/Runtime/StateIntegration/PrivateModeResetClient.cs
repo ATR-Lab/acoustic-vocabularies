@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -96,7 +95,7 @@ namespace AcousticVocab.StateIntegration
                 {
                     double readAt=now();Require(readAt>=item.Received&&readAt-item.Received<=250,"CONTROL_QUEUED");
                     var value=StationConfig.ParseStrict(item.Raw);
-                    if(item.Health){healthGate.Observe(value,item.Sent,item.Received);continue;}
+                    if(item.Health){healthGate.Observe(PrivateHealthProbe.Payload(value,session,item.Id),item.Sent,item.Received);continue;}
                     Keys(value,"version","kind","request_id","accepted","reason","mode","host_mono_ms","sim_time","reset_ok","duplicate","health");
                     pending.TryGetValue(item.Id,out var command);Require(value["version"].Type==JTokenType.Integer&&(int)value["version"]==1&&(string)value["kind"]=="private_reply"&&(string)value["request_id"]==item.Id&&command!=null,"CONTROL_REPLY");
                     Number(value["host_mono_ms"]);Number(value["sim_time"]);Bool(value["duplicate"]);
@@ -113,7 +112,7 @@ namespace AcousticVocab.StateIntegration
             }
             finally{pumping=false;}
         }
-        internal void ReceiveHealth(string raw,double sent,double received)=>Offer(new Arrival{Health=true,Raw=raw,Sent=sent,Received=received});
+        internal void ReceiveHealthProbe(string id,string raw,double sent,double received)=>Offer(new Arrival{Health=true,Id=id,Raw=raw,Sent=sent,Received=received});
         internal void ReceiveReply(string id,string raw,double sent,double received)=>Offer(new Arrival{Id=id,Raw=raw,Sent=sent,Received=received});
         void Offer(Arrival item)
         {if(Interlocked.Increment(ref queued)>8){Interlocked.Decrement(ref queued);failed=true;lifetime.Cancel();return;}incoming.Enqueue(item);}
@@ -123,26 +122,19 @@ namespace AcousticVocab.StateIntegration
             {
                 using var client=new ClientWebSocket();socket=client;
                 using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)){timeout.CancelAfter(3000);await client.ConnectAsync(endpoint,timeout.Token);}
-                using var handler=new HttpClientHandler{UseProxy=false,AllowAutoRedirect=false};using var http=new HttpClient(handler){Timeout=TimeSpan.FromMilliseconds(200)};
-                var healthEndpoint=new UriBuilder(endpoint){Scheme="http",Path="/health"}.Uri;
                 while(!lifetime.IsCancellationRequested)
                 {
                     if(outgoing.TryDequeue(out var raw))
                     {
-                        string id=(string)StationConfig.ParseStrict(raw)["request_id"];double sent=now();
-                        using var timeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);timeout.CancelAfter(3000);
-                        byte[] bytes=Encoding.UTF8.GetBytes(raw);await client.SendAsync(new ArraySegment<byte>(bytes),WebSocketMessageType.Text,true,timeout.Token);
-                        using var message=new MemoryStream();var buffer=new byte[4096];WebSocketReceiveResult part;
-                        do{part=await client.ReceiveAsync(new ArraySegment<byte>(buffer),timeout.Token);if(part.MessageType!=WebSocketMessageType.Text||message.Length+part.Count>16384)throw new IOException();message.Write(buffer,0,part.Count);}while(!part.EndOfMessage);
-                        ReceiveReply(id,new UTF8Encoding(false,true).GetString(message.ToArray()),sent,now());
+                        string id=(string)StationConfig.ParseStrict(raw)["request_id"];
+                        var reply=await PrivateControlExchange.Run(client,raw,3000,now,lifetime.Token);
+                        ReceiveReply(id,reply.Raw,reply.Sent,reply.Received);
                     }
-                    double before=now();
-                    using var healthTimeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);healthTimeout.CancelAfter(200);
-                    using var response=await http.GetAsync(healthEndpoint,HttpCompletionOption.ResponseHeadersRead,healthTimeout.Token);response.EnsureSuccessStatusCode();
-                    using var stream=await response.Content.ReadAsStreamAsync();using var health=new MemoryStream();var chunk=new byte[4096];int count;
-                    while((count=await stream.ReadAsync(chunk,0,chunk.Length,healthTimeout.Token))>0){if(health.Length+count>16384)throw new IOException();health.Write(chunk,0,count);}
-                    ReceiveHealth(new UTF8Encoding(false,true).GetString(health.ToArray()),before,now());
-                    await Task.Delay(ControlPollCadence.DelayMilliseconds(before,now()),lifetime.Token);
+                    string probeId=Guid.NewGuid().ToString("N");
+                    string probe=PrivateHealthProbe.Request(session,probeId).ToString(Formatting.None);
+                    var health=await PrivateControlExchange.Run(client,probe,200,now,lifetime.Token);
+                    ReceiveHealthProbe(probeId,health.Raw,health.Sent,health.Received);
+                    await Task.Delay(ControlPollCadence.DelayMilliseconds(health.Sent,now()),lifetime.Token);
                 }
             }
             catch{if(!disposed)failed=true;}
