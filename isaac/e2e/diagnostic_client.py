@@ -66,6 +66,8 @@ def run(directory):
                     report['commands'].append(row)
                     if reply.get('request_id')!=request['request_id'] or reply.get('accepted') is not accepted:
                         raise RuntimeError('Unexpected actual command reply')
+                    if command=='demo' and (reply.get('reason')!='PROTECTED_TARGET_COMMAND' or reply.get('mode')!='test'):
+                        raise RuntimeError('Exact protected-test rejection missing')
                     if command in ('reset',) or command=='set_mode' and args=={'mode':'test'}:
                         if reply.get('reset_ok') is not True: raise RuntimeError('Actual reset acknowledgement missing')
             await asyncio.gather(receive(),commands())
