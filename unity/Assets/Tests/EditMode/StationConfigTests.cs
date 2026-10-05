@@ -154,6 +154,32 @@ namespace AcousticVocab.Foundation.Tests
             }
             finally {UnityEngine.Object.DestroyImmediate(root);}
         }
+        [TestCase(true)] [TestCase(false)] public void ComponentDisableImmediatelyNeutralizesAndLatchesExplicitRecovery(bool startup)
+        {
+            var root=new GameObject("SyntheticComponentDisable");var cameraObject=new GameObject("Camera");var view=new GameObject("View");
+            string directory=Path.Combine(FoundationBuild.RepositoryRoot,".local","foundation-disable-"+Guid.NewGuid().ToString("N"));
+            try
+            {
+                var bootstrap=root.AddComponent<FoundationBootstrap>();bootstrap.observerCamera=cameraObject.AddComponent<Camera>();bootstrap.presentationRoot=view;
+                var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+                typeof(FoundationBootstrap).GetField("initialRestore",flags).SetValue(bootstrap,startup);
+                typeof(FoundationBootstrap).GetField("log",flags).SetValue(bootstrap,new FoundationLog(directory,new JObject { ["build_id"]="synthetic-disable" },"synthetic-station"));
+                var reference=(ObserverReference)typeof(FoundationBootstrap).GetField("reference",flags).GetValue(bootstrap);reference.Restored();
+                // Exercise the presentation/lifecycle guard without supplying simulated HMD tracking.
+                typeof(FoundationBootstrap).GetMethod("ShowPresentation",flags).Invoke(bootstrap,null);Assert.That(bootstrap.Ready,Is.True);
+                bootstrap.enabled=false;Assert.That(bootstrap.Ready,Is.False);
+                typeof(FoundationBootstrap).GetMethod("OnDisable",flags).Invoke(bootstrap,null);
+                typeof(FoundationBootstrap).GetMethod("OnDisable",flags).Invoke(bootstrap,null);
+                Assert.That(view.activeSelf,Is.False);Assert.That(bootstrap.observerCamera.backgroundColor,Is.EqualTo(Color.black));Assert.That(reference.RestorePending,Is.True);
+                bootstrap.enabled=true;Assert.That(bootstrap.Ready,Is.False);Assert.That(view.activeSelf,Is.False);
+                Assert.That(bootstrap.RestoreAtSafeBoundary("startup"),Is.False);Assert.That(bootstrap.RestoreAtSafeBoundary("between_trials"),Is.False);
+                ((FoundationLog)typeof(FoundationBootstrap).GetField("log",flags).GetValue(bootstrap)).Dispose();
+                typeof(FoundationBootstrap).GetField("log",flags).SetValue(bootstrap,null);
+                var rows=File.ReadAllLines(Directory.GetFiles(directory).Single()).Select(JObject.Parse).ToArray();
+                Assert.That(rows.Count(x=>(string)x["reason"]=="foundation_component_disabled"),Is.EqualTo(1));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(root);UnityEngine.Object.DestroyImmediate(cameraObject);UnityEngine.Object.DestroyImmediate(view); }
+        }
         [Test] public void NeutralRecoveryRestoresConfiguredSceneBackground()
         {
             var root=new GameObject("SyntheticPresentationTest"); var cameraObject=new GameObject("Camera"); var view=new GameObject("View");
