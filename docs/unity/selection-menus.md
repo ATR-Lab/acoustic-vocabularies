@@ -7,6 +7,12 @@ headset dyad remain required. The currently supported producer input is explicit
 DEMO-only `av-sound/provisional-bank` from #13; the loader refuses participant
 admission rather than treating those engineering fixtures as an accepted bank.
 
+The [software validation record](selection-menus.validation.json) binds 278
+EditMode tests, seven PlayMode tests, and successful Windows/Android builds to
+the tested source. The separate [store interop record](../interfaces/menu-store-bridge.validation.json)
+records four actual Unity-to-Python mailbox requests and 47 Python tests.
+Neither record establishes participant admission or headset/acoustic qualification.
+
 `MenuTimeline` requests eight plays per menu. Profile offsets are 6.5, 10.5, 14.5,
 18.5, 22.5, 26.5, 50 and 54 seconds. Atom offsets are 5, 8, 11, 14, 17, 20, 35 and
 38 seconds. Choices may change only during 30–45 seconds or 22–32 seconds,
