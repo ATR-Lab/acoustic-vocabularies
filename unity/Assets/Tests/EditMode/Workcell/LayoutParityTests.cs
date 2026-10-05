@@ -88,7 +88,12 @@ namespace AcousticVocab.Workcell.Tests
                 var binding=visible.Single(x=>((string)x["rigid_body"]).Split('/').Last()==link.name);
                 var inputs=authored["materials"][(string)binding["material"]]["shaders"][0]["inputs"];
                 var rgb=inputs["diffuse_color_constant"]??inputs["diffuse_reflection_color"];
-                Assert.That(visual.GetComponent<MeshRenderer>().sharedMaterial.color,Is.EqualTo(new Color((float)rgb[0],(float)rgb[1],(float)rgb[2],1)),link.name);
+                Color actual=visual.GetComponent<MeshRenderer>().sharedMaterial.color;
+                // Unity serializes material channels as float; allow one micro-unit
+                // rather than requiring double-JSON and serialized float bit equality.
+                Assert.That(Mathf.Abs(actual.r-(float)rgb[0]),Is.LessThan(1e-6f),link.name);
+                Assert.That(Mathf.Abs(actual.g-(float)rgb[1]),Is.LessThan(1e-6f),link.name);
+                Assert.That(Mathf.Abs(actual.b-(float)rgb[2]),Is.LessThan(1e-6f),link.name);
             }
         }
         [Test] public void InvalidObjectCannotPartiallyMutateScene()
