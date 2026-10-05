@@ -143,7 +143,8 @@ def run_published_command_check(reset_manager, layout, output, *, socket_path, s
         max_deviation={key:max((r['max_deviation'][key] for r in rows),default=None) for key in ('joint_rad','position_m','orientation_rad')})
     report['passed']=bool(fault is None and report['all_received_neutral'] and report['all_rejections_full_state_unchanged'] and
         report['transport_sequence_gaps']==0 and drift and drift['hold_rejected'] and drift['publication_suppressed'] and
-        drift['count_unchanged'] and drift['object_not_silently_restored'] and report['explicit_recovery_reset_ok'])
+        drift['count_unchanged'] and drift['publisher_fault']=='NEUTRAL_DIVERGED' and
+        drift['object_not_silently_restored'] and report['explicit_recovery_reset_ok'])
     report['hashes']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in output.iterdir() if p.is_file()}
     durable(output/'summary.json',(json.dumps(report,indent=2,allow_nan=False)+'\n').encode())
     return report
