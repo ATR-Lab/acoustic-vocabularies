@@ -10,5 +10,13 @@
   {
     "schema": "apparatus/response-panel/response-panel.schema.json",
     "instance": "apparatus/response-panel/response-panel.example.json"
+  },
+  {
+    "schema": "isaac/publisher/state-v2.schema.json",
+    "instance": "tests/fixtures/publisher-state.json"
+  },
+  {
+    "schema": "apparatus/schemas/state-source.schema.json",
+    "instance": "apparatus/examples/state-source.example.json"
   }
 ]

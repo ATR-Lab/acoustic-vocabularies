@@ -11,7 +11,8 @@
     "AcousticVocab.Workcell",
     "AcousticVocab.StudyAudio",
     "UnityEngine.UI",
-    "AcousticVocab.ResponsePanel"
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.StateIntegration"
   ],
   "includePlatforms": [
     "Editor"

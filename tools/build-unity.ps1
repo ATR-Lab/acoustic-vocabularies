@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('Configure','Test','TestPlayMode','Android','Windows')][string]$Target,
     [Parameter(Mandatory)][string]$ProtocolVersion,
     [Parameter(Mandatory)][string]$BuildId,
-    [ValidateSet('Foundation','Workcell','Calibration','ResponsePanel')][string]$Scene = 'Foundation',
+    [ValidateSet('Foundation','Workcell','StateSources','Calibration','ResponsePanel')][string]$Scene = 'Foundation',
     [string]$G1Description,
     [switch]$AllowDirty,
     [string]$TemporaryDirectory,
@@ -21,7 +21,7 @@ $dirty = [bool](& git -C $repo status --porcelain)
 if ($dirty -and -not $AllowDirty) { throw 'Working tree is dirty. Commit reviewed source or explicitly mark a local engineering build with -AllowDirty.' }
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 $environment = @{ EXPERIMENT_PROTOCOL_VERSION=$ProtocolVersion; EXPERIMENT_BUILD_ID=$BuildId; EXPERIMENT_COMMIT_SHA=$revision; EXPERIMENT_DIRTY_SOURCE=$dirty.ToString().ToLowerInvariant() }
-if ($Scene -in @('Workcell','ResponsePanel')) {
+if ($Scene -in @('Workcell','StateSources','ResponsePanel')) {
     if (-not $G1Description -or -not (Test-Path -LiteralPath $G1Description -PathType Leaf)) { throw 'Workcell requires the reviewed converted G1 description via -G1Description.' }
     $environment.G1_DESCRIPTION_JSON=(Resolve-Path -LiteralPath $G1Description).Path
 }
@@ -34,13 +34,21 @@ if ($Target -eq 'Android') { $unityArguments += @('-buildTarget','Android') }
 if ($Target -eq 'Windows') { $unityArguments += @('-buildTarget','Win64') }
 if ($Target -in @('Test','TestPlayMode')) {
     $platform = if ($Target -eq 'Test') { 'EditMode' } else { 'PlayMode' }
-    if ($platform -eq 'PlayMode' -and $Scene -ne 'Calibration') { throw 'This branch provides play-mode tests for Calibration only.' }
-    $results = Join-Path $output ($platform.ToLowerInvariant()+'.xml')
-    $assemblies = if ($platform -eq 'PlayMode') { 'AcousticVocab.StudyAudio.PlayModeTests' } elseif ($Scene -eq 'Workcell') { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests' } elseif ($Scene -eq 'ResponsePanel') { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests;AcousticVocab.ResponsePanel.Tests' } elseif ($Scene -eq 'ResponsePanel') { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests;AcousticVocab.ResponsePanel.Tests' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.Foundation.Tests;AcousticVocab.StudyAudio.Tests' } else { 'AcousticVocab.Foundation.Tests' }
-    $unityArguments += @('-runTests','-testPlatform',$platform,'-assemblyNames',$assemblies,'-testResults',('"'+$results+'"'))
+    $results = Join-Path $output ($platform.ToLowerInvariant() + '.xml')
+    $testAssemblies = @(Get-ChildItem -LiteralPath (Join-Path $project 'Assets') -Recurse -Filter '*.asmdef' | ForEach-Object {
+        $definition = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+        $editorOnly = $definition.includePlatforms -contains 'Editor'
+        if (($definition.optionalUnityReferences -contains 'TestAssemblies') -and
+            (($platform -eq 'EditMode' -and $editorOnly) -or ($platform -eq 'PlayMode' -and -not $editorOnly))) {
+            if ($definition.name -notmatch '^AcousticVocab\.[A-Za-z0-9.]+$') { throw 'Unexpected test assembly name' }
+            $definition.name
+        }
+    })
+    if ($testAssemblies.Count -lt 1) { throw 'No project test assemblies found for target platform' }
+    $unityArguments += @('-runTests','-testPlatform',$platform,'-assemblyNames',($testAssemblies -join ';'),'-testResults',('"'+$results+'"'))
 } else {
     $method = if ($Target -eq 'Configure') { 'Configure' } else { 'Build'+$Target }
-    $builder = if ($Scene -eq 'ResponsePanel') { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } elseif ($Scene -eq 'Workcell') { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } else { 'AcousticVocab.Foundation.Editor.FoundationBuild.' }
+    $builder = switch ($Scene) { 'Calibration' { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
 $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru
@@ -50,7 +58,17 @@ $process.WaitForExit()
 if ($process.ExitCode -ne 0) { throw "Unity failed with exit code $($process.ExitCode). Inspect the private build log." }
 if ($Target -in @('Test','TestPlayMode')) {
     [xml]$result = Get-Content -Raw -LiteralPath $results
-    if ($result.'test-run'.result -ne 'Passed' -or [int]$result.'test-run'.total -lt 1) { throw 'Unity test suite did not pass or discovered zero tests.' }
+    $optionalRecordedChecks = @(
+        'AcousticVocab.Tests.RecordedIsaacContractTests.ActualIsaacSnapshotAndWireSamplesMatchUnityRegistry',
+        'AcousticVocab.Tests.ActualNeutralRendererTests.RecordedProtectedLiveFramesMatchSnapshotAndImportedRenderer'
+    )
+    $skippedTests = @($result.SelectNodes('//test-case[@result="Skipped"]'))
+    $unexpectedSkip = @($skippedTests | Where-Object { $_.fullname -notin $optionalRecordedChecks })
+    if ([int]$result.'test-run'.failed -ne 0 -or [int]$result.'test-run'.inconclusive -ne 0 -or
+        [int]$result.'test-run'.passed -lt 1 -or $unexpectedSkip.Count -ne 0 -or $skippedTests.Count -gt $optionalRecordedChecks.Count) {
+        throw 'Unity tests failed, were inconclusive, unexpectedly skipped, or discovered no passing tests.'
+    }
+    foreach ($skipped in $skippedTests) { Write-Output ('Optional recorded-Isaac evidence check skipped: '+$skipped.fullname) }
 }
 if ($Target -in @('Android','Windows')) {
     $binary = if ($Target -eq 'Android') { 'experiment.apk' } else { 'experiment.exe' }

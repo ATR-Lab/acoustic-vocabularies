@@ -50,7 +50,9 @@ namespace AcousticVocab.Foundation
             }
             catch (ConfigurationFault ex) { reason = ex.Message; }
             catch (Exception) { reason = "station_config_unreadable"; }
-            try { log = new FoundationLog(Path.Combine(Application.persistentDataPath, "operator-logs"), identity, reason == null ? (string)configuration["station_id"] : "unprovisioned"); }
+            try { log = new FoundationLog(Path.Combine(Application.persistentDataPath, "operator-logs"), identity,
+                reason == null ? (string)configuration["station_id"] : "unprovisioned",
+                reason == null ? (string)configuration["robot_state_source"] : "unresolved"); }
             catch (Exception) { configuration = null; Faulted?.Invoke("operator_log_unavailable"); return; }
             if (reason != null) { configuration = null; Fault(reason); }
             else Record("configuration_validated", new JObject { ["qualification"] = "development_only", ["topology"] = configuration["topology"], ["reference_calibration_id"] = configuration["observer_reference"]["calibration_id"] });
