@@ -58,11 +58,12 @@ namespace AcousticVocab.FrameBudget
     // Wrap the trusted factory/multiplexer, not the engine's current trial ID.
     // Existing slot timing supplies response windows; each actual audio request
     // separately supplies its verified duration, including a lesson's final cue.
-    public sealed class FrameContentFactory : ISlotContentFactory,ISessionContentPump
+    public sealed class FrameContentFactory : ISlotContentFactory,ISessionContentPump,ISlotStartPlan
     {
         readonly ISlotContentFactory inner;readonly FrameCaptureHost host;
         public FrameContentFactory(ISlotContentFactory inner,FrameCaptureHost host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host??throw new ArgumentNullException(nameof(host));}
         public ISlotContent Create(SlotItem item)=>new Content(inner.Create(item),host);
+        public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)=>inner is ISlotStartPlan plan?plan.MinimumGapBeforeMs(item,baseOnsetMonoMs):0;
         public void Pump(){host.Drain();if(inner is ISessionContentPump pump)pump.Pump();}
         sealed class Content : ISlotContent
         {
