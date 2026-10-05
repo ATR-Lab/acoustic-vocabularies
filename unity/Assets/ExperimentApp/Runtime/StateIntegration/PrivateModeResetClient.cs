@@ -41,16 +41,16 @@ namespace AcousticVocab.StateIntegration
         volatile bool failed;
         bool disposed,modeAcknowledged;
         int queued;
-        double healthReceived=-1,healthHost=-1,healthTransit,neutralAge,publisherAge;
-        bool healthGood;
+        readonly ControlHealthGate healthGate;
         public PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink)
         {
             Require(Uri.TryCreate(endpoint,UriKind.Absolute,out var uri)&&uri.Scheme=="ws"&&IPAddress.TryParse(uri.Host,out var ip)&&IPAddress.IsLoopback(ip)&&uri.AbsolutePath=="/commands"&&uri.Query.Length==0&&uri.Fragment.Length==0&&uri.UserInfo.Length==0,"CONTROL_ENDPOINT");
             Require(independentlyPinnedControlSessionId!=null&&Regex.IsMatch(independentlyPinnedControlSessionId,@"\A[0-9a-f]{32}\z"),"CONTROL_SESSION");
-            Require(requiredMode=="teaching"||requiredMode=="test","CONTROL_MODE_INVALID");mode=requiredMode;session=independentlyPinnedControlSessionId;persist=durableControlSink??throw new ArgumentNullException(nameof(durableControlSink));worker=Task.Run(()=>Run(uri));
+            Require(requiredMode=="teaching"||requiredMode=="test","CONTROL_MODE_INVALID");mode=requiredMode;session=independentlyPinnedControlSessionId;persist=durableControlSink??throw new ArgumentNullException(nameof(durableControlSink));healthGate=new ControlHealthGate(session,mode,()=>NowMs);worker=Task.Run(()=>Run(uri));
         }
         public bool ModeAcknowledged => !failed&&!disposed&&modeAcknowledged;
-        public bool NeutralHoldHealthy => ModeAcknowledged&&healthGood&&NowMs>=healthReceived&&NowMs-healthReceived+healthTransit+Math.Max(neutralAge,publisherAge)<=250;
+        public string RequiredMode => mode;
+        public bool NeutralHoldHealthy => ModeAcknowledged&&healthGate.Fresh;
         public bool ResetAcknowledged(string exactRequestId) => exactRequestId!=null&&resets.Contains(exactRequestId)&&NeutralHoldHealthy;
         string Request(string command)
         {
@@ -61,28 +61,13 @@ namespace AcousticVocab.StateIntegration
         }
         public void RequestMode(){Require(!modeAcknowledged&&!pending.Values.Contains("set_mode"),"CONTROL_MODE_PENDING");Request("set_mode");}
         public string RequestReset()=>Request("reset");
-        public void Interrupt(){healthGood=false;modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
+        public void Interrupt(){healthGate.Invalidate();modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
         static double NowMs => (double)Stopwatch.GetTimestamp()/Stopwatch.Frequency*1000;
         static void Require(bool condition,string code){if(!condition)throw new ControlFault(code);}
         static void Keys(JObject value,params string[] keys)=>Require(value!=null&&value.Properties().Select(x=>x.Name).OrderBy(x=>x).SequenceEqual(keys.OrderBy(x=>x)),"CONTROL_SCHEMA");
         static double Number(JToken value)
         {Require(value?.Type is JTokenType.Integer or JTokenType.Float,"CONTROL_SCHEMA");double n=(double)value;Require(!double.IsNaN(n)&&!double.IsInfinity(n)&&n>=0,"CONTROL_SCHEMA");return n;}
         static bool Bool(JToken value){Require(value?.Type==JTokenType.Boolean,"CONTROL_SCHEMA");return(bool)value;}
-        void Health(JObject health,double sent,double received)
-        {
-            Keys(health,"control_session_id","mode","paused","stopped","fault","demo_active","publisher_ready","neutral_verification_age_ms","publisher_age_ms","health_sample_host_mono_ms","exposure_ready","public_stream_recovered");
-            Require((string)health["control_session_id"]==session,"CONTROL_SESSION_CHANGED");
-            double host=Number(health["health_sample_host_mono_ms"]);Require(host>=healthHost&&received>=sent&&received-sent<=250,"CONTROL_STALE");
-            bool healthy=(string)health["mode"]==mode&&!Bool(health["paused"])&&!Bool(health["stopped"])&&health["fault"].Type==JTokenType.Null&&!Bool(health["demo_active"])&&Bool(health["publisher_ready"]);
-            bool exposure=Bool(health["exposure_ready"]);Bool(health["public_stream_recovered"]);if(mode=="test"&&!exposure)healthy=false;
-            if(health["neutral_verification_age_ms"].Type==JTokenType.Null||health["publisher_age_ms"].Type==JTokenType.Null)healthy=false;
-            double neutral=healthy?Number(health["neutral_verification_age_ms"]):250,publisher=healthy?Number(health["publisher_age_ms"]):250;
-            // Replayed cached health never refreshes local freshness. Observe
-            // genuine host-sample progression before granting the first gate.
-            if(host>healthHost)
-            {healthGood=healthy&&healthHost>=0;healthHost=host;healthReceived=received;healthTransit=received-sent;neutralAge=neutral;publisherAge=publisher;}
-            else if(!healthy)healthGood=false;
-        }
         public void Pump()
         {
             Require(!failed&&!disposed,"CONTROL_UNAVAILABLE");
@@ -93,12 +78,12 @@ namespace AcousticVocab.StateIntegration
                 {
                     Require(NowMs-item.Received<=250,"CONTROL_QUEUED");
                     var value=StationConfig.ParseStrict(item.Raw);
-                    if(item.Health){Health(value,item.Sent,item.Received);continue;}
+                    if(item.Health){healthGate.Observe(value,item.Sent,item.Received);continue;}
                     Keys(value,"version","kind","request_id","accepted","reason","mode","host_mono_ms","sim_time","reset_ok","duplicate","health");
                     pending.TryGetValue(item.Id,out var command);Require(value["version"].Type==JTokenType.Integer&&(int)value["version"]==1&&(string)value["kind"]=="private_reply"&&(string)value["request_id"]==item.Id&&command!=null,"CONTROL_REPLY");
                     Number(value["host_mono_ms"]);Number(value["sim_time"]);Bool(value["duplicate"]);
                     Require(Bool(value["accepted"])&&(string)value["mode"]==mode,"CONTROL_REJECTED");
-                    Health((JObject)value["health"],item.Sent,item.Received);
+                    healthGate.Observe((JObject)value["health"],item.Sent,item.Received);
                     if(command=="set_mode")Require((string)value["reason"]=="MODE_CHANGED"&&(mode=="teaching"?value["reset_ok"].Type==JTokenType.Null:Bool(value["reset_ok"])),"CONTROL_REPLY");
                     else Require((string)value["reason"]=="RESET_COMPLETE"&&Bool(value["reset_ok"]),"CONTROL_RESET");
                     persist(new JObject{["kind"]="control_reply",["local_mono_ms"]=item.Received,["reply"]=value.DeepClone()});
@@ -130,9 +115,10 @@ namespace AcousticVocab.StateIntegration
                         Offer(new Arrival{Id=id,Raw=new UTF8Encoding(false,true).GetString(message.ToArray()),Sent=sent,Received=NowMs});
                     }
                     double before=NowMs;
-                    using var response=await http.GetAsync(healthEndpoint,HttpCompletionOption.ResponseHeadersRead,lifetime.Token);response.EnsureSuccessStatusCode();
+                    using var healthTimeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);healthTimeout.CancelAfter(200);
+                    using var response=await http.GetAsync(healthEndpoint,HttpCompletionOption.ResponseHeadersRead,healthTimeout.Token);response.EnsureSuccessStatusCode();
                     using var stream=await response.Content.ReadAsStreamAsync();using var health=new MemoryStream();var chunk=new byte[4096];int count;
-                    while((count=await stream.ReadAsync(chunk,0,chunk.Length,lifetime.Token))>0){if(health.Length+count>16384)throw new IOException();health.Write(chunk,0,count);}
+                    while((count=await stream.ReadAsync(chunk,0,chunk.Length,healthTimeout.Token))>0){if(health.Length+count>16384)throw new IOException();health.Write(chunk,0,count);}
                     Offer(new Arrival{Health=true,Raw=new UTF8Encoding(false,true).GetString(health.ToArray()),Sent=before,Received=NowMs});
                     await Task.Delay(75,lifetime.Token);
                 }
