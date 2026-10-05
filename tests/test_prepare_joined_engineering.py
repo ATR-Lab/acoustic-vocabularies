@@ -112,9 +112,10 @@ def test_actual_package_staged_without_source_or_runtime_mutation(inputs):
 
 
 @pytest.mark.parametrize("lead", [None, 2000, 60000])
-def test_v2_copies_explicit_policy_and_independent_active_pins_without_anchor(inputs, lead):
+@pytest.mark.parametrize("version", [2, 3])
+def test_v2_copies_explicit_policy_and_independent_active_pins_without_anchor(inputs, lead, version):
     doc, root = copy.deepcopy(inputs[0]), inputs[1]
-    doc["version"] = 2
+    doc["version"] = version
     doc["yoked_start"] = None if lead is None else {"policy": "operator_start_plus_lead", "lead_ms": lead}
     for role in stage.YOKED_FILES:
         source = root / (role + ".local.json")
@@ -122,7 +123,7 @@ def test_v2_copies_explicit_policy_and_independent_active_pins_without_anchor(in
         doc["files"][role] = {"path": str(source), "sha256": stage.digest(source.read_bytes())}
     report, out = invoke(inputs, doc=doc)
     config = json.loads((out / "join.local.json").read_bytes())
-    assert config["version"] == 2 and config["yoked_start"] == doc["yoked_start"]
+    assert config["version"] == version and config["yoked_start"] == doc["yoked_start"]
     assert "anchor" not in (out / "join.local.json").read_text()
     assert report["participant_admission"] is False and not (out / "runtime").exists()
     for role in stage.YOKED_FILES:
@@ -173,6 +174,42 @@ def test_v1_cannot_smuggle_v2_authority(inputs):
 def test_yoked_role_size_caps_are_explicit():
     assert stage.cap("yoked_active_schedule") == stage.cap("yoked_active_run_sheet_csv") == 16 * 1024**2
     assert stage.cap("yoked_active_run_sheet_manifest") == stage.cap("yoked_active_schedule_manifest") == 1024**2
+
+
+@pytest.mark.parametrize("provided", [False, True])
+def test_v3_preserves_nullable_independently_pinned_grammar_review(inputs, provided):
+    doc = copy.deepcopy(inputs[0]); doc.update(version=3, yoked_start=None)
+    raw = b'{"synthetic_transport_fixture":"not_review_authority"}'
+    if provided:
+        source = inputs[1] / "grammar-review.local.json"; source.write_bytes(raw)
+        doc["files"]["grammar_review"] = {"path": str(source), "sha256": stage.digest(raw)}
+    report, out = invoke(inputs, doc=doc)
+    config = json.loads((out / "join.local.json").read_bytes())
+    assert config["version"] == 3 and report["participant_admission"] is False
+    if provided:
+        assert (out / config["files"]["grammar_review"]["path"]).read_bytes() == raw
+        assert config["files"]["grammar_review"]["sha256"] == stage.digest(raw)
+    else:
+        assert config["files"]["grammar_review"] is None
+    assert stage.cap("grammar_review") == 1024**2
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_old_versions_cannot_carry_grammar_authority(inputs, version):
+    doc = copy.deepcopy(inputs[0]); doc["version"] = version
+    if version == 2: doc["yoked_start"] = None
+    doc["files"]["grammar_review"] = None
+    with pytest.raises(stage.PreparationError, match="FILES_SHAPE"):
+        invoke(inputs, doc=doc)
+
+
+def test_v3_rejects_changed_grammar_pin_before_creating_output(inputs):
+    doc = copy.deepcopy(inputs[0]); doc.update(version=3, yoked_start=None)
+    source = inputs[1] / "grammar-review.local.json"; source.write_bytes(b"changed")
+    doc["files"]["grammar_review"] = {"path": str(source), "sha256": "0" * 64}
+    with pytest.raises(stage.PreparationError, match="FILE_PIN"):
+        invoke(inputs, doc=doc)
+    assert not (inputs[1] / "prepared").exists()
 
 
 @pytest.mark.parametrize("scope", ["PARTICIPANT", "demo_engineering", True])
