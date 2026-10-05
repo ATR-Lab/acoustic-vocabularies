@@ -14,6 +14,26 @@ import time
 import uuid
 
 
+def close_phase_resources(process, stop_path, write_stop, resources, errors):
+    """Attempt every independent cleanup, retaining failures for the summary."""
+    def record(name, error):
+        errors.append(name+': '+type(error).__name__+': '+str(error))
+    if process is not None:
+        try: write_stop(stop_path,b'stop')
+        except Exception as error: record('client stop marker',error)
+        try: process.wait(timeout=5)
+        except Exception as error:
+            record('client graceful wait',error)
+            try: process.terminate()
+            except Exception as error: record('client terminate',error)
+            try: process.wait(timeout=5)
+            except Exception as error: record('client final wait',error)
+    for name,resource in resources:
+        if resource is not None:
+            try: resource.close()
+            except Exception as error: record(name,error)
+
+
 def run_same_iteration_check(manager, layout, output, *, phase_seconds=30.):
     from isaac.commands.dispatcher import CommandDispatcher
     from isaac.commands.event_log import DurableCommandLog
@@ -111,16 +131,9 @@ def run_same_iteration_check(manager, layout, output, *, phase_seconds=30.):
             finally:
                 if gc_note in gc.callbacks:gc.callbacks.remove(gc_note)
                 adapter.read_state,manager.verify_state=original_read,original_verify
-                if process is not None:
-                    durable(directory/'stop',b'stop')
-                    try:process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.terminate();process.wait(timeout=5);cleanups.append('Client forced termination')
-                for name,resource in [('private',private),('publisher',publisher),('public',public if publisher is None else None),
-                        ('trace',trace),('journal',journal),('watch',watch),('proof',proof),('stderr',stderr)]:
-                    if resource is not None:
-                        try:resource.close()
-                        except Exception as error:cleanups.append(name+': '+type(error).__name__+': '+str(error))
+                close_phase_resources(process,directory/'stop',durable,
+                    [('private',private),('publisher',publisher),('public',public if publisher is None else None),
+                     ('trace',trace),('journal',journal),('watch',watch),('proof',proof),('stderr',stderr)],cleanups)
         with (directory/'iterations.csv').open('x',newline='') as stream:
             writer=csv.writer(stream);writer.writerow(['step','start_host_ns','end_host_ns','published']);writer.writerows(rows)
             stream.flush();os.fsync(stream.fileno())

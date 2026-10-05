@@ -241,10 +241,22 @@ class StageMutationWatch:
 
     def close(self):
         self._closed = True
-        self.invalidate()
+        failure = None
+        try:
+            self.invalidate()
+        except Exception as error:
+            failure = error
+        failed = []
         for notice in self._notices:
-            notice.Revoke()
-        self._notices.clear()
+            try:
+                notice.Revoke()
+            except Exception as error:
+                failed.append(notice)
+                if failure is None:
+                    failure = error
+        self._notices = failed  # Retain failed handles for an explicit retry.
+        if failure is not None:
+            raise failure
 
 
 def advance_once_verified(adapter, dispatcher, handoff, publisher, capture, sim_step, trace=None):

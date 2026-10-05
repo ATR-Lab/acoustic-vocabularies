@@ -853,11 +853,11 @@
   "derivation_script_sha256": "ead346003e6fdd7b6eb0f952ec6d0a0b80b7d73c8775a61affdf5ebd2cf30642",
   "python_verification": {
     "focused_after_main_merge": {
-      "tests": 153,
+      "tests": 159,
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "xml_sha256": "810e757e2302cd187c7513f7e9126dc795710600b06a773056143f4e1d3c5624"
+      "xml_sha256": "8922e7758da6793d116675bf417dd67db5236a755b7c3e0a1e88a6eed8b16ac5"
     },
     "earlier_full_backend": {
       "tests": 339,
@@ -866,5 +866,6 @@
       "errors": 0,
       "xml_sha256": "c8aa2696836406d838d6f95e0a0adb970fe2803ea6cf978147f381fcf924b5e5"
     }
-  }
+  },
+  "post_measurement_cleanup_hardening": "Client stop/wait/terminate failures independently recorded; all resource closers attempted; all USD notice revocations attempted with failed handles retained. Six injected-failure/success cleanup regressions; no successful-path timing claim changed."
 }
