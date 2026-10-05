@@ -120,3 +120,16 @@ identify unexecuted visits, faults, or captures. Preserve failed attempts rather
 than replacing their evidence. All seven planned fault cases and the complete
 active/yoked history remain required for issue #81; a compilation or isolated
 unit test does not satisfy those native run requirements.
+
+For a closed run, `tools/write_mock_run_manifest.py` requires independently pinned
+configuration, capability, build inventory, and process-observer receipt. Also
+provide `--fixture-provenance <source fixture-provenance.local.json>` and
+`--fixture-provenance-sha256 <raw SHA256>`. That pin must equal the capability's
+`fixture_set_sha256`. The emitter copies the verified provenance bytes into the
+run root and refuses conflicting existing bytes. Select the exact fixture set
+used by that run; an older generated set is not interchangeable even when it uses
+the same package. The emitter requires a real process ID and exactly one closed
+data export, and writes `complete:false`; reconciliation derives completion from
+the retained records. A blocked launch without a process cannot receive this
+manifest. The observer receipt is an operator observation, not proof of acoustic
+onset or executable custody.
