@@ -142,7 +142,7 @@ namespace AcousticVocab.StateIntegration
                     using var stream=await response.Content.ReadAsStreamAsync();using var health=new MemoryStream();var chunk=new byte[4096];int count;
                     while((count=await stream.ReadAsync(chunk,0,chunk.Length,healthTimeout.Token))>0){if(health.Length+count>16384)throw new IOException();health.Write(chunk,0,count);}
                     ReceiveHealth(new UTF8Encoding(false,true).GetString(health.ToArray()),before,now());
-                    await Task.Delay(75,lifetime.Token);
+                    await Task.Delay(ControlPollCadence.DelayMilliseconds(before,now()),lifetime.Token);
                 }
             }
             catch{if(!disposed)failed=true;}
