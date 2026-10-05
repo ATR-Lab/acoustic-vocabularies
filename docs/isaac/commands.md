@@ -141,3 +141,14 @@ advances physics with neutral hold, and injects object drift. Its teaching hook
 is explicitly synthetic and performs no motion. #56 must supply and validate
 the real 32 execution iterators. Private methodology/log-template reconciliation,
 independent lock review and full station deployment remain pending.
+
+The [actual-state diagnostic](commands/actual-state-diagnostic.json) used the
+loaded G1 and all 60 workcell objects. All 32 protected requests were rejected
+with an identical full-state SHA before/after; 240 advancing physics steps
+passed neutral verification under explicit robot-only hold. An injected card
+change caused a fault and was not silently restored. The explicit recovery
+reset passed while the service fault stayed latched. All 68 terminal events and
+their raw-log SHA were independently checked. Teaching completions in this run
+used a synthetic no-motion hook. The report names the exact historical source
+revisions; later queue/health review changes are covered separately by unit
+tests and must not be inferred to have run in that earlier measurement.
