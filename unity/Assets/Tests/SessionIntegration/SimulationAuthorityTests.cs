@@ -34,7 +34,7 @@ namespace AcousticVocab.SessionIntegration.Tests
         [Test]public void NonDemoAndWrongPinsNeverBind()
         {var a=Load();Assert.Throws<InvalidDataException>(()=>a.Bind(new string('b',64),new string('c',64),false,true,a.OutputDirectory));Assert.Throws<InvalidDataException>(()=>a.Bind(new string('d',64),new string('c',64),true,true,a.OutputDirectory));}
         [Test]public void OrdinaryPublicOutputPathRefusedDespiteSimulationName()
-        {config["output_directory"]=Path.Combine(Path.GetTempPath(),"simulation-test-public");Assert.Throws<InvalidDataException>(()=>Load());}
+        {config["output_directory"]=Path.Combine(Path.GetPathRoot(Path.GetTempPath()),"simulation-test-public");Assert.Throws<InvalidDataException>(()=>Load());}
         [Test]public void AttestationCannotPretendToBeHumanReview()
         {
             var a=Load();var bindings=new JObject{["scripts_sha256"]=new string('d',64)};var p=new JObject{["version"]=1,["scope"]="SIMULATION_TEST",["role"]="assessment",["fixture_set_sha256"]=a.FixtureSetSha256,["bindings"]=bindings};a.Attest(p,"assessment",bindings);
