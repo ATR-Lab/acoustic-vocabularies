@@ -13,14 +13,28 @@ namespace AcousticVocab.SessionEngine
     {
         readonly JObject manifest,schedules;
         readonly byte[] sheet;
+        public const string SchemaSha256="8ac1b5cd17a2e42a27ea7a2aec41792b7a8f9b51cdac50b36eda04c7ec93371c";
         public string ManifestSha256 { get; }
-        public RunSheetEvidence(byte[] runSheetManifest,byte[] scheduleManifest,byte[] runSheetCsv,string expectedManifestSha256)
+        public RunSheetEvidence(byte[] runSheetManifest,byte[] scheduleManifest,byte[] runSheetCsv,string expectedManifestSha256,byte[] runSheetSchema)
         {
             SessionJson.Require(SessionJson.Hash(expectedManifestSha256)&&PcmWave.Hash(runSheetManifest)==expectedManifestSha256,"RUN_SHEET_MANIFEST_HASH");
             manifest=SessionJson.Parse(runSheetManifest);schedules=SessionJson.Parse(scheduleManifest);sheet=(byte[])runSheetCsv.Clone();ManifestSha256=expectedManifestSha256;
+            new ScheduleSchema(runSheetSchema,SchemaSha256).Validate(manifest);
+            SessionJson.Keys(schedules,"format","format_version","generator","demo","seed_label","study","set","units","spare_units","persons","visits","files");
+            SessionJson.Keys(schedules["generator"],"name","version");
+            SessionJson.Require((string)schedules["generator"]["name"]=="av-schedules"&&schedules["generator"]["version"].Type==JTokenType.String);
+            foreach(string key in new[]{"units","spare_units"})SessionJson.Require(schedules[key] is JArray ids&&ids.All(x=>x.Type==JTokenType.String));
+            SessionJson.Require(schedules["files"] is JObject fileHashes&&fileHashes.Properties().All(x=>x.Value.Type==JTokenType.String&&SessionJson.Hash((string)x.Value)));
+            SessionJson.Require(schedules["visits"] is JObject visits);
+            foreach(var row in ((JObject)schedules["visits"]).Properties())
+            {
+                SessionJson.Keys(row.Value,"pre_old_trained","post_trained","novel_once","atomic","assessment_seconds","extra_after_protected");
+                SessionJson.Require(((JObject)row.Value).Properties().All(x=>x.Value.Type==JTokenType.Integer&&(long)x.Value>=0));
+            }
             SessionJson.Require((string)manifest["format"]=="av-schedules/run-sheets-manifest" && (int?)manifest["format_version"]==1 &&
                 (string)schedules["format"]=="av-schedules/schedules-manifest" && (int?)schedules["format_version"]==1 &&
-                (string)manifest["schedules_manifest_sha256"]==PcmWave.Hash(scheduleManifest) && (int?)manifest["checks"]?["findings"]==0,"RUN_SHEET_CHAIN_INVALID");
+                (string)manifest["schedules_manifest_sha256"]==PcmWave.Hash(scheduleManifest) && (int?)manifest["checks"]?["findings"]==0 &&
+                manifest["package_hashes"] is JObject packages&&(bool?)packages["placeholder"]==false,"RUN_SHEET_CHAIN_INVALID");
             SessionJson.Require(sheet.Length>0&&sheet.Length<=65536);
         }
         internal void Verify(JObject visit,string scheduleHash,string packageHash,ScheduleBlock[] blocks)
@@ -84,6 +98,7 @@ namespace AcousticVocab.SessionEngine
             string hash=PcmWave.Hash(bytes);var manifest=SessionJson.Parse(packageBytes);
             SessionJson.Require(PackageLoader.CanonicalPackageHash(new UTF8Encoding(false,true).GetString(packageBytes))==package.PackageSha256,"SESSION_PACKAGE_HASH");
             string person=(string)doc["person_id"],visit=(string)doc["visit"],study=(string)doc["study"];
+            SessionJson.Require(study==package.Study,"SESSION_PACKAGE_IDENTITY");
             SessionJson.Require((bool)doc["demo"]==package.Demo&&(!(bool)doc["demo"]||allowDemo),"SESSION_DEMO_REFUSED");
             foreach(string key in new[]{"study","set","unit_id","unit_kind","demo","seed_label","family_first"})SessionJson.Require(JToken.DeepEquals(doc[key],permutation[key]));
             SessionJson.Require((string)doc["permutation_json_sha256"]==PcmWave.Hash(permutationBytes));
@@ -91,6 +106,14 @@ namespace AcousticVocab.SessionEngine
             var files=(JObject)manifest["files"];
             SessionJson.Require((string)files[schedulePath]?["sha256"]==hash &&
                 (string)files["permutation.json"]?["sha256"]==PcmWave.Hash(permutationBytes),"SESSION_PACKAGE_SCHEDULE_BINDING");
+            var result=ValidateBlocks(doc,permutation);
+            evidence.Verify(doc,hash,package.PackageSha256,result);
+            return new VisitSchedule(hash,package.PackageSha256,person,visit,(bool)doc["demo"],result);
+        }
+        internal static ScheduleBlock[] ValidateBlocks(JObject doc,JObject permutation)
+        {
+            string person=(string)doc["person_id"],visit=(string)doc["visit"],study=(string)doc["study"];
+            SessionJson.Require(person==(string)doc["unit_id"]+"-"+(string)doc["person_slot"],"SESSION_PERSON_SLOT");
             int wave=study=="A"||visit=="V3"||visit=="W1"||visit=="W4"?3:visit=="V2"?2:1;
             SessionJson.Require((int)doc["wave"]==wave&&((study=="A"&&new[]{"D0","D7"}.Contains(visit))||(study=="B"&&new[]{"V1","V2","V3","W1","W4"}.Contains(visit))));
             var atomMap=((JArray)permutation["atoms"]).ToDictionary(x=>(string)x["atom_id"],x=>x);
@@ -147,10 +170,32 @@ namespace AcousticVocab.SessionEngine
                     records.Add(new SlotItem(id,type,message??atom??speech,role,presentation,kind.phase,status=="heldout",kind.slot,(int)item["plays"],pass));
                 }
                 CheckPool(plan.name,records,study,visit,wave,(bool)doc["swap_w1_w4"],permutation);
+                if(plan.name=="message_lessons")
+                {
+                    string leading=(string)doc["family_first"];
+                    foreach(var passItems in items.GroupBy(x=>(int)x["pass"]))
+                    {
+                        string lead=passItems.Key%2==1?leading:leading=="K"?"Q":"K";
+                        SessionJson.Require(passItems.Select((x,i)=>((string)x["message_id"])[0]==(i%2==0?lead[0]:lead=="K"?'Q':'K')).All(x=>x),"SESSION_LESSON_FAMILY_ORDER");
+                    }
+                }
+                if(plan.name=="validity")
+                {
+                    foreach(string family in families)foreach(string role in new[]{"action","referent"})
+                        SessionJson.Require(items.Where(x=>(string)x["trial_type"]=="speech"&&(string)x["intended"]["family"]==family)
+                            .Select(x=>(string)x["intended"]["semantic_"+role]).OrderBy(x=>x)
+                            .SequenceEqual(((JArray)permutation["labels"][family][role]).Select(x=>(string)x).OrderBy(x=>x)),"SESSION_VALIDITY_COVERAGE");
+                    SessionJson.Require(block["validity"] is JObject && ((JArray)block["validity"]["no_cue_targets"]).Select(x=>(string)x).OrderBy(x=>x)
+                        .SequenceEqual(items.Where(x=>(string)x["trial_type"]=="no_cue").Select(x=>(string)x["intended"]["message_id"]).OrderBy(x=>x)),"SESSION_NO_CUE_DRAW_LIST");
+                }
                 output.Add(new ScheduleBlock(plan.name,records.ToArray()));
             }
-            var result=output.ToArray();evidence.Verify(doc,hash,package.PackageSha256,result);
-            return new VisitSchedule(hash,package.PackageSha256,person,visit,(bool)doc["demo"],result);
+            var result=output.ToArray();
+            int count(string block)=>result.FirstOrDefault(x=>x.Name==block)?.Items.Count??0;
+            var assessment=new JObject { ["pre_old_trained"]=count("pre_old"),["post_trained"]=count("trained"),["novel_once"]=count("novel"),["atomic"]=count("atomic"),
+                ["assessment_seconds"]=14*(count("pre_old")+count("trained")+count("novel"))+9*count("atomic"),["extra_after_protected"]=count("validity") };
+            SessionJson.Require(JToken.DeepEquals(doc["assessment"],assessment),"SESSION_ASSESSMENT_TOTAL");
+            return result;
         }
         static void CheckPool(string block,List<SlotItem> rows,string study,string visit,int wave,bool swap,JObject permutation)
         {
