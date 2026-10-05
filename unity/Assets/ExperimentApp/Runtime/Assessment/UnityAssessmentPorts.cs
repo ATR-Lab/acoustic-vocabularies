@@ -71,7 +71,7 @@ namespace AcousticVocab.Assessment
         readonly AudioPlayer player;
         readonly IAssessmentSelections selections;
         readonly SpeechBank speech;
-        readonly Action<AudioPlaybackEvent> persist;
+        readonly Action<AudioPlaybackEvent> persist;readonly Action<SlotContext,int,PcmWave> beforeSchedule;
         SlotContext context;
         AudioSelection choice;
         PcmWave prepared;
@@ -80,10 +80,10 @@ namespace AcousticVocab.Assessment
         public string FaultCode { get; private set; }
         public bool Ready=>!disposed&&FaultCode==null&&player.TrialReady;
         public UnityAssessmentAudio(LoadedAudioPackage package,AudioPlayer player,SpeechBank speech,
-            IAssessmentSelections selections,Action<AudioPlaybackEvent> durableAudioSink)
+            IAssessmentSelections selections,Action<AudioPlaybackEvent> durableAudioSink,Action<SlotContext,int,PcmWave> beforeSchedule=null)
         {
             this.package=package??throw new ArgumentNullException(nameof(package));this.player=player??throw new ArgumentNullException(nameof(player));
-            this.speech=speech;this.selections=selections;persist=durableAudioSink??throw new ArgumentNullException(nameof(durableAudioSink));
+            this.speech=speech;this.selections=selections;this.beforeSchedule=beforeSchedule;persist=durableAudioSink??throw new ArgumentNullException(nameof(durableAudioSink));
             player.Event+=OnAudio;
         }
         AudioSelection Select(string id)
@@ -124,6 +124,7 @@ namespace AcousticVocab.Assessment
                 prepared=speech.ReadForValidity(value.Item.ContentId,speechPermission);
             }
             if(value.Item.TrialType is "novel" or "speech")player.Preload(new Dictionary<string,PcmWave>{{value.AudioRequestIds[0],prepared}},64*1024*1024);
+            beforeSchedule?.Invoke(value,0,prepared);
             player.Schedule(value.AudioRequestIds[0],value.OnsetMonoMs/1000);
         }
         void OnAudio(AudioPlaybackEvent value)

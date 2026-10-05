@@ -33,18 +33,20 @@ namespace AcousticVocab.Teaching
         readonly TeachingCatalog catalog;readonly ITeachingSelections selections;readonly ITeachingBackend backend;
         readonly AudioPlayer audio;readonly ResponsePanelController panel;readonly StateSourceHost source;readonly ITeachingView view;
         readonly Func<bool> focused;readonly Action<LessonEvent> persist;readonly Action<AudioPlaybackEvent> audioPersist;readonly Action<string> responseSink,faultSink;
+        readonly Action<SlotContext,int,PcmWave> beforeSchedule;
         readonly List<Content> live=new List<Content>();
         bool disposed;
         public TeachingContentFactory(TeachingCatalog catalog,ITeachingSelections selections,ITeachingBackend backend,AudioPlayer audio,
             ResponsePanelController panel,StateSourceHost source,ITeachingView view,Func<bool> focused,Action<LessonEvent> persist,
-            Action<AudioPlaybackEvent> audioPersist,Action<string> responseSink,Action<string> faultSink)
+            Action<AudioPlaybackEvent> audioPersist,Action<string> responseSink,Action<string> faultSink,Action<SlotContext,int,PcmWave> beforeSchedule=null)
         {
-            this.catalog=catalog??throw new ArgumentNullException(nameof(catalog));this.selections=selections;this.backend=backend??throw new ArgumentNullException(nameof(backend));
+            this.beforeSchedule=beforeSchedule;this.catalog=catalog??throw new ArgumentNullException(nameof(catalog));this.selections=selections;this.backend=backend??throw new ArgumentNullException(nameof(backend));
             this.audio=audio??throw new ArgumentNullException(nameof(audio));this.panel=panel??throw new ArgumentNullException(nameof(panel));this.source=source??throw new ArgumentNullException(nameof(source));
             this.view=view??throw new ArgumentNullException(nameof(view));this.focused=focused??throw new ArgumentNullException(nameof(focused));this.persist=persist??throw new ArgumentNullException(nameof(persist));
             this.audioPersist=audioPersist??throw new ArgumentNullException(nameof(audioPersist));this.responseSink=responseSink??throw new ArgumentNullException(nameof(responseSink));this.faultSink=faultSink??throw new ArgumentNullException(nameof(faultSink));
             audio.Event+=AudioEvent;panel.Responded+=PanelResponse;panel.Faulted+=PanelFault;
-            if(!backend.TeachingModeAcknowledged)backend.RequestTeachingMode();
+            try{if(!backend.TeachingModeAcknowledged)backend.RequestTeachingMode();}
+            catch{audio.Event-=AudioEvent;panel.Responded-=PanelResponse;panel.Faulted-=PanelFault;throw;}
         }
         public bool ExposureGate => !disposed&&focused()&&panel.ReadyForTrial&&source.CheckExposureReady()&&backend.TeachingModeAcknowledged&&backend.NeutralHoldHealthy;
         public ISlotContent Create(SlotItem item)
@@ -121,7 +123,7 @@ namespace AcousticVocab.Teaching
                 owner.audio.Preload(context.AudioRequestIds.ToDictionary(x=>x,x=>Material.Wave),16*1024*1024);
                 Timeline=new LessonTimeline(context,Material.Aligned,Material.Action.SampleCount,Material.Referent?.SampleCount??0,
                     Material.Display.MeaningDisplayId,Material.Wave.PcmSha256,Material.Atomic?null:Material.Action.PcmSha256,Material.Referent?.PcmSha256,owner.persist,()=>AudioPlayer.Now*1000);
-                Timeline.PlayRequested+=(index,id,time)=>owner.audio.Schedule(id,time/1000);
+                Timeline.PlayRequested+=(index,id,time)=>{owner.beforeSchedule?.Invoke(Context,index-1,Material.Wave);owner.audio.Schedule(id,time/1000);};
                 Timeline.DisplayChanged+=(phase,feedback)=>
                 {if(phase==LessonDisplayPhase.Definition||phase==LessonDisplayPhase.Feedback)owner.view.Show(Context.Item.TrialId,Material.Display,feedback==null?null:owner.catalog.FeedbackText(feedback));else owner.view.Hide(Context.Item.TrialId);};
                 Timeline.HighlightChanged+=highlight=>owner.view.Highlight(Context.Item.TrialId,highlight);

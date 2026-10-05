@@ -15,7 +15,7 @@ using UnityEngine.XR.OpenXR.Features.Meta;
 namespace AcousticVocab.FrameBudget
 {
     [DisallowMultipleComponent]
-    public sealed class FrameCaptureHost : MonoBehaviour
+    public sealed class FrameCaptureHost : MonoBehaviour,IFrameCapture
     {
         public FoundationBootstrap foundation;
         public ResponsePanelController panel;
@@ -43,7 +43,7 @@ namespace AcousticVocab.FrameBudget
             engineFault=fault;setup=FrameSetup.Load(privateSetup,foundation.Configuration);
             displays.Clear();SubsystemManager.GetSubsystems(displays);var display=displays.SingleOrDefault(x=>x.running);Check.That(display!=null,"FRAME_REFRESH_UNAVAILABLE");
             refresh=new RefreshPin(setup,new UnityDisplay(display));refresh.Begin();
-            var metadata=new JObject{["version"]=1,["clock"]="host_Stopwatch_absolute_ms",["stopwatch_frequency"]=System.Diagnostics.Stopwatch.Frequency,
+            var metadata=new JObject{["version"]=1,["clock"]="Unity_process_Stopwatch_ms",["clock_epoch"]=Guid.NewGuid().ToString("N"),["stopwatch_frequency"]=System.Diagnostics.Stopwatch.Frequency,
                 ["capture_kind"]="application_onBeforeRender_callbacks_not_photon_timestamps",["frame_timing_metrics"]="delayed_Unity_CPU_GPU_statistics",
                 ["frame_timing_enabled"]=FrameTimingManager.IsFeatureEnabled(),["selected_refresh_hz"]=setup.RefreshHz,["refresh_control"]=setup.Control,["setup_sha256"]=setup.Sha256,
                 ["station_id"]=foundation.Configuration["station_id"].DeepClone(),["protocol_version"]=foundation.Configuration["protocol_version"].DeepClone(),
@@ -97,7 +97,7 @@ namespace AcousticVocab.FrameBudget
                     new FrameWindow("response","response",context.OnsetMonoMs+context.Item.ResponseOpensSeconds*1000,context.OnsetMonoMs+context.Item.ResponseClosesSeconds*1000),Now);
         }
         public void RegisterCue(string attempt,FrameWindow cue){Check.That(installed&&!closed,"FRAME_CAPTURE_UNAVAILABLE");lock(timingLock)monitor.Cue(attempt,cue,Now);}
-        public void Cancel(string attempt){if(!installed||closed)return;lock(timingLock)monitor.Cancel(attempt,Now);}
+        public void Cancel(string attempt,bool cueRequested=true){if(!installed||closed)return;lock(timingLock)monitor.Cancel(attempt,Now,cueRequested);}
         // Explicit engineering hook, bounded and unavailable unless opted in.
         // This intentionally stalls this application's main thread only.
         public void InjectStall(int milliseconds)

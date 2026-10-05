@@ -119,6 +119,23 @@ namespace AcousticVocab.FrameBudget.Tests
         }
         [Test] public void RepeatedRenderSequenceLatchesFailure()
         {var e=new Memory();var m=Monitor(e);Assert.Throws<FrameFault>(()=>m.Render(1,new RenderSample(0),true));Assert.That(m.Healthy,Is.False);}
+        [Test] public void OneThrowingFaultSubscriberDoesNotDiscardOtherTypedFaults()
+        {
+            var raw=new Memory();var monitor=Monitor(raw,start:1);monitor.Render(300,new RenderSample(1),false);
+            Assert.That(raw.Faults.Count,Is.EqualTo(2));int calls=0;
+            using var journal=new DataJournal(Fresh("dispatch"),Identity,new string('2',32),()=>1);
+            var adapter=new FrameDataAdapter(journal,_=>{calls++;if(calls==1)throw new Exception("synthetic");});
+            Assert.Throws<FrameFault>(()=>adapter.Drain(monitor));Assert.That(calls,Is.EqualTo(2));Assert.That(journal.Records.Count,Is.EqualTo(2));Assert.That(raw.Faults.Count,Is.EqualTo(2));
+        }
+        [Test] public void CancellingUnadmittedFutureAttemptKeepsHealthAndEarlierTail()
+        {
+            var raw=new Memory();var monitor=new FrameMonitor(72,raw);monitor.Render(0,new RenderSample(0),true);
+            monitor.Register(new FrameAttempt("old","old",10,1000,0),new FrameWindow("r","response",10,500),0);
+            monitor.Register(new FrameAttempt("next","next",1100,2000,0),new FrameWindow("r","response",1100,1900),0);
+            monitor.Cancel("next",0,false);Assert.That(monitor.Healthy,Is.True);Assert.That(raw.Summaries.Single().CancelledBeforeWindow,Is.True);
+            monitor.Register(new FrameAttempt("next","next",1100,2000,0),new FrameWindow("r","response",1100,1900),0);
+            monitor.Render(300,new RenderSample(1),true);Assert.That(raw.Faults.Single().Attempt.AttemptId,Is.EqualTo("old"));
+        }
         sealed class Runtime : IDisplayRate
         {internal double Hz=72;internal double[] Rates=new double[]{72,90};internal int Requests;internal bool Accepted=true;public bool Running=>true;public bool TryOffered(out double[] rates){rates=Rates;return rates!=null;}public bool TryCurrent(out double hz){hz=Hz;return true;}public bool Request(double hz){Requests++;return Accepted;}}
         static FrameSetup Setup(string control="request")=>FrameSetup.Load(Encoding.UTF8.GetBytes("{\"version\":1,\"protocol_version\":\"engineering\",\"station_id\":\"station-01\",\"refresh_control\":\""+control+"\",\"watchdog_poll_ms\":10,\"engineering_stall_hook\":false}"),new JObject{["protocol_version"]="engineering",["station_id"]="station-01",["refresh_hz"]=72});

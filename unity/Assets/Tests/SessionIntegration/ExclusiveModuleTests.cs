@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using AcousticVocab.SessionEngine;
+using AcousticVocab.FrameBudget;
 using AcousticVocab.StudyAudio;
 using NUnit.Framework;
 namespace AcousticVocab.SessionIntegration.Tests
@@ -21,17 +22,27 @@ namespace AcousticVocab.SessionIntegration.Tests
         }
         sealed class Content:ISlotContent
         {public SlotReadiness Readiness=>new SlotReadiness(true,true,true,true,true,true,true,true);public bool ResetComplete=>true;public void Prepare(SlotContext c){}public void RequestCue(SlotContext c,INovelSlotAuthorization p){}public void OpenResponse(SlotContext c){}public void CloseResponse(SlotContext c){}public void RequestReset(SlotContext c){}public void Interrupt(string code){}}
+        sealed class Capture:IFrameCapture,IFrameEvidence
+        {
+            readonly Clock clock;internal readonly FrameMonitor Monitor;internal int Cancelled;
+            internal Capture(Clock clock){this.clock=clock;Monitor=new FrameMonitor(72,this);Monitor.Render(0,new RenderSample(0),true);}
+            public bool Ready=>Monitor.Healthy;public void Drain(){}
+            public void Register(SlotContext c)=>Monitor.Register(new FrameAttempt(c.OpportunityId,c.Item.TrialId,c.OnsetMonoMs,c.EndMonoMs,c.Item.Plays),new FrameWindow("response","response",c.OnsetMonoMs+c.Item.ResponseOpensSeconds*1000,c.OnsetMonoMs+c.Item.ResponseClosesSeconds*1000),clock.Time);
+            public void Cancel(string id,bool requested=true)=>Monitor.Cancel(id,clock.Time,requested);
+            public void Interval(FrameInterval x){}public void Fault(FrameFaultRecord x){}public void Summary(FrameSummary x){if(x.CancelledBeforeWindow)Cancelled++;}
+        }
         sealed class Fixture
         {
             internal readonly Clock Clock=new Clock();internal readonly List<string> Order=new List<string>();internal readonly List<Factory> Made=new List<Factory>();
             internal readonly VisitSchedule Schedule;internal readonly ExclusiveContentMultiplexer Mux;internal readonly FixedSlotEngine Engine;
-            internal Fixture(Func<string,ModuleConstructionScope,ISlotContentFactory> special=null)
+            internal readonly Capture Capture;
+            internal Fixture(Func<string,ModuleConstructionScope,ISlotContentFactory> special=null,bool framed=false)
             {
                 SlotItem Item(string id)=>New<SlotItem>(id,"atomic","K-a1","action","atomic","protected",false,10,0,1);
                 Schedule=New<VisitSchedule>(new string('a',64),new string('b',64),"synthetic","DEMO",true,new[]{New<ScheduleBlock>("first",new[]{Item("one")}),New<ScheduleBlock>("second",new[]{Item("two")})},"A","S",null);
                 ISlotContentFactory Make(string name,ModuleConstructionScope s){if(special!=null)return special(name,s);var f=new Factory(name,Order);Made.Add(f);return f;}
                 Mux=new ExclusiveContentMultiplexer(Schedule,Clock,new Dictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>>{{"first",s=>Make("first",s)},{"second",s=>Make("second",s)}});
-                Engine=new FixedSlotEngine(Schedule,Clock,new Journal(),Mux);
+                Capture=new Capture(Clock);Engine=new FixedSlotEngine(Schedule,Clock,new Journal(),framed?(ISlotContentFactory)new FrameContentFactory(Mux,Capture):Mux);
             }
             internal void Start(){Mux.PrepareBlockAtBoundary(Engine);Engine.ConfirmResume();Engine.Tick();}
             internal void ToTail(){Clock.Time=Mux.RetainedTailEndMs-3000;Engine.Tick();}
@@ -52,6 +63,15 @@ namespace AcousticVocab.SessionIntegration.Tests
         {int closed=0;var f=new Fixture((_,scope)=>{scope.RegisterCleanup(()=>closed++);scope.RegisterCleanup(()=>{closed++;throw new Exception();});scope.RegisterCleanup(()=>closed++);throw new Exception();});Assert.Throws<SessionFault>(()=>f.Mux.PrepareBlockAtBoundary(f.Engine));Assert.That(closed,Is.EqualTo(3));Assert.That(f.Mux.Failed,Is.True);}
         [Test] public void StalePlanAnchorFailsBeforeAnotherCue()
         {var f=new Fixture();f.Start();f.Clock.Time=100;Assert.Throws<SessionFault>(()=>f.Mux.MinimumGapBeforeMs(f.Schedule.Blocks[0].Items[0],99));Assert.That(f.Mux.Failed,Is.True);f.Mux.Dispose();}
+        [Test] public void PauseBeforeCueKeepsFrameReadinessAndAllowsImmediateExplicitResume()
+        {
+            var f=new Fixture(framed:true);f.Mux.PrepareBlockAtBoundary(f.Engine);f.Engine.ConfirmResume();
+            // Do not Tick: loaded and prepared, no cue admitted or window begun.
+            f.Engine.RequestPause();Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Paused));Assert.That(f.Mux.RetainedTailEndMs,Is.Zero);
+            Assert.That(f.Capture.Ready,Is.True);Assert.That(f.Capture.Cancelled,Is.EqualTo(1));
+            f.Mux.PrepareBlockAtBoundary(f.Engine);f.Engine.ConfirmResume();f.Engine.Tick();
+            Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Capture.Ready,Is.True);Assert.That(f.Made.Count,Is.EqualTo(1));f.Mux.Dispose();
+        }
         [Test] public void SameBoundaryPreparationReusesOneLeaseAndScopeOwnershipIsIdempotent()
         {var f=new Fixture();f.Mux.PrepareBlockAtBoundary(f.Engine);f.Mux.PrepareBlockAtBoundary(f.Engine);Assert.That(f.Made.Count,Is.EqualTo(1));f.Mux.Dispose();f.Mux.Dispose();Assert.That(f.Made[0].Closes,Is.EqualTo(1));}
     }

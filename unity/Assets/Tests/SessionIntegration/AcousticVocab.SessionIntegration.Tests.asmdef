@@ -3,7 +3,8 @@
   "references": [
     "AcousticVocab.SessionIntegration",
     "AcousticVocab.SessionEngine",
-    "AcousticVocab.StudyAudio"
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.FrameBudget"
   ],
   "includePlatforms": [
     "Editor"

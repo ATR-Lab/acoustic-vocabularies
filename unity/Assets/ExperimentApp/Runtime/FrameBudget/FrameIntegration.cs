@@ -15,12 +15,18 @@ namespace AcousticVocab.FrameBudget
         public FrameDataAdapter(DataJournal journal,Action<string> engineFault){this.journal=journal??throw new ArgumentNullException(nameof(journal));fault=engineFault??throw new ArgumentNullException(nameof(engineFault));}
         public void Drain(FrameMonitor monitor)
         {
+            Exception first=null;
+            // Raw evidence has already durably flushed every queued fault.
+            // Attempt all typed records and notifications even after one sink
+            // fails; the owner then latches and marks the typed prefix incomplete.
             foreach(var f in monitor.DrainFaults())
             {
-                try{journal.Append(DataObservations.Device(new EventContext(f.Attempt.OpportunityId,f.Attempt.AttemptId),f.Code=="FRAME_INTERFACE_UNAVAILABLE"?"input":"frame_freeze",f.ObservedMs,value:f.Code=="FRAME_INTERFACE_UNAVAILABLE"?(bool?)false:null,durationMs:f.Code=="FRAME_FREEZE"?(double?)f.GapMs:null,code:f.Code));}
-                finally{fault(f.Code);}
+                try{journal.Append(DataObservations.Device(new EventContext(f.Attempt.OpportunityId,f.Attempt.AttemptId),f.Code=="FRAME_INTERFACE_UNAVAILABLE"?"input":"frame_freeze",f.ObservedMs,value:f.Code=="FRAME_INTERFACE_UNAVAILABLE"?(bool?)false:null,durationMs:f.Code=="FRAME_FREEZE"?(double?)f.GapMs:null,code:f.Code));}catch(Exception e){first??=e;}
+                try{fault(f.Code);}catch(Exception e){first??=e;}
             }
-            foreach(var s in monitor.DrainSummaries())journal.Append(DataObservations.Device(new EventContext(s.Attempt.OpportunityId,s.Attempt.AttemptId),"frame_freeze",s.ObservedMs,durationMs:s.MaximumMs,code:s.Complete?null:"FRAME_CAPTURE_INCOMPLETE"));
+            foreach(var s in monitor.DrainSummaries())
+                try{journal.Append(DataObservations.Device(new EventContext(s.Attempt.OpportunityId,s.Attempt.AttemptId),"frame_freeze",s.ObservedMs,durationMs:s.MaximumMs,code:s.Complete||s.CancelledBeforeWindow?null:"FRAME_CAPTURE_INCOMPLETE"));}catch(Exception e){first??=e;}
+            if(first!=null)throw new FrameFault("FRAME_DISPATCH_FAILED");
         }
         public static OperatorHealth Health(OperatorHealth trusted,FrameMonitor monitor,bool rateReady)
         {
@@ -58,25 +64,27 @@ namespace AcousticVocab.FrameBudget
     // Wrap the trusted factory/multiplexer, not the engine's current trial ID.
     // Existing slot timing supplies response windows; each actual audio request
     // separately supplies its verified duration, including a lesson's final cue.
+    public interface IFrameCapture
+    {bool Ready{get;}void Drain();void Register(SlotContext context);void Cancel(string attempt,bool cueRequested=true);}
     public sealed class FrameContentFactory : ISlotContentFactory,ISessionContentPump,ISlotStartPlan
     {
-        readonly ISlotContentFactory inner;readonly FrameCaptureHost host;
-        public FrameContentFactory(ISlotContentFactory inner,FrameCaptureHost host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host??throw new ArgumentNullException(nameof(host));}
+        readonly ISlotContentFactory inner;readonly IFrameCapture host;
+        public FrameContentFactory(ISlotContentFactory inner,IFrameCapture host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host??throw new ArgumentNullException(nameof(host));}
         public ISlotContent Create(SlotItem item)=>new Content(inner.Create(item),host);
         public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)=>inner is ISlotStartPlan plan?plan.MinimumGapBeforeMs(item,baseOnsetMonoMs):0;
         public void Pump(){host.Drain();if(inner is ISessionContentPump pump)pump.Pump();}
         sealed class Content : ISlotContent
         {
-            readonly ISlotContent inner;readonly FrameCaptureHost host;SlotContext context;
-            internal Content(ISlotContent inner,FrameCaptureHost host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host;}
+            readonly ISlotContent inner;readonly IFrameCapture host;SlotContext context;bool requested;
+            internal Content(ISlotContent inner,IFrameCapture host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host;}
             public void Prepare(SlotContext c){context=c;host.Register(c);inner.Prepare(c);}
             public SlotReadiness Readiness{get{var r=inner.Readiness;return new SlotReadiness(r.HashVerified,r.AudioPreloaded,r.ResetAcknowledged,r.RendererReady&&host.Ready,r.PanelIdle,r.FocusOk,r.InputOk&&host.Ready,r.ModeAcknowledged);}}
             public bool ResetComplete=>inner.ResetComplete;
-            public void RequestCue(SlotContext c,INovelSlotAuthorization permit){Check.That(host.Ready,"FRAME_CAPTURE_UNAVAILABLE");inner.RequestCue(c,permit);}
+            public void RequestCue(SlotContext c,INovelSlotAuthorization permit){Check.That(host.Ready,"FRAME_CAPTURE_UNAVAILABLE");requested=true;inner.RequestCue(c,permit);}
             public void OpenResponse(SlotContext c)=>inner.OpenResponse(c);
             public void CloseResponse(SlotContext c)=>inner.CloseResponse(c);
             public void RequestReset(SlotContext c)=>inner.RequestReset(c);
-            public void Interrupt(string code){try{if(context.Item!=null)host.Cancel(context.Item.TrialId);}finally{inner.Interrupt(code);}}
+            public void Interrupt(string code){try{if(context.Item!=null)host.Cancel(context.Item.TrialId,requested);}finally{inner.Interrupt(code);}}
         }
     }
 }

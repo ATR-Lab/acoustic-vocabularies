@@ -52,9 +52,9 @@ namespace AcousticVocab.SessionIntegration
         {
             readonly ExclusiveContentMultiplexer owner;readonly ISlotContent inner;
             internal Content(ExclusiveContentMultiplexer owner,ISlotContent inner){this.owner=owner;this.inner=inner;}
-            public void Prepare(SlotContext c){owner.Available();owner.tailEnd=Math.Max(owner.tailEnd,c.EndMonoMs);owner.prepared?.Invoke(c);inner.Prepare(c);}
+            public void Prepare(SlotContext c){owner.Available();owner.prepared?.Invoke(c);inner.Prepare(c);}
             public SlotReadiness Readiness=>inner.Readiness;public bool ResetComplete=>inner.ResetComplete;
-            public void RequestCue(SlotContext c,INovelSlotAuthorization p){owner.Available();inner.RequestCue(c,p);}
+            public void RequestCue(SlotContext c,INovelSlotAuthorization p){owner.Available();owner.tailEnd=Math.Max(owner.tailEnd,c.EndMonoMs);inner.RequestCue(c,p);}
             public void OpenResponse(SlotContext c)=>inner.OpenResponse(c);public void CloseResponse(SlotContext c)=>inner.CloseResponse(c);public void RequestReset(SlotContext c)=>inner.RequestReset(c);public void Interrupt(string code)=>inner.Interrupt(code);
         }
     }

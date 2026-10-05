@@ -32,7 +32,7 @@ namespace AcousticVocab.Assessment
         public ProtectedContentFactory Install(VisitSchedule visit,LoadedAudioPackage package,ISessionClock clock,ISessionJournal sessionJournal,
             IAssessmentJournal stageJournal,PrivateModeResetClient testControl,AudioRouteCalibration qualifiedRoute,float storedGain,
             SpeechBank speech,IAssessmentSelections selections,AssessmentScripts reviewedScripts,bool ratingWordingReviewed,
-            Action<AudioPlaybackEvent> durableAudioSink,bool engineeringPreview=false)
+            Action<AudioPlaybackEvent> durableAudioSink,bool engineeringPreview=false,Action<SlotContext,int,PcmWave> beforeSchedule=null)
         {
             if(factory!=null||disposed||failed||!isActiveAndEnabled||foundation==null||!foundation.Ready||source==null||panel==null||!panel.ReadyForTrial||player==null||screen==null||
                 visit==null||package==null||visit.PackageSha256!=package.PackageSha256||visit.Demo!=package.Demo||visit.Demo&&!engineeringPreview||
@@ -43,7 +43,7 @@ namespace AcousticVocab.Assessment
             {
                 Stages=new AssessmentStages(visit,sessionJournal,stageJournal,clock,()=>engine!=null&&engine.Status is (SessionState.AwaitingOperator or SessionState.Paused or SessionState.Complete),ratingWordingReviewed);
                 screen.Configure(Stages);screen.Faulted+=Fail;panel.Faulted+=Fail;foundation.Faulted+=Fail;
-                audio=new UnityAssessmentAudio(package,player,speech,selections,durableAudioSink);responsePanel=new UnityAssessmentPanel(panel);
+                audio=new UnityAssessmentAudio(package,player,speech,selections,durableAudioSink,beforeSchedule);responsePanel=new UnityAssessmentPanel(panel);
                 factory=new ProtectedContentFactory(clock,new UnityProtectedState(testControl,source,foundation),audio,responsePanel,screen,Stages,speech,
                     code=>{if(engine==null)throw new AssessmentFault("ASSESSMENT_ENGINE_UNBOUND");engine.RecordResponse(code);},Fail,
                     id=>engine!=null&&engine.Status==SessionState.Running&&engine.CurrentState==ItemState.CueRequested&&engine.CurrentTrialId==id);

@@ -10,6 +10,7 @@ using AcousticVocab.StudyAudio;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.XR;
+using UnityEngine.XR.OpenXR;
 
 namespace AcousticVocab.FrameBudget
 {
@@ -38,7 +39,7 @@ namespace AcousticVocab.FrameBudget
                 {
                     var displays=new List<XRDisplaySubsystem>();SubsystemManager.GetSubsystems(displays);var d=displays.SingleOrDefault(x=>x.running);
                     double? hz=d!=null&&d.TryGetDisplayRefreshRate(out float rate)?(double?)rate:null;reportedHz=hz;
-                    evidence=new FrameCsvEvidence(output,new JObject{["version"]=1,["source"]="actual_Unity_onBeforeRender_Meta_XR_Simulator_snapshot_preview",["qualification"]=false,["windows"]="synthetic_engineering_only",["selected_station_hz"]=(int)foundation.Configuration["refresh_hz"],["runtime_reported_hz"]=hz,["physical_headset_present"]=false,["audio_present"]=false,["requested_stall_ms"]=stall,["utc"]=DateTime.UtcNow.ToString("O")});
+                    evidence=new FrameCsvEvidence(output,new JObject{["version"]=1,["source"]="actual_Unity_onBeforeRender_snapshot_preview",["runtime_name"]=OpenXRRuntime.name,["clock_epoch"]=Guid.NewGuid().ToString("N"),["qualification"]=false,["windows"]="synthetic_engineering_only",["selected_station_hz"]=(int)foundation.Configuration["refresh_hz"],["runtime_reported_hz"]=hz,["physical_headset_present"]=JValue.CreateNull(),["observer_position_m"]=new JArray(foundation.observerCamera.transform.position.x,foundation.observerCamera.transform.position.y,foundation.observerCamera.transform.position.z),["observer_forward"]=new JArray(foundation.observerCamera.transform.forward.x,foundation.observerCamera.transform.forward.y,foundation.observerCamera.transform.forward.z),["observer_rotation_xyzw"]=new JArray(foundation.observerCamera.transform.rotation.x,foundation.observerCamera.transform.rotation.y,foundation.observerCamera.transform.rotation.z,foundation.observerCamera.transform.rotation.w),["camera_vertical_fov_deg"]=foundation.observerCamera.fieldOfView,["camera_aspect"]=foundation.observerCamera.aspect,["screen_width"]=Screen.width,["screen_height"]=Screen.height,["eye_texture_width"]=XRSettings.eyeTextureWidth,["eye_texture_height"]=XRSettings.eyeTextureHeight,["audio_present"]=false,["requested_stall_ms"]=stall,["utc"]=DateTime.UtcNow.ToString("O")});
                     monitor=new FrameMonitor((int)foundation.Configuration["refresh_hz"],evidence);
                     captured=true;Capture();start=Now;frame=Time.frameCount;monitor.Render(start,new RenderSample(frame),panel.InputAvailable);
                     monitor.Register(new FrameAttempt("engineering-probe","engineering-probe",start+1000,start+11000,0),new FrameWindow("response","response",start+1000,start+10000),start);

@@ -37,7 +37,7 @@ namespace AcousticVocab.Teaching
         public event Action<string> Faulted;
         public TeachingContentFactory Install(TeachingCatalog catalog,ITeachingSelections selections,ITeachingBackend backend,
             AudioRouteCalibration qualifiedRoute,float storedComfortableGain,Action<LessonEvent> durableLessonSink,
-            Action<AudioPlaybackEvent> durableAudioSink,Action<string> responseSink,Action<string> faultSink,bool engineeringPreview=false)
+            Action<AudioPlaybackEvent> durableAudioSink,Action<string> responseSink,Action<string> faultSink,bool engineeringPreview=false,Action<SlotContext,int,PcmWave> beforeSchedule=null)
         {
             LessonTimeline.Require(factory==null&&!failed&&foundation!=null&&foundation.Ready&&panel!=null&&source!=null&&player!=null&&
                 qualifiedRoute!=null&&qualifiedRoute.IsQualified&&qualifiedRoute.UncertaintyMs<=20&&Faulted!=null&&(!catalog.Demo||engineeringPreview)&&(grammar==null||grammar.Complete),"LESSON_HOST_NOT_READY");
@@ -45,7 +45,7 @@ namespace AcousticVocab.Teaching
             scheduleHash=catalog.ScheduleSha256;packageHash=catalog.PackageSha256;
             factory=new TeachingContentFactory(catalog,selections,backend,player,panel,source,this,
                 ()=>isActiveAndEnabled&&focused&&!paused&&!failed&&foundation.Ready,durableLessonSink,durableAudioSink,responseSink,
-                code=>{Fail(code);faultSink(code);});
+                code=>{Fail(code);faultSink(code);},beforeSchedule);
             player.Configure(qualifiedRoute,()=>factory.ExposureGate);player.SetComfortableGain(storedComfortableGain);
             return factory;
         }

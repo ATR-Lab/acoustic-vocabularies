@@ -9,7 +9,8 @@
     "AcousticVocab.OperatorConsole",
     "Unity.XR.MetaOpenXR",
     "Unity.Collections",
-    "AcousticVocab.StateIntegration"
+    "AcousticVocab.StateIntegration",
+    "Unity.XR.OpenXR"
   ],
   "autoReferenced": true
 }

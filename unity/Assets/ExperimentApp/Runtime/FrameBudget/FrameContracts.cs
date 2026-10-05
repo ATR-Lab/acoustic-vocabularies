@@ -51,8 +51,8 @@ namespace AcousticVocab.FrameBudget
     }
     public sealed class FrameSummary
     {
-        public FrameAttempt Attempt{get;}public double ObservedMs{get;}public double? MaximumMs{get;}public int FrameCount{get;}public int WithinBudgetCount{get;}public bool Complete{get;}
-        internal FrameSummary(FrameAttempt attempt,double observed,double? maximum,int count,int budget,bool complete){Attempt=attempt;ObservedMs=observed;MaximumMs=maximum;FrameCount=count;WithinBudgetCount=budget;Complete=complete;}
+        public FrameAttempt Attempt{get;}public double ObservedMs{get;}public double? MaximumMs{get;}public int FrameCount{get;}public int WithinBudgetCount{get;}public bool Complete{get;}public bool CancelledBeforeWindow{get;}
+        internal FrameSummary(FrameAttempt attempt,double observed,double? maximum,int count,int budget,bool complete,bool cancelledBeforeWindow=false){CancelledBeforeWindow=cancelledBeforeWindow;Attempt=attempt;ObservedMs=observed;MaximumMs=maximum;FrameCount=count;WithinBudgetCount=budget;Complete=complete;}
     }
     public interface IFrameEvidence
     {
@@ -122,8 +122,21 @@ namespace AcousticVocab.FrameBudget
         {
             lock(sync){Clock(now);if(!previous.HasValue)return;double gap=now-previous.Value;if(gap<=250)return;foreach(var a in active.Values)if(a.Windows.Any(w=>w.Overlap(previous.Value,now)>0)){maximum=Math.Max(maximum,gap);Fault(a,"FRAME_FREEZE",now,gap,true);}}
         }
-        public void Cancel(string attemptId,double now)
-        {lock(sync){Clock(now);if(active.TryGetValue(attemptId,out var a)){a.Cancelled=true;Fault(a,"FRAME_ATTEMPT_INTERRUPTED",now,previous.HasValue?now-previous.Value:0,false);}}}
+        public void Cancel(string attemptId,double now,bool cueRequested=true)
+        {
+            lock(sync)
+            {
+                Clock(now);if(!active.TryGetValue(attemptId,out var a))return;
+                if(!cueRequested&&a.Frames==0&&!a.Windows.Any(w=>w.Kind=="cue")&&now<a.Windows.Min(w=>w.StartMs))
+                {
+                    // No cue was admitted and no protected window began. Keep
+                    // an explicit raw cancellation but permit a fresh planning
+                    // attempt for this still-unplayed scheduled opportunity.
+                    var cancelled=new FrameSummary(a.Attempt,now,null,0,0,false,true);Record(()=>evidence.Summary(cancelled));summaries.Enqueue(cancelled);active.Remove(attemptId);ids.Remove(attemptId);return;
+                }
+                a.Cancelled=true;Fault(a,"FRAME_ATTEMPT_INTERRUPTED",now,previous.HasValue?now-previous.Value:0,false);
+            }
+        }
         public void CloseIncomplete(double now,string code="FRAME_CAPTURE_INCOMPLETE")
         {
             lock(sync){Clock(now);failed=true;foreach(var a in active.Values){Fault(a,code,now,a.Maximum,false);var summary=new FrameSummary(a.Attempt,now,a.Frames>0?(double?)a.Maximum:null,a.Frames,a.Budget,false);Record(()=>evidence.Summary(summary));summaries.Enqueue(summary);}active.Clear();}
