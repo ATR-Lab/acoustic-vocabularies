@@ -29,7 +29,7 @@ namespace AcousticVocab.ResponsePanel
         public double? SlotEndMonoMs { get; }
         public PanelRequest(string trialId, PanelMode mode, PanelRole role, double anchorMonoMs, double? practiceWindowMs = null)
         {
-            if (trialId == null || !Regex.IsMatch(trialId, "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")) throw new ArgumentException("Opaque trial identifier required");
+            if (trialId == null || !Regex.IsMatch(trialId, @"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z")) throw new ArgumentException("Opaque trial identifier required");
             if (!Enum.IsDefined(typeof(PanelMode), mode) || !Enum.IsDefined(typeof(PanelRole), role)) throw new ArgumentException("Unknown panel mode or role");
             bool atomic = mode == PanelMode.AtomicProbe || mode == PanelMode.LessonAtomic;
             if (atomic == (role == PanelRole.Command)) throw new ArgumentException("Atomic mode requires one role; command mode requires command role");

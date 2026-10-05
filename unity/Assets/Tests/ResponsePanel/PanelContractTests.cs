@@ -42,6 +42,28 @@ namespace AcousticVocab.ResponsePanel.Tests
             Assert.That((string)response["response_code"], Is.EqualTo("TIMEOUT")); Assert.That(response["response_action"].Type, Is.EqualTo(JTokenType.Null));
             Assert.That((string)response["selected_action"], Is.EqualTo("SCAN")); Assert.That((double)response["mono_ms"], Is.EqualTo(7000));
         }
+        [Test] public void ComponentDisableAbortsAndPreventsSafeBoundaryRecovery()
+        {
+            var root = new GameObject("SyntheticDisableTest");
+            try
+            {
+                var foundation = root.AddComponent<FoundationBootstrap>();
+                typeof(FoundationBootstrap).GetProperty("Ready").SetValue(foundation, true);
+                var panel = root.AddComponent<ResponsePanelController>(); panel.foundation = foundation;
+                var state = new ResponseState(() => 0, _ => { }); state.Open(new PanelRequest("synthetic", PanelMode.Practice, PanelRole.Command, 0, 1000));
+                typeof(ResponsePanelController).GetProperty("State").SetValue(panel, state);
+                typeof(ResponsePanelController).GetProperty("InputAvailable").SetValue(panel, true);
+                Assert.That(panel.ReadyForTrial, Is.True);
+                typeof(ResponsePanelController).GetMethod("OnApplicationFocus", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(panel, new object[] { false });
+                Assert.That(panel.ReadyForTrial, Is.False); Assert.That(panel.ConfirmInputRecoveryAtSafeBoundary(), Is.False);
+                typeof(ResponsePanelController).GetMethod("OnApplicationFocus", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(panel, new object[] { true });
+                Assert.That(panel.ConfirmInputRecoveryAtSafeBoundary(), Is.True);
+                state.Open(new PanelRequest("synthetic-second", PanelMode.Practice, PanelRole.Command, 0, 1000));
+                typeof(ResponsePanelController).GetMethod("OnDisable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(panel, null);
+                Assert.That(panel.InputAvailable, Is.False); Assert.That(panel.FaultLatched, Is.True); Assert.That(state.Aborted, Is.True); Assert.That(state.Result, Is.Null);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(root); }
+        }
         [TestCase(PanelMode.FullMessage, PanelRole.Command, false, 10)]
         [TestCase(PanelMode.FullMessage, PanelRole.Command, true, 14)]
         [TestCase(PanelMode.AtomicProbe, PanelRole.Action, false, 11)]

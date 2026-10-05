@@ -127,6 +127,9 @@ namespace AcousticVocab.ResponsePanel.Tests
             Assert.Throws<System.IO.IOException>(() => state.Commit()); Assert.That(state.Aborted, Is.True); Assert.That(state.Locked, Is.True);
             Assert.That(state.Commit(), Is.False); Assert.That(events.Count(x => x.Kind == "commit"), Is.EqualTo(1));
         }
+        [TestCase("synthetic\n")] [TestCase("synthetic\r\n")] [TestCase("synthetic ")]
+        public void OpaqueIdentifierRejectsTrailingWhitespace(string value)
+        { Assert.Throws<ArgumentException>(() => new PanelRequest(value, PanelMode.FullMessage, PanelRole.Command, 0)); }
         [Test] public void EverySelectionChangeHasTheSuppliedMonotonicTimestamp()
         {
             Open(); now = 1100; state.SelectTarget("A"); now = 1123; state.SelectAction("FLIP_CARD"); now = 1177; state.SelectTarget("F");

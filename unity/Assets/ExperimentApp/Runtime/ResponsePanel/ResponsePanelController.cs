@@ -19,7 +19,7 @@ namespace AcousticVocab.ResponsePanel
         public ResponseState State { get; private set; }
         public bool InputAvailable { get; private set; }
         public bool FaultLatched { get; private set; }
-        public bool ReadyForTrial => State != null && foundation.Ready && InputAvailable && !FaultLatched;
+        public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
         public event Action<PanelResponse> Responded;
         public event Action<string> Faulted;
         sealed class Key { public string Kind, Value; public Transform Root; public BoxCollider Collider; public MeshRenderer Surface; public TextMesh Text; }
@@ -33,7 +33,7 @@ namespace AcousticVocab.ResponsePanel
         GameObject roleBacking;
         LineRenderer ray;
         GameObject tip;
-        bool triggerDown, triggerArmed, pokeArmed, haveTip, engineeringStarted, focused = true;
+        bool triggerDown, triggerArmed, pokeArmed, haveTip, engineeringStarted, paused, focused = true;
         Vector3 previousTip;
         string lastFault;
 
@@ -71,7 +71,7 @@ namespace AcousticVocab.ResponsePanel
         }
         public bool ConfirmInputRecoveryAtSafeBoundary()
         {
-            if (State == null || !foundation.Ready || !InputAvailable) return false;
+            if (!isActiveAndEnabled || !focused || paused || State == null || !foundation.Ready || !InputAvailable) return false;
             FaultLatched = false; lastFault = null; return true;
         }
         public void CloseAtBoundary() { State?.Abort(); if (panel != null) panel.gameObject.SetActive(false); }
@@ -90,7 +90,7 @@ namespace AcousticVocab.ResponsePanel
             if (State == null || settings == null || panel == null) return;
             try
             {
-                bool available = focused && foundation.Ready && (settings.InputMethod == "controller_ray" ? PollController() : PollHand());
+                bool available = focused && !paused && foundation.Ready && (settings.InputMethod == "controller_ray" ? PollController() : PollHand());
                 if (!available)
                 {
                     if (InputAvailable && State.Request != null && !State.Locked) Fail("input_lost");
@@ -109,7 +109,7 @@ namespace AcousticVocab.ResponsePanel
         }
         void Press(Key key)
         {
-            if (!focused || !foundation.Ready || FaultLatched || State?.Request == null) return;
+            if (!isActiveAndEnabled || !focused || paused || !foundation.Ready || FaultLatched || State?.Request == null) return;
             if (key.Kind == "target") State.SelectTarget(key.Value);
             else if (key.Kind == "action") State.SelectAction(key.Value);
             else if (key.Value == "commit") State.Commit();
@@ -236,7 +236,8 @@ namespace AcousticVocab.ResponsePanel
             roleBacking.SetActive(role != PanelRole.Command);
         }
         void OnApplicationFocus(bool value) { focused = value; if (!value && State?.Request != null && !State.Locked) Fail("application_focus_lost"); }
-        void OnApplicationPause(bool paused) { if (paused && State?.Request != null && !State.Locked) Fail("application_paused"); }
+        void OnApplicationPause(bool value) { paused = value; if (value && State?.Request != null && !State.Locked) Fail("application_paused"); }
+        void OnDisable() { InputAvailable = false; if (State != null) Fail("panel_component_disabled"); }
         void OnDestroy()
         {
             if (foundation != null) foundation.Faulted -= FoundationFault;
