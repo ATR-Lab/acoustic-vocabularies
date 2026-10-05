@@ -1,0 +1,8 @@
+{
+  "route": "headset-speakers",
+  "mode": "plain",
+  "count": 200,
+  "volume_step": -1,
+  "scheduled_lead_s": 0.2,
+  "warmup_s": 10
+}
