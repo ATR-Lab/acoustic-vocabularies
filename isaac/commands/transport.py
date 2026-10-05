@@ -14,6 +14,9 @@ import socket
 import struct
 import threading
 
+from . import health_probe
+from .protocol import decode
+
 
 class PrivateCommandTransport:
     def __init__(self, handoff, *, socket_path=None, allowed_uid=None, host=None, port=None):
@@ -30,6 +33,9 @@ class PrivateCommandTransport:
         if self.path is not None and self.path.exists():
             raise FileExistsError("inspect existing private socket before replacing it")
         self.handoff, self.host, self.port, self.allowed_uid = handoff, host, port, allowed_uid
+        self.control_session_id = handoff.dispatcher.control_session_id
+        if not health_probe.valid_id(self.control_session_id):
+            raise ValueError("Pinned private control session required")
         self.loop, self.ready, self.failed = asyncio.new_event_loop(), threading.Event(), None
         self.thread = threading.Thread(target=self._run, daemon=True, name="private-command-websocket")
         self.thread.start()
@@ -80,9 +86,19 @@ class PrivateCommandTransport:
                 if not isinstance(raw, str):
                     reply = self.handoff.deny("binary frame", websocket.private_peer, "MALFORMED")
                 else:
-                    future = self.handoff.submit(raw, websocket.private_peer)
-                    # Disconnects do not cancel an admitted command or its log.
-                    reply = await asyncio.shield(asyncio.wrap_future(future))
+                    try:
+                        value = decode(raw)
+                    except (ValueError, TypeError, RecursionError):
+                        value = None
+                    if isinstance(value, dict) and value.get("kind") == health_probe.REQUEST_KIND:
+                        # Admission used the same UID/loopback peer check above.
+                        # No simulation-thread dispatch, cache entry or command
+                        # journal write for a read-only probe, including refusal.
+                        reply = health_probe.reply(value, self.control_session_id, self.handoff.health)
+                    else:
+                        future = self.handoff.submit(raw, websocket.private_peer)
+                        # Disconnects do not cancel an admitted command or its log.
+                        reply = await asyncio.shield(asyncio.wrap_future(future))
                 await websocket.send(json.dumps(reply, allow_nan=False))
         except ConnectionClosed:
             pass
