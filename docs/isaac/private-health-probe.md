@@ -14,7 +14,7 @@ the session is independently pinned and each client transaction uses a fresh ID.
 ```
 
 The response has exactly `version`, `kind`, `control_session_id`, `request_id`,
-`accepted`, `reason` and `health`. Version is integer1 and kind is
+`accepted`, `reason` and `health`. Version is integer 1 and kind is
 `private_health_reply`. A successful probe has `accepted:true`, `reason:"HEALTH"`
 and the unchanged `CommandQueue.health()` object. A successful probe can still
 report stale or unhealthy state: it grants no exposure permission.
@@ -45,8 +45,15 @@ validation and interruption rules.
 
 Focused tests exercise strict envelopes, provider failures, detached health,
 aging without owner drain, and actual approved-library sockets. The socket test
-sends more than1,024 probes with a two-entry command cache, verifies no queue,
+sends more than 1,024 probes with a two-entry command cache, verifies no queue,
 cache or command-log mutation, checks ordinary reset interleaving and HTTP
 diagnostics, and covers disconnect, duplicate JSON keys, binary/oversize input,
 session refusal and Unix peer credentials. Socket tests require the existing
 approved `websockets` runtime; a skip is not a transport pass.
+
+[The validation record](private-health-probe.validation.json) retains the exact
+source/image hashes, the successful 26-case Linux socket/helper run and 90-case
+Windows regression run. An initial expanded Linux invocation had 94 passes and
+one missing `jsonschema` dependency failure; the existing Windows runtime passed
+that schema test. No dependency was installed. This evidence uses synthetic
+dispatcher state, not a measured live-source or native-client timing pass.
