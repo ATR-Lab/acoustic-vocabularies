@@ -14,5 +14,7 @@
   "post_w4_execution_library_sha256": null,
   "private_w4_recording_sha256": null,
   "faults": [],
-  "operator_signoff": null
+  "operator_signoff": null,
+  "assessment_export_manifest_sha256": null,
+  "stage_headers_reviewed": false
 }
