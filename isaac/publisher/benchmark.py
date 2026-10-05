@@ -114,10 +114,14 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
     processing_ms = []
     try:
         def sample():
-            state = adapter.read_state()
-            if tuple(state["robot"]["joint_names"]) != registry.joint_names:
+            if tuple(adapter.robot.joint_names) != registry.joint_names:
                 raise ValueError("Runtime articulation order changed")
-            return state["robot"]["joint_positions_rad"], state["objects"], state
+            # This run is explicitly unprotected. Read the complete public
+            # projection each tick without traversing collision geometry or
+            # collecting private reset-only root velocities/body frames.
+            positions = adapter.robot.root_physx_view.get_dof_positions()[0].tolist()
+            objects = adapter.accessors.read_public_state()
+            return positions, objects, None
         publisher = StatePublisher(registry, sample, transport, output/"publish.csv", rate_hz=rate_hz)
         transport.health_provider = publisher.health
         collector = LocalCollector(socket_path, registry)
