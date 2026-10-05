@@ -312,3 +312,17 @@ def test_producer_chain_and_revealed_allocation(tmp_path):
         with pytest.raises(ConsoleFault,match='allocation_unbound'):load_bundle(dict(config,participant='p-99'),reveals)
         Path(config['sheet']).write_bytes(inputs['sheet']+b'bad')
         with pytest.raises(ConsoleFault,match='file_hash_mismatch'):load_bundle(config,reveals)
+
+
+def test_mailbox_opened_generation_still_enforces_size_bound(tmp_path):
+    (tmp_path/'state.json').write_bytes(b' ' * 65537)
+    with pytest.raises(ConsoleFault, match='engine_unavailable'):
+        Mailbox(tmp_path).snapshot()
+
+
+def test_shared_reader_closes_descriptor_on_parse_failure(tmp_path):
+    path=tmp_path/'state.json'; path.write_bytes(b'invalid')
+    with pytest.raises(ConsoleFault): Mailbox(tmp_path).snapshot()
+    replacement=tmp_path/'new.json';replacement.write_bytes(b'new')
+    replacement.replace(path)
+    assert path.read_bytes()==b'new'

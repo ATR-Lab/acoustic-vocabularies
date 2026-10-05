@@ -66,9 +66,19 @@ def main():
                     'audio_device_used':False,'participant_scene_used':False}
             (folder/'result.json').write_text(json.dumps(result,indent=2)+'\n')
             print(json.dumps(result,indent=2))
+        except Exception as failure:
+            details=[]
+            current=failure
+            while current is not None:
+                details.append({'type':type(current).__name__,'message':str(current),
+                                'winerror':getattr(current,'winerror',None),'errno':getattr(current,'errno',None)})
+                current=current.__context__
+            (folder/'failure.json').write_text(json.dumps(details,indent=2)+'\n')
+            raise
         finally:
             if child.poll() is None: child.terminate();child.wait(timeout=5)
 
 
 if __name__=='__main__': main()
+
 

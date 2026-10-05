@@ -14,7 +14,7 @@ namespace AcousticVocab.OperatorConsole
     public sealed class OperatorFault : Exception
     {
         public string Code => Message;
-        public OperatorFault(string code) : base(Regex.IsMatch(code ?? "", @"\A[a-z][a-z0-9_]{0,63}\z") ? code : "engine_fault") { }
+        public OperatorFault(string code, Exception cause = null) : base(Regex.IsMatch(code ?? "", @"\A[a-z][a-z0-9_]{0,63}\z") ? code : "engine_fault", cause) { }
     }
 
     public sealed class OperatorAdmission
@@ -126,11 +126,17 @@ namespace AcousticVocab.OperatorConsole
             { file.Write(bytes, 0, bytes.Length); file.Flush(true); }
             // Preserve an incomplete temp file on failure for investigation.
             #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-            // Same-directory rename with replacement; no cross-volume copy or
-            // reboot operation. File.Replace showed a reader-visible target gap
-            // in the retained actual .NET/Python interoperability probe.
-            if (!MoveFileEx(temporary, path, 0x1 | 0x8))
-                throw new OperatorFault("state_publish_failed");
+            // Same-directory replacement. Windows may briefly deny replacement
+            // while another process reads; retry only that bounded I/O operation,
+            // never a command or side effect. Persistent failures remain latched.
+            for (int attempt = 0; ; attempt++)
+            {
+                if (MoveFileEx(temporary, path, 0x1 | 0x8)) break;
+                int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                if (attempt == 10 || error != 5 && error != 32 && error != 33)
+                    throw new OperatorFault("state_publish_failed", new System.ComponentModel.Win32Exception(error));
+                System.Threading.Thread.Sleep(2);
+            }
 #else
             throw new OperatorFault("mailbox_platform_unqualified");
 #endif

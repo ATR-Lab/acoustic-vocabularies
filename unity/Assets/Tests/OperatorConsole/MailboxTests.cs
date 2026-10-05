@@ -130,6 +130,20 @@ namespace AcousticVocab.OperatorConsole.Tests
         {
             using var f=new Fixture();Assert.Throws<IOException>(()=>new OperatorMailbox(f.Directory,new string('2',32),Manifest,f.Engine,f.Journal,()=>new OperatorAdmission(true,true,true),()=>new OperatorHealth(true,true,true,true,0,0,0),()=>0));
         }
+        [Test] public void PersistentPublicationContentionFailsClosedAndPreservesPriorState()
+        {
+            using var f=new Fixture(); f.Mailbox.Tick();
+            string path=Path.Combine(f.Directory,"state.json"); byte[] prior=File.ReadAllBytes(path);
+            using(var reader=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
+            {
+                f.Clock.Time=250;
+                var failure=Assert.Throws<OperatorFault>(()=>f.Mailbox.Tick());
+                Assert.That(failure.Code,Is.EqualTo("state_publish_failed"));
+                Assert.That(f.Mailbox.Failed,Is.True);
+            }
+            Assert.That(File.ReadAllBytes(path),Is.EqualTo(prior));
+            Assert.That(System.IO.Directory.GetFiles(f.Directory,"state.json.*.tmp").Length,Is.EqualTo(1));
+        }
         [Test] public void UnknownFieldsDuplicateKeysAndNonIntegerSequenceFailBeforeEngine()
         {
             var packet=Packet(1,"load");packet["answer"]="forbidden";Assert.Throws<OperatorFault>(()=>OperatorRequest.Parse(Bytes(packet)));packet.Remove("answer");packet["sequence"]=1.5;Assert.Throws<OperatorFault>(()=>OperatorRequest.Parse(Bytes(packet)));var valid=System.Text.Encoding.UTF8.GetString(Bytes(Packet(1,"load")));Assert.Throws<OperatorFault>(()=>OperatorRequest.Parse(System.Text.Encoding.UTF8.GetBytes(valid.Replace("\"sequence\":1","\"sequence\":99999999999999999999999999999999999999"))));Assert.Throws<OperatorFault>(()=>OperatorRequest.Parse(System.Text.Encoding.UTF8.GetBytes(valid.Replace("\"version\":1","\"version\":1,\"version\":1"))));Assert.Throws<OperatorFault>(()=>OperatorRequest.Parse(System.Text.Encoding.UTF8.GetBytes(valid.Replace('"','\''))));

@@ -137,7 +137,15 @@ namespace AcousticVocab.OperatorConsole
                 if (File.Exists(command))
                 {
                     Wire.NoLinks(command); Wire.Require(new FileInfo(command).Length <= Wire.MaximumBytes, "command_invalid");
-                    byte[] bytes = File.ReadAllBytes(command); string hash = Wire.Sha(bytes);
+                    byte[] bytes;
+                    using (var stream = new FileStream(command, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var copy = new MemoryStream())
+                    {
+                        Wire.Require(stream.Length <= Wire.MaximumBytes, "command_invalid");
+                        stream.CopyTo(copy); bytes = copy.ToArray();
+                        Wire.Require(bytes.Length <= Wire.MaximumBytes, "command_invalid");
+                    }
+                    string hash = Wire.Sha(bytes);
                     if (hash != lastFileHash)
                     {
                         lastFileHash = hash;

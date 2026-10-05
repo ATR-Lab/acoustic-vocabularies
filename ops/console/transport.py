@@ -2,11 +2,45 @@
 from __future__ import annotations
 
 import os
+import stat
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 from .core import ConsoleFault, encoded, hash_value, instant, require, strict_json, utc_now
+
+
+@contextmanager
+def shared_binary_reader(path):
+    """Read one file generation without preventing Windows rename publication."""
+    if os.name != "nt":
+        with Path(path).open("rb") as stream:
+            yield stream
+        return
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ|WRITE|DELETE; OPEN_EXISTING. The descriptor
+    # retains the opened generation even if the writer replaces its directory entry.
+    handle = create(str(Path(path).absolute()), 0x80000000, 7, None, 3, 0x80, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    with os.fdopen(descriptor, "rb") as stream:
+        yield stream
 
 
 class Mailbox:
@@ -26,8 +60,12 @@ class Mailbox:
     def snapshot(self, for_load=False):
         try:
             p = self.directory / "state.json"
-            require(p.is_file() and not p.is_symlink() and p.stat().st_size <= 65536, "engine_unavailable")
-            state = strict_json(p.read_bytes())
+            require(not p.is_symlink(), "engine_unavailable")
+            with shared_binary_reader(p) as stream:
+                require(stat.S_ISREG(os.fstat(stream.fileno()).st_mode), "engine_unavailable")
+                data = stream.read(65537)
+            require(len(data) <= 65536, "engine_unavailable")
+            state = strict_json(data)
             keys = {"version", "session_nonce", "sequence", "utc", "receipt", "run_sheet_manifest_sha256",
                     "schedule_sha256", "package_sha256", "engine_state", "completed_counts", "admission", "health"}
             require(set(state) == keys and type(state["version"]) is int and state["version"] == 1, "engine_invalid")
