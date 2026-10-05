@@ -6,6 +6,7 @@ using AcousticVocab.ResponsePanel;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StateIntegration;
 using AcousticVocab.StudyAudio;
+using AcousticVocab.Teaching;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR;
@@ -76,7 +77,10 @@ namespace AcousticVocab.SelectionMenus
         {
             MenuRules.Require(canvas==null&&presentationParent!=null&&font!=null&&foundation!=null&&foundation.Configuration!=null,"MENU_VIEW_UNAVAILABLE");var reference=StationConfig.ReferencePose(foundation.Configuration);
             var root=new GameObject("Selection menu",typeof(RectTransform),typeof(Canvas));root.transform.SetParent(presentationParent,false);root.transform.SetPositionAndRotation(reference.position+reference.rotation*new Vector3(0,.02f,1.05f),reference.rotation);root.transform.localScale=Vector3.one*.001f;
-            canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.WorldSpace;((RectTransform)root.transform).sizeDelta=new Vector2(840,570);instructions=TextAt(root.transform,"Instructions",new Vector2(0,225),new Vector2(820,95),28);meaning=TextAt(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75),26);
+            canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.WorldSpace;((RectTransform)root.transform).sizeDelta=new Vector2(840,570);
+            PresentationTextBacking.Add(root.transform,"Instructions",new Vector2(0,225),new Vector2(820,95));
+            PresentationTextBacking.Add(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75));
+            instructions=TextAt(root.transform,"Instructions",new Vector2(0,225),new Vector2(820,95),28);meaning=TextAt(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75),26);
             var img=new GameObject("Meaning image",typeof(RectTransform),typeof(CanvasRenderer),typeof(RawImage));img.transform.SetParent(root.transform,false);var rect=(RectTransform)img.transform;rect.anchoredPosition=new Vector2(0,20);rect.sizeDelta=new Vector2(240,170);picture=img.GetComponent<RawImage>();picture.raycastTarget=false;
             for(int i=0;i<3;i++){var node=new GameObject("Candidate "+(i+1),typeof(RectTransform),typeof(CanvasRenderer),typeof(Image),typeof(BoxCollider));node.transform.SetParent(root.transform,false);var box=(RectTransform)node.transform;box.anchoredPosition=new Vector2((i-1)*270,-165);box.sizeDelta=new Vector2(245,130);cards[i]=node.GetComponent<Image>();cards[i].color=new Color(.15f,.18f,.23f);cards[i].raycastTarget=false;colliders[i]=node.GetComponent<BoxCollider>();colliders[i].size=new Vector3(245,130,15);labels[i]=TextAt(node.transform,"Stored label",Vector2.zero,new Vector2(235,120),27);}
             root.SetActive(false);

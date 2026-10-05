@@ -11,7 +11,8 @@
     "AcousticVocab.Assessment",
     "AcousticVocab.DataLogging",
     "AcousticVocab.Orientation",
-    "AcousticVocab.OperatorConsole"
+    "AcousticVocab.OperatorConsole",
+    "Unity.ugui"
   ],
   "includePlatforms": [
     "Editor"
