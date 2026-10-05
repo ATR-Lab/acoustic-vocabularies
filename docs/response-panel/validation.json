@@ -26,31 +26,35 @@
       "id": "panel-link-002",
       "target": "Windows",
       "manifest": "docs/response-panel/build-manifests/panel-link-002.build.json",
-      "manifest_sha256": "f58a86a7e7cb8e70e8ff89acccc31e1f1563a8e2dc8aa88d54c155e5fad1471f",
+      "manifest_sha256": "682f3cac09e3561619e250a689d9e382ae93ea01e58ec8c2a6213dff3c6b4e89",
       "runtime_commit": "8737bb56383b487df3bf2550808a033f90803e3f",
       "errors": 0,
-      "unity_report_total_bytes": 157902426
+      "unity_report_total_bytes": 157902426,
+      "original_local_manifest_sha256": "f58a86a7e7cb8e70e8ff89acccc31e1f1563a8e2dc8aa88d54c155e5fad1471f"
     },
     {
       "id": "panel-quest-002",
       "target": "Android",
       "manifest": "docs/response-panel/build-manifests/panel-quest-002.build.json",
-      "manifest_sha256": "49b782938a008bc1bf074cfb00f51dcd6006ccdd6879598775543383a1c0a8c8",
+      "manifest_sha256": "410815a8ba388799aa6c159ae7779349cb2cf283169286540a76d6389fd35d50",
       "runtime_commit": "8737bb56383b487df3bf2550808a033f90803e3f",
       "errors": 0,
-      "unity_report_total_bytes": 753499621
+      "unity_report_total_bytes": 753499621,
+      "original_local_manifest_sha256": "49b782938a008bc1bf074cfb00f51dcd6006ccdd6879598775543383a1c0a8c8"
     }
   ],
   "preview": {
     "render_source_commit": "10e34586b653b1e82af355ddb2e95722f6312f19",
     "manifest": "docs/response-panel/preview-captures.json",
-    "sha256": "05c606f9d82e022dfc9509b8a9a0caeb0a641c69433008f77f73b484e35464c3",
-    "scope": "Seven editor-only synthetic modes/selection captures; no HMD tracking, no AppData edits. Panel currently obscures much of workcell."
+    "sha256": "bc622dcd878aab9314cdbfa73572fef3688d5cfdc5b6f24c4d59481e00e0cc7e",
+    "scope": "Seven editor-only synthetic modes/selection captures; no HMD tracking, no AppData edits. Panel currently obscures much of workcell.",
+    "original_local_manifest_sha256": "05c606f9d82e022dfc9509b8a9a0caeb0a641c69433008f77f73b484e35464c3"
   },
   "journal": {
     "file": "docs/response-panel/synthetic-process-log.jsonl",
-    "sha256": "a08384be7d8ad9f78d2dc0b7b50783bba8cc9ee0c21caff51c9ad80f2170e0e4",
-    "synthetic": true
+    "sha256": "42a95c80975ea45ac328b86617a6821c4605f4c9ac537e7eb399365fc510cc9a",
+    "synthetic": true,
+    "original_local_log_sha256": "a08384be7d8ad9f78d2dc0b7b50783bba8cc9ee0c21caff51c9ad80f2170e0e4"
   },
   "independent_review": "Deadline/first response/family/input-loss review found no material blocker. Strict identifier and focus readiness refinements applied afterward.",
   "pending": [
