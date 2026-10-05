@@ -61,7 +61,7 @@
   "version": 1,
   "synthetic_tests": {
     "runner": "pytest",
-    "passed": 56,
+    "passed": 62,
     "failed": 0,
     "dependencies": "standard library plus existing pytest"
   },
@@ -73,7 +73,8 @@
     "registry-bound profile order and complete sample counts",
     "real mailbox receipt and cross-visit immutable selection links",
     "streamed capture hashing",
-    "independently pinned fixture provenance copy"
+    "independently pinned fixture provenance copy",
+    "post-cleanup native result required with process/source/config/capability/export binding"
   ],
   "issue81_accepted": false,
   "participant_qualified": false,
@@ -85,7 +86,7 @@
     },
     {
       "path": "tests/test_mock_visit_bindings.py",
-      "sha256": "62ff370649d0d803bd94d5fbed7bcc64aaf7a5aba95f84c56310f803c6752ec0"
+      "sha256": "8d7c3fb717267082de64fefb35ed709b01085a2137320e710c5b7a6b0454e129"
     },
     {
       "path": "tools/mock_visit/__init__.py",
@@ -97,15 +98,15 @@
     },
     {
       "path": "tools/mock_visit/native.py",
-      "sha256": "98e85a2ec221d485d35a7fd1691bdd9a16970994e01abf8f1d70ab411bad068e"
+      "sha256": "e764316009a65d03c44411070b48d73b70d47dc7fe04c0b60c29b9bff1a24c22"
     },
     {
       "path": "tools/mock_visit/provenance.py",
-      "sha256": "83efe57ef96b03543615b1ff5f292df6eacea50f808104110f7a7fcb7f3b8ac0"
+      "sha256": "b0a2cce9ad6a21677fce501998a4a84c3af38f6f721511201e0ea7aa8acebed3"
     },
     {
       "path": "tools/mock_visit/reconcile.py",
-      "sha256": "2d0ec17e17e03dfd50e4c3d62b5692e921ed9fc0720c801b6b60b5e9797dfb2a"
+      "sha256": "ffa9a3265589cc5974749bcb2544f36e9ce20e858f1f758f843de758ad956bcc"
     },
     {
       "path": "tools/mock_visit/records.py",
@@ -121,7 +122,12 @@
     },
     {
       "path": "tools/write_mock_run_manifest.py",
-      "sha256": "c0a224d837f1e6b2b94a91872fbdf842ac0a177d7b6999e7def9c6cc8906afa9"
+      "sha256": "0557a5d5daf3ebaf5b2be336c2e5b3c803671564447587c1869118817b7f47db"
     }
-  ]
+  ],
+  "retained_compatibility_source_commit": "66591f9",
+  "native_post_cleanup_cases": {
+    "passed": 6,
+    "scope": "synthetic positive and throwing-cleanup/export/tamper cases; no native execution"
+  }
 }
