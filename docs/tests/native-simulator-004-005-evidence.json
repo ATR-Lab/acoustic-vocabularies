@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "description": "Actual incomplete native Windows XR simulator attempts; sanitized derivative only.",
+  "issues": [
+    81,
+    82
+  ],
+  "builds_included": [
+    "simulation-native-004",
+    "simulation-native-005"
+  ],
+  "build006_status": "not included; append only after actual retained artifacts are independently reconciled",
+  "reviewer_source_commit": "880cf2a30fc6c6dbd94b6ecb6ca49582418e68e0",
+  "verification_method": [
+    "Re-ran strict mock_visit.reconcile against each independently supplied frozen manifest hash.",
+    "Read actual exported CSV rows and raw typed grammar/session/joined records.",
+    "Compared observed process receipts with durable post-cleanup receipts.",
+    "Visually inspected retained runtime desktop captures; no screenshots or raw materials published."
+  ],
+  "shared_synthetic_schedule": {
+    "study": "A",
+    "visit": "D0",
+    "scheduled_opportunities": 108,
+    "scheduled_study_plays": 212,
+    "grammar_is_separate": true,
+    "schedule_sha256": "aecfd562442d2c8a35906379a87c984ff8274b08d901ab6128fdbf4e0ce04fbf",
+    "package_sha256": "a418ec195eddd965850b616d1f79456c74ed5a547b3e62a29700bf17252a532a",
+    "fixture_provenance_sha256": "b840b3013ab8cf4ddb72bdc52fcc6c4f14451870d734e577bbb223ec2952ebf9"
+  },
+  "attempts": [
+    {
+      "attempt": "004-smoke",
+      "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
+      "build_manifest_sha256": "0f211bc2d686ac166de6d9cde919351e201f5e488cbe9dd79da3b906cc15323d",
+      "run_manifest_sha256": "2f3deb3d6d7ac05346ec42e7b87c09b842b24eae588cc8af6782ce31041975fc",
+      "export_manifest_sha256": "6aeabe29bbc2ae1cb5c89227f82a06b714cb0c914638d4b0a201a57f7c211e4f",
+      "process_elapsed_seconds": 169.637933,
+      "process_exit": 0,
+      "terminal": {
+        "status": "JOIN_FOCUS_LOST",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 5,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 0,
+      "grammar_observed_callbacks": 0,
+      "grammar_observed_delivered_samples": 0,
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "process_result": {
+          "sha256": "69663726ddf91c80dd1b2b5aa55e61b2c39f268a6f9be484c2aef7b7a6ae8dd7",
+          "bytes": 324
+        },
+        "native_result": {
+          "sha256": "4d462be20a0b9f395ac5dc64b4703922db4a799fd620ada7b4e629694f072693",
+          "bytes": 590
+        },
+        "joined_journal": {
+          "sha256": "2f89337e8844d8d8db30385db79d87de40aecdcb4c9a8254ab151ea21b1adffd",
+          "bytes": 4756
+        },
+        "frame_manifest": {
+          "sha256": "944e1fd5276d4db8b98f81ea1ceaeed0815e4b0f83e5cd7bf3611ba565e60fdf",
+          "bytes": 719
+        },
+        "native_log": {
+          "sha256": "56e1a11b43e5204397ec83ae64e13880bb06047ce10c53aa5ccccacf679b117f",
+          "bytes": 41244
+        },
+        "desktop_capture": {
+          "sha256": "3583503cf9344d7ddc26b4385e5e30068b9401a0a9a4dbe5b738f82f242e8d97",
+          "bytes": 25573
+        }
+      },
+      "runtime_desktop_capture": {
+        "sha256": "3583503cf9344d7ddc26b4385e5e30068b9401a0a9a4dbe5b738f82f242e8d97",
+        "observation": "Black desktop viewport with simulation-only banner; G1/workcell not visible in this captured view; physical HMD view unverified."
+      }
+    },
+    {
+      "attempt": "004-full-attempt",
+      "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
+      "build_manifest_sha256": "0f211bc2d686ac166de6d9cde919351e201f5e488cbe9dd79da3b906cc15323d",
+      "run_manifest_sha256": "fdd0adcfe490c6422daa2354e201b8a89ce130fa2c5c0f2ce391bc0f4bf27562",
+      "export_manifest_sha256": "7ad8c33437d75d222da346ac38f5a1af6cab412ee1c1244696af176e6f773495",
+      "process_elapsed_seconds": 138.150333,
+      "process_exit": 0,
+      "terminal": {
+        "status": "GRAMMAR_FAILED",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 8,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 1,
+      "grammar_observed_callbacks": 0,
+      "grammar_observed_delivered_samples": 0,
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "process_result": {
+          "sha256": "9c5d3db9e7344f93cd4afc7813cf76020373513a68f570d4a6fc7c7aa8dfbd80",
+          "bytes": 325
+        },
+        "native_result": {
+          "sha256": "69ea638cb4d8ab09ed5e3eec6e66b59793cddffd1fba2d76eed6cd04f5b02628",
+          "bytes": 590
+        },
+        "joined_journal": {
+          "sha256": "8e566b844afa9c8c8040ed38b51ff0cb790ca5f2344194dfd7b781efd8dbb9a6",
+          "bytes": 4769
+        },
+        "frame_manifest": {
+          "sha256": "809394904b2b8d85c81b0526578530a7252972caf76290acc3da35e38ec3cab7",
+          "bytes": 719
+        },
+        "native_log": {
+          "sha256": "bfafaf604ebf28e589ab0de13e179ed811bb310850510d96787b87a20068af28",
+          "bytes": 88813
+        },
+        "desktop_capture": {
+          "sha256": "1b37cb26d57aba48c89a11380e3ac125e562b0573c7e31b957aff8826bfc0053",
+          "bytes": 25133
+        }
+      },
+      "runtime_desktop_capture": {
+        "sha256": "1b37cb26d57aba48c89a11380e3ac125e562b0573c7e31b957aff8826bfc0053",
+        "observation": "Black desktop viewport with simulation-only banner; G1/workcell not visible in this captured view; physical HMD view unverified."
+      }
+    },
+    {
+      "attempt": "005-full-001",
+      "source_commit": "fbb3c7da9dd826645a1a50e24bc9293b7a4a5365",
+      "build_manifest_sha256": "300ed43e1a09a4cee05999af8b6e78b4f5a406508dd11b25d3d4e39593eb1951",
+      "run_manifest_sha256": "76a22c9d80d21957fea51cf21ae7b30068bc574c45e92c7758246ae7c73dfe17",
+      "export_manifest_sha256": "69e79991ec18a793828bff2602c0b2ad1474ffe4c33436fa5f70d15a5d5ae200",
+      "process_elapsed_seconds": 79.805217,
+      "process_exit": 0,
+      "process_exit_hex": "0x00000000",
+      "terminal": {
+        "status": "JOIN_FOCUS_LOST",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 5,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 0,
+      "grammar_observed_callbacks": 0,
+      "grammar_observed_delivered_samples": 0,
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "native_log": {
+          "sha256": "8e69c4972b8bdf4b1882dd68b6854110c4815101b26fdfb75efb3fa44c208a8a",
+          "bytes": 42607
+        },
+        "process_result": {
+          "sha256": "00da188bd29066eeaf2ca9741309d23c012c08d8bf3b7eb917d9e24b786efced",
+          "bytes": 325
+        },
+        "joined_journal": {
+          "sha256": "1966f23c1dee7f723473dc738dcfc9cddd566dfb7f84679d34482e1089859b5f",
+          "bytes": 4769
+        },
+        "native_result": {
+          "sha256": "514c0ed422ee17c7ca6a7b4b501c890149f24545ec9da0dbd1f246498656e3a2",
+          "bytes": 591
+        }
+      },
+      "runtime_desktop_capture": null
+    },
+    {
+      "attempt": "005-full-002",
+      "source_commit": "fbb3c7da9dd826645a1a50e24bc9293b7a4a5365",
+      "build_manifest_sha256": "300ed43e1a09a4cee05999af8b6e78b4f5a406508dd11b25d3d4e39593eb1951",
+      "run_manifest_sha256": "9e2bbdea55679a9d5770b751361f3080faeffeb953fd51a90002944aafac1b00",
+      "export_manifest_sha256": "00bc55a095fc94cd317f426b1abf2c31b2df5b1d2e5c9c09844856ecfb8868f1",
+      "process_elapsed_seconds": 78.292839,
+      "process_exit": 3221225477,
+      "process_exit_hex": "0xC0000005",
+      "terminal": {
+        "status": "JOIN_FOCUS_LOST",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 5,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 0,
+      "grammar_observed_callbacks": 0,
+      "grammar_observed_delivered_samples": 0,
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "native_log": {
+          "sha256": "a935cdc112f0c5decac75ee37e5446e17d7ef51bbba83484cf14a267a25b7866",
+          "bytes": 41210
+        },
+        "process_result": {
+          "sha256": "aa35d64da9f18ca513d7a87c4e7116f281708a8384d739c54db00dcd773bd9e0",
+          "bytes": 334
+        },
+        "joined_journal": {
+          "sha256": "6be42bbd36d3e541de385c626e564131749e4a542e17e275915e15ce621e45aa",
+          "bytes": 4757
+        },
+        "native_result": {
+          "sha256": "f9a7ce355106e70d2f8109597b71d7ae4b3c4c0e25088ced9cff3c1405bb0bf5",
+          "bytes": 591
+        }
+      },
+      "runtime_desktop_capture": null
+    },
+    {
+      "attempt": "005-full-003",
+      "source_commit": "fbb3c7da9dd826645a1a50e24bc9293b7a4a5365",
+      "build_manifest_sha256": "300ed43e1a09a4cee05999af8b6e78b4f5a406508dd11b25d3d4e39593eb1951",
+      "run_manifest_sha256": "2fe49c41643fe2171acfc2bb540db0899f8e7af5678b28e31eaa5fee5c957e7d",
+      "export_manifest_sha256": "dcbb076ec4477b9cf43085a8309e488dcd9bbbe6f7fbbb22bc1b2a4ab59ec5c5",
+      "process_elapsed_seconds": 128.239118,
+      "process_exit": 0,
+      "process_exit_hex": "0x00000000",
+      "terminal": {
+        "status": "AUDIO_EXPOSURE_BLOCKED",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true,
+        "participant_admission": false
+      },
+      "data_records": 8,
+      "study_trial_csv_rows": 0,
+      "study_exposure_csv_rows": 0,
+      "grammar_audio_requests": 1,
+      "grammar_observed_callbacks": 0,
+      "grammar_observed_delivered_samples": 0,
+      "completed_scheduled_opportunities": 0,
+      "scheduled_study_audio_requests": 0,
+      "attributed_frame_intervals": 0,
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "evidence": {
+        "native_log": {
+          "sha256": "30f1cf90cf47f99f4b9ad209effc997a6574ecc55144dab62cf905d19607265f",
+          "bytes": 44215
+        },
+        "process_result": {
+          "sha256": "524c73156dced286c91a64c675c0b843865d382bbf65166d2d37bd6c5cdb3e1c",
+          "bytes": 324
+        },
+        "joined_journal": {
+          "sha256": "a7172b8bd2e558307f564900a90189e866668a05b928cc94e2ebc8b21dfcfe01",
+          "bytes": 5522
+        },
+        "native_result": {
+          "sha256": "a273d65b49933e56b2cf6035964668e1182d8a3d15154b405c288f7deca4c5b6",
+          "bytes": 597
+        }
+      },
+      "runtime_desktop_capture": {
+        "sha256": "0e41ad782e096e40953487ad91268234e2a414c0316f230be1064929856daa3d",
+        "bytes": 40889,
+        "observation": "G1 and portions of workcell visible on light background; simulator/help window overlaps desktop view; physical HMD view unverified."
+      }
+    }
+  ],
+  "process_overlap": {
+    "004_smoke_and_full_seconds": 41.131541,
+    "overlapping005_pairs": 0,
+    "duration_basis": "independently observed process start/end UTC receipts",
+    "isolated_performance_claim": false,
+    "absolute_clock_mapping_qualified": false
+  },
+  "005_full003_audio_gate": {
+    "audio_observed_mono_ms": 19603.1972,
+    "audio_record_sha256": "fd7dfbe200eca90b09bbb82783d79466d9b0513f7ea97ab5a2952fd4e83400a4",
+    "refusal_observed_mono_ms": 19610.6628,
+    "refusal_code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+    "refusal_record_sha256": "80d962d6fe25dbfc62b348dad6bea986e6a076cb614e55d7af2ccdf32d483ee6",
+    "elapsed_ms": 7.4656,
+    "outer_refusal_code": "GRAMMAR_PRIVATE_CONTROL_NOT_READY",
+    "final_code": "AUDIO_EXPOSURE_BLOCKED",
+    "exact_reset_acceptance_retained": true,
+    "periodic_health_samples_retained": false,
+    "age_queue_or_worker_failure_distinguished": false,
+    "freshness_limit_ms": 250,
+    "limit_was_relaxed": false
+  },
+  "limits": [
+    "All five mock attempts are incomplete; zero study trial/exposure CSV rows do not erase separately retained uncertain grammar requests.",
+    "No observed callback or completion is not proof of physical inaudibility; no free replay authority is established.",
+    "Empty frame interval data is not a timing pass.",
+    "005-full-002 has nonzero observed OS exit despite retained export/cleanup success; shutdown cause remains unassigned.",
+    "Black desktop captures and later partially occluded G1 capture do not establish physical HMD visibility, full leakage coverage, or a unique rendering cause.",
+    "A current-health gate refusal is not evidence that historical reset identity expired; periodic health receipts were not persisted.",
+    "Build inventory metadata is pinned; this audit did not independently rehash the executable or embedded identity.",
+    "No process interval is a trial duration or acoustic/source/display calibration.",
+    "These were not the seven prescribed fault injections; no injection custody or scenario acceptance is credited.",
+    "Private exact methodology templates, reviewed materials, physical device/acoustic qualification and full A/B mock visits remain separate incomplete requirements."
+  ],
+  "seven_fault_scenarios_credited": 0,
+  "issue81_accepted": false,
+  "issue82_closed": false,
+  "participant_qualified": false,
+  "acoustic_onset_qualified": false,
+  "physical_hmd_visibility_qualified": false
+}
