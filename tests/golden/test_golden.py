@@ -477,7 +477,11 @@ def test_make_goldens_wav_dir(tmp_path, capsys):
 
 def test_ci_matrix_compare_list_and_docs_agree():
     workflow = (REPO / ".github" / "workflows" / "sound-golden.yml").read_text(encoding="utf-8")
-    matrix = re.findall(r"- \{ label: ([\w-]+), os: ([\w.-]+) \}", workflow)
+    entry = r"- \{ label: ([\w-]+), os: ([\w.-]+), python: cpython-3\.11\.15-(\w+)-(\w+)-\w+ \}"
+    rows = re.findall(entry, workflow)
+    for label, _, system, cpu in rows:
+        assert label == f"{system}-{cpu.replace('aarch64', 'arm64')}"  # native Python
+    matrix = [(label, runner) for label, runner, _, _ in rows]
     runners = re.search(r"GOLDEN_RUNNERS: (\S+)", workflow)
     assert matrix and runners and [label for label, _ in matrix] == runners.group(1).split(",")
     doc = (SOUND / "docs" / "golden.md").read_text(encoding="utf-8")

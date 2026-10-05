@@ -38,14 +38,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { label: linux-x86_64, os: ubuntu-latest }
-          - { label: linux-arm64, os: ubuntu-24.04-arm }
-          - { label: macos-arm64, os: macos-latest }
-          - { label: macos-x86_64, os: macos-15-intel }
-          - { label: windows-x86_64, os: windows-latest }
-          - { label: windows-arm64, os: windows-11-arm }
+          - { label: linux-x86_64, os: ubuntu-latest, python: cpython-3.11.15-linux-x86_64-gnu }
+          - { label: linux-arm64, os: ubuntu-24.04-arm, python: cpython-3.11.15-linux-aarch64-gnu }
+          - { label: macos-arm64, os: macos-latest, python: cpython-3.11.15-macos-aarch64-none }
+          - { label: macos-x86_64, os: macos-15-intel, python: cpython-3.11.15-macos-x86_64-none }
+          - { label: windows-x86_64, os: windows-latest, python: cpython-3.11.15-windows-x86_64-none }
+          - { label: windows-arm64, os: windows-11-arm, python: cpython-3.11.15-windows-aarch64-none }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      # The same uv-managed CPython build on every runner, native to the CPU (uv would
+      # otherwise run x86_64 Python under emulation on Windows arm64).
+      UV_PYTHON: ${{ matrix.python }}
+      UV_PYTHON_PREFERENCE: only-managed
     defaults:
       run:
         shell: bash

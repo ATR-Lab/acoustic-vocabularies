@@ -115,12 +115,16 @@ every pull request that touches `sound/` or `tests/golden/`, and on `main`:
 | `windows-x86_64` | `windows-latest` | Windows, x86_64 |
 | `windows-arm64` | `windows-11-arm` | Windows, arm64 |
 
-Python 3.11 and every dependency, numpy included, come from `sound/uv.lock`. Each job
-runs `tests/golden`, then `make_goldens.py --check` with `--digest-out`, which writes
-the job's digests and platform to the artifact `golden-digest-<label>` and to the job
-summary. The `compare` job downloads all records, prints one table row per runner and
-fails if a runner is missing, if any digest differs between runners or from the
-manifest, or if a runner reported a mismatch. The Linux x86_64 job uploads the WAVs as
+Every job uses the same uv-managed CPython 3.11.15 build, native to the runner's CPU
+(`UV_PYTHON`, `UV_PYTHON_PREFERENCE=only-managed`; without it, uv runs x86_64 Python
+under emulation on Windows arm64). Every dependency, numpy included, comes from
+`sound/uv.lock`. Each job runs `tests/golden`, then `make_goldens.py --check` with
+`--digest-out`, which writes the job's digests and platform to the artifact
+`golden-digest-<label>` and to the job summary. The `compare` job downloads all
+records, prints one table row per runner and fails if a runner is missing, if any
+digest differs between runners or from the manifest, if a runner reported a
+mismatch, or if a runner's CPU (`platform.machine()`) is not the architecture in its
+label. The Linux x86_64 job uploads the WAVs as
 the artifact `golden-wav` (14 days) for listening and inspection. `sound.yml` also
 runs `tests/golden` with coverage on its three-OS matrix.
 

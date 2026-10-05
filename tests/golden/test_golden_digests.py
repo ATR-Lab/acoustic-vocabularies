@@ -52,8 +52,12 @@ def write(directory: Path, records: list[dict[str, Any]]) -> Path:
     return directory
 
 
+def native(label: str) -> dict[str, Any]:
+    return record(label, machine={"arm64": "aarch64", "x86_64": "AMD64"}[label.split("-")[1]])
+
+
 def test_identical_runners_pass_and_print_one_row_each(tmp_path, capsys):
-    folder = write(tmp_path / "d", [record(x) for x in LABELS])
+    folder = write(tmp_path / "d", [native(x) for x in LABELS])
     code = tool.main([str(folder), "--expect", ",".join(LABELS), "--manifest", str(MANIFEST)])
     out = capsys.readouterr().out
     assert code == 0
@@ -89,3 +93,18 @@ def test_missing_duplicate_and_failed_runners_fail():
     assert not ok and "renderer_hash differs" in text
     ok, text = tool.compare([], [], DIGESTS)
     assert not ok and "no digest records" in text
+
+
+def test_a_runner_must_run_on_the_architecture_of_its_label():
+    assert [tool.arch(m) for m in ("AMD64", "x86_64", "ARM64", "aarch64", "arm64")] == [
+        "x86_64",
+        "x86_64",
+        "arm64",
+        "arm64",
+        "arm64",
+    ]
+    emulated = record("windows-arm64", system="Windows", machine="AMD64")
+    ok, text = tool.compare([emulated], ["windows-arm64"], DIGESTS)
+    assert not ok and "`windows-arm64` ran on AMD64 (x86_64), not arm64" in text
+    assert tool.compare([record("windows-arm64", machine="ARM64")], [], DIGESTS)[0]
+    assert tool.compare([record("plain-label", machine="sparc")], [], DIGESTS)[0]

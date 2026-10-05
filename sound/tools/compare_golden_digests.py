@@ -8,8 +8,10 @@ Usage:
 
 Each runner writes `<label>.json` with `make_goldens.py --digest-out`. This script
 prints one Markdown table row per runner and exits with status 1 if a runner is
-missing, if any digest differs between runners or from the committed manifest, or
-if a runner reported mismatches. That table is the cross-OS evidence.
+missing, if any digest differs between runners or from the committed manifest, if
+a runner reported mismatches, or if a label that ends in an architecture (`-x86_64`,
+`-arm64`) ran on another one (for example x86_64 Python emulated on arm64). That
+table is the cross-OS evidence.
 """
 
 from __future__ import annotations
@@ -22,6 +24,18 @@ from typing import Any
 
 CATEGORIES = ("recipe", "atom", "message", "nonlexical", "store")
 SHORT = 12
+ARCHES = {
+    "x86_64": "x86_64",
+    "amd64": "x86_64",
+    "x64": "x86_64",
+    "arm64": "arm64",
+    "aarch64": "arm64",
+}
+
+
+def arch(machine: object) -> str:
+    """Normalized CPU architecture of `platform.machine()` (`x86_64` or `arm64`)."""
+    return ARCHES.get(str(machine).lower(), str(machine))
 
 
 def load_records(directory: Path) -> list[dict[str, Any]]:
@@ -62,6 +76,13 @@ def compare(
             cells.append(f"`{value[:SHORT]}`" if same else f"**`{value[:SHORT]}`**")
             if not same:
                 problems.append(f"`{record.get('runner')}`: {key} digest differs ({value})")
+        label = str(record.get("runner"))
+        claimed = label.rsplit("-", 1)[-1]
+        if claimed in set(ARCHES.values()) and arch(record.get("machine")) != claimed:
+            problems.append(
+                f"`{label}` ran on {record.get('machine')} ({arch(record.get('machine'))}), "
+                f"not {claimed}"
+            )
         if not record.get("matches_manifest"):
             problems.append(
                 f"`{record.get('runner')}`: {record.get('mismatches')} mismatches with the manifest"
