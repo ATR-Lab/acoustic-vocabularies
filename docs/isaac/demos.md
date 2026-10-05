@@ -17,8 +17,14 @@ finishes with an explicit verified neutral reset.
 The runtime interpolates joint keyframes and reads the actual articulation after
 each write. It requires measured joint error at most 0.001 rad. Washers, tags,
 cards and container groups follow rigid transforms relative to measured palms.
-The virtual grip is initially 60 mm below the palm; this is a visible engineering
-attachment reference and does not establish fingertip contact. Container lids,
+The virtual grip is initially 60 mm below the palm, except card flips use a
+75 mm side grip parallel to the flip axis so the palm is not driven below the
+table during the half-turn. Intermediate IK constrains the carried grip point
+and permits orientation change; placement constrains the complete pose. A
+bounded grip/orientation search retains all failed attempts. Washers may end
+with a multiple-of-45-degree yaw, which preserves their 32-segment ring geometry;
+the chosen quaternion is explicit in the expected end-state record. These are
+engineering attachment references, not established fingertip contacts. Container lids,
 codes and already-attached tags move with their container; free tags stay put.
 Arrow angle follows measured wrist yaw, and lid angle follows the measured palm
 along its hinge arc. SCAN's printed result stays in the private result/index.
@@ -27,7 +33,7 @@ REMOVE_ONE uses a two-hand center transfer. Both measured virtual grip frames
 must agree within 3 mm and 0.02 rad before ownership changes. The hands remain
 separate; a failure leaves ownership unchanged and reports an execution failure.
 No layout change or cross-body reach assumption is hidden in this operation.
-The initial actual-G1 feasibility and all-pair visual collision review are pending.
+The actual-G1 feasibility and all-pair visual collision review are pending.
 
 Every execution starts from verified neutral, returns the robot to neutral and
 leaves its intended object consequence. The following explicit reset restores

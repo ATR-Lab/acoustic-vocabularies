@@ -22,8 +22,9 @@ def consequence(layout, neutral, action, target):
         source = 'supply_cup' if action == 'ADD_ONE' else target
         candidates = [key for key, value in neutral.items()
                       if definitions[key]['kind'] == 'washer' and value['state']['location'] == source]
-        # Pick a topmost washer first; stable name resolves ties.
-        primary = sorted(candidates, key=lambda key: (-neutral[key]['position_m'][2], key))[0]
+        # Pick a topmost washer nearest the destination; stable name resolves ties.
+        destination_hint = neutral[target]['position_m'] if action == 'ADD_ONE' else layout['anchors']['return_cup']['position_m']
+        primary = sorted(candidates, key=lambda key: (-neutral[key]['position_m'][2], sum((a-b)**2 for a,b in zip(neutral[key]['position_m'], destination_hint)), key))[0]
         group = [primary]
         destination = target if action == 'ADD_ONE' else 'return_cup'
         if action == 'ADD_ONE':

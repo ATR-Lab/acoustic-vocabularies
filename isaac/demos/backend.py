@@ -2,7 +2,7 @@
 import math
 from copy import deepcopy
 
-from .geometry import mul, inverse, norm, angle
+from .geometry import mul, inverse, norm, angle, rotate, add
 
 
 class IsaacMotionBackend:
@@ -47,7 +47,7 @@ class IsaacMotionBackend:
             result[index] = start + closure*(end-start)
         return result
 
-    def solve(self, seed, side, target, quaternion=None, *, label=''):
+    def solve(self, seed, side, target, quaternion=None, *, label='', local_point=None):
         import torch
         import random
         indices = self.arms[side]
@@ -73,7 +73,9 @@ class IsaacMotionBackend:
             for iteration in range(200):
                 self.write(q[0].tolist())
                 actual = self.palm(side)
-                p_error = [a-b for a, b in zip(target, actual[0])]
+                offset = [0., 0., 0.] if local_point is None else rotate(actual[1], local_point)
+                point = add(actual[0], offset)
+                p_error = [a-b for a, b in zip(target, point)]
                 r_error = [0., 0., 0.]
                 if quaternion is not None:
                     delta = mul(quaternion, inverse(actual[1]))
@@ -92,6 +94,10 @@ class IsaacMotionBackend:
                 jac = self.robot.root_physx_view.get_jacobians()[0, body-1, :, indices]
                 if jac.shape != (6, len(indices)):
                     jac = jac.T
+                if local_point is not None:
+                    offset_tensor = torch.tensor(offset, device=self.robot.device, dtype=jac.dtype)
+                    jac = jac.clone()
+                    jac[:3] += torch.linalg.cross(jac[3:].T, offset_tensor.expand(len(indices), 3), dim=1).T
                 if quaternion is None:
                     jac = jac[:3]
                     error = torch.tensor(p_error, device=self.robot.device)
@@ -112,7 +118,7 @@ class IsaacMotionBackend:
                 break
         self.write(best[1])
         self.ik_results.append(dict(label=label, side=side, target_position_m=list(target),
-            target_orientation_xyzw=quaternion, joint_names=self.names, attempts=attempts,
+            target_orientation_xyzw=quaternion, local_grip_point=local_point, joint_names=self.names, attempts=attempts,
             best_joint_positions_rad=best[1], measured_palm_pose=best[2],
             position_error_m=best[3], orientation_error_rad=best[4],
             max_joint_change_from_previous_rad=max(abs(a-b) for a, b in zip(seed, best[1])),

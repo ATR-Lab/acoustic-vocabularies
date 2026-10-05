@@ -119,6 +119,10 @@ class DemoLibrary:
                     value = deepcopy(self.neutral[primary])
                     palm = self.backend.palm('right' if plan['target'].startswith('tray_') else 'left')
                     if plan['action'] == 'ALIGN_ARROW':
+                        contact = list(self.neutral[primary]['position_m'])
+                        contact[2] += .06
+                        if norm(sub(palm[0], contact)) > .006:
+                            raise ValueError('Measured wrist left arrow contact region')
                         if contact_reference is None:
                             # The planner has an exact .25 knot; use its evaluated
                             # palm to avoid absorbing the first sample's turn.
@@ -130,9 +134,14 @@ class DemoLibrary:
                         value['state']['arrow_angle_rad'] = self.neutral[primary]['state']['arrow_angle_rad']+yaw
                     elif plan['action'] == 'CLOSE':
                         p = self.neutral[primary]['position_m']
+                        radius = math.hypot(palm[0][0]-p[0], palm[0][2]-p[2]-.06)
+                        # Keyframes subdivide the actual hinge arc. Do not drive
+                        # the lid angle from a remote, unrelated hand position.
+                        if abs(radius-plan['contact_radius_m']) > .006 or abs(palm[0][1]-p[1]) > .006:
+                            raise ValueError('Measured palm left lid contact arc')
                         theta = math.atan2(-(palm[0][2]-p[2]-.06), palm[0][0]-p[0])
                         if theta > math.pi/2: theta -= math.tau
-                        value['state']['lid_open_fraction'] = min(1., max(0., theta/-math.pi))
+                        value['state']['lid_open_fraction'] = min(1., max(0., theta/plan['contact_open_angle_rad']))
                     if u >= plan['contact_end']:
                         if plan['action'] == 'ALIGN_ARROW' and abs(value['state']['arrow_angle_rad']) > .015:
                             raise ValueError('Measured wrist did not reach aligned slot')

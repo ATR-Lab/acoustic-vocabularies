@@ -41,7 +41,7 @@ class FakeBackend:
         result[i:i+7] = [closure*.3]*7
         return result
 
-    def solve(self, seed, side, target, quaternion=None, **_):
+    def solve(self, seed, side, target, quaternion=None, local_point=None, **_):
         q = list(seed)
         i = 0 if side == 'left' else 6
         q[i:i+3] = target
@@ -50,6 +50,11 @@ class FakeBackend:
             scale = 0. if size < 1e-10 else 2*math.atan2(size, quaternion[3])/size
             q[i+3:i+6] = [v*scale for v in quaternion[:3]]
         self.write(q)
+        if local_point is not None:
+            from isaac.demos.geometry import rotate
+            off = rotate(self.palm(side)[1], local_point)
+            q[i:i+3] = [a-b for a,b in zip(target, off)]
+            self.write(q)
         return q, self.palm(side)
 
 
@@ -152,6 +157,18 @@ def test_virtual_attachment_is_measured_palm_relative():
     expected = compose(demo.backend.palm('right'), attachment['relative_pose'])
     actual = pose(demo.accessors.state[plan['primary']])
     assert actual == expected
+    iterator.close()
+
+
+def test_card_side_grip_stays_level_when_the_card_is_turned_over():
+    demo, plan = library('FLIP_CARD', 'tray_A')
+    iterator = demo('FLIP_CARD', 'tray_A')
+    for index in range(210):
+        next(iterator)
+        if index in (60, 191):
+            palm = demo.backend.palm('right')
+            card = demo.accessors.state[plan['primary']]
+            assert abs(palm[0][2]-card['position_m'][2]) < 1e-8
     iterator.close()
 
 
