@@ -23,9 +23,11 @@ namespace AcousticVocab.Foundation
         bool initialRestore = true;
         bool trackingWasValid;
         string lastFault;
+        Color presentationBackground;
 
         void Awake()
         {
+            presentationBackground = observerCamera != null ? observerCamera.backgroundColor : Color.black;
             Neutral();
             JObject identity = new JObject { ["build_id"] = "invalid", ["commit_sha"] = "invalid", ["protocol_version"] = "invalid" };
             string reason = null;
@@ -103,8 +105,13 @@ namespace AcousticVocab.Foundation
             catch (ConfigurationFault ex) { Fault(ex.Message); return false; }
             seatedOrigin.SetPositionAndRotation(pose.position, pose.rotation);
             if (!Record("observer_reference_restored", new JObject { ["boundary"] = boundary, ["calibration_id"] = configuration["observer_reference"]["calibration_id"] })) return false;
-            reference.Restored(); lastFault = null; Ready = true; presentationRoot.SetActive(true);
+            reference.Restored(); lastFault = null; ShowPresentation();
             return true;
+        }
+        void ShowPresentation()
+        {
+            observerCamera.backgroundColor = presentationBackground;
+            Ready = true; presentationRoot.SetActive(true);
         }
         void OnApplicationPause(bool paused) { if (paused && !initialRestore) { reference.MarkRecenter(); Fault("application_paused"); } }
         void OnDestroy() { foreach (var system in subscribed) system.trackingOriginUpdated -= OnTrackingOriginUpdated; log?.Dispose(); }

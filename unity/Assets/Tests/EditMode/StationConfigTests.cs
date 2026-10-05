@@ -71,6 +71,23 @@ namespace AcousticVocab.Foundation.Tests
 
     public class ObserverAndBuildTests
     {
+        [Test] public void NeutralRecoveryRestoresConfiguredSceneBackground()
+        {
+            var root=new GameObject("SyntheticPresentationTest"); var cameraObject=new GameObject("Camera"); var view=new GameObject("View");
+            try
+            {
+                var bootstrap=root.AddComponent<FoundationBootstrap>(); bootstrap.observerCamera=cameraObject.AddComponent<Camera>(); bootstrap.presentationRoot=view;
+                var expected=new Color(.95f,.95f,.95f); var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+                typeof(FoundationBootstrap).GetField("presentationBackground",flags).SetValue(bootstrap,expected);
+                typeof(FoundationBootstrap).GetMethod("Neutral",flags).Invoke(bootstrap,null);
+                Assert.That(bootstrap.observerCamera.backgroundColor,Is.EqualTo(Color.black)); Assert.That(view.activeSelf,Is.False);
+                // Exercise the presentation recovery step without impersonating HMD tracking
+                // or claiming the guarded observer-calibration path has run on hardware.
+                typeof(FoundationBootstrap).GetMethod("ShowPresentation",flags).Invoke(bootstrap,null);
+                Assert.That(bootstrap.observerCamera.backgroundColor,Is.EqualTo(expected)); Assert.That(view.activeSelf,Is.True);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(root); UnityEngine.Object.DestroyImmediate(cameraObject); UnityEngine.Object.DestroyImmediate(view); }
+        }
         [Test] public void RestoreMapsCurrentTrackedHeadToReferenceWithoutChangingTrackingPose()
         {
             var target = new Pose(new Vector3(2, 1.3f, -1), Quaternion.Euler(0, 130, 0));
