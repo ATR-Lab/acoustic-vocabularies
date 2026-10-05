@@ -99,7 +99,8 @@ def build_workcell(stage, layout):
         elif kind in ('tray','container','cup'):
             shell(vp,(x,y,z))
             if data['label']:
-                pixel=min(.003, y/(len(data['label'])*4+1))
+                pixel=(layout['label_style']['primary_label_pixel_m'] if kind=='tray' else
+                       min(layout['label_style']['secondary_cup_max_pixel_m'], y*.85/(len(data['label'])*4+1)))
                 label_z=data.get('label_offset_z_m',0.)
                 cube(vp+'/Label',(.001,y*.90,.020),(x/2+.0007,0,label_z),'label')
                 if label_z: cube(vp+'/LabelPost',(.003,.008,label_z),(x/2,0,label_z/2),'neutral')
@@ -112,10 +113,10 @@ def build_workcell(stage, layout):
         elif kind=='card':
             visual.AddRotateXOp().Set(0.)
             cube(vp+'/Card',(x,y,z),material='card')
-            text(vp+'/Face0','0',(0,0,z/2+.0005),.004,True)
+            text(vp+'/Face0','0',(0,0,z/2+.0005),layout['label_style']['card_face_pixel_m'],True)
             # Face1 label faces downward until the card flips.
             back=UsdGeom.Xform.Define(stage,vp+'/BackFace'); back.AddRotateXOp().Set(180.)
-            text(vp+'/BackFace/Text','1',(0,0,z/2+.0005),.004,True)
+            text(vp+'/BackFace/Text','1',(0,0,z/2+.0005),layout['label_style']['card_face_pixel_m'],True)
         elif kind=='arrow':
             # Upright slot is fixed along +X; arrow rotates around +Z.
             cube(path+'/MarkedSlot',(x,.006,.001),(0,0,-.002),'label')
@@ -130,12 +131,12 @@ def build_workcell(stage, layout):
         elif kind=='code':
             cube(vp+'/Plate',(x,y,z),material='label')
             cube(vp+'/Post',(.002,.006,.055),(0,0,-.038),'neutral')
-            text(vp+'/Text',data['label'],(x/2+.0005,0,0),.0038)
+            text(vp+'/Text',data['label'],(x/2+.0005,0,0),layout['label_style']['primary_label_pixel_m'])
         elif kind=='quarantine':
             # Marked perimeter, no coloured per-target differences.
             for i,yy in enumerate((-y/2,y/2)): cube(vp+f'/EdgeY{i}',(x,.003,z),(0,yy,0),'quarantine')
             for i,xx in enumerate((-x/2,x/2)): cube(vp+f'/EdgeX{i}',(.003,y,z),(xx,0,0),'quarantine')
-            text(vp+'/Text',data['label'],(0,0,z/2+.0005),.004,True)
+            text(vp+'/Text',data['label'],(0,0,z/2+.0005),layout['label_style']['primary_label_pixel_m'],True)
         elif kind=='tag':
             cube(vp+'/Plate',(x,y,z),material='tag')
             cube(vp+'/Clip',(.005,y*.6,z*1.5),(-x/2,0,.003),'washer')

@@ -107,5 +107,28 @@ JSONL, CSV, optional observer PNG, hash manifest and summary. Original raw logs
 and PNG remain local while LFS is blocked. Sanitized numeric evidence may be
 published; never substitute synthetic timings for actual measurements.
 
-Actual simulator results, a reviewed neutral observer view, methodology/gaze
-review and final tolerance approval are pending until evidence is recorded.
+The corrected-label workcell was measured with reset source `f319440` and scene
+source `8802e2e`. All **1,000 actual perturb/reset cycles passed**. Full-call
+latency including durable logging was median **140.562 ms**, p95 **145.539 ms**,
+maximum **557.445 ms**. Maximum position deviation was 1.1921e-7 m; measured
+joint, orientation, velocity and environment deviations were zero. The injected
+wrong joint write was rejected, followed by an explicit successful recovery.
+All 1,002 terminal events, event ordering, manifest hashes and CSV statistics
+were independently checked. Root state was restored/verified but not randomized
+because this is a fixed-base articulation.
+
+The portable measured file is `isaac/snapshots/neutral_v1.json`, SHA-256
+`e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e`, bound to scene
+`3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e` and layout
+`173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb`.
+`docs/isaac/reset/actual-reset-results.json` records provenance, coverage and raw
+evidence hashes; `docs/isaac/reset/reset-cycles.csv` contains all numeric rows
+with only line endings normalized. The observer PNG was inspected and remains
+local while LFS is blocked. This confirms visible head/hands and the workcell;
+it does not substitute for methodology review or gaze/hand neutrality sign-off.
+
+The previous label layout also passed 1,000 cycles, but its scene-bound snapshot
+is superseded. No old snapshot was relabeled as evidence for the current scene.
+Actual #56 demonstration sequences, private methodology, gaze neutrality review
+and final pilot tolerance approval remain pending. Protected hold while physics
+advances is measured separately by #55.
