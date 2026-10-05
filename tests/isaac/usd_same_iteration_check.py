@@ -130,9 +130,13 @@ def main():
             report['cases'].append(run_case('byte_identical_import',
                 lambda stage:stage.GetRootLayer().ImportFromString(stage.GetRootLayer().ExportToString()),
                 Path(folder),noop=True))
+            positive=run_case('read_only_positive',lambda stage:stage.GetRootLayer().ExportToString(),
+                Path(folder),noop=True)
+            positive['passed'] = positive['passed'] and positive['observed_as_noop']
+            report['cases'].append(positive)
     except Exception as error:
         report['error']=type(error).__name__+': '+str(error)
-    report['passed']=report['error'] is None and len(report['cases'])==9 and all(x['passed'] for x in report['cases'])
+    report['passed']=report['error'] is None and len(report['cases'])==10 and all(x['passed'] for x in report['cases'])
     args.output.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report))
     return 0 if report['passed'] else 1
