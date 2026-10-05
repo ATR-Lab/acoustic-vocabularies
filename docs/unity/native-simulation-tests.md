@@ -62,6 +62,14 @@ including request time, with a minimum 1 ms asynchronous yield. Requests remain
 sequential, and slow or stale evidence still refuses admission. The incomplete
 build006 attempt and its normal process exit remain separately retained.
 
+Build007's subsequent native attempt also refused freshness: 119.9072 ms receipt
+age + 102.4433 ms round trip + 34.6814 ms source age = 257.0319 ms, with a valid
+reset and no queued observations or worker failure. It stopped grammar with
+`AUDIO_EXPOSURE_INTERRUPTED` and exited normally after incomplete export. The
+polling and queue corrections do not establish that this transport can sustain
+the required bound; transport latency diagnosis remains open. No completed
+grammar segment or visit is claimed from these attempts.
+
 ## Build and provision
 
 Use `tools/build-unity.ps1 -Target Windows -Scene SimulationTest` with a fresh

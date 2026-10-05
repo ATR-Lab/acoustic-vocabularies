@@ -42,7 +42,7 @@
     "inventory": "native-simulation-builds/windows-007.json",
     "inventory_sha256": "68253c864111a970b5862a13b3cc31f835c41bfa42de23156b4b8899de5f9c3a",
     "native_inventory_raw_sha256": "af91822eb2c3a4f97b7971ae24ec03af728cf72662d17426fe689a0630276081",
-    "native_launch_attempted": false
+    "native_launch_attempted": true
   },
   "prior_build005_attempts": [
     {
@@ -92,7 +92,7 @@
     "Sequential health polling targets75 ms including actual request duration, with at least1 ms asynchronous yield; no parallel network requests."
   ],
   "limitations": [
-    "Build007 is prepared for a fresh native run; tests and compilation do not establish a completed visit.",
+    "Actual build007 still refused the strict private-health bound; no complete grammar segment or visit is established. Transport latency diagnosis remains open.",
     "Build005 full002 terminated with0xC0000005 after incomplete cleanup/export evidence; the independent process result is retained.",
     "No participant, acoustic, physical headset, or issue81 qualification is established."
   ],
@@ -135,5 +135,38 @@
       "exact_reset_recorded": true,
       "queued_arrivals": 0
     }
+  },
+  "actual_build007": {
+    "status": "AUDIO_EXPOSURE_INTERRUPTED",
+    "complete": false,
+    "cleanup_succeeded": true,
+    "export_succeeded": true,
+    "native_result_sha256": "754895fda8e41ee816797338865393e72233522d6bcf755ce0e146235cfe090a",
+    "process_exit": 0,
+    "process_result_sha256": "2497a90f83e8880bee7527e6b72b2a23895dce701fc04745b17f394d0272d6c4",
+    "refusal_row_sha256": "725f49480b82bb1c092883a6d3a0efc382b89a1727675ae80eceec37d01e94f3",
+    "control_health": {
+      "health_progressing_and_valid": true,
+      "observed_local_mono_ms": 23081.0917,
+      "receipt_elapsed_ms": 119.90719999999783,
+      "round_trip_ms": 102.44330000000264,
+      "neutral_age_ms": 34.681409021743775,
+      "publisher_age_ms": 15.790850021743774,
+      "effective_age_ms": 257.03190902174424,
+      "maximum_age_ms": 250,
+      "failed": false,
+      "disposed": false,
+      "mode_acknowledged": true,
+      "exact_reset_recorded": true,
+      "queued_arrivals": 0
+    },
+    "grammar_audio_codes": [
+      "AUDIO_REQUESTED",
+      "SIMULATION_DELIVERY_OBSERVED",
+      "AUDIO_PLAYBACK_COMPLETED",
+      "AUDIO_REQUESTED",
+      "AUDIO_EXPOSURE_INTERRUPTED"
+    ],
+    "maximum_observed_callback_count": 31
   }
 }
