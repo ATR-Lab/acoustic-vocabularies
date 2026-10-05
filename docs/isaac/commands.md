@@ -181,3 +181,15 @@ This bounded diagnostic proves publication behavior after rejected commands.
 It does not qualify rate, cross-host clocks, headset/session exposure readiness,
 or #56 motion content. Its raw private files remain ignored; publish only a
 reviewed numeric derivative and artifact hashes.
+
+The [2026-10-05 canonical-scene result](commands/published-neutral-reverification-20261005.json)
+passed all 32 protected rejections and received 33 real public frames (one
+baseline plus one after each rejection), with zero sequence gaps and zero
+measured joint/position/orientation deviation. All 60 public object records
+matched neutral, and every immediate full-state before/after hash was identical.
+The run advanced 67 physics steps. Actual card drift suppressed publication
+with `NEUTRAL_DIVERGED`; the explicit reset recovered neutral. The 34 command
+terminal records, 33 frames, per-rejection payload hashes and artifact hashes
+were independently checked after download. Scene `3b6e8f9a…` and snapshot
+`e2628102…` match the canonical camera-bearing workcell. The 5.919-second
+diagnostic is not a throughput or exposure-readiness qualification.
