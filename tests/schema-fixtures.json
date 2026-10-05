@@ -1,0 +1,3 @@
+[
+  {"schema": "apparatus/schemas/engineering-event.schema.json", "instance": "tests/fixtures/engineering-event.json"}
+]
