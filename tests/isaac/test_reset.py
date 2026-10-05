@@ -15,6 +15,17 @@ from isaac.reset.snapshot import sha256
 from isaac.reset.event_log import DurableResetLog
 
 
+def test_committed_measured_snapshot_matches_report_and_current_layout():
+    from isaac.workcell.layout import digest, neutral_layout
+    report_path = ROOT/'docs/isaac/reset/actual-reset-results.json'
+    report = json.loads(report_path.read_text())
+    value = load_snapshot(ROOT/'isaac/snapshots/neutral_v1.json', report['reset_snapshot_sha256'])
+    assert report['layout_sha256'] == digest(neutral_layout())
+    assert value['scene_sha256'] == report['scene_sha256']
+    assert len(value['state']['robot']['joint_names']) == 43
+    assert len(value['state']['objects']) == 60
+
+
 def fixture():
     pose = {"position_m": [0., 0., 0.], "rotation_xyzw": [0., 0., 0., 1.]}
     return {"robot": {"joint_names": [f"engineering_joint_{i}" for i in range(43)],
