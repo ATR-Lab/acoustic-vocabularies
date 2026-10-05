@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "joined-native-001",
+    "commit_sha": "ce1d95008389f4d48c2343e014054ae442b84b2d",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 157.2089557,
+  "total_bytes": 793696915,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 55869206,
+      "sha256": "1aa74754471bebe9a2edd47b257e67870e6dd69a6f47e4cd167b01b4198ea184"
+    }
+  ]
+}
