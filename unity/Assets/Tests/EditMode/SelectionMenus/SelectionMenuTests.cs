@@ -12,7 +12,7 @@ namespace AcousticVocab.SelectionMenus.Tests
     public sealed class SelectionMenuTests
     {
         static readonly string Hash=new string('a',64);
-        static PcmWave Wave(int samples,int tone)
+        internal static PcmWave Wave(int samples,int tone)
         {
             using var stream=new MemoryStream();using var writer=new BinaryWriter(stream);
             writer.Write(Encoding.ASCII.GetBytes("RIFF"));writer.Write(36+samples*2);writer.Write(Encoding.ASCII.GetBytes("WAVEfmt "));writer.Write(16);writer.Write((short)1);writer.Write((short)1);writer.Write(48000);writer.Write(96000);writer.Write((short)2);writer.Write((short)16);writer.Write(Encoding.ASCII.GetBytes("data"));writer.Write(samples*2);
@@ -27,7 +27,7 @@ namespace AcousticVocab.SelectionMenus.Tests
             {
                 var item=new SlotItem("DEMO-menu",profile?"profile_menu":"atom_menu",profile?null:"K-a1",null,"selection","selection",false,profile?60:45,8,1);
                 Context=new SlotContext(item,750,null);var options=Enumerable.Range(1,3).Select(x=>new MenuOption("DEMO-candidate-"+x,Wave(profile?96000:21600,x*100))).ToArray();
-                Timeline=new MenuTimeline(Context,options,Events.Add,replay);Timeline.PlayRequested+=(index,id,option,at)=>Plays.Add((index,id,option,at));Timeline.DisplayChanged+=(phase,choice)=>Views.Add((phase,choice));
+                Timeline=new MenuTimeline(Context,options,"DEMO-meaning",Events.Add,replay);Timeline.PlayRequested+=(index,id,option,at)=>Plays.Add((index,id,option,at));Timeline.DisplayChanged+=(phase,choice)=>Views.Add((phase,choice));
                 Timeline.SelectionRequested+=(index,unused)=>Timeline.ConfirmSelection(index,Hash,profile?45750:32750);Timeline.Start(0);
             }
             internal void Finish(int? choose=null,bool revise=false)

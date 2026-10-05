@@ -9,7 +9,7 @@ namespace AcousticVocab.SelectionMenus
     public sealed class MenuTimeline
     {
         readonly SlotContext context;readonly MenuOption[] options;readonly MenuReplay replay;readonly Action<MenuEvent> persist;readonly Func<double> observed;
-        readonly double[] offsets;readonly bool profile;
+        readonly double[] offsets;readonly bool profile;readonly string meaningDisplayId;
         readonly bool[] requested=new bool[8],completed=new bool[8],onset=new bool[8];
         double last=-1;int choice,final;bool started,failed,finalized,committed,defaulted;
         public MenuPhase Phase {get;private set;}=MenuPhase.Hidden;
@@ -20,11 +20,12 @@ namespace AcousticVocab.SelectionMenus
         public event Action<int,string,MenuOption,double> PlayRequested;
         public event Action<MenuPhase,int?> DisplayChanged;
         public event Action<int,bool> SelectionRequested;
-        public MenuTimeline(SlotContext context,MenuOption[] options,Action<MenuEvent> durableSink,MenuReplay replay=null,Func<double> observedClock=null)
+        public MenuTimeline(SlotContext context,MenuOption[] options,string meaningDisplayId,Action<MenuEvent> durableSink,MenuReplay replay=null,Func<double> observedClock=null)
         {
             MenuRules.Require(context.Item!=null&&context.Item.Phase=="selection"&&!context.Item.Heldout&&context.Item.Plays==8&&context.RetryOf==null&&
                 (context.Item.TrialType=="profile_menu"&&context.Item.SlotSeconds==60||context.Item.TrialType=="atom_menu"&&context.Item.SlotSeconds==45),"MENU_SLOT");
             MenuRules.Require(options!=null&&options.Length==3&&options.All(x=>x!=null)&&options.Select(x=>x.CandidateId).Distinct().Count()==3&&options.Select(x=>x.Wave.PcmSha256).Distinct().Count()==3&&durableSink!=null,"MENU_OPTIONS");
+            MenuRules.Require(MenuRules.Id(meaningDisplayId),"MENU_DISPLAY_ID");this.meaningDisplayId=meaningDisplayId;
             this.context=context;this.options=(MenuOption[])options.Clone();this.persist=durableSink;this.replay=replay;observed=observedClock;profile=context.Item.TrialType=="profile_menu";
             offsets=replay==null?(profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000}):(double[])replay.OffsetsMs.Clone();
             MenuRules.Require(options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_DURATION");
@@ -38,10 +39,10 @@ namespace AcousticVocab.SelectionMenus
         double ChoiceDeadline=>profile?45000:32000;
         double NeutralStart=>profile?58000:40000;
         void Clock(double now){MenuRules.Require(MenuRules.Finite(now)&&now>=0&&now>=last,"MENU_CLOCK");last=now;}
-        void Emit(string kind,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? isDefault=null,MenuPhase? phase=null,string receipt=null)
+        void Emit(string kind,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? isDefault=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null)
         {
             double stamp=observed==null?now:observed();MenuRules.Require(MenuRules.Finite(stamp)&&stamp>=now,"MENU_CLOCK");
-            persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt));
+            persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt,uncertainty,meaningDisplayId));
         }
         public void Start(double now){Clock(now);MenuRules.Require(!started&&!failed&&now<=context.OnsetMonoMs,"MENU_START");started=true;Emit("menu_start",now,context.OnsetMonoMs);Tick(now);}
         public void Choose(int index,double now)
@@ -88,7 +89,7 @@ namespace AcousticVocab.SelectionMenus
         {
             Clock(now);int i=context.AudioRequestIds.ToList().IndexOf(id);
             MenuRules.Require(!failed&&i>=0&&requested[i]&&!onset[i]&&MenuRules.Finite(estimateMs)&&MenuRules.Finite(uncertaintyMs)&&uncertaintyMs>=0&&uncertaintyMs<=20&&Math.Abs(estimateMs-context.OnsetMonoMs-offsets[i])<=20,"MENU_ONSET_AUTHORITY");
-            Emit("onset_authority",now,estimateMs,i+1,options[i<6?i/2:final-1],replay?.SourceEvents[i]);onset[i]=true;
+            Emit("onset_authority",now,estimateMs,i+1,options[i<6?i/2:final-1],replay?.SourceEvents[i],uncertainty:uncertaintyMs);onset[i]=true;
         }
         public void Completed(string id,double now)
         {

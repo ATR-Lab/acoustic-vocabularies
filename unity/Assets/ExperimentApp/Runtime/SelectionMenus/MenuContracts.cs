@@ -36,8 +36,12 @@ namespace AcousticVocab.SelectionMenus
         public string Kind {get;}
         public string AttemptId {get;}
         public string OpportunityId {get;}
+        public string MenuKey {get;}
+        public string MeaningDisplayId {get;}
+        public double SlotStartMonoMs {get;}
         public double MonoMs {get;}
         public double? ExpectedMonoMs {get;}
+        public double? OnsetUncertaintyMs {get;}
         public string AudioRequestId {get;}
         public int? PresentationIndex {get;}
         public string CandidateId {get;}
@@ -48,8 +52,8 @@ namespace AcousticVocab.SelectionMenus
         public bool? Defaulted {get;}
         public MenuPhase? Phase {get;}
         public string ReceiptSha256 {get;}
-        internal MenuEvent(string kind,SlotContext context,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? defaulted=null,MenuPhase? phase=null,string receipt=null)
-        {Kind=kind;AttemptId=context.Item.TrialId;OpportunityId=context.OpportunityId;MonoMs=now;ExpectedMonoMs=expected;PresentationIndex=play;AudioRequestId=play.HasValue?context.AudioRequestIds[play.Value-1]:null;CandidateId=option?.CandidateId;PcmSha256=option?.Wave.PcmSha256;FileSha256=option?.Wave.FileSha256;YokedSourceEventId=source;SelectedIndex=selected;Defaulted=defaulted;Phase=phase;ReceiptSha256=receipt;}
+        internal MenuEvent(string kind,SlotContext context,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? defaulted=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null,string meaningDisplayId=null)
+        {MeaningDisplayId=meaningDisplayId;OnsetUncertaintyMs=uncertainty;Kind=kind;AttemptId=context.Item.TrialId;OpportunityId=context.OpportunityId;MenuKey=context.Item.TrialType=="profile_menu"?"profile":context.Item.ContentId;SlotStartMonoMs=context.OnsetMonoMs;MonoMs=now;ExpectedMonoMs=expected;PresentationIndex=play;AudioRequestId=play.HasValue?context.AudioRequestIds[play.Value-1]:null;CandidateId=option?.CandidateId;PcmSha256=option?.Wave.PcmSha256;FileSha256=option?.Wave.FileSha256;YokedSourceEventId=source;SelectedIndex=selected;Defaulted=defaulted;Phase=phase;ReceiptSha256=receipt;}
     }
     internal static class MenuRules
     {
