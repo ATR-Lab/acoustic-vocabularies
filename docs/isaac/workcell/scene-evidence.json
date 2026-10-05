@@ -1,15 +1,42 @@
 {
+  "downstream_measurements": {
+    "disconnect_duration_s": 120.015493254,
+    "disconnect_five_percent_screen": false,
+    "owners": "Detailed reset, command and publisher evidence is reported in O5.2.2/O5.2.4/O5.2.3 respectively.",
+    "protected_hold_physics_steps": 240,
+    "publisher_and_disconnect_protected_mode": false,
+    "publisher_duration_s": 3600.012913233,
+    "publisher_timing_screen": false,
+    "reset_cycles": 1000,
+    "reset_passed": true
+  },
   "evidence_hashes": {
     "containers-detail.png": "54566b9e87c42235a08ec696cf5c488277caa82384b0c5efce275f127c703645",
+    "disconnect-check/publish.csv": "43faa9d34071a829b51d51dc117d9681966874841a8a5dc8c281f5bb44b28090",
+    "disconnect-check/steps.csv": "fae3d5c18a651969e892d8e05b8176f4ec04c17f0d9ad4d871106e2af9e4646a",
+    "disconnect-check/summary.json": "2c8e3ddd61a4ef00a7a491291dc8017dc88a67c98da60038b527afb1415501ca",
     "observer.png": "77b971a8c415add6d655ecb2b52d6258939b0e9e1c1ee03ac99b57aa95e4c8bb",
+    "publisher-check/publish.csv": "f44bc9ed6cb9ac7be277bbf9156b38fb6445fd0796ecc8501876900d40517b67",
+    "publisher-check/sample-first.json": "d58c1b19c032b2854fcf452b1018134e9a58e57e169e9abfa1101a65b526c17a",
+    "publisher-check/sample-last.json": "1f395fba4cc6f19d7d9d4acac5fb7bf4cf8121ea9337a3c0edd1293c3ded7aa4",
+    "publisher-check/summary.json": "b051c83ca9f0c56695d16ef2807bc435752b16824cb07d80ff4c37e709a11323",
     "reach.json": "1572dceeb442d0874f950fec0c4bae2a286de57d77df87b2c8581c9e5012321a",
     "reset-check/neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reset-check/summary.json": "d89dc0b1432679dd069ec0c804fd8dccd40d1f91792c7ffd858286c942a9b116",
+    "summary.json": "8b5faa44c0369e64995f647d021618b6ed53b037b3b35930e7641e1891ebb4c8",
     "trays-detail.png": "d11257ea7436f8e4645168800c557b7777d0c73bb22a0118205a9e543ba1c97b",
     "workcell-reloaded.usda": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
     "workcell.usda": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e"
   },
   "fixed_base": true,
-  "independent_generation_scene_hash_match": null,
+  "independent_generation": {
+    "evidence": "actual preflight summary.json binds independently generated scene and snapshot",
+    "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "source_revision": "abd8166",
+    "source_run": "workcell-56-preflight-live"
+  },
+  "independent_generation_scene_hash_match": true,
   "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
   "joint_count": 43,
   "joint_names": [
@@ -110,5 +137,5 @@
   "semantic_objects": 60,
   "source_revision": "8802e2e",
   "source_run": "workcell-52-labels-v2",
-  "status": "scene_loaded_downstream_integration_in_progress"
+  "status": "completed_scene_and_downstream_measurements"
 }
