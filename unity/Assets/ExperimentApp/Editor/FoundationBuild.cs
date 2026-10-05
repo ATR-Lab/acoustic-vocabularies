@@ -102,7 +102,9 @@ namespace AcousticVocab.Foundation.Editor
             EditorUserBuildSettings.connectProfiler = false;
             EditorUserBuildSettings.allowDebugging = false;
             if (!File.Exists(ScenePath)) CreateScene();
-            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ParticipantScenePath, true) };
+            // Generated workcell scenes are passed explicitly to BuildPlayer below;
+            // never persist their machine-local GUIDs in the tracked build settings.
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             VerifySchema();
             Debug.Log("FOUNDATION_CONFIGURED editor=" + Application.unityVersion);
