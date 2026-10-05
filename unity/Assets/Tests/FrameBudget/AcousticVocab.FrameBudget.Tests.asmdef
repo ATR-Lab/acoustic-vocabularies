@@ -1,0 +1,1 @@
+{"name":"AcousticVocab.FrameBudget.Tests","references":["AcousticVocab.FrameBudget","AcousticVocab.DataLogging","AcousticVocab.OperatorConsole","Unity.Newtonsoft.Json"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}

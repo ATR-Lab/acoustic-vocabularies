@@ -1,0 +1,73 @@
+using System;
+using System.Linq;
+using AcousticVocab.DataLogging;
+using AcousticVocab.OperatorConsole;
+using AcousticVocab.SessionEngine;
+using AcousticVocab.StudyAudio;
+
+namespace AcousticVocab.FrameBudget
+{
+    // Main-thread adapter. The raw monitor may latch on its watchdog thread,
+    // but the append-only study journal and engine are touched only by Drain.
+    public sealed class FrameDataAdapter
+    {
+        readonly DataJournal journal;readonly Action<string> fault;
+        public FrameDataAdapter(DataJournal journal,Action<string> engineFault){this.journal=journal??throw new ArgumentNullException(nameof(journal));fault=engineFault??throw new ArgumentNullException(nameof(engineFault));}
+        public void Drain(FrameMonitor monitor)
+        {
+            foreach(var f in monitor.DrainFaults())
+            {
+                try{journal.Append(DataObservations.Device(new EventContext(f.Attempt.OpportunityId,f.Attempt.AttemptId),f.Code=="FRAME_INTERFACE_UNAVAILABLE"?"input":"frame_freeze",f.ObservedMs,value:f.Code=="FRAME_INTERFACE_UNAVAILABLE"?(bool?)false:null,durationMs:f.Code=="FRAME_FREEZE"?(double?)f.GapMs:null,code:f.Code));}
+                finally{fault(f.Code);}
+            }
+            foreach(var s in monitor.DrainSummaries())journal.Append(DataObservations.Device(new EventContext(s.Attempt.OpportunityId,s.Attempt.AttemptId),"frame_freeze",s.ObservedMs,durationMs:s.MaximumMs,code:s.Complete?null:"FRAME_CAPTURE_INCOMPLETE"));
+        }
+        public static OperatorHealth Health(OperatorHealth trusted,FrameMonitor monitor,bool rateReady)
+        {
+            if(trusted==null||monitor==null)throw new ArgumentNullException();
+            bool ready=rateReady&&monitor.Healthy&&monitor.HasRenderSample;
+            return new OperatorHealth(trusted.Headset&&ready,trusted.Audio,trusted.Reset,trusted.Input&&monitor.InputAvailable&&ready,trusted.BridgeAgeMs,monitor.LatestMs,Math.Max(trusted.MaxGapMs,monitor.MaximumMs));
+        }
+    }
+    public sealed class FrameCueBinding
+    {
+        public string AttemptId{get;}public string PcmSha256{get;}public int SampleCount{get;}public int SampleRate{get;}
+        public FrameCueBinding(string attempt,string pcmHash,int samples,int sampleRate)
+        {Check.That(Check.Id(attempt)&&pcmHash!=null&&System.Text.RegularExpressions.Regex.IsMatch(pcmHash,@"\A[0-9a-f]{64}\z")&&samples>0&&sampleRate>0);AttemptId=attempt;PcmSha256=pcmHash;SampleCount=samples;SampleRate=sampleRate;}
+    }
+    // Compose this call into the existing durable audio sink. The caller resolves
+    // PCM length from the verified loaded wave; no sound is opened by this adapter.
+    public sealed class FrameAudioAdapter
+    {
+        readonly FrameCaptureHost host;readonly Func<AudioPlaybackEvent,FrameCueBinding> resolve;
+        public FrameAudioAdapter(FrameCaptureHost host,Func<AudioPlaybackEvent,FrameCueBinding> resolve){this.host=host??throw new ArgumentNullException(nameof(host));this.resolve=resolve??throw new ArgumentNullException(nameof(resolve));}
+        public void Record(AudioPlaybackEvent value)
+        {
+            if(value.Code!="AUDIO_REQUESTED")return;var b=resolve(value);Check.That(b!=null&&b.PcmSha256==value.PcmSha256,"FRAME_AUDIO_BINDING");
+            double start=value.Timing.ScheduledMonoSeconds*1000;host.RegisterCue(b.AttemptId,new FrameWindow(value.AudioId,"cue",start,start+b.SampleCount*1000d/b.SampleRate));
+        }
+    }
+    // Wrap the trusted factory/multiplexer, not the engine's current trial ID.
+    // Existing slot timing supplies response windows; each actual audio request
+    // separately supplies its verified duration, including a lesson's final cue.
+    public sealed class FrameContentFactory : ISlotContentFactory,ISessionContentPump
+    {
+        readonly ISlotContentFactory inner;readonly FrameCaptureHost host;
+        public FrameContentFactory(ISlotContentFactory inner,FrameCaptureHost host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host??throw new ArgumentNullException(nameof(host));}
+        public ISlotContent Create(SlotItem item)=>new Content(inner.Create(item),host);
+        public void Pump(){host.Drain();if(inner is ISessionContentPump pump)pump.Pump();}
+        sealed class Content : ISlotContent
+        {
+            readonly ISlotContent inner;readonly FrameCaptureHost host;SlotContext context;
+            internal Content(ISlotContent inner,FrameCaptureHost host){this.inner=inner??throw new ArgumentNullException(nameof(inner));this.host=host;}
+            public void Prepare(SlotContext c){context=c;host.Register(c);inner.Prepare(c);}
+            public SlotReadiness Readiness{get{var r=inner.Readiness;return new SlotReadiness(r.HashVerified,r.AudioPreloaded,r.ResetAcknowledged,r.RendererReady&&host.Ready,r.PanelIdle,r.FocusOk,r.InputOk&&host.Ready,r.ModeAcknowledged);}}
+            public bool ResetComplete=>inner.ResetComplete;
+            public void RequestCue(SlotContext c,INovelSlotAuthorization permit){Check.That(host.Ready,"FRAME_CAPTURE_UNAVAILABLE");inner.RequestCue(c,permit);}
+            public void OpenResponse(SlotContext c)=>inner.OpenResponse(c);
+            public void CloseResponse(SlotContext c)=>inner.CloseResponse(c);
+            public void RequestReset(SlotContext c)=>inner.RequestReset(c);
+            public void Interrupt(string code){try{if(context.Item!=null)host.Cancel(context.Item.TrialId);}finally{inner.Interrupt(code);}}
+        }
+    }
+}

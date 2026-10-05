@@ -1,0 +1,1 @@
+{"name":"AcousticVocab.FrameBudget","references":["AcousticVocab.Foundation","AcousticVocab.SessionEngine","AcousticVocab.StudyAudio","AcousticVocab.ResponsePanel","AcousticVocab.DataLogging","AcousticVocab.OperatorConsole","Unity.XR.MetaOpenXR","Unity.Collections","Unity.Newtonsoft.Json"],"autoReferenced":true}
