@@ -28,7 +28,7 @@ namespace AcousticVocab.SessionIntegration
         public FoundationBootstrap foundation;public StateSourceHost source;public ResponsePanelController panel;public AudioPlayer player;public FrameCaptureHost frames;
         public Font font;public Shader unlitShader,dictionaryShader;
         public bool requirePreallocation;public bool simulationTestScene;
-        SimulationTestAuthority simulation;TextMesh simulationWatermark;SimulationInputDriver simulationInputs;
+        SimulationTestAuthority simulation;TextMesh simulationWatermark;SimulationInputDriver simulationInputs;string sourceCommit;SimulationRunClosure simulationClosure;
         AllocationJoinBinding allocation;string authorizedConfig,authorizedPin;
         internal void StartAllocated(AllocationJoinBinding binding,string configPath,string rawPin)
         {if(enabled||!requirePreallocation||allocation!=null||binding==null||attempted||assets!=null)throw new SessionFault("JOIN_ALLOCATION_ALREADY_CONSUMED");allocation=binding;authorizedConfig=configPath;authorizedPin=rawPin;enabled=true;}
@@ -65,6 +65,7 @@ namespace AcousticVocab.SessionIntegration
             try
             {
                 var build=Resources.Load<TextAsset>("BuildIdentity");if(build==null)throw new SessionFault("JOIN_BUILD_IDENTITY");var identity=JoinedVisitArtifacts.Json(Encoding.UTF8.GetBytes(build.text));
+                sourceCommit=(string)identity["commit_sha"];
                 config=JoinedEngineeringConfig.Load(path,pin,(string)identity["protocol_version"]);
                 if(config.BuildId!=(string)identity["build_id"])throw new SessionFault("JOIN_BUILD_IDENTITY");
                 allocation?.Validate(config);
@@ -114,6 +115,8 @@ namespace AcousticVocab.SessionIntegration
                     // creating any private output or starting control services.
                     nonce=Guid.NewGuid().ToString("N");evidenceRoot=Path.Combine(config.Directory("evidence"),"joined-"+nonce);Directory.CreateDirectory(evidenceRoot);
                     var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.CodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
+                    if(simulation!=null)simulationClosure=new SimulationRunClosure(Path.Combine(evidenceRoot,"native-result.local.json"),nonce,config.ConfigSha256,simulation.RawSha256,sourceCommit,System.Diagnostics.Process.GetCurrentProcess().Id,
+                        ()=>ExportBundle.Create(Path.Combine(config.Directory("evidence"),"data"),Path.Combine(config.Directory("evidence"),"export-"+nonce),data.Identity,ExportHeaders.Provisional()),()=>clock.NowMs);
                     audit=visit.Own(new JoinedAudit(Path.Combine(evidenceRoot,"joined.local.jsonl"),()=>clock.NowMs));
                     if(simulation!=null)simulationInputs=new SimulationInputDriver(simulation,panel,nonce,p=>audit.Write("simulation_input",p),Flag("-simulationDummyResponses"));
                     audit.Write("configuration",new JObject{["config_sha256"]=config.ConfigSha256,["schedule_sha256"]=assets.Schedule.Sha256,["package_sha256"]=assets.Package.PackageSha256,["scope"]=simulation==null?"DEMO_ENGINEERING":"SIMULATION_TEST",["participant_admission"]=false,["simulation_capability_sha256"]=simulation?.RawSha256,["acoustic_qualification"]=false});
@@ -242,11 +245,17 @@ namespace AcousticVocab.SessionIntegration
         void OnDestroy()=>Close();
         void Close()
         {
-            if(closed)return;closed=true;Exception first=null;bool completed=StatusCode=="JOIN_COMPLETE_FORMS_RECORDED";
-            if(simulation!=null&&audit!=null)try{audit.Write("module",new JObject{["kind"]="native_run_end",["status"]=StatusCode,["complete"]=completed,["scope"]="SIMULATION_TEST",["participant_admission"]=false});}catch(Exception e){first=e;}
-            foreach(Action action in new Action[]{()=>mailbox?.Dispose(),()=>staged?.Dispose(),()=>owner?.Dispose(),()=>{if(installedFrames)frames.FinishCapture();},()=>visit.Dispose()})try{action();}catch(Exception e){first??=e;}
+            if(closed)return;closed=true;Exception first=null;
+            var cleanup=new Action[]{()=>mailbox?.Dispose(),()=>staged?.Dispose(),()=>owner?.Dispose(),()=>{if(installedFrames)frames.FinishCapture();},()=>visit.Dispose()};
+            if(simulationClosure!=null)
+            {
+                string result=simulationClosure.Finish(StatusCode,
+                    ()=>audit?.Write("module",new JObject{["kind"]="native_run_end",["status"]=StatusCode,["complete"]=false,["scope"]="SIMULATION_TEST",["participant_admission"]=false}),
+                    cleanup);
+                Report(result);return;
+            }
+            foreach(Action action in cleanup)try{action();}catch(Exception e){first??=e;}
             if(first!=null)Report("JOIN_DISPOSE_FAILED");
-            if(simulation!=null&&data!=null)try{ExportBundle.Create(Path.Combine(config.Directory("evidence"),"data"),Path.Combine(config.Directory("evidence"),"export-"+nonce),data.Identity,ExportHeaders.Provisional());}catch{Report("JOIN_EXPORT_FAILED");}
         }
         sealed class TeachingControl:ITeachingBackend
         {
