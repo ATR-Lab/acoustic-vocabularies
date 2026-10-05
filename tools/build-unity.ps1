@@ -60,7 +60,9 @@ if ($Target -in @('Test','TestPlayMode')) {
     [xml]$result = Get-Content -Raw -LiteralPath $results
     $optionalRecordedChecks = @(
         'AcousticVocab.Tests.RecordedIsaacContractTests.ActualIsaacSnapshotAndWireSamplesMatchUnityRegistry',
-        'AcousticVocab.Tests.ActualNeutralRendererTests.RecordedProtectedLiveFramesMatchSnapshotAndImportedRenderer'
+        'AcousticVocab.Tests.ActualNeutralRendererTests.RecordedProtectedLiveFramesMatchSnapshotAndImportedRenderer',
+        'AcousticVocab.Tests.StudyAudio.PackageLoaderTests.ActualProducerArtifactChecksAAndBWhenProvisioned',
+        'AcousticVocab.Tests.SpeechBankTests.ActualPrivateSyntheticSpeechBankVerifiesButStaysUnreviewed'
     )
     $skippedTests = @($result.SelectNodes('//test-case[@result="Skipped"]'))
     $unexpectedSkip = @($skippedTests | Where-Object { $_.fullname -notin $optionalRecordedChecks })
