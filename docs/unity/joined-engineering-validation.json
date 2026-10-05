@@ -78,8 +78,9 @@
       "manifest_listed_file_bytes": 158551788,
       "primary_bytes": 667136,
       "primary_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
-      "manifest_sha256": "85e2109b605b347b26c38c831e28cc2150a67e8d3bf455c82bf1a62dc0c5eaa1",
-      "manifest": "joined-engineering-builds/windows.json"
+      "manifest_sha256": "ccd0d75d7c70566955870983e359bd35210299005240b5e49eb4bc1023069a8c",
+      "manifest": "joined-engineering-builds/windows.json",
+      "raw_build_manifest_sha256": "85e2109b605b347b26c38c831e28cc2150a67e8d3bf455c82bf1a62dc0c5eaa1"
     },
     "Android": {
       "result": "Succeeded",
@@ -91,8 +92,9 @@
       "manifest_listed_file_bytes": 55869206,
       "primary_bytes": 55869206,
       "primary_sha256": "1aa74754471bebe9a2edd47b257e67870e6dd69a6f47e4cd167b01b4198ea184",
-      "manifest_sha256": "5906dd7d653ddf9d8aa11272b828c005608ca69fab5eef014aea4c25c5f066f6",
-      "manifest": "joined-engineering-builds/android.json"
+      "manifest_sha256": "331dcef66a8977033c592d8c3e186efd84bfdab4a99021aebec20af2ac2203de",
+      "manifest": "joined-engineering-builds/android.json",
+      "raw_build_manifest_sha256": "5906dd7d653ddf9d8aa11272b828c005608ca69fab5eef014aea4c25c5f066f6"
     }
   },
   "android_archive_crc": "pass",
@@ -133,5 +135,6 @@
     "Physical Quest presentation budget, full live workload, three eligible volunteers and apparatus freeze.",
     "Approved encrypted storage and exact external export headers."
   ],
-  "original_frame_evidence": "../frame-budget/validation.json"
+  "original_frame_evidence": "../frame-budget/validation.json",
+  "manifest_format_note": "Public manifest JSON preserves all fields and uses LF line endings; raw_build_manifest_sha256 identifies the original local Unity manifest bytes."
 }
