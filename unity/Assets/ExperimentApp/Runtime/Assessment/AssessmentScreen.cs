@@ -22,6 +22,10 @@ namespace AcousticVocab.Assessment
         public event Action<string> Faulted;
         public string VisibleText => root!=null&&root.gameObject.activeInHierarchy?text.text:"";
         public bool FormsVisible=>formsVisible;
+        // These are station-schema values, not the response panel's local
+        // controller_ray/hand_poke binding names.
+        public static bool UsesControllers(string stationInput)=>stationInput switch
+        { "controllers"=>true,"hands"=>false,_=>throw new AssessmentFault("ASSESSMENT_INPUT_CONFIGURATION") };
         AssessmentStages stages;
         Transform root;
         TextMesh text;
@@ -132,7 +136,7 @@ namespace AcousticVocab.Assessment
             {
                 if(!foundation.Ready)throw new AssessmentFault("ASSESSMENT_INTERFACE_UNAVAILABLE");
                 string input=(string)foundation.Configuration["input_method"];
-                if(input=="controller_ray")
+                if(UsesControllers(input))
                 {
                     var device=InputDevices.GetDeviceAtXRNode(inputSource.UsesLeftHand?XRNode.LeftHand:XRNode.RightHand);
                     if(!device.isValid||!device.TryGetFeatureValue(CommonUsages.isTracked,out bool tracked)||!tracked||
@@ -147,7 +151,7 @@ namespace AcousticVocab.Assessment
                     if(press&&!down&&armed){Hit(new Ray(origin,direction),2);armed=false;}
                     down=press;
                 }
-                else if(input=="hand_poke")
+                else
                 {
                     hands.Clear();SubsystemManager.GetSubsystems(hands);var subsystem=hands.Find(x=>x.running);
                     var hand=subsystem==null?default:inputSource.UsesLeftHand?subsystem.leftHand:subsystem.rightHand;
@@ -157,7 +161,6 @@ namespace AcousticVocab.Assessment
                     if(haveTip&&armed&&local.z>=-.006f){var delta=point-previousTip;if(delta.sqrMagnitude>0){Hit(new Ray(previousTip,delta.normalized),delta.magnitude);armed=false;}}
                     previousTip=point;haveTip=true;
                 }
-                else throw new AssessmentFault("ASSESSMENT_INTERFACE_UNAVAILABLE");
             }
             catch(AssessmentFault error){Fail(error.Code);}catch{Fail("ASSESSMENT_INTERFACE_UNAVAILABLE");}
         }

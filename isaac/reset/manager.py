@@ -32,6 +32,48 @@ def angle(a, b):
     return 2 * math.atan2(math.sqrt(max(0., 1-dot*dot)), dot)
 
 
+def _compare(actual, wanted, path, failures, worst, tolerances):
+    """Compare one detached readback without creating a recursive closure cycle."""
+    if isinstance(wanted, dict):
+        if not isinstance(actual, dict) or set(actual) != set(wanted):
+            failures.append({"item": path, "reason": "keys"})
+        else:
+            for key in wanted:
+                _compare(actual[key], wanted[key], f"{path}/{key}", failures, worst, tolerances)
+        return
+    key = path.rsplit("/", 1)[-1]
+    if key == "joint_names":
+        if actual != wanted:
+            failures.append({"item": path, "reason": "canonical_joint_order"})
+        return
+    if "/state/" in path or type(wanted) in (str, bool):
+        if type(actual) is not type(wanted) or actual != wanted:
+            failures.append({"item": path, "reason": "exact_state"})
+        return
+    category = "environment_absolute"
+    if "rotation_xyzw" in key:
+        error, category = angle(actual, wanted), "orientation_rad"
+    elif key in ("position_m", "root_position_m"):
+        error, category = math.dist(actual, wanted), "position_m"
+    else:
+        if "joint_positions" in key or key == "arrow_angle_rad":
+            category = "joint_rad"
+        elif "angular_velocity" in key or "joint_velocities" in key:
+            category = "angular_velocity_rad_s"
+        elif "linear_velocity" in key:
+            category = "linear_velocity_m_s"
+        if isinstance(wanted, list):
+            if not isinstance(actual, list) or len(actual) != len(wanted):
+                failures.append({"item": path, "reason": "shape"})
+                return
+            error = max(abs(a-b) for a, b in zip(actual, wanted))
+        else:
+            error = abs(actual-wanted)
+    worst[category] = max(worst[category], error)
+    if error > getattr(tolerances, category):
+        failures.append({"item": path, "reason": "tolerance", "deviation": error, "unit": category})
+
+
 class ResetManager:
     def __init__(self, adapter, snapshot, expected_sha256, event_sink, tolerances=None):
         validate_snapshot(snapshot)
@@ -80,46 +122,7 @@ class ResetManager:
             validate_state(state)
             if self.adapter.scene_sha256 != self._snapshot["scene_sha256"]:
                 raise ValueError("scene fingerprint changed")
-            def compare(actual, wanted, path):
-                if isinstance(wanted, dict):
-                    if not isinstance(actual, dict) or set(actual) != set(wanted):
-                        failures.append({"item": path, "reason": "keys"})
-                    else:
-                        for key in wanted:
-                            compare(actual[key], wanted[key], f"{path}/{key}")
-                    return
-                key = path.rsplit("/", 1)[-1]
-                if key == "joint_names":
-                    if actual != wanted:
-                        failures.append({"item": path, "reason": "canonical_joint_order"})
-                    return
-                if "/state/" in path or type(wanted) in (str, bool):
-                    if type(actual) is not type(wanted) or actual != wanted:
-                        failures.append({"item": path, "reason": "exact_state"})
-                    return
-                category = "environment_absolute"
-                if "rotation_xyzw" in key:
-                    error, category = angle(actual, wanted), "orientation_rad"
-                elif key in ("position_m", "root_position_m"):
-                    error, category = math.dist(actual, wanted), "position_m"
-                else:
-                    if "joint_positions" in key or key == "arrow_angle_rad":
-                        category = "joint_rad"
-                    elif "angular_velocity" in key or "joint_velocities" in key:
-                        category = "angular_velocity_rad_s"
-                    elif "linear_velocity" in key:
-                        category = "linear_velocity_m_s"
-                    if isinstance(wanted, list):
-                        if not isinstance(actual, list) or len(actual) != len(wanted):
-                            failures.append({"item": path, "reason": "shape"})
-                            return
-                        error = max(abs(a-b) for a, b in zip(actual, wanted))
-                    else:
-                        error = abs(actual-wanted)
-                worst[category] = max(worst[category], error)
-                if error > getattr(self.tolerances, category):
-                    failures.append({"item": path, "reason": "tolerance", "deviation": error, "unit": category})
-            compare(state, self._snapshot["state"], "state")
+            _compare(state, self._snapshot["state"], "state", failures, worst, self.tolerances)
         except (ValueError, TypeError, KeyError, OverflowError) as exc:
             failures.append({"item": "state", "reason": "invalid_readback", "detail": str(exc)})
         result = {"reset_ok": not failures, "failures": failures, "worst_deviation": worst}

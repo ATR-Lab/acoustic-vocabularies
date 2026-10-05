@@ -25,9 +25,14 @@ def main():
     parser.add_argument('--integration-overlay',type=Path)
     parser.add_argument('--publisher-seconds',type=float,default=0.)
     parser.add_argument('--command-check',action='store_true')
+    parser.add_argument('--published-command-check',action='store_true')
     parser.add_argument('--disconnect-check',action='store_true')
     parser.add_argument('--demo-check',action='store_true')
     parser.add_argument('--demo-preflight',action='store_true')
+    parser.add_argument('--grip-check',action='store_true')
+    parser.add_argument('--protected-stream-seconds',type=float,default=0.)
+    parser.add_argument('--protected-socket',type=Path)
+    parser.add_argument('--protected-station-id',default='simulator-01')
     early,_=parser.parse_known_args()
     verify_loopback_only()
     pins=json.loads((ROOT/'spikes/O5.1.2/pins.json').read_text())
@@ -119,8 +124,8 @@ def main():
             adapter=IsaacResetAdapter(robot,accessors,sim,scene_hash)
             reset=run_reset_check(adapter,args.output/'reset-check',cycles=args.reset_cycles,
                                   capture_image=capture if args.capture else None)
-        commands=None
-        if args.command_check:
+        commands=None;published_commands=None
+        if args.command_check or args.published_command_check:
             if reset is None: raise ValueError('Command diagnostic requires actual reset snapshot')
             import uuid
             from isaac.commands.benchmark import run_command_check
@@ -132,7 +137,12 @@ def main():
                 apparatus_version='workcell-development-v1',protocol_version='unresolved-methodology')
             try:
                 manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
-                commands=run_command_check(manager,args.output/'command-check',physics_steps=240)
+                if args.command_check:
+                    commands=run_command_check(manager,args.output/'command-check',physics_steps=240)
+                if args.published_command_check:
+                    from isaac.commands.published_benchmark import run_published_command_check
+                    published_commands=run_published_command_check(manager,layout,args.output/'published-command-check',
+                        socket_path='/tmp/av-published-command-check.sock')
             finally: event_log.close()
         publisher=None
         if args.publisher_seconds:
@@ -163,6 +173,42 @@ def main():
                 demos=run_demo_check(manager,layout,args.output/'demo-check',
                     preflight_only=args.demo_preflight,capture_image=capture if args.capture else None)
             finally: event_log.close()
+        grip=None
+        if args.grip_check:
+            if reset is None: raise ValueError('Grip diagnostic requires actual reset snapshot')
+            import uuid
+            from isaac.demos.grip_probe import run_grip_check
+            from isaac.reset.snapshot import load_snapshot
+            from isaac.reset.manager import ResetManager
+            from isaac.reset.event_log import DurableResetLog
+            snapshot=load_snapshot(args.output/'reset-check/neutral_v1.json',reset['reset_snapshot_sha256'])
+            event_log=DurableResetLog(args.output/'grip-reset-events.jsonl',session_id=uuid.uuid4().hex,
+                apparatus_version='workcell-development-v1',protocol_version='unresolved-methodology')
+            try:
+                manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
+                grip=run_grip_check(manager,layout,args.output/'grip-check',
+                    capture_image=capture if args.capture else None)
+            finally: event_log.close()
+        protected=None
+        if args.protected_stream_seconds:
+            if reset is None or args.protected_socket is None:
+                raise ValueError('Protected stream requires actual reset snapshot and explicit private Unix socket')
+            import uuid
+            from isaac.commands.hold import make_robot_hold
+            from isaac.publisher.protected_stream import run_protected_stream
+            from isaac.reset.snapshot import load_snapshot
+            from isaac.reset.manager import ResetManager
+            from isaac.reset.event_log import DurableResetLog
+            snapshot=load_snapshot(args.output/'reset-check/neutral_v1.json',reset['reset_snapshot_sha256'])
+            event_log=DurableResetLog(args.output/'protected-stream-reset-events.jsonl',session_id=uuid.uuid4().hex,
+                apparatus_version='workcell-development-v1',protocol_version='unresolved-methodology')
+            try:
+                manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
+                protected=run_protected_stream(manager,layout,args.output/'protected-stream',
+                    hold_robot=make_robot_hold(adapter),socket_path=args.protected_socket,
+                    station_id=args.protected_station_id,seconds=args.protected_stream_seconds,
+                    joint_csv=ROOT/'docs/spikes/isaac/joint_inventory.csv')
+            finally: event_log.close()
         actual=accessors.read_state()
         conditions=preconditions(layout,actual)
         if conditions['possible_count']!=32: raise RuntimeError('Neutral preconditions incomplete')
@@ -173,11 +219,12 @@ def main():
             scene_reload_sha256=reloaded_hash,reload_state_identical=original_state==reload_state,
             semantic_objects=len(actual),joint_names=list(robot.joint_names),joint_count=len(robot.joint_names),
             fixed_base=robot.is_fixed_base,preconditions_possible=conditions['possible_count'],
-            simulation_time=float(sim.current_time),physics_integrated=bool(publisher or commands or disconnect),
+            simulation_time=float(sim.current_time),
+            physics_integrated=bool(publisher or commands or published_commands or disconnect or protected or (demos and demos.get('rows'))),
             unitree_dds_started=False,network_interfaces=['lo'],methodology_review_complete=False,
             reach_summary={k:v for k,v in reach.items() if k!='results'} if reach else None,
-            reset_summary=reset,publisher_summary=publisher,command_summary=commands,disconnect_summary=disconnect,
-            demo_summary=demos,
+            reset_summary=reset,publisher_summary=publisher,command_summary=commands,published_command_summary=published_commands,disconnect_summary=disconnect,
+            demo_summary=demos,grip_summary=grip,protected_stream_summary=protected,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))

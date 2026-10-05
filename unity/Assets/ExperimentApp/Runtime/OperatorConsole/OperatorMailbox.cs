@@ -13,6 +13,9 @@ namespace AcousticVocab.OperatorConsole
     {
         readonly FixedSlotEngine engine;
         readonly Action<FixedSlotEngine> prepareResume;
+        readonly Action<FixedSlotEngine,OperatorRequest> prepareRequestResume;
+        readonly Func<FixedSlotEngine,OperatorRequest,bool> stageBeforeResume;
+        readonly Action<string> boundaryControl;
         readonly IOperatorCommandJournal journal;
         readonly Func<OperatorAdmission> admission;
         readonly Func<OperatorHealth> health;
@@ -34,10 +37,13 @@ namespace AcousticVocab.OperatorConsole
         public long ConsumedSequence => consumed;
         public OperatorMailbox(string privateDirectory, string sessionNonce, string runSheetManifestSha256,
             FixedSlotEngine engine, IOperatorCommandJournal journal, Func<OperatorAdmission> admission,
-            Func<OperatorHealth> health, Func<double> monotonicMilliseconds, Func<DateTimeOffset> utcClock = null, Action<FixedSlotEngine> prepareResume = null)
+            Func<OperatorHealth> health, Func<double> monotonicMilliseconds, Func<DateTimeOffset> utcClock = null, Action<FixedSlotEngine> prepareResume = null,Action<FixedSlotEngine,OperatorRequest> prepareRequestResume=null,Func<FixedSlotEngine,OperatorRequest,bool> stageBeforeResume=null,Action<string> boundaryControl=null)
         {
             Wire.Require(Wire.Guid(sessionNonce) && Wire.Hash(runSheetManifestSha256), "binding_invalid");
-            this.engine = engine ?? throw new ArgumentNullException(nameof(engine));this.prepareResume=prepareResume;
+            Wire.Require(prepareResume==null||prepareRequestResume==null,"binding_invalid");
+            Wire.Require(stageBeforeResume==null||prepareResume==null&&prepareRequestResume==null,"binding_invalid");
+            this.stageBeforeResume=stageBeforeResume;this.boundaryControl=boundaryControl;
+            this.engine = engine ?? throw new ArgumentNullException(nameof(engine));this.prepareResume=prepareResume;this.prepareRequestResume=prepareRequestResume;
             this.journal = journal ?? throw new ArgumentNullException(nameof(journal));
             this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
             this.health = health ?? throw new ArgumentNullException(nameof(health));
@@ -92,8 +98,8 @@ namespace AcousticVocab.OperatorConsole
                 try
                 {
                     if (request.Command == "load") { Wire.Require(admission()?.Allowed == true, "admission_failed"); loaded = true; }
-                    else if (request.Command == "pause") engine.RequestPause();
-                    else if (request.Command == "stop") engine.RequestStop();
+                    else if (request.Command == "pause") { boundaryControl?.Invoke("pause");engine.RequestPause(); }
+                    else if (request.Command == "stop") { boundaryControl?.Invoke("stop");engine.RequestStop(); }
                     else
                     {
                         Wire.Require(Loaded, "visit_not_loaded");
@@ -101,7 +107,11 @@ namespace AcousticVocab.OperatorConsole
                         Wire.Require(health()?.Ready == true, "health_failed");
                         Wire.Require(request.Command == "start" ? engine.Status == SessionState.AwaitingOperator : engine.Status == SessionState.Paused, "not_at_boundary");
                         prepareResume?.Invoke(engine);
-                        engine.ConfirmResume();
+                        prepareRequestResume?.Invoke(engine,request);
+                        // A trusted boundary stage can consume this explicit
+                        // command while retaining AwaitingOperator. No engine
+                        // content is prepared until a later explicit command.
+                        if(stageBeforeResume==null||stageBeforeResume(engine,request))engine.ConfirmResume();
                     }
                 }
                 catch (OperatorFault fault) { refusal = fault.Code; }

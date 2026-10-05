@@ -50,6 +50,7 @@
   "public_csv_sha256": "c5f12b3f992b1c9b597a5c809530bad376da3e5086cd64ecca0f97dbc621932b",
   "public_csv_transformation": "Only CRLF to LF normalization; numeric rows unchanged.",
   "limitations": [
+    "Appearance coverage is limited to the registered workcell materials/lights; robot MDL shaders and per-mesh visibility are outside the accessor guard.",
     "Kinematic forward verification without physics integration during reset; protected advancing hold is tested separately.",
     "Root is restored and verified but not randomized because this is the fixed-base asset.",
     "Observer render was inspected; private methodology, gaze/hand neutrality sign-off and pilot thresholds remain pending.",

@@ -64,21 +64,40 @@ namespace AcousticVocab.OperatorConsole.Tests
             internal readonly VisitSchedule Visit;
             internal readonly FixedSlotEngine Engine;
             internal readonly OperatorMailbox Mailbox;
-            internal bool Admitted = true, Healthy = true;internal Action<FixedSlotEngine> BeforeResume;
-            internal Fixture(int count = 2)
+            internal bool Admitted = true, Healthy = true;internal Action<FixedSlotEngine> BeforeResume;internal Action<FixedSlotEngine,OperatorRequest> BeforeRequestResume;
+            internal Func<FixedSlotEngine,OperatorRequest,bool> StageBeforeResume;internal Action<string> Control;
+            internal Fixture(int count = 2,bool typedResume=false,bool stagedResume=false)
             {
                 var items=Enumerable.Range(0,count).Select(i=>Construct<SlotItem>("private-trial-"+i,"trained","private-content",null,null,"protected",false,14,1,1)).ToArray();
                 Visit=Construct<VisitSchedule>(Schedule,Package,"private-person","private-visit",true,new[]{Construct<ScheduleBlock>("private-block",items)},null,null,null);
                 Engine=new FixedSlotEngine(Visit,Clock,Session,Factory);
-                Mailbox=new OperatorMailbox(Directory,Nonce,Manifest,Engine,Journal,()=>new OperatorAdmission(Admitted,Admitted,Admitted),()=>new OperatorHealth(Healthy,Healthy,Healthy,Healthy,Healthy?5:300,14,14),()=>Clock.Time,prepareResume:e=>BeforeResume?.Invoke(e));
+                Mailbox=new OperatorMailbox(Directory,Nonce,Manifest,Engine,Journal,()=>new OperatorAdmission(Admitted,Admitted,Admitted),()=>new OperatorHealth(Healthy,Healthy,Healthy,Healthy,Healthy?5:300,14,14),()=>Clock.Time,prepareResume:typedResume||stagedResume?null:e=>BeforeResume?.Invoke(e),prepareRequestResume:typedResume?(e,r)=>BeforeRequestResume?.Invoke(e,r):null,stageBeforeResume:stagedResume?(e,r)=>StageBeforeResume(e,r):null,boundaryControl:c=>Control?.Invoke(c));
             }
             internal OperatorReceipt Send(long sequence,string command,string id=null,string nonce=Nonce,string hash=Manifest)=>Mailbox.Handle(OperatorRequest.Parse(Bytes(Packet(sequence,command,id,nonce,hash))));
             public void Dispose()=>Mailbox.Dispose();
+        }
+        [Test]public void DeferredBoundaryCommandIsDurableOnceAndNeverAutoResumes()
+        {
+            using var f=new Fixture(stagedResume:true);f.Send(1,"load");int calls=0;bool complete=false;
+            f.StageBeforeResume=(engine,request)=>{calls++;Assert.That(f.Journal.Records.Last().Kind,Is.EqualTo("request"));return complete;};
+            string id=Guid.NewGuid().ToString("N");Assert.That(f.Send(2,"start",id).Accepted,Is.True);Assert.That(f.Send(2,"start",id).Accepted,Is.True);Assert.That(calls,Is.EqualTo(1));Assert.That(f.Engine.Status,Is.EqualTo(SessionState.AwaitingOperator));Assert.That(f.Factory.Created,Is.Empty);
+            complete=true;f.Mailbox.Tick();Assert.That(f.Engine.Status,Is.EqualTo(SessionState.AwaitingOperator));Assert.That(f.Send(3,"start").Accepted,Is.True);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Factory.Created.Count,Is.EqualTo(1));
+        }
+        [Test]public void PauseAndStopReachBoundaryStageAfterDurableRequestEvenBeforeTrialStart()
+        {
+            using var f=new Fixture(stagedResume:true);f.Send(1,"load");int calls=0;f.Control=command=>{calls++;Assert.That(f.Journal.Records.Last().Kind,Is.EqualTo("request"));Assert.That(f.Factory.Created,Is.Empty);};
+            Assert.That(f.Send(2,"pause").Accepted,Is.True);Assert.That(f.Send(3,"stop").Accepted,Is.True);Assert.That(calls,Is.EqualTo(2));
         }
         [Test] public void StartsOnlyAfterLoadAndDurableRequestPrecedesRealEngineCall()
         {
             using var f=new Fixture();Assert.That(f.Send(1,"start").Accepted,Is.False);Assert.That(f.Factory.Created,Is.Empty);Assert.That(f.Send(2,"load").Accepted,Is.True);
             f.Factory.BeforeCreate=()=>Assert.That(f.Journal.Records.Last().Kind,Is.EqualTo("request"));Assert.That(f.Send(3,"start").Accepted,Is.True);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Factory.Created.Count,Is.EqualTo(1));Assert.That(f.Journal.Records.Last().Receipt.Accepted,Is.True);
+        }
+        [Test]public void TypedResumeReceivesOnlyTheDurableBoundRequestAndDuplicateDoesNotRepeat()
+        {
+            using var f=new Fixture(typedResume:true);f.Send(1,"load");string id=Guid.NewGuid().ToString("N");int calls=0;
+            f.BeforeRequestResume=(e,r)=>{calls++;Assert.That(f.Journal.Records.Last().Kind,Is.EqualTo("request"));Assert.That(f.Journal.Records.Last().Request.RequestId,Is.EqualTo(id));Assert.That(r.RequestId,Is.EqualTo(id));Assert.That(r.Sequence,Is.EqualTo(2));Assert.That(r.SessionNonce,Is.EqualTo(Nonce));Assert.That(e.Status,Is.EqualTo(SessionState.AwaitingOperator));Assert.That(f.Factory.Created,Is.Empty);};
+            Assert.That(f.Send(2,"start",id).Accepted,Is.True);Assert.That(f.Send(2,"start",id).Accepted,Is.True);Assert.That(calls,Is.EqualTo(1));
         }
         [Test] public void ResumePreparationRunsAfterDurableRequestAndBeforeEngineAdvance()
         {

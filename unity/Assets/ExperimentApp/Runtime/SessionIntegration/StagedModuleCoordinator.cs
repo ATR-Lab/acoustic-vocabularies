@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AcousticVocab.SessionEngine;
+using AcousticVocab.OperatorConsole;
 namespace AcousticVocab.SessionIntegration
 {
     public interface IModulePreflight
@@ -9,6 +10,8 @@ namespace AcousticVocab.SessionIntegration
         bool Ready{get;}
         ISlotContentFactory Commit(ModuleConstructionScope scope);
     }
+    public interface IExplicitBoundaryStage
+    { bool PrepareExplicitResume(OperatorRequest request); }
     // Pump only prepares authority; ConfirmResume remains an explicit mailbox
     // command. Candidate resources belong to the mux capability from creation.
     public sealed class StagedModuleCoordinator:IDisposable
@@ -48,6 +51,11 @@ namespace AcousticVocab.SessionIntegration
             if(!ReferenceEquals(value,engine)||!Ready)throw new SessionFault("SESSION_PREFLIGHT_NOT_READY");
             try{modules.CommitPreparation(ticket,candidate.Commit);ticket=null;candidate=null;}
             catch{failed=true;throw;}
+        }
+        public bool PrepareExplicitResume(FixedSlotEngine value,OperatorRequest request)
+        {
+            if(!ReferenceEquals(value,engine)||!Ready)throw new SessionFault("SESSION_PREFLIGHT_NOT_READY");
+            return candidate is not IExplicitBoundaryStage stage||stage.PrepareExplicitResume(request);
         }
         void Cancel(){var old=ticket;ticket=null;candidate=null;if(old!=null)modules.CancelPreparation(old);}
         public void Dispose(){if(closed)return;closed=true;Cancel();}

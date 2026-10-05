@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "run_kind": "template",
+  "source_kind": "unmeasured",
+  "schedule_kind": "synthetic_nonstudy",
+  "participants": false,
+  "expected_station_ids": [],
+  "stations": [],
+  "instructions": "Populate only from retained actual evidence. Native source_logs roles: unity,publisher,command,host. Each file reference: path and sha256. Each station also needs events/resources references, client_kind, optional substitute_justification or battery_thermal_log, scene_sha256, snapshot_sha256 and receiver_detector_source_sha256. This template must not pass analysis."
+}

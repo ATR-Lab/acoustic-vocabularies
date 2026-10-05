@@ -6,6 +6,7 @@
     "AcousticVocab.StudyAudio",
     "AcousticVocab.Foundation",
     "AcousticVocab.Teaching"
+    ,"AcousticVocab.SessionIntegration"
   ],
   "includePlatforms": [
     "Editor"

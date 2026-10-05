@@ -36,12 +36,15 @@ namespace AcousticVocab.SessionIntegration
         public const int MaximumConfigBytes=65536;
         static readonly string[] requiredFiles={"schedule","permutation","package_manifest","run_sheet_manifest","schedule_manifest","run_sheet_csv","schedule_schema","permutation_schema","run_sheet_schema","station","frame","state_source","neutral","response_panel"};
         static readonly string[] optionalFiles={"teaching_manifest","teaching_review","teaching_allocation","menu_script","menu_review","menu_allocation","reserved_registry","assessment_script","assessment_review","rating_review","speech_manifest","speech_review","audio_calibration","menu_snapshot","menu_bridge_config","comfort_gain","menu_replay_ledger"};
+        static readonly string[] v2Files={"yoked_active_schedule","yoked_active_run_sheet_manifest","yoked_active_schedule_manifest","yoked_active_run_sheet_csv"};
         static readonly string[] directoryNames={"package","teaching","grammar","speech","menu_examples","menu_scripts","menu_mailbox","operator_mailbox","evidence"};
         static readonly string[] optionalDirectories={"teaching","grammar","speech","menu_examples","menu_scripts"};
         static readonly string[] pinNames={"package_sha256","bank_sha256","menu_manifest_sha256","menu_head_sha256","menu_snapshot_sha256"};
         readonly IReadOnlyDictionary<string,PinnedJoinFile> files;
         readonly IReadOnlyDictionary<string,string> directories,pins;
         public string ConfigSha256 { get; }
+        public int ConfigVersion { get; }
+        public int? YokedAnchorLeadMs { get; }
         public string ProtocolVersion { get; }
         public string StationId { get; }
         public string UnitId { get; }
@@ -54,10 +57,10 @@ namespace AcousticVocab.SessionIntegration
         public string Scope=>"DEMO_ENGINEERING";
         public bool ParticipantAdmission=>false;
 
-        JoinedEngineeringConfig(string hash,string protocol,JObject identity,string endpoint,string controlSession,
+        JoinedEngineeringConfig(string hash,string protocol,JObject identity,string endpoint,string controlSession,int version,int? anchorLead,
             Dictionary<string,PinnedJoinFile> files,Dictionary<string,string> directories,Dictionary<string,string> pins)
         {
-            ConfigSha256=hash;ProtocolVersion=protocol;StationId=(string)identity["station_id"];
+            ConfigSha256=hash;ConfigVersion=version;YokedAnchorLeadMs=anchorLead;ProtocolVersion=protocol;StationId=(string)identity["station_id"];
             UnitId=(string)identity["unit_id"];CodedId=(string)identity["coded_id"];SessionId=(string)identity["session_id"];
             VisitId=(string)identity["visit_id"];BuildId=(string)identity["build_id"];
             ControlEndpoint=endpoint;ControlSessionId=controlSession;
@@ -100,8 +103,16 @@ namespace AcousticVocab.SessionIntegration
                 string path=System.IO.Path.GetFullPath(configPath),root=System.IO.Path.GetDirectoryName(path);
                 byte[] raw=ReadPinned(path,independentlyPinnedRawSha256,MaximumConfigBytes,null);
                 var document=StationConfig.ParseStrict(new UTF8Encoding(false,true).GetString(raw));
-                Keys(document,"version","scope","protocol_version","identity","files","directories","pins","control");
-                Need(document["version"].Type==JTokenType.Integer&&(long)document["version"]==1,"SESSION_JOIN_CONFIG_VERSION");
+                Need(document["version"]?.Type==JTokenType.Integer&&((long)document["version"]>=1&&(long)document["version"]<=3),"SESSION_JOIN_CONFIG_VERSION");
+                int version=(int)document["version"];
+                Keys(document,version==1?new[]{"version","scope","protocol_version","identity","files","directories","pins","control"}:new[]{"version","scope","protocol_version","identity","files","directories","pins","control","yoked_start"});
+                int? anchorLead=null;
+                if(version>=2&&document["yoked_start"].Type!=JTokenType.Null)
+                {
+                    var policy=Object(document["yoked_start"]);Keys(policy,"policy","lead_ms");
+                    Need(Text(policy["policy"])=="operator_start_plus_lead"&&policy["lead_ms"].Type==JTokenType.Integer&&(long)policy["lead_ms"]>=2000&&(long)policy["lead_ms"]<=60000,"SESSION_JOIN_ANCHOR_POLICY");
+                    anchorLead=(int)policy["lead_ms"];
+                }
                 Need(Text(document["scope"])=="DEMO_ENGINEERING","SESSION_JOIN_SCOPE");
                 Need(Text(document["protocol_version"])==protocolVersion,"SESSION_JOIN_PROTOCOL");
                 var identity=Object(document["identity"]);
@@ -111,17 +122,20 @@ namespace AcousticVocab.SessionIntegration
                 // an invented ID prefix cannot establish that authority.
                 foreach(string key in new[]{"station_id","unit_id","coded_id","visit_id","build_id"})Need(Id(Text(identity[key])),"SESSION_JOIN_IDENTITY");
                 Need(Guid(Text(identity["session_id"])),"SESSION_JOIN_IDENTITY");
-                var fileRows=Object(document["files"]);Keys(fileRows,requiredFiles.Concat(optionalFiles).ToArray());
+                var acceptedOptional=optionalFiles.Concat(version>=2?v2Files:Array.Empty<string>()).Concat(version>=3?new[]{"grammar_review"}:Array.Empty<string>()).ToArray();
+                var fileRows=Object(document["files"]);Keys(fileRows,requiredFiles.Concat(acceptedOptional).ToArray());
                 var files=new Dictionary<string,PinnedJoinFile>(StringComparer.Ordinal);
-                foreach(string name in requiredFiles.Concat(optionalFiles))
+                foreach(string name in requiredFiles.Concat(acceptedOptional))
                 {
                     JToken token=fileRows[name];
-                    if(token.Type==JTokenType.Null){Need(optionalFiles.Contains(name),"SESSION_JOIN_FILE_REQUIRED");files.Add(name,null);continue;}
+                    if(token.Type==JTokenType.Null){Need(acceptedOptional.Contains(name),"SESSION_JOIN_FILE_REQUIRED");files.Add(name,null);continue;}
                     var row=Object(token);Keys(row,"path","sha256");string sha=Text(row["sha256"]);Need(IsHash(sha),"SESSION_JOIN_FILE_PIN");
                     string full=Resolve(root,Text(row["path"]));
-                    int maximum=name=="menu_replay_ledger"?32*1024*1024:name=="schedule"||name=="neutral"||name=="run_sheet_csv"?16*1024*1024:1024*1024;
+                    int maximum=name=="menu_replay_ledger"?32*1024*1024:name=="schedule"||name=="neutral"||name=="run_sheet_csv"||name=="yoked_active_schedule"||name=="yoked_active_run_sheet_csv"?16*1024*1024:1024*1024;
                     files.Add(name,new PinnedJoinFile(full,sha,maximum));
                 }
+                if(version==1)foreach(string name in v2Files)files.Add(name,null);
+                if(version<3)files.Add("grammar_review",null);
                 var dirRows=Object(document["directories"]);Keys(dirRows,directoryNames);
                 var directories=new Dictionary<string,string>(StringComparer.Ordinal);
                 foreach(string name in directoryNames)
@@ -146,7 +160,7 @@ namespace AcousticVocab.SessionIntegration
                     IPAddress.TryParse(uri.Host,out var ip)&&IPAddress.IsLoopback(ip)&&uri.AbsolutePath=="/commands"&&
                     uri.UserInfo.Length==0&&uri.Query.Length==0&&uri.Fragment.Length==0,"SESSION_JOIN_CONTROL_ENDPOINT");
                 Need(Guid(session),"SESSION_JOIN_CONTROL_SESSION");
-                return new JoinedEngineeringConfig(independentlyPinnedRawSha256,protocolVersion,identity,endpoint,session,files,directories,pins);
+                return new JoinedEngineeringConfig(independentlyPinnedRawSha256,protocolVersion,identity,endpoint,session,version,anchorLead,files,directories,pins);
             }
             catch(SessionFault){throw;}catch{throw new SessionFault("SESSION_JOIN_CONFIG_INVALID");}
         }

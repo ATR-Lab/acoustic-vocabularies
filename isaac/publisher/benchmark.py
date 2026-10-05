@@ -85,13 +85,17 @@ class LocalCollector:
 
 def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snapshot_sha256,
                         seconds=3600, rate_hz=30, station_id="station-01", socket_path=None,
-                        joint_csv=None):
+                        joint_csv=None, collector_mode="thread"):
     """Advance actual physics at 60 Hz and read/publish at 30 or 60 Hz.
 
     Explicitly an unprotected engineering rate run: gravity/actuator settling
     may occur. Protected neutral-hold verification belongs to the command lock
     integration. A short run can never produce a passing one-hour rate screen.
     """
+    if collector_mode not in ("thread", "process"):
+        raise ValueError("Explicit thread or process diagnostic collector required")
+    from .process_collector import ProcessCollector
+    collector_factory = LocalCollector if collector_mode == "thread" else ProcessCollector
     if type(seconds) not in (int, float) or not math.isfinite(seconds) or seconds <= 0:
         raise ValueError("Positive finite run duration required")
     if type(rate_hz) is not int or rate_hz not in (30, 60):
@@ -124,7 +128,7 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
             return positions, objects, None
         publisher = StatePublisher(registry, sample, transport, output/"publish.csv", rate_hz=rate_hz)
         transport.health_provider = publisher.health
-        collector = LocalCollector(socket_path, registry)
+        collector = collector_factory(socket_path, registry)
         # Setup and connection latency are excluded; startup remains unqualified.
         start = time.monotonic_ns()
         publisher.epoch_ns = start
@@ -167,7 +171,7 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
         raise RuntimeError(failure or "Publisher setup failed")
     if collector and collector.error and not failure:
         failure = "LOCAL_COLLECTOR_FAILURE"
-    metadata = dict(rate_hz=rate_hz, requested_seconds=seconds, start_host_ns=str(start), end_host_ns=str(end),
+    metadata = dict(rate_hz=rate_hz, collector_mode=collector_mode, requested_seconds=seconds, start_host_ns=str(start), end_host_ns=str(end),
                     completed=failure is None and (end-start)/1e9 >= seconds, source_kind="live",
                     schema_validated_frames=publisher.published, fault=publisher.fault or failure,
                     station_id=station_id, scene_sha256=registry.scene_sha256,

@@ -23,6 +23,10 @@ namespace AcousticVocab.StateIntegration
         public double SampleAgeSeconds { get { RefreshSource(); return source?.SampleAgeSeconds ?? double.PositiveInfinity; } }
         public bool Stale => source?.Stale ?? true;
         public event Action<SourceEvent> Event;
+        // Main-thread observation after applying a visibly live frame. The
+        // second value is the latest accepted sample's local arrival, which can
+        // be newer than the interpolated frame. It never grants exposure.
+        public event Action<SceneFrame,double> FrameApplied;
         IRobotStateSource source;
         SnapshotSource snapshot;
         LiveSocketClient socket;
@@ -99,6 +103,8 @@ namespace AcousticVocab.StateIntegration
                 if(!foundation.Ready || !source.ResetConfirmed) confirmedAtBoundary=false;
                 if(frame!=null) renderer.Apply(frame);
                 workcell.gameObject.SetActive(foundation.Ready && frame!=null);
+                if(foundation.Ready && frame!=null && frame.Provenance=="live" && workcell.gameObject.activeInHierarchy && source is LiveIsaacSource live && live.Latest!=null)
+                    FrameApplied?.Invoke(frame,live.LastReceivedMonoSeconds);
                 if(now>=nextSample) { journal.Sample(source,now); nextSample=now+1.0/30; }
                 return true;
             }

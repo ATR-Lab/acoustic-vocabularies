@@ -79,6 +79,10 @@ namespace AcousticVocab.StateSources
         public bool ResetConfirmed { get; private set; }
         public bool SourceFresh { get; private set; }
         public SceneFrame Latest => latest;
+        // Receipt of the latest accepted progressing sample on LiveSocketClient's
+        // local Stopwatch clock. This is not the publisher clock or an
+        // interpolated frame's acquisition time; Latest is null before receipt.
+        public double LastReceivedMonoSeconds => lastReceived;
         public event Action<SourceEvent> Event;
         public LiveIsaacSource(double startMonoSeconds, double interpolationDelaySeconds=2.0/30, SourceClock sourceClock=null)
         {

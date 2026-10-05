@@ -9,7 +9,9 @@
     "AcousticVocab.ResponsePanel.Editor",
     "AcousticVocab.StateIntegration",
     "AcousticVocab.StateIntegration.Editor",
-    "AcousticVocab.StudyAudio"
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.Orientation",
+    "AcousticVocab.Workcell"
   ],
   "includePlatforms": [
     "Editor"

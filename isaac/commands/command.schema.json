@@ -1,0 +1,362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "hold_neutral"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "demo"
+        },
+        "args": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "enum": [
+                    "ADD_ONE",
+                    "REMOVE_ONE",
+                    "FLIP_CARD",
+                    "ALIGN_ARROW"
+                  ]
+                },
+                "target": {
+                  "enum": [
+                    "tray_A",
+                    "tray_B",
+                    "tray_C",
+                    "tray_D"
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "target"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "enum": [
+                    "SCAN",
+                    "TAG",
+                    "CLOSE",
+                    "QUARANTINE"
+                  ]
+                },
+                "target": {
+                  "enum": [
+                    "container_E",
+                    "container_F",
+                    "container_G",
+                    "container_H"
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "target"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "reset"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "set_mode"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": [
+                "teaching",
+                "test",
+                "post_endpoint"
+              ]
+            }
+          },
+          "required": [
+            "mode"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "pause"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "resume"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "stop"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "private_command"
+        },
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "command": {
+          "const": "health"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "control_session_id",
+        "request_id",
+        "command",
+        "args"
+      ]
+    }
+  ],
+  "description": "Private command channel only; no command is valid on public state wire v2."
+}
