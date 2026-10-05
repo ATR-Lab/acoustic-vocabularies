@@ -320,7 +320,52 @@ golden.write_wavs(items, out_dir) -> int; golden.digests(items) -> dict[str, str
   Store items may also change with `renderer_hash` or `validator_hash` (recorded by
   every book), so a byte-neutral code change only moves the store chain heads.
 
-## Fallback (#15), packages (#13)
+## Fallback (#15)
 
-*Pending.* Each pull request adds its section here: `scan_fallback()` and the
-package builder.
+Frozen fallback banks (64 recipes per profile) and fallback books (16 atoms per
+profile) for Study A protocol §3.7. Construction, stream, hashes and storage:
+[`sound/docs/fallback.md`](../../sound/docs/fallback.md). Formats:
+`sound/schema/fallback-manifest.schema.json`, `sound/schema/fallback-scan.schema.json`.
+
+```python
+build_fallback(seed: str, *, threshold=None, reserved=None) -> FallbackSet
+load_fallback(source: Mapping | str | os.PathLike) -> FallbackSet      # checks hashes; no render
+verify_fallback(fallback, *, reserved=None) -> tuple[str, ...]         # re-render + re-check; () = ok
+scan_fallback(bank: FallbackBank,
+              book_entries: Iterable[Reference | StoreEntry],          # the book, commit order
+              *, used: Iterable[int] = (),                             # bank indices used in this book
+              threshold=None, reserved=None) -> ScanResult
+freeze_fallback_books(store: VocabularyStore, fset: FallbackSet) -> tuple[FrozenFallbackBook, ...]
+fallback_bank_hash(manifest: Mapping) -> str
+```
+
+- `FallbackSet`: `.bank(profile) -> FallbackBank`, `.book(profile) -> FallbackBook`,
+  `.manifest()`, `.fallback_bank_hash`, `.summary()` (counts and digests only),
+  `.build_log()` (every draw and its codes), `seed_fingerprint`, `demo_seed`,
+  `threshold`, `reserved_sha256`.
+- `FallbackBank` (64 `BankEntry`: `index`, `draw`, `recipe`, `pcm_sha256`,
+  `file_sha256`, `.source` = `fallback-bank-P1-07`, `.reference()`; `.bank_sha256`).
+  `FallbackBook` (16 `BookAtom` in `ATOM_IDS` order: `atom_id`, `position`, `recipe`,
+  hashes, `.source` = `fallback-book-P1-K-a1`; `.book_sha256` = store snapshot digest,
+  `.recipes()`, `.references()`).
+- `scan_fallback` returns the lowest-index unused bank recipe that passes
+  `validate()` against the book (book threshold, reserved signals). `ScanResult`:
+  `selected` (`BankEntry` or `None`), `index`, `exhausted` (no recipe passes:
+  substitute `fset.book(profile)` and flag `failed_generation`), `log` (`ScanStep`:
+  `index`, `recipe_sha256`, `pcm_sha256`, `outcome` `used`/`rejected`/`selected`,
+  `codes`, `messages`), `validation` (the passing `ValidationResult`), `to_dict()`
+  (the scan record, logged apart from the 12 slots). The scan changes nothing.
+- Commit a selected recipe with `store.commit(book_id, atom_id, label, sel.recipe,
+  source=sel.source, pcm_sha256=sel.pcm_sha256)`.
+- Errors: `FallbackError` with `.code` `E_SEED`, `E_EXHAUSTED`, `E_MANIFEST`,
+  `E_VERSION`, `E_STALE` (a bank recipe no longer renders to its recorded waveform),
+  `E_POLICY`, `E_EXISTS`.
+- Seeds: `DEMO-...` seeds are public examples. Every other seed has at least 32
+  characters and stays in restricted storage with the outputs. Publish only
+  `fallback_bank_hash` (apparatus manifest, G4).
+- Tool: `sound/tools/build_fallback.py (--seed-file P | --demo-seed DEMO-x)
+  [--threshold T] [--out DIR] [--manifest P] [--check P]`.
+
+## Packages (#13)
+
+*Pending.* The pull request adds its section here: the package builder.

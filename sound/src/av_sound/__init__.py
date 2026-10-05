@@ -18,6 +18,9 @@ Stable public API (see `sound/README.md` and `docs/interfaces/sound-engine.md`):
   grammar clicks (`sound/docs/nonlexical.md`).
 - `VocabularyStore`, `StoreEntry`, `VerifyReport`: the append-only vocabulary store
   (`sound/docs/store.md`).
+- `build_fallback`, `scan_fallback`, `load_fallback`, `verify_fallback`,
+  `freeze_fallback_books`, `fallback_bank_hash`: fallback banks and books
+  (`sound/docs/fallback.md`).
 """
 
 from av_sound.composer import (
@@ -34,6 +37,24 @@ from av_sound.composer import (
     composite_hash,
     message_length,
     write_message_wav,
+)
+from av_sound.fallback import (
+    BANK_SIZE,
+    BankEntry,
+    BookAtom,
+    FallbackBank,
+    FallbackBook,
+    FallbackError,
+    FallbackSet,
+    FrozenFallbackBook,
+    ScanResult,
+    ScanStep,
+    build_fallback,
+    fallback_bank_hash,
+    freeze_fallback_books,
+    load_fallback,
+    scan_fallback,
+    verify_fallback,
 )
 from av_sound.features import (
     FEATURE_NAMES,
@@ -95,6 +116,7 @@ from av_sound.version import renderer_hash, renderer_manifest, renderer_recipe_s
 from av_sound.wav import file_sha256, pcm_sha256, read_wav, wav_bytes, write_wav
 
 __all__ = [
+    "BANK_SIZE",
     "CALIBRATION_SAMPLES",
     "E_DOMAIN",
     "E_JSON",
@@ -112,10 +134,17 @@ __all__ = [
     "VALIDATOR_VERSION",
     "AtomAudio",
     "AtomAudioLike",
+    "BankEntry",
+    "BookAtom",
     "BookFrozen",
     "BookInfo",
     "CommitRejected",
     "CompositionError",
+    "FallbackBank",
+    "FallbackBook",
+    "FallbackError",
+    "FallbackSet",
+    "FrozenFallbackBook",
     "GrammarError",
     "HeldOutMessageError",
     "Message",
@@ -129,6 +158,8 @@ __all__ = [
     "Rendered",
     "ReservedEntry",
     "ReservedRegistry",
+    "ScanResult",
+    "ScanStep",
     "StoreEntry",
     "StoreError",
     "StoreIntegrityError",
@@ -138,6 +169,7 @@ __all__ = [
     "VerifyIssue",
     "VerifyReport",
     "VocabularyStore",
+    "build_fallback",
     "build_reserved_registry",
     "calibration_example",
     "compose",
@@ -145,8 +177,11 @@ __all__ = [
     "composite_hash",
     "distance",
     "event_samples",
+    "fallback_bank_hash",
     "features",
     "file_sha256",
+    "freeze_fallback_books",
+    "load_fallback",
     "load_reserved_registry",
     "load_separation_threshold",
     "message_length",
@@ -161,12 +196,14 @@ __all__ = [
     "renderer_hash",
     "renderer_manifest",
     "renderer_recipe_schema_hash",
+    "scan_fallback",
     "self_test",
     "separated",
     "snapshot_digest",
     "sum_squared_diff",
     "timing",
     "validate",
+    "verify_fallback",
     "wav_bytes",
     "write_message_wav",
     "write_wav",

@@ -27,6 +27,7 @@ Nothing needs the network at runtime.
 | `src/av_sound/` | The package |
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
 | `schema/store-record.schema.json` | One line of a vocabulary-store log ([`docs/store.md`](docs/store.md)) |
+| `schema/fallback-manifest.schema.json`, `schema/fallback-scan.schema.json` | Fallback banks and books manifest; bank scan record ([`docs/fallback.md`](docs/fallback.md)) |
 | `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
 | `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
 | `reserved/registry.json` | Reserved-signal registry: the seven nonlexical assets (#14, [`docs/nonlexical.md`](docs/nonlexical.md)) |
@@ -35,7 +36,8 @@ Nothing needs the network at runtime.
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`) |
+| `testvectors/fallback/demo-manifest.json` | Fallback banks and books from the public seed `DEMO-fallback-v1` (example, not study material) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`) |
 | `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
 ## API
@@ -73,6 +75,11 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `StoreEntry`, `BookInfo`, `VerifyReport`, `VerifyIssue` | A committed atom (an `AtomAudioLike`; `.reference()`), book facts, `verify` result |
 | `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError`, `StoreLocked` | Store errors (`.code`); overwrite and frozen attempts are logged |
 | `persistence_violations(before, after)`, `snapshot_digest(snapshot)` | Growth check (old entries unchanged) and one publishable hash per book |
+| `build_fallback(seed, *, threshold=None, reserved=None) -> FallbackSet` | Banks (64) and books (16) for P1-P3 from a seed; `.bank(p)`, `.book(p)`, `.manifest()`, `.fallback_bank_hash` ([`docs/fallback.md`](docs/fallback.md)) |
+| `scan_fallback(bank, book_entries, *, used=(), threshold=None, reserved=None) -> ScanResult` | First unused bank recipe that passes the book's checks, or `None` (whole-book fallback); `.log`, `.to_dict()` |
+| `load_fallback(path_or_dict)`, `verify_fallback(...)`, `fallback_bank_hash(manifest)` | Read a manifest; re-render and re-check it; the apparatus-manifest hash |
+| `freeze_fallback_books(store, fset)` -> `FrozenFallbackBook`s | Fallback books into frozen store books of kind `fallback` (restricted storage only) |
+| `FallbackBank`, `FallbackBook`, `BankEntry`, `BookAtom`, `ScanStep`, `FallbackError`, `BANK_SIZE` | Values and errors (`.code`) of `av_sound.fallback` |
 | `av_sound.golden`: `build_manifest()`, `verify_manifest(manifest)`, `compute_items(specs)`, `check_wav_dir(items, dir)`, `write_wavs(items, dir)`, `GOLDEN_RECIPES` | Golden set and its checks ([`docs/golden.md`](docs/golden.md)) |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
 
