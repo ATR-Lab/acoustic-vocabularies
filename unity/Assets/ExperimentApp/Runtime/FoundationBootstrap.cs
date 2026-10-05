@@ -128,11 +128,13 @@ namespace AcousticVocab.Foundation
         void OnApplicationFocus(bool focused)
         {
             applicationFocused = focused;
+            if (!focused && initialRestore) startupOrigin.Reset();
             if (!focused && !initialRestore) { reference.MarkRecenter(); Fault("application_focus_lost"); }
         }
         void OnApplicationPause(bool paused)
         {
             applicationPaused = paused;
+            if (paused && initialRestore) startupOrigin.Reset();
             if (paused && !initialRestore) { reference.MarkRecenter(); Fault("application_paused"); }
         }
         void OnDestroy() { foreach (var system in subscribed) system.trackingOriginUpdated -= OnTrackingOriginUpdated; log?.Dispose(); }

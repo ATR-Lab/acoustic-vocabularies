@@ -141,7 +141,13 @@ namespace AcousticVocab.Foundation.Tests
             try
             {
                 var bootstrap=root.AddComponent<FoundationBootstrap>(); var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
-                typeof(FoundationBootstrap).GetMethod("OnApplicationFocus",flags).Invoke(bootstrap,new object[]{false});typeof(FoundationBootstrap).GetMethod("OnApplicationPause",flags).Invoke(bootstrap,new object[]{true});
+                var gate=(StartupOriginGate)typeof(FoundationBootstrap).GetField("startupOrigin",flags).GetValue(bootstrap);
+                gate.Observe(true,1);gate.Observe(true,1.3);
+                typeof(FoundationBootstrap).GetMethod("OnApplicationFocus",flags).Invoke(bootstrap,new object[]{false});
+                Assert.That(gate.Settled,Is.False); // A loss and return between Update calls must still restart settling.
+                gate.Observe(true,2);gate.Observe(true,2.3);
+                typeof(FoundationBootstrap).GetMethod("OnApplicationPause",flags).Invoke(bootstrap,new object[]{true});
+                Assert.That(gate.Settled,Is.False);
                 Assert.That((bool)typeof(FoundationBootstrap).GetField("applicationFocused",flags).GetValue(bootstrap),Is.False);
                 Assert.That((bool)typeof(FoundationBootstrap).GetField("applicationPaused",flags).GetValue(bootstrap),Is.True);
                 Assert.That(bootstrap.RestoreAtSafeBoundary("startup"),Is.False);
