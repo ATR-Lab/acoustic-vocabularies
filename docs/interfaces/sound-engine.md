@@ -317,6 +317,8 @@ golden.write_wavs(items, out_dir) -> int; golden.digests(items) -> dict[str, str
 - Changing an existing item needs an increase of a governing version field
   (`renderer_version`; plus `asset_spec_version` for nonlexical items and
   `validator_version` or `store_record_version` for store items) and a reviewer note.
+  Store items may also change with `renderer_hash` or `validator_hash` (recorded by
+  every book), so a byte-neutral code change only moves the store chain heads.
 
 ## Fallback (#15), packages (#13)
 

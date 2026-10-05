@@ -70,7 +70,7 @@ sorted keys and LF line endings (`.gitattributes` keeps `tests/golden/**` byte-e
 | --- | --- |
 | `format`, `format_version`, `synthetic` | `"av-sound golden manifest"`, `"1.0.0"`, `true` |
 | `renderer_version`, `renderer_hash` | The renderer the hashes come from (spec D10) |
-| `validator_version`, `asset_spec_version`, `store_record_version` | Other versions that shape item bytes |
+| `validator_version`, `validator_hash`, `asset_spec_version`, `store_record_version` | Other versions that shape item bytes; `validator_hash` is `av_sound.store.validator_code_hash()`, which every store book records |
 | `version_rules` | Per category, the version fields that may justify a changed item (section 4) |
 | `counts`, `digests` | Items per category; SHA-256 of the compact canonical JSON of the items, overall (`all`) and per category |
 | `items[]` | `id` (`<category>/...`), `category`, `inputs`, `outputs` |
@@ -148,19 +148,25 @@ On pull requests the `guard` job runs
 history. It compares the manifest at the merge base with the pull request:
 
 - New items pass.
-- A changed or removed item fails unless a version field that governs its category
-  increased. The rules are read from the base manifest, so a pull request cannot relax
+- A changed or removed item fails unless a header field that governs its category
+  changed. The rules are read from the base manifest, so a pull request cannot relax
   them:
 
 | Category | Version fields that may justify a change |
 | --- | --- |
 | `recipe`, `atom`, `message` | `renderer_version` |
 | `nonlexical` | `renderer_version`, `asset_spec_version` (`nonlexical.md` section 7) |
-| `store` | `renderer_version`, `validator_version`, `store_record_version` (`store.md`) |
+| `store` | `renderer_version`, `validator_version`, `store_record_version` (`store.md`), `renderer_hash`, `validator_hash` |
 
-- A version field that changes must increase. Deleting the manifest fails.
+- A version field that changes must increase; a hash field only needs to change.
+  Deleting the manifest fails.
+- A store book records `renderer_hash` and `validator_hash` in its first log record,
+  so a code change that leaves every waveform unchanged still moves the store chain
+  heads. A changed code hash therefore justifies changes to store items, and to no
+  other category: a waveform change always needs a version bump.
 - The report (job summary) lists every changed item and asks for the reviewer note.
-  A change to `renderer_hash` alone (code changed, bytes did not) passes with a note.
+  A change to `renderer_hash` or `validator_hash` alone (code changed, bytes did not)
+  passes with a note.
 
 The synthetic books (`av_sound.synthetic`) are inputs of the atom, message and store
 goldens. Do not change them; add new items instead.

@@ -33,7 +33,13 @@ RULES = {
     "atom": ["renderer_version"],
     "message": ["renderer_version"],
     "nonlexical": ["renderer_version", "asset_spec_version"],
-    "store": ["renderer_version", "validator_version", "store_record_version"],
+    "store": [
+        "renderer_version",
+        "validator_version",
+        "store_record_version",
+        "renderer_hash",
+        "validator_hash",
+    ],
 }
 
 
@@ -52,6 +58,7 @@ def manifest(*items: dict[str, Any], **header: Any) -> dict[str, Any]:
         "format": "av-sound golden manifest",
         "renderer_version": "0.1.0",
         "renderer_hash": "r" * 64,
+        "validator_hash": "v" * 64,
         "validator_version": "0.1.0",
         "asset_spec_version": "0.1.0",
         "store_record_version": 1,
@@ -119,6 +126,11 @@ def test_changed_hash_with_renderer_bump_passes_and_asks_for_a_reviewer_note():
         ("recipe/a/P1", {"validator_version": "0.2.0"}, False),
         ("recipe/a/P1", {"asset_spec_version": "1.0.0"}, False),
         ("recipe/a/P1", {"renderer_version": "1.0.0"}, True),
+        # A byte-neutral code change moves store chain heads only.
+        ("store/DEMO-P1", {"renderer_hash": "s" * 64}, True),
+        ("store/DEMO-P1", {"validator_hash": "w" * 64}, True),
+        ("recipe/a/P1", {"renderer_hash": "s" * 64}, False),
+        ("nonlexical/ready-cue", {"validator_hash": "w" * 64}, False),
     ],
 )
 def test_each_category_accepts_only_its_own_versions(item_id, header, ok):
@@ -166,9 +178,13 @@ def test_deleted_manifest_fails():
     assert not report.ok and "deleted" in report.violations[0]
 
 
-def test_renderer_hash_change_alone_passes_with_a_note():
+def test_code_hash_change_alone_passes_with_a_note():
     report = guard.check(BASE, manifest(*BASE["items"], renderer_hash="s" * 64))
-    assert report.ok and any("renderer_hash" in n for n in report.notes)
+    assert report.ok and report.hash_changes == ["renderer_hash"]
+    assert any("`renderer_hash` changed" in n for n in report.notes)
+    report = guard.check(BASE, manifest(*BASE["items"], validator_hash="w" * 64))
+    assert report.ok and report.hash_changes == ["validator_hash"]
+    assert "Changed code hashes: `validator_hash`." in guard.markdown(report, "origin/main")
 
 
 # --- Against a real git history ---------------------------------------------------------

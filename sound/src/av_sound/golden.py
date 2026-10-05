@@ -49,6 +49,7 @@ from av_sound.store import (
     StoreError,
     VocabularyStore,
     snapshot_digest,
+    validator_code_hash,
 )
 from av_sound.synthetic import synthetic_book_id, synthetic_recipes
 from av_sound.validate import VALIDATOR_VERSION
@@ -66,13 +67,22 @@ VERSION_RULES: Final[Mapping[str, tuple[str, ...]]] = {
     "atom": ("renderer_version",),
     "message": ("renderer_version",),
     "nonlexical": ("renderer_version", "asset_spec_version"),
-    "store": ("renderer_version", "validator_version", "store_record_version"),
+    "store": (
+        "renderer_version",
+        "validator_version",
+        "store_record_version",
+        "renderer_hash",
+        "validator_hash",
+    ),
 }
-"""Manifest version fields that may justify a change to an existing item of a category.
+"""Manifest header fields that may justify a change to an existing item of a category.
 
 A renderer change bumps `renderer_version` (renderer spec D10); an asset change bumps
 `asset_spec_version` (`sound/docs/nonlexical.md` section 7); a store record or
-validator change bumps its own version (`sound/docs/store.md`).
+validator change bumps its own version (`sound/docs/store.md`). A store book records
+`renderer_hash` and `validator_hash`, so a code change that leaves every waveform
+unchanged still moves the store chain heads: a changed hash field justifies changes to
+store items only. Version fields must increase; hash fields only need to change.
 `sound/tools/check_golden_bump.py` enforces this with the rules of the base manifest.
 """
 
@@ -343,7 +353,8 @@ def _message_item(
 
 def _atom_audio(item: GoldenItem) -> AtomAudio:
     assert item.pcm is not None
-    return AtomAudio(item.inputs["atom_id"], item.inputs["profile"], item.pcm)
+    inputs = item.inputs
+    return AtomAudio(inputs["atom_id"], inputs["profile"], item.pcm, book_id=inputs["book_id"])
 
 
 def _nonlexical_item(spec: Mapping[str, Any]) -> GoldenItem:
@@ -520,11 +531,12 @@ def counts(items: Iterable[GoldenItem | Mapping[str, Any]]) -> dict[str, int]:
 
 
 def engine_versions() -> dict[str, Any]:
-    """The header fields a manifest must match: versions and the renderer hash."""
+    """The header fields a manifest must match: versions and code hashes."""
     return {
         "renderer_version": RENDERER_VERSION,
         "renderer_hash": renderer_hash(),
         "validator_version": VALIDATOR_VERSION,
+        "validator_hash": validator_code_hash(),
         "asset_spec_version": ASSET_SPEC_VERSION,
         "store_record_version": RECORD_VERSION,
     }

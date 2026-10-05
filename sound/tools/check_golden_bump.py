@@ -8,12 +8,15 @@ The script compares tests/golden/manifest.json at the merge base of BASE_REF and
 HEAD with the manifest in the working tree:
 
 - New items are allowed.
-- A changed or removed item needs, in the same pull request, an increase of one of
-  the version fields that govern its category. The rules come from the
-  `version_rules` of the BASE manifest (so a pull request cannot relax them):
-  `renderer_version` for every category, plus `asset_spec_version` for nonlexical
-  assets and `validator_version` or `store_record_version` for the store round trip.
-- A version field that changes must increase.
+- A changed or removed item needs, in the same pull request, a change of one of the
+  header fields that govern its category. The rules come from the `version_rules` of
+  the BASE manifest (so a pull request cannot relax them): `renderer_version` for
+  every category, plus `asset_spec_version` for nonlexical assets and
+  `validator_version`, `store_record_version`, `renderer_hash` or `validator_hash`
+  for the store round trip (a book records the code hashes, so a byte-neutral code
+  change moves the store chain heads).
+- A version field (`*_version`) must increase when it changes; a hash field
+  (`renderer_hash`, `validator_hash`) only needs to change.
 - Deleting the manifest fails.
 
 It prints a Markdown report (for the job summary) that lists every changed item; a
@@ -40,6 +43,7 @@ VERSION_FIELDS = (
     "validator_version",
     "store_record_version",
 )
+HASH_FIELDS = ("renderer_hash", "validator_hash")
 
 
 @dataclass
@@ -49,7 +53,8 @@ class Report:
     changed: list[tuple[str, str]] = field(default_factory=list)  # (item id, what changed)
     removed: list[str] = field(default_factory=list)
     added: list[str] = field(default_factory=list)
-    bumps: dict[str, tuple[Any, Any]] = field(default_factory=dict)
+    bumps: dict[str, tuple[Any, Any]] = field(default_factory=dict)  # version increases
+    hash_changes: list[str] = field(default_factory=list)  # changed code-hash fields
     notes: list[str] = field(default_factory=list)
 
     def fail(self, message: str) -> None:
@@ -106,10 +111,12 @@ def check(base: Mapping[str, Any] | None, head: Mapping[str, Any] | None) -> Rep
             report.fail(f"`{name}` must increase when it changes: {old!r} -> {new!r}")
         else:
             report.bumps[name] = (old, new)
-    if base.get("renderer_hash") != head.get("renderer_hash"):
+    report.hash_changes = [n for n in HASH_FIELDS if base.get(n) != head.get(n)]
+    if report.hash_changes:
+        names = " and ".join(f"`{n}`" for n in report.hash_changes)
         report.notes.append(
-            "`renderer_hash` changed: the renderer code changed. If no golden hash changed, "
-            "the bytes are the same; say why in a reviewer note."
+            f"{names} changed: the renderer or validator code changed. If no waveform hash "
+            "changed, the bytes are the same; say why in a reviewer note."
         )
 
     rules: Mapping[str, Any] = base.get("version_rules") or {}
@@ -126,9 +133,10 @@ def check(base: Mapping[str, Any] | None, head: Mapping[str, Any] | None) -> Rep
         else:
             continue
         governing = tuple(rules.get(old_item.get("category"), DEFAULT_RULE))
-        if not any(name in report.bumps for name in governing):
+        justified = set(report.bumps) | set(report.hash_changes)
+        if not justified.intersection(governing):
             report.fail(
-                f"`{item_id}` {what}: needs an increase of {' or '.join(governing)} "
+                f"`{item_id}` {what}: needs a change of {' or '.join(governing)} "
                 "in the same pull request"
             )
     if report.changed or report.removed:
@@ -146,6 +154,8 @@ def markdown(report: Report, base_label: str) -> str:
         lines.append(f"Version bumps: {bumps}.")
     else:
         lines.append("Version bumps: none.")
+    if report.hash_changes:
+        lines.append(f"Changed code hashes: {', '.join(f'`{n}`' for n in report.hash_changes)}.")
     lines.append(
         f"Items: {len(report.added)} added, {len(report.changed)} changed, "
         f"{len(report.removed)} removed."

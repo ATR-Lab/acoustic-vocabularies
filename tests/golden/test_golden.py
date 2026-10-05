@@ -37,7 +37,7 @@ from av_sound.grammar import ATOM_IDS, HELDOUT_MESSAGE_IDS, TRAINED_MESSAGE_IDS
 from av_sound.nonlexical import ASSET_IDS, ASSET_SPEC_VERSION
 from av_sound.recipe import AMPLITUDES, GAPS_MS, PITCHES, RHYTHM_WEIGHTS, TOTAL_MS
 from av_sound.renderer import MIN_EVENT_SAMPLES, Rendered
-from av_sound.store import RECORD_VERSION
+from av_sound.store import RECORD_VERSION, validator_code_hash
 from av_sound.synthetic import synthetic_recipes
 
 REPO = Path(__file__).resolve().parents[2]
@@ -104,6 +104,7 @@ def test_manifest_header(committed):
     assert committed["renderer_version"] == RENDERER_VERSION
     assert committed["renderer_hash"] == renderer_hash()
     assert committed["validator_version"] == VALIDATOR_VERSION
+    assert committed["validator_hash"] == validator_code_hash()
     assert committed["asset_spec_version"] == ASSET_SPEC_VERSION
     assert committed["store_record_version"] == RECORD_VERSION
     assert committed["version_rules"] == {c: list(r) for c, r in golden.VERSION_RULES.items()}
