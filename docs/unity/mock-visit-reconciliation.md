@@ -159,3 +159,48 @@ after checking the pinned allocation and actual menu ledger. Both manifests
 and every raw artifact remain preserved. The corrected analyzer verifies
 integrity and reports the actual focus interruption and incomplete visit; it
 does not convert the run into a passed visit or qualification.
+
+## Cancelled planning contexts
+
+The fixed-slot engine can reuse an unconsumed attempt after an explicit
+operator resume. Its new planning context has a later scheduled onset and
+fresh audio-request IDs. The reconciler retains the old context and its raw
+records; it refuses a replacement after any cue intent, audio request or
+consumption. A missing resume, unfinished state transition, backwards onset
+within the same engine clock epoch, or reused audio ID also refuses the input.
+
+Frame capture intentionally emits a zero-frame `cancelled_before_window`
+summary and releases that still-unplayed attempt. A subsequent capture can
+therefore have the same attempt ID. Reconciliation binds each retired summary
+to the recorded Loaded context, before its old onset and the next resume. It
+requires zero attributed intervals and no frame fault for every retired
+context; the final context still has at most one summary with recomputed raw
+frame counts. A physical render interval may begin before the final context
+was registered during a stall. Its window ID must belong to the current
+context and its attributed overlap must fall at or after the current onset;
+the full interval still counts toward the timing failure screen. Missing,
+duplicated, reordered or wrongly attributed histories are rejected. The joined
+engine and frame capture share the recorded
+`Unity_process_Stopwatch_ms` clock; component epoch GUIDs are not treated as
+equal clock origins.
+
+Record-level recovery remains able to retain an unconsumed replacement after
+an engine clock epoch changes. Such a history explicitly reports
+`PLANNING_CLOCK_EPOCH_UNBOUND`; the analyzer does not compare its old and new
+onsets as though the clocks shared an origin. Frame histories spanning that
+change are refused until independently bound process/clock mappings exist.
+The current single-process manifest does not supply multi-process recovery
+provenance. Changing a GUID is neither proof of a restart nor a clock mapping.
+
+These preserved cancellations remain incomplete frame evidence. They do not
+erase an earlier gate failure, turn a started repeat into an unplayed attempt,
+or grant visit, physical timing or participant acceptance. Raw manifests and
+journals are never changed by this analysis.
+
+For older native builds, a never-started menu may have emitted one
+`menu_interrupted` row before that resume. Only the exact null-content schema
+with its matching deviation ID can bind to a retired context. Its original
+onset and observation must fall in that context's pre-cue interval; started,
+played, displayed or selected retired menu content remains a rejection. The
+old interruption is retained as an incomplete, unsealed menu history. It
+cannot authorize replay or make protocol completion true.

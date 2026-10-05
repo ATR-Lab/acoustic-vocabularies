@@ -80,6 +80,20 @@ def fixture(block="trained", start=1000):
     return records, trials, exposures, items
 
 
+def replanned_fixture():
+    """One cancelled planning context followed by an explicit fresh resume."""
+    f = fixture(); prefix = copy.deepcopy(f[0][:4])
+    for index, row in enumerate(prefix):
+        row["payload"].update(scheduled_onset_mono_ms=500., audio_request_ids=["b"*32], host_mono_ms=100.+index)
+    resume = copy.deepcopy(prefix[-1])
+    resume.update(attempt_id=None, opportunity_id=None)
+    resume["payload"].update(event="operator_resume", trial_id=None, opportunity_id=None, state=None,
+                             scheduled_onset_mono_ms=None, audio_request_ids=[], host_mono_ms=700.)
+    f[0][:0] = prefix + [resume]
+    for index, row in enumerate(f[0]): row["sequence"] = index
+    return f
+
+
 class Chains(unittest.TestCase):
     def test_exact_native_hash_bytes_keep_double_and_escapes(self):
         original = b'{"x":1.0,"text":"\\u00e9, \\\"sha256\\\":x","nested":{"sha256":"keep"}}'
@@ -193,13 +207,36 @@ class Reconciliation(unittest.TestCase):
         self.assertIn("AUDIO_CALLBACK_OR_COMPLETION_MISSING",self.run_fixture(f)["incomplete"])
 
     def test_safe_precue_context_replacement_is_allowed(self):
-        f=fixture();prefix=copy.deepcopy(f[0][:4])
-        for row in prefix:
-            row["payload"]["scheduled_onset_mono_ms"]=500
-            row["payload"]["audio_request_ids"]=["b"*32]
-            row["payload"]["host_mono_ms"]=100
-        f[0][:0]=prefix
-        self.assertEqual(self.run_fixture(f)["attempts"]["trial-1"]["retired_unplayed_contexts"],1)
+        f=replanned_fixture();a=self.run_fixture(f)["attempts"]["trial-1"]
+        self.assertEqual(a["retired_unplayed_contexts"],1)
+        self.assertEqual(a["retired_contexts"][0]["first"]["payload"]["audio_request_ids"],["b"*32])
+        self.assertEqual(a["first"]["payload"]["audio_request_ids"],[G])
+
+    def test_replanning_requires_explicit_resume_and_increasing_context(self):
+        for mutation in ("resume", "onset", "clock", "pending"):
+            f=replanned_fixture()
+            if mutation=="resume": f[0][4]["payload"]["event"]="session_paused"
+            elif mutation=="onset": f[0][5]["payload"]["scheduled_onset_mono_ms"]=400.
+            elif mutation=="clock": f[0][5]["payload"]["clock_epoch"]="c"*32
+            else: del f[0][3]
+            with self.subTest(mutation=mutation),self.assertRaisesRegex(EvidenceError,"MOCK_CONTEXT_REPLAN_ORDER|MOCK_CONSUMED_CONTEXT_REPLAY"):
+                self.run_fixture(f)
+
+    def test_replanning_cannot_reuse_a_retired_audio_id(self):
+        f=replanned_fixture();f[0][5]["payload"]["audio_request_ids"]=["b"*32]
+        with self.assertRaisesRegex(EvidenceError,"MOCK_CONTEXT_AUDIO_ID_REUSE"): self.run_fixture(f)
+
+    def test_new_engine_epoch_preserves_unplayed_history_without_clock_claim(self):
+        f=replanned_fixture()
+        for row in f[0][4:]:
+            if row["event_type"]=="session":row["payload"]["clock_epoch"]="c"*32
+        result=self.run_fixture(f)
+        self.assertIn("PLANNING_CLOCK_EPOCH_UNBOUND",result["incomplete"])
+        self.assertEqual(result["attempts"]["trial-1"]["retired_unplayed_contexts"],1)
+
+    def test_torn_precue_intent_is_not_a_retirable_context(self):
+        f=replanned_fixture();f[0][3]["payload"].update(event="state_before",state="CueRequested")
+        with self.assertRaisesRegex(EvidenceError,"MOCK_STATE_PAIR|MOCK_CONSUMED_CONTEXT_REPLAY"): self.run_fixture(f)
 
     def test_consumed_context_cannot_be_replaced(self):
         f=fixture();prefix=copy.deepcopy(f[0][:6])
@@ -328,6 +365,181 @@ class Supplemental(unittest.TestCase):
             changed=strict(files["events.jsonl"]);changed["within_1_5x_count"]=2;raw=compact(changed)+b'\n';(root/"events.jsonl").write_bytes(raw)
             entries[-1].update(bytes=len(raw),sha256=sha(raw));manifest=compact(dict(version=1,capture_kind="application_render_callbacks_not_photon_timestamps",files=entries))
             with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_COUNTS"):native.frames(root,[(dict(path="manifest.json"),manifest)],{"trial-1":{}},table,read,relative)
+
+
+class RetiredFrameEpochs(unittest.TestCase):
+    def capture(self):
+        attempts=reconcile_records(*replanned_fixture(),H)["attempts"]
+        cancelled=dict(kind="summary",attempt_id="trial-1",opportunity_id="trial-1",observed_mono_ms=150.,
+            frame_freeze_ms=None,frame_count=0,within_1_5x_count=0,capture_complete=False,cancelled_before_window=True)
+        final=dict(cancelled,observed_mono_ms=15000.,frame_freeze_ms=10.,frame_count=1,within_1_5x_count=1,
+            capture_complete=True,cancelled_before_window=False)
+        rows=[dict(attempt_id="trial-1",opportunity_id="trial-1",window_id="response",window_kind="response",
+                   frame_index=1,from_mono_ms=1000.,to_mono_ms=1010.,render_interval_ms=10.,overlap_ms=10.,runtime_refresh_hz=100.)]
+        metadata=dict(selected_refresh_hz=100.,physical_qualification=False,clock="Unity_process_Stopwatch_ms",clock_epoch="d"*32)
+        return attempts,[cancelled,final],rows,metadata
+
+    def verify(self, capture):
+        import csv,io
+        from tools.mock_visit.reconcile import table
+        attempts,events,rows,metadata=capture
+        columns="attempt_id opportunity_id window_id window_kind frame_index from_mono_ms to_mono_ms render_interval_ms overlap_ms runtime_refresh_hz".split()
+        text=io.StringIO();writer=csv.DictWriter(text,fieldnames=columns);writer.writeheader();writer.writerows(rows)
+        files={"metadata.json":compact(metadata),"frames.csv":text.getvalue().encode(),
+               "events.jsonl":b"".join(compact(row)+b"\n" for row in events)}
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);descriptors=[]
+            for name,raw in files.items():
+                (root/name).write_bytes(raw);descriptors.append(dict(path=name,bytes=len(raw),sha256=sha(raw)))
+            manifest=compact(dict(version=1,capture_kind="application_render_callbacks_not_photon_timestamps",files=descriptors))
+            return native.frames(root,[(dict(path="manifest.json"),manifest)],attempts,table,read,relative)
+
+    def test_retired_context_and_final_capture_are_both_retained(self):
+        missing,report=self.verify(self.capture())
+        self.assertIn("FRAME_CAPTURE_INCOMPLETE",missing)
+        self.assertEqual(report["final_attempt_summaries"],1)
+        self.assertEqual(report["raw_attributed_intervals"],1)
+        retired=report["retired_unplayed_planning_epochs"]
+        self.assertEqual(len(retired),1);self.assertEqual(retired[0]["audio_request_ids"],["b"*32])
+        self.assertEqual(retired[0]["scheduled_onset_mono_ms"],500.)
+        self.assertFalse(report["physical_display_timing_qualified"])
+
+    def test_two_cancelled_epochs_bind_in_order_without_overwriting(self):
+        f=fixture(start=2000);prefix=copy.deepcopy(replanned_fixture()[0][:5]);middle=copy.deepcopy(f[0][:4])
+        for index,row in enumerate(middle):
+            row["payload"].update(scheduled_onset_mono_ms=1000.,audio_request_ids=["c"*32],host_mono_ms=800.+index)
+        resume=copy.deepcopy(prefix[-1]);resume["payload"]["host_mono_ms"]=1700.
+        f[0][:0]=prefix+middle+[resume]
+        for index,row in enumerate(f[0]):row["sequence"]=index
+        attempts=reconcile_records(*f,H)["attempts"]
+        capture=self.capture();capture=capture[:];capture=(attempts,capture[1],capture[2],capture[3])
+        capture[1].insert(1,dict(capture[1][0],observed_mono_ms=850.))
+        capture[2][0].update(from_mono_ms=2000.,to_mono_ms=2010.)
+        _,report=self.verify(capture)
+        self.assertEqual([e["audio_request_ids"] for e in report["retired_unplayed_planning_epochs"]],[["b"*32],["c"*32]])
+        capture[1][0],capture[1][1]=capture[1][1],capture[1][0]
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_RETIRED_BOUNDARY"):self.verify(capture)
+
+    def test_both_zero_frame_epochs_keep_later_fault_and_incompletion(self):
+        capture=self.capture();capture[2].clear()
+        capture[1][-1].update(frame_count=0,within_1_5x_count=0,frame_freeze_ms=None,capture_complete=False)
+        capture[1].insert(1,dict(kind="fault",attempt_id="trial-1",opportunity_id="trial-1",observed_mono_ms=900.,
+            technical_fault_code="FRAME_ATTEMPT_INTERRUPTED",render_gap_ms=0.,watchdog=False))
+        missing,report=self.verify(capture)
+        self.assertTrue({"FRAME_FAULT_PRESENT","FRAME_CAPTURE_INCOMPLETE"}<=missing)
+        self.assertEqual(report["raw_attributed_intervals"],0)
+
+    def test_missing_cancelled_summary_is_not_inferred(self):
+        capture=self.capture();del capture[1][0]
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_RETIRED_STARTED"):self.verify(capture)
+
+    def test_missing_all_summaries_refuses_retired_history(self):
+        capture=self.capture();capture[1].clear()
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_RETIRED_SUMMARY_MISSING"):self.verify(capture)
+
+    def test_duplicate_or_reordered_summaries_refused(self):
+        for which in ("cancelled","final","reversed"):
+            capture=self.capture()
+            if which=="cancelled":capture[1].insert(1,copy.deepcopy(capture[1][0]))
+            elif which=="final":capture[1].append(copy.deepcopy(capture[1][-1]))
+            else:capture[1].reverse()
+            with self.subTest(which=which),self.assertRaises(EvidenceError):self.verify(capture)
+
+    def test_started_or_nonboolean_retired_summary_refused(self):
+        for key,value in (("frame_count",1),("capture_complete",True),("cancelled_before_window",False),
+                          ("within_1_5x_count",True),("frame_freeze_ms",0.)):
+            capture=self.capture();capture[1][0][key]=value
+            with self.subTest(key=key),self.assertRaises(EvidenceError):self.verify(capture)
+
+    def test_cancel_stamp_must_bind_to_loaded_precue_preresume_epoch(self):
+        for stamp in (50.,500.,701.,801.):
+            capture=self.capture();capture[1][0]["observed_mono_ms"]=stamp
+            with self.subTest(stamp=stamp),self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_RETIRED_BOUNDARY"):self.verify(capture)
+
+    def test_retired_or_boundary_straddling_interval_refused(self):
+        for start,end in ((140.,150.),(799.,809.)):
+            capture=self.capture();capture[2][0].update(from_mono_ms=start,to_mono_ms=end)
+            with self.subTest(start=start),self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_RETIRED_INTERVAL"):self.verify(capture)
+
+    def test_stalled_interval_spanning_registration_counts_full_gap_without_false_integrity_failure(self):
+        capture=self.capture();capture[2][0].update(from_mono_ms=100.,to_mono_ms=1010.,render_interval_ms=910.,overlap_ms=10.)
+        capture[1][-1].update(frame_freeze_ms=910.,within_1_5x_count=0)
+        missing,report=self.verify(capture)
+        self.assertIn("FRAME_BUDGET_SCREEN_FAILED",missing)
+        self.assertEqual(report["max_render_interval_ms"],910.)
+
+    def test_stalled_interval_cannot_charge_old_window_overlap_or_old_cue_id(self):
+        for mutation in ("overlap","cue"):
+            capture=self.capture();capture[2][0].update(from_mono_ms=100.,to_mono_ms=1010.,render_interval_ms=910.,overlap_ms=10.)
+            if mutation=="overlap":capture[2][0]["overlap_ms"]=910.
+            else:capture[2][0].update(window_kind="cue",window_id="b"*32)
+            with self.subTest(mutation=mutation),self.assertRaises(EvidenceError):self.verify(capture)
+
+    def test_new_engine_epoch_has_no_implicit_frame_clock_mapping(self):
+        capture=self.capture()
+        capture[0]["trial-1"]["retired_contexts"][0]["replacement"]["payload"]["clock_epoch"]="e"*32
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_CONTEXT_CLOCK"):self.verify(capture)
+
+    def test_fault_in_retired_epoch_is_not_a_safe_empty_cancellation(self):
+        capture=self.capture();capture[1].insert(0,dict(kind="fault",attempt_id="trial-1",opportunity_id="trial-1",
+            observed_mono_ms=140.,technical_fault_code="FRAME_FREEZE",render_gap_ms=300.,watchdog=True))
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_RETIRED_STARTED"):self.verify(capture)
+
+    def test_wrong_capture_clock_cannot_join_contexts(self):
+        capture=self.capture();capture[3]["clock"]="different_process_ms"
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_CONTEXT_CLOCK"):self.verify(capture)
+
+    def test_summary_cannot_precede_its_raw_interval(self):
+        capture=self.capture();capture[1][-1]["observed_mono_ms"]=1001.
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_SUMMARY_BEFORE_INTERVAL"):self.verify(capture)
+
+    def test_changed_time_does_not_make_old_cancel_a_valid_consumed_final(self):
+        capture=self.capture();capture[2].clear()
+        capture[1][-1]=dict(capture[1][0],observed_mono_ms=850.)
+        with self.assertRaisesRegex(EvidenceError,"MOCK_FRAME_CANCELLED_AFTER_CUE"):self.verify(capture)
+
+    def menu_fixture(self):
+        attempts=reconcile_records(*replanned_fixture(),H)["attempts"]
+        binding=dict(package_sha256=H,bank_sha256=H,allocation_sha256=H,schedule_sha256=H,
+                     unit_binding_sha256=H,review_sha256=H,visit="V1",role="active",menu_keys=["profile"])
+        header=dict(kind="header",format="av-menu-ledger/1",binding=binding,created_utc="2026-10-05T00:00:00Z",clock_epoch=G)
+        interrupted={key:None for key in "expected_mono_ms onset_uncertainty_ms audio_request_id presentation_index candidate_id pcm_sha256 file_sha256 yoked_source_event_id selected_index defaulted phase receipt_sha256".split()}
+        interrupted.update(kind="menu_interrupted",event_id=G,attempt_id="trial-1",opportunity_id="trial-1",menu_key="profile",
+                           meaning_display_id="synthetic-profile",slot_start_mono_ms=500.,mono_ms=150.,matching_deviation_id=G)
+        return [dict(record=header),dict(record=interrupted)],attempts,{"trial-1":dict(block="profile_menu")}
+
+    def verify_menu(self, value):
+        rows,attempts,items=value
+        return native.menu([rows],attempts,items,{},"active",H,H)
+
+    def test_known_empty_retired_menu_interruption_stays_incomplete(self):
+        missing=self.verify_menu(self.menu_fixture())
+        self.assertTrue({"MENU_EVENTS_INCOMPLETE","MENU_LEDGER_UNSEALED","MENU_SEAL_MISSING",
+                         "MENU_RETIRED_PLANNING_INTERRUPTION","MENU_ATTEMPT_COVERAGE_INCOMPLETE"}<=missing)
+
+    def test_retired_menu_cannot_contain_started_content_or_receipt(self):
+        mutations=[("kind",kind) for kind in ("menu_start","play_request","display_changed","choice_final","selection_verified")]
+        mutations += [("audio_request_id",G),("pcm_sha256",H),("selected_index",1),("phase","Instructions"),
+                      ("receipt_sha256",H),("expected_mono_ms",500.),("matching_deviation_id","b"*32)]
+        for key,value in mutations:
+            f=self.menu_fixture();f[0][1]["record"][key]=value
+            with self.subTest(key=key,value=value),self.assertRaisesRegex(EvidenceError,"MOCK_MENU_RETIRED_CONTENT"):self.verify_menu(f)
+
+    def test_retired_menu_wrong_anchor_clock_or_duplicate_refused(self):
+        for mutation in ("anchor","time","duplicate","cue"):
+            f=self.menu_fixture();p=f[0][1]["record"]
+            if mutation=="anchor":p["slot_start_mono_ms"]=499.
+            elif mutation=="time":p["mono_ms"]=700.
+            elif mutation=="duplicate":
+                duplicate=copy.deepcopy(f[0][1]);duplicate["record"].update(event_id="e"*32,matching_deviation_id="e"*32);f[0].append(duplicate)
+            else:f[1]["trial-1"]["retired_contexts"][0]["records"][0]["payload"]["state"]="CueRequested"
+            with self.subTest(mutation=mutation),self.assertRaises(EvidenceError):self.verify_menu(f)
+
+    def test_retired_menu_interruption_cannot_follow_final_menu_start(self):
+        f=self.menu_fixture();started=copy.deepcopy(f[0][1]);started["record"].update(kind="menu_start",event_id="e"*32,
+            matching_deviation_id=None,slot_start_mono_ms=1000.,mono_ms=800.,expected_mono_ms=1000.)
+        f[0].insert(1,started)
+        with self.assertRaisesRegex(EvidenceError,"MOCK_MENU_RETIRED_CONTENT"):self.verify_menu(f)
 
 
 class ManifestEmitter(unittest.TestCase):
