@@ -431,3 +431,30 @@ def test_mailbox_cli_empty_bootstrap_then_live_process(bridge,tmp_path):
         assert response(mailbox,atom)['receipt']['status']=='committed'
     finally:
         if process.poll() is None:process.kill();process.wait()
+
+
+@pytest.mark.parametrize('mode',['codec','service'])
+def test_reproducible_fixture_uses_fresh_store_and_read_only_sources(bridge,tmp_path,mode):
+    from tools.menu_store_fixture import prepare_fixture
+    source=tmp_path/'source-config.json';source.write_bytes(canonical_json(bridge.config))
+    source_hash=hashlib.sha256(source.read_bytes()).hexdigest()
+    root=tmp_path/'fixture'
+    result=prepare_fixture(source,source_hash,root,mode=mode)
+    assert result['mode']==mode and not result['participant_ready'] and not result['timing_qualified']
+    assert source_hash==hashlib.sha256(source.read_bytes()).hexdigest()
+    assert not bridge.store.log_path(bridge.book_id).exists()
+    generated=json.loads((root/'config.json').read_text());assert Path(generated['store_root'])==root/'store'
+    initial=json.loads((root/'initial-snapshot.json').read_text())
+    assert initial['entries']==[] and initial['manifest_sha256']==result['initial_manifest_sha256']
+    assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==sha for name,sha in result['files'].items())
+    if mode=='codec':
+        assert json.loads((root/'atom-response.json').read_text())['receipt']['status']=='committed'
+    else:assert not list((root/'mailbox/requests').iterdir())
+    with pytest.raises(BridgeError,match='FIXTURE_EXISTS'):prepare_fixture(source,source_hash,root,mode=mode)
+
+
+def test_fixture_bad_source_pin_refuses_before_output(bridge,tmp_path):
+    from tools.menu_store_fixture import prepare_fixture
+    source=tmp_path/'source-config.json';source.write_bytes(canonical_json(bridge.config))
+    with pytest.raises(BridgeError,match='CONFIG_FILE_HASH'):prepare_fixture(source,'0'*64,tmp_path/'out',mode='service')
+    assert not (tmp_path/'out').exists()
