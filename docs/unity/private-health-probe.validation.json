@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "scope": "private_websocket_health_transport_software_checks",
+  "runtime_source_commit": "16a9648",
+  "baseline_commit": "5dc665b11e6c310c60bdb9fa22b3239d4604388d",
+  "editor": "6000.6.0f1",
+  "checks": [
+    {
+      "kind": "edit_mode_probe_exchange_queue_health_cadence",
+      "passed": 65,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "result_sha256": "355dcbf46706296832f6daabdc47b78b14eaee22d52e2a685cf3d4bc3be330c3"
+    },
+    {
+      "kind": "play_mode_actual_audio_grammar_failure_and_host_lifecycle",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "result_sha256": "4429ddc1bb11eb83fc5861fb8d8b94ec7cc731928959f141b6c4439890ba2186"
+    }
+  ],
+  "preserved_incomplete_attempt": {
+    "kind": "first_edit_mode_async_fixture_stall",
+    "compiler_succeeded": true,
+    "result_xml_produced": false,
+    "owned_editor_stopped": true,
+    "correction": "Test exchanges run on Task.Run, matching the production worker; runtime source unchanged."
+  },
+  "http_diagnostic": {
+    "native_player": false,
+    "installed_mono_process_bits": 32,
+    "prior_first_request_timeout_retained": true,
+    "completed_probes": 20,
+    "round_trip_ms": {"min": 106.6648, "median": 123.6918, "max": 188.9688},
+    "headers_to_body_complete_median_ms": 0.04135,
+    "last_data_to_eof_median_ms": 0.009,
+    "result_sha256": "648cdbe9ee190231d494eee8a9e0d342e358e4b892389f6c2f10dd2db782e1ed",
+    "qualification": false
+  },
+  "limits": [
+    "Probe deadline remains 200 ms; effective health age remains 250 ms including full RTT, source ages, and local receipt age.",
+    "Protocol and transport tests use scripted sockets and actual queue/parser/gate code; they do not establish native network performance.",
+    "No native WebSocket-health visit or completed grammar is claimed by this test record.",
+    "Participant admission, physical headset and acoustic qualification remain absent."
+  ]
+}
