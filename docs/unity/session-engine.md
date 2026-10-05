@@ -75,11 +75,16 @@ raw evidence is retained and its hashes are in `session-engine-validation.json`.
 
 Three play-mode lifecycle tests inject focus loss, reopen the durable journal
 across engine recreation, and withhold the new post-item reset acknowledgement.
-They use mock content and a controlled clock. Native engineering builds retain
-the pure engine assembly for compilation; the Foundation scene does not yet
-bind participant content. Physical on-device mock blocks, process-kill/device
+All three passed using mock content and a controlled clock. Windows x64 Mono and
+Android ARM64 IL2CPP builds at `44de0e0` passed with zero errors; the generated
+native output includes the retained session-engine assembly. The Foundation
+scene does not yet bind participant content. Physical on-device mock blocks, process-kill/device
 recovery, qualified onset evidence, #62/#65 bindings and #68–70 modules remain
 pending. Engine recreation is not described as a process-kill test.
+
+Hosted repository checks passed. The hosted Unity configuration gate remains
+failed because its isolated licensed runner and required configuration have not
+been provisioned. Local results do not bypass or qualify that gate.
 
 See [the journal handoff](../interfaces/session-journal.md) for the #72 adapter
 boundary. Exact methodology CSV headers, export, encrypted archival and upload
