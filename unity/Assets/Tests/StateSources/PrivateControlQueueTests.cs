@@ -19,8 +19,10 @@ namespace AcousticVocab.Tests
         string Admit()
         {
             client.RequestMode();string mode=(string)journal[0]["request"]["request_id"];now=20;client.ReceiveReply(mode,Reply(mode,"set_mode",10).ToString(),0,20);client.Pump();
-            string reset=client.RequestReset();now=40;client.ReceiveReply(reset,Reply(reset,"reset",20).ToString(),20,40);
-            Assert.That(client.ResetAcknowledged(reset),Is.True,"Read must persist a queued exact reset reply before admission");return reset;
+            string reset=client.RequestReset();now=30;client.ReceiveReply(reset,Reply(reset,"reset",15).ToString(),20,30);
+            Assert.That(client.ResetAcknowledged(reset),Is.False,"An exact ACK alone must not admit exposure");
+            now=40;var probe=Health(20);probe["publisher_age_ms"]=25;ReceiveHealth(probe.ToString(),30,40);
+            Assert.That(client.ResetAcknowledged(reset),Is.True,"Admission requires a progressing real probe after the durable ACK");return reset;
         }
         [Test]public void SecondExposureReadUsesQueuedRealProgressAfterDurableWriteDelay()
         {
@@ -31,6 +33,46 @@ namespace AcousticVocab.Tests
             Assert.That(client.ResetAcknowledged(reset),Is.True);
             var detail=client.ReadinessDiagnostic(reset);Assert.That((double)detail["receipt_elapsed_ms"],Is.EqualTo(2));Assert.That((double)detail["round_trip_ms"],Is.EqualTo(10));Assert.That((double)detail["effective_age_ms"],Is.EqualTo(27));Assert.That((int)detail["queued_arrivals"],Is.Zero);
             Assert.That(journal.Count,Is.EqualTo(4),"Health consumption does not reissue or duplicate command history");
+        }
+        [TestCase("missing",false)][TestCase("sent_before_ack",false)][TestCase("same_host_sample",false)]
+        [TestCase("wrong_mode",false)][TestCase("stale",false)][TestCase("fresh",true)]
+        public void NewExactResetNeedsItsOwnFreshProgressingPostReceiptProbe(string scenario,bool expected)
+        {
+            string previous=Admit();string reset=client.RequestReset();now=70;
+            client.ReceiveReply(reset,Reply(reset,"reset",40).ToString(),50,70);
+            Assert.That(client.ResetAcknowledged(reset),Is.False);
+            Assert.That((bool)client.ReadinessDiagnostic(reset)["exact_reset_recorded"],Is.True,"Durable exact acknowledgement history is retained while admission waits");
+            Assert.That((bool)client.ReadinessDiagnostic(reset)["post_reset_probe_observed"],Is.False);
+            Assert.That(client.ResetAcknowledged(previous),Is.False,"A command snapshot cannot silently replace the required probe for exposure");
+            now=100;
+            if(scenario!="missing")
+            {
+                var probe=Health(scenario=="same_host_sample"?40:50);
+                if(scenario=="wrong_mode")probe["mode"]="test";
+                if(scenario=="stale")probe["publisher_age_ms"]=225;
+                ReceiveHealth(probe.ToString(),scenario=="sent_before_ack"?69:70,90);
+            }
+            Assert.That(client.ResetAcknowledged(reset),Is.EqualTo(expected));
+            Assert.That(journal.Count,Is.EqualTo(6),"Waiting for a probe does not issue another reset, duplicate its journal row or create new authority");
+        }
+        [Test]public void NativeNearExpiryResetReceiptWaitsForRealProbeWithoutFresheningItsAges()
+        {
+            Admit();string reset=client.RequestReset();now=41597.9773;
+            var reply=Reply(reset,"reset",1220897258.133139);
+            reply["health"]["neutral_verification_age_ms"]=3.889507;reply["health"]["publisher_age_ms"]=90.972948;
+            client.ReceiveReply(reset,reply.ToString(),41457.3190,41582.8842);
+            Assert.That(client.ResetAcknowledged(reset),Is.False,"A009's actual reset ACK has too little remaining budget to serve as the first post-reset probe");
+            var retained=client.ReadinessDiagnostic(reset);
+            Assert.That((double)retained["round_trip_ms"],Is.EqualTo(125.5652).Within(.00001));
+            Assert.That((double)retained["publisher_age_ms"],Is.EqualTo(90.972948));
+            now=41620;Assert.That(client.ResetAcknowledged(reset),Is.False);
+            var probe=Health(1220897300);probe["publisher_age_ms"]=20;now=41640;
+            ReceiveHealth(probe.ToString(),41582.9806,41635);
+            Assert.That(client.ResetAcknowledged(reset),Is.True);
+            var fresh=client.ReadinessDiagnostic(reset);Assert.That((double)fresh["round_trip_ms"],Is.EqualTo(52.0194).Within(.00001));
+            Assert.That((double)fresh["receipt_elapsed_ms"],Is.EqualTo(5));
+            now=41813;Assert.That(client.ResetAcknowledged(reset),Is.False,"The probe's original 250 ms bound still expires; ACK history is not freshened");
+            Assert.That((bool)client.ReadinessDiagnostic(reset)["exact_reset_recorded"],Is.True);
         }
         [Test]public void AbsenceOrDuplicateProgressCannotExtendTheOriginalFreshnessBound()
         {
