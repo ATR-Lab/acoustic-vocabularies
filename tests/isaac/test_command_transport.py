@@ -24,6 +24,8 @@ class SyntheticReset:
     def reset(self):
         self.exposure_ready = True
         return {"reset_ok": True}
+    def verify_current(self):
+        return {"reset_ok": True}
 
 
 @unittest.skipUnless(importlib.util.find_spec("websockets"), "requires approved preinstalled websockets")

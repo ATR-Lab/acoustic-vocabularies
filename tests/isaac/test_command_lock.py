@@ -142,7 +142,7 @@ def test_test_transition_cancels_active_and_prioritizes_over_queued_demo():
     locked = handoff.submit(command(dispatcher, "set_mode", {"mode": "test"}), "127.0.0.1")
     handoff.drain()
     assert active.result()["reason"] == "PROTECTED_MODE_INTERRUPTED"
-    assert queued.result()["reason"] == "PROTECTED_TARGET_COMMAND"
+    assert queued.result()["reason"] == "PROTECTED_BOUNDARY_SUPERSEDED"
     assert locked.result()["reset_ok"] and dispatcher.mode == "test" and reset.exposure_ready
     assert len(motions) == 1
 
@@ -234,3 +234,38 @@ def test_disconnect_and_shutdown_do_not_leave_unlogged_jobs():
     handoff.close()
     assert pending.result()["reason"] == "SERVICE_STOPPING" and len(events) == 2
     assert handoff.submit(command(dispatcher, "health"), "127.0.0.1").result()["reason"] == "SERVICE_STOPPING"
+
+
+def test_priority_lock_supersedes_earlier_queued_unlock_and_demo():
+    _, _, _, dispatcher, _, motions = setup()
+    handoff = CommandQueue(dispatcher)
+    unlock_raw = command(dispatcher, "set_mode", {"mode": "teaching"})
+    unlock = handoff.submit(unlock_raw, "127.0.0.1")
+    demo = handoff.submit(command(dispatcher, "demo", {"action": "SCAN", "target": "container_E"}), "127.0.0.1")
+    lock = handoff.submit(command(dispatcher, "set_mode", {"mode": "test"}), "127.0.0.1")
+    handoff.drain()
+    assert lock.result()["accepted"] and dispatcher.mode == "test" and not motions
+    assert unlock.result()["reason"] == demo.result()["reason"] == "PROTECTED_BOUNDARY_SUPERSEDED"
+    assert dispatcher.submit(unlock_raw, "127.0.0.1").result()["duplicate"]
+    assert dispatcher.mode == "test"
+    new_unlock = handoff.submit(command(dispatcher, "set_mode", {"mode": "teaching"}), "127.0.0.1")
+    handoff.drain()
+    assert new_unlock.result()["accepted"] and dispatcher.mode == "teaching"
+
+
+def test_exposure_health_requires_current_neutral_and_fresh_healthy_publisher():
+    adapter, _, _, dispatcher, _, _ = setup()
+    class Publisher:
+        closed = False
+        status = {"fault": None, "stale": False}
+        def health(self): return self.status
+    assert not dispatcher.health()["exposure_ready"]
+    dispatcher.publisher = Publisher()
+    assert dispatcher.health()["exposure_ready"]
+    dispatcher.publisher.status["fault"] = "NEUTRAL_DIVERGED"
+    assert not dispatcher.health()["exposure_ready"]
+    dispatcher.publisher.status.update(fault=None, stale=True)
+    assert not dispatcher.health()["exposure_ready"]
+    dispatcher.publisher.status["stale"] = False
+    adapter.state["objects"]["engineering_object_0"]["state"]["card_face"] = 1
+    assert not dispatcher.health()["exposure_ready"]

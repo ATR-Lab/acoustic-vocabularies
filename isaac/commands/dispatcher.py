@@ -42,10 +42,41 @@ class CommandDispatcher:
 
     def health(self):
         self._thread()
+        neutral = self.mode == "test" and self.neutral_hold and self.reset_manager.exposure_ready
+        if neutral:
+            neutral = self.reset_manager.verify_current()["reset_ok"]
+        publisher_ready = False
+        if self.publisher is not None:
+            try:
+                status = self.publisher.health()
+                publisher_ready = not self.publisher.closed and status.get("fault") is None and status.get("stale") is False
+            except Exception:
+                publisher_ready = False
         return {"control_session_id": self.control_session_id, "mode": self.mode, "paused": self.paused, "stopped": self.stopped,
                 "fault": self.fault, "demo_active": self.active is not None,
-                "exposure_ready": self.mode == "test" and self.neutral_hold and self.reset_manager.exposure_ready and not self.fault and not self.paused and not self.stopped,
+                "publisher_ready": publisher_ready,
+                "exposure_ready": bool(neutral and publisher_ready and not self.fault and not self.paused and not self.stopped),
                 "public_stream_recovered": False}
+
+    def reject(self, raw, peer, reason):
+        """Audit a queue-boundary rejection on the simulation thread."""
+        self._thread()
+        try:
+            value = decode(raw)
+        except (ValueError, TypeError):
+            value, reason = None, "MALFORMED"
+        job = dict(raw=raw, peer=peer, value=value, future=Future())
+        if peer != self.allowed_client:
+            reason = "UNKNOWN_CLIENT"
+        else:
+            try:
+                validate(value)
+                if value["control_session_id"] == self.control_session_id and value["request_id"] not in self.cache and len(self.cache) < self.cache_size:
+                    job["fingerprint"] = fingerprint(value)
+            except (ValueError, TypeError):
+                pass
+        self._complete(job, False, reason)
+        return job["future"]
 
     def _complete(self, job, accepted, reason, *, reset_ok=None, duplicate=False, remember=True):
         value = job["value"]
@@ -105,8 +136,7 @@ class CommandDispatcher:
         # This check deliberately precedes schema dispatch AND replay lookup.
         # Replaying an old accepted teaching demo in test mode is still denied.
         if self.mode == "test" and target_bearing(job["value"]):
-            self._complete(job, False, "PROTECTED_TARGET_COMMAND", remember=False)
-            return job["future"]
+            return self.reject(raw, peer, "PROTECTED_TARGET_COMMAND")
         try:
             value = validate(job["value"])
         except (ValueError, TypeError):

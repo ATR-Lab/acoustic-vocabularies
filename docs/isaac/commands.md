@@ -43,7 +43,12 @@ No grasp or motion is implemented by this dispatcher.
 The bounded queue admits network requests without touching USD or PhysX. The
 simulation thread drains it before advancing motion. `stop` and test-mode
 transitions have priority over queued demos; each queued demo still passes the
-current lock when dispatched. One generator yield is one safe interrupt point.
+current lock when dispatched. A completed test-lock transition also supersedes
+every queued demo, resume, or mode-unlock intent admitted before its
+acknowledgement. Otherwise an older queued teaching-mode command could undo the
+priority lock later in the same drain batch. Superseded request IDs are retained
+as rejected; a new explicit intent must use a new ID after the acknowledgement.
+One generator yield is one safe interrupt point.
 Hooks must not perform long blocking work between yields. Closing a generator
 is followed by reset when entering test or stopping, so a pending teaching
 motion cannot execute after the lock acknowledgement.
@@ -66,6 +71,10 @@ Disconnected clients do not cancel already admitted commands or their logs.
 a new verification; callers must also check current health/exposure state.
 Reset never claims to recover a latched #54 publisher fault. Public stream
 recovery currently requires an explicit service restart.
+`health.exposure_ready` additionally requires a fresh, healthy attached publisher
+and an immediate complete neutral readback. With no publisher attached it stays
+false. This is a backend gate; client/source-clock and headset freshness checks
+remain necessary in the session engine.
 
 ## Simulation loop and neutral holding
 

@@ -80,6 +80,9 @@
         "demo_active": {
           "type": "boolean"
         },
+        "publisher_ready": {
+          "type": "boolean"
+        },
         "exposure_ready": {
           "type": "boolean"
         },
@@ -94,6 +97,7 @@
         "stopped",
         "fault",
         "demo_active",
+        "publisher_ready",
         "exposure_ready",
         "public_stream_recovered"
       ]

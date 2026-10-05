@@ -1,6 +1,5 @@
 """Bounded transport handoff; only drain() touches the command dispatcher."""
 from concurrent.futures import Future
-import itertools
 import queue
 import threading
 import time
@@ -15,7 +14,8 @@ class CommandQueue:
             raise ValueError("positive bounded command capacity required")
         self.dispatcher = dispatcher
         self.queue = queue.PriorityQueue(maxsize=capacity)
-        self.sequence = itertools.count()
+        self.sequence = 0
+        self.lock_boundary = -1
         self.lock = threading.Lock()
         self.closed = False
         self.refresh_health()
@@ -59,7 +59,8 @@ class CommandQueue:
                 reason = "SERVICE_STOPPING"
             else:
                 try:
-                    self.queue.put_nowait((priority, next(self.sequence), raw, peer, future))
+                    self.queue.put_nowait((priority, self.sequence, raw, peer, future))
+                    self.sequence += 1
                 except queue.Full:
                     reason = "COMMAND_QUEUE_FULL"
         if reason:
@@ -70,11 +71,29 @@ class CommandQueue:
         self.dispatcher._thread()
         for _ in range(limit):
             try:
-                _, _, raw, peer, output = self.queue.get_nowait()
+                _, sequence, raw, peer, output = self.queue.get_nowait()
             except queue.Empty:
                 break
             try:
-                pending = self.dispatcher.submit(raw, peer)
+                value = None
+                try:
+                    value = decode(raw)
+                except (ValueError, TypeError):
+                    pass
+                unlock_or_demo = isinstance(value, dict) and (value.get("command") in ("demo", "resume") or
+                    value.get("command") == "set_mode" and value.get("args") != {"mode": "test"})
+                if sequence <= self.lock_boundary and unlock_or_demo:
+                    pending = self.dispatcher.reject(raw, peer, "PROTECTED_BOUNDARY_SUPERSEDED")
+                else:
+                    pending = self.dispatcher.submit(raw, peer)
+                if pending.done() and not pending.exception():
+                    reply = pending.result()
+                    if (isinstance(value, dict) and value.get("command") == "set_mode" and value.get("args") == {"mode": "test"}
+                            and not reply["duplicate"] and reply["reason"] in ("MODE_CHANGED", "RESET_FAILED")):
+                        # All intent admitted before this acknowledgement is
+                        # superseded, including requests received during reset.
+                        with self.lock:
+                            self.lock_boundary = self.sequence-1
                 def finish(result, output=output):
                     if output.done():
                         return
