@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('Configure','Test','TestPlayMode','Android','Windows')][string]$Target,
     [Parameter(Mandatory)][string]$ProtocolVersion,
     [Parameter(Mandatory)][string]$BuildId,
-    [ValidateSet('Foundation','Workcell','StateSources','ResponsePanel')][string]$Scene = 'Foundation',
+    [ValidateSet('Foundation','Workcell','StateSources','ResponsePanel','Orientation')][string]$Scene = 'Foundation',
     [string]$G1Description,
     [switch]$AllowDirty,
     [string]$TemporaryDirectory,
@@ -21,7 +21,7 @@ $dirty = [bool](& git -C $repo status --porcelain)
 if ($dirty -and -not $AllowDirty) { throw 'Working tree is dirty. Commit reviewed source or explicitly mark a local engineering build with -AllowDirty.' }
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 $environment = @{ EXPERIMENT_PROTOCOL_VERSION=$ProtocolVersion; EXPERIMENT_BUILD_ID=$BuildId; EXPERIMENT_COMMIT_SHA=$revision; EXPERIMENT_DIRTY_SOURCE=$dirty.ToString().ToLowerInvariant() }
-if ($Scene -in @('Workcell','StateSources','ResponsePanel')) {
+if ($Scene -in @('Workcell','StateSources','ResponsePanel','Orientation')) {
     if (-not $G1Description -or -not (Test-Path -LiteralPath $G1Description -PathType Leaf)) { throw 'Workcell requires the reviewed converted G1 description via -G1Description.' }
     $environment.G1_DESCRIPTION_JSON=(Resolve-Path -LiteralPath $G1Description).Path
 }
@@ -48,7 +48,7 @@ if ($Target -in @('Test','TestPlayMode')) {
     $unityArguments += @('-runTests','-testPlatform',$platform,'-assemblyNames',($testAssemblies -join ';'),'-testResults',('"'+$results+'"'))
 } else {
     $method = if ($Target -eq 'Configure') { 'Configure' } else { 'Build'+$Target }
-    $builder = switch ($Scene) { 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
+    $builder = switch ($Scene) { 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Orientation' { 'AcousticVocab.Orientation.Editor.OrientationBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
 $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru

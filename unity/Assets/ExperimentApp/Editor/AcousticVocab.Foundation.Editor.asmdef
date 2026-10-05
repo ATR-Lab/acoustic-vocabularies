@@ -10,7 +10,8 @@
     "Unity.XR.OpenXR.Editor",
     "AcousticVocab.Workcell",
     "AcousticVocab.StateIntegration",
-    "AcousticVocab.ResponsePanel"
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.Orientation"
   ],
   "includePlatforms": [
     "Editor"
