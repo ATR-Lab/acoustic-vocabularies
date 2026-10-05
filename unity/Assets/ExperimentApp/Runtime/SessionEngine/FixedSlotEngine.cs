@@ -106,11 +106,17 @@ namespace AcousticVocab.SessionEngine
             if(Status!=SessionState.Running) return;
             var item=NextItem();if(item==null) { Status=SessionState.Complete;Write("visit_complete",Now(),null);return; }
             consumed=false;audible=item.Plays==0?AudibleStatus.NoCue:AudibleStatus.NotRequested;fault=response=null;opened=closed=false;
-            context=new SlotContext(item,nextOnset,retryOf.TryGetValue(item.TrialId,out string original)?original:null);
+            CurrentState=null;
             try
             {
+                double gap=factory is ISlotStartPlan plan?plan.MinimumGapBeforeMs(item,nextOnset):0;
+                double planned=nextOnset+gap,plannedEnd=planned+item.SlotSeconds*1000;
+                if(double.IsNaN(gap)||double.IsInfinity(gap)||gap<0||double.IsInfinity(planned)||double.IsNaN(planned)||double.IsInfinity(plannedEnd)||plannedEnd<=planned)
+                    throw new SessionFault("SESSION_START_GAP_INVALID");
+                nextOnset=planned;
+                context=new SlotContext(item,nextOnset,retryOf.TryGetValue(item.TrialId,out string original)?original:null);
                 content=factory.Create(item)??throw new SessionFault("SESSION_CONTENT_UNAVAILABLE");
-                CurrentState=null;Transition(ItemState.Loaded);content.Prepare(context);
+                Transition(ItemState.Loaded);content.Prepare(context);
             }
             catch(SessionFault error) { Fault(error.Code); }
             catch(Exception) { Fault("SESSION_CONTENT_PREPARE_FAILED"); }

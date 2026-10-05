@@ -102,6 +102,10 @@ namespace AcousticVocab.SessionEngine
     // before the engine evaluates a boundary. A factory multiplexer delegates
     // to its active modules here instead of relying on MonoBehaviour order.
     public interface ISessionContentPump { void Pump(); }
+    // Optional verified timing plan. The base is the engine's proposed onset;
+    // replay implementations derive extra delay from a stored ledger and an
+    // explicitly installed session anchor, never live choice/UI state.
+    public interface ISlotStartPlan { double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs); }
     public interface ISessionClock { double NowMs { get; } }
     public interface ISessionJournal
     {
