@@ -128,4 +128,7 @@ def test_property_schema_and_code_agree(total, pitches, weights, gaps, amps):
         "gaps_ms": gaps,
         "amplitudes": amps,
     }
-    assert VALIDATOR.is_valid(data) == _code_accepts(data)
+    # Documented difference (spec D11): JSON Schema treats 1.0 as an integer, the code
+    # rejects floats in integer fields. Everything else must agree exactly.
+    float_in_int_field = any(isinstance(v, float) for v in [total, *pitches, *weights, *gaps])
+    assert _code_accepts(data) == (VALIDATOR.is_valid(data) and not float_in_int_field)
