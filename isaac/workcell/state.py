@@ -65,7 +65,7 @@ class StateAccessors:
 
     def _on_stage_changed(self, notice, sender):
         # Cached geometry handles remain safe only while topology is unchanged.
-        if any(str(path).startswith("/World/Workcell") for path in notice.GetResyncedPaths()):
+        if any(path.IsPrimPath() and str(path).startswith("/World/Workcell") for path in notice.GetResyncedPaths()):
             self._structure_changed = True
 
     def read_state(self):

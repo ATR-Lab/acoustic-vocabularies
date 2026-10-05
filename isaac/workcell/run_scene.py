@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--layout',type=Path,default=ROOT/'apparatus/workcell_layout.json')
     parser.add_argument('--reset-check',action='store_true')
+    parser.add_argument('--reset-cycles',type=int,default=1000)
     parser.add_argument('--skip-reach',action='store_true')
     parser.add_argument('--capture',action='store_true')
     parser.add_argument('--integration-overlay',type=Path)
@@ -112,7 +113,7 @@ def main():
             from isaac.reset.isaac_adapter import IsaacResetAdapter
             from isaac.reset.benchmark import run_reset_check
             adapter=IsaacResetAdapter(robot,accessors,sim,scene_hash)
-            reset=run_reset_check(adapter,args.output/'reset-check',cycles=1000,
+            reset=run_reset_check(adapter,args.output/'reset-check',cycles=args.reset_cycles,
                                   capture_image=capture if args.capture else None)
         publisher=None
         if args.publisher_seconds:
