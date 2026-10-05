@@ -43,6 +43,14 @@ namespace AcousticVocab.Soak.Tests
         {var kinds=new List<string>();var m=new ContinuousSoakMonitor(0,Protected(),(k,t,p)=>kinds.Add(k));m.Source(new string('a',32),0,0,0);m.Source(new string('a',32),1,.5,.5);Assert.That(kinds,Does.Contain("stale_gap_started"));Assert.That(kinds,Does.Contain("stale_gap"));}
         [Test]public void SinkFailureLatchesAndEscapes()
         {var m=new ContinuousSoakMonitor(0,Protected(),(k,t,p)=>throw new IOException());Assert.Throws<IOException>(()=>m.Tick(0));Assert.That(m.Fault,Is.EqualTo("SOAK_LOG_FAILED"));}
+        [Test]public void TerminalFailureStillClosesEveryResourceAndPreservesFirstError()
+        {var first=new IOException("terminal");var calls=new List<int>();var error=SoakCleanup.Run(()=>throw first,()=>{calls.Add(1);throw new IOException("unsubscribe");},()=>calls.Add(2),()=>calls.Add(3));Assert.That(error,Is.SameAs(first));Assert.That(calls,Is.EqualTo(new[]{1,2,3}));}
+        [Test]public void ThrowingInitialContextCreatesNoJournalAndCannotRemainHealthy()
+        {
+            string root=Path.Combine(Path.GetTempPath(),"av-soak-failed-"+Guid.NewGuid().ToString("N"));var go=new UnityEngine.GameObject("soak-test");
+            try{var host=go.AddComponent<SoakCaptureHost>();var p=Bytes(Plan());Assert.Throws<IOException>(()=>host.Install(p,SoakPlan.Hash(p),root,"station-01","DEMO-build",new string('a',64),new string('b',64),new string('c',64),()=>throw new IOException("context"),_=>{}));Assert.That(host.Healthy,Is.False);Assert.That(Directory.Exists(root),Is.False);host.Finish();host.Finish();}
+            finally{UnityEngine.Object.DestroyImmediate(go);if(Directory.Exists(root))Directory.Delete(root,true);}
+        }
         [Test]public void NativeJournalHashBindsExactBytesAndUsesFreshOutput()
         {
             string root=Path.Combine(Path.GetTempPath(),"av-soak-test-"+Guid.NewGuid().ToString("N"));

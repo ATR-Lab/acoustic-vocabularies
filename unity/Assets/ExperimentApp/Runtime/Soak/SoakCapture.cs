@@ -131,6 +131,18 @@ namespace AcousticVocab.Soak
         }
         public void Dispose(){lock(sync){if(closed)return;closed=true;try{stream.Flush(true);}finally{stream.Dispose();}}}
     }
+    // Every cleanup stage runs, even when the terminal record or an earlier
+    // resource close fails. Preserve the first error for a truthful fault latch.
+    public static class SoakCleanup
+    {
+        public static Exception Run(Action terminal,params Action[] cleanup)
+        {
+            Exception first=null;
+            try{terminal?.Invoke();}catch(Exception e){first=e;}
+            foreach(var action in cleanup)try{action?.Invoke();}catch(Exception e){if(first==null)first=e;}
+            return first;
+        }
+    }
     [DefaultExecutionOrder(-31000)]
     public sealed class SoakCaptureHost:MonoBehaviour
     {
@@ -142,10 +154,21 @@ namespace AcousticVocab.Soak
         {
             SoakPlan.Need(!installed&&!closed&&context!=null&&faultPause!=null,"SOAK_INSTALL");plan=SoakPlan.Load(rawPlan,rawSha256);
             SoakPlan.Need(plan.StationId==actualStationId&&plan.BuildId==actualBuildId&&plan.SceneSha256==actualSceneSha256&&plan.SnapshotSha256==actualSnapshotSha256&&plan.ScheduleSha256==actualScheduleSha256,"SOAK_RUNTIME_BINDING");this.context=context;this.faultPause=faultPause;
-            outputDirectory=Path.GetFullPath(freshOutput);journal=new SoakNativeJournal(outputDirectory,Guid.NewGuid().ToString("N"),Stopwatch.Frequency);started=Now;
-            journal.Write("session_start",started,new JObject{["plan"]=plan.Json,["plan_sha256"]=plan.Sha256,["monitor"]="continuous_receiver_stale_and_freeze_detector",["arrival_age_basis"]="latest_accepted_sample_local_arrival",["mirror_count_basis"]="distinct_applied_frame_session_sequence",["render_basis"]="application_onBeforeRender_not_photons"});
-            monitor=new ContinuousSoakMonitor(started,context(),journal.Write);installed=true;Application.onBeforeRender+=Rendered;
-            watchdog=new Timer(_=>{lock(sync){if(!installed||closed)return;try{monitor.Tick(Now);}catch{failure="SOAK_LOG_OR_CLOCK_FAILED";}}},null,10,10);
+            try
+            {
+                var initial=context();SoakPlan.Need(initial!=null,"SOAK_CONTEXT");
+                outputDirectory=Path.GetFullPath(freshOutput);journal=new SoakNativeJournal(outputDirectory,Guid.NewGuid().ToString("N"),Stopwatch.Frequency);started=Now;
+                journal.Write("session_start",started,new JObject{["plan"]=plan.Json,["plan_sha256"]=plan.Sha256,["monitor"]="continuous_receiver_stale_and_freeze_detector",["arrival_age_basis"]="latest_accepted_sample_local_arrival",["mirror_count_basis"]="distinct_applied_frame_session_sequence",["render_basis"]="application_onBeforeRender_not_photons"});
+                monitor=new ContinuousSoakMonitor(started,initial,journal.Write);Application.onBeforeRender+=Rendered;
+                watchdog=new Timer(_=>{lock(sync){if(!installed||closed)return;try{monitor.Tick(Now);}catch{failure=failure??"SOAK_LOG_OR_CLOCK_FAILED";}}},null,10,10);
+                installed=true;
+            }
+            catch
+            {
+                failure=failure??"SOAK_INSTALL_FAILED";closed=true;
+                SoakCleanup.Run(null,()=>Application.onBeforeRender-=Rendered,()=>watchdog?.Dispose(),()=>journal?.Dispose());
+                throw;
+            }
         }
         // Subscribe only to StateSourceHost's post-Apply, visibly live event.
         // Arrival is explicitly the latest accepted sample's local receipt time.
@@ -183,7 +206,17 @@ namespace AcousticVocab.Soak
         }
         public void Finish()
         {
-            lock(sync){if(!installed||closed)return;double now=Now;monitor.Close(now);journal.Write("session_end",now,new JObject{["completed"]=now-started>=plan.Seconds,["requested_seconds"]=plan.Seconds,["elapsed_seconds"]=now-started,["monitor_fault"]=failure??monitor.Fault,["g2_signed"]=false});closed=true;Application.onBeforeRender-=Rendered;watchdog?.Dispose();journal.Dispose();}
+            lock(sync)
+            {
+                if(closed)return;closed=true;
+                var error=SoakCleanup.Run(()=>
+                {
+                    if(!installed)return;
+                    double now=Now;monitor.Close(now);
+                    journal.Write("session_end",now,new JObject{["completed"]=failure==null&&now-started>=plan.Seconds,["requested_seconds"]=plan.Seconds,["elapsed_seconds"]=now-started,["monitor_fault"]=failure??monitor.Fault,["g2_signed"]=false});
+                },()=>Application.onBeforeRender-=Rendered,()=>watchdog?.Dispose(),()=>journal?.Dispose());
+                if(error!=null)failure=failure??"SOAK_CLOSE_FAILED";
+            }
         }
         void OnDisable()=>Finish();void OnDestroy()=>Finish();
     }
