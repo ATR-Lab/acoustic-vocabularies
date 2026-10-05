@@ -1,8 +1,8 @@
 {
   "build_identity": {
     "schema_version": 1,
-    "build_id": "joined-grammar-win-001",
-    "commit_sha": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+    "build_id": "joined-final-win-002",
+    "commit_sha": "072a9833dafb7f82d0ea7f82dc33b9cc1d8e91df",
     "protocol_version": "engineering-pending-review",
     "editor_version": "6000.6.0f1",
     "target": "StandaloneWindows64",
@@ -12,8 +12,8 @@
   },
   "result": "Succeeded",
   "errors": 0,
-  "duration_seconds": 8.622176999999999,
-  "total_bytes": 158673239,
+  "duration_seconds": 11.657210899999999,
+  "total_bytes": 158660519,
   "development_build": false,
   "files": [
     {
@@ -44,17 +44,17 @@
     {
       "path": "experiment_Data/boot.config",
       "bytes": 292,
-      "sha256": "84bc99fdf4081532f6a955cd3644c4866375d7f7ee9d1fe504fe87ef2827c1e1"
+      "sha256": "06989704e27de3d8965d631072a0ea02f4ea866c434515c61b33939b7a5645b0"
     },
     {
       "path": "experiment_Data/globalgamemanagers",
-      "bytes": 89812,
-      "sha256": "6e4df5bfceb827e85a5ddff11fd13239a6093bce3bf4caa0a6e7d9b992d141b9"
+      "bytes": 89716,
+      "sha256": "934e3512b0ad01f29ff11fab9f266e9bc2f58a52d7a5a3de8469e1ef52de9e8c"
     },
     {
       "path": "experiment_Data/globalgamemanagers.assets",
-      "bytes": 227344,
-      "sha256": "87a609be0f3fa83608e0ffed4b81f818bd34eab39a13724128a2aab152608b41"
+      "bytes": 227008,
+      "sha256": "2f231d434020b9a10e6828742f5c11fa65fb0674857e035fd818f4f835ab3bb8"
     },
     {
       "path": "experiment_Data/globalgamemanagers.assets.resS",
@@ -64,7 +64,7 @@
     {
       "path": "experiment_Data/level0",
       "bytes": 356892,
-      "sha256": "cc074c839d9673b0e4045829fc14c3546c37fdde0a5110450b33cafe05da7ed7"
+      "sha256": "be6927121d5e37478f1b314f1cbba511d3c4bd487724fa68bef509c273730f65"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.Assessment.dll",
@@ -73,8 +73,8 @@
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.DataLogging.dll",
-      "bytes": 61952,
-      "sha256": "249802da45764f3ce3ad28ab38375f3a789eaef9d03d0afcdaf0c3fee350ea2b"
+      "bytes": 59904,
+      "sha256": "4f36b92325b237f6f930f837718062ccc2d08d8c1a8b5b54921d9bc42eaaabc2"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.Foundation.dll",
@@ -84,12 +84,12 @@
     {
       "path": "experiment_Data/Managed/AcousticVocab.FrameBudget.dll",
       "bytes": 49152,
-      "sha256": "d39d45b93b829b1c2563957b0797b06d2f090f3d51096a53aea90a87c29d1d1a"
+      "sha256": "9e56dd15895a2de0995b20b50176ebf53f21456c4a24a74bdd3671914fd83b3c"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.OperatorConsole.dll",
-      "bytes": 21504,
-      "sha256": "8f39c50dd71cb26de0665cfdbdcaa61d5e701fc2647b46e6918fdfa05b70a422"
+      "bytes": 20992,
+      "sha256": "671e0d5adc777c76acbe1fd978e5407967dcb93974852d7f75d1097411c0a51a"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.Orientation.dll",
@@ -113,8 +113,8 @@
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.SessionIntegration.dll",
-      "bytes": 105472,
-      "sha256": "79d3925ffaba78dcee6b880afc468528db98ba5410c4e64dfefd449431b1ccfb"
+      "bytes": 95744,
+      "sha256": "9153528d6aa33395d84dd9f6fdf1326ee5fc7f569739a4fc13a4b4e9e276547a"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.Soak.dll",
@@ -889,7 +889,7 @@
     {
       "path": "experiment_Data/resources.assets",
       "bytes": 71388,
-      "sha256": "879fe552d53e95e7444647a73f10f7c5c75959c232e1efa59ae7fafc949f4209"
+      "sha256": "75d1ad7e34cd9eb0421dc25d515ec274ae33d4160b7cb6fa2d2b0586c818c73f"
     },
     {
       "path": "experiment_Data/Resources/unity default resources",
@@ -914,7 +914,7 @@
     {
       "path": "experiment_Data/sharedassets0.assets",
       "bytes": 53022448,
-      "sha256": "80b2dc92b0e38475bdbec32635e9e616a8b37f8b1f43fc5c109f7e869bb1933c"
+      "sha256": "81c5f8a5316429868485b94cb2565694bc1b70c3ecc40003f3af5af557f72209"
     },
     {
       "path": "experiment_Data/sharedassets0.assets.resS",
