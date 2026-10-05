@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "change": "Partial issue81 native fault-sequence and startup-negative evidence checks",
+  "source_files": {
+    "tools/mock_visit/faults.py": "1fcc6aefd697e4ac8ac763de865d93e5f3f8b6c3dc424e496e2e294e45b0f4cc",
+    "tools/mock_visit/suite.py": "be01fd126ce73ce888f3f5b07c6846df40e42dfd51508d1399a90ba0be793982",
+    "tests/test_mock_visit_faults.py": "812a304d5518a75460f7b2be158141e968c7c05693537ab9d2eb1e0ec111ce3d",
+    "tools/mock_visit/FAULT_EVIDENCE.md": "0877280b1c2660cd68ad9a8b4c096d73e69eecc15b5b08de0e57cdbc8d4bd72a"
+  },
+  "focused_tests": {
+    "pytest_passed": 90,
+    "failed": 0,
+    "synthetic_tests_are_not_native_runs": true
+  },
+  "actual_retained_startup": {
+    "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
+    "build_manifest_sha256": "0f211bc2d686ac166de6d9cde919351e201f5e488cbe9dd79da3b906cc15323d",
+    "process_result_sha256": "8c1ff5b8e29fd001bac8a1633231d4b7df22c17c724a4db95899dc53f2f94b46",
+    "native_log_sha256": "3218efb3b795c771aa30dcfe180c558b93e54caaa759afe33eb1558981376083",
+    "process_created": true,
+    "process_exit": 0,
+    "observer_elapsed_ms": 27832.667,
+    "observed_startup_code": "JOIN_CONFIG_REQUIRED",
+    "observation_bound": true,
+    "native_sequence_complete": false,
+    "counts_toward_seven_faults": false,
+    "plan_was_retrospective_for_reconciliation": true,
+    "predeclaration_custody_verified": false
+  },
+  "review_fixes": [
+    "Independent join-config backend session pin",
+    "Cached reset replies rejected",
+    "Every health age checked nonnegative before maximum",
+    "Protected reset mode matches the planned block",
+    "Requests blocked from observed cause through accepted resume result",
+    "Unexpected native faults cannot hide behind selected row",
+    "Truncated or restarted clock history yields unknown absence checks"
+  ],
+  "limitations": [
+    "No injection performed by this change",
+    "No physical cause, audible-onset or no-answer visual qualification",
+    "Failed-reset rejection, corrupted-file mutation and missing-write cause joins remain incomplete",
+    "Deviation source bytes can be checked; free-text semantic linkage remains unverified",
+    "Screening/recording/O4.5.1 supplementary semantics remain unverified; full suite always incomplete",
+    "Unplanned focus/grammar failures are not relabeled as one of seven injections"
+  ],
+  "issue81_accepted": false,
+  "participant_qualified": false,
+  "acoustic_qualified": false
+}
