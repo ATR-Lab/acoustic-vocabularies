@@ -13,6 +13,13 @@ namespace AcousticVocab.StateIntegration
         bool good;
         internal ControlHealthGate(string session,string mode,Func<double> now){this.session=session;this.mode=mode;this.now=now;}
         internal bool Fresh => good&&now()>=received&&now()-received+transit+Math.Max(neutralAge,publisherAge)<=250;
+        internal JObject Diagnostic()
+        {
+            double current=now(),elapsed=received<0?double.NaN:current-received,bound=elapsed+transit+Math.Max(neutralAge,publisherAge);
+            JToken Finite(double value)=>double.IsFinite(value)?new JValue(value):JValue.CreateNull();
+            return new JObject{["health_progressing_and_valid"]=good,["observed_local_mono_ms"]=Finite(current),["receipt_elapsed_ms"]=Finite(elapsed),
+                ["round_trip_ms"]=Finite(transit),["neutral_age_ms"]=Finite(neutralAge),["publisher_age_ms"]=Finite(publisherAge),["effective_age_ms"]=Finite(bound),["maximum_age_ms"]=250};
+        }
         internal void Invalidate(){good=false;}
         static void Require(bool value,string code="CONTROL_SCHEMA"){if(!value)throw new ControlFault(code);}
         static double Number(JToken value)
