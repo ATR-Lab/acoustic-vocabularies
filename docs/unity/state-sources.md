@@ -105,3 +105,14 @@ source switching on-device and a matched live/headset neutral recording remain
 separate operator evidence. The captured #53 neutral is checked against all
 43 imported joints and 60 objects in Unity. A synthetic wire projection of that
 snapshot also exercises source parity; it is not a measured live-neutral run.
+
+The local engineering result at source `e5bf8a0` has 90 passing edit-mode and
+three passing play-mode tests, plus Windows and Android builds with zero errors.
+Meta XR Simulator exposed a delayed startup-origin notification; #60 now waits
+for a stable acknowledged Device origin before showing the scene. The revised
+app showed the G1/workcell, latched focus loss, and refused a configured snapshot
+hash mismatch. The simulated headset-input toggle did not produce `tracking_lost`,
+so that injection remains inconclusive. The first diagnostic required a forced
+stop after native shutdown stalled; subsequent runs exited normally. See the
+[sanitized evidence](state-sources-validation.json) and the simulator section of
+the [runbook](../spikes/O5.3.4-runbook.md) for scope and remaining checks.
