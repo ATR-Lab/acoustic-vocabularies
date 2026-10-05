@@ -151,7 +151,8 @@ class NativeReader:
                     native_head_sha256=self.previous, clock_epoch=self.epoch, heartbeat_count=self.heartbeat_count,
                     max_heartbeat_gap_s=gap, monitor_fault=p['monitor_fault'],
                     live_applied_frames=self.mirrored if self.heartbeat_count else 0,
-                    receiver_window_complete=bool(p['completed'] and self.heartbeat_count and gap <= 1 and self.mirrored > 0),
+                    receiver_window_complete=bool(p['completed'] and p['monitor_fault'] is None and
+                                                  self.heartbeat_count and gap <= 1 and self.mirrored > 0),
                     g2_signed=False, qualification='native_capture_only')
 
 

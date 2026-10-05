@@ -127,6 +127,17 @@ def test_streaming_reader_keeps_bounded_rows_and_same_summary():
     with pytest.raises(ValueError,match='streamed'):receiver_events(b)
 
 
+@pytest.mark.parametrize('fault',['SOAK_PROTECTED_STALE','SOAK_PROTECTED_FREEZE'])
+def test_elapsed_completion_with_latched_monitor_fault_is_not_successful_coverage(fault):
+    f=Fixture();f.start()
+    for i in range(25):f.heartbeat(10+i*.25,i+1)
+    f.end(fault=fault)
+    for retain in (True,False):
+        r=NativeReader(f.plan,f.pin,retain_rows=retain);r.feed(b''.join(f.lines));result=r.finish()
+        assert result['completed'] is True and result['monitor_fault']==fault
+        assert result['receiver_window_complete'] is False and result['g2_signed'] is False
+
+
 def prepare(tmp_path):
     f=Fixture();f.start();capture=tmp_path/'capture';capture.mkdir()
     (capture/'soak-native.jsonl').write_bytes(b''.join(f.lines))
