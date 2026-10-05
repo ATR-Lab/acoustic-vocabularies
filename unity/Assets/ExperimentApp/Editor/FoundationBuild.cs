@@ -138,7 +138,9 @@ namespace AcousticVocab.Foundation.Editor
         }
         public static void VerifyParticipantScene()
         {
-            foreach (var assembly in CompilationPipeline.GetAssemblies(AssembliesType.Player))
+            // Play-mode tests are player-capable, but BuildOptions.None excludes
+            // them from participant builds. Audit that exact production set.
+            foreach (var assembly in CompilationPipeline.GetAssemblies(AssembliesType.PlayerWithoutTestAssemblies))
                 foreach (string file in assembly.sourceFiles)
                 {
                     string relative = Path.GetRelativePath(Application.dataPath, Path.GetFullPath(file)).Replace('\\', '/');
