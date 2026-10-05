@@ -151,3 +151,10 @@ The allocation probe observed one self-cycle per initial call before the change
 and none afterward, with GC enabled and its thresholds unchanged. This is object
 lifetime evidence, not a new timing/throughput qualification or a rerun of the
 historical 1,000-cycle apparatus result.
+
+The subsequent [bounded actual profile](reset/comparator-profile.json), using
+the same cached state reader, observed protected throughput without a receiver
+at 44.875 → 47.310 steps/s and with the process receiver at 45.454 → 46.287.
+Both remain below 60 steps/s. The short after-run observed no generation-2
+collection; it does not establish that long pauses are gone. No full hour or
+1,000-cycle reset rerun is inferred from this diagnostic.

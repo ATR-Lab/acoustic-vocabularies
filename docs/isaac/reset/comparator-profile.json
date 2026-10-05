@@ -1,0 +1,91 @@
+{
+  "status": "BOUNDED_DIAGNOSTIC_ONLY",
+  "reset_revision": "6472bbe9d8d27e955dffa74850552cdb102d669c",
+  "profiled_manager_sha256": "ff7360dc61d17d4d1fe6134a2273a259c3bf1405dd2a495c97dededdae7beff9",
+  "comparison_sha256": "90b497160788525cc1b68d4b83c16e66c893f5d556077a3333eb141d9dd18056",
+  "bundle_manifest_sha256": "0bed8171505546b965d1c39ded752a294cec5bcf2d3314d176492bdb94ba7597",
+  "gc_enabled": true,
+  "gc_thresholds_changed": false,
+  "physical_qualification": false,
+  "full_hour_rerun": false,
+  "historical_1000_reset_result_replaced": false,
+  "conditions": [
+    {
+      "name": "unprotected-none",
+      "before_steps_s": 95.34660383323144,
+      "after_steps_s": 95.98921583485489,
+      "percent_change": 0.6739747151848441,
+      "before_gc_max_ms": 0.173249,
+      "after_gc_max_ms": 0.171847,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "unprotected-thread",
+      "before_steps_s": 84.47103506494439,
+      "after_steps_s": 87.56676229485673,
+      "percent_change": 3.664838755121491,
+      "before_gc_max_ms": 1.622884,
+      "after_gc_max_ms": 1.465934,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "unprotected-process",
+      "before_steps_s": 93.8297254847703,
+      "after_steps_s": 95.17871710164523,
+      "percent_change": 1.4377017623204091,
+      "before_gc_max_ms": 0.138091,
+      "after_gc_max_ms": 0.174048,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "protected-none",
+      "before_steps_s": 44.875102116213824,
+      "after_steps_s": 47.31041892617993,
+      "percent_change": 5.4268774779817175,
+      "before_gc_max_ms": 351.319198,
+      "after_gc_max_ms": 0.093226,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "protected-process",
+      "before_steps_s": 45.454216305020246,
+      "after_steps_s": 46.286736071121595,
+      "percent_change": 1.831556748255725,
+      "before_gc_max_ms": 0.192801,
+      "after_gc_max_ms": 0.517289,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "profile-protected",
+      "before_steps_s": 42.4020687205299,
+      "after_steps_s": 42.59031160093538,
+      "percent_change": 0.4439473971097563,
+      "before_gc_max_ms": 0.141394,
+      "after_gc_max_ms": 0.128732,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "profile-thread",
+      "before_steps_s": 67.00248026610797,
+      "after_steps_s": 68.20533779177559,
+      "percent_change": 1.7952432818760355,
+      "before_gc_max_ms": 0.152604,
+      "after_gc_max_ms": 0.130352,
+      "after_gen2_events": 0
+    },
+    {
+      "name": "profile-process",
+      "before_steps_s": 84.01997568391423,
+      "after_steps_s": 84.98073744317426,
+      "percent_change": 1.1434920701173024,
+      "before_gc_max_ms": 0.158391,
+      "after_gc_max_ms": 0.216769,
+      "after_gen2_events": 0
+    }
+  ],
+  "limits": [
+    "Short before/after diagnostic with unchanged cached reader; not a causal isolation of all runtime noise",
+    "Protected throughput remains below 60 steps/s",
+    "No generation-2 collection observed in the short after-run does not prove long pauses eliminated"
+  ]
+}
