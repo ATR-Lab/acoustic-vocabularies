@@ -21,6 +21,9 @@ Stable public API (see `sound/README.md` and `docs/interfaces/sound-engine.md`):
 - `build_fallback`, `scan_fallback`, `load_fallback`, `verify_fallback`,
   `freeze_fallback_books`, `fallback_bank_hash`: fallback banks and books
   (`sound/docs/fallback.md`).
+- `build_package`, `build_dyad_package`, `seal`, `load_package`, `scan_package`: learner and
+  dyad packages (`docs/interfaces/package-format.md`); `DyadBank` is the PROVISIONAL Study B
+  bank input.
 """
 
 from av_sound.composer import (
@@ -38,6 +41,7 @@ from av_sound.composer import (
     message_length,
     write_message_wav,
 )
+from av_sound.dyad_bank import DyadBank
 from av_sound.fallback import (
     BANK_SIZE,
     BankEntry,
@@ -72,6 +76,18 @@ from av_sound.nonlexical import (
     calibration_example,
     nonlexical_asset,
     nonlexical_assets,
+)
+from av_sound.package import (
+    LeakReport,
+    LoadedPackage,
+    PackageError,
+    PackageIntegrityError,
+    PackageResult,
+    build_dyad_package,
+    build_package,
+    load_package,
+    scan_package,
+    seal,
 )
 from av_sound.recipe import E_DOMAIN, E_JSON, E_SCHEMA, Profile, Recipe, RecipeError
 from av_sound.renderer import (
@@ -140,6 +156,7 @@ __all__ = [
     "BookInfo",
     "CommitRejected",
     "CompositionError",
+    "DyadBank",
     "FallbackBank",
     "FallbackBook",
     "FallbackError",
@@ -147,10 +164,15 @@ __all__ = [
     "FrozenFallbackBook",
     "GrammarError",
     "HeldOutMessageError",
+    "LeakReport",
+    "LoadedPackage",
     "Message",
     "NearestReference",
     "NonlexicalAsset",
     "OverwriteRejected",
+    "PackageError",
+    "PackageIntegrityError",
+    "PackageResult",
     "Profile",
     "Recipe",
     "RecipeError",
@@ -169,7 +191,9 @@ __all__ = [
     "VerifyIssue",
     "VerifyReport",
     "VocabularyStore",
+    "build_dyad_package",
     "build_fallback",
+    "build_package",
     "build_reserved_registry",
     "calibration_example",
     "compose",
@@ -182,6 +206,7 @@ __all__ = [
     "file_sha256",
     "freeze_fallback_books",
     "load_fallback",
+    "load_package",
     "load_reserved_registry",
     "load_separation_threshold",
     "message_length",
@@ -197,6 +222,8 @@ __all__ = [
     "renderer_manifest",
     "renderer_recipe_schema_hash",
     "scan_fallback",
+    "scan_package",
+    "seal",
     "self_test",
     "separated",
     "snapshot_digest",

@@ -29,6 +29,9 @@ Nothing needs the network at runtime.
 | `schema/store-record.schema.json` | One line of a vocabulary-store log ([`docs/store.md`](docs/store.md)) |
 | `schema/fallback-manifest.schema.json`, `schema/fallback-scan.schema.json` | Fallback banks and books manifest; bank scan record ([`docs/fallback.md`](docs/fallback.md)) |
 | `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
+| `schema/package.schema.json` | Learner and dyad package format: `manifest.json`, `answers.json`, `audio.json`, `allocation.json` ([`package-format.md`](../docs/interfaces/package-format.md)) |
+| `schema/provisional-bank.schema.json` | PROVISIONAL Study B bank input of the dyad package builder (until #26) |
+| `examples/package-demo/` | JSON files of the sealed synthetic package `DEMO-BOOK-P1` (no WAVs) |
 | `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
 | `reserved/registry.json` | Reserved-signal registry: the seven nonlexical assets (#14, [`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `docs/` | Renderer spec and component docs |
@@ -37,7 +40,7 @@ Nothing needs the network at runtime.
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
 | `testvectors/fallback/demo-manifest.json` | Fallback banks and books from the public seed `DEMO-fallback-v1` (example, not study material) |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`), example package (`build_example_package.py`) |
 | `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
 ## API
@@ -82,6 +85,12 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `FallbackBank`, `FallbackBook`, `BankEntry`, `BookAtom`, `ScanStep`, `FallbackError`, `BANK_SIZE` | Values and errors (`.code`) of `av_sound.fallback` |
 | `av_sound.golden`: `build_manifest()`, `verify_manifest(manifest)`, `compute_items(specs)`, `check_wav_dir(items, dir)`, `write_wavs(items, dir)`, `GOLDEN_RECIPES` | Golden set and its checks ([`docs/golden.md`](docs/golden.md)) |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
+| `build_package(store, book_id, out_dir, *, expected_head=None) -> PackageResult` | Study A package of a frozen store book: 16 atom WAVs, 18 trained-message WAVs, `answers.json`, `audio.json`, `manifest.json`; held-out messages as hashes only ([`package-format.md`](../docs/interfaces/package-format.md)) |
+| `build_dyad_package(bank, out_dir) -> PackageResult` | Study B package of a dyad bank (PROVISIONAL input `av_sound.dyad_bank.DyadBank`): 192 option WAVs, hashes of all 1,536 option combinations |
+| `seal(package_dir, *, permutation=None, schedules=None, allocation_extras=None) -> str` | Adds `permutation.json` (#29), `schedules/` (#30) and `allocation.json`, checks them, returns the new package hash |
+| `load_package(package_dir, *, expected_package_sha256=None) -> LoadedPackage` | Verifies a package as the app will; raises `PackageIntegrityError` (`E_HASH_MISMATCH`, `E_FILE_MISSING`, `E_FILE_EXTRA`, ...) |
+| `scan_package(package_dir, *, forbidden_strings=()) -> LeakReport` | Leak scan: held-out audio, unlisted message audio, method labels, designer IDs, method words, `source` keys |
+| `PackageError`, `PackageResult`, `LeakReport`, `DyadBank` | Package errors (`.code`, `.problems`), build result, scan report, provisional bank |
 
 ```python
 from av_sound import Profile, Recipe, render, write_wav

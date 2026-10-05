@@ -47,4 +47,6 @@
 # Writers emit explicit \n line endings.
 *.sha256 -text
 sound/testvectors/** -text
+sound/examples/** -text
+tests/sound/fixtures/** -text
 tests/golden/** -text
