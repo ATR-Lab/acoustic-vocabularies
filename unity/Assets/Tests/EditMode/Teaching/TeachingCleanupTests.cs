@@ -39,7 +39,7 @@ namespace AcousticVocab.Teaching.Tests
             // Abort has a real irreversible failure side effect even without a
             // playing clip; reset it to represent the subsequent owner's Configure.
             var failed=typeof(AcousticVocab.StudyAudio.AudioPlayer).GetField("failed",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
-            failed.SetValue(player,false);host.SendMessage("OnApplicationFocus",false);host.enabled=false;UnityEngine.Object.DestroyImmediate(root);
+            failed.SetValue(player,false);host.GetType().GetMethod("OnApplicationFocus",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,new object[]{false});host.enabled=false;UnityEngine.Object.DestroyImmediate(root);
             Assert.That((bool)failed.GetValue(player),Is.False,"Released host must never call Abort on its former player");UnityEngine.Object.DestroyImmediate(playerObject);
         }
     }

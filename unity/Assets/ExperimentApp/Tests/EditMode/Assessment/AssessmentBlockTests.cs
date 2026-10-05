@@ -18,7 +18,7 @@ namespace AcousticVocab.Assessment.Tests
             var root=new UnityEngine.GameObject("Released assessment owner");var host=root.AddComponent<AssessmentSessionHost>();host.player=player;
             host.Uninstall();Assert.That(host.Installed,Is.False);
             var failed=typeof(AudioPlayer).GetField("failed",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);failed.SetValue(player,false);
-            host.SendMessage("OnApplicationFocus",false);host.enabled=false;UnityEngine.Object.DestroyImmediate(root);
+            host.GetType().GetMethod("OnApplicationFocus",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,new object[]{false});host.enabled=false;UnityEngine.Object.DestroyImmediate(root);
             Assert.That((bool)failed.GetValue(player),Is.False);UnityEngine.Object.DestroyImmediate(playerObject);
         }
         const string Hash="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

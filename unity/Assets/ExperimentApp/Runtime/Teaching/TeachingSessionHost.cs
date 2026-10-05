@@ -144,9 +144,13 @@ namespace AcousticVocab.Teaching
             if(uninstalled)return;uninstalled=true;var formerFactory=factory;var formerGrammar=grammar;
             factory=null;grammar=null;engine=null;scheduleHash=null;packageHash=null;
             bool owned=formerFactory!=null||formerGrammar!=null;
-            var formerCanvas=canvas;canvas=null;
-            var error=TeachingCleanup.Attempt(()=>{if(formerCanvas!=null){formerCanvas.gameObject.SetActive(false);Destroy(formerCanvas.gameObject);}},
-                ()=>formerGrammar?.Dispose(),()=>formerFactory?.Dispose(),()=>{if(owned)player?.Abort("LESSON_HOST_UNINSTALLED");});
+            var formerCanvas=canvas;
+            var error=TeachingCleanup.Attempt(()=>formerGrammar?.Dispose(),()=>formerFactory?.Dispose(),
+                ()=>{if(owned)player?.Abort("LESSON_HOST_UNINSTALLED");},
+                ()=>{if(formerCanvas!=null){formerCanvas.gameObject.SetActive(false);Destroy(formerCanvas.gameObject);}});
+            // Dispose may legitimately call this view's Hide, so retain its
+            // canvas until those callbacks finish; ownership was already cleared.
+            canvas=null;
             if(error!=null){failed=true;CleanupFailureCode=TeachingCleanup.Code(error);TeachingCleanup.ThrowFirst(error);}
         }
         void OnDestroy()
