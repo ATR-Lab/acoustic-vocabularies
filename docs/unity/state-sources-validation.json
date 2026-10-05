@@ -2,6 +2,7 @@
   "issue": 62,
   "qualification": "engineering_validation_only",
   "source_commit": "e5bf8a067f863f65db3c68221d18aef6bb4a185a",
+  "protected_parity_test_commit": "7a5781d",
   "tests": [
     {
       "kind": "editmode",
@@ -18,6 +19,14 @@
       "failed": 0,
       "skipped": 0,
       "result_sha256": "04f270b14ea99f39c11856d2ffa0f71ec27c222a611931499e44d3e56da41335"
+    },
+    {
+      "kind": "editmode",
+      "build_id": "state-sources-protected-parity-01",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "result_sha256": "9693c48a8d6017ff92137a6f23a808add8f10011694341b46554d1c3e9ce2157"
     }
   ],
   "builds": [
@@ -68,6 +77,33 @@
       }
     }
   ],
+  "actual_protected_source": {
+    "source_kind": "live",
+    "protected_neutral_diagnostic": true,
+    "station_id": "simulator-01",
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "requested_seconds": 300.0,
+    "elapsed_seconds": 300.009158619,
+    "completed": true,
+    "fault": null,
+    "frames": 6082,
+    "physics_steps": 12164,
+    "rate_hz": 30,
+    "missed_deadlines": 2918,
+    "limitations": [
+      "No study cues or private command endpoint",
+      "Not a one-hour rate or headset qualification"
+    ],
+    "hashes": {
+      "ready.json": "c3c7952e07b165640f50db4eaf78fe08116b225a9b635007f601543be72a25f7",
+      "sample-first.json": "9cdfcf9ed3b5229ef425fbd53eb0e297cd895bae46e3147e28d23a810689cc9e",
+      "initial-reset.json": "bd18347fd953132ca4f8a99f3bf3f1705cb0735c1f1fa60497670d09e20e5d6a",
+      "sample-last.json": "01b273b86f39fb60006772c9460b7913aa94a5fa490a33fe8b2c4a13947f0728",
+      "publish.csv": "1e8d317a1e87c81c5f3443f7fbe67daa79abdcad52c4a72350fcab33132206e5"
+    },
+    "summary_sha256": "2447a3801041e184cec88083b432282afe8e21f534b26206b0c85cd09367317e"
+  },
   "simulator": {
     "version": "205.0.0.42.1262",
     "runtime": "Meta XR Simulator",
@@ -166,11 +202,68 @@
           "observer_reference_restored",
           "state_source_identity"
         ]
+      },
+      {
+        "build_id": "state-sources-link-004",
+        "source_kind": "live",
+        "station_id": "simulator-01",
+        "source_commit": "e5bf8a067f863f65db3c68221d18aef6bb4a185a",
+        "rendered_workcell_seen_in_simulator": true,
+        "application_window_capture": "unavailable: foreground window did not report a process id",
+        "exited_without_force": true,
+        "source_event_counts": {
+          "STATE_QUEUED_TOO_LONG": 249,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_RECOVERED": 11,
+          "STATE_SEQUENCE_GAP": 62,
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_STALE": 12,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_TRANSPORT_DISCONNECTED": 45,
+          "STATE_TRANSPORT_RESTART": 45
+        },
+        "sample_rows": 3940,
+        "sample_window_seconds": 187.61325920000002,
+        "stale_sample_rows": 1117,
+        "reset_confirmed_sample_rows": 0,
+        "natural_stream_end_logged": true,
+        "final_sample_stale": true,
+        "qualification": "functional_live_preview_with_timing_faults",
+        "limitations": [
+          "Concurrent development workload; not an isolated performance qualification",
+          "Clock evidence absent: local receive age is not end-to-end latency",
+          "Simulator compositor view observed; application-specific screenshot capture failed",
+          "No participant, study audio, reset grant or physical headset acceptance"
+        ],
+        "evidence_sha256": {
+          "foundation-1495b522e74645399a6da86c75c3dd5f.jsonl": "d3b61f5dfe443c7864bd81aa82f1b28ba949aa63782a8e3da574ba9a392c766a",
+          "foundation-3b96b4fc1ae449cba9fb7ff2cecf1ba5.jsonl": "3e7b12f47f3cfdf83e656517977c30e2bd2dc3c2503cb13cda56754704163645",
+          "Player.log": "736b9403b1e781bce3889f6b4d1ab8dda6c105930538fdc52dfda0cf249bd8ff",
+          "sample-age-68fdc74efe65413292dc03a63fb82050.csv": "035f16e87121541ff622bc562b0d1659ac5e8b3c1978e9b4f4c6a9fd71a63160"
+        },
+        "run_id": "live-01",
+        "result_sha256": "0f4bed1da3d89d4888ac1607d793f99cb87550726b62f47660a9756c20e20cc0",
+        "event_codes": [
+          "STATE_QUEUED_TOO_LONG",
+          "STATE_RECEIVE_QUEUE_OVERFLOW",
+          "STATE_RECOVERED",
+          "STATE_SEQUENCE_GAP",
+          "STATE_SOURCE_INITIALIZED",
+          "STATE_STALE",
+          "STATE_TRANSPORT_CONNECTED",
+          "STATE_TRANSPORT_DISCONNECTED",
+          "STATE_TRANSPORT_RESTART",
+          "application_focus_lost",
+          "configuration_validated",
+          "header",
+          "observer_reference_restored",
+          "state_source_identity"
+        ]
       }
     ]
   },
   "remaining": [
-    "Actual protected neutral live stream and C# parity capture",
+    "Live-path performance failures and isolated qualification",
     "Recorded #56 trajectory playback",
     "Physical Quest30-minute run and timing/legibility checks",
     "Qualified clock-drift and route evidence",

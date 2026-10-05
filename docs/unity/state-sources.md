@@ -116,3 +116,20 @@ so that injection remains inconclusive. The first diagnostic required a forced
 stop after native shutdown stalled; subsequent runs exited normally. See the
 [sanitized evidence](state-sources-validation.json) and the simulator section of
 the [runbook](../spikes/O5.3.4-runbook.md) for scope and remaining checks.
+
+An actual protected Isaac stream subsequently drove the same Windows binary in
+Meta XR Simulator. Its retained first and last public frames passed a separate
+Unity test against the captured neutral and imported renderer (43 joints and
+60 objects). This checks actual recorded pose parity without manufacturing a
+clock qualification or reset acknowledgment. The Simulator displayed the workcell;
+application-specific screenshot capture failed with a foreground-process error.
+
+This preview did **not** pass performance qualification. The backend ran for
+300.009159 seconds with 6,082 published frames and 2,918 missed deadlines, without
+a neutral-verification fault. The Windows preview retained 3,940 sample-age rows
+over 187.613259 seconds, including 1,117 stale rows, two receive-queue overflows,
+249 queued-too-long events and 12 stale events. That window includes startup and
+the natural stream shutdown under concurrent development load. Local receive age
+is not cross-host latency. Every sampled reset grant stayed false; natural stream
+termination logged disconnects and stale state. The app closed normally and the
+owned diagnostic relay/tunnel were stopped. Failed timing evidence remains retained.
