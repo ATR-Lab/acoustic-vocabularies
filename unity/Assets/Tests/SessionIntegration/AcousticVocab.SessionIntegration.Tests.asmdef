@@ -1,0 +1,14 @@
+{
+  "name": "AcousticVocab.SessionIntegration.Tests",
+  "references": [
+    "AcousticVocab.SessionIntegration",
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

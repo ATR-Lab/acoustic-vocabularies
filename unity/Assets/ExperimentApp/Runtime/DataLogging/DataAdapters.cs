@@ -27,8 +27,8 @@ namespace AcousticVocab.DataLogging
     {
         readonly DataJournal journal;readonly AudioPlayer player;readonly Func<AudioPlaybackEvent,AudioRequestContext> resolve;
         readonly HashSet<string> requested=new HashSet<string>(StringComparer.Ordinal);
-        public AudioDataAdapter(DataJournal journal,AudioPlayer player,Func<AudioPlaybackEvent,AudioRequestContext> resolve)
-        { this.journal=journal??throw new ArgumentNullException(nameof(journal));this.player=player??throw new ArgumentNullException(nameof(player));this.resolve=resolve??throw new ArgumentNullException(nameof(resolve));foreach(var row in journal.Records.Where(r=>r.Kind=="audio_request"))requested.Add(row.Context.AudioRequestId);player.Event+=Record; }
+        public AudioDataAdapter(DataJournal journal,AudioPlayer player,Func<AudioPlaybackEvent,AudioRequestContext> resolve,bool subscribeToPlayer=true)
+        { this.journal=journal??throw new ArgumentNullException(nameof(journal));this.player=player??throw new ArgumentNullException(nameof(player));this.resolve=resolve??throw new ArgumentNullException(nameof(resolve));foreach(var row in journal.Records.Where(r=>r.Kind=="audio_request"))requested.Add(row.Context.AudioRequestId);if(subscribeToPlayer)player.Event+=Record; }
         public void Record(AudioPlaybackEvent value)
         {
             var binding=resolve(value);DataJson.Require(binding!=null&&binding.AudioId==value.AudioId,"DATA_AUDIO_BINDING");

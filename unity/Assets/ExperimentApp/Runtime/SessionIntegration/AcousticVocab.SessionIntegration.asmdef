@@ -1,0 +1,13 @@
+{
+  "name": "AcousticVocab.SessionIntegration",
+  "references": [
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.OperatorConsole",
+    "AcousticVocab.DataLogging",
+    "AcousticVocab.Assessment",
+    "AcousticVocab.FrameBudget"
+  ],
+  "autoReferenced": true
+}

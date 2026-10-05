@@ -12,6 +12,7 @@ namespace AcousticVocab.OperatorConsole
     public sealed class OperatorMailbox : IDisposable
     {
         readonly FixedSlotEngine engine;
+        readonly Action<FixedSlotEngine> prepareResume;
         readonly IOperatorCommandJournal journal;
         readonly Func<OperatorAdmission> admission;
         readonly Func<OperatorHealth> health;
@@ -33,10 +34,10 @@ namespace AcousticVocab.OperatorConsole
         public long ConsumedSequence => consumed;
         public OperatorMailbox(string privateDirectory, string sessionNonce, string runSheetManifestSha256,
             FixedSlotEngine engine, IOperatorCommandJournal journal, Func<OperatorAdmission> admission,
-            Func<OperatorHealth> health, Func<double> monotonicMilliseconds, Func<DateTimeOffset> utcClock = null)
+            Func<OperatorHealth> health, Func<double> monotonicMilliseconds, Func<DateTimeOffset> utcClock = null, Action<FixedSlotEngine> prepareResume = null)
         {
             Wire.Require(Wire.Guid(sessionNonce) && Wire.Hash(runSheetManifestSha256), "binding_invalid");
-            this.engine = engine ?? throw new ArgumentNullException(nameof(engine));
+            this.engine = engine ?? throw new ArgumentNullException(nameof(engine));this.prepareResume=prepareResume;
             this.journal = journal ?? throw new ArgumentNullException(nameof(journal));
             this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
             this.health = health ?? throw new ArgumentNullException(nameof(health));
@@ -99,6 +100,7 @@ namespace AcousticVocab.OperatorConsole
                         Wire.Require(admission()?.Allowed == true, "admission_failed");
                         Wire.Require(health()?.Ready == true, "health_failed");
                         Wire.Require(request.Command == "start" ? engine.Status == SessionState.AwaitingOperator : engine.Status == SessionState.Paused, "not_at_boundary");
+                        prepareResume?.Invoke(engine);
                         engine.ConfirmResume();
                     }
                 }
