@@ -13,6 +13,7 @@ jobs:
         env:
           RUNNER_READY: ${{ vars.UNITY_FOUNDATION_RUNNER_READY }}
           EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
+          G1_DESCRIPTION: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           TRUSTED_SOURCE: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
@@ -20,8 +21,8 @@ jobs:
             echo '::error::Fork code must be reviewed before execution on the licensed Unity runner.'
             exit 1
           fi
-          if [ "$RUNNER_READY" != "true" ] || [ -z "$EDITOR_PATH" ] || [ -z "$UNITY_LICENSE" ]; then
-            echo '::error::Unity CI is not configured. Provision an isolated Windows runner labelled unity-6000.6.0f1, set UNITY_FOUNDATION_RUNNER_READY=true and UNITY_EDITOR_PATH, and store the license only in secret UNITY_LICENSE. Local results do not qualify this gate.'
+          if [ "$RUNNER_READY" != "true" ] || [ -z "$EDITOR_PATH" ] || [ -z "$UNITY_LICENSE" ] || [ -z "$G1_DESCRIPTION" ]; then
+            echo '::error::Unity CI is not configured. Provision an isolated Windows runner labelled unity-6000.6.0f1, set UNITY_FOUNDATION_RUNNER_READY=true, UNITY_EDITOR_PATH and UNITY_G1_DESCRIPTION_PATH for the verified local asset cache, and store the license only in secret UNITY_LICENSE. Local results do not qualify this gate.'
             exit 1
           fi
   quest-and-tests:
@@ -52,10 +53,11 @@ jobs:
         shell: pwsh
         env:
           UNITY_EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
+          G1_DESCRIPTION_JSON: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
         run: |
           $base = 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Target Configure -ProtocolVersion engineering-pending-review -BuildId "$base-configure"
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Target Test -ProtocolVersion engineering-pending-review -BuildId "$base-tests"
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Target TestPlayMode -ProtocolVersion engineering-pending-review -BuildId "$base-playmode"
-          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Target Android -ProtocolVersion engineering-pending-review -BuildId "$base-android"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Configure -ProtocolVersion engineering-pending-review -BuildId "$base-configure"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Test -ProtocolVersion engineering-pending-review -BuildId "$base-tests"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target TestPlayMode -ProtocolVersion engineering-pending-review -BuildId "$base-playmode"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Android -ProtocolVersion engineering-pending-review -BuildId "$base-android"ll
       # Raw Unity logs can contain runner paths/account details; publish sanitized derivatives after review.
