@@ -164,6 +164,14 @@ namespace AcousticVocab.Foundation.Editor
             }
             var scene = EditorSceneManager.OpenScene(ParticipantScenePath);
             var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap), typeof(MeshFilter), typeof(MeshRenderer), typeof(Light), typeof(AcousticVocab.Workcell.WorkcellRegistry), typeof(AcousticVocab.ResponsePanel.ResponsePanelController), typeof(AcousticVocab.StateIntegration.StateSourceHost) };
+            if(ParticipantScenePath=="Assets/Generated.local.data/Teaching/Teaching.unity")
+            {
+                allowed=allowed.Concat(new[] { typeof(AcousticVocab.Teaching.TeachingSessionHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource) }).ToArray();
+                if(UnityEngine.Object.FindObjectsByType<AcousticVocab.Teaching.TeachingSessionHost>(FindObjectsInactive.Include).Length!=1 ||
+                    UnityEngine.Object.FindObjectsByType<AcousticVocab.StudyAudio.AudioPlayer>(FindObjectsInactive.Include).Length!=1 ||
+                    UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Length!=1)
+                    throw new BuildFailedException("Teaching scene requires one host and one isolated verified audio source.");
+            }
             if(ParticipantScenePath==CalibrationScenePath)
             {
                 allowed=allowed.Concat(new[] { typeof(AcousticVocab.StudyAudio.AudioCalibrationHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource),
