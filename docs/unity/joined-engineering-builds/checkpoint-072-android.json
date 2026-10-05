@@ -1,8 +1,8 @@
 {
   "build_identity": {
     "schema_version": 1,
-    "build_id": "joined-grammar-quest-001",
-    "commit_sha": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+    "build_id": "joined-final-quest-002",
+    "commit_sha": "072a9833dafb7f82d0ea7f82dc33b9cc1d8e91df",
     "protocol_version": "engineering-pending-review",
     "editor_version": "6000.6.0f1",
     "target": "Android",
@@ -12,14 +12,14 @@
   },
   "result": "Succeeded",
   "errors": 0,
-  "duration_seconds": 73.6833675,
-  "total_bytes": 797139974,
+  "duration_seconds": 119.03205159999999,
+  "total_bytes": 796825458,
   "development_build": false,
   "files": [
     {
       "path": "experiment.apk",
-      "bytes": 55987174,
-      "sha256": "93e92732c6c2d08aa596bffade82ec738f5e6e28c7f3b96b60dfdbaeea4b9d32"
+      "bytes": 55976350,
+      "sha256": "c043192ef95c7133309675399ce9d1b3dbca264cdbf900299c488a51658ffe33"
     }
   ]
 }
