@@ -107,7 +107,7 @@ namespace AcousticVocab.SessionEngine
         {
             SessionJson.Keys(v,"event","clock_epoch","schedule_sha256","trial_id","retry_of","block_index","item_index","host_mono_ms","scheduled_onset_mono_ms",
                 "state","audible_status","exposure_consumed","reset_ok","focus_ok","technical_fault_code","response_code","evidence_sha256","opportunity_id","audio_request_ids");
-            SessionJson.Require(SessionJson.Hash((string)v["schedule_sha256"])&&System.Text.RegularExpressions.Regex.IsMatch((string)v["clock_epoch"]??"",@"\A[0-9a-f]{32}\z"));
+            SessionJson.Require(v["schedule_sha256"].Type==JTokenType.String&&v["clock_epoch"].Type==JTokenType.String&&SessionJson.Hash((string)v["schedule_sha256"])&&System.Text.RegularExpressions.Regex.IsMatch((string)v["clock_epoch"]??"",@"\A[0-9a-f]{32}\z"));
             foreach(string key in new[]{"trial_id","retry_of","opportunity_id"})SessionJson.Require(v[key].Type==JTokenType.Null||v[key].Type==JTokenType.String&&System.Text.RegularExpressions.Regex.IsMatch((string)v[key],@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z"));
             SessionJson.Require(v["audio_request_ids"] is JArray audioIds&&audioIds.Count<=8&&audioIds.All(x=>x.Type==JTokenType.String&&System.Text.RegularExpressions.Regex.IsMatch((string)x,@"\A[0-9a-f]{32}\z"))&&audioIds.Distinct(JToken.EqualityComparer).Count()==audioIds.Count);
             SessionJson.Require(v["trial_id"].Type==JTokenType.Null?v["opportunity_id"].Type==JTokenType.Null&&((JArray)v["audio_request_ids"]).Count==0:
@@ -117,9 +117,9 @@ namespace AcousticVocab.SessionEngine
             foreach(string key in new[]{"exposure_consumed","reset_ok","focus_ok"})SessionJson.Require(v[key].Type==JTokenType.Boolean);
             foreach(string key in new[]{"block_index","item_index"})SessionJson.Require(v[key].Type==JTokenType.Integer&&(int)v[key]>=0);
             SessionJson.Require(v["event"].Type==JTokenType.String&&new[]{"operator_resume","visit_complete","state_before","state_after","onset_evidence","response","pause_requested","stop_requested","item_fault","retry_queued","boundary_late","session_stopped","session_paused","novel_buffer_authorized"}.Contains((string)v["event"]));
-            SessionJson.Require(v["technical_fault_code"].Type==JTokenType.Null||new SessionFault((string)v["technical_fault_code"]).Code==(string)v["technical_fault_code"]);
-            SessionJson.Require(v["response_code"].Type==JTokenType.Null||new[]{"commit","dont_know","timeout"}.Contains((string)v["response_code"]));
-            SessionJson.Require(v["evidence_sha256"].Type==JTokenType.Null||SessionJson.Hash((string)v["evidence_sha256"]));
+            SessionJson.Require(v["technical_fault_code"].Type==JTokenType.Null||v["technical_fault_code"].Type==JTokenType.String&&new SessionFault((string)v["technical_fault_code"]).Code==(string)v["technical_fault_code"]);
+            SessionJson.Require(v["response_code"].Type==JTokenType.Null||v["response_code"].Type==JTokenType.String&&new[]{"commit","dont_know","timeout"}.Contains((string)v["response_code"]));
+            SessionJson.Require(v["evidence_sha256"].Type==JTokenType.Null||v["evidence_sha256"].Type==JTokenType.String&&SessionJson.Hash((string)v["evidence_sha256"]));
             ItemState? state=v["state"].Type==JTokenType.Null?(ItemState?)null:v["state"].Type==JTokenType.String&&Enum.TryParse<ItemState>((string)v["state"],out var parsed)&&Enum.IsDefined(typeof(ItemState),parsed)&&parsed.ToString()==(string)v["state"]?parsed:throw new SessionFault("SESSION_JOURNAL_STATE");
             SessionJson.Require(v["audible_status"].Type==JTokenType.String&&Enum.TryParse<AudibleStatus>((string)v["audible_status"],out var audible)&&Enum.IsDefined(typeof(AudibleStatus),audible)&&audible.ToString()==(string)v["audible_status"]);
             var audibleValue=Enum.Parse<AudibleStatus>((string)v["audible_status"]);

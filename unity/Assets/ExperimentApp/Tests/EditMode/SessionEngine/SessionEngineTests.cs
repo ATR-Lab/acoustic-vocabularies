@@ -190,6 +190,20 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.Throws<SessionFault>(()=>f.Engine.Tick());Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Faulted));
         }
         static SessionRecord Record(double time=1)=>new SessionRecord("operator_resume",new string('a',32),Hash,null,null,0,0,time,null,null,AudibleStatus.NotRequested,false,false,false,null,null);
+        [Test] public void PublicRecordCodecRoundtripsWithoutRetainingMutableJson()
+        {
+            var json=SessionRecordCodec.ToJson(Record());var decoded=SessionRecordCodec.FromJson(json);
+            json["host_mono_ms"]=999;
+            Assert.That(decoded.MonoMs,Is.EqualTo(1));Assert.That(decoded.Event,Is.EqualTo("operator_resume"));
+            Assert.That(SessionRecordCodec.ToJson(decoded)["audio_request_ids"].Count(),Is.Zero);
+        }
+        [Test] public void PublicRecordCodecRejectsUnknownFieldsWrongTypesAndInvalidExposure()
+        {
+            var json=SessionRecordCodec.ToJson(Record());json["target"]="A";Assert.Throws<SessionFault>(()=>SessionRecordCodec.FromJson(json));
+            json=SessionRecordCodec.ToJson(Record());json["clock_epoch"]=Newtonsoft.Json.Linq.JToken.Parse(new string('1',32));Assert.Throws<SessionFault>(()=>SessionRecordCodec.FromJson(json));
+            json=SessionRecordCodec.ToJson(Record());json["exposure_consumed"]=true;Assert.Throws<SessionFault>(()=>SessionRecordCodec.FromJson(json));
+            Assert.Throws<SessionFault>(()=>SessionRecordCodec.FromJson(null));Assert.Throws<SessionFault>(()=>SessionRecordCodec.ToJson(null));
+        }
         static string Temp()=>Path.Combine(Path.GetTempPath(),"av-session-test-"+Guid.NewGuid().ToString("N"));
         [Test] public void JournalReopensHashChainAndRejectsSameEpochClockRegression()
         {

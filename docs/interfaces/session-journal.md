@@ -7,6 +7,12 @@ Never substitute a buffered queue which reports success before its transaction
 is durable. A #72 adapter may add its own private events/exports without changing
 the cue-intent ordering or synthesizing missing onset evidence.
 
+`SessionRecordCodec.ToJson(record)` and `FromJson(JObject)` expose the same closed
+record validation used by `SessionJournal`. They copy values into an immutable
+record and reject unknown fields, wrong types and contradictory exposure flags.
+The codec does not persist anything or validate cross-record sequence/clock
+ordering; those remain the durable journal's responsibility.
+
 `SessionRecord` serializes these exact fields in the minimal #67 journal:
 
 | Field | Meaning |
