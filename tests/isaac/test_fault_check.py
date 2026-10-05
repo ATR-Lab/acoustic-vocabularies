@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from isaac.e2e.fault_check import check_public_neutral, complete_rows, validate_binding, verify_replay, verify_arrivals
+from isaac.e2e.fault_check import check_public_neutral, complete_rows, validate_binding, verify_replay, verify_arrivals, append_event, require_lease
 
 
 def fixture():
@@ -89,3 +89,22 @@ def test_killed_receiver_prefix_still_requires_every_durable_sequence_and_clock(
     for key in ('seq','sim_step','source_host_ns','receive_host_ns'):
         broken=deepcopy(rows);broken[6][key]=broken[5][key]
         with pytest.raises(ValueError,match='progression'):verify_arrivals(broken)
+
+
+def test_receiver_name_is_metadata_and_cannot_replace_event_clock(tmp_path):
+    path=tmp_path/'timeline.jsonl'
+    row=append_event(path,'receiver_connected',name='receiver-before',pid=123)
+    assert complete_rows(path)==[row] and row['name']=='receiver-before' and row['event']=='receiver_connected'
+    assert int(row['host_ns'])>0
+    with pytest.raises(ValueError,match='authority'):append_event(path,'fake',host_ns='0')
+    assert complete_rows(path)==[row]
+
+
+def test_driver_requires_remaining_same_host_source_budget_before_fault_commands():
+    ready=dict(requested_seconds=90.,source_ready_host_ns='1000000000')
+    assert require_lease(ready,2_000_000_000)==89.
+    assert require_lease(ready,16_000_000_000)==75.
+    with pytest.raises(ValueError,match='remaining'):require_lease(ready,17_000_000_000)
+    with pytest.raises(ValueError,match='monotonic'):require_lease(ready,0)
+    for bad in (True,float('inf'),0,3601):
+        with pytest.raises(ValueError,match='lease'):require_lease({**ready,'requested_seconds':bad},2_000_000_000)

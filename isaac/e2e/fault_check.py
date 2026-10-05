@@ -32,6 +32,25 @@ def save(path,value):
     durable(Path(path),(json.dumps(value,indent=2,allow_nan=False)+'\n').encode())
 
 
+def append_event(path,kind,**values):
+    if set(values)&{'event','host_ns'}:raise ValueError('Event authority fields cannot be replaced')
+    row=dict(event=kind,host_ns=str(time.monotonic_ns()),**values)
+    with Path(path).open('ab') as stream:
+        stream.write((json.dumps(row,allow_nan=False)+'\n').encode());stream.flush();os.fsync(stream.fileno())
+    return row
+
+
+def require_lease(ready,now_ns):
+    seconds=ready.get('requested_seconds');stamp=ready.get('source_ready_host_ns')
+    if type(seconds) not in (int,float) or not math.isfinite(seconds) or not 5<=seconds<=3600:
+        raise ValueError('Bounded source lease required')
+    if not isinstance(stamp,str) or not stamp.isdecimal() or type(now_ns) is not int or now_ns<int(stamp):
+        raise ValueError('Same-host monotonic readiness clock required')
+    remaining=seconds-(now_ns-int(stamp))/1e9
+    if remaining<75:raise ValueError('At least75s remaining source lease required for60s driver and cleanup')
+    return remaining
+
+
 def complete_rows(path, maximum=16*1024*1024):
     """Only newline-terminated durable-prefix rows while the owner appends."""
     with Path(path).open('rb') as stream:raw=stream.read(maximum+1)
@@ -184,15 +203,14 @@ def run_fault_check(args):
     ready=strict_loads(raw.decode())
     validate_binding(ready,scene_sha256=args.scene_sha256,snapshot_sha256=args.snapshot_sha256,
         control_session_id=args.control_session_id,station_id=args.station_id)
+    remaining_lease=require_lease(ready,time.monotonic_ns())
     snapshot=load_snapshot(source/'reset-check/neutral_v1.json',args.snapshot_sha256)
     layout=json.loads((ROOT/'apparatus/workcell_layout.json').read_text())
     registry=registry_from_snapshot(layout,snapshot,args.snapshot_sha256,args.station_id,ROOT/'docs/spikes/isaac/joint_inventory.csv')
     output=Path(args.output);output.mkdir(parents=True,exist_ok=False)
     children=[];events=[];cleanup=[];failure=None;checks={};started=time.monotonic_ns()
-    def event(name,**values):
-        row=dict(event=name,host_ns=str(time.monotonic_ns()),**values);events.append(row)
-        with (output/'timeline.jsonl').open('ab') as stream:
-            stream.write((json.dumps(row,allow_nan=False)+'\n').encode());stream.flush();os.fsync(stream.fileno())
+    def event(kind,**values):
+        events.append(append_event(output/'timeline.jsonl',kind,**values))
     def spawn(name):
         folder=output/name;folder.mkdir()
         save(folder/'config.json',dict(socket=ready['public_socket'],registry=asdict(registry),snapshot=snapshot,public_session_id=ready['public_session_id']))
@@ -286,6 +304,7 @@ def run_fault_check(args):
     report=dict(scope='actual_backend_fault_diagnostic',participant=False,qualification=False,
         native_visit_completed=False,source_ready_sha256=args.ready_sha256,scene_sha256=args.scene_sha256,
         reset_snapshot_sha256=args.snapshot_sha256,elapsed_seconds=(time.monotonic_ns()-started)/1e9,
+        admitted_remaining_lease_seconds=remaining_lease,
         checks=checks,fault=failure,cleanup_errors=cleanup,
         completed=failure is None and not cleanup and checks.get('final_stop_reset_ok') is True,
         limitations=['Explicit supervisor pause; no Unity automatic pause or cue-replay claim.',
