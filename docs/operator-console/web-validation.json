@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "status": "engineering_demo_only",
+  "python_runtime_commit": "45b6f36",
+  "ui_runtime_commit": "10e1bcc",
+  "python_tests_passed": 76,
+  "console_tests_passed": 35,
+  "schemas_passed": 22,
+  "synthetic_examples_passed": 2,
+  "repository_guard": "pass",
+  "browser": {
+    "a_completed": true,
+    "b_active_completed": true,
+    "b_yoked_completed": true,
+    "illustrative_slots_each": 5,
+    "nominal_demo_slot_seconds": 3,
+    "a_pause_observed_after_completed_slots": 1,
+    "faults_observed": [
+      "bridge_stale",
+      "headset_unavailable",
+      "frame_freeze"
+    ],
+    "signoff_observed": true,
+    "run_sheet_download_observed": true
+  },
+  "screenshots": [
+    {
+      "purpose": "console-preview-01-stale-bridge.jpg",
+      "sha256": "fd3d4ee2224a4c61aafd3b8859932cdfc69ad64916640a0eff99c67ab3770ada",
+      "bytes": 86585
+    },
+    {
+      "purpose": "console-preview-02-yoked-complete.jpg",
+      "sha256": "1214678906a679348dbd74c2add4ba06ed276cdd03ee22f0dbf8ecb48fd1f45a",
+      "bytes": 86960
+    }
+  ],
+  "pending": [
+    "Actual engine/scene integration and matched private control service",
+    "Full protocol mock-visit paired headset capture",
+    "Actual fault detection delays",
+    "Native adapter tests and builds",
+    "External deviation-template header",
+    "Actual per-block timestamps",
+    "Mirroring/casting/notification settings",
+    "Physical device, clock, audio and multi-station qualification"
+  ]
+}
