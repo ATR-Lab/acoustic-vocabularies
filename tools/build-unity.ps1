@@ -50,7 +50,10 @@ $process.WaitForExit()
 if ($process.ExitCode -ne 0) { throw "Unity failed with exit code $($process.ExitCode). Inspect the private build log." }
 if ($Target -in @('Test','TestPlayMode')) {
     [xml]$result = Get-Content -Raw -LiteralPath $results
-    if ($result.'test-run'.result -ne 'Passed' -or [int]$result.'test-run'.total -lt 1) { throw 'Unity test suite did not pass or discovered zero tests.' }
+    $optionalChecks=@('AcousticVocab.Tests.StudyAudio.PackageLoaderTests.ActualProducerArtifactChecksAAndBWhenProvisioned','AcousticVocab.Tests.SpeechBankTests.ActualPrivateSyntheticSpeechBankVerifiesButStaysUnreviewed')
+    $skips=@($result.SelectNodes('//test-case[@result="Skipped"]'))
+    if ([int]$result.'test-run'.failed -ne 0 -or [int]$result.'test-run'.inconclusive -ne 0 -or [int]$result.'test-run'.passed -lt 1 -or @($skips | Where-Object {$_.fullname -notin $optionalChecks}).Count -ne 0) { throw 'Unity tests failed, unexpectedly skipped, or discovered no passing tests.' }
+    foreach ($skip in $skips) { Write-Output ('Optional private evidence test skipped: '+$skip.fullname) }
 }
 if ($Target -in @('Android','Windows')) {
     $binary = if ($Target -eq 'Android') { 'experiment.apk' } else { 'experiment.exe' }
