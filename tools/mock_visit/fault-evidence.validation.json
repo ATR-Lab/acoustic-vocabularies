@@ -47,5 +47,17 @@
   ],
   "issue81_accepted": false,
   "participant_qualified": false,
-  "acoustic_qualified": false
+  "acoustic_qualified": false,
+  "repository_checks": {
+    "pytest_passed": 705,
+    "pytest_skipped": 24,
+    "pytest_seconds": 138.56,
+    "schemas": 45,
+    "synthetic_examples": 14,
+    "skip_limits": [
+      "Locked producer dependencies absent from minimal local environment",
+      "Linux/websockets transport and symlink privilege checks unavailable on this host",
+      "Retained native integrity exports not provisioned for broad test run"
+    ]
+  }
 }
