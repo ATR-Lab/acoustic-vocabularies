@@ -4,7 +4,9 @@
 trusted session owner wraps its content factory with `FrameContentFactory` and
 composes `FrameAudioAdapter.Record` into its durable audio event sink, resolving
 PCM sample counts from the already verified loaded wave. The wrapper uses the
-engine's existing response offsets. Every actual audio request separately binds
+participant choice offsets (`ChoiceOpensSeconds`/`ChoiceClosesSeconds`). Menu
+choice windows remain atom 22–32 s and profile 30–45 s, independently of the later
+engine close/reset boundary. Every actual audio request separately binds
 its cue duration, including the final lesson presentation. No study timing,
 selected rate, wave, allocation or answer is invented by the monitor.
 
@@ -31,13 +33,13 @@ summaries flush the raw prefix before they are exported to the study journal.
 Directories are create-new; partial/crashed evidence is retained and never
 repaired into a complete run. The unified data adapter appends typed device
 observations and projects only bounded health into the operator console. Missing
-rate confirmation, missing baseline/cue bindings, interrupted capture and logger
+rate confirmation, missing baseline/cue bindings, interrupted admitted capture and logger
 failure block readiness.
 
 ## Clocks and rates
 
 `Application.onBeforeRender` intervals are application render callbacks on the
-absolute host Stopwatch clock. They are **not measured photon-presentation
+per-process Stopwatch clock, with a recorded capture clock epoch. They are **not measured photon-presentation
 intervals**. Unity CPU/GPU statistics are delayed and nullable. Runtime refresh
 rate, present/dropped counters, render texture dimensions, Unity physics step size
 and observed step counts are separate fields. Isaac physics rate and physical
@@ -63,3 +65,95 @@ explains delayed CPU/GPU results and release-build statistics configuration.
 Physical Quest timing, full-scene optimization, a chosen/frozen operating rate,
 three-volunteer legibility and comfort checks, and apparatus sign-off remain
 pending. Simulator or virtual-clock results must carry their source labels.
+
+## Integration and ownership
+
+`SessionIntegrationOwner` constructs the sole `FixedSlotEngine` around the final
+frame wrapper and `ExclusiveContentMultiplexer`. It reuses a caller-owned
+`DataJournal`, creates one persistent `AssessmentDataJournal` view, and installs
+one panel adapter. It does not load a package or certify admission. The real
+module remains the sole `AudioPlayer.Event` observer; its durable sink composes
+`AudioDataAdapter` in non-subscribing mode and `FrameAudioAdapter` exactly once.
+
+The trusted joining owner supplies a reviewed block-to-creator map. A creator
+receives `Resources` and a `ModuleConstructionScope`; it registers cleanup before
+any side effect that may throw, then returns its `IDisposable` factory. The
+returned factory is automatically owned. Existing assessment and teaching host
+installation methods accept `beforeSchedule: resources.BindAudio`; their actual
+ports call this with the already verified, permitted waveform immediately before
+`AudioPlayer.Schedule`. Pass `resources.DurableAudioSink` to that module's audio
+sink. No additional PCM read or novel/speech permission is introduced.
+
+Call the mailbox constructor with `prepareResume: owner.PrepareResume`. The hook
+runs after the durable command request and before `ConfirmResume`; it never
+auto-resumes. A block switch is allowed only at an explicit engine boundary after
+the preceding **requested** visual tail ends. The old lease is disposed before
+creation begins; failed cleanup/creation latches blocked. An interrupted lease
+must be replaced even on same-block Resume: its control client is permanently
+interrupted and its prepared request IDs cannot be reused. Creators construct a
+fresh backend, factory and host/screen, registering `host.Uninstall` in their
+construction scope before `Install`. Uninstall clears engine/factory ownership
+before cleanup; deferred Unity disable/destroy/focus callbacks cannot abort the
+next owner's shared player. Retain the owner-level stage journal and reconstruct
+stage history in each fresh assessment host. The retained factory is
+still pumped through acknowledgment/lesson tails. The selected factory's
+`ISlotStartPlan` is forwarded, preserving verified yoked timing anchors. The
+mailbox remains the only `engine.Tick` driver.
+
+Fresh control readiness is a separate staged admission operation at a safe
+boundary. In particular, assessment installation requires an already acknowledged
+`test` mode. The synchronous mailbox prepare hook does not wait for or manufacture
+that asynchronous handshake. A trusted bootstrap must stage and verify a fresh
+backend before explicit Resume, then transfer its ownership to the new scope;
+unready installation fails closed. That concrete bootstrap is still pending.
+
+Preparing an unadmitted future slot does not reserve a visual tail. A pre-cue
+pause records a raw `cancelled_before_window` summary, keeps its absent interval
+blank, and allows explicit replanning of the still-unplayed opportunity. A pause
+after a cue request remains an interruption fault. Earlier active tails are not
+removed when a later unadmitted plan is cancelled.
+
+The scene builder includes the assessment, G1 state, panel and capture components.
+The explicit owner API is ready for trusted module creators; complete participant
+admission, the selection-menu host, qualified orientation recordings, final
+materials and physical audio calibration are still integration prerequisites.
+No scene auto-installs those authorities. This is not a qualified complete visit.
+
+The raw frame bundle and unified journal are retained together. A typed dispatch
+failure attempts all already raw-backed fault records/notifications before
+latching; raw evidence remains the recovery authority and an incomplete typed
+prefix must not be represented as complete. Existing data exports do not silently
+embed or upload raw frame bundles.
+
+## Measured simulator probe
+
+[Public callback CSVs, hashes and limits](simulator-callbacks/validation.json) and
+[the interval plot](simulator-callbacks/intervals.svg) describe actual native
+Unity callbacks with the recorded G1 snapshot and engineering panel. The short
+baseline, 200 ms injection and 300 ms injection are separate runs. They are not
+the proposed live 36-trial headset block. The requested sleeps yielded observed
+maxima of 242.7 ms and 333.3 ms respectively; only the latter raised a freeze.
+
+The separately named `FrameProbe` build has no session or audio authority. Supply
+`-frameProbeOutput <fresh-directory> -frameProbeStall 0|200|300` only in an
+engineering simulator run. It waits for real Foundation/source/panel readiness,
+captures the actual rendered scene, uses synthetic windows and exits. Build it
+with the existing wrapper `-Target Windows -Scene FrameProbe`; participant
+capture scenes use `-Scene FrameBudget`. Raw logs/configuration/screenshots remain
+private. The probe's camera capture is supplementary; inspect the actual native
+XR mirror and log camera pose/FOV before making layout judgments.
+
+The initial native mirror confirmed a real preview defect: a level tracked head
+left the workcell low in view, and the panel overlapped the G1. A bounded private
+configuration trial moved the panel's first row from −0.18 m to eye level, enlarged
+common glyph height from 0.6° to 1.0°, and widened buttons from 0.135 m to 0.18 m.
+Distance (0.7 m), button height (0.065 m), gap (0.012 m), observer calibration and
+actual tracked pitch were preserved. All values remain inside the authoritative
+response-panel schema. Both all-target and all-action views rendered with this
+common setting; the earlier 1.2°/0.135 m action trial correctly hit the fit guard.
+These are provisional preview values, not changed protocol defaults. The G1 head
+is visible but the Commit row still overlaps its shoulders/upper torso. This is
+an unresolved layout acceptance defect, and neither screenshot is a physical
+legibility or comfort pass. Native mirror cropping and the supplementary 16:9
+camera render differ; the recorded XR eye texture is 1440×1584 with a 96° vertical
+FOV. See [pose, configuration deltas and image hashes](simulator-callbacks/layout-preview.json).
