@@ -50,6 +50,7 @@ namespace AcousticVocab.SessionIntegration
         JoinedGrammarStage grammarStage;bool grammarInterrupted;
         JoinedEngineeringConfig config;JoinedVisitArtifacts assets;DataJournal data;JoinedAudit audit;FileMenuStore store;JoinedSelections selections;MenuLedger menuLedger;bool menuSealed;
         SessionIntegrationOwner owner;StagedModuleCoordinator staged;OperatorMailbox mailbox;FileOperatorCommandJournal commands;CompletedFormsRecovery formsRecovery;YokedReplayAuthority yokedAuthority;OperatorRequest resumeRequest;
+        Preflight activePreflight;
         readonly ModuleConstructionScope visit=new ModuleConstructionScope();bool attempted,installedFrames,closed,failed,formsShown;string evidenceRoot,nonce;
         double? diagnosticQuitAt;
         sealed class Clock:ISessionClock{public double NowMs=>AudioPlayer.Now*1000;}
@@ -146,7 +147,7 @@ namespace AcousticVocab.SessionIntegration
                             });
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
-                    owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders);
+                    owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
                     if(assets.Grammar!=null)
                     {
                         grammarStage=new JoinedGrammarStage(data,assets.Grammar,assets.GrammarReview,assets.Schedule.Sha256,()=>clock.NowMs);
@@ -233,10 +234,25 @@ namespace AcousticVocab.SessionIntegration
             screen.ViewObserved+=Observe;scope.RegisterCleanup(()=>screen.ViewObserved-=Observe);
         }
         void Report(string code){if(StatusCode==code)return;StatusCode=code;Debug.Log("JOINED_ENGINEERING_STATUS "+code+" participant_admission=false");}
+        void RecordGateRefusal(SlotGateRefusal refusal)
+        {
+            var r=refusal.Readiness;
+            audit.Write("module",new JObject{["kind"]="slot_gate_refused",["code"]=refusal.Code,["block"]=refusal.Block,
+                ["attempt_id"]=refusal.Context.Item.TrialId,["opportunity_id"]=refusal.Context.OpportunityId,["checked_mono_ms"]=refusal.CheckedMonoMs,
+                ["scheduled_onset_mono_ms"]=refusal.Context.OnsetMonoMs,["minimum_lead_ms"]=refusal.MinimumLeadMs,
+                ["remaining_lead_ms"]=refusal.Context.OnsetMonoMs-refusal.CheckedMonoMs,
+                ["readiness"]=new JObject{["hash_verified"]=r.HashVerified,["audio_preloaded"]=r.AudioPreloaded,["reset_acknowledged"]=r.ResetAcknowledged,
+                    ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
+                ["control_health"]=activePreflight?.Diagnostic()});
+        }
         void Fail(string code)
         {
-            if(failed||closed)return;failed=true;Report(new SessionFault(code).Code);
-            try{owner?.Engine.Fault(StatusCode);}catch{}try{player?.Abort(StatusCode);}catch{}try{audit?.Write("fault",new JObject{["code"]=StatusCode});}catch{}Close();
+            if(failed||closed)return;failed=true;string reported=new SessionFault(code).Code;Report(owner?.Engine.PrimaryFaultCode??reported);
+            // Keep secondary failures visible without presenting cleanup's
+            // invalidated control state as the original terminal cause.
+            try{audit?.Write("fault",new JObject{["code"]=StatusCode});}catch{}
+            try{audit?.Write("module",new JObject{["kind"]="terminal_fault_diagnostic",["primary_code"]=StatusCode,["reported_code"]=reported,["diagnostic_failed"]=owner?.Engine.DiagnosticFailed??false,["control_health"]=activePreflight?.Diagnostic()});}catch{}
+            try{owner?.Engine.Fault(reported);}catch{}try{player?.Abort(StatusCode);}catch{}Close();
         }
         void OnApplicationFocus(bool focused)
         {if(data!=null&&!data.Closed)try{data.Append(DataObservations.Device(null,"focus",clock.NowMs,focused));}catch{Fail("JOIN_DATA_APPEND_FAILED");}if(!focused&&owner!=null)Fail("JOIN_FOCUS_LOST");}
@@ -361,9 +377,10 @@ namespace AcousticVocab.SessionIntegration
                     host.yokedAuthority.BindForExplicitStart(request.RequestId,request.Sequence,request.Command);
                     preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);
                 }
-                committed=true;
+                committed=true;host.activePreflight=this;scope.RegisterCleanup(()=>{if(ReferenceEquals(host.activePreflight,this))host.activePreflight=null;});
                 host.audit.Write("module",new JObject{["kind"]="commit",["block"]=block,["module"]=kind.ToString()});return preparedFactory;
             }
+            internal JObject Diagnostic()=>control?.ReadinessDiagnostic(null);
             ISlotContentFactory CreateFactory()
             {
                 var shared=host.owner.Shared;

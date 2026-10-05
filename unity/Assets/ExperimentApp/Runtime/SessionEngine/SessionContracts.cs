@@ -73,6 +73,16 @@ namespace AcousticVocab.SessionEngine
         public SlotReadiness(bool hash,bool preload,bool resetAck,bool renderer,bool panel,bool focus,bool input,bool modeAck)
         { HashVerified=hash;AudioPreloaded=preload;ResetAcknowledged=resetAck;RendererReady=renderer;PanelIdle=panel;FocusOk=focus;InputOk=input;ModeAcknowledged=modeAck; }
     }
+    // A failed check's already-evaluated gates, captured before interruption can
+    // invalidate them. This observation never supplies admission authority.
+    public sealed class SlotGateRefusal
+    {
+        public string Code { get; } public string Block { get; } public SlotContext Context { get; }
+        public SlotReadiness Readiness { get; } public double CheckedMonoMs { get; }
+        public double MinimumLeadMs { get; }
+        internal SlotGateRefusal(string code,string block,SlotContext context,SlotReadiness readiness,double checkedMs,double minimumLead)
+        {Code=code;Block=block;Context=context;Readiness=readiness;CheckedMonoMs=checkedMs;MinimumLeadMs=minimumLead;}
+    }
     public readonly struct SlotContext
     {
         public SlotItem Item { get; }
