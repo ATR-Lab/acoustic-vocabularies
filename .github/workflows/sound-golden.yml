@@ -94,7 +94,7 @@ jobs:
   compare:
     name: golden compare (all runners)
     needs: golden
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
       run:
