@@ -105,3 +105,15 @@ Licensed CI now includes both foundation and workcell edit-mode suites and the
 workcell Quest build. The configuration guard also requires the reviewed asset
 cache variable `UNITY_G1_DESCRIPTION_PATH`; no runner or license is provisioned
 by this change.
+
+## Recorded validation
+
+`validation.json` records 41 passing edit-mode tests, actual neutral-pose parity,
+independently inspected capture hashes, and both final native builds from clean
+source `3249543a8d5ff37b2be552f9baaf3de245f0dd18`. `build-manifests/` contains the
+verified relative-path file hashes. Windows succeeded with zero errors; the
+Android ARM64 IL2CPP APK is 54,424,416 bytes, ZIP integrity passed, SDK32/36,
+INTERNET permission present, and debuggable absent/default false. The APK SHA256
+is `680eb249ec94092c0792ae06e099b853ba11298133e2baf61cd94d9cbbf880a0`.
+Unity's aggregate reported build size is retained separately from actual APK
+bytes. No headset was connected, so no device install or runtime pass is claimed.

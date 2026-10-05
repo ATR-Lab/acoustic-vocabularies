@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "status": "engineering_validation_not_gate_qualification",
+  "source_commit": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+  "editor": "6000.6.0f1",
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "object_count": 60,
+  "canonical_joint_count": 43,
+  "robot_link_frame_count": 55,
+  "rendered_robot_triangles": 629338,
+  "material_metadata_sha256": "87318a34dce2ca6d5ffb84b11252d201054406ef9ba3973e62155c226f9fd67b",
+  "tests": {
+    "edit_mode_total": 41,
+    "edit_mode_passed": 41,
+    "xml_sha256": "b54c7e7a48ab098722e7bda2a21920c3795e4acafdcd8a4aa652e1ffb5d22149",
+    "python_passed": 12,
+    "repository_guard": "passed",
+    "schema_validation": "2 schemas and 2 examples passed"
+  },
+  "pose_parity": {
+    "compared": 60,
+    "max_float32_position_error_m": 2.81344025349912e-08,
+    "position_tolerance_m": 0.01,
+    "rotation_tolerance_degrees": 2,
+    "source": "actual generated scene capture and edit-mode tests"
+  },
+  "captures": {
+    "unity_observer_sha256": "3c1014be4e2df1089dc52816340e099f70ef6d16e9833124e8758fa1a25bc4cd",
+    "isaac_observer_sha256": "77b971a8c415add6d655ecb2b52d6258939b0e9e1c1ee03ac99b57aa95e4c8bb",
+    "width": 2560,
+    "height": 1440,
+    "review": "Both images independently inspected by implementing agent and parent agent; human sign-off pending",
+    "differences": [
+      "Unity lighting/shadows/tone response differs from RTX",
+      "STL flat normals differ from USD renderer appearance",
+      "USD-only wrist-camera bracket meshes absent",
+      "MDL tint/metallic/default evaluation not reproduced; authored diffuse bindings approximated"
+    ]
+  },
+  "builds": [
+    {
+      "target": "Windows",
+      "manifest_sha256": "4ffd6422905307a8edb7a430c21e2f3bb35273bc0a86f5714dc5b7458a72e45e",
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "workcell-link-002",
+        "commit_sha": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "StandaloneWindows64",
+        "dirty_source": false,
+        "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+        "development_only": true
+      },
+      "entry_file": {
+        "path": "experiment.exe",
+        "bytes": 667136,
+        "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
+      },
+      "unity_reported_total_bytes": 157859013,
+      "raw_manifest_sha256": "4c0f849a96b09c88e6de6c111bb6cbc27581a34de3a68957e7a5be87ff4f6ab8"
+    },
+    {
+      "target": "Android",
+      "manifest_sha256": "0ea0da6605be9719045ef773494f611055537a18b8f2d44d1926b64d38d5e68c",
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "workcell-quest-001",
+        "commit_sha": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "Android",
+        "dirty_source": false,
+        "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+        "development_only": true
+      },
+      "entry_file": {
+        "path": "experiment.apk",
+        "bytes": 54424416,
+        "sha256": "680eb249ec94092c0792ae06e099b853ba11298133e2baf61cd94d9cbbf880a0"
+      },
+      "unity_reported_total_bytes": 752254642,
+      "raw_manifest_sha256": "8fb1178938ce2df689eaa66c00b7c94955d47b80f545e40e56d34525ee6ee859"
+    }
+  ],
+  "android": {
+    "arm64_il2cpp": true,
+    "zip_crc": "passed",
+    "device_runtime": "pending: no headset connected",
+    "min_sdk": 32,
+    "target_sdk": 36,
+    "internet_permission": true,
+    "debuggable": false,
+    "debuggable_observation": "application-debuggable absent from aapt2 badging; Android default false"
+  },
+  "qualification_pending": [
+    "Licensed Unity CI runner/license/asset cache",
+    "Human side-by-side sign-off",
+    "Headset runtime/frame budget/comfort/legibility",
+    "Common procedures and per-action reset reconciliation",
+    "Formal 32-target leakage review #79",
+    "Git LFS availability"
+  ],
+  "build_size_note": "Use entry_file.bytes for the actual APK/EXE byte size. Unity reported aggregate build bytes are retained separately and are not represented as APK size."
+}
