@@ -143,3 +143,18 @@ Reproduce the read-only cup screen with
 `python -m isaac.demos.grip_geometry --summary <private-probe-summary> --layout apparatus/workcell_layout.json --mesh-directory <approved-pinned-G1-meshes> --out <private-diagnostic-output>`.
 It verifies both distal STL hashes. A positive vertex/box intersection proves a
 failure; its absence would not prove triangle or whole-robot collision freedom.
+
+The retained current-posture orientation screen also found no candidate for a
+new actual probe: all 180 yaw-only candidates (2-degree steps) intersected the
+cup. Of 600 bounded yaw/pitch/roll combinations, 480 failed the selected contact
+range and all remaining 120 intersected a cup wall. The calculation uses eight
+pinned hand meshes in captured link frames, rigidly rotated about the unchanged
+washer. It is hypothetical geometry, not a motion trajectory or IK result; no
+layout changed. Because every candidate already failed, table, other-link and
+full-triangle clearance were not claimed. A materially different finger posture
+would require a new bounded plan.
+
+Reproduce the rejection screen in the approved NumPy environment using
+`python -m isaac.demos.grip_orientation_search --summary <private-summary> --summary-sha256 <captured-sha256> --layout apparatus/workcell_layout.json --mesh-directory <pinned-meshes> --out <private-output>`;
+add `--tilted` for the 600-candidate contact-preserving screen. Positive vertex
+intersections reject a candidate; their absence would not establish clearance.

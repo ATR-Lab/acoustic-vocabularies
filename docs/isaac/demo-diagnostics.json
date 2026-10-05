@@ -176,6 +176,35 @@
     "source_revision": "ed268fa",
     "summary_sha256": "c35cfc498ef69804bf086cf11e726cb3fb464cc441f8a3faa858b4519937e4a7"
   },
+  "hypothetical_current_posture_orientation_screen": {
+    "IK_checked": false,
+    "actual_motion": false,
+    "geometry": "eight pinned public hand meshes in captured actual link frames, rigidly rotated around unchanged washer",
+    "limitation": "Rejects these bounded orientations of the existing finger posture only; does not prove all alternative grasps infeasible. All candidates rejected before additional clearance/IK tests.",
+    "no_layout_change": true,
+    "other_link_table_triangle_clearance_checked": false,
+    "source_summary_sha256": "c35cfc498ef69804bf086cf11e726cb3fb464cc441f8a3faa858b4519937e4a7",
+    "tilted": {
+      "candidates": 600,
+      "cup_rejected": 120,
+      "pitch_and_roll_degrees": [
+        -30,
+        -15,
+        0,
+        15,
+        30
+      ],
+      "selected_contact_rejected": 480,
+      "survivors": 0,
+      "yaw_step_degrees": 15
+    },
+    "yaw_only": {
+      "candidates": 180,
+      "cup_rejected": 180,
+      "survivors": 0,
+      "yaw_step_degrees": 2
+    }
+  },
   "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
   "remaining": [
     "Collision-aware pickup without cup wall penetration",
