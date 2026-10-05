@@ -34,9 +34,12 @@ if ($Target -eq 'Android') { $unityArguments += @('-buildTarget','Android') }
 if ($Target -eq 'Windows') { $unityArguments += @('-buildTarget','Win64') }
 if ($Target -in @('Test','TestPlayMode')) {
     $platform = if ($Target -eq 'Test') { 'EditMode' } else { 'PlayMode' }
-    if ($platform -eq 'PlayMode' -and $Scene -ne 'Calibration') { throw 'This branch provides play-mode tests for Calibration only.' }
     $results = Join-Path $output ($platform.ToLowerInvariant()+'.xml')
-    $assemblies = if ($platform -eq 'PlayMode') { 'AcousticVocab.StudyAudio.PlayModeTests' } elseif ($Scene -eq 'Workcell') { 'AcousticVocab.Foundation.Tests;AcousticVocab.Workcell.Tests' } elseif ($Scene -eq 'Calibration') { 'AcousticVocab.Foundation.Tests;AcousticVocab.StudyAudio.Tests' } else { 'AcousticVocab.Foundation.Tests' }
+    $assemblies = (Get-ChildItem -LiteralPath (Join-Path $project 'Assets') -Filter '*.asmdef' -Recurse |
+        ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName | ConvertFrom-Json } |
+        Where-Object { $_.optionalUnityReferences -contains 'TestAssemblies' -and (($_.includePlatforms -contains 'Editor') -eq ($platform -eq 'EditMode')) } |
+        ForEach-Object { $_.name }) -join ';'
+    if (-not $assemblies) { throw 'No test assemblies found.' }
     $unityArguments += @('-runTests','-testPlatform',$platform,'-assemblyNames',$assemblies,'-testResults',('"'+$results+'"'))
 } else {
     $method = if ($Target -eq 'Configure') { 'Configure' } else { 'Build'+$Target }
