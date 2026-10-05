@@ -161,7 +161,7 @@ namespace AcousticVocab.Foundation.Editor
                         throw new BuildFailedException("Required OpenXR feature disabled: " + required);
             }
             var scene = EditorSceneManager.OpenScene(ParticipantScenePath);
-            var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap), typeof(MeshFilter), typeof(MeshRenderer), typeof(Light), typeof(AcousticVocab.Workcell.WorkcellRegistry) };
+            var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap), typeof(MeshFilter), typeof(MeshRenderer), typeof(Light), typeof(AcousticVocab.Workcell.WorkcellRegistry), typeof(AcousticVocab.ResponsePanel.ResponsePanelController) };
             if(ParticipantScenePath==CalibrationScenePath)
             {
                 allowed=allowed.Concat(new[] { typeof(AcousticVocab.StudyAudio.AudioCalibrationHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource),
@@ -174,6 +174,7 @@ namespace AcousticVocab.Foundation.Editor
                     UnityEngine.Object.FindObjectsByType<AcousticVocab.Workcell.WorkcellRegistry>(FindObjectsInactive.Include).Length!=0)
                     throw new BuildFailedException("Calibration scene requires one isolated calibration host/audio source and no study workcell.");
             }
+
             foreach (var root in scene.GetRootGameObjects())
                 foreach (var component in root.GetComponentsInChildren<Component>(true))
                     if (component == null || !allowed.Contains(component.GetType())) throw new BuildFailedException("Foundation scene has an unexpected component.");

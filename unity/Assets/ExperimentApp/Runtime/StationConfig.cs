@@ -38,9 +38,7 @@ namespace AcousticVocab.Foundation
 
         public static JObject Validate(string json, string schema, string protocolVersion, bool allowExample = false)
         {
-            var value = ParseStrict(json);
-            CheckSchema(ParseStrict(schema));
-            ValidateNode(value, ParseStrict(schema));
+            var value = ValidateDocument(json, schema);
             if ((string)value["protocol_version"] != protocolVersion) throw new ConfigurationFault("protocol_mismatch");
             if (!allowExample && (string)value["provisioning_status"] != "provisioned") throw new ConfigurationFault("example_not_provisioned");
             if (!Uri.TryCreate((string)value["isaac_endpoint"], UriKind.Absolute, out var endpoint) ||
@@ -50,6 +48,14 @@ namespace AcousticVocab.Foundation
             if (Math.Abs(norm - 1) > .0001) throw new ConfigurationFault("reference_quaternion_not_unit");
             var rotation = value["observer_reference"]["rotation_xyzw"];
             if (Math.Abs((double)rotation[0]) > .0001 || Math.Abs((double)rotation[2]) > .0001) throw new ConfigurationFault("reference_must_preserve_world_up");
+            return value;
+        }
+
+        public static JObject ValidateDocument(string json, string schema)
+        {
+            var value = ParseStrict(json);
+            var contract = ParseStrict(schema);
+            CheckSchema(contract); ValidateNode(value, contract);
             return value;
         }
 

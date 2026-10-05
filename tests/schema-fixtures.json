@@ -6,5 +6,9 @@
   {
     "schema": "apparatus/schemas/station.schema.json",
     "instance": "apparatus/examples/station.example.json"
+  },
+  {
+    "schema": "apparatus/response-panel/response-panel.schema.json",
+    "instance": "apparatus/response-panel/response-panel.example.json"
   }
 ]
