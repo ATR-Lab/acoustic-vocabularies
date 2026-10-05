@@ -41,7 +41,10 @@ if ($Target -eq 'Test') {
     $builder = if ($Scene -eq 'Workcell') { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } else { 'AcousticVocab.Foundation.Editor.FoundationBuild.' }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
-$process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -Wait -PassThru
+$process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru
+# Wait for this editor's native exit code, not persistent shared helper descendants.
+# Start-Process -Wait waits the entire process tree (PowerShell documentation).
+$process.WaitForExit()
 if ($process.ExitCode -ne 0) { throw "Unity failed with exit code $($process.ExitCode). Inspect the private build log." }
 if ($Target -eq 'Test') {
     [xml]$result = Get-Content -Raw -LiteralPath $results
