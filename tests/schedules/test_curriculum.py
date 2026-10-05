@@ -58,6 +58,7 @@ from av_schedules.planning import (
     DESIGN_CHECKS,
     GROWTH_COUNTS,
     PLANNING_SHA256,
+    TEMPLATE_SHA256,
     check_planning,
     derived_design_checks,
     derived_growth_counts,
@@ -211,7 +212,12 @@ def test_planning_materials_match_matrix_constant():
 def test_planning_materials_have_reviewed_hashes():
     result = check_planning(Path(str(PLANNING_DIR)))
     assert result.drift == [], result.drift
+    templates = Path(str(PLANNING_DIR)).parent / "templates"  # checked when present
     for name in result.checked:
+        if name in TEMPLATE_SHA256:
+            digest = hashlib.sha256((templates / name).read_bytes()).hexdigest()
+            assert digest == TEMPLATE_SHA256[name]
+            continue
         digest = hashlib.sha256((Path(str(PLANNING_DIR)) / name).read_bytes()).hexdigest()
         assert digest == PLANNING_SHA256[name]
 
@@ -224,8 +230,13 @@ def test_check_planning_accepts_matching_copy_and_reports_drift(tmp_path):
     write_synthetic_planning(tmp_path)
     result = check_planning(tmp_path)
     assert result.ok, result.problems
-    assert result.checked == ["curriculum.csv", "ontology.csv", "design-checks.json"]
-    assert len(result.drift) == 3  # placeholder copies differ from the reviewed files
+    assert result.checked == [
+        "curriculum.csv",
+        "ontology.csv",
+        "design-checks.json",
+        "assessment-schedule.csv",
+    ]
+    assert len(result.drift) == 4  # placeholder copies differ from the reviewed files
 
 
 @pytest.mark.parametrize(

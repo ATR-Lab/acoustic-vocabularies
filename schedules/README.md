@@ -10,6 +10,7 @@ Formats for other components: [`docs/interfaces/schedules.md`](../docs/interface
 Design and balance argument: [`docs/curriculum.md`](docs/curriculum.md).
 Visit schedules (lesson and trial orders): [`docs/orders.md`](docs/orders.md).
 Allocation lists and the reveal-next stub: [`docs/allocation.md`](docs/allocation.md).
+Run sheets and the schedule validation suite: [`docs/run-sheets.md`](docs/run-sheets.md).
 
 ## Use
 
@@ -31,6 +32,13 @@ uv run --project schedules python -m av_schedules demo-examples
 # as that set's curriculum); output to restricted storage
 uv run --project schedules python -m av_schedules allocate \
     --confirmatory-seed-file <path outside the repo> --out <restricted folder>
+# Run sheets (checked before writing; real sets to restricted storage) and the
+# validation report (exit 1 on any finding)
+uv run --project schedules python -m av_schedules run-sheets --demo-seed DEMO-local \
+    --set pilot --demo-placeholder-hashes
+uv run --project schedules python -m av_schedules check --demo-seed DEMO-local
+# Regenerate the committed DEMO run sheets
+uv run --project schedules python -m av_schedules run-sheet-examples
 ```
 
 Options of `curriculum`: `--study A|B|both`, `--set pilot|confirmatory|both` (`both` only
@@ -62,13 +70,19 @@ the batch/design tables, balance reports and manifests of real sets are restrict
 | `assign_output` | `assign_files(master, study, set)`, `load_list(path)`, `demo_allocation_files()` | list documents, balance report, manifest | #31 |
 | `reveal` | `RevealLog(list, log)`: `log_eligibility`, `reveal_next`, `log_bank_unavailable`, `RevealError` | reveal-next stub for the console | #31 |
 | `masking` | `find_method_strings(text)`, `assert_masked(text)` | method-string scan for learner-facing files | #31 |
+| `run_sheets` | `run_sheet_csv(doc, hash_cell)`, `run_sheet_findings(data, doc, hash_cell)`, `read_run_sheet`, `PackageHashes`, `load_package_hashes`, `parse_package_hashes`, `placeholder_package_hashes`, `hash_cells`, `package_keys` | run-sheet CSV per person and visit; package-hash mapping | #32 |
+| `run_sheet_output` | `generate_run_sheets(master, study, set, *, package_hashes=None)`, `render_run_sheets(run)`, `run_sheet_example_files()`, `RunSheetCheckError` | checked run-sheet files and manifest | #32 |
+| `checks` | `run_all(master, study, set)`, `build_set`, `check_set`, `SetRun`, `design_check_values`, `assessment_values`, `report`, `RULES` | validation suite over every generated schedule, run sheet and list | #32 |
+| `findings` | `Finding(unit, person, visit, rule, detail)`, `format_findings` | check results (also from `orders.visit_schedule_findings`) | #32 |
+| `planning` | `design_checks_oracle()`, `RUN_SHEET_COLUMNS`, `TEMPLATE_SHA256`, `FULL_MESSAGE_SLOT_S`, `ATOMIC_SLOT_S`, `ALLOCATION_CHECKS`, `B_SCREENING_MINUTES`, `check_planning(dir, templates=...)` | every design-checks.json field, template header, slot and booking oracles | #32 |
 
 Schemas: [`schema/permutation.schema.json`](schema/permutation.schema.json),
 [`schema/curriculum-unit.schema.json`](schema/curriculum-unit.schema.json),
 [`schema/visit-schedule.schema.json`](schema/visit-schedule.schema.json) (hidden-answer
 material), [`schema/speech-list.schema.json`](schema/speech-list.schema.json);
 allocation: `schema/a-slots`, `a-book-key`, `b-dyads`, `assign-manifest`, `reveal-log`
-(`.schema.json`).
+(`.schema.json`); run sheets: `schema/run-sheet-row`, `run-sheets-manifest`,
+`package-hashes` (`.schema.json`).
 
 ## Development
 
@@ -79,5 +93,6 @@ uv run --project schedules ruff format --config schedules/pyproject.toml --check
 uv run --project schedules pytest --import-mode=importlib -p no:cacheprovider tests/schedules
 ```
 
-Set `AV_PLANNING_DIR` to the external planning-materials folder to also run the two
-tests that compare it with the matrix constant; they are skipped otherwise.
+Set `AV_PLANNING_DIR` to the external planning-materials folder to also run the tests
+that compare it with the source constants (the run-sheet template is read from
+`AV_TEMPLATES_DIR`, default `../templates` next to it); they are skipped otherwise.

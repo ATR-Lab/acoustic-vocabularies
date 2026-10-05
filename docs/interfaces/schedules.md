@@ -431,3 +431,105 @@ allocation_seed(master); load_list(path)
 
 Run sheets (#32) take the slot IDs and, for Study A, the book ID from the learner-facing
 list (never the key). The analyst (#34) joins the key on `book_id` at unmasking.
+
+## Run sheets and checks (#32)
+
+Producer: run sheets and schedule validation tests (#32). Consumers: operator console
+(#73, run sheets), reconciliation (#33, expected counts), analysis pipeline on synthetic
+data (#34) and integrity test suite (#78) (validation suite, synthetic sets), mock
+visits (#81). Design and rule list: [`schedules/docs/run-sheets.md`](../../schedules/docs/run-sheets.md).
+
+### Files
+
+`python -m av_schedules run-sheets (--master-seed-file PATH --set pilot|confirmatory | --demo-seed DEMO-...)
+[--study A|B|both] [--package-hashes MAPPING ...] [--demo-placeholder-hashes] [--out DIR] [--force]`
+generates every schedule, the allocation lists and the run sheets of each set in
+memory, runs the validation suite and writes only if it reports no finding (exit 1
+otherwise). Same seed rules as `schedules`: the set's curriculum seed, one private seed
+per set, output outside any non-ignored work-tree path. Under `<out>/<study>/`:
+
+| Path | Content | Status |
+| --- | --- | --- |
+| `<unit>/run-sheets/<person_id>/<visit>.csv` | one run sheet per person slot and visit | restricted (follows the schedules) |
+| `<set>-run-sheets-manifest.json` | template hash, schedules-manifest SHA-256, package-hash mapping SHA-256, bookings, SHA-256 per sheet ([schema](../../schedules/schema/run-sheets-manifest.schema.json)) | restricted; publish its SHA-256 |
+| `<set>-package-hashes.json` | DEMO placeholder mapping (only with `--demo-placeholder-hashes`) | DEMO only |
+
+Synthetic examples: [`schedules/examples/demo-run-sheets/`](../../schedules/examples/demo-run-sheets/README.md).
+
+### Run-sheet CSV
+
+UTF-8, `\n` line endings, header exactly the methodology template:
+`participant_id,visit,block,expected_count,actual_count,start_time,end_time,comfort_check,phone_locked,hash_check,deviations,operator_signoff`.
+One row per block of the person's visit schedule, in block order. Row schema:
+[`run-sheet-row.schema.json`](../../schedules/schema/run-sheet-row.schema.json).
+
+| Column | Generated value |
+| --- | --- |
+| `participant_id` | person slot ID (`A-C07-L03`, `B-C12-M1`); the console substitutes or displays the coded participant ID that the reveal API bound to the slot |
+| `visit` | `D0`, `D7`, `V1`, `V2`, `V3`, `W1`, `W4` |
+| `block` | schedule block name (`profile_menu`, `atom_menus`, `atomic_lessons`, `message_lessons`, `pre_old`, `trained`, `novel`, `atomic`, `validity`) |
+| `expected_count` | items in the block |
+| `hash_check` | `sha256:<64 hex>` expected package hash (Study A: the slot's book; Study B: the dyad), `DEMO-placeholder:<64 hex>` for DEMO placeholders, or empty without a mapping; same value on every row |
+| other columns | empty, for the operator or console |
+
+A run sheet never contains a method label, designer, role, scaffold arm, swap flag or
+intended answer (Study A sheets are scanned with `find_method_strings`).
+
+### Package-hash mapping (input, from #13)
+
+[`package-hashes.schema.json`](../../schedules/schema/package-hashes.schema.json):
+`{"format": "av-schedules/package-hashes", "format_version": 1, "study": "A"|"B",
+"set": "pilot"|"confirmatory", "demo": bool, "placeholder": bool, "packages": {key:
+sha256}}`. Keys: Study A book IDs as in the learner-facing slot list (`BK-C-7QX4MN`),
+Study B dyad slot IDs (`B-C01`, spares `B-S01`). The mapping must match the study, set
+and the seed's DEMO status, cover every main unit and name nothing outside the set
+(spare slots may be missing; their cells stay empty). `placeholder: true` requires
+`demo: true`. #13 should emit this file next to its package manifests.
+
+### Validation suite
+
+```python
+from av_schedules.checks import build_set, check_set, run_all, design_check_values, assessment_values, report, RULES
+from av_schedules.findings import Finding, format_findings
+
+run_all(master, study, set_name, *, spares=8, package_hashes=None) -> list[Finding]  # [] = pass
+build_set(master, study, set_name, *, spares=8, package_hashes=None) -> SetRun
+#   SetRun: units, docs[person][visit] (schedule documents), unit_of[person], allocation,
+#           hash_cells[person], run_sheets[person][visit] (CSV bytes), prefix ("A-C")
+check_set(run) -> list[Finding]               # schedules, history, allocation, run sheets
+design_check_values(runs) -> dict[str, list[int]]   # design-checks.json field -> distinct generated values
+assessment_values(runs) -> dict[(study, visit), dict[str, list[int]]]
+report(runs, findings) -> str                 # Markdown report (also: python -m av_schedules check)
+Finding(unit, person, visit, rule, detail)    # str(): "<unit> <person> <visit>: <rule>: <detail>"
+```
+
+Rules: `blocks`, `order`, `once-per-pass`, `content`, `heldout`, `slots`, `seconds`,
+`validity`, `trial-ids` (per schedule, #30) and `assessment`, `plays`,
+`heldout-exposure`, `component-availability`, `training-coverage`, `matrix-partition`,
+`train-novel-overlap`, `design-checks`, `booking`, `allocation`, `allocation-coverage`,
+`run-sheet`, `masking` (#32); `RULES` maps each to a one-line description.
+`orders.visit_schedule_findings(doc)` returns the #30 rules as `Finding` values
+(`check_visit_schedule` keeps returning their strings). Run sheets alone:
+`run_sheets.run_sheet_findings(csv_bytes, schedule_doc, hash_cell)`.
+
+`python -m av_schedules check (--demo-seed ... | --master-seed-file ... --set ...)`
+prints the report and exits 1 on any finding. A report of a private set names
+held-out message IDs and visits when it fails, so it stays in restricted storage.
+
+Oracles (`av_schedules.planning`): `design_checks_oracle()` (the 32 numeric fields of
+planning `design-checks.json`, flattened), `ASSESSMENT_SCHEDULE`, `RUN_SHEET_COLUMNS`,
+`TEMPLATE_SHA256`, `FULL_MESSAGE_SLOT_S` (14), `ATOMIC_SLOT_S` (9),
+`ALLOCATION_CHECKS`, `PILOT_ALLOCATION_COUNTS`, `B_SCREENING_MINUTES`.
+`python -m av_schedules check-planning <planning-materials> [--templates <templates>]`
+compares an external copy (every numeric field of `design-checks.json`, the
+`assessment-schedule.csv` rows and the template header) with them.
+
+Notes for consumers:
+
+- #73 loads the run sheet of the revealed slot and visit, compares the loaded package
+  hash with `hash_check`, fills the operator columns and exports with the same header.
+  Its masking scan applies to Study A exports.
+- #33 takes expected per-block counts from the run sheet (or `visit_plan`) and can call
+  `visit_assessment(doc)` for the counted oracle row.
+- #34 and #78 can build complete synthetic sets with `build_set(demo_seed(...), ...)`
+  and use `run_all` as a regression check; findings name the rule.

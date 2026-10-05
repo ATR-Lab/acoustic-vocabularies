@@ -34,6 +34,7 @@ from typing import Any, Final, Literal, TypeVar
 from . import __version__
 from .curriculum import dumps_json, novel_by_visit, permutation_json
 from .design import SET_CODE, BDyadSlot, SetName, Unit
+from .findings import Finding
 from .matrix import (
     A_VISITS,
     B_VISIT_WAVE,
@@ -818,20 +819,29 @@ def _item_key(item: Mapping[str, Any]) -> str | None:
 def check_visit_schedule(doc: Mapping[str, Any]) -> list[str]:
     """Check one schedule document against the visit plan and the matrix.
 
-    Returns a list of problems, each naming the unit, person, visit and rule (empty when
-    the schedule is valid). Rules: ``blocks`` (block sequence and counts), ``order``
-    (trained -> novel -> atomic consecutive and last before validity; pre-old before
-    any selection or teaching block), ``once-per-pass``, ``content`` (expected items per
-    block), ``heldout`` (no held-out message in lessons, menus, pre-old or the
+    Returns a list of problems ``"<unit> <person> <visit>: <rule>: <detail>"`` (empty when
+    the schedule is valid); see :func:`visit_schedule_findings` for the rules.
+    """
+    return [str(f) for f in visit_schedule_findings(doc)]
+
+
+def visit_schedule_findings(doc: Mapping[str, Any]) -> list[Finding]:
+    """Check one schedule document against the visit plan and the matrix.
+
+    Returns one :class:`Finding` per broken rule, naming the unit, person, visit and rule
+    (empty when the schedule is valid). Rules: ``blocks`` (block sequence and counts),
+    ``order`` (trained -> novel -> atomic consecutive and last before validity; pre-old
+    before any selection or teaching block), ``once-per-pass``, ``content`` (expected
+    items per block), ``heldout`` (no held-out message in lessons, menus, pre-old or the
     dictionary list), ``slots``, ``seconds``, ``validity`` and ``trial-ids``.
     """
     study: Study = doc["study"]
     visit = str(doc["visit"])
-    where = f"{doc.get('unit_id')} {doc.get('person_id')} {visit}"
-    problems: list[str] = []
+    unit_id, person_id = str(doc.get("unit_id")), str(doc.get("person_id"))
+    problems: list[Finding] = []
 
     def bad(rule: str, detail: str) -> None:
-        problems.append(f"{where}: {rule}: {detail}")
+        problems.append(Finding(unit_id, person_id, visit, rule, detail))
 
     heldout_ids = {c.message_id for c in cells() if c.heldout_set is not None}
     plan = visit_plan(study, visit)

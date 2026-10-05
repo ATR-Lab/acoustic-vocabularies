@@ -40,3 +40,8 @@ def examples_dir() -> Path:
 def allocation_examples_dir() -> Path:
     """``schedules/examples/demo-allocation`` (committed DEMO allocation lists)."""
     return data_root() / "examples" / "demo-allocation"
+
+
+def run_sheet_examples_dir() -> Path:
+    """``schedules/examples/demo-run-sheets`` (committed DEMO run sheets)."""
+    return data_root() / "examples" / "demo-run-sheets"
