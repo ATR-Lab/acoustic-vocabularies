@@ -1,0 +1,46 @@
+{
+  "source": "loaded_isaac_articulation_and_workcell",
+  "demo_hook": "synthetic_no_motion",
+  "initial_reset_ok": true,
+  "protected_rejections": 32,
+  "protected_state_sha256_before": "354bcd2d757cc4a936ceebc1bd3a35042b1b8aae281edba41266063760545ce3",
+  "protected_state_sha256_after": "354bcd2d757cc4a936ceebc1bd3a35042b1b8aae281edba41266063760545ce3",
+  "protected_state_exactly_unchanged": true,
+  "physics_steps_requested": 240,
+  "physics_steps_neutral_verified": 240,
+  "synthetic_teaching_hooks_completed": 32,
+  "actual_motion_content_validated": false,
+  "object_drift_rejected": true,
+  "object_drift_not_silently_restored": true,
+  "explicit_recovery_reset_ok": true,
+  "fault_remains_latched": true,
+  "command_events_sha256": "f565b61bd10fe415c5ea75a04565f7ce3886ed50b462fef45e8927dd7722e30f",
+  "measured_date": "2026-10-05",
+  "source_commit": "522dbe4971899b0cd3da22ccbf84e1a10c6d5d38",
+  "source_archive_sha256": "3d777aff8b555972ae342ce6c52691fea80094ff6fee8197261331ccedd32f00",
+  "raw_archive_sha256": "7cc1200cc2eee6e1c1fbad922ad196f9346556c01ecd750645e66b9eded15510",
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "network": "none; existing loopback-only guard verified before app startup",
+  "container_exit_code": 0,
+  "artifact_hashes_independently_verified": true,
+  "terminal_events_verified": 68,
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "limitations": [
+    "Teaching acceptance uses explicit synthetic no-motion hooks; motion qualification is separate",
+    "Actual protected holds advance physics and read back full registered state",
+    "No participant or multi-station/headset qualification"
+  ],
+  "transport_smoke": {
+    "source": "actual_websockets12_server_client_with_synthetic_reset_backend",
+    "network": "none",
+    "tests_passed": 2,
+    "seconds": 0.152,
+    "exit_code": 0,
+    "sha256": "765465accea5c99812ee187a615421dba1f56dd727c34d881ed636b447b4d55da",
+    "cases": [
+      "tcp_peer_restriction_and_private_command",
+      "unix_permissions_and_same_uid"
+    ]
+  }
+}

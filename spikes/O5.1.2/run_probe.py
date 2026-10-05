@@ -1,13 +1,15 @@
 """Isolated fixed-base articulation spike; requires the approved pinned installation.
 
 Run with Isaac Lab's Python launcher, inside a network-none container. This does
-not import Unitree's sim_main or start DDS. Outputs are real measurements only.
+not import Unitree's sim_main or start Unitree DDS. The optional ROS bridge uses
+ROS DDS only within the verified loopback namespace. Outputs are real measurements.
 """
 import argparse
 import csv
 import importlib.util
 import importlib.metadata
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -84,6 +86,10 @@ def main():
     parser.add_argument("--seconds", type=float, default=600)
     parser.add_argument("--num-envs", type=int, choices=(1, 2), default=1)
     parser.add_argument("--physics-dt", type=float, default=1 / 60)
+    parser.add_argument("--bridge-config", type=Path,
+                        help="Optional O5.1.5 local transport config; public state only")
+    parser.add_argument("--bridge-demo-motion", action="store_true",
+                        help="Isolated simulator only: small limit-clamped engineering motion for live stream capture")
     parser.add_argument("--capture", action="store_true",
                         help="Enable an offscreen RGB camera; distinct from a visible viewport")
     parser.add_argument("--pose-evidence", action="store_true",
@@ -109,6 +115,30 @@ def main():
     args = parser.parse_args()
     if args.seconds <= 0 or args.physics_dt <= 0:
         parser.error("Duration and physics dt must be positive")
+    if args.bridge_demo_motion and not args.bridge_config:
+        parser.error("Bridge demo motion requires the optional bridge harness")
+    bridge_settings = None
+    if args.bridge_config:
+        bridge_settings = json.loads(args.bridge_config.read_text())
+        if set(bridge_settings) != {"candidate", "rate_hz", "canonical_joint_names"}:
+            raise ValueError("Bridge config must contain only candidate/rate/canonical names")
+        if bridge_settings["candidate"] not in ("custom", "rosbridge") or bridge_settings["rate_hz"] not in (30, 60):
+            raise ValueError("Unsupported bridge candidate/rate")
+        if not bridge_settings["canonical_joint_names"]:
+            raise ValueError("Verify canonical joint map before starting a live bridge")
+        if bridge_settings["candidate"] == "rosbridge":
+            # Set before Kit startup; preserve the launcher's bundled native library paths.
+            if os.environ.get("ROS_DISTRO", "humble") != "humble":
+                raise ValueError("Use the pinned isolated Humble environment")
+            os.environ["ROS_DISTRO"] = "humble"
+            os.environ["ROS_LOCALHOST_ONLY"] = "1"
+            os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp")
+            bundled_ros = Path("/isaac-sim/exts/isaacsim.ros2.bridge/humble")
+            if str(bundled_ros / "lib") not in os.environ.get("LD_LIBRARY_PATH", "").split(os.pathsep):
+                raise ValueError("Launch Python with bundled Humble lib prepended to LD_LIBRARY_PATH; preserve existing entries")
+            if not (bundled_ros / "rclpy").is_dir():
+                raise ValueError("Pinned bundled Humble rclpy is unavailable")
+            sys.path.insert(0, str(bundled_ros / "rclpy"))
     if args.hand_visuals and (not args.capture or args.pose_evidence):
         parser.error("--hand-visuals requires --capture and a separate run from --pose-evidence")
     args.output.mkdir(parents=True, exist_ok=False)
@@ -116,7 +146,9 @@ def main():
         args.enable_cameras = True
     rendered = args.capture or not args.headless
     manifest = {"status": "starting", "pins": pins, "os": platform.freedesktop_os_release()["PRETTY_NAME"],
-                "network_interfaces": ["lo"], "dds_started": False,
+                "network_interfaces": ["lo"], "unitree_dds_started": False,
+                "bridge_dds_requested": bool(bridge_settings and bridge_settings["candidate"] == "rosbridge"),
+                "bridge_dds_started": False,
                 "duration_requested_seconds": args.seconds, "num_envs": args.num_envs,
                 "headless": args.headless, "offscreen_camera": args.capture,
                 "hand_visuals": args.hand_visuals,
@@ -131,6 +163,7 @@ def main():
     app = AppLauncher(args).app
     stop = threading.Event()
     sampler = None
+    bridge = None
     try:
         import isaaclab.sim as sim_utils
         from isaaclab.assets import Articulation
@@ -221,7 +254,23 @@ def main():
         # Write final configuration before hashing it; completion metadata has its own file.
         manifest["status"] = "initialized"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+        if args.bridge_config:
+            bridge_root = Path(__file__).parent.parent / "O5.1.5"
+            roots["bridge"] = bridge_root
+            files.update(bridge_root.glob("*.py"))
         hash_files(files, args.output / "asset_hashes.csv", roots)
+        if args.bridge_config:
+            # The String-topic node needs bundled rclpy, not OmniGraph/ROS extension startup.
+            # Native loader paths were explicitly checked before Kit initialization.
+            sys.path.insert(0, str(Path(__file__).parent.parent / "O5.1.5"))
+            from live_tap import LiveBridgeTap
+            bridge = LiveBridgeTap(robots[0], bridge_settings["candidate"], bridge_settings["rate_hz"],
+                                   args.output / "publisher.csv", args.output / "state.sock",
+                                   bridge_settings["canonical_joint_names"])
+            manifest["bridge_dds_started"] = bridge_settings["candidate"] == "rosbridge"
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+            hash_files(files, args.output / "asset_hashes.csv", roots)
+            (args.output / "bridge.json").write_text(json.dumps(bridge_settings, indent=2) + "\n")
         sampler = threading.Thread(target=sample_resources, args=(args.output / "resources.csv", stop), daemon=True)
         sampler.start()
         started = time.monotonic()
@@ -231,7 +280,13 @@ def main():
             writer.writerow(["step", "host_monotonic_ns", "sim_time", "step_wall_ms", "render_interval_ms"])
             while app.is_running() and time.monotonic() - started < args.seconds:
                 for robot in robots:
-                    robot.set_joint_position_target(robot.data.default_joint_pos)
+                    target = robot.data.default_joint_pos
+                    if args.bridge_demo_motion:
+                        limits = robot.data.joint_pos_limits
+                        margin = (limits[..., 1] - limits[..., 0]) * .01
+                        target = (target + .04 * math.sin((time.monotonic() - started) * math.pi)).clamp(
+                            min=limits[..., 0] + margin, max=limits[..., 1] - margin)
+                    robot.set_joint_position_target(target)
                     robot.write_data_to_sim()
                 before = time.monotonic_ns()
                 sim.step(render=rendered)
@@ -244,6 +299,8 @@ def main():
                 if rendered:
                     last_render = after
                 step_index += 1
+                if bridge:
+                    bridge.after_step(robots[0], step_index * args.physics_dt, step_index)
                 writer.writerow([step_index, after, step_index * args.physics_dt, (after - before) / 1e6, render_interval])
         elapsed = time.monotonic() - started
         completed = elapsed >= args.seconds
@@ -293,12 +350,16 @@ def main():
                                                              "completed": False}) + "\n")
         raise
     finally:
-        stop.set()
-        if sampler:
-            sampler.join(timeout=5)
-        # All evidence is flushed before Kit releases the Python framework.
-        # The isolated process has no live DDS or outstanding capture writer.
-        app.close(wait_for_replicator=False, skip_cleanup=True)
+        try:
+            if bridge:
+                bridge.close()
+        finally:
+            stop.set()
+            if sampler:
+                sampler.join(timeout=5)
+            # All evidence is flushed before Kit releases the Python framework.
+            # The isolated process has no live DDS or outstanding capture writer.
+            app.close(wait_for_replicator=False, skip_cleanup=True)
 
 
 if __name__ == "__main__":
