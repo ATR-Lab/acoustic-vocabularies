@@ -41,6 +41,9 @@ namespace AcousticVocab.StateIntegration
         volatile bool failed;
         bool disposed,modeAcknowledged,pumping;
         int queued;
+        readonly object diagnosticLock=new object();
+        string workerPhase="not_started",firstFailureCode,firstFailurePhase;
+        double phaseStarted,lastSent=-1,lastReceived=-1,firstFailureAt;
         readonly ControlHealthGate healthGate;
         public PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink)
             :this(endpoint,independentlyPinnedControlSessionId,requiredMode,durableControlSink,()=>NowMs,true){}
@@ -63,7 +66,16 @@ namespace AcousticVocab.StateIntegration
         public JObject ReadinessDiagnostic(string exactRequestId)
         {
             var value=healthGate.Diagnostic();value["failed"]=failed;value["disposed"]=disposed;value["mode_acknowledged"]=modeAcknowledged;
-            value["exact_reset_recorded"]=exactRequestId!=null&&resets.Contains(exactRequestId);value["queued_arrivals"]=Volatile.Read(ref queued);return value;
+            value["exact_reset_recorded"]=exactRequestId==null?JValue.CreateNull():new JValue(resets.Contains(exactRequestId));value["queued_arrivals"]=Volatile.Read(ref queued);
+            lock(diagnosticLock)
+            {
+                value["worker_phase"]=workerPhase;value["phase_started_local_mono_ms"]=phaseStarted;
+                value["last_completed_sent_local_mono_ms"]=lastSent<0?JValue.CreateNull():new JValue(lastSent);
+                value["last_completed_received_local_mono_ms"]=lastReceived<0?JValue.CreateNull():new JValue(lastReceived);
+                value["first_failure_code"]=firstFailureCode;value["first_failure_phase"]=firstFailurePhase;
+                value["first_failure_local_mono_ms"]=firstFailureCode==null?JValue.CreateNull():new JValue(firstFailureAt);
+            }
+            return value;
         }
         string Request(string command)
         {
@@ -74,7 +86,14 @@ namespace AcousticVocab.StateIntegration
         }
         public void RequestMode(){Require(!modeAcknowledged&&!pending.Values.Contains("set_mode"),"CONTROL_MODE_PENDING");Request("set_mode");}
         public string RequestReset()=>Request("reset");
-        public void Interrupt(){healthGate.Invalidate();modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
+        public void Interrupt(){RecordFailure("CONTROL_EXPLICIT_INTERRUPT","owner");healthGate.Invalidate();modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
+        void Phase(string value){lock(diagnosticLock){workerPhase=value;phaseStarted=now();}}
+        void Completed(PrivateControlExchange.Reply reply){lock(diagnosticLock){lastSent=reply.Sent;lastReceived=reply.Received;}}
+        void RecordFailure(string code,string phase=null)
+        {lock(diagnosticLock){if(firstFailureCode!=null)return;firstFailureCode=code;firstFailurePhase=phase??workerPhase;firstFailureAt=now();}}
+        internal static string FailureCode(Exception error)=>error is ControlFault bounded?bounded.Code:
+            error is OperationCanceledException?"CONTROL_OPERATION_CANCELLED":error is WebSocketException?"CONTROL_SOCKET_ERROR":
+            error is DecoderFallbackException?"CONTROL_UTF8_INVALID":error is IOException?"CONTROL_IO_FAILED":"CONTROL_WORKER_EXCEPTION";
         static double NowMs => (double)Stopwatch.GetTimestamp()/Stopwatch.Frequency*1000;
         static void Require(bool condition,string code){if(!condition)throw new ControlFault(code);}
         static void Keys(JObject value,params string[] keys)=>Require(value!=null&&value.Properties().Select(x=>x.Name).OrderBy(x=>x).SequenceEqual(keys.OrderBy(x=>x)),"CONTROL_SCHEMA");
@@ -107,7 +126,7 @@ namespace AcousticVocab.StateIntegration
                     pending.Remove(item.Id);if(command=="set_mode")modeAcknowledged=true;else resets.Add(item.Id);
                     Require(resets.Count<=512,"CONTROL_CAPACITY");
                 }
-                catch{Interrupt();throw;}
+                catch(Exception error){RecordFailure(FailureCode(error),"pump");Interrupt();throw;}
             }
             }
             finally{pumping=false;}
@@ -115,31 +134,36 @@ namespace AcousticVocab.StateIntegration
         internal void ReceiveHealthProbe(string id,string raw,double sent,double received)=>Offer(new Arrival{Health=true,Id=id,Raw=raw,Sent=sent,Received=received});
         internal void ReceiveReply(string id,string raw,double sent,double received)=>Offer(new Arrival{Id=id,Raw=raw,Sent=sent,Received=received});
         void Offer(Arrival item)
-        {if(Interlocked.Increment(ref queued)>8){Interlocked.Decrement(ref queued);failed=true;lifetime.Cancel();return;}incoming.Enqueue(item);}
+        {if(Interlocked.Increment(ref queued)>8){Interlocked.Decrement(ref queued);RecordFailure("CONTROL_ARRIVAL_CAPACITY","receive_queue");failed=true;lifetime.Cancel();return;}incoming.Enqueue(item);}
         async Task Run(Uri endpoint)
         {
             try
             {
-                using var client=new ClientWebSocket();socket=client;
+                using var client=new ClientWebSocket();socket=client;Phase("connect");
                 using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)){timeout.CancelAfter(3000);await client.ConnectAsync(endpoint,timeout.Token);}
                 while(!lifetime.IsCancellationRequested)
                 {
                     if(outgoing.TryDequeue(out var raw))
                     {
                         string id=(string)StationConfig.ParseStrict(raw)["request_id"];
+                        Phase("command_exchange");
                         var reply=await PrivateControlExchange.Run(client,raw,3000,now,lifetime.Token);
+                        Completed(reply);
                         ReceiveReply(id,reply.Raw,reply.Sent,reply.Received);
                     }
                     string probeId=Guid.NewGuid().ToString("N");
                     string probe=PrivateHealthProbe.Request(session,probeId).ToString(Formatting.None);
+                    Phase("health_exchange");
                     var health=await PrivateControlExchange.Run(client,probe,200,now,lifetime.Token);
+                    Completed(health);
                     ReceiveHealthProbe(probeId,health.Raw,health.Sent,health.Received);
+                    Phase("cadence_delay");
                     await Task.Delay(ControlPollCadence.DelayMilliseconds(health.Sent,now()),lifetime.Token);
                 }
             }
-            catch{if(!disposed)failed=true;}
+            catch(Exception error){if(!disposed){RecordFailure(FailureCode(error));failed=true;}}
             finally{socket=null;}
         }
-        public void Dispose(){if(disposed)return;disposed=true;failed=true;lifetime.Cancel();socket?.Abort();}
+        public void Dispose(){if(disposed)return;RecordFailure("CONTROL_DISPOSED","owner");disposed=true;failed=true;lifetime.Cancel();socket?.Abort();}
     }
 }
