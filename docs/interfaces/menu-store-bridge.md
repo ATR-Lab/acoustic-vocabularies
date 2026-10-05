@@ -189,3 +189,30 @@ The focused Python suite runs explicitly in the existing locked sound CI job
 on Linux, macOS and Windows, including the actual package, store and CLI mailbox
 process. Dependency-light root checks skip that module when NumPy is absent;
 they still validate the public closed schema. No dependency version was changed.
+
+## Recorded engineering verification
+
+The [sanitized result](menu-store-bridge.validation.json) records the actual
+Unity Editor `FileMenuStore` client exchanging four requests with this Python
+service: initial verification, one profile, one atom commit and final
+verification. Both processes exited 0; all four request/response bindings,
+eight durable client checkpoints, two actual store records, two bridge journal
+records and the final verified snapshot were checked independently. The service
+ended after four requests and its owned process was absent. Source and retained
+artifact hashes are recorded without private file paths or selection contents.
+
+The 47 focused Python tests passed, including actual-store accumulation through
+8/12/16 entries, rejection through the unchanged admissibility checker, durable
+intent recovery, old-entry tampering, strict receipt/snapshot validation and
+the bounded CLI mailbox. Those larger sequences are separate from the one-atom
+Unity run. A prior Unity startup attempt never reached user code; its service
+expired after 300 seconds with zero requests and its evidence was preserved.
+
+`tools/menu_store_fixture.py --config <private-config> --config-sha256 <raw-pin>
+--out <fresh-private-dir> --mode service` creates the reproducible service
+fixture. Use `--mode codec` for actual profile/atom/verification test files.
+Both modes retain the existing pinned DEMO bank/package read only, create a
+separate fresh store, and refuse output reuse or output inside the source
+store/package. Neither mode generates a candidate bank. Keep all generated
+files private. The qualified participant bank, headset transport, audio flow,
+power-loss behavior and study timing remain outside this verification.
