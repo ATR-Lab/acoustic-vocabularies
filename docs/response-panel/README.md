@@ -101,6 +101,11 @@ legibility result; off-axis glyph viewing and font rasterization still need the
 headset ladder. [Unity's glyph metrics](https://docs.unity.com/en-us/engine/6000.5/script-reference/unityengine/characterinfo)
 define the image extents used here.
 
+The current preview panel covers much of the robot and workcell from its capture
+camera. This is provisional engineering geometry. Review seated panel pose,
+required workcell visibility, occlusion, reach and label legibility together on
+the physical apparatus before freezing a layout.
+
 Controller input uses the configured hand's tracked pose and a trigger edge;
 connection/recovery while the trigger is held cannot generate a press. Hand input
 uses XR Hands IndexTip with a 4 cm withdrawal before a segment crosses the button's
