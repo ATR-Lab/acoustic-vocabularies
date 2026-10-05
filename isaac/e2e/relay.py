@@ -18,7 +18,7 @@ import time
 
 def validate_endpoint(path, port, seconds):
     path=Path(path)
-    if not path.is_absolute() or path.is_symlink():
+    if not path.is_absolute() or any(parent.is_symlink() for parent in (path,*path.parents)):
         raise ValueError('Explicit absolute non-symlink Unix endpoint required')
     info=path.stat()
     if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:

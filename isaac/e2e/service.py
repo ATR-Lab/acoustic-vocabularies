@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import csv
 import math
 import os
 from pathlib import Path
@@ -73,7 +74,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
     if not public_socket.is_absolute() or not private_socket.is_absolute() or public_socket == private_socket:
         raise ValueError('Separate absolute Unix socket paths required')
     for path in (public_socket, private_socket):
-        if path.exists() or path.is_symlink():
+        if path.exists() or any(parent.is_symlink() for parent in (path,*path.parents)):
             raise FileExistsError('Inspect existing endpoint before starting')
         directory = path.parent
         if not directory.is_dir() or directory.is_symlink() or directory.stat().st_mode & 0o077:
@@ -147,17 +148,26 @@ loopback-only operator actions; this function never creates a host TCP listener.
                 try: resource.close()
                 except Exception as error: cleanup_errors.append(name+': '+type(error).__name__)
     if last is not None: save('sample-last.json',last)
+    publish_rows=list(csv.DictReader((output/'publish.csv').open(newline=''))) if (output/'publish.csv').exists() else []
+    command_rows=[json.loads(line) for line in (output/'commands.jsonl').read_text().splitlines()] if (output/'commands.jsonl').exists() else []
+    accepted=[row['payload'] for row in command_rows if row['payload']['reply']['accepted']]
     report=dict(scope='SIMULATION_TEST',participant=False,qualification=False,source_kind='live',
         station_id=station_id,scene_sha256=registry.scene_sha256,reset_snapshot_sha256=registry.reset_snapshot_sha256,
         control_session_id=dispatcher.control_session_id if dispatcher else None,
         requested_seconds=seconds,elapsed_seconds=(ended-started)/1e9,physics_steps=steps,
         frames=publisher.published if publisher else 0,missed_deadlines=publisher.missed if publisher else 0,
         command_events=command_log.sequence if command_log else 0,ready_emitted=ready,end_reason=end_reason,
+        command_journal_session_id=command_log.envelope['session_id'] if command_log else None,
+        public_frames_with_connected_client=sum(int(row['connected_clients'])>0 for row in publish_rows),
+        max_public_clients_observed=max((int(row['connected_clients']) for row in publish_rows),default=0),
+        accepted_private_reset_events=sum(row['command']=='reset' and row['reply']['reset_ok'] is True for row in accepted),
+        accepted_private_mode_events=sum(row['command']=='set_mode' for row in accepted),
         fault=failure,cleanup_errors=cleanup_errors,
-        completed=ready and failure is None and not cleanup_errors,
+        service_completed=ready and failure is None and not cleanup_errors,native_visit_completed=False,
         limitations=['Actual simulator/software E2E only; no participant authority',
             'No clock, acoustic, headset or throughput qualification',
             'No demo motion implementation enabled; teaching retains neutral robot',
+            'Client/command counts may include explicit diagnostics; they do not prove a native visit',
             'Full dispatcher hold/readback and protected publisher guards retained'])
     report['hashes']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in output.iterdir() if p.is_file()}
     save('summary.json',report)

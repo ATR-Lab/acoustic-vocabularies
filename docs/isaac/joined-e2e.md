@@ -59,6 +59,12 @@ neutral parity cannot establish remote clock drift or physical timing.
 
 Evidence includes actual first/last public frames, publisher CSV, durable reset
 and private-command journals, actual physics-step measurements, and final
-cleanup outcomes. A clean service exit is not a completed study visit or rate
+cleanup outcomes. The control-session identity is independently pinned before
+listener startup; the command journal has its own random log-session identity,
+which is recorded separately. Summary counters report frames with observed
+public clients and accepted private reset/mode terminal events. They can include
+diagnostic clients and cannot identify a completed native visit. The completion
+field is explicitly `service_completed`; `native_visit_completed` stays false.
+A clean service exit is not a completed study visit or rate
 qualification. The native journal and joined application evidence must be
 evaluated separately.
