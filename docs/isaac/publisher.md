@@ -158,3 +158,10 @@ articulation, hold, reset or production publisher implementation was changed.
 No optimized hour, station deployment or G2 pass is inferred. The completed
 diagnostic container was removed after its evidence was retained; the task GPU
 workload was left idle.
+
+The subsequent [typed projection follow-up](publisher/encoder-projection.md)
+retains every public-state and neutral check while reducing median encoder work
+by about 1.8 ms on the measured full scene. Eight short paired phases still failed
+the unchanged timing screen, including a retained 389.889 ms generation-2 GC pause.
+The production handle cache remains off. This follow-up does not supersede the
+hour failures or qualify protected throughput.
