@@ -16,6 +16,40 @@ namespace AcousticVocab.Tests
     public sealed class ActualNeutralRendererTests
     {
         [Test]
+        public void RecordedProtectedLiveFramesMatchSnapshotAndImportedRenderer()
+        {
+            string root=Environment.GetEnvironmentVariable("PROTECTED_STATE_SOURCE_EVIDENCE");
+            if(string.IsNullOrWhiteSpace(root)) Assert.Ignore("Set private PROTECTED_STATE_SOURCE_EVIDENCE to the completed actual protected stream.");
+            var summary=JObject.Parse(File.ReadAllText(Path.Combine(root,"protected-stream/summary.json")));
+            Assert.That((bool)summary["completed"],Is.True);Assert.That(summary["fault"].Type,Is.EqualTo(JTokenType.Null));
+            Assert.That((string)summary["source_kind"],Is.EqualTo("live"));Assert.That((bool)summary["protected_neutral_diagnostic"],Is.True);
+            WorkcellBuild.Configure();
+            var workcell=UnityEngine.Object.FindAnyObjectByType<WorkcellRegistry>(FindObjectsInactive.Include);
+            byte[] neutral=File.ReadAllBytes(Path.Combine(root,"reset-check/neutral_v1.json"));
+            Assert.That(SceneRegistry.Hash(neutral),Is.EqualTo((string)summary["reset_snapshot_sha256"]));
+            var layout=JObject.Parse(workcell.ImportedLayout.text);
+            var keys=((JArray)layout["objects"]).ToDictionary(x=>(string)x["id"],x=>((JObject)x["state"]).Properties().Select(p=>p.Name).ToArray());
+            var registry=new SceneRegistry((string)summary["station_id"],(string)summary["scene_sha256"],SceneRegistry.Hash(neutral),workcell.CanonicalJointNames,keys,workcell.anchorIds);
+            var snapshot=new SnapshotSource(neutral,registry,0);var renderer=new WorkcellStateRenderer(workcell);
+            renderer.VerifyImportedNeutral(snapshot.Neutral);
+            foreach(string name in new[]{"sample-first.json","sample-last.json"})
+            {
+                byte[] bytes=File.ReadAllBytes(Path.Combine(root,"protected-stream",name));
+                Assert.That(SceneRegistry.Hash(bytes),Is.EqualTo((string)summary["hashes"][name]));
+                var frame=StateParser.Parse(Encoding.UTF8.GetString(bytes),registry);
+                Assert.That(frame.Provenance,Is.EqualTo("live"));Assert.That(frame.Joints.Count,Is.EqualTo(43));Assert.That(frame.Objects.Count,Is.EqualTo(60));
+                Assert.That(NeutralComparison.Matches(frame,snapshot.Neutral),Is.True,name);
+                renderer.Apply(frame);
+                foreach(var item in workcell.objects)
+                {
+                    Assert.That(Vector3.Distance(item.root.localPosition,item.neutralPosition),Is.LessThan(.001),item.id);
+                    Assert.That(Quaternion.Angle(item.root.localRotation,item.neutralRotation),Is.LessThan(.5),item.id);
+                }
+            }
+            // Parsing retained actual frames proves pose parity, not current
+            // network freshness, qualified clocks, reset authorization or rate.
+        }
+        [Test]
         public void CapturedIsaacNeutralMatchesImportedWorkcellAndBothSources()
         {
             WorkcellBuild.Configure();
