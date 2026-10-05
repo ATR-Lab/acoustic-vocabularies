@@ -399,7 +399,7 @@ def _cmd_check_planning(args: argparse.Namespace) -> int:
     for line in result.problems:
         print(f"MISMATCH {line}")
     if result.ok:
-        print("PASS: planning materials match the matrix constant")
+        print("PASS: planning materials match the source constants")
         return 0
     return 1
 

@@ -425,7 +425,8 @@ def test_fault_duplicated_trained_item_within_a_pass():
 
     rules = caught(inject(run, "B-P04-M1", "W4", fault), "B-P04", "B-P04-M1", "W4")
     assert set(rules) == {"once-per-pass"}
-    assert "trained pass 1" in str(rules["once-per-pass"][0])
+    detail = str(rules["once-per-pass"][0])
+    assert "trained pass 1: extra ['" in detail and "missing ['" in detail
 
 
 def test_fault_heldout_message_at_the_wrong_visit():

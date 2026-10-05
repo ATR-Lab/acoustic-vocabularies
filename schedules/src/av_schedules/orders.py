@@ -26,6 +26,7 @@ See ``schedules/docs/orders.md`` and ``docs/interfaces/schedules.md``.
 from __future__ import annotations
 
 import hashlib
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import cache
@@ -908,7 +909,9 @@ def visit_schedule_findings(doc: Mapping[str, Any]) -> list[Finding]:
             got = tuple(sorted(str(_item_key(it)) for it in items if it["pass"] == pass_no))
             if got != expected:
                 rule = "content" if p.passes == 1 else "once-per-pass"
-                bad(rule, f"{name} pass {pass_no}: items {got} != {expected}")
+                extra = sorted((Counter(got) - Counter(expected)).elements())
+                missing = sorted((Counter(expected) - Counter(got)).elements())
+                bad(rule, f"{name} pass {pass_no}: extra {extra}, missing {missing}")
 
     if any(m in heldout_ids for m in doc.get("dictionary_messages", [])):
         bad("heldout", "held-out message in the dictionary list")
