@@ -67,3 +67,15 @@ def test_private_output_and_duplicate_json_guards(tmp_path):
     with pytest.raises(ValueError,match='PRIVATE_OUTPUT_REQUIRED'):speech.private_path(tmp_path/'public')
     path=tmp_path/'duplicate.json';path.write_text('{"a":1,"a":2}')
     with pytest.raises(ValueError,match='DUPLICATE_JSON_FIELD'):speech.read_json(path)
+
+@pytest.mark.parametrize('field,value',[('first_kept_sample',True),('raw_peak_pcm',0),('end_exclusive_sample',1),('raw_samples',500001)])
+def test_trim_metadata_matches_runtime_ranges(tmp_path,field,value):
+    bank,manifest=synthetic_bank(tmp_path);manifest['items'][0]['trim'][field]=value
+    with pytest.raises(ValueError,match='TRIM_'):speech.validate_manifest(manifest,bank)
+
+@pytest.mark.parametrize('field,value',[('version',True),('take',True),('samples',True)])
+def test_boolean_is_not_numeric_metadata(tmp_path,field,value):
+    bank,manifest=synthetic_bank(tmp_path)
+    if field=='version':manifest[field]=value
+    else:manifest['items'][0][field]=value
+    with pytest.raises(ValueError):speech.validate_manifest(manifest,bank)

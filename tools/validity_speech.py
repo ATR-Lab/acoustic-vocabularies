@@ -25,6 +25,12 @@ FIELDS = ('speech_id','action','target','text','take','duration_ms','samples','s
 def require(ok, code):
     if not ok: raise ValueError(code)
 
+def same_typed(value, expected):
+    if type(value) is not type(expected):return False
+    if isinstance(expected,dict):return set(value)==set(expected) and all(same_typed(value[k],expected[k]) for k in expected)
+    if isinstance(expected,list):return len(value)==len(expected) and all(same_typed(a,b) for a,b in zip(value,expected))
+    return value==expected
+
 def digest(data): return hashlib.sha256(data).hexdigest()
 def canonical(value): return (json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False)+'\n').encode()
 def read_json(path):
@@ -109,8 +115,8 @@ def wav_bytes(samples):
 def validate_manifest(value, directory):
     require(set(value)=={'version','status','voice','rule','source','items','balanced_list','listening_review_sha256','demo','study','set'},'MANIFEST_FIELDS')
     require(type(value['demo']) is bool and value['study'] in ('A','B') and value['set'] in ('pilot','confirmatory'),'MANIFEST_SCOPE')
-    require(value['version']==1 and value['status'] in ('engineering_unreviewed','reviewed_frozen'),'MANIFEST_STATUS')
-    require(value['voice']==VOICE and value['rule']==RULE,'SPEECH_PIN_CHANGED')
+    require(type(value['version']) is int and value['version']==1 and value['status'] in ('engineering_unreviewed','reviewed_frozen'),'MANIFEST_STATUS')
+    require(same_typed(value['voice'],VOICE) and same_typed(value['rule'],RULE),'SPEECH_PIN_CHANGED')
     require(isinstance(value['source'],dict) and set(value['source'])=={'requests_sha256','synthesis_evidence_sha256','speech_list_sha256'},'SOURCE_FIELDS')
     require(all(isinstance(x,str) and len(x)==64 and set(x)<=set('0123456789abcdef') for x in value['source'].values()),'SOURCE_HASH')
     selection_bytes=(directory/'selection.local.json').read_bytes()
@@ -123,15 +129,18 @@ def validate_manifest(value, directory):
     for item in value['items']:
         require(set(item)==set(FIELDS)|{'trim'},'ITEM_FIELDS')
         sid=item['speech_id'];require(sid in expected and sid not in ids,'SPEECH_ID');ids.add(sid)
-        for key in ('action','target','text','take'):require(item[key]==expected[sid][key], 'WORDING_OR_SELECTION_CHANGED')
+        for key in ('action','target','text','take'):require(same_typed(item[key],expected[sid][key]), 'WORDING_OR_SELECTION_CHANGED')
         require(type(item['chosen']) is bool and (not item['chosen'] or item['take']==1),'CHOSEN_TAKE')
         path=directory/(sid+'.wav');require(not path.is_symlink(),'SPEECH_LINK')
         raw=path.read_bytes();samples=pcm_read(raw)
         require(raw==wav_bytes(samples),'NONCANONICAL_WAV')
         require(digest(raw)==item['sha256'] and digest(raw[44:])==item['pcm_sha256'],'HASH_MISMATCH')
-        require(item['samples']==len(samples) and item['duration_ms']==len(samples)*1000/48000,'DURATION_MISMATCH')
+        require(type(item['samples']) is int and type(item['duration_ms']) in (int,float) and item['samples']==len(samples) and item['duration_ms']==len(samples)*1000/48000,'DURATION_MISMATCH')
         require(0<item['duration_ms']<10000 and max(abs(x) for x in samples)==RULE['peak_pcm'],'SPEECH_LEVEL_OR_LENGTH')
         require(set(item['trim'])=={'first_kept_sample','end_exclusive_sample','raw_samples','raw_peak_pcm'},'TRIM_FIELDS')
+        trim=item['trim'];require(all(type(x) is int for x in trim.values()),'TRIM_TYPE')
+        require(0<=trim['first_kept_sample']<trim['end_exclusive_sample']<=trim['raw_samples']<=480000 and trim['end_exclusive_sample']-trim['first_kept_sample']==len(samples) and 33<trim['raw_peak_pcm']<=32768,'TRIM_RANGE')
+        require(isinstance(item['raw_sha256'],str) and re.fullmatch('[0-9a-f]{64}',item['raw_sha256']),'RAW_HASH_FORMAT')
         if item['chosen']:chosen.append(sid)
     require(value['balanced_list']==chosen and len(chosen)==8,'BALANCED_LIST')
     selected_schedule_ids={f'{"K" if ACTIONS.index(x["action"])<4 else "Q"}-{x["action"]}-{x["target"]}' for x in value['items'] if x['chosen']}
@@ -149,10 +158,10 @@ def validate_manifest(value, directory):
 
 def process(plan_path, raw_dir, output):
     request=read_json(plan_path)
-    require(set(request)=={'version','status','voice','rule','requests','speech_list_sha256','demo','study','set'} and request['version']==1 and request['status']=='engineering_unreviewed' and request['voice']==VOICE and request['rule']==RULE,'REQUESTS_CHANGED')
+    require(set(request)=={'version','status','voice','rule','requests','speech_list_sha256','demo','study','set'} and type(request['version']) is int and request['version']==1 and request['status']=='engineering_unreviewed' and same_typed(request['voice'],VOICE) and same_typed(request['rule'],RULE),'REQUESTS_CHANGED')
     require(type(request['demo']) is bool and request['study'] in ('A','B') and request['set'] in ('pilot','confirmatory'),'REQUEST_SCOPE')
     selected=[f'{"K" if ACTIONS.index(r["action"])<4 else "Q"}-{r["action"]}-{r["target"]}' for r in request['requests'] if r['chosen']]
-    require(request['requests']==records(selected),'REQUEST_WORDING_CHANGED')
+    require(same_typed(request['requests'],records(selected)),'REQUEST_WORDING_CHANGED')
     source=read_json(raw_dir/'synthesis.local.json')
     require(source['voice']==VOICE and source['requests_sha256']==digest(plan_path.read_bytes()),'SYNTHESIS_PROVENANCE')
     raw_files=source['files'];require(set(raw_files)=={x['speech_id']+'.wav' for x in records()},'RAW_INVENTORY')
@@ -184,7 +193,7 @@ def process(plan_path, raw_dir, output):
 
 def validate_review(review, value):
     require(set(review)=={'version','manifest_sha256','reviewer_code','reviewed_utc','items'},'REVIEW_FIELDS')
-    require(review['version']==1 and review['manifest_sha256']==digest(canonical(value)),'REVIEW_MANIFEST_MISMATCH')
+    require(type(review['version']) is int and review['version']==1 and review['manifest_sha256']==digest(canonical(value)),'REVIEW_MANIFEST_MISMATCH')
     require(isinstance(review['reviewer_code'],str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',review['reviewer_code']),'REVIEWER_CODE_REQUIRED')
     require(isinstance(review['reviewed_utc'],str),'REVIEW_TIME_REQUIRED')
     when=datetime.strptime(review['reviewed_utc'],'%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
