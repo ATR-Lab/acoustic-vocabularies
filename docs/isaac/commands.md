@@ -156,3 +156,28 @@ log SHA-256 is `c14dacc3d292f770db78853dc71984fc2151cd4a05113bde0fa5d048f9236cdb
 The test does not establish full publisher-bound exposure readiness: that needs
 fresh attached publisher health, independently qualified source clocks and the
 downstream client/session gate. Actual #56 motion content remains pending.
+
+### Publication after protected rejection
+
+`isaac.commands.published_benchmark.run_published_command_check` closes the
+separate diagnostic gap between adapter readback and the actual public stream.
+The optional scene-runner flag `--published-command-check` requires
+`--reset-check`; use `--capture` to retain the same camera-bearing scene hash as
+the canonical workcell. It creates the real protected `StatePublisher`, attaches
+it to the dispatcher, and receives each payload through the actual Unix
+WebSocket transport. No demo implementation hook is supplied.
+
+The diagnostic publishes a baseline, rejects each of the 32 legal target-bearing
+commands in test mode, checks the full state hash before/after each rejection,
+advances two actual physics steps with the unchanged robot-only hold, and
+independently compares the received 43 joints and every public pose, visibility,
+enabled flag and discrete visual field of all 60 objects with pinned neutral.
+Received sequence/payload hashes and complete private request/reply rows are
+retained. A real card-state mutation must produce `NEUTRAL_DIVERGED`, suppress
+publication and remain visibly changed until an explicit reset. A scheduler
+skip alone cannot pass that suppression check.
+
+This bounded diagnostic proves publication behavior after rejected commands.
+It does not qualify rate, cross-host clocks, headset/session exposure readiness,
+or #56 motion content. Its raw private files remain ignored; publish only a
+reviewed numeric derivative and artifact hashes.
