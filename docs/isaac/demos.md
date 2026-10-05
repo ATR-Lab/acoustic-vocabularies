@@ -91,3 +91,33 @@ Pure tests use a clearly synthetic IK backend to verify all 32 meanings,
 attachment transforms, handoff refusal, interruption, matching frame counts,
 hashes, clock progression and failed timing preservation. They do not establish
 actual robot reach or collision-free motion.
+
+## Bounded grip repair diagnostic
+
+The first actual ADD_ONE capture exposed an unacceptable visual result: the
+washer followed a point near the wrist, outside the fingers. The earlier
+`virtual_grip_offset_m` is not a measured contact point. Keep those recordings
+as failed visual evidence; numerical IK and final-state success do not repair it.
+
+`isaac.demos.grip_probe.run_grip_check(manager, layout, output,
+capture_image=...)` is a separate, optional one-item diagnostic. It approaches
+the top supply washer selected for ADD_ONE/tray_A, closes a thumb/middle pinch,
+lifts, and replaces it in the supply cup. It does **not** complete ADD_ONE or
+create a playable recording index. The ordinary forty-item planner is unchanged.
+
+The candidate finger angles and palm-local grip point are derived from the
+pinned G1 URDF and actual distal STL vertices; their source mesh hashes are in
+the module. The index finger stays at its neutral pose. The offline geometry
+screen includes a supporting-plane margin; it does not establish whole-hand,
+cup-wall or robot collision clearance. The narrow supply cup may obstruct this
+candidate, and fixed-orientation transfer to the tray failed the bounded offline
+IK search. No workcell geometry is changed to hide either limitation.
+
+The diagnostic writes actual PhysX distal-link poses, selected mesh-vertex
+distances to the washer's outer cylinder, all 43 joint values, observer and
+close-up images, and a following verified reset. A vertex distance is a sampled
+geometry check, not a physical contact force or complete triangle collision
+test. Rendering is outside timing measurement. `grasp_contact_validated`,
+`collision_reviewed`, and `complete_action_demonstrated` remain false. Review
+the actual pickup/closure/lift and cup clearance before extending this candidate
+to the action library; keep any failed probe and its full diagnostics.
