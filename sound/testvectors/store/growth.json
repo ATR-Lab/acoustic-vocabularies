@@ -2,8 +2,8 @@
   "books": [
     {
       "book_id": "DEMO-P1",
-      "create_head": "450bb48d3862dbf3d022e1dab195e26670545fc0688ccf62f6af1f4e4202620e",
-      "create_line": "{\"book_id\":\"DEMO-P1\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P1\",\"record_sha256\":\"8bc9b0fca4b66aea59237359be56fb4119703a58f780f966ed9a198aa30460ce\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"45732801e0c1943f30e9c532bf218b61958f665f9f06830a47870487fb879b02\",\"validator_version\":\"0.1.0\"}",
+      "create_head": "e51009a7b56e00c3975708f8b4f1d04cd5431c49e85467ba696553989813ed13",
+      "create_line": "{\"book_id\":\"DEMO-P1\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P1\",\"record_sha256\":\"13d2e1a6d5d067cd43205f6fd6f7de8d67bf565c8f12a7b78514b57fc418edbd\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -31,12 +31,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "dc848802a4983b43ddb9fcd25144bd6421039ae45166cc509b8d449c301172b6",
-      "freeze_head": "21c330872ac57ccf59137756debe02831d67a6d5b5b8bbf683c455c5e0778761",
+      "final_head": "973e04ceecd756a2138279225c2220eda9dee7d1e471b771aa2019328b5c09a5",
+      "freeze_head": "7411aadab2593f053811a9c3c59fbe3fa70c2f5acef68b44f41a04654d330d70",
       "frozen_rejected": true,
       "log_bytes": 20542,
       "n_records": 24,
-      "noop_head": "9cfe32c9107b24ddd54a7af94faaf4709debf8d74eefdba0e66bbb855321c3f4",
+      "noop_head": "66757cab8b800b44dd75a85ba79bd7895484cd65508ac3889f86267e3f8e2a30",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -92,7 +92,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "91cf3e42f14d66dbf7cea681954d6195b8b9cf8166353c289678ee11d7a501a6",
+          "chain_head": "b78888c1295a4ab5f8b40cc5a361b2b3ec38f6b87f5a1fa0e7196fd44554b26f",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -117,7 +117,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "477e30910aa8467b63c5841e7c8154581162f5e17b66fc710a2b00cb1c7e2725",
+          "chain_head": "3e0cbcb49f51f92f5718efc78ba2575cd98e945ca2b56a14595d8ba82e57ca38",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -146,7 +146,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "9f0430cb7ffbea16014f65d4384267c323de8931aad08a9e2dffffe90e9730bf",
+          "chain_head": "97cd624fda3fb5f274b52274b0ab7ee1244e23b09239764364a9a705eb807e62",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
@@ -176,8 +176,8 @@
     },
     {
       "book_id": "DEMO-P2",
-      "create_head": "c808409838adfd99eaa5c7004cc3eada716d597e6b75ead926f770ec58f8cbb9",
-      "create_line": "{\"book_id\":\"DEMO-P2\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P2\",\"record_sha256\":\"e3524e5068136dfdf7cd4d3173125c7918834e67c2b51915303ea7c55f29a8a5\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"45732801e0c1943f30e9c532bf218b61958f665f9f06830a47870487fb879b02\",\"validator_version\":\"0.1.0\"}",
+      "create_head": "63e4edc1aa939222d0904161fcad1c3449fbf6e6e76c15204f19fc4c79931616",
+      "create_line": "{\"book_id\":\"DEMO-P2\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P2\",\"record_sha256\":\"eeebc36607edc6a18594483dacc98b1353efdfe6d1abff88108b481ce6e8d58a\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -205,12 +205,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "f6da4891c882f22727a06807096892ae752c7124d28cd344808bfa336d41862f",
-      "freeze_head": "7a5b12ea5a1a6e3a5ba1406c1522401f039e4ef1fec626cec7e6804d3b983fdc",
+      "final_head": "373c8754f95374eec8bc425c5c21a865ac3a525b1cf3b2815d2aa1ec1b8938dd",
+      "freeze_head": "70ac5b5a2d9ef1354b698b98a8f58ab929ad78362fc9489fc4623a14595cbd42",
       "frozen_rejected": true,
       "log_bytes": 20546,
       "n_records": 24,
-      "noop_head": "a8255996558e98d8df78e4baf03d4d7d07e17a3b659ad7098eec48902a7f9422",
+      "noop_head": "da84f08c150778f83d2d84b4e9e6e4946fbbcc4f4fba46e1b13f6c7e67e8f7db",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -266,7 +266,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "0461c8b90a32e7e41e6952728a8c7d889bdf64f9ed81e0918a38b6211900dfbb",
+          "chain_head": "6ef399d0f1c1bf3b7ae6d240edb96d8cb1ae55ab0fd91fd85dc293f84a802cb5",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -291,7 +291,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "5bfdc06b410125997923558e0b36e035c779aa4b241f423b9d8824169da58c12",
+          "chain_head": "1756988f6cc9f305b026b2471a8bbf11c3b288f9dcec3a7d381918750245cae9",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -320,7 +320,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "04e4ee7416cf55a8e465614a4b83f1f6847e8f087d8b14b4d83b7f972f543b82",
+          "chain_head": "f24926b62e3b1e89df4f3537eb8f4533fe65ae58710fddb8e2419cc01a48f2da",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
@@ -350,8 +350,8 @@
     },
     {
       "book_id": "DEMO-P3",
-      "create_head": "89bcd62ed186b6659534c799e494a60699a1012cae6a1c14d97052f304e01c73",
-      "create_line": "{\"book_id\":\"DEMO-P3\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P3\",\"record_sha256\":\"8e1b6679f6fb4071d14f14359551652af0931f26d3dc9810637377dbf95df80e\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"45732801e0c1943f30e9c532bf218b61958f665f9f06830a47870487fb879b02\",\"validator_version\":\"0.1.0\"}",
+      "create_head": "8cfe149921e70dd553c79a69d4e795abc854d43891cb885bd343f368d0be276a",
+      "create_line": "{\"book_id\":\"DEMO-P3\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P3\",\"record_sha256\":\"5651ac8507eb1c3a25d5a4b3e53c490b3a7c9c4344d877bee3f017a304b0a5b5\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -379,12 +379,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "9c401fa1bb3326778c91c2ad90980ab00d8a6d215c77545dc8232ea12ac5e9b1",
-      "freeze_head": "e00f0bafbd1288184fe49229bb0e2663519da248daa32240a628b6c5b19eb3f4",
+      "final_head": "a5151554dee56b5122dde003f535c3410a7a5e1c7bb384443fce4752935e3eb6",
+      "freeze_head": "771f60f1d9e7a481c6c4e722edcd8e825378d081e6b2957365553aec7f5778da",
       "frozen_rejected": true,
       "log_bytes": 20547,
       "n_records": 24,
-      "noop_head": "d5457372216f56a4465cb3bf92352c059c5900b186c7ac7d94c3efc38f9ad288",
+      "noop_head": "1876337780894e11b7b9e3cef5045184eccb1a17069a044ea5874854eba22dba",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -440,7 +440,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "ffea48df50fefae8fac201eabc937ab31ff95e4c7a7b778153952da3abf7ea33",
+          "chain_head": "6feb0522730b72c5b83c944b28f4f4e5f1c2433a4a3b4498194b1fc48d47ed4d",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -465,7 +465,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "e90199213d0d860635f30f2f8c3e38ce13b4dc0cbdf64f179ee93543024c7354",
+          "chain_head": "edaaf22d48169c94c33b4ba79fa8ad346d7401fb89e689e12ac90fed73e3020d",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -494,7 +494,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "1a1261af7463c2e9b4b5d1b8fe3c77d3b1ff94c94b0d2544c9f01cfaad926555",
+          "chain_head": "2423fb9aaca5d85d279837c07db83aa601b0597bdc02a4c417ec161330dec41f",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,

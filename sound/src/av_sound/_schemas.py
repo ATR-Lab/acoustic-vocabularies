@@ -14,16 +14,20 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
-from av_sound._paths import schema_path
+from av_sound._paths import data_root, schema_path
 from av_sound.recipe import StrictJsonError, strict_json_loads
 
-SCHEMA_FILES: tuple[str, ...] = (
-    "recipe.schema.json",
-    "reserved-registry.schema.json",
-    "store-record.schema.json",
-    "validation-result.schema.json",
-    "validator-config.schema.json",
-)
+
+def _discover_schema_files() -> tuple[str, ...]:
+    """Every published schema in `sound/schema/`, sorted by file name.
+
+    Discovered rather than listed, so publishing a new schema changes no code (and
+    therefore no `validator_code_hash()` or store chain head).
+    """
+    return tuple(sorted(p.name for p in (data_root() / "schema").glob("*.schema.json")))
+
+
+SCHEMA_FILES: tuple[str, ...] = _discover_schema_files()
 
 strict_loads = strict_json_loads
 """Strict JSON with the same rules as `Recipe.from_json` (code `E_JSON`)."""
