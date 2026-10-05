@@ -1,0 +1,2652 @@
+{
+  "books": [
+    {
+      "atoms": [
+        {
+          "atom_id": "K-a1",
+          "file_sha256": "70864bad118aea407e10cdfe5e1b59a1c3dec6f3de4a9a96422811a5ecdc708c",
+          "n_samples": 21600,
+          "pcm_sha256": "909e93b54b06d45a69d70afa0a57b86344acd67556a35659a1dfa3a0c3a74db6",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              40
+            ],
+            "pitches": [
+              -6,
+              0,
+              5
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              3
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "4a6603dd7921ab3af1fc4e17275b64395430f7f95461c6ffac69c185b357650b"
+        },
+        {
+          "atom_id": "K-a2",
+          "file_sha256": "ea03d5622fed01b6df1041ced683721cc0abd1aeb7bfb5e07b338f0d781029fc",
+          "n_samples": 28800,
+          "pcm_sha256": "e2825152d01ba9f449181d2b3c8daf84fff98ac67f8f09407e8101a6785cbb82",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              40,
+              60
+            ],
+            "pitches": [
+              -1,
+              3,
+              -1
+            ],
+            "rhythm_weights": [
+              3,
+              2,
+              1
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "db7d4eed3c582b52064e8cea3a47627ec05d2bf76be87555948a1bea80becd08"
+        },
+        {
+          "atom_id": "K-a3",
+          "file_sha256": "6dafa0a0ed01b54aa9ed59581753f116637a7c0754db0ee084d2b7d95af0f890",
+          "n_samples": 36000,
+          "pcm_sha256": "31731dee9ce23d97a0c4801c58db8b244eb9e068f2f309b96e34b594b576875e",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              60,
+              20
+            ],
+            "pitches": [
+              4,
+              6,
+              6
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              1
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "0aece28cf336e74eb9d865b2cb803b0617b6ab9868441d4cdeea7f5149139dac"
+        },
+        {
+          "atom_id": "K-a4",
+          "file_sha256": "933dc0cb4e640b985f8b150b702b7ceb2c288de99fa7e557055e304913829f8d",
+          "n_samples": 43200,
+          "pcm_sha256": "8819fcaaa21e9ff866c3a449adfbbb0db090432368b0b9d886fb974af029c54a",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              20
+            ],
+            "pitches": [
+              -4,
+              -4,
+              0
+            ],
+            "rhythm_weights": [
+              1,
+              3,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "d2bd2ffb758a229621d68a8ebe6244b668629c0f855395544e5d16e90ad1bfaf"
+        },
+        {
+          "atom_id": "K-r1",
+          "file_sha256": "8a0a7b795aae563350ba35b9e79f67961864182c2542fcd3b1d43742be21e748",
+          "n_samples": 21600,
+          "pcm_sha256": "b0b05e1a4ced73f1815b9cf67cd701979ccf9f9144163e489d946e63669c9134",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              60,
+              40
+            ],
+            "pitches": [
+              1,
+              -1,
+              -6
+            ],
+            "rhythm_weights": [
+              1,
+              1,
+              2
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "a4e427464c54084ca4c9ad4e038c44c6db65c614f45991d85de93ed979048c8f"
+        },
+        {
+          "atom_id": "K-r2",
+          "file_sha256": "a1ee55d11f2727e4f4767462af7393d77b29ba8c34834fb742cc5e3f7f7e2080",
+          "n_samples": 28800,
+          "pcm_sha256": "92c237bd1f109281efc9c225b7817438629e4805d7bc607103ab1a7fb143fef8",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              20,
+              60
+            ],
+            "pitches": [
+              6,
+              2,
+              1
+            ],
+            "rhythm_weights": [
+              3,
+              1,
+              2
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "195e5b4196313cd7eeb57ec4ed463bec37d4d43689bc3cab4bcb8a88b5f47984"
+        },
+        {
+          "atom_id": "K-r3",
+          "file_sha256": "378a236cbdba7e91d325d535f387382288fd9014b40af5d88a02180e3f3be62a",
+          "n_samples": 36000,
+          "pcm_sha256": "ba79bb204523db05b38c77e24291f3a741490b785fff187e26edb7d73a683705",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              20
+            ],
+            "pitches": [
+              -2,
+              5,
+              -5
+            ],
+            "rhythm_weights": [
+              1,
+              1,
+              2
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "4fae7899cd9e2cdf9313c22880d7d03ee26bfced308b2ee813b29c20190fc87a"
+        },
+        {
+          "atom_id": "K-r4",
+          "file_sha256": "447ab516530406d479907a2a5e0f1b2e4ee2f86a79b6bd1c6932681de7e2762d",
+          "n_samples": 43200,
+          "pcm_sha256": "a6ead7d973e140815086795029695d0b8819c554821316f966ea05d5fcc559e1",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              40,
+              40
+            ],
+            "pitches": [
+              3,
+              -5,
+              2
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              1
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "2f61f926e95c66b9614a4c01afa4e91dfe7630a447d91e9c8464ed1dc64316ab"
+        },
+        {
+          "atom_id": "Q-a1",
+          "file_sha256": "ba0588fa8345fa8fe1ded1e3a7ab5cfcc4394f27d6d92f923c2fb250c49f2e05",
+          "n_samples": 21600,
+          "pcm_sha256": "7ea76f81c992ec2996acca59e29ea3b1cbb9638942ba1898f0823225d313eca0",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              60,
+              60
+            ],
+            "pitches": [
+              -5,
+              -2,
+              -4
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              1
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "6951e48748ee6cae0e7add2775fc463de14aeb2bf261250a4c8cf5b5c3da6953"
+        },
+        {
+          "atom_id": "Q-a2",
+          "file_sha256": "432e84872b6ee504724c4259a2341a4f390aea5cd22f42c2061d13053efcb3d3",
+          "n_samples": 28800,
+          "pcm_sha256": "dd23eb3a32b7e06659844460e81c0e3c0cea00fdc03b54172ed6139a5d3b345c",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              20,
+              40
+            ],
+            "pitches": [
+              0,
+              1,
+              3
+            ],
+            "rhythm_weights": [
+              4,
+              3,
+              2
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "5002ed38a5063866419f59d1e31448bae5e566c5e1aef6a6a791174784f82ba9"
+        },
+        {
+          "atom_id": "Q-a3",
+          "file_sha256": "ab98e20767e46128b7ee1e57052c0503202c6fb5671367baec64e1b046e533a6",
+          "n_samples": 36000,
+          "pcm_sha256": "be267a4c80aa7c3f024b0c8e1e3cff3c7da380ec4976f610cf34340bdcbfcd06",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              60
+            ],
+            "pitches": [
+              5,
+              4,
+              -3
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              4
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "8fadc9ee065ea5d2417bfc3d4e824b9675992502a06806dec96d0272d09ae82d"
+        },
+        {
+          "atom_id": "Q-a4",
+          "file_sha256": "b9825d081648650eeeca690308ab1220172775be76b97c039250dade4271313b",
+          "n_samples": 43200,
+          "pcm_sha256": "bc2bf70c8c8a8b85709951652c9ed32179131a442b653983bf3f95123efa5de6",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              20
+            ],
+            "pitches": [
+              -3,
+              -6,
+              4
+            ],
+            "rhythm_weights": [
+              3,
+              4,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "d10c0b1b6b65763d2e8659251c252b28cd7472682286f1322efbf5dfde1b4108"
+        },
+        {
+          "atom_id": "Q-r1",
+          "file_sha256": "d892c11bf9969b7450b13fa2f9a40528c4b4dc1a471b40c727eb35448964384d",
+          "n_samples": 21600,
+          "pcm_sha256": "5d5fae306dc6fc400f690f7d0b6b9a05f7bd15ece42b4fd6ecb4d35427855118",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              40,
+              20
+            ],
+            "pitches": [
+              2,
+              -3,
+              -2
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              3
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "f129a88eeec4ff7ef70891d2429e870b28029c0578664f354c46b2b894d00b30"
+        },
+        {
+          "atom_id": "Q-r2",
+          "file_sha256": "228c3fd1119c9678b3219d8db20ba1005ef5f011422b835326bc8c97379e27df",
+          "n_samples": 28800,
+          "pcm_sha256": "0b0e9399634a3cfe8455a57dcc0c5a3e0cf947725dd71c7b7195358a25d7f67f",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              40
+            ],
+            "pitches": [
+              -6,
+              0,
+              5
+            ],
+            "rhythm_weights": [
+              3,
+              2,
+              1
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "07e73a2d3d22012297a2cb2834bb925018192dd9bb14dcc4b9b912d7d2c03052"
+        },
+        {
+          "atom_id": "Q-r3",
+          "file_sha256": "34a04e43162c89aaea00baa6a47237417960cb432722eaa80f2df8b49976a867",
+          "n_samples": 36000,
+          "pcm_sha256": "b32511b830022a02b19c5721f53991bcca5b148b5a1029d06426f9536d5136ad",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              60
+            ],
+            "pitches": [
+              -1,
+              3,
+              -1
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              1
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "214ae7924638e9ae628716bc0c88f634884bd7886e058ca8d3fc12a5383853a2"
+        },
+        {
+          "atom_id": "Q-r4",
+          "file_sha256": "bfaf5a4e53ddacbb3227a6c4320b3167f55444b87b65d52027457332bc40ee12",
+          "n_samples": 43200,
+          "pcm_sha256": "a8d5447b185c9b3035b8ebd3923ccf38fe9f25b60b29854c45993f183325c221",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              20,
+              20
+            ],
+            "pitches": [
+              4,
+              6,
+              6
+            ],
+            "rhythm_weights": [
+              1,
+              3,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "6d2c964eef2a1e1cba680d654c52a7d08b86d851a2461255048df60079d9089a"
+        }
+      ],
+      "book_id": "DEMO-P1",
+      "messages": [
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "6cad926167dbdf56958777306d3af17da05122a57238a9d5f5d111bd38d29126",
+          "duration_ms": 1100,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "K-a1-r1",
+          "n_samples": 52800,
+          "referent_id": "K-r1",
+          "training_wave": 1
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "bbbc8f3e96789a012a2b55b04cdceeb114343134eb7e5f9b8f42bb2d095c596f",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-V1",
+          "matrix_status": "H-V1",
+          "message_id": "K-a1-r2",
+          "n_samples": 60000,
+          "referent_id": "K-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "f1e9bbe084ac6301454c0fea520df251596cea226fa398edbb9d89e0ba20abd4",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a1-r3",
+          "n_samples": 67200,
+          "referent_id": "K-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "52362fcca900058b402711331bc520e23438e788de212190348c37bc05142c9a",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "K-a1-r4",
+          "n_samples": 74400,
+          "referent_id": "K-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "9438fe1503379bf7a9e5d27b4a9a6e35a9468ccd2feea6581b968b7e850bc18f",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "K-a2-r1",
+          "n_samples": 60000,
+          "referent_id": "K-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "b9ca6d23c1901bae03e16fc84abfcea33b539bc16202106d33a00c8631d962d3",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "K-a2-r2",
+          "n_samples": 67200,
+          "referent_id": "K-r2",
+          "training_wave": 1
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "a80ed3634eb4e32f24c52ac11ad8e7533cbeb180714835e11ba9b9884ae2d994",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V2",
+          "matrix_status": "H-V2",
+          "message_id": "K-a2-r3",
+          "n_samples": 74400,
+          "referent_id": "K-r3",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "4d28be22ea544019c95cb834b49ce25697c5d01de5a22feca38b9414dbac00dd",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a2-r4",
+          "n_samples": 81600,
+          "referent_id": "K-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "48e3e12b66a31d0e8dc0c8a62f791b5ce36886a75600d55b4644cac59ac38857",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a3-r1",
+          "n_samples": 67200,
+          "referent_id": "K-r1",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "878a7246eea20a4fdb6e6293f3a1cecd3d5298bc0cfe912eb170f9ba651bfd1f",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "K-a3-r2",
+          "n_samples": 74400,
+          "referent_id": "K-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "4b9d3dfe2c4e58a09cfc87e90f917e26e39a968a301f72cfb8960a08a1bc07b8",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a3-r3",
+          "n_samples": 81600,
+          "referent_id": "K-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "bf7beac84df0b780ec13d1f5fb89fbbf24c2fb60891f194ec1486e37db166f7b",
+          "duration_ms": 1850,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a3-r4",
+          "n_samples": 88800,
+          "referent_id": "K-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "0aa114e126183b696ea789240f231c796dfcd38ecd55332c516f92010d85deb7",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V3",
+          "matrix_status": "H-V3",
+          "message_id": "K-a4-r1",
+          "n_samples": 74400,
+          "referent_id": "K-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "7508a6b407cf99fdcdd53e3fce0f05ef25cfa7e69b3b1e2c98597fa8d5d9671e",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a4-r2",
+          "n_samples": 81600,
+          "referent_id": "K-r2",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "4449d1ac9534f9925ac9ebfa4af1c4f5975341725ce26891de3a9497edbfd1a4",
+          "duration_ms": 1850,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a4-r3",
+          "n_samples": 88800,
+          "referent_id": "K-r3",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "3fbaa0b3209a25c1dd71e940c14c126bb0a2b9c7cb04b2c251127a976182c096",
+          "duration_ms": 2000,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "K-a4-r4",
+          "n_samples": 96000,
+          "referent_id": "K-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "c399eaaf23ad833b44c058f3a36fb510d8d4c59d4430b48d9301356720050444",
+          "duration_ms": 1100,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "Q-a1-r1",
+          "n_samples": 52800,
+          "referent_id": "Q-r1",
+          "training_wave": 1
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "c6865aeb72fb7dddff5eaa2169a7b0229441862e9fcba4812a90e0b626f5491c",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-V1",
+          "matrix_status": "H-V1",
+          "message_id": "Q-a1-r2",
+          "n_samples": 60000,
+          "referent_id": "Q-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "bf8899159b2237b1cfbd5480f1b9d9d9d26829e141cea123e6ebc0624aa130b5",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a1-r3",
+          "n_samples": 67200,
+          "referent_id": "Q-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "c5017c4343667ad01676d967f9ad04a6adeb8d8ff42e00eba6fc34d0f8bea5ce",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "Q-a1-r4",
+          "n_samples": 74400,
+          "referent_id": "Q-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "8e94529576cff27b87ef010cdd962e1ba8122b28226d54333640729f918c387e",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "Q-a2-r1",
+          "n_samples": 60000,
+          "referent_id": "Q-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "d9a4a2640e8c30e09679098712d0059223cdbfcac4014bf223c43d54637f5548",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "Q-a2-r2",
+          "n_samples": 67200,
+          "referent_id": "Q-r2",
+          "training_wave": 1
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "f33229916eb701a8709f3f4e546a5ad0efdff2832baa4a36e21c92aa3e4602d5",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V2",
+          "matrix_status": "H-V2",
+          "message_id": "Q-a2-r3",
+          "n_samples": 74400,
+          "referent_id": "Q-r3",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "d528a8ee7b14c4932d5cae3f6821418a269eb52f1348255aa164c709d38c34ce",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a2-r4",
+          "n_samples": 81600,
+          "referent_id": "Q-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "9bde9137443c57ef2bf5d886c24c5900f49bc0c036f603b7dfba29797c05f8b1",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a3-r1",
+          "n_samples": 67200,
+          "referent_id": "Q-r1",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "dc56fbbbea6a08a704df0e6392af92674eba54248eaf6b1d20ea38cc15de10fe",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "Q-a3-r2",
+          "n_samples": 74400,
+          "referent_id": "Q-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "5af7e112ba373373c4be0a49d8a6f492a53c4c0db88f3efab39f14714d07bef7",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a3-r3",
+          "n_samples": 81600,
+          "referent_id": "Q-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "30569ac3380518deeac709995e34b1b8711f07537e68c234c5598056cbc1d207",
+          "duration_ms": 1850,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a3-r4",
+          "n_samples": 88800,
+          "referent_id": "Q-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "c120eb0d7194384ace99e068a52b4416f35c147baf794d576c65d7a66f5da364",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V3",
+          "matrix_status": "H-V3",
+          "message_id": "Q-a4-r1",
+          "n_samples": 74400,
+          "referent_id": "Q-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "6e44478ea2223e105aca596f7cea5108d85787f00fdb662965e6b884b727271a",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a4-r2",
+          "n_samples": 81600,
+          "referent_id": "Q-r2",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "73d8a9617d69207ad00ced5dd949f79e0f3391ec7ab71b49d1cb45a3bb966caf",
+          "duration_ms": 1850,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a4-r3",
+          "n_samples": 88800,
+          "referent_id": "Q-r3",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "43c2d912b5ca0fe16c88a6ab4440fb3544edf9e30909d42a1d634c8472973a11",
+          "duration_ms": 2000,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "Q-a4-r4",
+          "n_samples": 96000,
+          "referent_id": "Q-r4",
+          "training_wave": null
+        }
+      ],
+      "profile": "P1"
+    },
+    {
+      "atoms": [
+        {
+          "atom_id": "K-a1",
+          "file_sha256": "98618f33197d3ea821f32572cdb1de46abff0454b6a27e30c988cb5e1b4d164c",
+          "n_samples": 28800,
+          "pcm_sha256": "03701c3b6783802bedee3e66e4fd9c3ceba11835a04f7289e88abc4f238f8d7b",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              40
+            ],
+            "pitches": [
+              -4,
+              -4,
+              0
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              3
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "0b9e2f74bc125e1bbcd4896f775b76d507474f1bc6ded5613e714bfa1622edd6"
+        },
+        {
+          "atom_id": "K-a2",
+          "file_sha256": "4fccb252b875caac5b155d3fed2b557af267ecc6e482fc98e4b923be67d3371e",
+          "n_samples": 36000,
+          "pcm_sha256": "3c20f6dbc5891e64aa771491d5f8773f30b406e123037f6bea9a7757b804557d",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              60
+            ],
+            "pitches": [
+              1,
+              -1,
+              -6
+            ],
+            "rhythm_weights": [
+              3,
+              1,
+              2
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "9712627b3afa7e882abf9a3a9648be89a901f56f2bd1580138fd1ec2e352ee1e"
+        },
+        {
+          "atom_id": "K-a3",
+          "file_sha256": "079a3a7b4d22e51068ab67ee2234c28cd34c5e70e87b6d08ff1e1d87996acebe",
+          "n_samples": 43200,
+          "pcm_sha256": "2e0a65fb660b2731cafcdb5de987838185ca6a1f35238291a6ca915435d820c8",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              40
+            ],
+            "pitches": [
+              6,
+              2,
+              1
+            ],
+            "rhythm_weights": [
+              1,
+              1,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "48beb49ebb9ff355db2eb1138687d261ca4fdc85496851cb411185551e943a82"
+        },
+        {
+          "atom_id": "K-a4",
+          "file_sha256": "2f6018247b64eed082f476af02516fb9c6fa24e022f7685127b515983b7e97ae",
+          "n_samples": 21600,
+          "pcm_sha256": "65e826c08ff25a838f4744eeb9de9b2d8fd46876ee6464b01e4c701949f39b7e",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              40,
+              60
+            ],
+            "pitches": [
+              -2,
+              5,
+              -5
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              1
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "5a3b3b54fcf7ac8955a58e2c2ee88c5688f2f63163da93530bc50ef32a76192f"
+        },
+        {
+          "atom_id": "K-r1",
+          "file_sha256": "4ea0c8adc5005f733942501077349eaba8670cd9956f3bbd39e1b4f145ba4154",
+          "n_samples": 28800,
+          "pcm_sha256": "aeb7fef379f56badbb438fc1ebf23e508fe508553a6f77b63d5d64f7f56bde75",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              60,
+              20
+            ],
+            "pitches": [
+              3,
+              -5,
+              2
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              1
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "b17f14ecb6e3b470ac89ed581df376c283a27fdf9ebf1fe4a3c065eaf876a9f3"
+        },
+        {
+          "atom_id": "K-r2",
+          "file_sha256": "ee75a253f970fbd2d59de0efb45484500a44f32732158de7824c5fbb179e371d",
+          "n_samples": 36000,
+          "pcm_sha256": "5eae7f4406f9011bdc255c4c0c9a4cace1a6a7d9daa1664b63e7c957fdc58e94",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              20
+            ],
+            "pitches": [
+              -5,
+              -2,
+              -4
+            ],
+            "rhythm_weights": [
+              4,
+              3,
+              2
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "ed94fb45a50cfcc8554212d7f9a5697f29197cb617b880ea823b10a9a3880f19"
+        },
+        {
+          "atom_id": "K-r3",
+          "file_sha256": "821c853345b443fe69a6cdf3e901a26fabe479b54621b7cf8fd2789980a87ad4",
+          "n_samples": 43200,
+          "pcm_sha256": "ad5551bc9fb3d7f968edd1d384701c14158ef03e2b467bcc3cda20b8e533098b",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              60,
+              40
+            ],
+            "pitches": [
+              0,
+              1,
+              3
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              4
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "1d1ce0f7d1283b0a895111ca1cf6b3d28b2f9961d3baac2bf477ccc126fc5c98"
+        },
+        {
+          "atom_id": "K-r4",
+          "file_sha256": "137022ea60d3203d4c7a4bee79d28cb673d09410f283cc3c1956e8efc5bbec68",
+          "n_samples": 21600,
+          "pcm_sha256": "d18728c95bd10394f22cbf39b6b8a5b86b1dfb2aef0a3e415b2bdd72a2bf98ac",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              20,
+              60
+            ],
+            "pitches": [
+              5,
+              4,
+              -3
+            ],
+            "rhythm_weights": [
+              3,
+              4,
+              2
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "69cff41c81903762d2f28ae102cf0e0c03cc06d63bd8b837a671a2f8fe6ad8dc"
+        },
+        {
+          "atom_id": "Q-a1",
+          "file_sha256": "037dea0d8b30e6b0b6413ab1422e09dc76e9c91bdc32d91245f7d04bc8aa9028",
+          "n_samples": 28800,
+          "pcm_sha256": "6051251aba2440f3f567b09b10da5d15c66fa09ee8eef955ff309c98a8b90809",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              20
+            ],
+            "pitches": [
+              -3,
+              -6,
+              4
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              3
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "2a60642cff36efd1bc3934e4955262665ae209e1fe274272b0add4d0266ade03"
+        },
+        {
+          "atom_id": "Q-a2",
+          "file_sha256": "90594833b9d982e9097e22e5f09dda3e2dc41e1b6547d19617f5361cfe20615a",
+          "n_samples": 36000,
+          "pcm_sha256": "1cf133145b0c1c1106e3cf6df3ece41ee3df690e79e852e746305f7de2ef2c27",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              40,
+              40
+            ],
+            "pitches": [
+              2,
+              -3,
+              -2
+            ],
+            "rhythm_weights": [
+              3,
+              2,
+              1
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "80b8df4d705490fc3d5f5f45e1d28c6410e12259a16f2ece33f9557741b91a31"
+        },
+        {
+          "atom_id": "Q-a3",
+          "file_sha256": "e0e00ead84cdcd13ab5f3286b988894a653db1bb215ec66673c7563140bc5515",
+          "n_samples": 43200,
+          "pcm_sha256": "303edf3af8e3af4917f4a2ffc9210cacaf7c11a98df320b2d41cc504d86a3679",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              60,
+              60
+            ],
+            "pitches": [
+              -6,
+              0,
+              5
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              1
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "b476fbd54b9ed06ed4c8ed8d180b7117ff1325ffdfe858f0f95225d7fc8fed19"
+        },
+        {
+          "atom_id": "Q-a4",
+          "file_sha256": "eb7284dbe9427c1b9b8b863f8f86bd79fefab1ebaedb09512a15a7bb8715ce86",
+          "n_samples": 21600,
+          "pcm_sha256": "7d0aecb394e38463448199805ee140145af77d1edc7bfab36eea9598d1e2d93a",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              20,
+              40
+            ],
+            "pitches": [
+              -1,
+              3,
+              -1
+            ],
+            "rhythm_weights": [
+              1,
+              3,
+              2
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "cba7a64efc7bfb30cf3c35bdc2d8321742bb59b7c1abf4ff46f6c34e2097ca0e"
+        },
+        {
+          "atom_id": "Q-r1",
+          "file_sha256": "03a51b6b91cdf2530c7fc951df312bf62c24b72e48c3fb0634d393a42cb4c496",
+          "n_samples": 28800,
+          "pcm_sha256": "1ea2ccdd8b16924f1ded86639dbd33a32bb0ccd46b1412ed75ebf9fd98e5ffc5",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              60
+            ],
+            "pitches": [
+              4,
+              6,
+              6
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              3
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "bf85b0bc7315d3fd959dca4aafb5ed6c4bae67faa7674bea8b536dd4401194f5"
+        },
+        {
+          "atom_id": "Q-r2",
+          "file_sha256": "b1232290826ba2d66c6bc135a030b553cb241096a3252d8435d30c3bd1e6247e",
+          "n_samples": 36000,
+          "pcm_sha256": "be4739725cea748793e1cc69a20ec9031bd26387fbd2d3792be75f2ffc5022f2",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              20
+            ],
+            "pitches": [
+              -4,
+              -4,
+              0
+            ],
+            "rhythm_weights": [
+              3,
+              1,
+              2
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "ca473d9c4cb9e7543eb36d77edc16e7bc5b176512f40852e8b09947e90659913"
+        },
+        {
+          "atom_id": "Q-r3",
+          "file_sha256": "a1df999079512259a39d693a223e0a0d40c6457990b35b0055e6e99fde50f9d0",
+          "n_samples": 43200,
+          "pcm_sha256": "f7d297688053a8ae7bdbbb9043601499d2cb76cac735691b905798ad2ff77cc1",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              40,
+              20
+            ],
+            "pitches": [
+              1,
+              -1,
+              -6
+            ],
+            "rhythm_weights": [
+              1,
+              1,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "6e8773c405070e8346fbec3b091e7f0c5fe1c27b0821f27d32ee2885844fc3be"
+        },
+        {
+          "atom_id": "Q-r4",
+          "file_sha256": "3ac353fa2359bb48ca6a0351e445a8f850bee0d91db1502e51183615b13bc727",
+          "n_samples": 21600,
+          "pcm_sha256": "e5569c92be9b6dfd397a93ba15b57208d6c9f371756c5585eca6f523d81700a4",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              40
+            ],
+            "pitches": [
+              6,
+              2,
+              1
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              1
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "3e58d53827e5ed8beaac7b559392cca33642d0a83247591d12e133fc4f14352d"
+        }
+      ],
+      "book_id": "DEMO-P2",
+      "messages": [
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "a14256bc9633141f8eeda18a31a5233b61496bd0ca46061aeeabaae7745ca0f9",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "K-a1-r1",
+          "n_samples": 67200,
+          "referent_id": "K-r1",
+          "training_wave": 1
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "4b3a1e5fac2ba9fca6c9b1b6284a061e4f3128b3042674d640a0036d3baf5f32",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V1",
+          "matrix_status": "H-V1",
+          "message_id": "K-a1-r2",
+          "n_samples": 74400,
+          "referent_id": "K-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "c78f14e56b7ecb92fa8d5746d5ca37034212e4b2b50ab3d3c49d125ea48e7349",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a1-r3",
+          "n_samples": 81600,
+          "referent_id": "K-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "4eec76d2f5ec991853f6287c96f658466ad61419ee8d4dad0c6a15b76f43c1a1",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "K-a1-r4",
+          "n_samples": 60000,
+          "referent_id": "K-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "dfcc56d739fc327bbe975f3321de251dd3eb88d40b9ce9d228a025f3c4dbc6e9",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "K-a2-r1",
+          "n_samples": 74400,
+          "referent_id": "K-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "b3ea6251402e18c2d4e58b40b2201dfdf0d99465cdd027a80b953c23f31477a1",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "K-a2-r2",
+          "n_samples": 81600,
+          "referent_id": "K-r2",
+          "training_wave": 1
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "7d4db9e4a0a0dd3ccca9f68b914c945adfe59da632f41270dc2018c87b963976",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-V2",
+          "matrix_status": "H-V2",
+          "message_id": "K-a2-r3",
+          "n_samples": 88800,
+          "referent_id": "K-r3",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "4e2b6f0901bba2ae3e012ccdfe55493c9868c2f04c71699290550164e1bf41e1",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a2-r4",
+          "n_samples": 67200,
+          "referent_id": "K-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "04938f74bdf70e41936d4b95d1984a2a70b3004de1134b0786d6de52611e2840",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a3-r1",
+          "n_samples": 81600,
+          "referent_id": "K-r1",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "8e995390baef1c97d4119f15b92cdf595a31220a61a9d1d0650e5111607e3a01",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "K-a3-r2",
+          "n_samples": 88800,
+          "referent_id": "K-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "3a69c2bf8063279faa40a5626b1de3be2766a2a855d0a328916419a8ec87e15f",
+          "duration_ms": 2000,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a3-r3",
+          "n_samples": 96000,
+          "referent_id": "K-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "47d61e669a9e0ecc97df72886ef75a87006e00db5b159bfc66ddeddd95445b0c",
+          "duration_ms": 1550,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a3-r4",
+          "n_samples": 74400,
+          "referent_id": "K-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "782e92a9d2c06f8e1db0547e3b46021566b866b618047ad245f6dd4fccda5d60",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-V3",
+          "matrix_status": "H-V3",
+          "message_id": "K-a4-r1",
+          "n_samples": 60000,
+          "referent_id": "K-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "69e48925b86b578e452a6fe723025e2429d5cf286bf33b457ba97ad794c38ba1",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a4-r2",
+          "n_samples": 67200,
+          "referent_id": "K-r2",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "6595b87cb2c3cdec350c512acc7bee6755980533f3620afb8a1f6ab0dda01ee2",
+          "duration_ms": 1550,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a4-r3",
+          "n_samples": 74400,
+          "referent_id": "K-r3",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "1becf10941c56ddf8ce9f5382bfffde7abaa0e5ee55136ac11745ea066302b13",
+          "duration_ms": 1100,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "K-a4-r4",
+          "n_samples": 52800,
+          "referent_id": "K-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "ee5bb1f91230cca5ba0d9ff5d9c594568abf248f82cdb49ea2be96c4ec216ba4",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "Q-a1-r1",
+          "n_samples": 67200,
+          "referent_id": "Q-r1",
+          "training_wave": 1
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "a36e801d1efdf4ec647ba64b1fbe35921c871d2fb01aaf7fadce3633716d0b36",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V1",
+          "matrix_status": "H-V1",
+          "message_id": "Q-a1-r2",
+          "n_samples": 74400,
+          "referent_id": "Q-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "b46263c5ac234d3126ac480ffe1892addcc698e2a128ec5db0c760bb3f232d3c",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a1-r3",
+          "n_samples": 81600,
+          "referent_id": "Q-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "e64657b24e403bf63b66a96de56319fa4b99775aaeb1203916893d6a4879c29f",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "Q-a1-r4",
+          "n_samples": 60000,
+          "referent_id": "Q-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "4146b4c81321529c45fcbf980fb8d4959826d5b58743513daadc68418ad57c4b",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "Q-a2-r1",
+          "n_samples": 74400,
+          "referent_id": "Q-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "4e41a4b82bce13011d629d5b4f456e002e6860660d9325d7d428a1e162fb0a74",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "Q-a2-r2",
+          "n_samples": 81600,
+          "referent_id": "Q-r2",
+          "training_wave": 1
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "8a51676b6a8fc5803b3316685a031878afe4c3f1a6f238dea0c708780c808117",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-V2",
+          "matrix_status": "H-V2",
+          "message_id": "Q-a2-r3",
+          "n_samples": 88800,
+          "referent_id": "Q-r3",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "61ebff6f2e51698c46e0d5ce04b71eeaeb9db8e5551c89cf15ce3be2a0ee0b00",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a2-r4",
+          "n_samples": 67200,
+          "referent_id": "Q-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "64ca337e18451f7899db79a1690e803cc25ed3358868a2ab20ce19dd5e9c66fd",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a3-r1",
+          "n_samples": 81600,
+          "referent_id": "Q-r1",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "1b0cd1bd0ab12f3a10b316f38b0b56db1e963e154b5380d57ac34ca224ffba2b",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "Q-a3-r2",
+          "n_samples": 88800,
+          "referent_id": "Q-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "ced36275c1962e7398babf6f04fb784604993d0eefde8200cf1bb26ec53953d1",
+          "duration_ms": 2000,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a3-r3",
+          "n_samples": 96000,
+          "referent_id": "Q-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "d1bd41a26b4c236968898f2ff136cb832cca0b187bbf83ebf5ee4294cab0146c",
+          "duration_ms": 1550,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a3-r4",
+          "n_samples": 74400,
+          "referent_id": "Q-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "3c0967eb54ad7821e3269bbfe9aae80c42e760c8b4ae6fb597ef54b41c6fa71a",
+          "duration_ms": 1250,
+          "heldout": true,
+          "heldout_set": "H-V3",
+          "matrix_status": "H-V3",
+          "message_id": "Q-a4-r1",
+          "n_samples": 60000,
+          "referent_id": "Q-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "f4185f81189f8abb96fddbf7693544146fe07451fccc41c8f779db7fde13d646",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a4-r2",
+          "n_samples": 67200,
+          "referent_id": "Q-r2",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "1e82a786b1a24eed53a0cee50f53a2e929e52544959010824a48fb1bfa9bb33f",
+          "duration_ms": 1550,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a4-r3",
+          "n_samples": 74400,
+          "referent_id": "Q-r3",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "4713a8acb4dc57d892524b2677f6f32c4565a693add379bf5a390c74661d6933",
+          "duration_ms": 1100,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "Q-a4-r4",
+          "n_samples": 52800,
+          "referent_id": "Q-r4",
+          "training_wave": null
+        }
+      ],
+      "profile": "P2"
+    },
+    {
+      "atoms": [
+        {
+          "atom_id": "K-a1",
+          "file_sha256": "72915301a57a8946d5f31a872c78f2f5576423884ce369fc845da926a75722d2",
+          "n_samples": 36000,
+          "pcm_sha256": "5fbf2cefd31fcae54a6e3686d56ffd906f4d8493de5699d3d1fc0c30874f4237",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              60
+            ],
+            "pitches": [
+              -2,
+              5,
+              -5
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              1
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "c99981643b26063f7c30ec0ba773565def7c25c293895508895c4d20d7cb4a5a"
+        },
+        {
+          "atom_id": "K-a2",
+          "file_sha256": "eb2ee41fc40a3dd1c6b0b391460ad1c56f236bb911b46673e3ad38ea77181b4e",
+          "n_samples": 43200,
+          "pcm_sha256": "3ba67eabfc69f1712cac3fc8a3c707fa609117e33ebf5dc26413c088b86297eb",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              20,
+              20
+            ],
+            "pitches": [
+              3,
+              -5,
+              2
+            ],
+            "rhythm_weights": [
+              4,
+              3,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "891dfe8165a760630471fdc2a75586030ad2dcad9f7a3ce74cdd60f80d263c41"
+        },
+        {
+          "atom_id": "K-a3",
+          "file_sha256": "7feb13a0eb50755901e6fffec0eac6c2cdf3dba5a28ba8cc6cef92eaad4b996d",
+          "n_samples": 21600,
+          "pcm_sha256": "6f922f55e3cdcf9daa57341d84378de3e014b7ec86d7ea1f2859a4d495fb7606",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              40
+            ],
+            "pitches": [
+              -5,
+              -2,
+              -4
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              4
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "cb809ecfb9761bedcd0c4e47ec7145e3129ab23aaa11a798285b134c1716c280"
+        },
+        {
+          "atom_id": "K-a4",
+          "file_sha256": "55074ed5379666eeea97f58ec589b2e079236422ad0bbd926788109719e3ef88",
+          "n_samples": 28800,
+          "pcm_sha256": "5523c00b3f369264cb9c3f7d20accf7dc51023df7c5034bc342580ca4f2e8a10",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              60
+            ],
+            "pitches": [
+              0,
+              1,
+              3
+            ],
+            "rhythm_weights": [
+              3,
+              4,
+              2
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "6fd775fbcbf90fef904716f4e6607a1ffb19fe700cff0a5bc02f1cc380733129"
+        },
+        {
+          "atom_id": "K-r1",
+          "file_sha256": "a22ae4ab949a5298efe1567eee2a0bcc422363691ff25c506b32acee935f2218",
+          "n_samples": 36000,
+          "pcm_sha256": "c23170aa56e120b89bc2c51a9c253daaaf1d88805187b7023414d926bcd5a12e",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              40
+            ],
+            "pitches": [
+              5,
+              4,
+              -3
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              3
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "145d9f6d8d6fb0c37d67c8d8ddaf6cdcb4e0fb9d4d481f9b23f7befc7ce320ac"
+        },
+        {
+          "atom_id": "K-r2",
+          "file_sha256": "eeeaa80df8f876e768e8e75d1df51ea68771137128406946e8db67a2f464286f",
+          "n_samples": 43200,
+          "pcm_sha256": "16e5a8ed052b59a1143df3128e203dffc9bff0329807ac3cd362dbec50fd60cc",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              40,
+              60
+            ],
+            "pitches": [
+              -3,
+              -6,
+              4
+            ],
+            "rhythm_weights": [
+              3,
+              2,
+              1
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "92025f70f4e20370931286c3c266b885158d10ceef7735a6d06cfe5d0ac617cd"
+        },
+        {
+          "atom_id": "K-r3",
+          "file_sha256": "7fbbd227baab78c5a06a5439f5f095ed8fc6ee246a77575d139cc7fe1e8a7c64",
+          "n_samples": 21600,
+          "pcm_sha256": "a2f457224a11ec0f282dba27b620674dec91b542ab5df5adf52bae468a39f4f9",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              60,
+              20
+            ],
+            "pitches": [
+              2,
+              -3,
+              -2
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              1
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "8a829e2ff86c87f3e528ca8dc276cc49c7b69703d4ff44cdc2bc90a39eef7792"
+        },
+        {
+          "atom_id": "K-r4",
+          "file_sha256": "d534cffe69abb39e6fab6272bffe97945ea9d1a51fa9f3991ef2ca28c1f715c7",
+          "n_samples": 28800,
+          "pcm_sha256": "0bc1e5cab9513dbc573c7dfcbdd1173aa3acee265295aeb28a33b778abfa4cef",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              20
+            ],
+            "pitches": [
+              -6,
+              0,
+              5
+            ],
+            "rhythm_weights": [
+              1,
+              3,
+              2
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "1f1e84a8cdd5f3bd0254bcc9e1ed275328f69bc32023c4ff88e3ea44c14d5425"
+        },
+        {
+          "atom_id": "Q-a1",
+          "file_sha256": "4e3f18d0a242d790ee0ce81b2192955dbe52ea246c1bc4fd48e91ede8487a43b",
+          "n_samples": 36000,
+          "pcm_sha256": "852c2ba52b386d81ee4c2edad961264e4c53cc34e0caeb810befce27b5545876",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              60,
+              40
+            ],
+            "pitches": [
+              -1,
+              3,
+              -1
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              3
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "70723a8dd39e04e5935a0b1a82eef67b8cb4fe9a1849cacdb5b8d0d1baae1e01"
+        },
+        {
+          "atom_id": "Q-a2",
+          "file_sha256": "395b8e07f3931eb28cb19ee5329ad7d3f6fe64c9c2aec87e57851f7c3b0e58d0",
+          "n_samples": 43200,
+          "pcm_sha256": "bb305e752bbbc1b23bfc9b486a900c79cce613dc25903fae3aad618db5416963",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              20,
+              60
+            ],
+            "pitches": [
+              4,
+              6,
+              6
+            ],
+            "rhythm_weights": [
+              3,
+              1,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "2856d85ec8f8f0c8920c3bda2d0633bf4a4d65f42ee23b95cef1345510629fcd"
+        },
+        {
+          "atom_id": "Q-a3",
+          "file_sha256": "3b6786301c03923e19dd2fa42db75b3e3c8ee70e1fd8da418cbb03e72b3fc56b",
+          "n_samples": 21600,
+          "pcm_sha256": "d2ca2d92835dc914a7bf8a5bd0be40db7617ccbe2275152450b6fc7b9945272c",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.8,
+              0.6
+            ],
+            "gaps_ms": [
+              20,
+              20
+            ],
+            "pitches": [
+              -4,
+              -4,
+              0
+            ],
+            "rhythm_weights": [
+              1,
+              1,
+              2
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "de225e29037252ad588b564db15f139f47f7649403eb9635b34bc7f5289696d1"
+        },
+        {
+          "atom_id": "Q-a4",
+          "file_sha256": "aa70a16f5e327a615c58b90bcd5e6d8c80856f7a170efb2fef7ec1ebccf8d5cc",
+          "n_samples": 28800,
+          "pcm_sha256": "45cb1bc544d80ff396738e85a5817ab970f9f8f36da077c20dfa6bd6a86bbafa",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "gaps_ms": [
+              40,
+              40
+            ],
+            "pitches": [
+              1,
+              -1,
+              -6
+            ],
+            "rhythm_weights": [
+              2,
+              1,
+              1
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "0fd705c95049742d5561530a7add74c0ffbf0f6c81540e8f642bc0da814a55fe"
+        },
+        {
+          "atom_id": "Q-r1",
+          "file_sha256": "697c607af46d7ae3e6972d66b7ec1db50d6bc31e106aa64cb3c1b180c3c46169",
+          "n_samples": 36000,
+          "pcm_sha256": "712dc64e6b354e0854e022028f11fb7c43edd94c2cdc45d172e33b03dbc6beed",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              1.0,
+              0.6
+            ],
+            "gaps_ms": [
+              60,
+              60
+            ],
+            "pitches": [
+              6,
+              2,
+              1
+            ],
+            "rhythm_weights": [
+              1,
+              2,
+              1
+            ],
+            "total_ms": 750
+          },
+          "recipe_sha256": "e608006ff1e7df05cf804d5bac6e07af5200e089551944f4222f5d9999b35041"
+        },
+        {
+          "atom_id": "Q-r2",
+          "file_sha256": "342797eeb5f86900f4c8ff34342de9531a3be4d6d83d312251b87937c7d3ef55",
+          "n_samples": 43200,
+          "pcm_sha256": "a66b821c41f0ae41f3cb2d3b05cf00468376af8b8a4a197a281efbbcbf28d2ca",
+          "recipe": {
+            "amplitudes": [
+              1.0,
+              0.6,
+              0.8
+            ],
+            "gaps_ms": [
+              20,
+              40
+            ],
+            "pitches": [
+              -2,
+              5,
+              -5
+            ],
+            "rhythm_weights": [
+              4,
+              3,
+              2
+            ],
+            "total_ms": 900
+          },
+          "recipe_sha256": "20ec2b2d03cc86ee96facf8c3c8a25e51a4cd7acbaeb98ffa65f92fa57be5c42"
+        },
+        {
+          "atom_id": "Q-r3",
+          "file_sha256": "bc1ceb9dfec91d3686c92315a575f1d46a2f35a20f227427dd60263d83912c50",
+          "n_samples": 21600,
+          "pcm_sha256": "eaab0bd9670b104fb3c50a9443450daf67596003931bf4ba16684feb831750f1",
+          "recipe": {
+            "amplitudes": [
+              0.6,
+              1.0,
+              0.8
+            ],
+            "gaps_ms": [
+              40,
+              60
+            ],
+            "pitches": [
+              3,
+              -5,
+              2
+            ],
+            "rhythm_weights": [
+              2,
+              3,
+              4
+            ],
+            "total_ms": 450
+          },
+          "recipe_sha256": "cc3f64166f781484e13bc6a50657f19a8c4ecb22bc5fd74edd14128294ac8f2f"
+        },
+        {
+          "atom_id": "Q-r4",
+          "file_sha256": "5c921477d6321dd8aa4eb90d236e3a827d53289d0d09c58180a90257cae2db5c",
+          "n_samples": 28800,
+          "pcm_sha256": "e2e646343b0d74d6d0f48f1ca07b3ef2fa3d3287091c5ed83e2d800ea428df30",
+          "recipe": {
+            "amplitudes": [
+              0.8,
+              0.6,
+              1.0
+            ],
+            "gaps_ms": [
+              60,
+              20
+            ],
+            "pitches": [
+              -5,
+              -2,
+              -4
+            ],
+            "rhythm_weights": [
+              3,
+              4,
+              2
+            ],
+            "total_ms": 600
+          },
+          "recipe_sha256": "8608e4d8799843fdb79769813bea708b71432065fdc3fcd7960b5da4dab320d5"
+        }
+      ],
+      "book_id": "DEMO-P3",
+      "messages": [
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "a2345f88e0d43f436b299455ea7a10ab798ed946d1096a46a7b02fca5ba5b39d",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "K-a1-r1",
+          "n_samples": 81600,
+          "referent_id": "K-r1",
+          "training_wave": 1
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "63835b0523e03176ff51a2598f342a22e04c28094f5383eb2e09919533070fd5",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-V1",
+          "matrix_status": "H-V1",
+          "message_id": "K-a1-r2",
+          "n_samples": 88800,
+          "referent_id": "K-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "53ed63316d4575ae5f4db3bf9521a82d530b4cae5a4587d2d6a413e8e49f4dac",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a1-r3",
+          "n_samples": 67200,
+          "referent_id": "K-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a1",
+          "composite_sha256": "e9c6fbb7eb9c527db27e9c98048908ae4d1043b6a4701cf817662afe24a32728",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "K-a1-r4",
+          "n_samples": 74400,
+          "referent_id": "K-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "7916821cfd68894ba13eaa83c90d99b04138891c356b98720960931b7cccb2b4",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "K-a2-r1",
+          "n_samples": 88800,
+          "referent_id": "K-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "013b8a2e49372d13ba9f99db4b373084da0e01434e4b1da06a58ff4a1f794aec",
+          "duration_ms": 2000,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "K-a2-r2",
+          "n_samples": 96000,
+          "referent_id": "K-r2",
+          "training_wave": 1
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "ab09d3c0849b148cce9dd3a8487e4b54d140e11f3dd91d04faad0f5588c9cdc8",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V2",
+          "matrix_status": "H-V2",
+          "message_id": "K-a2-r3",
+          "n_samples": 74400,
+          "referent_id": "K-r3",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a2",
+          "composite_sha256": "f663afefc677cee53a523d24eb84adc21dcb83a59e76743689f7e00dea73e63c",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a2-r4",
+          "n_samples": 81600,
+          "referent_id": "K-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "4565e81e0a9fd6abd62bf16109730b2660a727dd901e442422a524c0ebb24e54",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a3-r1",
+          "n_samples": 67200,
+          "referent_id": "K-r1",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "740f5da56aa2a1f1f2af68d86325ca64a8be0ff0b70365b565409075ee70a106",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "K-a3-r2",
+          "n_samples": 74400,
+          "referent_id": "K-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "d6e7f1c5f438bb016540ee1fdf7e84ff588b84d6cca935053346843e6462f332",
+          "duration_ms": 1100,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "K-a3-r3",
+          "n_samples": 52800,
+          "referent_id": "K-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "K-a3",
+          "composite_sha256": "0eddba4c323560a28157062b84bae4ecb8d329c0ce535eca8c9f30626a845fe2",
+          "duration_ms": 1250,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a3-r4",
+          "n_samples": 60000,
+          "referent_id": "K-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "7b7175fb021e70426a81972591bec0dfa350f22510338baaad93a1dd0bfe61ab",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V3",
+          "matrix_status": "H-V3",
+          "message_id": "K-a4-r1",
+          "n_samples": 74400,
+          "referent_id": "K-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "b40e9d8d947eb251de0bae3f300fe3036bd0d8bdedf1fbacd799a2aa8f59b5aa",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a4-r2",
+          "n_samples": 81600,
+          "referent_id": "K-r2",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "ceddd2657e55e7841d54b617aee216d5a5fa19059525e6576111fe978f7f04b0",
+          "duration_ms": 1250,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "K-a4-r3",
+          "n_samples": 60000,
+          "referent_id": "K-r3",
+          "training_wave": 3
+        },
+        {
+          "action_id": "K-a4",
+          "composite_sha256": "4009cee4ece4a7c894f7704f89b4516479af77c46364c26b9c2d1667d9a33aaf",
+          "duration_ms": 1400,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "K-a4-r4",
+          "n_samples": 67200,
+          "referent_id": "K-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "f29c24f8e024ba2473366399361d80683f9f670e2d641365a151bd0bb40c1b8f",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "Q-a1-r1",
+          "n_samples": 81600,
+          "referent_id": "Q-r1",
+          "training_wave": 1
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "390737b551f67784b6b6139179bfe867150c754ba48141e3db46bb1182e33841",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-V1",
+          "matrix_status": "H-V1",
+          "message_id": "Q-a1-r2",
+          "n_samples": 88800,
+          "referent_id": "Q-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "17ea09f75670c6eeaf9a63f5984d74c16a062d1e1215283cb75b6fd0069cdf03",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a1-r3",
+          "n_samples": 67200,
+          "referent_id": "Q-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a1",
+          "composite_sha256": "ccf44ff9252c5188c63dd95388580007ff53387f36d8ef399fa3aeba42dba945",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "Q-a1-r4",
+          "n_samples": 74400,
+          "referent_id": "Q-r4",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "79dc9139bec1f480371abdd8a2bd6c1f44330670d3208a6b3d26fec9fd873bd3",
+          "duration_ms": 1850,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "Q-a2-r1",
+          "n_samples": 88800,
+          "referent_id": "Q-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "24a12f356f8f8feacbabbf088da3687bc6f806c1b773852388ddaf48496e8cb5",
+          "duration_ms": 2000,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V1",
+          "message_id": "Q-a2-r2",
+          "n_samples": 96000,
+          "referent_id": "Q-r2",
+          "training_wave": 1
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "92843e71c09e3710dd24f78436e911579ebc59883e03f3ec32f253f0b202e857",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V2",
+          "matrix_status": "H-V2",
+          "message_id": "Q-a2-r3",
+          "n_samples": 74400,
+          "referent_id": "Q-r3",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a2",
+          "composite_sha256": "23ed458e909e37ee13051a765367edbfe49978619456faea95abb3d2063f7a21",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a2-r4",
+          "n_samples": 81600,
+          "referent_id": "Q-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "9a31237a204e49a2058645e297220cdc5f31a02abd09bec135f0c8c4dcdf0d10",
+          "duration_ms": 1400,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a3-r1",
+          "n_samples": 67200,
+          "referent_id": "Q-r1",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "21990f3e2bd8dd8fc3abdbc9322a169a9eb0cdee1aaa2717980da51cc07dceb2",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-W1",
+          "matrix_status": "H-W1",
+          "message_id": "Q-a3-r2",
+          "n_samples": 74400,
+          "referent_id": "Q-r2",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "d719ab8167c1a6dbf6c7c88de23077ca3f9ebbcf1750260ffa04acaecfb546f4",
+          "duration_ms": 1100,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V2",
+          "message_id": "Q-a3-r3",
+          "n_samples": 52800,
+          "referent_id": "Q-r3",
+          "training_wave": 2
+        },
+        {
+          "action_id": "Q-a3",
+          "composite_sha256": "b50259f1fac63c1cb6fdadc7cb8aa30d988e96cb4aabb04f453887529c28640d",
+          "duration_ms": 1250,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a3-r4",
+          "n_samples": 60000,
+          "referent_id": "Q-r4",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "e262b16357ec23b7969bc743c85c4feba18f9fe4a886fe15e2c3148ab5f4b51a",
+          "duration_ms": 1550,
+          "heldout": true,
+          "heldout_set": "H-V3",
+          "matrix_status": "H-V3",
+          "message_id": "Q-a4-r1",
+          "n_samples": 74400,
+          "referent_id": "Q-r1",
+          "training_wave": null
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "4b35dabb8899f69af137bf4ac0dbdaef8a23dcdd6a99bc6ed33284b52a558373",
+          "duration_ms": 1700,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a4-r2",
+          "n_samples": 81600,
+          "referent_id": "Q-r2",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "5835ce5b6f04a35c97994e63330408a777c220ab1084fa698591c59bfd2c794e",
+          "duration_ms": 1250,
+          "heldout": false,
+          "heldout_set": null,
+          "matrix_status": "Train V3",
+          "message_id": "Q-a4-r3",
+          "n_samples": 60000,
+          "referent_id": "Q-r3",
+          "training_wave": 3
+        },
+        {
+          "action_id": "Q-a4",
+          "composite_sha256": "5d8ac5b3d83e4fbeb74045eb3b058f564b6be9696a889cef4f2ab8d9c9c5accb",
+          "duration_ms": 1400,
+          "heldout": true,
+          "heldout_set": "H-W4",
+          "matrix_status": "H-W4",
+          "message_id": "Q-a4-r4",
+          "n_samples": 67200,
+          "referent_id": "Q-r4",
+          "training_wave": null
+        }
+      ],
+      "profile": "P3"
+    }
+  ],
+  "channels": 1,
+  "composite": "sha256(pcm(action) || 2 * gap_samples zero bytes || pcm(referent))",
+  "format": "av-sound composition test vectors",
+  "format_version": "1.0.0",
+  "gap_samples": 9600,
+  "pattern_rule": "sample[i] = (mul * i + add) mod 65535 - 32767",
+  "patterns": [
+    {
+      "action": {
+        "add": 0,
+        "mul": 7,
+        "n_samples": 21600
+      },
+      "action_pcm_sha256": "0f8aea217bcc6102063e0f5ebc887348b26eb51a7eb9427982447bc76118903e",
+      "composite_sha256": "38249e36ccd2bce770ff355aa029368c8d8a9907f204d32cb62d6c18903e7955",
+      "n_samples": 52800,
+      "name": "pattern-shortest",
+      "referent": {
+        "add": 1000,
+        "mul": 13,
+        "n_samples": 21600
+      },
+      "referent_pcm_sha256": "6289341bf57087c044641a510213aadfaf2d4bbc30a415f84d4e0625ea601f0f"
+    },
+    {
+      "action": {
+        "add": 32767,
+        "mul": 3,
+        "n_samples": 43200
+      },
+      "action_pcm_sha256": "fc5c55e83eff6251e7cbdae9dc2fc7e82cda01ec3d5546166db83d624371c7fd",
+      "composite_sha256": "cdfce7086ac0e59380871496b32b24ada25eeab648414fae3aa589d7f237288a",
+      "n_samples": 96000,
+      "name": "pattern-longest",
+      "referent": {
+        "add": 5,
+        "mul": 11,
+        "n_samples": 43200
+      },
+      "referent_pcm_sha256": "251f4aadd49604092e561d422c77d3ff072bd6759b95e4c1c2b4c3f2b1d5b849"
+    },
+    {
+      "action": {
+        "add": 0,
+        "mul": 1,
+        "n_samples": 21600
+      },
+      "action_pcm_sha256": "fd8dbf505373a8c709e0111ff9d6defc30f16327d6abd227d148ea26dc6b12d9",
+      "composite_sha256": "f36141d6b43e0711197ff6ed2f3875fca1a86fdfb4c4fd1dc8eccad24f766c70",
+      "n_samples": 74400,
+      "name": "pattern-short-long",
+      "referent": {
+        "add": 1,
+        "mul": 2,
+        "n_samples": 43200
+      },
+      "referent_pcm_sha256": "a6fde4f3e46d3ed4614daa62d1e5dfb92135a4977e1365a220fc79d1c86f79ce"
+    },
+    {
+      "action": {
+        "add": 99,
+        "mul": 257,
+        "n_samples": 43200
+      },
+      "action_pcm_sha256": "4a101f7e0c71ea07bcc3bfb1f95ac0694135874849244fb26f0553d24d86fe68",
+      "composite_sha256": "0b8455fb2374eae5f4b1ee0b29f87606e4b9d33d389b7538a7e2d15b04aa4581",
+      "n_samples": 74400,
+      "name": "pattern-long-short",
+      "referent": {
+        "add": 0,
+        "mul": 65534,
+        "n_samples": 21600
+      },
+      "referent_pcm_sha256": "8385f5c8c02cf5090f5dc9f94efec6770d39a957f350eea22d7527cb284c2454"
+    }
+  ],
+  "renderer_version": "0.1.0",
+  "sample_format": "int16 little-endian",
+  "sample_rate": 48000,
+  "synthetic": true
+}

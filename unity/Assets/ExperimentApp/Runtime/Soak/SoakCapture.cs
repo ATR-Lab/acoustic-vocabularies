@@ -46,7 +46,7 @@ namespace AcousticVocab.Soak
         public string Block{get;}public string BlockId{get;}public string EngineState{get;}public string TrialId{get;}
         public SoakContext(string block,string blockId,string engineState,string trialId)
         {
-            SoakPlan.Need(new[]{"teaching","protected","paused"}.Contains(block)&&SoakPlan.Id(blockId)&&SoakPlan.Id(engineState)&&(trialId==null||SoakPlan.Id(trialId)),"SOAK_CONTEXT");
+            SoakPlan.Need(new[]{"teaching","protected","selection","paused"}.Contains(block)&&SoakPlan.Id(blockId)&&SoakPlan.Id(engineState)&&(trialId==null||SoakPlan.Id(trialId)),"SOAK_CONTEXT");
             Block=block;BlockId=blockId;EngineState=engineState;TrialId=trialId;
         }
         internal JObject Json()=>new JObject{["block"]=Block,["block_id"]=BlockId,["engine_state"]=EngineState,["trial_id"]=TrialId};

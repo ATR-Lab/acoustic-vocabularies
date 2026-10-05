@@ -1,0 +1,34 @@
+{
+  "qualification": "synthetic_actual_fixed_slot_engine_virtual_clock_no_device_audio",
+  "protocol_headers_qualified": false,
+  "trial_rows": 36,
+  "exposure_rows": 36,
+  "source_export_manifest_sha256": "aa779a90d3ff285c17c31c75dd2100ca5977afe91fe4bdd0f6684520c7858dad",
+  "files": [
+    {
+      "path": "events.jsonl",
+      "bytes": 763853,
+      "sha256": "d18374e28658a3b52c8779d5a2c0f854a7a1edcc57b4809ace2023357f6a7d05"
+    },
+    {
+      "path": "exposure-ledger.csv",
+      "bytes": 10751,
+      "sha256": "cf53f90848425804dd583f61d167325b3a979d091ab179304ff8d1053ec997fe"
+    },
+    {
+      "path": "header-contract.json",
+      "bytes": 1113,
+      "sha256": "12063cf56e58d0e3c0cb31f783e0866f070b4f75a02046050109358cb5159b76"
+    },
+    {
+      "path": "original-export-manifest.json",
+      "bytes": 1047,
+      "sha256": "aa779a90d3ff285c17c31c75dd2100ca5977afe91fe4bdd0f6684520c7858dad"
+    },
+    {
+      "path": "trial-log.csv",
+      "bytes": 10859,
+      "sha256": "93159578fd8fc6218277b1b405a076e9bc8ffae945221226d1624b9dacb9e09d"
+    }
+  ]
+}

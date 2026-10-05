@@ -1,0 +1,4 @@
+{
+  "name": "AcousticVocab.StateIntegration",
+  "references": ["AcousticVocab.Foundation", "AcousticVocab.StateSources", "AcousticVocab.Workcell"]
+}

@@ -4,14 +4,43 @@
     "instance": "tests/fixtures/engineering-event.json"
   },
   {
+    "schema": "apparatus/schemas/station.schema.json",
+    "instance": "apparatus/examples/station.example.json"
+  },
+  {
     "schema": "isaac/publisher/state-v2.schema.json",
     "instance": "tests/fixtures/publisher-state.json"
+  },
+  {
+    "schema": "apparatus/schemas/state-source.schema.json",
+    "instance": "apparatus/examples/state-source.example.json"
+  },
+  {
+    "schema": "apparatus/response-panel/response-panel.schema.json",
+    "instance": "apparatus/response-panel/response-panel.example.json"
+  },
+  {
+    "schema": "apparatus/orientation/orientation-plan.schema.json",
+    "instance": "apparatus/orientation/orientation-plan.example.json"
+  },
+  {
+    "schema": "apparatus/orientation/orientation-config.schema.json",
+    "instance": "apparatus/orientation/orientation-config.example.json"
   },
   {
     "schema": "apparatus/stations/station.schema.json",
     "instance": "apparatus/stations/example.synthetic.json"
   },
-  {"schema": "docs/adr/schemas/control-command.schema.json", "instance": "tests/fixtures/control-command.json"},
-  {"schema": "docs/adr/schemas/log-event.schema.json", "instance": "tests/fixtures/log-event.json"},
-  {"schema": "docs/adr/schemas/bridge-state.schema.json", "instance": "tests/fixtures/bridge-state.json"}
+  {
+    "schema": "docs/adr/schemas/control-command.schema.json",
+    "instance": "tests/fixtures/control-command.json"
+  },
+  {
+    "schema": "docs/adr/schemas/log-event.schema.json",
+    "instance": "tests/fixtures/log-event.json"
+  },
+  {
+    "schema": "docs/adr/schemas/bridge-state.schema.json",
+    "instance": "tests/fixtures/bridge-state.json"
+  }
 ]

@@ -1,0 +1,76 @@
+{
+  "commands": [
+    {
+      "family": "K",
+      "position": 1,
+      "semantic_action": "ADD_ONE",
+      "semantic_referent": "D",
+      "speech_id": "K-ADD_ONE-D"
+    },
+    {
+      "family": "K",
+      "position": 2,
+      "semantic_action": "REMOVE_ONE",
+      "semantic_referent": "B",
+      "speech_id": "K-REMOVE_ONE-B"
+    },
+    {
+      "family": "K",
+      "position": 3,
+      "semantic_action": "FLIP_CARD",
+      "semantic_referent": "A",
+      "speech_id": "K-FLIP_CARD-A"
+    },
+    {
+      "family": "K",
+      "position": 4,
+      "semantic_action": "ALIGN_ARROW",
+      "semantic_referent": "C",
+      "speech_id": "K-ALIGN_ARROW-C"
+    },
+    {
+      "family": "Q",
+      "position": 5,
+      "semantic_action": "SCAN",
+      "semantic_referent": "G",
+      "speech_id": "Q-SCAN-G"
+    },
+    {
+      "family": "Q",
+      "position": 6,
+      "semantic_action": "TAG",
+      "semantic_referent": "F",
+      "speech_id": "Q-TAG-F"
+    },
+    {
+      "family": "Q",
+      "position": 7,
+      "semantic_action": "CLOSE",
+      "semantic_referent": "H",
+      "speech_id": "Q-CLOSE-H"
+    },
+    {
+      "family": "Q",
+      "position": 8,
+      "semantic_action": "QUARANTINE",
+      "semantic_referent": "E",
+      "speech_id": "Q-QUARANTINE-E"
+    }
+  ],
+  "demo": true,
+  "format": "av-schedules/speech-list",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "seed": "d71d87b39a6c3ae0c25739341b45811c564da7ad9ffe0c88138da9299bd1ca81",
+  "seed_label": "DEMO-o4.4.1-example",
+  "seed_tokens": [
+    "A",
+    "A-P",
+    "speech-list"
+  ],
+  "set": "pilot",
+  "study": "A"
+}
