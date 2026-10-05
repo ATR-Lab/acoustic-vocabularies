@@ -1,3 +1,3 @@
 [tool.pytest.ini_options]
-testpaths = ["tests", "sound", "generation", "banks", "schedules", "analysis", "isaac", "spikes"]
+testpaths = ["tests", "sound", "generation", "banks", "schedules", "analysis", "isaac", "spikes", "ops/console/tests"]
 addopts = "-ra"

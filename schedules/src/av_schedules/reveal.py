@@ -83,6 +83,8 @@ class RevealLog:
         self._study: str = doc["study"]
         self._set: str = doc["set"]
         self._list_sha256: str = doc["list_sha256"]
+        self._seed_label: str = doc["seed_label"]
+        self._demo: bool = doc["demo"]
         self._log_path = log_path
         self._clock = clock
         self._entries: list[dict[str, Any]] = []
@@ -124,6 +126,21 @@ class RevealLog:
     def revealed(self) -> list[dict[str, Any]]:
         """Entries revealed so far, in reveal order, with participant IDs bound."""
         return copy.deepcopy(self._reveals)
+
+    def matches_source(
+        self, *, study: str, set_name: str, demo: bool, seed_label: str, list_sha256: str
+    ) -> bool:
+        """Bind a configured visit without exposing private source labels in UI DTOs.
+
+        The caller independently pins the authorized list hash alongside its
+        run-sheet manifest hash. Study/set IDs alone can repeat across seeds.
+        """
+        return (
+            type(demo) is bool
+            and type(self._demo) is bool
+            and (study, set_name, demo, seed_label, list_sha256)
+            == (self._study, self._set, self._demo, self._seed_label, self._list_sha256)
+        )
 
     def pending(self) -> list[str]:
         """Eligibility record IDs logged but not yet used by a reveal."""
