@@ -25,7 +25,7 @@ namespace AcousticVocab.SessionEngine.Tests
             public readonly bool[] Gates=Enumerable.Repeat(true,8).ToArray();
             public SlotReadiness Readiness=>new SlotReadiness(Gates[0],Gates[1],Gates[2],Gates[3],Gates[4],Gates[5],Gates[6],Gates[7]);
             public bool ResetComplete { get; private set; }
-            public bool CompleteReset=true,ThrowCue;
+            public bool CompleteReset=true,ThrowCue,InvalidateOnInterrupt;
             public int Cues,Interrupts,Resets;
             public SlotContext Context;
             public INovelSlotAuthorization Permit;
@@ -34,7 +34,7 @@ namespace AcousticVocab.SessionEngine.Tests
             public void OpenResponse(SlotContext context){}
             public void CloseResponse(SlotContext context){}
             public void RequestReset(SlotContext context){Resets++;ResetComplete=CompleteReset;}
-            public void Interrupt(string code){Interrupts++;}
+            public void Interrupt(string code){Interrupts++;if(InvalidateOnInterrupt)for(int i=0;i<Gates.Length;i++)Gates[i]=false;}
         }
         sealed class Factory : ISlotContentFactory
         {
@@ -49,12 +49,12 @@ namespace AcousticVocab.SessionEngine.Tests
             public readonly Factory Factory=new Factory();
             public readonly VisitSchedule Schedule;
             public readonly FixedSlotEngine Engine;
-            public Fixture(int count=1,bool heldout=false,int plays=1,string type="trained",Memory journal=null)
+            public Fixture(int count=1,bool heldout=false,int plays=1,string type="trained",Memory journal=null,Action<SlotGateRefusal> diagnostic=null)
             {
                 Journal=journal??new Memory();
                 var items=Enumerable.Range(0,count).Select(i=>new SlotItem("DEMO-"+i,type,"K-a1-r1",null,null,"protected",heldout,type=="atomic"?9:type=="atomic_lesson"?20:type=="message_lesson"?24:14,plays,1)).ToArray();
                 Schedule=new VisitSchedule(Hash,Package,"DEMO","D0",true,new[]{new ScheduleBlock("trained",items)});
-                Engine=new FixedSlotEngine(Schedule,Clock,Journal,Factory);
+                Engine=new FixedSlotEngine(Schedule,Clock,Journal,Factory,diagnostic);
             }
             public void Start(){Engine.ConfirmResume();Engine.Tick();}
             public void At(double time){Clock.Time=time;Engine.Tick();}
@@ -79,6 +79,41 @@ namespace AcousticVocab.SessionEngine.Tests
             var f=new Fixture();f.Factory.Configure=x=>x.Gates[gate]=false;f.Start();f.At(650);
             Assert.That(f.Factory.Items[0].Cues,Is.Zero);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Paused));
             Assert.That(f.Journal.Rows.Any(x=>x.ExposureConsumed),Is.False);
+        }
+        [TestCase(0)][TestCase(1)][TestCase(2)][TestCase(3)][TestCase(4)][TestCase(5)][TestCase(6)][TestCase(7)]
+        public void CueRefusalCapturesTheEvaluatedGateBeforeInterruptionInvalidatesOtherGates(int gate)
+        {
+            SlotGateRefusal observed=null;Fixture f=null;
+            f=new Fixture(2,diagnostic:x=>{observed=x;Assert.That(f.Factory.Items.Last().Interrupts,Is.Zero);f.Engine.Tick();});
+            f.Start();f.At(12750); // prepare next item while previous fixed tail remains
+            f.At(13000);Assert.That(f.Engine.CurrentState,Is.EqualTo(ItemState.Ready));
+            var second=f.Factory.Items[1];second.Gates[gate]=false;second.InvalidateOnInterrupt=true;
+            f.At(14014); // 736 ms before onset, as in the retained native failure
+            Assert.That(observed,Is.Not.Null);Assert.That(observed.Code,Is.EqualTo("SESSION_CUE_GATE_REFUSED"));
+            var r=observed.Readiness;Assert.That(new[]{r.HashVerified,r.AudioPreloaded,r.ResetAcknowledged,r.RendererReady,r.PanelIdle,r.FocusOk,r.InputOk,r.ModeAcknowledged},Is.EqualTo(Enumerable.Range(0,8).Select(i=>i!=gate)));
+            Assert.That(observed.CheckedMonoMs,Is.EqualTo(14014));Assert.That(observed.Context.OnsetMonoMs-observed.CheckedMonoMs,Is.EqualTo(736));Assert.That(observed.MinimumLeadMs,Is.EqualTo(150));
+            Assert.That(second.Cues,Is.Zero);Assert.That(second.Interrupts,Is.GreaterThan(0));Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Paused));
+            Assert.That(f.Journal.Rows.Where(x=>x.TrialId=="DEMO-1").All(x=>!x.ExposureConsumed),Is.True);
+        }
+        [TestCase(600,true)][TestCase(600.001,false)]
+        public void DiagnosticDoesNotChangeExactMinimumLeadDeadline(double time,bool allowed)
+        {
+            int calls=0;var f=new Fixture(diagnostic:_=>calls++);f.Engine.ConfirmResume();f.At(time);
+            Assert.That(f.Factory.Items[0].Cues,Is.EqualTo(allowed?1:0));Assert.That(calls,Is.EqualTo(allowed?0:1));
+        }
+        [Test]public void FailedDiagnosticSinkKeepsOriginalCauseAndRefusesFurtherResume()
+        {
+            var f=new Fixture(diagnostic:_=>throw new IOException("synthetic diagnostic failure"));f.Factory.Configure=x=>x.Gates[2]=false;f.Start();f.At(601);
+            Assert.That(f.Engine.DiagnosticFailed,Is.True);Assert.That(f.Engine.PrimaryFaultCode,Is.EqualTo("SESSION_READY_DEADLINE_MISSED"));Assert.That(f.Factory.Items[0].Cues,Is.Zero);
+            f.Engine.Fault("CONTROL_UNAVAILABLE");Assert.That(f.Engine.PrimaryFaultCode,Is.EqualTo("SESSION_READY_DEADLINE_MISSED"));
+            Assert.That(f.Journal.Rows.Where(x=>x.Event=="item_fault").Select(x=>x.TechnicalFaultCode),Is.EqualTo(new[]{"SESSION_READY_DEADLINE_MISSED","CONTROL_UNAVAILABLE"}));
+            Assert.Throws<SessionFault>(()=>f.Engine.ConfirmResume());
+        }
+        [Test]public void ExplicitSafeResumeStartsANewFaultEpisodeWithoutErasingPriorRows()
+        {
+            var f=new Fixture();f.Engine.ConfirmResume();f.Engine.Fault("FIRST_FAULT");f.Engine.Fault("SECONDARY_FAULT");Assert.That(f.Engine.PrimaryFaultCode,Is.EqualTo("FIRST_FAULT"));
+            f.Engine.ConfirmResume();Assert.That(f.Engine.PrimaryFaultCode,Is.Null);f.Engine.Fault("NEXT_FAULT");Assert.That(f.Engine.PrimaryFaultCode,Is.EqualTo("NEXT_FAULT"));
+            Assert.That(f.Journal.Rows.Where(x=>x.Event=="item_fault").Select(x=>x.TechnicalFaultCode),Is.EqualTo(new[]{"FIRST_FAULT","SECONDARY_FAULT","NEXT_FAULT"}));
         }
         [Test] public void DurableUncertainIntentPrecedesCueAndCrashSkipsOpportunity()
         {

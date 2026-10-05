@@ -13,6 +13,7 @@ namespace AcousticVocab.SessionEngine
         readonly ISessionClock clock;
         readonly ISessionJournal journal;
         readonly ISlotContentFactory factory;
+        readonly Action<SlotGateRefusal> gateRefused;
         readonly string epoch=Guid.NewGuid().ToString("N");
         readonly HashSet<string> completed=new HashSet<string>(StringComparer.Ordinal);
         readonly Dictionary<string,SessionRecord> latest=new Dictionary<string,SessionRecord>(StringComparer.Ordinal);
@@ -36,12 +37,14 @@ namespace AcousticVocab.SessionEngine
         public int CompletedOpportunities => completed.Count;
         public string ScheduleSha256 => schedule.Sha256;
         public string PackageSha256 => schedule.PackageSha256;
+        public string PrimaryFaultCode { get; private set; }
+        public bool DiagnosticFailed { get; private set; }
         public IReadOnlyList<int> CompletedCounts => Array.AsReadOnly(schedule.Blocks.Select(block => block.Items.Count(item => completed.Contains(item.TrialId))).ToArray());
         public bool NeedsOperatorConfirmation => Status==SessionState.AwaitingOperator || Status==SessionState.Paused;
-        public FixedSlotEngine(VisitSchedule schedule,ISessionClock clock,ISessionJournal journal,ISlotContentFactory factory)
+        public FixedSlotEngine(VisitSchedule schedule,ISessionClock clock,ISessionJournal journal,ISlotContentFactory factory,Action<SlotGateRefusal> gateRefused=null)
         {
             this.schedule=schedule??throw new ArgumentNullException(nameof(schedule));this.clock=clock??throw new ArgumentNullException(nameof(clock));
-            this.journal=journal??throw new ArgumentNullException(nameof(journal));this.factory=factory??throw new ArgumentNullException(nameof(factory));
+            this.journal=journal??throw new ArgumentNullException(nameof(journal));this.factory=factory??throw new ArgumentNullException(nameof(factory));this.gateRefused=gateRefused;
             Recover();
         }
         double Now()
@@ -89,10 +92,10 @@ namespace AcousticVocab.SessionEngine
         }
         public void ConfirmResume()
         {
-            if(!NeedsOperatorConfirmation || transitioning) throw new SessionFault("SESSION_NOT_AT_BOUNDARY");
+            if(!NeedsOperatorConfirmation || transitioning || faulting || DiagnosticFailed) throw new SessionFault("SESSION_NOT_AT_BOUNDARY");
             double now=Now();
             Write("operator_resume",now,null);
-            pausedRequested=stopRequested=false;Status=SessionState.Running;nextOnset=now+LeadMs;
+            PrimaryFaultCode=null;pausedRequested=stopRequested=false;Status=SessionState.Running;nextOnset=now+LeadMs;
             PrepareNext();
         }
         SlotItem NextItem()
@@ -146,9 +149,10 @@ namespace AcousticVocab.SessionEngine
             {
                 if(CurrentState==ItemState.Loaded)
                 {
-                    if(!content.Readiness.Ready)
+                    var ready=content.Readiness;
+                    if(!ready.Ready)
                     {
-                        if(now>context.OnsetMonoMs-MinimumLeadMs) Fault("SESSION_READY_DEADLINE_MISSED");
+                        if(now>context.OnsetMonoMs-MinimumLeadMs) RefuseGate("SESSION_READY_DEADLINE_MISSED",ready,now);
                         return;
                     }
                     Transition(ItemState.Ready);
@@ -157,7 +161,8 @@ namespace AcousticVocab.SessionEngine
                 {
                     if(pausedRequested||stopRequested) { AtBoundary();return; }
                     if(now<context.OnsetMonoMs-LeadMs) return;
-                    if(!content.Readiness.Ready || now>context.OnsetMonoMs-MinimumLeadMs) { Fault("SESSION_CUE_GATE_REFUSED");return; }
+                    var ready=content.Readiness;
+                    if(!ready.Ready || now>context.OnsetMonoMs-MinimumLeadMs) { RefuseGate("SESSION_CUE_GATE_REFUSED",ready,now);return; }
                     if(context.Item.Plays>0) { consumed=true;audible=AudibleStatus.Uncertain; }
                     Transition(ItemState.CueRequested); // durable before any PlayScheduled call
                     permit=context.Item.Heldout?new NovelPermit(this,context.Item.ContentId):null;
@@ -183,6 +188,17 @@ namespace AcousticVocab.SessionEngine
             catch(SessionFault error) { Fault(error.Code); }
             catch(AudioFault error) { Fault(error.Code); }
             catch(Exception) { Fault("SESSION_CONTENT_FAILED"); }
+        }
+        void RefuseGate(string code,SlotReadiness ready,double checkedAt)
+        {
+            PrimaryFaultCode??=code;
+            // Diagnostics run only on the failure path. A broken sink cannot
+            // grant a cue, re-enter Tick, or replace the original failure.
+            faulting=true;
+            try{gateRefused?.Invoke(new SlotGateRefusal(code,CurrentBlock,context,ready,checkedAt,MinimumLeadMs));}
+            catch{DiagnosticFailed=true;}
+            finally{faulting=false;}
+            Fault(code);
         }
         void Transition(ItemState state)
         {
@@ -243,7 +259,7 @@ namespace AcousticVocab.SessionEngine
             faulting=true;
             try
             {
-            fault=new SessionFault(code).Code;pausedRequested=true;
+            fault=new SessionFault(code).Code;PrimaryFaultCode??=fault;pausedRequested=true;
             if(content!=null) { try { content.Interrupt(fault); } catch { } }
             Write("item_fault",Now(),CurrentState);
             // A started opportunity is kept through its fixed end; no new cue

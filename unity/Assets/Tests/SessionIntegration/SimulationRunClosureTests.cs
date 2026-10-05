@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using AcousticVocab.DataLogging;
+using AcousticVocab.SessionEngine;
 using NUnit.Framework;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -55,6 +56,21 @@ namespace AcousticVocab.SessionIntegration.Tests
             Set("<StatusCode>k__BackingField","JOIN_FOCUS_LOST");scope.RegisterCleanup(()=>throw new IOException("synthetic cleanup failure"));Directory.CreateDirectory(export);
             Close();var receipt=Receipt();Assert.That(host.StatusCode,Is.EqualTo("JOIN_FOCUS_LOST"));Assert.That((string)receipt["status"],Is.EqualTo("JOIN_FOCUS_LOST"));
             Assert.That((bool)receipt["cleanup_succeeded"]||(bool)receipt["export_succeeded"]||(bool)receipt["complete"],Is.False);
+        }
+        [Test]public void ActualHostGateSinkPersistsOriginalReadinessSnapshotWithoutManufacturingControlEvidence()
+        {
+            string path=Path.Combine(root,"gate-audit.local.jsonl");var audit=scope.Own(new JoinedAudit(path,()=>3));Set("audit",audit);
+            T New<T>(params object[] args)=>(T)Activator.CreateInstance(typeof(T),Flags,null,args,null);
+            var item=New<SlotItem>("DEMO-gate","atomic_lesson",null,null,null,"engineering",false,20,3,1);
+            var context=new SlotContext(item,1000,null);var readiness=new SlotReadiness(true,true,false,true,true,true,true,true);
+            var refusal=New<SlotGateRefusal>("SESSION_CUE_GATE_REFUSED","lessons",context,readiness,264d,150d);
+            typeof(JoinedEngineeringBootstrap).GetMethod("RecordGateRefusal",Flags).Invoke(host,new object[]{refusal});
+            audit.Dispose();Set("audit",null);
+            var row=JObject.Parse(File.ReadAllLines(path)[0]);var payload=row["payload"];
+            Assert.That((string)payload["kind"],Is.EqualTo("slot_gate_refused"));Assert.That((string)payload["attempt_id"],Is.EqualTo("DEMO-gate"));
+            Assert.That((double)payload["remaining_lead_ms"],Is.EqualTo(736));Assert.That((bool)payload["readiness"]["reset_acknowledged"],Is.False);
+            Assert.That((bool)payload["readiness"]["focus_ok"],Is.True);Assert.That(payload["control_health"].Type,Is.EqualTo(JTokenType.Null));
+            Assert.That((string)row["kind"],Is.EqualTo("module"));Assert.That(row["sha256"],Is.Not.Null);
         }
         [TestCase(SimulationRunClosure.CompleteStatus,"JOIN_RESULT_WRITE_FAILED")]
         [TestCase("JOIN_FOCUS_LOST","JOIN_FOCUS_LOST")]

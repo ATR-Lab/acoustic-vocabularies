@@ -57,6 +57,32 @@ namespace AcousticVocab.Tests
         }
         [Test]public void ReceiveCapacityFailureCannotAdmitPreviouslyValidReset()
         {string reset=Admit();now=60;for(int i=0;i<9;i++)ReceiveHealth(Health(30+i).ToString(),45,55);Assert.That(client.ResetAcknowledged(reset),Is.False);}
+        [Test]public void CapacityCauseSurvivesExplicitInterruptionAndDisposal()
+        {
+            string reset=Admit();now=60;for(int i=0;i<9;i++)ReceiveHealth(Health(30+i).ToString(),45,55);
+            var first=client.ReadinessDiagnostic(reset);Assert.That((string)first["first_failure_code"],Is.EqualTo("CONTROL_ARRIVAL_CAPACITY"));Assert.That((string)first["first_failure_phase"],Is.EqualTo("receive_queue"));Assert.That((double)first["first_failure_local_mono_ms"],Is.EqualTo(60));
+            now=70;client.Interrupt();client.Dispose();var later=client.ReadinessDiagnostic(reset);Assert.That((string)later["first_failure_code"],Is.EqualTo((string)first["first_failure_code"]));Assert.That((double)later["first_failure_local_mono_ms"],Is.EqualTo(60));
+        }
+        [Test]public void StaleQueueCauseIsRecordedBeforeInterruptAndUnknownResetIsNotInvented()
+        {
+            string reset=Admit();now=400;ReceiveHealth(Health(30).ToString(),50,60);Assert.Throws<ControlFault>(()=>client.Pump());
+            var detail=client.ReadinessDiagnostic(null);Assert.That((string)detail["first_failure_code"],Is.EqualTo("CONTROL_QUEUED"));Assert.That((string)detail["first_failure_phase"],Is.EqualTo("pump"));Assert.That(detail["exact_reset_recorded"].Type,Is.EqualTo(JTokenType.Null));
+        }
+        [Test]public void DiagnosticOnlyReadsCannotDrainOrFreshenQueuedHealth()
+        {
+            string reset=Admit();now=262;ReceiveHealth(Health(30).ToString(),250,260);var detail=client.ReadinessDiagnostic(reset);
+            Assert.That((int)detail["queued_arrivals"],Is.EqualTo(1));Assert.That((double)detail["receipt_elapsed_ms"],Is.EqualTo(222));Assert.That((bool)detail["health_progressing_and_valid"],Is.True);
+            Assert.That(detail["first_failure_code"].Type,Is.EqualTo(JTokenType.Null));Assert.That(client.ResetAcknowledged(reset),Is.True);
+        }
+        [Test]public void ExplicitInterruptIsDistinguishableFromUnobservedTransportFailure()
+        {
+            Admit();now=70;client.Interrupt();var detail=client.ReadinessDiagnostic(null);
+            Assert.That((string)detail["first_failure_code"],Is.EqualTo("CONTROL_EXPLICIT_INTERRUPT"));Assert.That((string)detail["first_failure_phase"],Is.EqualTo("owner"));
+            Assert.That(PrivateModeResetClient.FailureCode(new System.Threading.Tasks.TaskCanceledException()),Is.EqualTo("CONTROL_OPERATION_CANCELLED"));
+            Assert.That(PrivateModeResetClient.FailureCode(new System.Net.WebSockets.WebSocketException()),Is.EqualTo("CONTROL_SOCKET_ERROR"));
+            Assert.That(PrivateModeResetClient.FailureCode(new ControlFault("CONTROL_TRANSPORT_DEADLINE")),Is.EqualTo("CONTROL_TRANSPORT_DEADLINE"));
+            Assert.That(PrivateModeResetClient.FailureCode(new Exception("private text must not leak")),Is.EqualTo("CONTROL_WORKER_EXCEPTION"));
+        }
         [Test]public void GetterDrainIsBoundedToTheBatchPresentAtEntry()
         {
             Admit();string reset=client.RequestReset();int observed=0;
