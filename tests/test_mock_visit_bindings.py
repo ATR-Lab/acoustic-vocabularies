@@ -130,12 +130,15 @@ class Profiles(unittest.TestCase):
             (root/("calibration-"+p+".wav")).write_bytes(wav)
             entries.append(dict(id="calibration-"+p,kind="calibration",profile=p,recipe=None,n_samples=96000,pcm_sha256=sha(data),file_sha256=sha(wav)))
         files={}
-        for name,obj in (("reserved_registry",dict(registry_version=1,entries=entries)),("menu_allocation",dict(demo=True,dyads=[dict(members=[dict(slot_id="M1",role="active")],profile_menu_order=["P3","P1","P2"])]))):
+        dyads=[dict(unit_id="B-C01",members=[dict(slot_id="B-C01-M1",role="active")],profile_menu_order=["P3","P1","P2"]),
+               dict(unit_id="B-C02",members=[dict(slot_id="B-C02-M1",role="active")],profile_menu_order=["P1","P2","P3"])]
+        for name,obj in (("reserved_registry",dict(registry_version=1,entries=entries)),("menu_allocation",dict(demo=True,dyads=dyads))):
             raw=content.canonical(obj);(root/(name+".json")).write_bytes(raw);files[name]=dict(path=name+".json",sha256=sha(raw))
         # A child directory keeps the production path grammar unchanged.
         examples=root/"examples";examples.mkdir()
         for p in root.glob("*.wav"):p.rename(examples/p.name)
-        return dict(files=files,directories=dict(menu_examples="examples")),dict(person_slot="M1",visit="V1")
+        return (dict(files=files,directories=dict(menu_examples="examples"),identity=dict(unit_id="B-C01",coded_id="B-C01-M1")),
+                dict(person_slot="M1",person_id="B-C01-M1",unit_id="B-C01",visit="V1"))
 
     def test_registry_order_and_full_canonical_samples(self):
         with tempfile.TemporaryDirectory() as d:
@@ -144,6 +147,32 @@ class Profiles(unittest.TestCase):
             self.assertEqual(order,["P3","P1","P2"]);self.assertEqual(examples["P1"]["n_samples"],96000)
             path=root/"examples/calibration-P1.wav";path.write_bytes(path.read_bytes()[:-2])
             with self.assertRaisesRegex(EvidenceError,"MOCK_FILE_HASH"):content.profile_examples(c,root,s,"active",read,relative)
+
+    def test_profile_identity_mismatches_and_missing_full_id_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);config,schedule=self.fixture(root)
+            cases=[("person_id","B-C02-M1"),("person_slot","M2"),("unit_id","B-C02"),("person_id",None)]
+            for key,value in cases:
+                changed=dict(schedule);changed[key]=value
+                with self.subTest(schedule=key),self.assertRaisesRegex(EvidenceError,"MOCK_PROFILE_IDENTITY"):
+                    content.profile_examples(config,root,changed,"active",read,relative)
+            for key,value in (("coded_id","B-C02-M1"),("unit_id","B-C02")):
+                changed=copy.deepcopy(config);changed["identity"][key]=value
+                with self.subTest(config=key),self.assertRaisesRegex(EvidenceError,"MOCK_PROFILE_IDENTITY"):
+                    content.profile_examples(changed,root,schedule,"active",read,relative)
+
+    def test_profile_allocation_unit_duplicate_and_role_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);config,schedule=self.fixture(root)
+            path=root/"menu_allocation.json";original=json.loads(path.read_text())
+            cases=[]
+            changed=copy.deepcopy(original);changed["dyads"][0]["unit_id"]="B-C02";cases.append(changed)
+            changed=copy.deepcopy(original);changed["dyads"].append(copy.deepcopy(changed["dyads"][0]));cases.append(changed)
+            changed=copy.deepcopy(original);changed["dyads"][0]["members"][0]["role"]="yoked";cases.append(changed)
+            for i,changed in enumerate(cases):
+                raw=content.canonical(changed);path.write_bytes(raw);config["files"]["menu_allocation"]["sha256"]=sha(raw)
+                with self.subTest(case=i),self.assertRaisesRegex(EvidenceError,"MOCK_PROFILE_ALLOCATION"):
+                    content.profile_examples(config,root,schedule,"active",read,relative)
 
     def test_all_eight_profile_plays_bind_frozen_order_and_selected_profile(self):
         with tempfile.TemporaryDirectory() as d:

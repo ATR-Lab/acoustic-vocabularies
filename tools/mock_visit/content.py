@@ -71,9 +71,17 @@ def profile_examples(config, config_root, schedule, role, read, relative):
     registry,allocation=rows["reserved_registry"],rows["menu_allocation"]
     require(type(registry.get("registry_version")) is int and registry["registry_version"] == 1
             and isinstance(registry.get("entries"),list) and allocation.get("demo") is True, "MOCK_PROFILE_REGISTRY")
-    dyads=[d for d in allocation["dyads"] if any(m["slot_id"] == schedule["person_slot"] for m in d["members"])]
+    # Producer schedules retain both the short member slot (M1/M2) and the
+    # full person ID. Allocation slot_id is the latter, within its exact unit.
+    person,unit,slot=(schedule.get(key) for key in ("person_id","unit_id","person_slot"))
+    identity=config.get("identity",{})
+    require(all(isinstance(value,str) and value for value in (person,unit,slot))
+            and person == unit+"-"+slot and identity.get("coded_id") == person
+            and identity.get("unit_id") == unit, "MOCK_PROFILE_IDENTITY")
+    dyads=[d for d in allocation["dyads"] if d.get("unit_id") == unit
+           and any(m["slot_id"] == person for m in d["members"])]
     require(len(dyads) == 1,"MOCK_PROFILE_ALLOCATION")
-    members=[m for m in dyads[0]["members"] if m["slot_id"] == schedule["person_slot"]]
+    members=[m for m in dyads[0]["members"] if m["slot_id"] == person]
     order=dyads[0]["profile_menu_order"]
     require(len(members) == 1 and members[0]["role"] == role and isinstance(order,list)
             and sorted(order) == ["P1","P2","P3"], "MOCK_PROFILE_ALLOCATION")
