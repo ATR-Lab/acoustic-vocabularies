@@ -27,12 +27,18 @@ public struct AtomReference: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
-/// The `candidate` of `validate`: a recipe object, raw JSON text (checked by the engine
-/// for `E_JSON`), or any JSON value (to show `E_SCHEMA` and `E_DOMAIN`).
+/// The `candidate` of `validate`: a recipe object, or raw JSON text.
+///
+/// The engine reads the text itself, so any JSON document gets the verdict of exactly
+/// what was typed: `E_JSON` for text that is not JSON, `E_SCHEMA` for a value that is
+/// not a recipe object (an array, or `"total_ms": 600.0`, a float where an integer is
+/// required), `E_DOMAIN` for values outside the domain. There is deliberately no case
+/// for an arbitrary `JSONValue`: request arguments go through `JSONEncoder`, which writes
+/// a whole-number float such as `600.0` as `600`, so the engine would judge another value
+/// than the one given. Send `.text(value.compactString)` instead, which keeps `600.0`.
 public enum ValidationCandidate: Encodable, Sendable, Hashable {
     case recipe(Recipe)
     case text(String)
-    case json(JSONValue)
 
     public func encode(to encoder: any Encoder) throws {
         switch self {
@@ -40,7 +46,6 @@ public enum ValidationCandidate: Encodable, Sendable, Hashable {
         case .text(let text):
             var container = encoder.singleValueContainer()
             try container.encode(text)
-        case .json(let value): try value.encode(to: encoder)
         }
     }
 }

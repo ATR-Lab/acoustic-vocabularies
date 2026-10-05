@@ -45,6 +45,10 @@ public enum JSONValue: Sendable, Hashable, Codable {
         }
     }
 
+    /// Encodes the value for a `Encoder`. Through `JSONEncoder` (and so in every request
+    /// argument) a whole-number `.double` loses its float form: `600.0` is written as
+    /// `600`, and a non-finite number cannot be encoded at all. For the exact text, use
+    /// `compactString` (`600.0`), and `decode(_:)` to read this value as a type.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -148,10 +152,13 @@ public enum JSONValue: Sendable, Hashable, Codable {
         return out
     }
 
-    /// Decodes this value as a `Decodable` type.
+    /// Decodes this value as a `Decodable` type. It goes through `compactString` (not
+    /// `JSONEncoder`, which writes `1.0` as `1`), read with `BridgeCoding`'s document
+    /// source, so every `JSONValue` inside `T` (a `raw` field, for example) keeps the
+    /// integer/float distinction of this value.
     public func decode<T: Decodable>(_ type: T.Type) throws -> T {
-        let data = try BridgeCoding.makeEncoder().encode(self)
-        return try BridgeCoding.makeDecoder().decode(T.self, from: data)
+        let data = Data(compactString.utf8)
+        return try BridgeCoding.makeDecoder(for: data).decode(T.self, from: data)
     }
 
     private func write(to out: inout String, indent: String?, level: Int) {

@@ -7,8 +7,9 @@ import Foundation
 /// Runs without UI: starts the bridge, checks the engine end to end and the Swift port
 /// against it, shuts the bridge down, prints a JSON summary on stdout (progress goes to
 /// stderr) and exits with `exitStatus`: 0 when every check passed, 1 when an engine check
-/// failed, 2 when the bridge could not run (the repository or uv was not found, or the
-/// bridge did not start and answer `hello` with a supported `bridge_version`).
+/// failed, 2 when the bridge could not run (an option could not be used, the repository
+/// or uv was not found, or the bridge did not start and answer `hello` with a supported
+/// `bridge_version`).
 enum SelfCheck {
     static let flag = "--self-check"
     /// pcm_sha256 of the renderer spec's worked example at P2 (renderer 0.1.0).
@@ -21,34 +22,50 @@ enum SelfCheck {
         var repo: String?
         var uv: String?
         var conformanceCount = 10
+        /// Arguments that cannot be used: `--repo` or `--uv` without a value (also an
+        /// empty one), a `--count` that is not a positive integer, an unknown `--` option.
+        /// `locate` fails with them (exit 2): the check never runs against a checkout or
+        /// uv that the command line did not name, or with a count it did not ask for.
+        var problems: [String] = []
 
+        /// Parses `--repo PATH`, `--uv PATH` and `--count N` (also `--repo=PATH`, ...).
+        /// A value never starts with `--` (`--repo --count 3` is a `--repo` without a
+        /// value); single-dash arguments (user defaults such as `-AVSoundDemo.section`)
+        /// are left alone.
         init(arguments: [String]) {
             var i = 0
             while i < arguments.count {
                 let argument = arguments[i]
-                let next = i + 1 < arguments.count ? arguments[i + 1] : nil
-                switch argument {
-                case "--repo":
-                    repo = next
+                i += 1
+                guard argument.hasPrefix("--"), argument != SelfCheck.flag else { continue }
+                let parts = argument.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+                let name = String(parts[0])
+                guard ["--repo", "--uv", "--count"].contains(name) else {
+                    problems.append("unknown option \(argument)")
+                    continue
+                }
+                var value: String?
+                if parts.count == 2 {
+                    value = String(parts[1])
+                } else if i < arguments.count, !arguments[i].hasPrefix("--") {
+                    value = arguments[i]
                     i += 1
-                case "--uv":
-                    uv = next
-                    i += 1
-                case "--count":
-                    conformanceCount = next.flatMap(Int.init) ?? conformanceCount
-                    i += 1
+                }
+                guard let value, !value.trimmingCharacters(in: .whitespaces).isEmpty else {
+                    problems.append("\(name) needs a value")
+                    continue
+                }
+                switch name {
+                case "--repo": repo = value
+                case "--uv": uv = value
                 default:
-                    if argument.hasPrefix("--repo=") {
-                        repo = String(argument.dropFirst("--repo=".count))
-                    } else if argument.hasPrefix("--uv=") {
-                        uv = String(argument.dropFirst("--uv=".count))
-                    } else if argument.hasPrefix("--count="), let count = Int(argument.dropFirst("--count=".count)) {
+                    if let count = Int(value), count >= 1 {
                         conformanceCount = count
+                    } else {
+                        problems.append("--count needs a positive integer, not \"\(value)\"")
                     }
                 }
-                i += 1
             }
-            conformanceCount = max(1, conformanceCount)
         }
     }
 
@@ -151,10 +168,14 @@ enum SelfCheck {
     /// The launch configuration: a valid `--repo` first, else `AV_SOUND_REPO` (a value
     /// that is not the repository fails `locate`, exit 2, and no other checkout is
     /// checked in its place), else the app's own search (`AppModel.launchConfiguration`:
-    /// the app's location, the current directory, then the saved repository).
+    /// the app's location, the current directory, then the saved repository). An option
+    /// that cannot be used (`Options.problems`) fails `locate` before any search.
     static func locate(
         _ options: Options, environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> ProcessBridgeTransport.Configuration {
+        guard options.problems.isEmpty else {
+            throw AppError("invalid self-check options: \(options.problems.joined(separator: "; "))")
+        }
         var repoURL: URL?
         if let repo = options.repo {
             let url = URL(fileURLWithPath: repo.expandingTilde).standardizedFileURL

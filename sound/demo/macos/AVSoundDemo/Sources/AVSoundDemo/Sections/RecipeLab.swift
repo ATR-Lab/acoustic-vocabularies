@@ -22,9 +22,12 @@ final class RecipeLabModel {
 
     @ObservationIgnored private var renderTask: Task<Void, Never>?
     @ObservationIgnored private var renderToken = 0
-    /// Play (or Space) was pressed while the shown render was not current: the next render
-    /// that lands plays, whatever "Play after every change" says.
-    @ObservationIgnored private var playRequested = false
+    /// The play that Play (or Space) asked for while the shown render was not current:
+    /// the next render that lands plays, whatever "Play after every change" says, but only
+    /// while this request is still the latest (`AppModel.isLatest`). Stop Playback, a
+    /// click on another sound, a change of section or of profile cancel it, also for the
+    /// renders of later edits.
+    @ObservationIgnored private var playRequest: AppModel.PlayRequest?
 
     /// Whether the shown render belongs to the current recipe and profile.
     var isCurrent: Bool {
@@ -35,18 +38,25 @@ final class RecipeLabModel {
     /// Renders the current recipe after a short debounce; a newer request replaces an
     /// older one, so only the last edit's render is shown. The render plays while the lab
     /// is visible when `autoPlay` and the "Play after every change" setting both allow it,
-    /// or when Play asked for it (`play()`).
+    /// or when Play asked for it (`play()`) and nothing cancelled that request since,
+    /// unless another sound was asked for, Stop Playback was pressed, or the section or
+    /// profile changed meanwhile (`AppModel.requestPlay()`). Only a render that plays by
+    /// itself takes a request of its own, and only while the lab is visible: a render in
+    /// the background never cancels another section's pending sound.
     func scheduleRender(autoPlay: Bool, debounce: Bool = true) {
         renderTask?.cancel()
         renderToken += 1
         guard let app, let client = app.client, app.isReady else {
             isRendering = false
-            playRequested = false
+            playRequest = nil
             return
         }
+        if let asked = playRequest, !app.isLatest(asked) { playRequest = nil }  // cancelled since
         let token = renderToken
         let recipe = app.recipe
         let profile = app.profile
+        let asked = playRequest
+        let request = asked ?? (autoPlay && self.autoPlay && app.isLabVisible ? app.requestPlay() : nil)
         isRendering = true
         renderTask = Task { [weak self] in
             if debounce {
@@ -60,17 +70,17 @@ final class RecipeLabModel {
                 self.clip = clip
                 self.renderError = nil
                 self.isRendering = false
-                let requested = self.playRequested
-                self.playRequested = false
-                // Play only while the lab is still the visible section.
-                if app.isLabVisible, requested || (autoPlay && self.autoPlay) {
-                    if let clip { app.play(clip) } else { app.stopPlayback() }
+                self.playRequest = nil
+                // Play only while the lab is still the visible section, and while no other
+                // sound, stop, section or profile change came since the request.
+                if let request, app.isLatest(request), app.isLabVisible, asked != nil || self.autoPlay {
+                    if let clip { app.play(clip, for: request) } else { app.stopPlayback() }
                 }
             } catch {
                 guard let self, token == self.renderToken, !(error is CancellationError) else { return }
                 self.renderError = userMessage(error)
                 self.isRendering = false
-                self.playRequested = false
+                self.playRequest = nil
             }
         }
     }
@@ -90,13 +100,14 @@ final class RecipeLabModel {
     }
 
     /// Plays the current recipe: at once when its render is shown, otherwise as soon as
-    /// it is rendered (also with "Play after every change" off).
+    /// it is rendered (also with "Play after every change" off), unless Stop Playback,
+    /// another sound, or a change of section or profile cancels it first.
     func play() {
         guard let app else { return }
         if let clip, isCurrent {
             app.play(clip)
         } else {
-            playRequested = true
+            playRequest = app.requestPlay()
             scheduleRender(autoPlay: true, debounce: false)
         }
     }

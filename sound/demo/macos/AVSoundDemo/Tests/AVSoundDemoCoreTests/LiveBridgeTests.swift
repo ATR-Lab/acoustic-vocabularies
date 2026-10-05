@@ -44,6 +44,13 @@ struct LiveBridgeTests {
         #expect(rejected.nearestID == "K-a1")
         let badJSON = try await client.validate(.text(#"{"total_ms":450"#), profile: .p2)
         #expect(badJSON.codes == ["E_JSON"])
+        // A float where the schema wants an integer is E_SCHEMA, also for a parsed JSON
+        // value sent as its exact text (`compactString` keeps 600.0; JSONEncoder would
+        // send 600, which the engine accepts).
+        let floatTotal = #"{"total_ms": 600.0, "pitches": [0,0,0], "rhythm_weights": [1,1,1], "gaps_ms": [20,20], "amplitudes": [1.0,1.0,1.0]}"#
+        #expect(try await client.validate(.text(floatTotal), profile: .p1).codes == ["E_SCHEMA"])
+        let parsed = try JSONValue(jsonString: floatTotal)
+        #expect(try await client.validate(.text(parsed.compactString), profile: .p1).codes == ["E_SCHEMA"])
 
         let grammar = try await client.grammar()
         #expect(grammar.messages.count == 32)
@@ -112,6 +119,8 @@ struct LiveBridgeTests {
         } catch let error as BridgeError {
             #expect(error.engineType == "CommitRejected")
             #expect(error.validationDetails?.codes.contains("E_EVENT_SHORT") == true)
+            // The decoded details keep the floats of the response (1.0 is not 1).
+            #expect(error.validationDetails?.raw["recipe"]?["amplitudes"] == [.double(1.0), .double(0.8), .double(0.6)])
         }
         let list = try await client.storeList(bookID: bookID)
         #expect(list.entries.map(\.atomID) == ["K-a1"])

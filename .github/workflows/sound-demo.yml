@@ -4,21 +4,24 @@
 name: Sound demo (macOS)
 
 on:
+  # Everything the Swift tests and the bridge read: the engine and its data, schemas
+  # and config, the reference vectors and tools (sound/**), the golden manifest
+  # (golden_check), the package fixtures (package_demo) and the bridge tests.
   pull_request:
     paths:
-      - "sound/demo/**"
-      - "sound/src/**"
-      - "sound/pyproject.toml"
-      - "sound/uv.lock"
+      - "sound/**"
+      - "tests/golden/**"
+      - "tests/sound/fixtures/**"
+      - "tests/sound/conftest.py"
       - "tests/sound/test_demo_bridge.py"
       - ".github/workflows/sound-demo.yml"
   push:
     branches: [main]
     paths:
-      - "sound/demo/**"
-      - "sound/src/**"
-      - "sound/pyproject.toml"
-      - "sound/uv.lock"
+      - "sound/**"
+      - "tests/golden/**"
+      - "tests/sound/fixtures/**"
+      - "tests/sound/conftest.py"
       - "tests/sound/test_demo_bridge.py"
       - ".github/workflows/sound-demo.yml"
   workflow_dispatch:

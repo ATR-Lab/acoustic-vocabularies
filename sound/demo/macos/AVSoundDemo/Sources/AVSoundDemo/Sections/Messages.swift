@@ -19,8 +19,9 @@ final class MessagesModel {
         /// A trained message that this scratch book would make the same audio as the
         /// held-out messages `heldOut` (for example when two slots hold the same recipe):
         /// of this book, of the profile's DEMO book or DEMO fallback book, or of an earlier
-        /// state of a scratch book in this session. It is not composed: a held-out message
-        /// never exists as audio, under its own ID or another one.
+        /// state of a scratch book in this session (not for a fixed book's own message:
+        /// `heldOutTwins`). It is not composed: a held-out message never exists as audio,
+        /// under its own ID or another one.
         case sameAsHeldOut(MessageRef, heldOut: [HeldOutTwin], hash: CompositeHashResult)
     }
 
@@ -35,8 +36,16 @@ final class MessagesModel {
             /// The DEMO fallback book of the profile (its seed, `DEMO-fallback-v1`).
             case fallbackBook(String)
             /// An earlier state of a scratch book in this session (for example this book
-            /// before an edit, or a book that was replaced).
+            /// before an edit, or a book that was replaced). Recorded until the app quits.
             case earlier
+
+            /// The profile's synthetic DEMO book or DEMO fallback book.
+            var isFixedBook: Bool {
+                switch self {
+                case .demoBook, .fallbackBook: true
+                case .scratchBook, .earlier: false
+                }
+            }
         }
 
         let message: MessageRef
@@ -233,7 +242,8 @@ final class MessagesModel {
         let action = source.action
         let referent = source.referent
         let bookID = source.bookID
-        let heldOutMessages = app.grammar?.heldoutMessages
+        // A later sound, Stop Playback, another section or another profile cancels the play.
+        let playRequest = play ? app.requestPlay() : nil
         task = activity.run("compose") { [weak self] in
             if message.isHeldout {
                 // Show the refusal: compose must fail with E_HELDOUT. Any audio returned by
@@ -260,13 +270,18 @@ final class MessagesModel {
                 // Before any audio exists: the expected hash (composite_hash returns no
                 // audio), then the held-out messages with the same hash (of this book, of
                 // the DEMO or fallback book, or of an earlier book state). When there is
-                // one, the message is not composed.
-                guard let heldOutMessages else { throw AppError("The grammar is not loaded yet. Try again.") }
+                // one, the message is not composed. The held-out messages come from the
+                // grammar of this bridge: right after a (re)start the bridge is ready a
+                // moment before its grammar arrives, and the request waits for it.
+                let heldOutMessages = try await app.currentGrammar().heldoutMessages
+                guard app.isCurrent(client) else { throw BridgeError.notRunning }  // replaced meanwhile
+                try Task.checkCancellation()
                 let expected = try await client.compositeHash(
                     action: action, referent: referent, profile: profile, bookID: bookID)
                 try Task.checkCancellation()
                 guard let twins = try await self?.heldOutTwins(
-                    of: expected.compositeSHA256, among: heldOutMessages, in: book, profile: profile, client: client)
+                    of: expected.compositeSHA256, for: message, among: heldOutMessages, in: book, profile: profile,
+                    client: client)
                 else { return }
                 try Task.checkCancellation()
                 if !twins.isEmpty {
@@ -281,7 +296,7 @@ final class MessagesModel {
                 try Task.checkCancellation()
                 guard let self else { return }
                 self.outcome = .composed(message, composed, clip, expected: expected)
-                if self.wantsPlay, app.isMessagesVisible { app.play(clip) }
+                if self.wantsPlay, app.isMessagesVisible, let playRequest { app.play(clip, for: playRequest) }
                 self.wantsPlay = false
             }
         }
@@ -301,18 +316,29 @@ final class MessagesModel {
         [message.action, message.referent].filter { book.atoms[$0] == nil }
     }
 
-    /// The held-out messages whose audio a trained message with the PCM hash `hash` would
-    /// be, in this order: those of `book` (its atoms now), those of the profile's synthetic
-    /// DEMO book and DEMO fallback book (the fixed books the app shows and copies into the
-    /// scratch book), and those of every earlier state of a scratch book in this session
-    /// (`earlierPairs`, any profile). So no edit, of this atom or any other, turns a
-    /// held-out message of any of these books into audio under a trained ID. Hashes come
-    /// from `composite_hash`, which never returns audio, and are kept per bridge. A
-    /// held-out message the engine cannot hash (an atom that does not render, for example)
-    /// has no audio, so it cannot be equal; any other failure is thrown (nothing is
-    /// composed).
+    /// The held-out messages whose audio the trained `message` with the PCM hash `hash`
+    /// would be, in this order: those of `book` (its atoms now), those of the profile's
+    /// synthetic DEMO book and DEMO fallback book (the fixed books the app shows and
+    /// copies into the scratch book), and those of every earlier state of a scratch book
+    /// in this session (`earlierPairs`, any profile). So no edit, of this atom or any
+    /// other, turns a held-out message of any of these books into audio under a trained
+    /// ID.
+    ///
+    /// One exception: a fixed book's own message (`isOwnMessage`: `message` with the two
+    /// recipes it has in that fixed book) is not checked against earlier states. Its audio
+    /// is that book's trained message, which the engine defines for the book whatever the
+    /// session did (the Packages section writes the DEMO book's messages as WAVs): an
+    /// earlier state whose held-out message had this audio did not make it, so loading
+    /// the DEMO book again always brings its messages back. The held-out messages of
+    /// `book` and of the fixed books are still checked.
+    ///
+    /// Hashes come from `composite_hash`, which never returns audio, and are kept per
+    /// bridge. A held-out message the engine cannot hash (an atom that does not render,
+    /// for example) has no audio, so it cannot be equal; any other failure is thrown
+    /// (nothing is composed).
     func heldOutTwins(
-        of hash: String, among heldOut: [MessageRef], in book: ScratchBook, profile: Profile, client: BridgeClient
+        of hash: String, for message: MessageRef, among heldOut: [MessageRef], in book: ScratchBook,
+        profile: Profile, client: BridgeClient
     ) async throws -> [HeldOutTwin] {
         for state in unsortedStates {
             earlierPairs.formUnion(Self.heldOutPairs(of: heldOut, in: state.atoms, profile: state.profile))
@@ -323,13 +349,56 @@ final class MessagesModel {
         let recorded = Array(earlierPairs)  // the states recorded so far
         let inBook = try await matches(of: hash, among: current, client: client)
         var fixed: [(origin: HeldOutTwin.Origin, messages: [MessageRef])] = []
+        var isFixedBooksOwn = false
         for fixedBook in try await fixedBooks(profile: profile, client: client) {
             let pairs = Self.heldOutPairs(of: heldOut, in: fixedBook.atoms, profile: profile)
             fixed.append((fixedBook.origin, try await matches(of: hash, among: pairs, client: client)))
+            if Self.isOwnMessage(message, of: fixedBook.atoms, in: book.atoms) { isFixedBooksOwn = true }
         }
-        let earlier = try await matches(of: hash, among: recorded, client: client)
-            .sorted { $0.messageID < $1.messageID }
+        let earlier = isFixedBooksOwn
+            ? [] : try await matches(of: hash, among: recorded, client: client).sorted { $0.messageID < $1.messageID }
         return Self.twins(inBook: inBook, fixed: fixed, earlier: earlier)
+    }
+
+    /// Whether the trained `message` has in `atoms` the two recipes it has in the fixed
+    /// book `fixedAtoms`: then its audio is that book's own trained message.
+    static func isOwnMessage(_ message: MessageRef, of fixedAtoms: [String: Recipe], in atoms: [String: Recipe]) -> Bool {
+        guard !message.isHeldout, let action = fixedAtoms[message.action], let referent = fixedAtoms[message.referent]
+        else { return false }
+        return atoms[message.action] == action && atoms[message.referent] == referent
+    }
+
+    /// The text of a `sameAsHeldOut` card: why `message` is refused, by where its twins
+    /// have this audio, and what helps. Loading the DEMO book is offered only when the
+    /// book is not the DEMO book already (`bookIsDemo`); it helps then, because an
+    /// earlier state never refuses the DEMO book's own messages.
+    static func refusalExplanation(for message: MessageRef, twins: [HeldOutTwin], bookIsDemo: Bool) -> String {
+        func ids(_ list: [HeldOutTwin]) -> String { list.map(\.message.messageID).joined(separator: ", ") }
+        let pair = "\(message.messageID) (\(message.action) + \(message.referent))"
+        let inBook = twins.filter { $0.origin == .scratchBook }
+        let inFixed = twins.filter { $0.origin.isFixedBook }
+        let earlier = twins.filter { $0.origin == .earlier }
+        var sentences: [String] = []
+        if !inBook.isEmpty {
+            sentences.append(
+                "In this scratch book, \(pair) has the same composite hash as held-out \(ids(inBook)): its atoms make the same sounds, for example because two slots hold the same recipe.")
+        }
+        if !inFixed.isEmpty {
+            sentences.append(
+                "Here \(pair) has the same composite hash as \(inFixed.map(\.text).joined(separator: "; ")): \(message.action) and \(message.referent) hold the recipes that make that message in that book.")
+        }
+        if !earlier.isEmpty {
+            sentences.append(
+                "\(pair) has the same composite hash as held-out \(ids(earlier)) had in an earlier state of a scratch book in this session. That state is gone, but its held-out messages stay recorded until the app quits, so these two recipes stay refused as \(message.messageID) for the rest of the session, whatever the other atoms are.")
+        }
+        sentences.append(
+            "A held-out message never exists as audio, under its own ID or another one, so \(message.messageID) is not composed or played either.")
+        let remedy = "Changing other atoms does not change this hash: give \(message.action) or \(message.referent) a recipe of its own (Validator & Book)"
+        sentences.append(
+            bookIsDemo
+                ? remedy + "."
+                : remedy + ", or load the DEMO book: its own messages are never refused because of an earlier state.")
+        return sentences.joined(separator: " ")
     }
 
     /// The matches of `heldOutTwins`, each held-out message once, under its first origin:
@@ -748,14 +817,15 @@ private struct SameAsHeldOutView: View {
 
     var body: some View {
         let ids = heldOut.map(\.message.messageID).joined(separator: ", ")
-        let named = heldOut.map(\.text).joined(separator: "; ")
+        // The book is the unchanged synthetic DEMO book: loading it again changes nothing.
+        let bookIsDemo = app.book.origin != nil
         VStack(alignment: .leading, spacing: 12) {
             MessageTitle(message: message)
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "hand.raised.fill").foregroundStyle(.orange).font(.title3)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Not composed: this audio is held-out \(ids)").font(.headline)
-                    Text("In this scratch book, \(message.messageID) (\(message.action) + \(message.referent)) has the same composite hash as \(named): its atoms make the same sounds, for example because two slots hold the same recipe. A held-out message never exists as audio, under its own ID or another one, so \(message.messageID) is not composed or played either. Changing other atoms does not change this hash: give \(message.action) or \(message.referent) a recipe of its own (Validator & Book), or load the DEMO book.")
+                    Text(MessagesModel.refusalExplanation(for: message, twins: heldOut, bookIsDemo: bookIsDemo))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -775,9 +845,11 @@ private struct SameAsHeldOutView: View {
             }
             HStack {
                 Button("Open Validator & Book") { app.selection = .validator }
-                ActionButton("Load DEMO Book", systemImage: "books.vertical",
-                             isRunning: app.activity.isRunning("demoBook")) {
-                    app.loadDemoBook()
+                if !bookIsDemo {
+                    ActionButton("Load DEMO Book", systemImage: "books.vertical",
+                                 isRunning: app.activity.isRunning("demoBook")) {
+                        app.loadDemoBook()
+                    }
                 }
             }
             .requiresBridge()

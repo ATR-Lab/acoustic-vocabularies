@@ -25,8 +25,31 @@ final class FallbackModel {
     /// another profile's set was loaded marks no row of that set.
     private(set) var verifiedPCM: Set<String> = []
     let activity = Activity()
+    /// Counts bridge stops: a load, scan or row render that started before the last stop
+    /// shows nothing (its bridge is gone; a restart keeps the same client).
+    @ObservationIgnored private var epoch = 0
 
     var isStale: Bool { demo != nil && demoProfile != app?.profile }
+
+    /// Whether a request that started at `epoch` against `client` may still show its
+    /// result.
+    private func isCurrent(_ client: BridgeClient, since epoch: Int) -> Bool {
+        self.epoch == epoch && app?.isCurrent(client) == true
+    }
+
+    /// The bridge stopped, restarted or was replaced (perhaps by one of another
+    /// checkout): its fallback set may not be the next bridge's, so the set, its scan and
+    /// the rows its renders verified are dropped. The section loads the set again from
+    /// the next bridge (`loadIfNeeded`).
+    func bridgeDidStop() {
+        epoch += 1
+        demo = nil
+        demoProfile = nil
+        clearScan()
+        verifiedPCM = []
+        bankSelection = nil
+        bookSelection = nil
+    }
 
     /// The last scan, only while it belongs to the current profile and the shown bank (a
     /// scan of another profile's bank must not mark rows of this one).
@@ -38,9 +61,10 @@ final class FallbackModel {
     func load() {
         guard let app, let client = app.client else { return }
         let profile = app.profile
+        let epoch = epoch
         let task = activity.run("load") { [weak self] in
             let demo = try await client.fallbackDemo(profile: profile)
-            guard let self, self.app?.isCurrent(client) == true else { return }  // a replaced bridge's set
+            guard let self, self.isCurrent(client, since: epoch) else { return }  // a stopped bridge's set
             if self.demoProfile != profile { self.clearScan() }
             self.demo = demo
             self.demoProfile = profile
@@ -182,9 +206,10 @@ final class FallbackModel {
         guard let client = app.client else { return }
         let profile = app.profile
         let book = app.book.references
+        let epoch = epoch
         activity.run("scan") { [weak self] in
             let result = try await client.fallbackScan(profile: profile, book: book, used: used.isEmpty ? nil : used)
-            guard self?.app?.isCurrent(client) == true else { return }
+            guard self?.isCurrent(client, since: epoch) == true else { return }
             self?.scan = result
             self?.scanProfile = profile
             self?.scanBookCount = book.count
@@ -192,11 +217,18 @@ final class FallbackModel {
         }
     }
 
+    /// Renders and verifies a row, and plays it unless another sound was asked for, Stop
+    /// Playback was pressed, or the section or profile changed meanwhile
+    /// (`AppModel.renderAndPlay`; the request is taken at the click). The row is marked
+    /// verified either way.
     private func play(recipe: Recipe, expectedPCM: String) {
-        guard let app, let profile = demoProfile else { return }
+        guard let app, let client = app.client, let profile = demoProfile else { return }
+        let epoch = epoch
+        let request = app.requestPlay()
         activity.run(Self.playKey(expectedPCM)) { [weak self] in
-            try await app.renderAndPlay(recipe, profile: profile, expectedPCM: expectedPCM)
-            self?.verifiedPCM.insert(expectedPCM)
+            try await app.renderAndPlay(recipe, profile: profile, expectedPCM: expectedPCM, request: request)
+            guard let self, self.isCurrent(client, since: epoch) else { return }
+            self.verifiedPCM.insert(expectedPCM)
         }
     }
 }

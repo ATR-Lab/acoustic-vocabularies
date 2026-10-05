@@ -49,7 +49,18 @@ Failure (the bridge never exits because of a bad request):
   `E_BOOK_MISMATCH`, `E_FROZEN`, `E_LABEL`, `E_IDENTIFIER`, `E_INTEGRITY`, ...),
   otherwise `null`.
 - An unknown `cmd` gives `type: "ProtocolError"`, `code: "E_UNKNOWN_CMD"`. A line that
-  is not valid JSON gives a response with `id: null` and `code: "E_BAD_REQUEST"`.
+  is not valid JSON gives a response with `id: null` and `code: "E_BAD_REQUEST"`. A
+  bridge whose engine is not its own checkout's answers every known command but
+  `shutdown` with `ProtocolError` / `E_ENGINE_PATH` (see "Engine location").
+- stdout carries responses only, one per request. The client ends a bridge (status
+  failed, pending calls fail) that writes a stdout line longer than 64 MiB, or more than
+  1,000 stdout lines that are not responses (blank lines included): such a launcher or
+  bridge is broken, and its output is not buffered without bound. A response whose `id`
+  the client never sent, or already got an answer for, counts as such a line too. The
+  one late answer to a request that the client gave up on (a timeout, a cancelled call)
+  is logged and ignored. stderr lines are diagnostics: the
+  client cuts a line after 64 KiB and logs at most 200 lines per second (it counts the
+  rest in one log note).
 
 ## Shared value shapes
 
@@ -61,8 +72,11 @@ Failure (the bridge never exits because of a bad request):
   - `file_sha256` and `pcm_sha256`: lowercase hex.
 
   The client MUST check `sha256(base64decode(wav_b64)) == file_sha256` before playing
-  (the same rule as the Unity loader). `wav_b64` is `null` when no audio exists (overflow,
-  held-out message).
+  (the same rule as the Unity loader). The three fields are `null` only in a `render`
+  result whose motif overflowed (`overflow: true`): no canonical WAV exists. A held-out
+  message never gets a result with audio fields: `compose` refuses it with the error
+  `HeldOutMessageError` / `E_HELDOUT` (no `result`), and `composite_hash` returns the
+  hash only (it has no audio fields).
 - **Fractions in results** (thresholds, exact features, sums) are exact strings. A float
   for display comes with the text only in these results: `hello` (`threshold_float`
   next to `threshold`), `features` (`values` next to `exact`), and `distance` and
@@ -111,7 +125,7 @@ Failure (the bridge never exits because of a bad request):
 | `store_records` | `book_id` | `records` (the parsed log records, in order, of a book that passes the integrity checks; see Details) |
 | `store_freeze` | `book_id` | `chain_head` |
 | `store_verify` | `book_id`, `expected_head` (optional) | `ok`, `issues` (`[{"code","line","message"}]`; `line` is an integer or `null`) |
-| `store_tamper` | `book_id`, `kind` (`"flip_blob_byte"`, `"edit_log_line"` or `"truncate_log"`) | `done` (string: what was damaged and how it is detected). Demo only: it damages the temp store so `store_verify` can show detection (the other `store_*` commands then refuse the book, except after some log cuts; see Details). A repeated tamper never repairs earlier damage; `flip_blob_byte` is refused (`ValueError`) when every committed blob of the book is already damaged. It refuses any root that is not the bridge's own temp store. |
+| `store_tamper` | `book_id`, `kind` (`"flip_blob_byte"`, `"edit_log_line"` or `"truncate_log"`) | `done` (string: what was damaged and how it is detected). Demo only: it damages the temp store so `store_verify` can show detection (the other `store_*` commands then refuse the book, except after some log cuts; see Details). A repeated tamper never repairs earlier damage; `flip_blob_byte` is refused (`ValueError`) when every committed blob of the book is already damaged, and `edit_log_line` when every record of the log is already edited (or damaged otherwise). It refuses any root that is not the bridge's own temp store. |
 | `fallback_demo` | `profile` | `seed_label` (`DEMO-...`), `fallback_bank_hash`, `bank` (64 × `{"index","recipe","pcm_sha256"}`), `book` (16 × `{"atom_id","recipe","pcm_sha256"}`) |
 | `fallback_scan` | `profile`, `book` ([atom references]), `used` (list of integer bank indices, optional) | the engine's `ScanResult.to_dict()` |
 | `package_demo` | `{}` | `package_sha256`, `files` (`[{"path","sha256","bytes"}]`), `counts` (`{"atom_wavs","message_wavs","heldout_ids"}`), `loader_ok`, `leak_report` (dict), `answers_preview` (first 5 answers), `dir` (temp path). Every request builds, seals, loads and scans a new package in a new `dir` and then removes the previous one. |
@@ -136,6 +150,18 @@ These points complete the table above. Both sides follow them in version 1.
   rejection `E_SCHEMA` (`ok: false` in the result), not an error.
 - **Numbers:** the bridge never sends `NaN` or infinities. A level that has no finite
   value (for example `peak_dbfs` of silence) is `null`.
+- **Engine location:** the bridge serves only the engine of its own checkout: `av_sound`
+  must be imported from `sound/src/av_sound` next to the bridge (the editable install
+  that `uv sync --project sound` makes). When it comes from elsewhere, for example
+  through a `PYTHONPATH` that points at another checkout (its entries come before the
+  environment's site-packages), every known command but `shutdown` gets
+  `ProtocolError` / `E_ENGINE_PATH`, whose message names both folders; `hello` too, so a
+  client never becomes ready. The app also launches the bridge without the Python
+  variables of its own environment that could change what is imported or run
+  (`PYTHONPATH`, `PYTHONHOME`, `PYTHONSTARTUP`, `PYTHONUSERBASE`, `PYTHONINSPECT`,
+  `PYTHONEXECUTABLE`, `PYTHONPLATLIBDIR`, `PYTHONSAFEPATH`, and `PYTHONOPTIMIZE`, which
+  would strip the engine's `assert` checks), and with `PYTHONNOUSERSITE=1`. The bridge
+  itself also starts under `python -O` and `-OO`.
 - **Book IDs:** a book ID that does not start with `DEMO-` gives `StoreError` / `E_POLICY`.
   This applies to every `store_*` command and to the `book_id` of `compose` and
   `composite_hash`.
@@ -168,7 +194,17 @@ These points complete the table above. Both sides follow them in version 1.
   records of a log that passed the checks, never the damaged lines. After
   `store_tamper` with `flip_blob_byte` or `edit_log_line`, every one of these commands
   refuses the book, also after the same tamper is repeated: a repeated tamper never
-  repairs the damage. `flip_blob_byte` flips one bit in the samples of the book's first
+  repairs the damage. `edit_log_line` sets the `timestamp` of one record to
+  `2000-01-01T00:00:00.000Z`: the line stays canonical JSON, but its `record_sha256` no
+  longer matches (`E_RECORD_HASH`) and the next line's `prev_sha256` no longer names it
+  (`E_CHAIN`); an edited freeze record no longer matches the book's `FROZEN` marker
+  either (`E_MARKER`). It edits the last commit record not edited yet, and with no such
+  commit left the last other record not edited yet. It never edits a record twice, and
+  never touches a line that is not the canonical JSON of a record (damaged some other
+  way), since a second edit could undo the first: when no record is left, it is refused
+  with `ValueError` and changes nothing. Its `done` text names the codes that
+  `store_verify` then reports.
+  `flip_blob_byte` flips one bit in the samples of the book's first
   committed blob (in log order) that is still intact. It never flips a damaged blob
   again, since a second flip of the same bit would repair it: a repeated request damages
   the next intact blob of the book, and when none is left it is refused with
@@ -217,13 +253,23 @@ These points complete the table above. Both sides follow them in version 1.
 - Every recipe the app sends is user-entered or synthetic. The bridge refuses non-`DEMO-`
   book IDs, never loads private seeds and never reads restricted storage.
 - The demo never composes a held-out message. `compose` returns the engine's refusal.
-  The bridge checks this by message ID, so the app adds a check on its side: it never
+  The bridge checks this by message ID only: it takes the recipes of each request as
+  they come (also under a `DEMO-` `book_id`, whose own recipes it does not compare), so
+  a trained message ID with a held-out message's recipes gets that held-out message's
+  audio. The app adds a check on its side: it never
   sends `compose` for a trained message whose composite would equal that of a held-out
   message of its scratch book (for example when two slots hold the same recipe), of the
   two fixed books of the profile that the app shows (the synthetic `DEMO` book and the
   `DEMO` fallback book), or of any earlier state of a scratch book in this session. The
   app records the held-out messages of every state its scratch books take, with their
   recipes, whether or not Messages showed that state, so no later edit turns one of them
-  into audio under a trained ID. It first compares the `composite_hash` of the trained
-  message with those hashes (hashes only, no audio; the fixed books come from
-  `synthetic_book` and `fallback_demo`) and refuses the message when one is equal.
+  into audio under a trained ID. These records last until the app quits. One exception:
+  a fixed book's own trained message (the trained message with the two recipes it has
+  in that fixed book) is not checked against earlier states. Its audio is that book's
+  trained message, which the engine defines whatever the session did (`package_demo`
+  writes the `DEMO` book's trained messages as WAVs), so an earlier state whose held-out
+  message had the same audio did not make it; the held-out messages of the current book
+  and of the fixed books are still checked. The app first compares the
+  `composite_hash` of the trained message with those hashes (hashes only, no audio; the
+  fixed books come from `synthetic_book` and `fallback_demo`) and refuses the message
+  when one is equal.

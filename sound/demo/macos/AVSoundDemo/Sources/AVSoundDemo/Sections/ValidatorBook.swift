@@ -29,6 +29,9 @@ final class ValidatorModel {
     var candidateText = Recipe.example.canonicalJSON
     private(set) var outcome: Outcome?
     let activity = Activity()
+    /// Counts validations and profile changes: only the last validation, and only while
+    /// the profile it was asked for is still the current one, shows its result.
+    @ObservationIgnored private var generation = 0
 
     /// Examples for the raw-JSON editor.
     static let samples: [(title: String, text: String)] = [
@@ -59,25 +62,42 @@ final class ValidatorModel {
         if let threshold = app?.hello?.threshold { thresholdText = threshold }
     }
 
+    /// The verdict shown was about the previous profile and its book: it is cleared, and a
+    /// validation still running for that profile shows nothing (neither its verdict nor
+    /// its error) when it ends.
     func profileDidChange() {
+        generation += 1
         outcome = nil
     }
 
-    /// The result shown is always the verdict on the last request: the previous one is
-    /// cleared when a validation starts, so a request that fails (for example a threshold
-    /// the engine refuses) shows its error alone, not under an older verdict.
+    /// The result shown is always the verdict on the last request, for the current
+    /// profile: the previous one is cleared when a validation starts, so a request that
+    /// fails (for example a threshold the engine refuses) shows its error alone, not under
+    /// an older verdict; and a request overtaken by a later one or by a profile change
+    /// shows nothing.
     private func validate(_ candidate: ValidationCandidate, source: String) {
         guard let app, let client = app.client else { return }
         outcome = nil
+        generation += 1
+        let generation = generation
         let profile = app.profile
         let committed = app.book.references
         let threshold = thresholdText.nonEmpty
         let useReserved = useReserved
         activity.run("validate") { [weak self] in
-            let result = try await client.validate(
-                candidate, profile: profile, committed: committed, threshold: threshold, useReserved: useReserved)
-            guard self?.app?.isCurrent(client) == true else { return }  // a replaced bridge's verdict
-            self?.outcome = Outcome(
+            let result: ValidationResult
+            do {
+                result = try await client.validate(
+                    candidate, profile: profile, committed: committed, threshold: threshold, useReserved: useReserved)
+            } catch {
+                guard self?.generation == generation else { throw CancellationError() }  // overtaken: no error
+                throw error
+            }
+            // Not a replaced bridge's verdict, an overtaken request's, or another profile's.
+            guard let self, self.generation == generation, self.app?.isCurrent(client) == true,
+                self.app?.profile == profile
+            else { return }
+            self.outcome = Outcome(
                 source: source, profile: profile, bookCount: committed.count, threshold: threshold, result: result)
         }
     }
@@ -112,7 +132,11 @@ struct ValidatorBookView: View {
 /// The scratch book of the current profile: 16 slots by family and role.
 private struct BookPanel: View {
     @Environment(AppModel.self) private var app
+    /// The row whose render is on its way (`playKey`).
     @State private var playing: String?
+
+    /// The key of a row's render: the profile and the atom ID.
+    static func playKey(_ profile: Profile, _ atomID: String) -> String { "\(profile.rawValue)/\(atomID)" }
 
     var body: some View {
         let book = app.book
@@ -184,7 +208,7 @@ private struct BookSlotRow: View {
                 Button {
                     play(recipe)
                 } label: {
-                    if playing == atomID {
+                    if playing == BookPanel.playKey(app.profile, atomID) {
                         ProgressView().controlSize(.mini)
                     } else {
                         Image(systemName: "play.fill")
@@ -223,12 +247,17 @@ private struct BookSlotRow: View {
         .buttonStyle(.borderless)
     }
 
+    /// Renders and plays the atom. Its request is taken at once (a profile change, Stop
+    /// Playback or another sound cancels the play), and its spinner belongs to this
+    /// profile's row: the row with the same atom ID in another profile's book shows none.
     private func play(_ recipe: Recipe) {
         let profile = app.profile
-        playing = atomID
-        app.activity.run("play-\(atomID)") { [app] in
-            defer { playing = nil }
-            try await app.renderAndPlay(recipe, profile: profile)
+        let key = BookPanel.playKey(profile, atomID)
+        let request = app.requestPlay()
+        playing = key
+        app.activity.run("play-\(key)") { [app] in
+            defer { if playing == key { playing = nil } }
+            try await app.renderAndPlay(recipe, profile: profile, request: request)
         }
     }
 }

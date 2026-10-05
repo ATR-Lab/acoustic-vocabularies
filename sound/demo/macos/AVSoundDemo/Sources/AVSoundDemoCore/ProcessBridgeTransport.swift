@@ -5,32 +5,75 @@ import Synchronization
 /// Splits a byte stream into lines at `\n` (and drops one `\r` before it).
 ///
 /// Only `\n` separates messages: JSON text may contain other Unicode line separators.
+/// A line longer than `maxLineLength` bytes is returned cut to that length (marked
+/// `isCut`) as soon as it is that long, and the rest of it, up to its newline, is
+/// dropped: the splitter never holds more than `maxLineLength + 1` bytes.
 public struct LineSplitter: Sendable {
+    /// One line without its newline.
+    public struct Line: Sendable, Hashable {
+        public var data: Data
+        /// The line was longer than `maxLineLength`; `data` is its start.
+        public var isCut: Bool
+    }
+
+    public let maxLineLength: Int
     private var buffer = Data()
+    /// The line being read was cut: its rest is dropped up to the next newline.
+    private var skipping = false
 
-    public init() {}
+    public init(maxLineLength: Int = .max) {
+        self.maxLineLength = max(1, maxLineLength)
+    }
 
-    /// Appends a chunk and returns the complete lines it finishes.
+    /// Appends a chunk and returns the complete lines it finishes (cut lines included).
     public mutating func append(_ chunk: Data) -> [Data] {
-        var lines: [Data] = []
-        var searchStart = buffer.count
-        buffer.append(chunk)
-        var lineStart = buffer.startIndex
-        while let newline = buffer[(buffer.startIndex + searchStart)...].firstIndex(of: 0x0A) {
-            lines.append(Self.trimCR(buffer[lineStart..<newline]))
-            lineStart = newline + 1
-            searchStart = lineStart - buffer.startIndex
-        }
-        if lineStart != buffer.startIndex {
-            buffer = Data(buffer[lineStart...])
+        appendLines(chunk).map(\.data)
+    }
+
+    /// Appends a chunk and returns the lines it finishes, and the start of a line that
+    /// has just passed `maxLineLength`.
+    public mutating func appendLines(_ chunk: Data) -> [Line] {
+        var lines: [Line] = []
+        var rest = chunk[...]
+        while !rest.isEmpty {
+            let newline = rest.firstIndex(of: 0x0A)
+            if skipping {
+                guard let newline else { return lines }
+                skipping = false
+                rest = rest[(newline + 1)...]
+                continue
+            }
+            guard let newline else {
+                // Unterminated: keep it, unless it is already too long (one more byte is
+                // allowed: it may be the `\r` of a line of exactly the maximum length).
+                if buffer.count + rest.count - 1 > maxLineLength {  // no overflow at `.max`
+                    buffer.append(rest.prefix(maxLineLength - min(buffer.count, maxLineLength)))
+                    lines.append(Line(data: Data(buffer.prefix(maxLineLength)), isCut: true))
+                    buffer = Data()
+                    skipping = true
+                } else {
+                    buffer.append(rest)
+                }
+                return lines
+            }
+            buffer.append(rest[rest.startIndex..<newline])
+            let line = Self.trimCR(buffer[...])
+            lines.append(
+                line.count > maxLineLength
+                    ? Line(data: Data(line.prefix(maxLineLength)), isCut: true) : Line(data: line, isCut: false))
+            buffer = Data()
+            rest = rest[(newline + 1)...]
         }
         return lines
     }
 
-    /// The unterminated rest at end of input, if any.
+    /// The unterminated rest at end of input, if any (nothing for a line already cut).
     public mutating func finish() -> Data? {
-        defer { buffer = Data() }
-        return buffer.isEmpty ? nil : Self.trimCR(buffer[...])
+        defer {
+            buffer = Data()
+            skipping = false
+        }
+        return buffer.isEmpty || skipping ? nil : Data(Self.trimCR(buffer[...]).prefix(maxLineLength))
     }
 
     private static func trimCR(_ slice: Data.SubSequence) -> Data {
@@ -43,6 +86,13 @@ public struct LineSplitter: Sendable {
 /// `<uv> run --frozen --project <repo>/sound python <repo>/sound/demo/macos/bridge/av_sound_bridge.py`
 /// with the repository as working directory.
 public final class ProcessBridgeTransport: BridgeTransport {
+    /// The longest stdout line (one response) taken from the bridge. No response comes
+    /// near it (the largest carry one WAV of under a megabyte); a longer line ends the
+    /// stream of stdout lines with `.stdoutLineTooLong`.
+    public static let maxStdoutLineBytes = 64 << 20
+    /// stderr lines are cut after this many bytes (diagnostics only).
+    public static let maxStderrLineBytes = 64 << 10
+
     public struct Configuration: Sendable, Hashable {
         public var executableURL: URL
         public var arguments: [String]
@@ -59,6 +109,19 @@ public final class ProcessBridgeTransport: BridgeTransport {
         /// Path of the bridge script, relative to the repository root.
         public static let bridgeScriptRelativePath = "sound/demo/macos/bridge/av_sound_bridge.py"
 
+        /// Python variables of the app's own environment that the bridge does not get:
+        /// they could make it import `av_sound` (or anything else) from somewhere other
+        /// than the chosen checkout's `sound/src` (`PYTHONPATH` entries come before the
+        /// environment's site-packages), use another Python installation (`PYTHONHOME`),
+        /// run startup code, enter interactive mode after the script (`PYTHONINSPECT`), or
+        /// strip the engine's `assert` checks (`PYTHONOPTIMIZE`, which at level 2 also
+        /// strips docstrings). PROTOCOL.md, "Engine location": the bridge also refuses an
+        /// engine from elsewhere.
+        public static let removedEnvironmentKeys: Set<String> = [
+            "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONUSERBASE", "PYTHONINSPECT",
+            "PYTHONEXECUTABLE", "PYTHONPLATLIBDIR", "PYTHONSAFEPATH", "PYTHONOPTIMIZE",
+        ]
+
         /// The protocol's launch command for a uv executable and a repository root.
         ///
         /// `--frozen` (PROTOCOL.md, "Safety rules"): uv runs from `sound/uv.lock` as it is
@@ -73,6 +136,9 @@ public final class ProcessBridgeTransport: BridgeTransport {
             let project = root.appendingPathComponent("sound").path
             let script = root.appendingPathComponent(bridgeScriptRelativePath).path
             var environment = augmentedEnvironment(baseEnvironment)
+            for key in removedEnvironmentKeys { environment[key] = nil }
+            // No user site-packages either (the engine's environment does not use one).
+            environment["PYTHONNOUSERSITE"] = "1"
             environment["PYTHONUNBUFFERED"] = "1"
             environment["PYTHONIOENCODING"] = "utf-8"
             environment["NO_COLOR"] = "1"
@@ -113,8 +179,12 @@ public final class ProcessBridgeTransport: BridgeTransport {
         var process: Process?
         var stdin: FileHandle?
         var continuation: AsyncStream<BridgeTransportEvent>.Continuation?
-        var stdoutSplitter = LineSplitter()
-        var stderrSplitter = LineSplitter()
+        var stdoutSplitter: LineSplitter
+        var stderrSplitter: LineSplitter
+        /// No more stdout lines are delivered (read and dropped): a line was too long, or
+        /// `terminate` began (nobody waits for a response any more). So a bridge that
+        /// floods stdout cannot fill the event stream while it is being stopped.
+        var stdoutClosed = false
         var stdoutDone = false
         var stderrDone = false
         var exitStatus: Int32?
@@ -123,11 +193,23 @@ public final class ProcessBridgeTransport: BridgeTransport {
     }
 
     public let configuration: Configuration
-    private let state = Mutex(State())
+    /// The longest stdout and stderr lines of this transport (the defaults above; tests
+    /// use smaller ones).
+    public let stdoutLineLimit: Int
+    public let stderrLineLimit: Int
+    private let state: Mutex<State>
     private let writeQueue = DispatchQueue(label: "AVSoundDemoCore.ProcessBridgeTransport.stdin")
 
-    public init(configuration: Configuration) {
+    public init(
+        configuration: Configuration, stdoutLineLimit: Int = ProcessBridgeTransport.maxStdoutLineBytes,
+        stderrLineLimit: Int = ProcessBridgeTransport.maxStderrLineBytes
+    ) {
         self.configuration = configuration
+        self.stdoutLineLimit = stdoutLineLimit
+        self.stderrLineLimit = stderrLineLimit
+        state = Mutex(State(
+            stdoutSplitter: LineSplitter(maxLineLength: stdoutLineLimit),
+            stderrSplitter: LineSplitter(maxLineLength: stderrLineLimit)))
     }
 
     private static let ignoreSIGPIPE: Void = {
@@ -217,6 +299,7 @@ public final class ProcessBridgeTransport: BridgeTransport {
     /// the bridge would get it twice within milliseconds, and the second signal could cut
     /// short the removal of its temp directory.
     public func terminate(gracePeriod: Duration) async {
+        state.withLock { $0.stdoutClosed = true }
         closeInput()
         if await waitForExit(within: gracePeriod) { return }
         state.withLock { s in
@@ -249,7 +332,9 @@ public final class ProcessBridgeTransport: BridgeTransport {
             guard !s.finished else { return }
             if data.isEmpty {
                 if stdout {
-                    if let rest = s.stdoutSplitter.finish() { s.continuation?.yield(.stdoutLine(rest)) }
+                    if let rest = s.stdoutSplitter.finish(), !s.stdoutClosed {
+                        s.continuation?.yield(.stdoutLine(rest))
+                    }
                     s.stdoutDone = true
                 } else {
                     if let rest = s.stderrSplitter.finish() {
@@ -261,10 +346,19 @@ public final class ProcessBridgeTransport: BridgeTransport {
                 return
             }
             if stdout {
-                for line in s.stdoutSplitter.append(data) { s.continuation?.yield(.stdoutLine(line)) }
+                for line in s.stdoutSplitter.appendLines(data) where !s.stdoutClosed {
+                    if line.isCut {
+                        s.stdoutClosed = true
+                        s.continuation?.yield(.stdoutLineTooLong(limit: stdoutLineLimit))
+                    } else {
+                        s.continuation?.yield(.stdoutLine(line.data))
+                    }
+                }
             } else {
-                for line in s.stderrSplitter.append(data) {
-                    s.continuation?.yield(.stderrLine(String(decoding: line, as: UTF8.self)))
+                for line in s.stderrSplitter.appendLines(data) {
+                    let text = String(decoding: line.data, as: UTF8.self)
+                    s.continuation?.yield(
+                        .stderrLine(line.isCut ? text + " [cut after \(stderrLineLimit) bytes]" : text))
                 }
             }
         }

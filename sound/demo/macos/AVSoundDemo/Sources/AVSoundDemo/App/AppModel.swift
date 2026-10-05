@@ -83,7 +83,12 @@ final class AppModel {
     /// selection (a Command-click on the selected row cannot empty it), so the shown
     /// section, `isLabVisible` and `isMessagesVisible` always agree.
     var selection: Section = AppModel.savedSection() {
-        didSet { UserDefaults.standard.set(selection.rawValue, forKey: Self.sectionDefaultsKey) }
+        didSet {
+            UserDefaults.standard.set(selection.rawValue, forKey: Self.sectionDefaultsKey)
+            // A sound still being rendered or fetched belongs to the section it was asked
+            // for in: it does not start in another one.
+            if oldValue != selection { cancelPendingPlays() }
+        }
     }
 
     // MARK: Bridge
@@ -113,6 +118,17 @@ final class AppModel {
     let player = AudioPlayer()
     private(set) var nowPlaying: NowPlaying?
 
+    /// A play that waits for its sound (a render or fetch on the bridge): `requestPlay()`.
+    struct PlayRequest: Equatable {
+        fileprivate let number: Int
+    }
+
+    /// Counts play requests, plays, stops, section changes and profile changes. A pending
+    /// play (`play(_:for:)`) starts only while its request is still the latest: a later
+    /// click on any sound, Stop Playback, a held-out cell (which stops playback), another
+    /// section or another profile (in a section that uses it) cancels it.
+    @ObservationIgnored private var playRequestCount = 0
+
     /// The render profile used by every section.
     var profile: Profile = .p2 {
         didSet { if oldValue != profile { profileDidChange() } }
@@ -140,6 +156,8 @@ final class AppModel {
         }
     }
     private(set) var grammar: Grammar?
+    /// The grammar request of the current bridge while it runs (`currentGrammar()`).
+    @ObservationIgnored private var grammarRequest: Task<Grammar, any Error>?
 
     // MARK: Section models
 
@@ -434,8 +452,7 @@ final class AppModel {
     /// Stops playback and the bridge (application termination), also the old bridge of a
     /// replacement in progress.
     func shutdown() async {
-        player.stop()
-        nowPlaying = nil
+        stopPlayback()
         pendingReplacement = nil
         await replacementTask?.value
         await client?.stop()
@@ -450,16 +467,26 @@ final class AppModel {
         log.map { "[\($0.entry.source.rawValue)] \($0.entry.text)" }.joined(separator: "\n")
     }
 
+    /// Applies a status of the current client. When the bridge stops (also before a
+    /// restart or a replacement by another checkout), everything the sections got from
+    /// it is dropped or marked stale: the next bridge may run another engine. The grammar
+    /// (which names the held-out messages) is loaded again once the next bridge is ready;
+    /// until then Messages composes nothing.
     private func apply(_ newStatus: BridgeStatus) {
         let wasReady = status.isReady
         status = newStatus
         if newStatus.isReady, !wasReady {
             bridgeDidBecomeReady()
         } else if wasReady, !newStatus.isReady {
+            grammar = nil
+            grammarRequest?.cancel()
+            grammarRequest = nil
             store.bridgeDidStop()
             packages.bridgeDidStop()
             nonlexical.bridgeDidStop()
             messages.bridgeDidStop()
+            fallback.bridgeDidStop()
+            determinism.bridgeDidStop()
         }
     }
 
@@ -468,12 +495,36 @@ final class AppModel {
             validator.thresholdText = hello.threshold
         }
         lab.scheduleRender(autoPlay: false, debounce: false)
-        if grammar == nil, let client {
-            activity.run("grammar") { [weak self] in
-                let grammar = try await client.grammar()
-                self?.grammar = grammar
-            }
+        if grammar == nil, grammarRequest == nil, let client { requestGrammar(from: client) }
+    }
+
+    /// Asks `client` for its grammar and keeps it as `grammar` (unless the bridge stopped
+    /// or was replaced meanwhile: another checkout may hold out other messages).
+    @discardableResult
+    private func requestGrammar(from client: BridgeClient) -> Task<Grammar, any Error> {
+        let request = Task { try await client.grammar() }
+        grammarRequest = request
+        activity.run("grammar") { [weak self] in
+            defer { if self?.grammarRequest == request { self?.grammarRequest = nil } }
+            let grammar = try await request.value
+            guard let self, self.isCurrent(client), self.isReady, self.grammarRequest == request else { return }
+            self.grammar = grammar
         }
+        return request
+    }
+
+    /// The grammar of the current bridge, for a request that needs it now: `grammar` once
+    /// it is loaded, else the answer to the grammar request in progress (made when the
+    /// bridge became ready, a moment before the grammar arrives), else the answer to a
+    /// new request (after a failed one). Throws when the bridge is not ready, or stops or
+    /// is replaced meanwhile.
+    func currentGrammar() async throws -> Grammar {
+        if let grammar { return grammar }
+        guard let client, isReady else { throw BridgeError.notRunning }
+        let request = grammarRequest ?? requestGrammar(from: client)
+        let grammar = try await request.value
+        guard isCurrent(client), isReady else { throw BridgeError.notRunning }
+        return grammar
     }
 
     @ObservationIgnored private var nextLogLineID = 1
@@ -517,16 +568,50 @@ final class AppModel {
     }
 
     private func profileDidChange() {
+        // A sound still being rendered for the old profile (a Fallback row, a book atom,
+        // the lab's Play) does not start under the new one. Sections that do not use the
+        // profile (Nonlexical) keep theirs.
+        if selection.usesProfile { cancelPendingPlays() }
+        messages.profileDidChange()  // may stop its clip
+        validator.profileDidChange()
         // Re-render the lab's motif for the new profile, but play it only where it is
         // shown: elsewhere it would sound like that section's own sound.
         lab.scheduleRender(autoPlay: isLabVisible)
-        messages.profileDidChange()
-        validator.profileDidChange()
     }
 
     // MARK: Playback
 
+    /// Asks for a sound that is not ready yet (it is rendered or fetched first). Any play
+    /// still pending from an earlier request is cancelled: the last request wins.
+    func requestPlay() -> PlayRequest {
+        playRequestCount += 1
+        return PlayRequest(number: playRequestCount)
+    }
+
+    /// Whether `request` is still the latest: no play, stop, section change or profile
+    /// change came since.
+    func isLatest(_ request: PlayRequest) -> Bool {
+        request.number == playRequestCount
+    }
+
+    /// Cancels every pending play (a render or fetch still on its way does not start its
+    /// sound), without stopping the sound that plays.
+    private func cancelPendingPlays() {
+        playRequestCount += 1
+    }
+
+    /// Plays `clip` for `request` if it is still the latest (`isLatest`); returns whether
+    /// it played.
+    @discardableResult
+    func play(_ clip: AudioClip, for request: PlayRequest) -> Bool {
+        guard isLatest(request) else { return false }
+        play(clip)
+        return true
+    }
+
+    /// Plays `clip` at once, replacing any sound, and cancels every pending play.
     func play(_ clip: AudioClip) {
+        cancelPendingPlays()
         nowPlaying = NowPlaying(clipID: clip.id, duration: clip.audio.durationSeconds)
         player.play(clip.audio) { [weak self] in
             if self?.nowPlaying?.clipID == clip.id { self?.nowPlaying = nil }
@@ -534,7 +619,10 @@ final class AppModel {
         if !player.isPlaying { nowPlaying = nil }
     }
 
+    /// Stops the sound that plays and cancels every pending play (a render or fetch still
+    /// on its way does not start its sound afterwards).
     func stopPlayback() {
+        cancelPendingPlays()
         player.stop()
         nowPlaying = nil
     }
@@ -544,11 +632,18 @@ final class AppModel {
         return nowPlaying.clipID == clip.id && player.isPlaying
     }
 
-    /// Renders `recipe` on the bridge, verifies the audio and plays it. When
-    /// `expectedPCM` is given, the waveform hash must equal it.
+    /// Renders `recipe` on the bridge, verifies the audio and plays it, unless a later
+    /// play, a stop, a section change or a profile change came after `request` (by
+    /// default one taken now, `requestPlay()`): then the verified clip is returned without
+    /// playing. A click takes its request at once, before its task runs, so that a change
+    /// in the same moment cancels it. When `expectedPCM` is given, the waveform hash must
+    /// equal it.
     @discardableResult
-    func renderAndPlay(_ recipe: Recipe, profile: Profile, expectedPCM: String? = nil) async throws -> AudioClip {
+    func renderAndPlay(
+        _ recipe: Recipe, profile: Profile, expectedPCM: String? = nil, request: PlayRequest? = nil
+    ) async throws -> AudioClip {
         guard let client else { throw BridgeError.notRunning }
+        let request = request ?? requestPlay()
         let result = try await client.render(recipe, profile: profile)
         guard result.audio.hasAudio else {
             throw AppError("The motif overflowed (peak \(result.peak)); no canonical WAV exists.")
@@ -560,7 +655,7 @@ final class AppModel {
                 "Rendered waveform hash \(Fmt.shortHash(clip.audio.pcmSHA256)) differs from the expected "
                     + "\(Fmt.shortHash(expectedPCM)).")
         }
-        play(clip)
+        play(clip, for: request)
         return clip
     }
 }

@@ -294,8 +294,9 @@ final class StoreModel {
 
     /// Damages the temp store, then verifies to show the detection. A repeated tamper
     /// never repairs earlier damage: the bridge refuses a blob flip when every committed
-    /// blob of the book is already damaged (PROTOCOL.md, "Damaged books"). The refusal is
-    /// logged, and the verification still shows the damage.
+    /// blob of the book is already damaged, and a log edit when every record is already
+    /// edited (PROTOCOL.md, "Damaged books"). The refusal is logged, and the verification
+    /// still shows the damage.
     func tamper(_ kind: StoreTamperKind) {
         guard let client = app?.client, let bookID else { return }
         activity.run("tamper") { [weak self] in

@@ -1,7 +1,9 @@
 import Foundation
 
-/// The audio fields of a response (PROTOCOL.md, "Audio"). `wavB64` is `nil` when no
-/// audio exists (overflow, held-out message).
+/// The audio fields of a response (PROTOCOL.md, "Audio"). All three are `nil` only in a
+/// `render` result whose motif overflowed (no canonical WAV exists). A held-out message
+/// never gets a result with audio fields: `compose` refuses it (`E_HELDOUT`) and
+/// `composite_hash` returns the hash only.
 public struct AudioPayload: Decodable, Sendable {
     public let wavB64: String?
     public let fileSHA256: String?

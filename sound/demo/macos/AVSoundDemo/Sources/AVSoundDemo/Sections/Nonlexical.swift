@@ -59,6 +59,9 @@ final class NonlexicalModel {
         if !assets.isEmpty { isListingStale = true }
     }
 
+    /// Plays `asset`: at once when its verified clip is known, otherwise once it is
+    /// fetched and verified, unless another sound was asked for, Stop Playback was
+    /// pressed or the section was left meanwhile (`AppModel.requestPlay()`).
     func play(_ asset: NonlexicalAsset) {
         guard let app, let client = app.client else { return }
         selection = asset.id
@@ -66,6 +69,7 @@ final class NonlexicalModel {
             app.play(clip)
             return
         }
+        let request = app.requestPlay()
         activity.run("play-\(asset.id)") { [weak self] in
             let fetched = try await client.nonlexicalGet(id: asset.id)
             let clip = try await Offload.clip(fetched.audio)
@@ -74,7 +78,7 @@ final class NonlexicalModel {
             }
             guard app.isCurrent(client) else { return }  // the bridge was replaced meanwhile
             self?.remember(clip)
-            app.play(clip)
+            app.play(clip, for: request)
         }
     }
 }

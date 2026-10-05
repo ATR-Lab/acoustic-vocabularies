@@ -38,14 +38,54 @@ final class DeterminismModel {
     // Tables
     private(set) var digests: [String: String] = [:]
 
+    /// Why the results are gone: the bridge stopped (cleared by the next run).
+    private(set) var notice: String?
+    /// Counts bridge stops: a run started before the last stop writes nothing (its
+    /// bridge, perhaps of another checkout, is gone; a restart keeps the same client).
+    @ObservationIgnored private var epoch = 0
+
     var isConformanceRunning: Bool { activity.isRunning("conformance") }
     var matchedCount: Int { rows.filter(\.matches).count }
 
+    /// Whether a run that started at `epoch` against `client` may still show its result.
+    private func isCurrent(_ client: BridgeClient, since epoch: Int) -> Bool {
+        self.epoch == epoch && app?.isCurrent(client) == true
+    }
+
+    /// The bridge stopped, restarted or was replaced (perhaps by one of another
+    /// checkout): every result here came from its engine, so none is shown as current
+    /// any more, and a conformance run in progress ends. The Swift table digests stay:
+    /// they do not depend on the engine.
+    func bridgeDidStop() {
+        let hadResults = selfTest != nil || vectors != nil || golden != nil || !rows.isEmpty
+            || !compositeRows.isEmpty || !atomRows.isEmpty
+        epoch += 1
+        conformanceTask?.cancel()
+        conformanceTask = nil
+        selfTest = nil
+        vectors = nil
+        golden = nil
+        checkedAt = [:]
+        rows = []
+        plannedCount = 0
+        conformanceError = nil
+        rowSelection = nil
+        compositeRows = []
+        atomRows = []
+        compositeBookID = nil
+        compositeError = nil
+        if hadResults {
+            notice = "The bridge stopped, so the results of its engine were cleared: the next bridge may run another engine. Run the checks again."
+        }
+    }
+
     func runSelfTest() {
         guard let client = app?.client else { return }
+        let epoch = epoch
+        notice = nil
         activity.run("selfTest") { [weak self] in
             let result = try await client.selfTest()
-            guard let self, self.app?.isCurrent(client) == true else { return }  // a replaced bridge's check
+            guard let self, self.isCurrent(client, since: epoch) else { return }  // a stopped bridge's check
             self.selfTest = result
             self.checkedAt["selfTest"] = Date()
         }
@@ -53,9 +93,11 @@ final class DeterminismModel {
 
     func runVectors() {
         guard let client = app?.client else { return }
+        let epoch = epoch
+        notice = nil
         activity.run("vectors") { [weak self] in
             let result = try await client.vectorsCheck()
-            guard let self, self.app?.isCurrent(client) == true else { return }
+            guard let self, self.isCurrent(client, since: epoch) else { return }
             self.vectors = result
             self.checkedAt["vectors"] = Date()
         }
@@ -63,9 +105,11 @@ final class DeterminismModel {
 
     func runGolden() {
         guard let client = app?.client else { return }
+        let epoch = epoch
+        notice = nil
         activity.run("golden") { [weak self] in
             let result = try await client.goldenCheck()
-            guard let self, self.app?.isCurrent(client) == true else { return }
+            guard let self, self.isCurrent(client, since: epoch) else { return }
             self.golden = result
             self.checkedAt["golden"] = Date()
         }
@@ -86,9 +130,11 @@ final class DeterminismModel {
         let admissibleOnly = admissibleOnly
         let cycle = cycleProfiles
         let fixed = app.profile
+        let epoch = epoch
         rows = []
         plannedCount = count
         conformanceError = nil
+        notice = nil
         conformanceTask = activity.run("conformance") { [weak self] in
             do {
                 for i in 0..<count {
@@ -96,12 +142,14 @@ final class DeterminismModel {
                     let profile = Conformance.profile(index: i, cycling: cycle, fixed: fixed)
                     let row = try await Conformance.check(
                         seed: firstSeed + i, profile: profile, admissibleOnly: admissibleOnly, client: client)
-                    guard self?.app?.isCurrent(client) == true else { return }  // the bridge was replaced
+                    guard self?.isCurrent(client, since: epoch) == true else { return }  // the bridge stopped
                     self?.rows.append(row)
                 }
             } catch is CancellationError {
+                guard self?.isCurrent(client, since: epoch) == true else { return }
                 self?.conformanceError = "Stopped after \(self?.rows.count ?? 0) recipes."
             } catch {
+                guard self?.isCurrent(client, since: epoch) == true else { return }
                 self?.conformanceError = userMessage(error)
             }
         }
@@ -116,14 +164,15 @@ final class DeterminismModel {
     func runCompositeCheck() {
         guard let app, let client = app.client else { return }
         let profile = app.profile
+        let epoch = epoch
         compositeRows = []
         atomRows = []
         compositeError = nil
+        notice = nil
         activity.run("composite") { [weak self] in
             do {
                 let grammar = try await client.grammar()
                 let book = try await client.syntheticBook(profile: profile)
-                self?.compositeBookID = book.bookID
                 let pcm = try await Conformance.swiftAtoms(book, profile: profile)
                 var atoms: [AtomHashRow] = []
                 for atom in book.atoms {
@@ -131,6 +180,8 @@ final class DeterminismModel {
                         atomID: atom.atomID, enginePCM: atom.pcmSHA256,
                         swiftPCM: pcm[atom.atomID].map { SpecHash.sha256Hex($0) } ?? "missing"))
                 }
+                guard self?.isCurrent(client, since: epoch) == true else { return }  // the bridge stopped
+                self?.compositeBookID = book.bookID
                 self?.atomRows = atoms
                 for message in grammar.messages {
                     try Task.checkCancellation()
@@ -142,13 +193,14 @@ final class DeterminismModel {
                     let bridge = try await client.compositeHash(
                         action: action.reference, referent: referent.reference, profile: profile, bookID: book.bookID)
                     let swift = await Conformance.swiftComposite(action: actionPCM, referent: referentPCM)
-                    guard self?.app?.isCurrent(client) == true else { return }  // the bridge was replaced
+                    guard self?.isCurrent(client, since: epoch) == true else { return }  // the bridge stopped
                     self?.compositeRows.append(CompositeRow(
                         messageID: message.messageID, status: message.status, isHeldout: message.isHeldout,
                         bridgeHash: bridge.compositeSHA256, swiftHash: swift, bridgeSamples: bridge.nSamples,
                         swiftSamples: Conformance.compositeSamples(action: actionPCM, referent: referentPCM)))
                 }
             } catch {
+                guard self?.isCurrent(client, since: epoch) == true else { return }
                 self?.compositeError = userMessage(error)
             }
         }
@@ -191,6 +243,11 @@ private struct EngineChecksCard: View {
         } content: {
             if let error = activity.error {
                 ErrorBanner(message: error) { activity.error = nil }
+            }
+            if let notice = model.notice {
+                Label(notice, systemImage: "info.circle")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 12) {
                 GridRow {

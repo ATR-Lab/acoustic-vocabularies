@@ -63,6 +63,27 @@ struct LineSplitterTests {
         #expect(lines.count == 2)
         #expect(lines.allSatisfy { $0.count == 300_000 })
     }
+
+    /// A line longer than the limit is returned cut (once, as soon as it is that long),
+    /// and its rest is dropped up to its newline: the splitter never holds much more
+    /// than the limit, however long the line.
+    @Test func cutsLinesLongerThanTheLimit() {
+        var splitter = LineSplitter(maxLineLength: 8)
+        #expect(splitter.appendLines(Data("12345678\r\nabc".utf8)) == [.init(data: Data("12345678".utf8), isCut: false)])
+        #expect(splitter.appendLines(Data("defgh".utf8)).isEmpty)  // 8 bytes: kept
+        #expect(splitter.appendLines(Data("ij".utf8)) == [.init(data: Data("abcdefgh".utf8), isCut: true)])
+        #expect(splitter.appendLines(Data(repeating: 0x78, count: 100_000)).isEmpty)  // dropped
+        #expect(splitter.appendLines(Data("xyz\nok\n123456789\n".utf8)) == [
+            .init(data: Data("ok".utf8), isCut: false), .init(data: Data("12345678".utf8), isCut: true),
+        ])
+        #expect(splitter.append(Data("12345678".utf8)).isEmpty)  // exactly the limit: kept
+        #expect(splitter.append(Data("\r".utf8)).isEmpty)  // its CR may follow
+        #expect(splitter.append(Data("\n".utf8)) == [Data("12345678".utf8)])
+        #expect(splitter.append(Data("0123456789".utf8)) == [Data("01234567".utf8)])
+        #expect(splitter.finish() == nil)  // the rest of a cut line is not a line
+        #expect(splitter.append(Data("tail".utf8)).isEmpty)
+        #expect(splitter.finish() == Data("tail".utf8))
+    }
 }
 
 @Suite("ProcessBridgeTransport")
@@ -132,6 +153,41 @@ struct ProcessBridgeTransportTests {
         #expect(received.last == .exited(status: 143))
     }
 
+    /// A stdout line longer than the transport's limit is no protocol message: it ends
+    /// the stdout lines with `.stdoutLineTooLong`, and the rest of the output is read and
+    /// dropped (here an endless line, which used to grow the line buffer without bound).
+    /// An overlong stderr line is cut and marked.
+    @Test func anOverlongLineEndsTheStdoutLines() async throws {
+        let script = "head -c 70000 /dev/zero | tr '\\0' e >&2; echo >&2; echo first; exec cat /dev/zero"
+        let transport = ProcessBridgeTransport(
+            configuration: configuration("/bin/sh", ["-c", script]), stdoutLineLimit: 1 << 20, stderrLineLimit: 1_000)
+        let stream = try transport.start()
+        let watchdog = Task {  // the script never ends by itself
+            try await Task.sleep(for: .seconds(30))
+            await transport.terminate(gracePeriod: .milliseconds(200))
+        }
+        var events: [BridgeTransportEvent] = []
+        var terminating: Task<Void, Never>?
+        for await event in stream {
+            events.append(event)
+            if case .stdoutLineTooLong = event, terminating == nil {
+                terminating = Task { await transport.terminate(gracePeriod: .milliseconds(200)) }
+            }
+        }
+        await terminating?.value
+        watchdog.cancel()
+        #expect(events.contains(.stdoutLine(Data("first".utf8))))
+        let overflow = try #require(events.firstIndex(of: .stdoutLineTooLong(limit: 1 << 20)))
+        #expect(!events[(overflow + 1)...].contains { if case .stdoutLine = $0 { true } else { false } })
+        #expect(events.filter { $0 == .stdoutLineTooLong(limit: 1 << 20) }.count == 1)
+        #expect(events.last == .exited(status: 128 + SIGTERM))
+        let cut = events.compactMap { event -> String? in
+            if case .stderrLine(let text) = event { return text }
+            return nil
+        }
+        #expect(cut == [String(repeating: "e", count: 1_000) + " [cut after 1000 bytes]"])
+    }
+
     @Test func launchFailureIsReported() throws {
         let transport = ProcessBridgeTransport(configuration: configuration("/nonexistent/uv"))
         #expect(throws: BridgeError.self) { _ = try transport.start() }
@@ -158,11 +214,76 @@ struct ProcessBridgeTransportTests {
         #expect(await client.logEntries().contains { $0.source == .stderr && $0.text == "bridge: hello answered" })
     }
 
+    /// A launcher that floods stdout with lines that are not responses (a wrong uv: here
+    /// `yes`) is ended after `maxStrayStdoutLines`, long before the start timeout, and its
+    /// output is not buffered without bound. So is one that writes blank lines only, one
+    /// that writes well-formed responses to a request that was never sent, and one that
+    /// writes an endless line.
+    @Test(arguments: [
+        #"exec /usr/bin/yes "not a protocol line from a misbehaving launcher""#,
+        #"exec /usr/bin/yes """#,
+        #"exec /usr/bin/yes '{"id":999999,"ok":true,"result":{}}'"#,
+        "exec /bin/cat /dev/zero",
+    ])
+    func aFloodingLauncherIsEnded(_ script: String) async throws {
+        let config = configuration("/bin/sh", ["-c", script])
+        let client = BridgeClient { ProcessBridgeTransport(configuration: config, stdoutLineLimit: 1 << 20) }
+        let clock = ContinuousClock()
+        let started = clock.now
+        do {
+            try await client.start(timeout: .seconds(60))
+            Issue.record("a flooding launcher became ready")
+        } catch let error as BridgeError {
+            guard case .protocolViolation(let text) = error else {
+                Issue.record("unexpected \(error)")
+                return
+            }
+            #expect(text.contains("stdout"))
+        }
+        #expect(clock.now - started < .seconds(20))
+        guard case .failed = await client.status else {
+            Issue.record("expected failed")
+            return
+        }
+        await client.stop()
+        #expect(await client.status == .stopped)
+    }
+
+    /// A bridge that answers `hello`, then floods stdout with responses to a request that
+    /// was never sent, is ended once it has written `maxStrayStdoutLines` of them: it is
+    /// not read forever while the status says Ready.
+    @Test func aBridgeFloodingResponsesAfterHelloIsEnded() async throws {
+        let hello = try JSONValue(jsonString: Fixtures.hello).compactString
+        let script = """
+            read -r line; printf '%s\\n' '{"id":1,"ok":true,"result":\(hello)}'
+            exec /usr/bin/yes '{"id":999999,"ok":true,"result":{}}'
+            """
+        let config = configuration("/bin/sh", ["-c", script])
+        let client = BridgeClient { ProcessBridgeTransport(configuration: config, stdoutLineLimit: 1 << 20) }
+        _ = try? await client.start(timeout: .seconds(60))  // fails when the flood ends it first
+        try await waitFor(timeout: .seconds(20)) { if case .failed = await client.status { true } else { false } }
+        guard case .failed(let message) = await client.status else { return }
+        #expect(message.contains("stdout lines that are not protocol messages"))
+        #expect(await client.protocolViolationCount > BridgeClient.maxStrayStdoutLines)
+        await client.stop()
+        #expect(await client.status == .stopped)
+    }
+
     @Test func bridgeConfiguration() {
         let repo = URL(fileURLWithPath: "/repo/checkout")
         let config = ProcessBridgeTransport.Configuration.bridge(
             uv: URL(fileURLWithPath: "/opt/homebrew/bin/uv"), repoRoot: repo,
-            baseEnvironment: ["HOME": "/home/example", "PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"])
+            baseEnvironment: [
+                "HOME": "/home/example", "PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8",
+                // A shell of another checkout: the bridge must not import its engine.
+                "PYTHONPATH": "/other/checkout/sound/src", "PYTHONHOME": "/other/python",
+                "PYTHONSTARTUP": "/home/example/.pythonrc", "PYTHONUSERBASE": "/home/example/.local",
+                "PYTHONINSPECT": "1", "PYTHONOPTIMIZE": "2",
+            ])
+        for key in ["PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONUSERBASE", "PYTHONINSPECT", "PYTHONOPTIMIZE"] {
+            #expect(config.environment[key] == nil, "\(key)")
+        }
+        #expect(config.environment["PYTHONNOUSERSITE"] == "1")
         #expect(config.executableURL.path == "/opt/homebrew/bin/uv")
         #expect(
             config.arguments == [

@@ -54,6 +54,7 @@ from pathlib import Path
 from types import FrameType, ModuleType
 from typing import IO, Any, Final
 
+import av_sound
 from av_sound import (
     FEATURE_NAMES,
     GAP_SAMPLES,
@@ -116,9 +117,13 @@ RENDERER_VECTORS: Final = SOUND_ROOT / "testvectors" / "renderer" / "vectors.jso
 COMPOSITION_VECTORS: Final = SOUND_ROOT / "testvectors" / "composition" / "vectors.json"
 GOLDEN_MANIFEST: Final = REPO_ROOT / "tests" / "golden" / "manifest.json"
 EXAMPLE_PACKAGE_TOOL: Final = SOUND_ROOT / "tools" / "build_example_package.py"
+ENGINE_PACKAGE: Final = SOUND_ROOT / "src" / "av_sound"
+"""The engine this bridge serves: its own checkout's source (PROTOCOL.md, "Engine
+location"), which `uv sync --project sound` installs in editable mode."""
 
 E_BAD_REQUEST: Final = "E_BAD_REQUEST"
 E_UNKNOWN_CMD: Final = "E_UNKNOWN_CMD"
+E_ENGINE_PATH: Final = "E_ENGINE_PATH"
 
 DEMO_PREFIX: Final = "DEMO-"
 COMMIT_SOURCE: Final = "demo-app"
@@ -453,6 +458,26 @@ def _temp_under(directory: Path) -> Iterator[None]:
         tempfile.tempdir = previous
 
 
+def engine_location_problem(package: str | os.PathLike[str] | None = None) -> str | None:
+    """Why the engine package `package` (default: the imported `av_sound`) is not this
+    checkout's `sound/src/av_sound`, or `None` when it is.
+
+    A `PYTHONPATH` entry comes before the environment's site-packages, so a shell of
+    another checkout (or a non-editable install) would otherwise run another engine
+    next to this checkout's vectors, tools and data, and every check would name this
+    checkout.
+    """
+    imported = Path(av_sound.__file__).parent if package is None else Path(package)
+    expected = ENGINE_PACKAGE.resolve()
+    if imported.resolve() == expected:
+        return None
+    return (
+        f"the engine av_sound was imported from {imported.resolve()}, not from this "
+        f"checkout's {expected}: unset PYTHONPATH and PYTHONHOME, and install the engine "
+        "with `uv sync --project sound`"
+    )
+
+
 def _load_example_tool() -> ModuleType:
     """`sound/tools/build_example_package.py` (the DEMO package recipe), imported by path."""
     spec = importlib.util.spec_from_file_location(
@@ -476,13 +501,21 @@ class Bridge:
     - `temp_base`: directory in which the bridge creates its temp root (default: the
       system temp directory). The root must be outside every git work tree.
     - `keep_temp`: keep the temp root when the bridge closes.
+    - `engine_package`: the engine package to check (default: the imported `av_sound`).
+      When it is not this checkout's `sound/src/av_sound`, every command but `shutdown`
+      is refused with `E_ENGINE_PATH`.
     """
 
     def __init__(
-        self, *, temp_base: str | os.PathLike[str] | None = None, keep_temp: bool = False
+        self,
+        *,
+        temp_base: str | os.PathLike[str] | None = None,
+        keep_temp: bool = False,
+        engine_package: str | os.PathLike[str] | None = None,
     ) -> None:
         self._temp_base = None if temp_base is None else Path(temp_base)
         self._keep_temp = keep_temp
+        self.engine_problem = engine_location_problem(engine_package)
         self._root: Path | None = None
         self._store: VocabularyStore | None = None
         self._store_root: Path | None = None
@@ -552,6 +585,8 @@ class Bridge:
         handler = self.commands.get(cmd)
         if handler is None:
             return failure(request_id, ProtocolError(E_UNKNOWN_CMD, f"unknown command {cmd!r}"))
+        if self.engine_problem is not None and cmd != "shutdown":
+            return failure(request_id, ProtocolError(E_ENGINE_PATH, self.engine_problem))
         try:
             result = handler(args)
         except Exception as exc:
@@ -918,7 +953,7 @@ class Bridge:
         if kind == "flip_blob_byte":
             return {"done": self._flip_blob_byte(store, root, book_id, lines)}
         if kind == "edit_log_line":
-            return {"done": self._edit_log_line(log, lines)}
+            return {"done": self._edit_log_line(store, book_id, log, lines)}
         return {"done": self._truncate_log(store, book_id, log, lines)}
 
     def _own_store_root(self, store: VocabularyStore | None) -> Path:
@@ -1023,24 +1058,52 @@ class Bridge:
         return books
 
     @staticmethod
-    def _edit_log_line(log: Path, lines: list[bytes]) -> str:
-        if not lines:
-            raise ValueError("the log is empty")
-        records = [_record(line) for line in lines]
-        commits = [i for i, r in enumerate(records) if r is not None and r.get("event") == "commit"]
-        target = commits[-1] if commits else len(lines) - 1
-        line, record = lines[target], records[target]
-        edited = b""
-        if record is not None and record.get("timestamp") != TAMPERED_TIMESTAMP:
-            record["timestamp"] = TAMPERED_TIMESTAMP
-            edited = canonical_json(record) + b"\n"
-            what = f"changed the timestamp of log line {target} to {TAMPERED_TIMESTAMP}"
-        if not edited or edited == line:
-            middle = len(line.rstrip(b"\n")) // 2
-            edited = line[:middle] + bytes([line[middle] ^ 0x01]) + line[middle + 1 :]
-            what = f"changed one byte of log line {target}"
-        _rewrite(log, b"".join([*lines[:target], edited, *lines[target + 1 :]]))
-        return what
+    def _edit_log_line(store: VocabularyStore, book_id: str, log: Path, lines: list[bytes]) -> str:
+        """Changes the timestamp of one log record and says how the damage is detected.
+
+        PROTOCOL.md, "Damaged books": a repeated tamper never repairs earlier damage. The
+        edit goes to the last commit record whose timestamp was not edited yet (with no
+        such commit left, to the last other record not edited yet), so a repeated request
+        damages one more record. A record is never edited twice, and a line that is not
+        the canonical JSON of a record (damaged some other way) is never touched: editing
+        it again could undo that damage. With no record left to edit, the request is
+        refused (`ValueError`, nothing changed). The record stays canonical JSON, but its
+        `record_sha256` no longer matches (`E_RECORD_HASH`), and the next line's
+        `prev_sha256` no longer names it (`E_CHAIN`). The text names the codes that
+        `store_verify` then reports, from the store's own checks (no re-rendering).
+        """
+        editable: list[tuple[int, dict[str, Any], bytes]] = []
+        for index, line in enumerate(lines):
+            body = line[:-1] if line.endswith(b"\n") else line
+            record = _record(body)
+            if (
+                record is not None
+                and isinstance(record.get("timestamp"), str)
+                and record["timestamp"] != TAMPERED_TIMESTAMP
+                and canonical_json(record) == body
+            ):
+                editable.append((index, record, line[len(body) :]))
+        if not editable:
+            raise ValueError(
+                f"every record of the log of {book_id} is already edited or damaged; editing "
+                "one again could undo the damage, so nothing was changed"
+            )
+        commits = [item for item in editable if item[1].get("event") == "commit"]
+        index, record, ending = (commits or editable)[-1]
+        event = record.get("event")
+        record["timestamp"] = TAMPERED_TIMESTAMP
+        edited = canonical_json(record) + ending
+        _rewrite(log, b"".join([*lines[:index], edited, *lines[index + 1 :]]))
+        what = f"changed the timestamp of log line {index}"
+        what += f" ({event})" if isinstance(event, str) else ""
+        what += f" of {book_id} to {TAMPERED_TIMESTAMP}"
+        codes = sorted({issue.code for issue in store.verify(book_id, rerender=False).issues})
+        if not codes:  # not expected: the record hash covers the timestamp
+            return f"{what}; store_verify reports no issue"
+        return (
+            f"{what}; store_verify reports {', '.join(codes)} even without expected_head, "
+            "and the other store commands refuse the book"
+        )
 
     @staticmethod
     def _truncate_log(store: VocabularyStore, book_id: str, log: Path, lines: list[bytes]) -> str:
@@ -1355,7 +1418,8 @@ def _exit_on_signal(signum: int, frame: FrameType | None) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # `__doc__` is None under `python -OO` (PYTHONOPTIMIZE=2), which strips docstrings.
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0] or None)
     parser.add_argument("--keep-temp", action="store_true", help="keep the temp root on exit")
     parser.add_argument("--verbose", action="store_true", help="debug logging on stderr")
     args = parser.parse_args(argv)
@@ -1369,6 +1433,8 @@ def main(argv: list[str] | None = None) -> int:
     bridge = Bridge(keep_temp=args.keep_temp)
     for signum in _EXIT_SIGNALS:
         signal.signal(signum, _exit_on_signal)
+    if bridge.engine_problem is not None:
+        logger.error("refusing every command but shutdown: %s", bridge.engine_problem)
     logger.info("bridge version %d ready (renderer %s)", BRIDGE_VERSION, RENDERER_VERSION)
     try:
         return serve(bridge, sys.stdin.buffer, protocol_out)

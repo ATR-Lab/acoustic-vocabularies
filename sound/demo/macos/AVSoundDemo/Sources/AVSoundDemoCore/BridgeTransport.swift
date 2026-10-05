@@ -7,6 +7,9 @@ public enum BridgeTransportEvent: Sendable, Hashable {
     case stdoutLine(Data)
     /// One stderr line without its newline (diagnostics).
     case stderrLine(String)
+    /// A stdout line was longer than `limit` bytes: it is no protocol message, and no
+    /// further stdout line is delivered.
+    case stdoutLineTooLong(limit: Int)
     /// The bridge ended: exit status, or 128 + signal number. Always the last event.
     case exited(status: Int32)
 }
@@ -92,6 +95,18 @@ public final class InMemoryBridgeTransport: BridgeTransport {
         state.withLock { s in
             guard !s.exited else { return }
             s.continuation?.yield(.stderrLine(line))
+        }
+    }
+
+    /// Emits any event, for example `.stdoutLineTooLong` (`.exited` is `emitExit`).
+    public func emitEvent(_ event: BridgeTransportEvent) {
+        if case .exited(let status) = event {
+            emitExit(status: status)
+            return
+        }
+        state.withLock { s in
+            guard !s.exited else { return }
+            s.continuation?.yield(event)
         }
     }
 

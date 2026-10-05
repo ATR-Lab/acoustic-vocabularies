@@ -98,6 +98,30 @@ struct LosslessJSONTests {
         }
     }
 
+    /// `BridgeError.validationDetails` decodes `error.details` again as a
+    /// `ValidationResult`; its `raw` keeps the response's floats (it used to go through
+    /// `JSONEncoder`, which wrote `[1.0, 0.6, 0.8]` as `[1,0.6,0.8]`).
+    @Test func validationDetailsKeepFloats() throws {
+        let line = BridgeCoding.errorLine(
+            id: 6, type: "CommitRejected", code: "E_REJECTED", message: "refused",
+            details: ["ok": false, "codes": ["E_SEPARATION"], "messages": ["m"], "nearest_distance": 0.0,
+                      "recipe": ["total_ms": 600, "amplitudes": [1.0, 0.6, 0.8]]])
+        do {
+            _ = try BridgeCoding.decodeResult(StoreCommitResult.self, from: Data(line.utf8), cmd: "store_commit")
+            Issue.record("expected CommitRejected")
+        } catch let error as BridgeError {
+            let details = try #require(error.validationDetails)
+            #expect(details.codes == ["E_SEPARATION"])
+            #expect(details.raw["recipe"]?["amplitudes"] == [.double(1.0), .double(0.6), .double(0.8)])
+            #expect(details.raw["recipe"]?["total_ms"] == .int(600))
+            #expect(details.raw.compactString.contains(#""amplitudes":[1.0,0.6,0.8]"#))
+            #expect(details.raw.compactString.contains(#""nearest_distance":0.0"#))
+        }
+        // `decode(_:)` of a value with floats keeps them, also non-finite ones.
+        let value: JSONValue = ["a": [1.0, 2], "b": .double(.infinity)]
+        #expect(try value.decode(JSONValue.self) == value)
+    }
+
     @Test func aPlainDecoderStillWorks() throws {
         // Without BridgeCoding's document source, JSONDecoder cannot tell 1.0 from 1.
         let value = try JSONDecoder().decode(JSONValue.self, from: Data("[1.0, 2.5]".utf8))

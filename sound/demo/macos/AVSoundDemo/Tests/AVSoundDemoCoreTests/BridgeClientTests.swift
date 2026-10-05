@@ -38,6 +38,18 @@ func reply(_ id: Int, _ result: String) -> String {
     BridgeCoding.successLine(id: id, result: try! JSONValue(jsonString: result))
 }
 
+struct ConditionTimeout: Error {}
+
+/// Polls `condition` until it holds (or throws after `timeout`).
+func waitFor(timeout: Duration = .seconds(10), _ condition: @Sendable () async throws -> Bool) async throws {
+    let clock = ContinuousClock()
+    let deadline = clock.now.advanced(by: timeout)
+    while try await !condition() {
+        guard clock.now < deadline else { throw ConditionTimeout() }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
+
 func startedClient(
     logCapacity: Int = 500, _ transport: InMemoryBridgeTransport
 ) async throws -> BridgeClient {
@@ -153,6 +165,117 @@ struct BridgeClientTests {
         #expect(await client.status.isReady)
     }
 
+    /// A bridge may write some stray stdout lines (they are logged and skipped), but not
+    /// more than `maxStrayStdoutLines`: then it is ended, its calls fail and its status
+    /// is failed. A restart starts afresh.
+    @Test func tooManyStrayStdoutLinesEndTheBridge() async throws {
+        let transport = fakeBridge { request, t in
+            if request.cmd == "flood" {
+                for i in 0...BridgeClient.maxStrayStdoutLines { t.emitStdout(i.isMultiple(of: 2) ? "junk \(i)" : "") }
+            } else {
+                t.emitStdout(reply(request.id, "{}"))
+            }
+        }
+        let client = try await startedClient(transport)
+        await #expect(throws: BridgeError.self) {
+            let _: EmptyResult = try await client.call("flood", EmptyArgs())
+        }
+        guard case .failed(let message) = await client.status else {
+            Issue.record("expected failed")
+            return
+        }
+        #expect(message.contains("more than \(BridgeClient.maxStrayStdoutLines) stdout lines"))
+        // The process is ended right after the status changes (not before it).
+        try await waitFor { transport.hasExited }
+        try await client.start(timeout: .seconds(5))
+        let _: EmptyResult = try await client.call("fine", EmptyArgs())
+        #expect(await client.status.isReady)
+    }
+
+    /// Responses to requests that were never sent (or were answered already) are stray
+    /// lines too: a bridge that repeats a well-formed response with a made-up id is ended
+    /// like one that writes junk, instead of being read forever while it shows Ready.
+    @Test func responsesToRequestsNeverSentAreStrayLines() async throws {
+        let transport = fakeBridge { request, t in
+            if request.cmd == "flood" {
+                t.emitStdout(reply(request.id, "{}"))
+                // The answer once more, then answers to requests that were never sent.
+                for i in 0...BridgeClient.maxStrayStdoutLines {
+                    t.emitStdout(reply(i == 0 ? request.id : 999_999, "{}"))
+                }
+            } else {
+                t.emitStdout(reply(request.id, "{}"))
+            }
+        }
+        let client = try await startedClient(transport)
+        let _: EmptyResult = try await client.call("flood", EmptyArgs())  // its own answer came first
+        try await waitFor { if case .failed = await client.status { true } else { false } }
+        guard case .failed(let message) = await client.status else { return }
+        #expect(message.contains("more than \(BridgeClient.maxStrayStdoutLines) stdout lines"))
+        #expect(await client.protocolViolationCount == BridgeClient.maxStrayStdoutLines + 1)
+        let log = await client.logEntries().map(\.text)
+        #expect(log.contains { $0.contains("response to request 999999, which was never sent or was answered already") })
+        try await waitFor { transport.hasExited }
+    }
+
+    /// A start or stop after an abandoned bridge returns only once that bridge has exited:
+    /// one client never runs two bridges at once, and `stop()` leaves none running.
+    @Test func aStartOrStopAfterAnAbandonedBridgeWaitsForItsEnd() async throws {
+        let firstBridge = fakeBridge()
+        let secondBridge = fakeBridge()
+        let first = SlowTerminateTransport(firstBridge, delay: .milliseconds(400))
+        let second = SlowTerminateTransport(secondBridge, delay: .milliseconds(400))
+        let launches = Mutex(0)
+        let client = BridgeClient {
+            let launch = launches.withLock { n -> Int in
+                n += 1
+                return n
+            }
+            return launch == 1 ? first : second
+        }
+        try await client.start(timeout: .seconds(5))
+        firstBridge.emitEvent(.stdoutLineTooLong(limit: 1_024))
+        try await waitFor { if case .failed = await client.status { true } else { false } }
+        try await client.start(timeout: .seconds(5))
+        #expect(first.hasTerminated)  // its termination takes 400 ms: the start waited for it
+        #expect(await client.status.isReady)
+
+        secondBridge.emitEvent(.stdoutLineTooLong(limit: 1_024))
+        try await waitFor { if case .failed = await client.status { true } else { false } }
+        await client.stop()
+        #expect(second.hasTerminated)
+        #expect(await client.status == .stopped)
+        #expect(launches.withLock { $0 } == 2)
+    }
+
+    /// An overlong stdout line (reported by the transport) ends the bridge the same way.
+    @Test func anOverlongStdoutLineEndsTheBridge() async throws {
+        let transport = fakeBridge()
+        let client = try await startedClient(transport)
+        transport.emitEvent(.stdoutLineTooLong(limit: 1_024))
+        try await waitFor { if case .failed = await client.status { true } else { false } }
+        guard case .failed(let message) = await client.status else { return }
+        #expect(message.contains("longer than 1024 bytes"))
+    }
+
+    /// A stderr flood is logged at most `maxStderrLogLinesPerSecond` lines per second; the
+    /// rest is counted in one note. The stderr tail still has the last lines.
+    @Test func aStderrFloodIsLoggedAtABoundedRate() async throws {
+        let count = BridgeClient.maxStderrLogLinesPerSecond + 50
+        let transport = fakeBridge { request, t in
+            for i in 1...count { t.emitStderr("noise \(i)") }
+            t.emitStdout(reply(request.id, "{}"))
+            t.emitExit(status: 0)
+        }
+        let client = try await startedClient(transport)
+        let _: EmptyResult = try await client.call("noisy", EmptyArgs())
+        try await waitFor { if case .failed = await client.status { true } else { false } }  // it exited
+        let log = await client.logEntries()
+        #expect(log.filter { $0.source == .stderr }.count == BridgeClient.maxStderrLogLinesPerSecond)
+        #expect(log.contains { $0.source == .client && $0.text.hasPrefix("50 more stderr line(s) were not logged") })
+        #expect(await client.recentStderr().hasSuffix("noise \(count)"))
+    }
+
     @Test func wrongResultShapeIsADecodingError() async throws {
         let transport = fakeBridge { request, t in t.emitStdout(reply(request.id, #"{"ok":"yes"}"#)) }
         let client = try await startedClient(transport)
@@ -177,14 +300,20 @@ struct BridgeClientTests {
             let _: JSONValue = try await client.call("slow", EmptyArgs(), timeout: .milliseconds(100))
         }
         #expect(clock.now - started < .seconds(5))
-        // The late answer is dropped; later calls still work.
+        // The late answer is dropped; later calls still work. A second copy of it is a
+        // protocol violation (the bridge answers each request once).
         let lateID = try #require(slow.withLock { $0 })
         transport.emitStdout(reply(lateID, #"{"cmd":"slow"}"#))
         let next: JSONValue = try await client.call("fast", EmptyArgs())
         #expect(next["cmd"] == "fast")
         let log = await client.logEntries().map(\.text)
         #expect(log.contains("Request \(lateID) (slow) timed out."))
-        #expect(log.contains("Ignored a response for request \(lateID), which is not pending."))
+        #expect(log.contains("Ignored the late response to request \(lateID) (slow), which had ended."))
+        #expect(await client.protocolViolationCount == 0)
+        transport.emitStdout(reply(lateID, #"{"cmd":"slow"}"#))
+        let _: JSONValue = try await client.call("fast", EmptyArgs())
+        #expect(await client.protocolViolationCount == 1)
+        #expect(await client.status.isReady)
     }
 
     @Test func processExitFailsPendingCallsWithStderrTail() async throws {

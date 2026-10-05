@@ -13,10 +13,14 @@ import Observation
 /// channels of a stereo input 3 dB hot, by sqrt(2), into a mono output such as a
 /// Bluetooth headset in hands-free mode.) The channel count is chosen when the engine is
 /// built, and an output device change rebuilds the engine. A sound is scheduled as one
-/// buffer, so a composed message keeps its exact 9,600-sample gap. Engine start failures and output device changes never crash:
-/// they set `lastError` and end playback. A sound that the player itself stops (an output
-/// device change) is reported through `onInterruption`, because its `completion` does not
-/// run.
+/// buffer, so a composed message keeps its exact 9,600-sample gap. Engine start failures
+/// and output device changes never crash: they set `lastError` and end playback. A sound
+/// that the player itself stops (an output device change) is reported through
+/// `onInterruption`, and its `completion` does not run. On a device change the engine
+/// stops itself first, which ends the scheduled buffer at once: its completion callback
+/// fires tens of milliseconds before `AVAudioEngineConfigurationChange` is posted. A
+/// buffer that ends while the engine is not running is that interruption, not the end
+/// of the sound.
 ///
 /// The engine runs only while a sound plays: it is paused when the sound ends or is
 /// stopped (a running engine keeps the output device active, and macOS then keeps the
@@ -65,8 +69,8 @@ public final class AudioPlayer {
         didSet { player?.volume = volume }
     }
     /// Runs when the player stops a sound on its own before the end (the output device
-    /// changed). Not run for `stop()`, for a replacing `play`, or at the normal end (that
-    /// runs the sound's `completion`).
+    /// changed, or the engine stopped for another reason). Not run for `stop()`, for a
+    /// replacing `play`, or at the normal end (that runs the sound's `completion`).
     @ObservationIgnored public var onInterruption: (@MainActor () -> Void)?
 
     @ObservationIgnored private var engine: AVAudioEngine?
@@ -104,9 +108,15 @@ public final class AudioPlayer {
     /// The engine's main mixer, while the engine exists (for the gain test).
     var mainMixer: AVAudioMixerNode? { engine?.mainMixerNode }
 
+    /// Stops the engine as an output device change does, without the notification (for
+    /// the interruption test).
+    func stopEngineForTesting() {
+        engine?.stop()
+    }
+
     /// Plays `audio` from the start, replacing any sound that is playing. `completion` runs
-    /// once the last sample has been played back (not when the sound is stopped or
-    /// replaced).
+    /// once the last sample has been played back (not when the sound is stopped,
+    /// replaced, or cut off by an output device change).
     public func play(_ audio: VerifiedAudio, completion: (@MainActor () -> Void)? = nil) {
         stopPlayback()
         guard audio.nSamples > 0 else {
@@ -195,15 +205,26 @@ public final class AudioPlayer {
         return (engine, player)
     }
 
+    /// The text of `lastError` after an interruption.
+    static let interruptionMessage = "The audio output changed; playback stopped."
+
     /// The output device changed: the engine has stopped. End playback, tell
     /// `onInterruption` if a sound was cut off, and rebuild the engine on the next `play`.
-    /// (Internal for tests: `AVAudioEngineConfigurationChange` calls it.)
+    /// (Internal for tests: `AVAudioEngineConfigurationChange` calls it.) Usually the
+    /// sound has already been reported by `finished(token:)`, which sees the engine
+    /// stopped before this notification arrives; then this only tears the engine down.
     func configurationChanged() {
-        let interrupted = isPlaying
-        if interrupted { lastError = "The audio output changed; playback stopped." }
+        interrupt(wasPlaying: isPlaying)
+    }
+
+    /// Ends playback after the engine stopped on its own, and rebuilds the engine on the
+    /// next `play`. A sound that was playing is reported (`lastError`, `onInterruption`);
+    /// its completion does not run.
+    private func interrupt(wasPlaying: Bool) {
+        if wasPlaying { lastError = Self.interruptionMessage }
         stopPlayback()
         tearDownEngine()
-        if interrupted { onInterruption?() }
+        if wasPlaying { onInterruption?() }
     }
 
     private func tearDownEngine() {
@@ -231,8 +252,17 @@ public final class AudioPlayer {
         current = nil
     }
 
+    /// The scheduled buffer of the sound `token` ended. Only `play` (which starts the
+    /// engine) and this method (which pauses it) change whether the engine runs while
+    /// that sound is current, so an engine that no longer runs stopped itself: an output
+    /// device change, whose notification comes later. The buffer was cut off, not played
+    /// to the end.
     private func finished(token: Int) {
         guard token == generation else { return }
+        guard engine?.isRunning == true else {
+            interrupt(wasPlaying: true)
+            return
+        }
         let pendingCompletion = completion
         completion = nil
         isPlaying = false

@@ -47,6 +47,11 @@ one of them, a setup sheet asks for the paths. The paths chosen there (or in Set
 are saved. The saved `uv` comes first at the next launch. The saved repository comes
 last: the app uses it only when it is not inside a checkout (for example after you move
 the app bundle), so an app built inside a checkout always runs that checkout's engine.
+The app starts the bridge without `PYTHONPATH`, `PYTHONHOME` and the other Python
+variables of your shell that could make it import an engine from elsewhere, and the
+bridge itself refuses to serve an `av_sound` that is not its own checkout's
+`sound/src/av_sound` (`E_ENGINE_PATH`, see [`PROTOCOL.md`](PROTOCOL.md), "Engine
+location"): the bridge then does not start.
 `AV_SOUND_REPO=<path>` overrides the repository search, the saved path included. When it
 is set to a folder that is not the repository, the app does not use another checkout in
 its place: the setup sheet names the variable and the path, also when `uv` is missing
@@ -91,13 +96,16 @@ The self-check opens no window. It starts the bridge and does these checks:
 
 Then it stops the bridge and prints a JSON summary (`ok`, `passed`, `failed`, `checks`) on
 stdout. Progress goes to stderr. Options: `--repo PATH`, `--uv PATH` and `--count N` (the
-number of random recipes, default 10). `--repo` comes before `AV_SOUND_REPO`, and
-`AV_SOUND_REPO` before the app's own search (its location, the current directory, then
-the saved repository). The exit status is 0 when all checks pass, 1 when an
-engine check fails, and 2 when the bridge cannot run: the repository or `uv` is not
-found (also when `--repo` or `AV_SOUND_REPO` names a folder that is not the
-repository), or the bridge does not start and answer `hello` (for example when the
-engine's Python environment is missing).
+number of random recipes, a positive integer, default 10; `--repo=PATH` and so on work
+too). `--repo` comes before `AV_SOUND_REPO`, and `AV_SOUND_REPO` before the app's own
+search (its location, the current directory, then the saved repository). The exit
+status is 0 when all checks pass, 1 when an engine check fails, and 2 when the bridge
+cannot run: an option cannot be used (`--repo` or `--uv` without a value or with an
+empty one, a `--count` that is not a positive integer, an unknown `--` option; the
+check then never searches for another checkout), the repository or `uv` is not found
+(also when `--repo` or `AV_SOUND_REPO` names a folder that is not the repository), or
+the bridge does not start and answer `hello` (for example when the engine's Python
+environment is missing, or the engine is not the checkout's own).
 
 ## Sections
 
@@ -116,10 +124,17 @@ engine's Python environment is missing).
   show only the engine's refusal and the expected hash (a click stops any sound). The
   selected message follows the scratch book: change one of its atoms and it is composed
   again. A message plays only while Messages is shown. When the engine cannot answer
-  (for example the bridge stopped), the card says so and Try Again asks again. A trained
+  (for example the bridge stopped), the card says so and Try Again asks again. Right
+  after a restart, a request waits for the new bridge's grammar. A trained
   message that the scratch book makes equal to a held-out message (for example when two
   slots hold the same recipe) is not composed: the card names the held-out message and
-  where it has this audio (see Safety).
+  where it has this audio (see Safety), and offers only what helps. The held-out
+  messages of earlier book states stay recorded until the app quits: a trained message
+  whose two recipes made a held-out message of an earlier state stays refused with
+  those recipes for the rest of the session, also after the duplicate is gone. The
+  fixed books' own messages are the exception: Load DEMO Book (or Use as Scratch Book
+  in Fallback) always brings them back, with the audio they had, whatever earlier
+  states held.
   Missing atoms are listed as the book changes.
 - **Nonlexical:** the reserved assets (calibration tones, the READY cue, grammar clicks),
   with their levels. Each WAV is checked against both hashes before it plays.
@@ -134,7 +149,9 @@ engine's Python environment is missing).
   does not move it, and the cut stays detected. The Store log says which case the cut
   left. Damage stays: "Flip a blob byte" pressed again damages the next intact
   blob of the book, or is refused when every committed blob is damaged; it never flips
-  a damaged blob back. Each profile has its own book. When the store already has the
+  a damaged blob back. "Edit a log line" pressed again edits the timestamp of the next
+  record not edited yet (the commits first, last first), or is refused when every
+  record is edited; it never edits a record twice. Each profile has its own book. When the store already has the
   book of the current profile, the button reads "Open DEMO-Px" instead of "Create
   DEMO-Px" and goes back to that book, with its own recorded head and damage.
 - **Fallback:** the fallback bank and book from the public seed `DEMO-fallback-v1`, and a
@@ -155,9 +172,20 @@ engine's Python environment is missing).
 - **Determinism:** the engine's reference vectors and golden manifest on this machine,
   recomputed on every run;
   Swift (`AVSoundSpec`) against Python for random recipes, all atoms and all 32 message
-  hashes; the table digests of spec D4.
+  hashes; the table digests of spec D4. When the bridge stops or restarts (Settings may
+  point it at another checkout), the results of its engine are cleared; so are the
+  Fallback set and the grammar, which are loaded again from the next bridge.
 - **Settings & About:** the repository and `uv` paths, the engine versions from `hello`,
   and the bridge log.
+
+Every sound plays after its WAV is rendered or fetched and verified. Stop Playback
+(Cmd-.) also cancels a sound that is still on its way, and so do a click on another
+sound (the last one asked for plays), a change of section, and a change of profile in
+a section that uses the profile: a pending sound never starts in another section, under
+another profile or after a stop. In the Recipe Lab this holds for a Play pressed while
+the render is on its way too: once cancelled, it does not make the render of a later
+edit play. When the output device changes while a sound plays, the sound stops and a
+notice says so.
 
 ## Safety
 
@@ -180,7 +208,12 @@ engine's Python environment is missing).
   scratch book, of the synthetic `DEMO` book or the `DEMO` fallback book of the profile
   (the two fixed books the app shows), or of any earlier state of a scratch book in the
   session (the app records the held-out messages of every state its scratch books take,
-  also states that Messages never showed). It compares the hashes first, without audio.
-  So no edit, of the refused atoms or of others, turns a held-out message of these
-  books into audio.
+  also states that Messages never showed, until it quits). It compares the hashes
+  first, without audio. So no edit, of the refused atoms or of others, turns a held-out
+  message of these books into audio. One exception: a fixed book's own trained message
+  (with the two recipes it has in that book) is not checked against earlier states. Its
+  audio is that book's trained message, which the engine defines whatever the session
+  did (the Packages section writes the DEMO book's messages as WAVs), so no edit made
+  it; the held-out messages of the current book and of the fixed books are still
+  checked.
 - `store_tamper` damages only the bridge's own temp store.

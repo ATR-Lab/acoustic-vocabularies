@@ -275,6 +275,12 @@ struct ModelDecodingTests {
         #expect(try text(StoreVerifyArgs(bookID: "DEMO-1")) == #"{"book_id":"DEMO-1"}"#)
         #expect(try text(RandomRecipeArgs(seed: 3)) == #"{"admissible_only":true,"seed":3}"#)
         #expect(try text(ValidationCandidate.text("{\"total_ms\":450")) == #""{\"total_ms\":450""#)
+        // A parsed JSON value is sent as its exact text: 600.0 stays a float (JSONEncoder
+        // would write the value itself as 600).
+        let floatTotal = try JSONValue(jsonString: #"{"total_ms": 600.0, "amplitudes": [1.0, 0.6]}"#)
+        #expect(try text(floatTotal) == #"{"amplitudes":[1,0.6],"total_ms":600}"#)
+        #expect(try text(ValidationCandidate.text(floatTotal.compactString))
+                == #""{\"amplitudes\":[1.0,0.6],\"total_ms\":600.0}""#)
         let validate = try JSONValue(
             jsonString: try text(
                 ValidateArgs(

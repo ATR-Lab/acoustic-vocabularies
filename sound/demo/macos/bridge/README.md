@@ -63,8 +63,23 @@ printf '%s\n' '{"id":1,"cmd":"vectors_check"}' '{"id":2,"cmd":"golden_check"}' \
   checkout. `uv run --frozen --project sound` itself creates or syncs `sound/.venv`
   (ignored by git) from the lock file, and never rewrites `sound/uv.lock`.
 - `store_tamper` damages only the bridge's own temp store.
-- The bridge never composes a held-out message: `compose` returns the engine's refusal
-  (`HeldOutMessageError`, `E_HELDOUT`).
+- `compose` refuses a held-out message by its message ID: it returns the engine's
+  refusal (`HeldOutMessageError`, `E_HELDOUT`) and no audio. That is the only check the
+  bridge makes. It takes the recipes of each request as they come, so it composes a
+  trained message ID whose recipes make the same audio as a held-out message (for
+  example a held-out message's referent recipe sent as the referent of a trained
+  message, also with `book_id` `DEMO-P1`), and `render` returns the motif of any recipe.
+  The demo app adds the check that refuses such a trained message: it compares
+  `composite_hash` values first, without audio (`../PROTOCOL.md`, "Safety rules"). When
+  you drive the bridge by hand, or write another client, no such check runs unless you
+  make it.
+- The bridge serves only its own checkout's engine (`sound/src/av_sound`, installed in
+  editable mode by `uv sync`). When `av_sound` is imported from elsewhere, for example
+  because `PYTHONPATH` points at another checkout, it logs why on stderr and answers
+  every command but `shutdown` with `ProtocolError` / `E_ENGINE_PATH` (`../PROTOCOL.md`,
+  "Engine location"). Unset `PYTHONPATH` before you run it by hand. Unset
+  `PYTHONOPTIMIZE` too: the bridge runs under it, but the engine's `assert` checks do
+  not. The app removes both from the bridge's environment.
 
 ## Tests
 

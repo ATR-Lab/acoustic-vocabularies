@@ -62,6 +62,32 @@ struct SelfCheckExitStatusTests {
         #expect(await SelfCheck.run(options) == 2)
     }
 
+    /// Options that cannot be used fail `locate` (exit 2) instead of being ignored: the
+    /// search would otherwise check whatever checkout it finds, and exit 0.
+    @Test func unusableOptionsFailLocate() async throws {
+        let bad: [[String]] = [
+            ["--count", "1", "--repo"], ["--repo="], ["--repo", ""], ["--repo", "  "], ["--uv"], ["--uv="],
+            ["--count", "abc"], ["--count=abc"], ["--count", "0"], ["--count"], ["--repo", "--count", "1"],
+            ["--cout", "3"], ["--repo-path", "/x"],
+        ]
+        for arguments in bad {
+            let options = SelfCheck.Options(arguments: [SelfCheck.flag] + arguments)
+            #expect(!options.problems.isEmpty, "\(arguments)")
+            #expect(throws: AppError.self, "\(arguments)") {
+                try SelfCheck.locate(options, environment: ["HOME": "/nonexistent-home", "PATH": ""])
+            }
+        }
+        #expect(await SelfCheck.run(SelfCheck.Options(arguments: [SelfCheck.flag, "--count", "1", "--repo"])) == 2)
+
+        let good = SelfCheck.Options(arguments: [
+            SelfCheck.flag, "--repo=/some/checkout", "--uv", "/some/uv", "--count", "3", "-AVSoundDemo.section", "messages",
+        ])
+        #expect(good.problems.isEmpty)
+        #expect(good.repo == "/some/checkout" && good.uv == "/some/uv" && good.conformanceCount == 3)
+        let defaults = SelfCheck.Options(arguments: [SelfCheck.flag])
+        #expect(defaults.problems.isEmpty && defaults.repo == nil && defaults.conformanceCount == 10)
+    }
+
     /// An `AV_SOUND_REPO` that is not the repository fails `locate` (exit 2) even when
     /// the search would find this checkout from the test binary or the current directory;
     /// an explicit `--repo` still comes first.
@@ -219,6 +245,16 @@ struct AppModelPlaybackTests {
         app.player.configurationChanged()  // what AVAudioEngineConfigurationChange runs
         #expect(app.nowPlaying == nil)
         #expect(!app.isPlaying(clip))
+
+        // The real order of a device change: the engine stops itself, and the buffer's
+        // completion callback comes before the notification. The sound is reported as
+        // cut off, not as played to the end.
+        app.play(clip)
+        #expect(app.isPlaying(clip))
+        app.player.stopEngineForTesting()
+        try await waitUntil("the interruption", timeout: .seconds(5)) { app.nowPlaying == nil }
+        #expect(!app.isPlaying(clip))
+        #expect(app.player.lastError == AudioPlayer.interruptionMessage)
     }
 
     /// The sidebar's list has a required selection: AppKit's outline view behind it does
@@ -251,6 +287,54 @@ struct AppModelPlaybackTests {
 
     @Test func theInterruptionHandlerIsInstalled() {
         #expect(AppModel().player.onInterruption != nil)
+    }
+
+    /// A pending play (a render or fetch on its way) starts only while its request is the
+    /// latest: Stop Playback, another section and a later request each cancel it. Nothing
+    /// is played here (a cancelled request never reaches the player).
+    @Test func aPendingPlayIsCancelledByAStopASectionChangeOrALaterRequest() async throws {
+        let app = AppModel()
+        app.selection = .fallback
+        let samples = (0..<4_800).map { Int16(($0 * 7) % 2_000 - 1_000) }
+        let wav = CanonicalWAV.fileData(samples: samples)
+        let clip = try await Offload.clip(AudioPayload(
+            wavB64: wav.base64EncodedString(), fileSHA256: Hashing.sha256Hex(wav),
+            pcmSHA256: Hashing.sha256Hex(CanonicalWAV.pcmData(samples: samples))))
+
+        let stopped = app.requestPlay()
+        #expect(app.isLatest(stopped))
+        app.stopPlayback()  // Cmd-. while the render is on its way
+        #expect(!app.isLatest(stopped))
+        #expect(!app.play(clip, for: stopped))
+
+        let left = app.requestPlay()
+        app.selection = .messages
+        #expect(!app.play(clip, for: left))
+        let same = app.requestPlay()
+        app.selection = .messages  // not a change
+        #expect(app.isLatest(same))
+
+        let first = app.requestPlay()
+        let second = app.requestPlay()  // the last click wins
+        #expect(!app.play(clip, for: first))
+        #expect(app.isLatest(second))
+        #expect(app.nowPlaying == nil && app.player.current == nil && app.player.lastError == nil)
+    }
+
+    /// A profile change cancels the pending plays of a section that uses the profile (its
+    /// sound was asked for under the old one), not those of a section that does not.
+    @Test func aProfileChangeCancelsPendingPlaysOfSectionsThatUseIt() {
+        let app = AppModel()
+        for section in AppModel.Section.allCases {
+            app.selection = section
+            let request = app.requestPlay()
+            app.profile = app.profile == .p1 ? .p2 : .p1
+            #expect(app.isLatest(request) == !section.usesProfile, "\(section)")
+        }
+        app.selection = .fallback
+        let request = app.requestPlay()
+        app.profile = app.profile  // not a change
+        #expect(app.isLatest(request))
     }
 
     /// The visible-section flags follow the section the window shows. `selection` is not
@@ -361,6 +445,52 @@ struct MessagesModelTests {
         ])
         #expect(twins[1].text == "held-out K-a2-r3 of the DEMO book DEMO-P1")
         #expect(twins[2].text == "held-out K-a3-r4 of the DEMO fallback book (seed DEMO-fallback-v1)")
+    }
+
+    /// A fixed book's own message: a trained message with the two recipes it has in that
+    /// book, whatever the other atoms are. A held-out message never is one.
+    @Test func aFixedBooksOwnMessageHasItsTwoRecipes() throws {
+        let trained = try trainedRef("K-a1-r1")
+        let heldOut = try heldOutRef("K-a1-r2")
+        var other = Recipe.example
+        other.pitches[0] += 1
+        let fixed: [String: Recipe] = ["K-a1": .example, "K-r1": other, "K-r2": .example]
+        #expect(MessagesModel.isOwnMessage(trained, of: fixed, in: fixed))
+        var edited = fixed
+        edited["K-r2"] = other  // another atom: still the fixed book's own message
+        edited["Q-a1"] = .example
+        #expect(MessagesModel.isOwnMessage(trained, of: fixed, in: edited))
+        edited["K-r1"] = .example  // one of its atoms changed
+        #expect(!MessagesModel.isOwnMessage(trained, of: fixed, in: edited))
+        #expect(!MessagesModel.isOwnMessage(trained, of: fixed, in: ["K-a1": .example]))
+        #expect(!MessagesModel.isOwnMessage(trained, of: ["K-a1": .example], in: fixed))
+        #expect(!MessagesModel.isOwnMessage(heldOut, of: fixed, in: fixed))
+    }
+
+    /// The refusal card explains each origin and offers only what helps: the duplicate
+    /// slots for this book, the recorded state (until the app quits) for an earlier one,
+    /// and the DEMO book only when the book is not the DEMO book already.
+    @Test func theRefusalCardExplainsEachOrigin() throws {
+        let trained = try trainedRef("K-a1-r1")
+        let heldOut = try heldOutRef("K-a1-r2")
+        let earlier = MessagesModel.refusalExplanation(
+            for: trained, twins: [.init(message: heldOut, origin: .earlier)], bookIsDemo: false)
+        #expect(earlier.contains("earlier state of a scratch book in this session"))
+        #expect(earlier.contains("until the app quits"))
+        #expect(!earlier.contains("two slots hold the same recipe"))
+        #expect(earlier.contains("load the DEMO book"))
+        let inBook = MessagesModel.refusalExplanation(
+            for: trained, twins: [.init(message: heldOut, origin: .scratchBook)], bookIsDemo: false)
+        #expect(inBook.contains("two slots hold the same recipe"))
+        #expect(!inBook.contains("until the app quits"))
+        let fixed = MessagesModel.refusalExplanation(
+            for: trained, twins: [.init(message: heldOut, origin: .demoBook("DEMO-P2"))], bookIsDemo: false)
+        #expect(fixed.contains("held-out K-a1-r2 of the DEMO book DEMO-P2"))
+        #expect(!fixed.contains("two slots hold the same recipe"))
+        let inDemo = MessagesModel.refusalExplanation(
+            for: trained, twins: [.init(message: heldOut, origin: .scratchBook)], bookIsDemo: true)
+        #expect(!inDemo.contains("load the DEMO book"))
+        #expect(inDemo.contains("a recipe of its own"))
     }
 
     /// The held-out messages of a book state are those with both atoms in it, with the
@@ -1120,6 +1250,47 @@ struct AppModelLiveTests {
         await app.shutdown()
     }
 
+    /// "Edit a log line" pressed again never repairs the book either: each press edits one
+    /// more record, so the issues found only grow, and with every record edited the press
+    /// is refused (logged) and changes nothing.
+    @Test func aRepeatedLogEditKeepsTheBookDamaged() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .store
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let store = app.store
+        store.reset()
+        try await waitUntil("store_reset") { store.root != nil && !store.activity.isBusy }
+        store.createOrOpenBook()
+        try await waitUntil("DEMO-P2") { store.bookID == "DEMO-P2" && store.listing != nil && !store.activity.isBusy }
+        store.commitCurrent()  // create_book (line 0) and one commit (line 1)
+        try await waitUntil("the commit") { store.listing?.entries.count == 1 && !store.activity.isBusy }
+
+        func issues() -> Set<String> {
+            Set((store.verification?.issues ?? []).map { "\($0.code)@\($0.line.map(String.init) ?? "-")" })
+        }
+        var seen: Set<String> = []
+        for line in [1, 0] {
+            store.tamper(.editLogLine)
+            try await waitUntil("the edit of line \(line)") { !store.activity.isBusy && issues().count > seen.count }
+            #expect(store.verification?.ok == false)
+            #expect(issues().isSuperset(of: seen) && issues().contains("E_RECORD_HASH@\(line)"))
+            #expect(store.events.contains { $0.kind == .info && ($0.detail ?? "").contains("log line \(line) (") })
+            seen = issues()
+        }
+        let refusals = store.events.filter { $0.kind == .refused }.count
+        store.tamper(.editLogLine)
+        try await waitUntil("the refusal") {
+            !store.activity.isBusy && store.events.filter { $0.kind == .refused }.count == refusals + 1
+        }
+        #expect(store.events.contains { $0.kind == .refused && ($0.detail ?? "").contains("already edited") })
+        #expect(issues() == seen)
+        #expect(store.activity.error == nil)
+        await app.shutdown()
+    }
+
     /// A failed validation (here a threshold the engine refuses) shows its error without
     /// the previous verdict, which was about another request.
     @Test func aFailedValidationShowsNoEarlierVerdict() async throws {
@@ -1437,6 +1608,335 @@ struct AppModelLiveTests {
         #expect(composedClip(messages)?.audio.pcmSHA256 != heldOutHash.compositeSHA256)
         await app.shutdown()
     }
+
+    /// The review's sequence: in the DEMO book, the held-out referent's slot gets the
+    /// trained referent's recipe, so the held-out message makes the trained message's
+    /// audio (both are refused while the duplicate is in the book). Loading the DEMO book
+    /// again, as the card offers, brings the trained message back with the audio it had
+    /// before: it is the DEMO book's own message, which an earlier state never refuses.
+    /// So does a book that keeps the trained message's two DEMO recipes. The held-out
+    /// audio of the earlier state stays refused under other recipes.
+    @Test func loadingTheDemoBookAgainBringsItsOwnMessagesBack() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .messages
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the grammar") { app.isReady && app.grammar != nil }
+        let (trained, heldOut) = try #require(trainedAndHeldOutPair(app.grammar))
+        let client = try #require(app.client)
+        app.loadDemoBook()
+        try await waitUntil("the DEMO book") { app.book.count == 16 }
+        let demo = app.book
+        let messages = app.messages
+        messages.select(trained)
+        try await waitUntil("the composed message", timeout: .seconds(60)) { composedClip(messages) != nil }
+        let original = try #require(composedClip(messages)).audio.pcmSHA256
+
+        // The duplicate: refused, as this book's held-out message.
+        app.setAtom(heldOut.referent, recipe: demo.atoms[trained.referent])
+        try await waitUntil("the refusal", timeout: .seconds(60)) { sameAsHeldOut(messages) != nil && !messages.isAsking }
+        let refused = try #require(sameAsHeldOut(messages))
+        #expect(refused.heldOut.first == .init(message: heldOut, origin: .scratchBook), "\(refused.heldOut.map(\.text))")
+        #expect(refused.hash.compositeSHA256 == original)
+        #expect(app.nowPlaying == nil && app.player.current == nil)
+
+        // Load DEMO Book: composed again, with the DEMO book's audio.
+        app.loadDemoBook()
+        try await waitUntil("the composed message", timeout: .seconds(60)) { composedClip(messages) != nil }
+        #expect(app.book.origin == demo.origin)
+        #expect(composedClip(messages)?.audio.pcmSHA256 == original)
+
+        // An edited book that keeps the trained message's two DEMO recipes: still composed.
+        app.setAtom(heldOut.referent, recipe: try await client.randomRecipe(seed: 9_300))
+        try await waitUntil("the composed message", timeout: .seconds(60)) {
+            composedClip(messages) != nil && !messages.isAsking
+        }
+        #expect(composedClip(messages)?.audio.pcmSHA256 == original)
+
+        // The earlier state's held-out audio under another trained ID (not the DEMO book's
+        // own message there): still refused, as that earlier state's held-out message.
+        let grammar = try #require(app.grammar)
+        let another = try #require(grammar.trainedMessages.first {
+            $0.family == trained.family && $0.messageID != trained.messageID
+        })
+        let demoAction: Recipe = try #require(demo.atoms[trained.action])
+        let demoReferent: Recipe = try #require(demo.atoms[trained.referent])
+        var book = ScratchBook()
+        book.set(another.action, demoAction)
+        book.set(another.referent, demoReferent)
+        app.book = book
+        messages.select(another)
+        try await waitUntil("the refusal", timeout: .seconds(60)) { sameAsHeldOut(messages) != nil && !messages.isAsking }
+        let earlier = try #require(sameAsHeldOut(messages))
+        #expect(earlier.heldOut == [.init(message: heldOut, origin: .earlier)], "\(earlier.heldOut.map(\.text))")
+        #expect(earlier.hash.compositeSHA256 == original)
+        #expect(app.nowPlaying == nil && app.player.current == nil)
+        await app.shutdown()
+    }
+
+    /// A play still waiting on the bridge (a render queued behind golden_check) does not
+    /// start its sound after Stop Playback, or after the section was left: Fallback and
+    /// Nonlexical. The row is still marked verified.
+    @Test func aPendingPlayDoesNotStartAfterAStopOrASectionChange() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .fallback
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady && app.grammar != nil }
+        let client = try #require(app.client)
+        let fallback = app.fallback
+        fallback.load()
+        try await waitUntil("the P2 set") { fallback.demo != nil && !fallback.activity.isRunning("load") }
+        let row = try #require(fallback.demo?.bank.first)
+
+        // Fallback: Play, then Cmd-. while the render waits behind golden_check.
+        var busy = Task { try? await client.goldenCheck() }
+        try await Task.sleep(for: .milliseconds(30))
+        fallback.play(bank: row)
+        try await Task.sleep(for: .milliseconds(30))
+        app.stopPlayback()
+        _ = await busy.value
+        try await waitUntil("the render") { !fallback.activity.isBusy }
+        #expect(fallback.isVerified(row.pcmSHA256))
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+
+        // Fallback: Play, then another section (a held-out cell in Messages).
+        busy = Task { try? await client.goldenCheck() }
+        try await Task.sleep(for: .milliseconds(30))
+        let other = try #require(fallback.demo?.bank.dropFirst().first)
+        fallback.play(bank: other)
+        try await Task.sleep(for: .milliseconds(30))
+        app.selection = .messages
+        _ = await busy.value
+        try await waitUntil("the render") { !fallback.activity.isBusy }
+        #expect(fallback.isVerified(other.pcmSHA256))
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+
+        // Nonlexical: Play fetches the asset; Cmd-. while the fetch waits.
+        app.selection = .nonlexical
+        let nonlexical = app.nonlexical
+        nonlexical.loadIfNeeded()
+        try await waitUntil("the asset list") { !nonlexical.assets.isEmpty && !nonlexical.activity.isBusy }
+        let asset = try #require(nonlexical.assets.first)
+        busy = Task { try? await client.goldenCheck() }
+        try await Task.sleep(for: .milliseconds(30))
+        nonlexical.play(asset)
+        try await Task.sleep(for: .milliseconds(30))
+        app.stopPlayback()
+        _ = await busy.value
+        try await waitUntil("the fetch") { !nonlexical.activity.isBusy }
+        #expect(nonlexical.clip(for: asset) != nil)  // fetched and verified
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+        await app.shutdown()
+    }
+
+    /// Settings "Apply & Restart" (here to the same checkout) replaces the bridge, which
+    /// may run another engine: the grammar (which names the held-out messages), the
+    /// Determinism results and the Fallback set of the old bridge are dropped, and the
+    /// grammar is loaded again from the new bridge.
+    @Test func replacingTheBridgeDropsEverythingItsEngineSent() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .determinism
+        app.profile = .p1
+        app.start(with: configuration)
+        try await waitUntil("the grammar") { app.isReady && app.grammar != nil }
+        app.determinism.runSelfTest()
+        app.fallback.load()
+        try await waitUntil("the results") {
+            app.determinism.selfTest != nil && app.fallback.demo != nil && !app.fallback.activity.isBusy
+        }
+        #expect(app.determinism.notice == nil)
+
+        app.start(with: configuration)
+        #expect(app.grammar == nil)
+        #expect(app.determinism.selfTest == nil && app.determinism.checkedAt.isEmpty)
+        #expect(app.determinism.notice != nil)
+        #expect(app.fallback.demo == nil && app.fallback.currentScan == nil)
+        try await waitUntil("the new bridge's grammar") { app.isReady && app.grammar != nil }
+        #expect(app.determinism.selfTest == nil)
+        app.determinism.runSelfTest()
+        #expect(app.determinism.notice == nil)
+        try await waitUntil("the new self-test") { app.determinism.selfTest != nil }
+        await app.shutdown()
+    }
+
+    /// With "Play after every change" off, Play then Stop Playback (or a profile change)
+    /// before the render lands cancels that Play also for the render of a later edit: no
+    /// edit plays by itself. Play on a shown render still plays.
+    @Test func aCancelledLabPlayDoesNotCarryOverToTheNextEdit() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .recipeLab
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the first render") { app.isReady && app.lab.result != nil && !app.lab.isRendering }
+        let lab = app.lab
+        lab.autoPlay = false
+
+        app.recipe.pitches[0] = app.recipe.pitches[0] == 0 ? 1 : 0
+        lab.play()  // the render is on its way
+        app.stopPlayback()  // Cmd-.
+        app.recipe.pitches[1] = app.recipe.pitches[1] == 0 ? 1 : 0  // an edit before it lands
+        try await waitUntil("the render") { lab.isCurrent && !lab.isRendering }
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+
+        app.recipe.pitches[0] = app.recipe.pitches[0] == 0 ? 1 : 0
+        lab.play()
+        app.profile = .p3  // also cancels it: the sound was asked for under P2
+        try await waitUntil("the P3 render") { lab.isCurrent && !lab.isRendering }
+        #expect(lab.result?.profile == .p3)
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+
+        lab.play()  // the render shown is current: it plays at once
+        let clip = try #require(lab.clip)
+        #expect(app.player.current?.pcmSHA256 == clip.audio.pcmSHA256 || app.player.lastError != nil)
+        await app.shutdown()
+    }
+
+    /// A lab render in the background (its Play was cancelled by leaving the lab; then an
+    /// edit or a profile change) takes no play request: it does not cancel the pending
+    /// sound of the section shown, and it plays nothing itself.
+    @Test func aBackgroundLabRenderKeepsAnotherSectionsPendingPlay() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .recipeLab
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the first render") { app.isReady && app.lab.result != nil && !app.lab.isRendering }
+        let lab = app.lab
+        lab.autoPlay = false
+        app.recipe.pitches[0] = app.recipe.pitches[0] == 0 ? 1 : 0
+        lab.play()  // pending
+        app.selection = .nonlexical  // leaves the lab: its Play is cancelled
+        let other = app.requestPlay()  // a Nonlexical sound on its way
+        app.recipe.pitches[1] = app.recipe.pitches[1] == 0 ? 1 : 0  // re-renders the lab's motif
+        #expect(app.isLatest(other))
+        app.profile = .p3  // Nonlexical does not use the profile; the lab re-renders again
+        #expect(app.isLatest(other))
+        try await waitUntil("the lab render") { lab.isCurrent && !lab.isRendering }
+        #expect(app.isLatest(other))
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+        await app.shutdown()
+    }
+
+    /// A row render still on its way when the profile changes does not play the old
+    /// profile's sound under the new profile's page (Fallback, and a Validator & Book atom
+    /// through `renderAndPlay` with the request of its click). The row is still verified.
+    @Test func aProfileChangeCancelsAPendingRowPlay() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .fallback
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let fallback = app.fallback
+        fallback.load()
+        try await waitUntil("the P2 set") { fallback.demoProfile == .p2 && !fallback.activity.isRunning("load") }
+        let row = try #require(fallback.demo?.bank.first)
+        fallback.play(bank: row)  // the click
+        app.profile = .p3  // Cmd-3 in the same moment
+        fallback.loadIfNeeded()  // what the view's onChange(of: profile) does
+        try await waitUntil("the render and the P3 set") { fallback.demoProfile == .p3 && !fallback.activity.isBusy }
+        #expect(fallback.isVerified(row.pcmSHA256))
+        #expect(fallback.activity.error == nil)
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+
+        app.selection = .validator
+        let request = app.requestPlay()  // a click on a P3 book atom's Play
+        let render = Task { try await app.renderAndPlay(.example, profile: .p3, request: request) }
+        app.profile = .p1
+        let clip = try await render.value
+        #expect(clip.audio.durationSeconds > 0)  // rendered and verified, not played
+        #expect(app.nowPlaying == nil && app.player.current == nil && !app.player.isPlaying)
+        await app.shutdown()
+    }
+
+    /// A validation still running when the profile changes shows nothing afterwards:
+    /// neither its verdict, which was about the old profile's book, nor its error.
+    @Test func aValidationOfTheOldProfileShowsNothingAfterAProfileChange() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .validator
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let validator = app.validator
+        validator.validateCurrent()
+        app.profile = .p3
+        try await waitUntil("the validation") { !validator.activity.isRunning("validate") }
+        #expect(validator.outcome == nil)
+        #expect(validator.activity.error == nil)
+
+        validator.thresholdText = "1/10"  // refused by the engine
+        validator.validateCurrent()
+        app.profile = .p1
+        try await waitUntil("the refusal") { !validator.activity.isRunning("validate") }
+        #expect(validator.outcome == nil)
+        #expect(validator.activity.error == nil)
+
+        validator.resetThreshold()
+        validator.validateCurrent()
+        try await waitUntil("the P1 verdict") { validator.outcome != nil && !validator.activity.isRunning("validate") }
+        #expect(validator.outcome?.profile == .p1)
+        #expect(validator.activity.error == nil)
+        await app.shutdown()
+    }
+
+    /// Right after a restart the bridge is ready a moment before its grammar arrives. A
+    /// message asked for then (Try Again, or a book change) waits for the grammar instead
+    /// of failing with nothing that asks again.
+    @Test func aMessageRequestRightAfterARestartWaitsForTheGrammar() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .messages
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the grammar") { app.isReady && app.grammar != nil }
+        let trained = try #require(app.grammar?.messages.first { $0.family == "K" && !$0.isHeldout })
+        app.loadDemoBook()
+        try await waitUntil("the DEMO book") { app.book.count == 16 }
+        let messages = app.messages
+        messages.select(trained)
+        try await waitUntil("the composed message", timeout: .seconds(30)) { composedClip(messages) != nil }
+
+        /// Restarts the bridge and returns as soon as it is ready (the grammar may still
+        /// be on its way).
+        func restartUntilReady() async throws {
+            app.restartBridge()
+            try await waitUntil("the stop") { !app.isReady }
+            let clock = ContinuousClock()
+            let deadline = clock.now.advanced(by: .seconds(180))
+            while !app.isReady {
+                guard clock.now < deadline else { throw WaitTimeout(what: "the restarted bridge") }
+                await Task.yield()
+            }
+        }
+
+        try await restartUntilReady()
+        messages.retry()  // Try Again
+        try await waitUntil("the composed message", timeout: .seconds(30)) {
+            !messages.isAsking && composedClip(messages) != nil
+        }
+        #expect(!messages.hasFailed && messages.activity.error == nil)
+
+        try await restartUntilReady()
+        app.setAtom("Q-a4", recipe: .example)  // a book change: the message is asked for again
+        #expect(messages.isAsking)
+        try await waitUntil("the recomposed message", timeout: .seconds(30)) {
+            !messages.isAsking && composedClip(messages) != nil
+        }
+        #expect(!messages.hasFailed && messages.activity.error == nil)
+        await app.shutdown()
+    }
 }
 
 @MainActor
@@ -1469,6 +1969,15 @@ private func sameAsHeldOut(
 ) -> (heldOut: [MessagesModel.HeldOutTwin], hash: CompositeHashResult)? {
     if case .sameAsHeldOut(_, let heldOut, let hash)? = messages.outcome { return (heldOut, hash) }
     return nil
+}
+
+/// A trained message reference such as `K-a1-r1`.
+private func trainedRef(_ id: String) throws -> MessageRef {
+    let parts = id.split(separator: "-")
+    return try JSONDecoder().decode(MessageRef.self, from: Data("""
+        {"message_id":"\(id)","family":"\(parts[0])","action":"\(parts[0])-\(parts[1])","referent":"\(parts[0])-\(parts[2])",
+         "status":"trained","training_wave":1,"heldout_set":null,"is_heldout":false}
+        """.utf8))
 }
 
 /// A held-out message reference such as `K-a1-r2`.

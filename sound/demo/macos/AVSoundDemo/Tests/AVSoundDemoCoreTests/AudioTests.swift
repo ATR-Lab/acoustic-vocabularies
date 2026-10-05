@@ -530,7 +530,7 @@ struct AudioPlaybackTests {
         player.configurationChanged()
         #expect(interruptions == 1)
         #expect(!player.isPlaying)
-        #expect(player.lastError == "The audio output changed; playback stopped.")
+        #expect(player.lastError == AudioPlayer.interruptionMessage)
         try await Task.sleep(for: .milliseconds(300))
         #expect(!completed)
         // The notice stays until it is dismissed (or a later play succeeds).
@@ -542,6 +542,53 @@ struct AudioPlaybackTests {
         player.play(audio)
         player.stop()
         #expect(interruptions == 1)
+    }
+}
+
+extension AudioPlaybackTests {
+    /// What an output device change really does: the engine stops itself, which ends the
+    /// scheduled buffer at once, and its completion callback fires before
+    /// AVAudioEngineConfigurationChange is posted. Here the engine is stopped directly
+    /// (the same order, without the notification). The sound was cut off: its completion
+    /// must not run, and `onInterruption` and `lastError` must report it.
+    @Test func anEngineThatStopsMidSoundIsAnInterruption() async throws {
+        let player = AudioPlayer()
+        player.volume = 0
+        let audio = try TestWAV(samples: patternSamples(mul: 7, add: 0, count: 96_000)).verify()  // 2 s
+        var interruptions = 0
+        var completed = false
+        player.onInterruption = { interruptions += 1 }
+        player.play(audio) { completed = true }
+        #expect(player.isPlaying && player.isEngineRunning)
+        try await Task.sleep(for: .milliseconds(300))
+        player.stopEngineForTesting()
+        let clock = ContinuousClock()
+        let stopped = clock.now
+        while player.isPlaying, clock.now - stopped < .seconds(5) {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(clock.now - stopped < .seconds(1), "the cut-off sound is reported at once")
+        #expect(!player.isPlaying && player.current == nil)
+        #expect(!completed)
+        #expect(interruptions == 1)
+        #expect(player.lastError == AudioPlayer.interruptionMessage)
+        #expect(!player.isEngineRunning)
+
+        // A later play rebuilds the engine, plays to the end and clears the notice.
+        let short = try TestWAV(samples: patternSamples(mul: 7, add: 0, count: 9_600)).verify()
+        let done = AsyncStream<Void>.makeStream()
+        player.play(short) { done.continuation.yield() }
+        #expect(player.lastError == nil)
+        let finished = await withTaskGroup(of: Bool.self) { group in
+            group.addTask { for await _ in done.stream { return true }; return false }
+            group.addTask { try? await Task.sleep(for: .seconds(5)); return false }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+        #expect(finished)
+        #expect(interruptions == 1 && !completed)
+        #expect(player.lastError == nil)
     }
 }
 

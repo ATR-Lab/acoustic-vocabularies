@@ -16,6 +16,7 @@ import io
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -867,6 +868,48 @@ def test_a_repeated_blob_flip_never_undoes_the_damage(fresh: Any) -> None:
     _readers_refuse(fresh, "DEMO-FLIP")
 
 
+def _issues(b: Any, book_id: str) -> set[tuple[str, int | None]]:
+    report = ok(b, "store_verify", {"book_id": book_id})
+    assert report["ok"] is False
+    return {(i["code"], i["line"]) for i in report["issues"]}
+
+
+def test_a_repeated_log_edit_never_undoes_the_damage(fresh: Any) -> None:
+    """PROTOCOL.md, "Damaged books": `edit_log_line` never edits a record twice (a second
+    edit of the same bytes could undo the first). Each press edits one more record (the
+    commits first, last first, then the other records), the `done` text names the codes
+    that store_verify reports, and with every record edited the request is refused and
+    changes nothing. A line damaged some other way is never touched."""
+    _small_book(fresh, "DEMO-EDIT")  # create_book (0), K-a1 (1), K-a2 (2)
+    ok(fresh, "store_freeze", {"book_id": "DEMO-EDIT"})  # freeze (3): the Store section's flow
+    log = fresh.store().log_path("DEMO-EDIT")
+    lines = log.read_bytes().splitlines(keepends=True)
+    assert len(lines) == 4
+    # Line 1 is damaged another way first: not canonical JSON any more.
+    lines[1] = lines[1][:-1] + b" \n"
+    bridge_mod._rewrite(log, b"".join(lines))  # the store keeps its files read-only
+    damaged_line = lines[1]
+    args = {"book_id": "DEMO-EDIT", "kind": "edit_log_line"}
+    seen = _issues(fresh, "DEMO-EDIT")
+    assert ("E_LOG_NONCANONICAL", 1) in seen
+    for line, event in ((2, "commit"), (3, "freeze"), (0, "create_book")):
+        done = ok(fresh, "store_tamper", args)["done"]
+        assert done.startswith(f"changed the timestamp of log line {line} ({event}) of DEMO-EDIT")
+        assert "E_RECORD_HASH" in done and "refuse the book" in done
+        now = _issues(fresh, "DEMO-EDIT")
+        assert seen < now and ("E_RECORD_HASH", line) in now  # more damage, none repaired
+        codes = sorted({code for code, _ in now})
+        assert f"store_verify reports {', '.join(codes)} even without expected_head" in done
+        assert log.read_bytes().splitlines(keepends=True)[1] == damaged_line
+        seen = now
+        _readers_refuse(fresh, "DEMO-EDIT")
+    before = log.read_bytes()
+    error = err(fresh, "store_tamper", args)
+    assert error["type"] == "ValueError" and "already edited or damaged" in error["message"]
+    assert log.read_bytes() == before  # the refusal changed nothing
+    assert _issues(fresh, "DEMO-EDIT") == seen
+
+
 def test_two_blob_flips_of_a_one_atom_book_keep_it_damaged(fresh: Any) -> None:
     ok(fresh, "store_create", {"book_id": "DEMO-ONE", "profile": "P1"})
     commit = {"book_id": "DEMO-ONE", "atom_id": "K-a1", "semantic_label": "ADD_ONE"}
@@ -1301,6 +1344,54 @@ def test_repeated_signals_do_not_interrupt_the_cleanup(tmp_path: Path) -> None:
     assert list(temp.iterdir()) == []
 
 
+def test_the_engine_is_this_checkouts(tmp_path: Path) -> None:
+    """PROTOCOL.md, "Engine location": the bridge serves only `sound/src/av_sound` of its
+    own checkout. With an engine from elsewhere, every command but `shutdown` is refused."""
+    assert bridge_mod.engine_location_problem() is None
+    assert bridge_mod.engine_location_problem(SOUND_ROOT / "src" / "av_sound") is None
+    elsewhere = tmp_path / "other" / "sound" / "src" / "av_sound"
+    problem = bridge_mod.engine_location_problem(elsewhere)
+    assert problem is not None and str(elsewhere.resolve()) in problem and "PYTHONPATH" in problem
+    b = bridge_mod.Bridge(temp_base=tmp_path / "base", engine_package=elsewhere)
+    try:
+        for cmd in ("hello", "grammar", "store_reset"):
+            refused = err(b, cmd)
+            assert refused == {"type": "ProtocolError", "code": "E_ENGINE_PATH", "message": problem}
+        assert err(b, "no_such_command")["code"] == "E_UNKNOWN_CMD"
+        assert ok(b, "shutdown") == {}
+        assert b._root is None  # nothing was done
+    finally:
+        b.close()
+
+
+def test_a_pythonpath_engine_of_another_checkout_is_refused(tmp_path: Path) -> None:
+    """A shell of another checkout exports PYTHONPATH: the bridge would import that
+    checkout's engine (PYTHONPATH comes before site-packages) next to this checkout's
+    vectors and data. It refuses to serve it instead."""
+    other = tmp_path / "other" / "sound"
+    shutil.copytree(
+        SOUND_ROOT / "src" / "av_sound",
+        other / "src" / "av_sound",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    for name in ("schema", "reserved", "config"):
+        shutil.copytree(SOUND_ROOT / name, other / name)
+    done = subprocess.run(
+        [sys.executable, str(BRIDGE_PATH)],
+        input=b'{"id":1,"cmd":"hello"}\n{"id":2,"cmd":"grammar"}\n{"id":3,"cmd":"shutdown"}\n',
+        capture_output=True,
+        timeout=120,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(other / "src")},
+    )
+    assert done.returncode == 0, done.stderr.decode()
+    responses = [json.loads(line) for line in done.stdout.splitlines()]
+    assert [r["ok"] for r in responses] == [False, False, True]
+    assert {r["error"]["code"] for r in responses[:2]} == {"E_ENGINE_PATH"}
+    assert str((other / "src" / "av_sound").resolve()) in responses[0]["error"]["message"]
+    assert "refusing every command" in done.stderr.decode()
+
+
 def test_the_bridge_imports_without_sighup(monkeypatch: pytest.MonkeyPatch) -> None:
     """Windows has no SIGHUP. The bridge must still import there (the sound workflow
     collects tests/sound on Windows too) and handle the exit signals it does have."""
@@ -1311,6 +1402,23 @@ def test_the_bridge_imports_without_sighup(monkeypatch: pytest.MonkeyPatch) -> N
         assert module._EXIT_SIGNALS == (signal.SIGTERM,)
     finally:
         sys.modules.pop("av_sound_bridge_nosighup", None)
+
+
+def test_the_bridge_starts_under_python_oo() -> None:
+    """`python -OO` (PYTHONOPTIMIZE=2 in the environment) strips docstrings: the bridge
+    must not need its own to start. (The app does not pass PYTHONOPTIMIZE on.)"""
+    done = subprocess.run(
+        [sys.executable, str(BRIDGE_PATH)],
+        input=b'{"id":1,"cmd":"hello"}\n{"id":2,"cmd":"shutdown"}\n',
+        capture_output=True,
+        timeout=120,
+        check=False,
+        env={**os.environ, "PYTHONOPTIMIZE": "2"},
+    )
+    assert done.returncode == 0, done.stderr.decode()
+    responses = [json.loads(line) for line in done.stdout.splitlines()]
+    assert [r["ok"] for r in responses] == [True, True]
+    assert responses[0]["result"]["bridge_version"] == 1
 
 
 def test_the_bridge_writes_no_bytecode(tmp_path: Path) -> None:
