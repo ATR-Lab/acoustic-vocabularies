@@ -1,0 +1,118 @@
+name: Sound engine
+
+on:
+  pull_request:
+    paths:
+      - "sound/**"
+      - "tests/sound/**"
+      - "tests/golden/**"
+      - ".github/workflows/sound.yml"
+      - ".gitattributes"
+  push:
+    branches: [main]
+    paths:
+      - "sound/**"
+      - "tests/sound/**"
+      - "tests/golden/**"
+      - ".github/workflows/sound.yml"
+      - ".gitattributes"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sound-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: sound (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: sound/uv.lock
+      - name: Install (Python 3.11, locked)
+        run: uv sync --project sound --locked
+      - name: Lint and format
+        run: |
+          uv run --project sound ruff check --config sound/pyproject.toml sound tests/sound
+          uv run --project sound ruff format --config sound/pyproject.toml --check sound tests/sound
+      - name: Type check
+        working-directory: sound
+        run: uv run mypy
+      - name: Tests
+        run: >
+          uv run --project sound pytest --import-mode=importlib -p no:cacheprovider tests/sound
+          --cov=av_sound --cov-config=sound/pyproject.toml --cov-report=term --cov-fail-under=90
+      - name: Per-module coverage gate (renderer.py >= 90%)
+        run: >
+          uv run --project sound coverage report --rcfile=sound/pyproject.toml
+          --include='*/av_sound/renderer.py' --fail-under=90
+      - name: Determinism fingerprint
+        run: |
+          uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import hashlib, json, platform, sys
+          import numpy
+          from av_sound import RENDERER_VERSION, Recipe, render, renderer_hash
+          vectors = json.load(open("sound/testvectors/renderer/vectors.json", encoding="utf-8"))["vectors"]
+          rendered = [render(Recipe.from_dict(v["recipe"]), v["profile"]).pcm_sha256 for v in vectors]
+          digest = hashlib.sha256("".join(rendered).encode()).hexdigest()
+          print(f"### Sound engine on {platform.system()} {platform.machine()}")
+          print(f"- Python {sys.version.split()[0]}, numpy {numpy.__version__}, renderer {RENDERER_VERSION}")
+          print(f"- renderer_hash `{renderer_hash()}`")
+          print(f"- digest of freshly rendered reference PCM `{digest}` ({len(rendered)} vectors)")
+          EOF
+      - name: Composition fingerprint
+        run: |
+          uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import hashlib, json, platform
+          from av_sound import Profile, composite_hash
+          from av_sound.grammar import MESSAGES
+          from av_sound.synthetic import synthetic_book
+          books = [synthetic_book(p) for p in Profile]
+          live = [composite_hash(b[m.action.atom_id], b[m.referent.atom_id]) for b in books for m in MESSAGES]
+          data = json.load(open("sound/testvectors/composition/vectors.json", encoding="utf-8"))
+          ref = [m["composite_sha256"] for b in data["books"] for m in b["messages"]]
+          digest = hashlib.sha256("".join(live).encode()).hexdigest()
+          print(f"- {platform.system()}: live composite digest `{digest}` ({len(live)} messages), equals vectors.json: {live == ref}")
+          assert live == ref
+          EOF
+      - name: Reserved nonlexical assets (registry check and WAVs)
+        run: >
+          uv run --project sound python sound/tools/make_reserved_assets.py --check --table
+          --wav-dir "$RUNNER_TEMP/reserved-assets" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload reserved-asset WAVs for listening (synthetic, nonlexical)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: reserved-assets-wav
+          path: ${{ runner.temp }}/reserved-assets/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Example packages (synthetic; committed JSON check and full build)
+        run: |
+          uv run --project sound python sound/tools/build_example_package.py --check
+          uv run --project sound python sound/tools/build_example_package.py \
+            --out "$RUNNER_TEMP/package-demo" --dyad | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload the synthetic example packages (DEMO, with WAVs)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-demo
+          path: ${{ runner.temp }}/package-demo/
+          retention-days: 14
+          if-no-files-found: error
