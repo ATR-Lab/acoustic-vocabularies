@@ -4,6 +4,7 @@ import json
 import queue
 import threading
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -183,3 +184,53 @@ def test_queue_is_bounded_and_network_threads_never_touch_scene():
     assert handoff.submit(command(dispatcher, "health"), "127.0.0.1").result()["reason"] == "COMMAND_QUEUE_FULL"
     handoff.drain()
     assert result[0].result()["accepted"] and adapter.writes == before+1
+
+
+def test_wire_schemas_and_durable_full_command_log(tmp_path):
+    import jsonschema
+    from isaac.commands.event_log import DurableCommandLog
+    _, _, _, dispatcher, _, _ = setup()
+    path = tmp_path/"commands.jsonl"
+    logger = DurableCommandLog(path, session_id="0"*32, apparatus_version="fixture", protocol_version="unresolved-methodology")
+    dispatcher.sink = logger
+    root = Path(__file__).resolve().parents[2]/"isaac/commands"
+    request_schema = json.loads((root/"command.schema.json").read_text())
+    reply_schema = json.loads((root/"reply.schema.json").read_text())
+    event_schema = json.loads((root/"command-event.schema.json").read_text())
+    raw = command(dispatcher, "reset")
+    jsonschema.validate(json.loads(raw), request_schema)
+    for received in (raw, raw, '{"args":{"value":1e999}}'):
+        reply = dispatcher.submit(received, "127.0.0.1").result()
+        jsonschema.validate(reply, reply_schema)
+    logger.close()
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    assert len(rows) == 3 and rows[1]["payload"]["reply"]["duplicate"]
+    for row in rows:
+        jsonschema.validate(row, event_schema)
+    assert [row["event_seq"] for row in rows] == [0, 1, 2]
+    assert rows[0]["payload"]["raw_command"] == raw
+
+
+def test_logging_failure_never_acknowledges_or_repeats_reset():
+    adapter, _, _, dispatcher, _, _ = setup()
+    def broken(_):
+        raise OSError("fixture disk failure")
+    dispatcher.sink = broken
+    raw = command(dispatcher, "reset")
+    with pytest.raises(OSError): dispatcher.submit(raw, "127.0.0.1").result()
+    written = adapter.writes
+    with pytest.raises(OSError): dispatcher.submit(raw, "127.0.0.1").result()
+    assert adapter.writes == written and dispatcher.fault == "COMMAND_LOG_FAILED"
+
+
+def test_disconnect_and_shutdown_do_not_leave_unlogged_jobs():
+    _, _, _, dispatcher, events, _ = setup()
+    handoff = CommandQueue(dispatcher)
+    disconnected = handoff.submit(command(dispatcher, "reset"), "127.0.0.1")
+    disconnected.cancel()
+    handoff.drain()
+    assert len(events) == 1  # Execution/log complete despite no receiver.
+    pending = handoff.submit(command(dispatcher, "reset"), "127.0.0.1")
+    handoff.close()
+    assert pending.result()["reason"] == "SERVICE_STOPPING" and len(events) == 2
+    assert handoff.submit(command(dispatcher, "health"), "127.0.0.1").result()["reason"] == "SERVICE_STOPPING"

@@ -1,0 +1,116 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "private_reply"
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "teaching",
+        "test",
+        "post_endpoint"
+      ]
+    },
+    "host_mono_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "sim_time": {
+      "type": "number",
+      "minimum": 0
+    },
+    "reset_ok": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "duplicate": {
+      "type": "boolean"
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "control_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "mode": {
+          "enum": [
+            "teaching",
+            "test",
+            "post_endpoint"
+          ]
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "stopped": {
+          "type": "boolean"
+        },
+        "fault": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "demo_active": {
+          "type": "boolean"
+        },
+        "exposure_ready": {
+          "type": "boolean"
+        },
+        "public_stream_recovered": {
+          "const": false
+        }
+      },
+      "required": [
+        "control_session_id",
+        "mode",
+        "paused",
+        "stopped",
+        "fault",
+        "demo_active",
+        "exposure_ready",
+        "public_stream_recovered"
+      ]
+    }
+  },
+  "required": [
+    "version",
+    "kind",
+    "request_id",
+    "accepted",
+    "reason",
+    "mode",
+    "host_mono_ms",
+    "sim_time",
+    "reset_ok",
+    "duplicate",
+    "health"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

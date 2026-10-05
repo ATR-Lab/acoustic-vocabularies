@@ -137,7 +137,7 @@ class CommandDispatcher:
             self._complete(job, False, "IDEMPOTENCY_CAPACITY", remember=False)
             return job["future"]
         command, args = value["command"], value["args"]
-        if self.fault and command not in ("stop", "health", "reset", "hold_neutral"):
+        if self.fault == "COMMAND_LOG_FAILED" or self.fault and command not in ("stop", "health", "reset", "hold_neutral"):
             self._complete(job, False, "FAULT_LATCHED")
         elif command == "demo":
             if self.paused or self.stopped or self.active:
