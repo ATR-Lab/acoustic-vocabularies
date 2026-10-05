@@ -36,6 +36,17 @@ namespace AcousticVocab.SessionEngine.Tests
         [TestCase(-1d)][TestCase(double.NaN)][TestCase(double.PositiveInfinity)][TestCase(double.NegativeInfinity)][TestCase(double.MaxValue)]
         public void InvalidGapFaultsBeforeContextContentOrCue(double gap)
         {var c=new Clock();var log=new Log();var f=new Planned{Plan=(_,__)=>gap};var e=Make(c,log,f);e.ConfirmResume();Assert.That(e.Status,Is.EqualTo(SessionState.Paused));Assert.That(f.Values,Is.Empty);Assert.That(log.Rows.Any(x=>x.ExposureConsumed),Is.False);Assert.That(log.Rows.Single(x=>x.Event=="item_fault").TechnicalFaultCode,Is.EqualTo("SESSION_START_GAP_INVALID"));}
+        [Test]public void MissedSecondAnchorLeavesCompletedHistoryAndUpcomingOpportunityUntouched()
+        {
+            var c=new Clock();var log=new Log();var f=new Planned{Plan=(item,baseline)=>item.TrialId=="DEMO-0"?0:throw new SessionFault("MENU_REPLAY_ANCHOR_MISSED")};var e=Make(c,log,f);
+            e.ConfirmResume();for(;c.Time<=13000;c.Time+=50)e.Tick();
+            Assert.That(e.Status,Is.EqualTo(SessionState.Paused));Assert.That(e.CompletedOpportunities,Is.EqualTo(1));Assert.That(e.CurrentTrialId,Is.Null);Assert.That(e.ExposureConsumed,Is.False);
+            Assert.That(f.Values.Count,Is.EqualTo(1));Assert.That(f.Values[0].Cues,Is.EqualTo(1));
+            var prior=log.Rows.Where(x=>x.TrialId=="DEMO-0").ToArray();Assert.That(prior.Last().State,Is.EqualTo(ItemState.Done));Assert.That(prior.Last().ExposureConsumed,Is.True);
+            var failure=log.Rows.Single(x=>x.Event=="item_fault");Assert.That(failure.TrialId,Is.Null);Assert.That(failure.ScheduledOnsetMonoMs,Is.Null);Assert.That(failure.State,Is.Null);Assert.That(failure.ExposureConsumed,Is.False);
+            Assert.That(log.Rows.Any(x=>x.TrialId=="DEMO-1"),Is.False);
+            var resumed=new Factory();var recovered=Make(c,log,resumed);Assert.That(recovered.CompletedOpportunities,Is.EqualTo(1));recovered.ConfirmResume();Assert.That(resumed.Values.Single().Context.Item.TrialId,Is.EqualTo("DEMO-1"));
+        }
         [Test]public void ResumeUsesOriginalAnchorInsteadOfAddingPauseAgain()
         {var c=new Clock();var log=new Log();var f=new Planned{Plan=(_,baseline)=>Math.Max(0,10750-baseline)};var e=Make(c,log,f,1);e.ConfirmResume();e.RequestPause();c.Time=3000;e.ConfirmResume();Assert.That(f.Values.Select(x=>x.Context.OnsetMonoMs),Is.EqualTo(new[]{10750d,10750}));Assert.That(f.Values.All(x=>x.Cues==0),Is.True);}
         [Test]public void MissedAnchorRequiresExplicitReconstructionAndNeverConsumesCue()
