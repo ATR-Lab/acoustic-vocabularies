@@ -10,7 +10,8 @@
     "AcousticVocab.SelectionMenus",
     "AcousticVocab.Assessment",
     "AcousticVocab.DataLogging",
-    "AcousticVocab.Orientation"
+    "AcousticVocab.Orientation",
+    "AcousticVocab.OperatorConsole"
   ],
   "includePlatforms": [
     "Editor"

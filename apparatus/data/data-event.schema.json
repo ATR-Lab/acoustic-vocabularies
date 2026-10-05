@@ -91,7 +91,8 @@
         "deviation_reference",
         "visit_exit",
         "recovery",
-        "assessment_stage"
+        "assessment_stage",
+        "grammar_stage"
       ]
     },
     "opportunity_id": {
@@ -1742,6 +1743,251 @@
           },
           "audio_request_id": {
             "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "grammar_stage"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "opportunity_id": {
+            "type": "null"
+          },
+          "attempt_id": {
+            "type": "null"
+          },
+          "audio_request_id": {
+            "type": "null"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "schedule_sha256",
+              "registry_sha256",
+              "review_sha256",
+              "clock_epoch",
+              "host_mono_ms",
+              "kind",
+              "phase",
+              "audio_request_id",
+              "operator_command",
+              "audio"
+            ],
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "registry_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "host_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "kind": {
+                "enum": [
+                  "started",
+                  "request",
+                  "audio",
+                  "completed",
+                  "finished",
+                  "interrupted"
+                ]
+              },
+              "phase": {
+                "enum": [
+                  null,
+                  "ready",
+                  "clicks"
+                ]
+              },
+              "audio_request_id": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                  }
+                ]
+              },
+              "operator_command": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "session_nonce",
+                      "request_id",
+                      "sequence"
+                    ],
+                    "properties": {
+                      "session_nonce": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                      },
+                      "request_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                      },
+                      "sequence": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "audio": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "properties": {
+                      "code": {
+                        "const": "AUDIO_REQUESTED"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "request",
+                        "audio",
+                        "completed"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "ready",
+                        "clicks"
+                      ]
+                    },
+                    "audio_request_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "phase": {
+                      "type": "null"
+                    },
+                    "audio_request_id": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "started"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "operator_command": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "session_nonce",
+                        "request_id",
+                        "sequence"
+                      ],
+                      "properties": {
+                        "session_nonce": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                        },
+                        "sequence": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "operator_command": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "audio"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "audio": {
+                      "properties": {
+                        "code": {
+                          "const": "AUDIO_REQUESTED"
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "audio": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
           }
         }
       }

@@ -70,7 +70,7 @@ namespace AcousticVocab.DataLogging
             if(hasAssessment){Save(AssessmentExport.Table,AssessmentExport.Csv(snapshot,identity));Save(AssessmentExport.Contract,DataJson.Bytes(AssessmentExport.HeaderContract()));}
             // Stage templates have no reviewed contract yet. Their presence keeps
             // the whole bundle provisional even if trial headers were reviewed.
-            bool qualified=headers.Qualified&&!snapshot.HasUnacknowledgedTail&&!hasAssessment;
+            bool qualified=headers.Qualified&&!snapshot.HasUnacknowledgedTail&&!hasAssessment&&!snapshot.Records.Any(r=>r.Kind=="grammar_stage");
             var manifest=new JObject{["schema_version"]="data-export-provisional-1",["export_id"]=Guid.NewGuid().ToString("N"),["identity"]=identity.ToJson(),["headers_qualified"]=qualified,["unacknowledged_torn_tail"]=snapshot.HasUnacknowledgedTail,["record_count"]=snapshot.Records.Count,["last_record_sha256"]=snapshot.Previous,["trial_rows"]=tables.Trials.Count,["exposure_rows"]=tables.Exposures.Count,["files"]=new JArray(entries.Select(x=>x.ToJson()))};
             byte[] manifestBytes=DataJson.Bytes(manifest);DataJson.Require(manifestBytes.Length<=MaximumManifestBytes,"DATA_MANIFEST_LIMIT");string hash=DataJson.HashBytes(manifestBytes);Save("manifest.json",manifestBytes);
             var bundle=new ExportBundle(freshOutputDirectory,entries,hash,qualified);bundle.VerifyAll();return bundle;

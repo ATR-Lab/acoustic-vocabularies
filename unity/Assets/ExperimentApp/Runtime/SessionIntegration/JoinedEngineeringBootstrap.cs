@@ -46,6 +46,7 @@ namespace AcousticVocab.SessionIntegration
                 kind=module==JoinedModuleKind.Teaching?"teaching":module==JoinedModuleKind.Assessment?"protected":"selection";
             return new SoakContext(kind,block,engine.Status.ToString(),engine.CurrentTrialId);
         }
+        JoinedGrammarStage grammarStage;bool grammarInterrupted;
         JoinedEngineeringConfig config;JoinedVisitArtifacts assets;DataJournal data;JoinedAudit audit;FileMenuStore store;JoinedSelections selections;MenuLedger menuLedger;bool menuSealed;
         SessionIntegrationOwner owner;StagedModuleCoordinator staged;OperatorMailbox mailbox;FileOperatorCommandJournal commands;CompletedFormsRecovery formsRecovery;YokedReplayAuthority yokedAuthority;OperatorRequest resumeRequest;
         readonly ModuleConstructionScope visit=new ModuleConstructionScope();bool attempted,installedFrames,closed,failed,formsShown;string evidenceRoot,nonce;
@@ -137,22 +138,29 @@ namespace AcousticVocab.SessionIntegration
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders);
+                    if(assets.Grammar!=null)
+                    {
+                        grammarStage=new JoinedGrammarStage(data,assets.Grammar,assets.GrammarReview,assets.Schedule.Sha256,()=>clock.NowMs);
+                        grammarStage.RequireBeforeTeachingHistory(owner.SessionJournal.Records,assets.Schedule.Blocks.Where(b=>assets.Blocks[b.Name]==JoinedModuleKind.Teaching).SelectMany(b=>b.Items).Select(i=>i.TrialId));
+                    }
                     var routes=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<ModuleConstructionScope,IModulePreflight>)(scope=>new Preflight(this,p.Key,p.Value,scope)));
                     staged=new StagedModuleCoordinator(owner.Engine,owner.Modules,routes);
                     Directory.CreateDirectory(config.Directory("operator_mailbox"));commands=visit.Own(new FileOperatorCommandJournal(evidenceRoot,nonce));
-                    mailbox=new OperatorMailbox(config.Directory("operator_mailbox"),nonce,config.RequireFile("run_sheet_manifest").Sha256,owner.Engine,commands,Admission,Health,()=>clock.NowMs,prepareRequestResume:CommitOperatorResume);
+                    mailbox=new OperatorMailbox(config.Directory("operator_mailbox"),nonce,config.RequireFile("run_sheet_manifest").Sha256,owner.Engine,commands,Admission,Health,()=>clock.NowMs,stageBeforeResume:CommitOperatorResume,boundaryControl:_=>{if(grammarStage?.Running==true)grammarInterrupted=true;});
                     Report("JOIN_PREFLIGHT");
                 }
                 store?.Pump();bool stageHold=HandleAssessmentBoundary();if(!stageHold)staged.Pump();mailbox.Tick(); // sole engine.Tick owner
+                if(grammarInterrupted){Fail("JOIN_GRAMMAR_INTERRUPTED");return;}
                 if(stageHold){staged.PumpPending();return;}
+                if(grammarStage?.Running==true){Report("JOIN_GRAMMAR_RUNNING");return;}
                 Report(owner.Engine.NeedsOperatorConfirmation?(staged.Ready?"JOIN_READY_EXPLICIT_RESUME":"JOIN_PREFLIGHT"):"JOIN_"+owner.Engine.Status.ToString().ToUpperInvariant());
             }
             catch(SessionFault error){Fail(error.Code);}catch{Fail("JOIN_RUNTIME_FAILED");}
         }
-        void CommitOperatorResume(FixedSlotEngine engine,OperatorRequest request)
+        bool CommitOperatorResume(FixedSlotEngine engine,OperatorRequest request)
         {
             if(resumeRequest!=null||request==null)throw new SessionFault("JOIN_OPERATOR_REENTRANCY");resumeRequest=request;
-            try{staged.CommitForResume(engine);}finally{resumeRequest=null;}
+            try{if(!staged.PrepareExplicitResume(engine,request))return false;staged.CommitForResume(engine);return true;}finally{resumeRequest=null;}
         }
         MenuLedgerVerification MenuVerification()
         {
@@ -224,10 +232,10 @@ namespace AcousticVocab.SessionIntegration
             public void Pump()=>client.Pump();public void RequestTeachingMode()=>client.RequestMode();public bool TeachingModeAcknowledged=>client.ModeAcknowledged;
             public bool NeutralHoldHealthy=>client.NeutralHoldHealthy;public string RequestReset()=>client.RequestReset();public bool ResetAcknowledged(string id)=>client.ResetAcknowledged(id);public void Interrupt()=>client.Interrupt();
         }
-        sealed class Preflight:IModulePreflight
+        sealed class Preflight:IModulePreflight,IExplicitBoundaryStage
         {
             readonly JoinedEngineeringBootstrap host;readonly string block;readonly JoinedModuleKind kind;PrivateModeResetClient control;readonly double started;readonly ModuleConstructionScope scope;ISlotContentFactory preparedFactory;bool wasReady;
-            string reset;bool committed;bool renderer;
+            string reset;bool committed;bool renderer;TeachingSessionHost teachingView;
             internal Preflight(JoinedEngineeringBootstrap host,string block,JoinedModuleKind kind,ModuleConstructionScope scope)
             {
                 this.host=host;this.block=block;this.kind=kind;this.scope=scope;started=host.clock.NowMs;
@@ -260,15 +268,35 @@ namespace AcousticVocab.SessionIntegration
                 if(control==null){if(!SealBeforePostMenu())return;StartControl();}
                 control.Pump();if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
                 if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
-                if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
+                if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
+                if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
                 if(Ready)wasReady=true;
             }
             bool ControlReady=>control!=null&&reset!=null&&control.ResetAcknowledged(reset)&&renderer&&host.source.CheckExposureReady()&&host.foundation.Ready&&host.panel.ReadyForTrial&&host.frames.Ready&&(host.store==null||host.store.OldHashesVerified);
+            bool AwaitingGrammar=>kind==JoinedModuleKind.Teaching&&host.grammarStage!=null&&!host.grammarStage.Complete;
+            bool AwaitingGrammarStart=>AwaitingGrammar&&!host.grammarStage.Started;
             bool AwaitingYokedAnchor=>kind==JoinedModuleKind.Menus&&host.yokedAuthority!=null&&host.yokedAuthority.Replay==null;
-            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingYokedAnchor)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo);
+            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingYokedAnchor||AwaitingGrammarStart)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo);
+            public bool PrepareExplicitResume(OperatorRequest request)
+            {
+                if(!Ready)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");
+                if(!AwaitingGrammar)return true;
+                if(!AwaitingGrammarStart||!host.assets.Route.IsQualified)throw new SessionFault("JOIN_GRAMMAR_NOT_READY");
+                host.grammarStage.Begin(request); // consumes exposure before any player setup
+                EnsureTeachingView();
+                teachingView.BeginGrammar(host.assets.Grammar,host.assets.Route,host.assets.Gain,()=>ControlReady&&control.NeutralHoldHealthy,host.grammarStage.Observe,host.grammarStage.Audio);
+                host.Report("JOIN_GRAMMAR_RUNNING");return false;
+            }
+            void EnsureTeachingView()
+            {
+                if(teachingView!=null)return;
+                var node=new GameObject("Joined Teaching lease");scope.RegisterCleanup(()=>UnityEngine.Object.Destroy(node));
+                teachingView=node.AddComponent<TeachingSessionHost>();scope.RegisterCleanup(teachingView.Uninstall);
+                teachingView.foundation=host.foundation;teachingView.source=host.source;teachingView.panel=host.panel;teachingView.player=host.player;teachingView.presentationParent=host.foundation.presentationRoot.transform;teachingView.font=host.font;teachingView.Faulted+=host.Fail;
+            }
             public ISlotContentFactory Commit(ModuleConstructionScope target)
             {
-                if(!ReferenceEquals(target,scope)||!Ready)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");
+                if(!ReferenceEquals(target,scope)||!Ready||AwaitingGrammar)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");
                 if(AwaitingYokedAnchor)
                 {
                     var request=host.resumeRequest??throw new SessionFault("JOIN_YOKED_OPERATOR_REQUIRED");
@@ -281,12 +309,11 @@ namespace AcousticVocab.SessionIntegration
             ISlotContentFactory CreateFactory()
             {
                 var shared=host.owner.Shared;
-                var go=new GameObject("Joined "+kind+" lease");scope.RegisterCleanup(()=>UnityEngine.Object.Destroy(go));
+                GameObject go=null;if(kind!=JoinedModuleKind.Teaching){go=new GameObject("Joined "+kind+" lease");scope.RegisterCleanup(()=>UnityEngine.Object.Destroy(go));}
                 ISlotContentFactory result;
                 if(kind==JoinedModuleKind.Teaching)
                 {
-                    var view=go.AddComponent<TeachingSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.presentationParent=host.foundation.presentationRoot.transform;view.font=host.font;
-                    view.Faulted+=host.Fail;scope.RegisterCleanup(view.Uninstall);
+                    EnsureTeachingView();var view=teachingView;
                     result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,host.audit.Lesson,shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio);view.BindEngine(host.owner.Engine);
                 }
                 else if(kind==JoinedModuleKind.Assessment)

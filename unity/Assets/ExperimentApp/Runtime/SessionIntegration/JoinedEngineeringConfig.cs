@@ -103,11 +103,11 @@ namespace AcousticVocab.SessionIntegration
                 string path=System.IO.Path.GetFullPath(configPath),root=System.IO.Path.GetDirectoryName(path);
                 byte[] raw=ReadPinned(path,independentlyPinnedRawSha256,MaximumConfigBytes,null);
                 var document=StationConfig.ParseStrict(new UTF8Encoding(false,true).GetString(raw));
-                Need(document["version"]?.Type==JTokenType.Integer&&((long)document["version"]==1||(long)document["version"]==2),"SESSION_JOIN_CONFIG_VERSION");
+                Need(document["version"]?.Type==JTokenType.Integer&&((long)document["version"]>=1&&(long)document["version"]<=3),"SESSION_JOIN_CONFIG_VERSION");
                 int version=(int)document["version"];
                 Keys(document,version==1?new[]{"version","scope","protocol_version","identity","files","directories","pins","control"}:new[]{"version","scope","protocol_version","identity","files","directories","pins","control","yoked_start"});
                 int? anchorLead=null;
-                if(version==2&&document["yoked_start"].Type!=JTokenType.Null)
+                if(version>=2&&document["yoked_start"].Type!=JTokenType.Null)
                 {
                     var policy=Object(document["yoked_start"]);Keys(policy,"policy","lead_ms");
                     Need(Text(policy["policy"])=="operator_start_plus_lead"&&policy["lead_ms"].Type==JTokenType.Integer&&(long)policy["lead_ms"]>=2000&&(long)policy["lead_ms"]<=60000,"SESSION_JOIN_ANCHOR_POLICY");
@@ -122,7 +122,7 @@ namespace AcousticVocab.SessionIntegration
                 // an invented ID prefix cannot establish that authority.
                 foreach(string key in new[]{"station_id","unit_id","coded_id","visit_id","build_id"})Need(Id(Text(identity[key])),"SESSION_JOIN_IDENTITY");
                 Need(Guid(Text(identity["session_id"])),"SESSION_JOIN_IDENTITY");
-                var acceptedOptional=optionalFiles.Concat(version==2?v2Files:Array.Empty<string>()).ToArray();
+                var acceptedOptional=optionalFiles.Concat(version>=2?v2Files:Array.Empty<string>()).Concat(version>=3?new[]{"grammar_review"}:Array.Empty<string>()).ToArray();
                 var fileRows=Object(document["files"]);Keys(fileRows,requiredFiles.Concat(acceptedOptional).ToArray());
                 var files=new Dictionary<string,PinnedJoinFile>(StringComparer.Ordinal);
                 foreach(string name in requiredFiles.Concat(acceptedOptional))
@@ -135,6 +135,7 @@ namespace AcousticVocab.SessionIntegration
                     files.Add(name,new PinnedJoinFile(full,sha,maximum));
                 }
                 if(version==1)foreach(string name in v2Files)files.Add(name,null);
+                if(version<3)files.Add("grammar_review",null);
                 var dirRows=Object(document["directories"]);Keys(dirRows,directoryNames);
                 var directories=new Dictionary<string,string>(StringComparer.Ordinal);
                 foreach(string name in directoryNames)

@@ -4,6 +4,9 @@ using System.Linq;
 using System.Reflection;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StudyAudio;
+using AcousticVocab.OperatorConsole;
+using Newtonsoft.Json.Linq;
+using System.Text;
 using NUnit.Framework;
 
 namespace AcousticVocab.SessionIntegration.Tests
@@ -41,16 +44,17 @@ namespace AcousticVocab.SessionIntegration.Tests
             public void RequestReset(SlotContext context){}
             public void Interrupt(string code){}
         }
-        sealed class Preflight:IModulePreflight
+        sealed class Preflight:IModulePreflight,IExplicitBoundaryStage
         {
             readonly Fixture fixture;readonly string block;
-            internal bool Allowed,ThrowPump,ThrowCommit;internal int Pumps,Commits,Closed;
+            internal bool Allowed,ThrowPump,ThrowCommit,BoundaryRequired,BoundaryStarted,BoundaryComplete;internal int BoundaryCalls;internal int Pumps,Commits,Closed;
             internal Preflight(Fixture fixture,string block,ModuleConstructionScope scope)
             {
                 this.fixture=fixture;this.block=block;fixture.Order.Add("preflight:"+block);
                 scope.RegisterCleanup(()=>{Closed++;fixture.Order.Add("close-preflight:"+block);});
             }
-            public bool Ready=>Allowed;
+            public bool Ready=>Allowed&&(!BoundaryRequired||!BoundaryStarted||BoundaryComplete);
+            public bool PrepareExplicitResume(OperatorRequest request){BoundaryCalls++;if(!BoundaryRequired||BoundaryComplete)return true;BoundaryStarted=true;return false;}
             public void Pump(){Pumps++;if(ThrowPump)throw new SessionFault("TEST_PREFLIGHT_FAILED");}
             public ISlotContentFactory Commit(ModuleConstructionScope scope)
             {
@@ -91,6 +95,15 @@ namespace AcousticVocab.SessionIntegration.Tests
             public void Dispose(){Stage.Dispose();Modules.Dispose();}
         }
 
+        [Test]public void ExplicitReservedStageRetainsLeaseAndNeedsAnotherCommandAfterCompletion()
+        {
+            using var f=new Fixture();f.Stage.Pump();var candidate=f.Candidates.Single();candidate.Allowed=true;candidate.BoundaryRequired=true;
+            OperatorRequest Command()=>OperatorRequest.Parse(Encoding.UTF8.GetBytes(new JObject{["version"]=1,["session_nonce"]=new string('1',32),["request_id"]=Guid.NewGuid().ToString("N"),["sequence"]=1,["command"]="start",["run_sheet_manifest_sha256"]=new string('a',64),["schedule_sha256"]=new string('a',64)}.ToString(Newtonsoft.Json.Formatting.None)));
+            Assert.That(f.Stage.Ready,Is.True);Assert.That(f.Stage.PrepareExplicitResume(f.Engine,Command()),Is.False);Assert.That(f.Stage.Ready,Is.False);Assert.That(f.Factories,Is.Empty);
+            for(int i=0;i<4;i++)f.Stage.Pump();Assert.That(f.Candidates.Count,Is.EqualTo(1));Assert.That(candidate.Closed,Is.Zero);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.AwaitingOperator));
+            candidate.BoundaryComplete=true;f.Stage.Pump();Assert.That(f.Stage.Ready,Is.True);Assert.That(f.Factories,Is.Empty);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.AwaitingOperator));
+            Assert.That(f.Stage.PrepareExplicitResume(f.Engine,Command()),Is.True);f.Stage.CommitForResume(f.Engine);f.Engine.ConfirmResume();Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Factories.Count,Is.EqualTo(1));Assert.That(candidate.Commits,Is.EqualTo(1));
+        }
         [Test] public void AsyncPreparationNeverAdvancesOrAutomaticallyResumesTheEngine()
         {
             using var f=new Fixture();f.Stage.Pump();f.Stage.Pump();
