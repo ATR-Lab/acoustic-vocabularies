@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "workcell-quest-001",
+    "commit_sha": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 78.93855769999999,
+  "total_bytes": 752254642,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 54424416,
+      "sha256": "680eb249ec94092c0792ae06e099b853ba11298133e2baf61cd94d9cbbf880a0"
+    }
+  ]
+}
