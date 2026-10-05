@@ -178,7 +178,22 @@ namespace AcousticVocab.StateSources
                 var a=frame.Objects[i]; var b=neutral.Objects[i];
                 if (a.Id!=b.Id || Vector3.Distance(a.Position,b.Position)>.001 ||
                     Quaternion.Angle(a.Rotation,b.Rotation)>.5 || a.Visible!=b.Visible || a.Enabled!=b.Enabled ||
-                    !JToken.DeepEquals(a.VisualState,b.VisualState)) return false;
+                    !VisualMatches(a.VisualState,b.VisualState)) return false;
+            }
+            return true;
+        }
+        static bool VisualMatches(JObject a,JObject b)
+        {
+            if(a.Count!=b.Count) return false;
+            foreach(var field in a.Properties())
+            {
+                var other=b[field.Name]; if(other==null) return false;
+                bool Numeric(JToken value) => value.Type==JTokenType.Integer || value.Type==JTokenType.Float;
+                // JSON numeric spelling is not physical state. 1 and 1.0 are
+                // exactly equal; booleans, strings and field sets stay strict.
+                if(Numeric(field.Value) && Numeric(other))
+                { if((double)field.Value!=(double)other) return false; }
+                else if(!JToken.DeepEquals(field.Value,other)) return false;
             }
             return true;
         }
