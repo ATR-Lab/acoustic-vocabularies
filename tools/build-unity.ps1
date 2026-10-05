@@ -55,7 +55,7 @@ if ($Target -in @('Test','TestPlayMode')) {
     if ($Scene -eq 'FrameProbe' -and $Target -eq 'Android') { throw 'Engineering probe is a Windows-only diagnostic' }
     if ($Scene -eq 'FrameProbe' -and $Target -eq 'Windows') { $method = 'BuildProbeWindows' }
     if ($Scene -eq 'FrameProbe' -and $Target -eq 'Configure') { $method = 'ConfigureProbe' }
-    $builder = switch ($Scene) { 'Assessment' { 'AcousticVocab.Assessment.Editor.AssessmentBuild.' } 'Teaching' { 'AcousticVocab.Teaching.Editor.TeachingBuild.' } 'Calibration' { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
+    $builder = switch ($Scene) { 'FrameBudget' { 'AcousticVocab.FrameBudget.Editor.FrameBudgetBuild.' } 'FrameProbe' { 'AcousticVocab.FrameBudget.Editor.FrameBudgetBuild.' } 'Assessment' { 'AcousticVocab.Assessment.Editor.AssessmentBuild.' } 'Teaching' { 'AcousticVocab.Teaching.Editor.TeachingBuild.' } 'Calibration' { 'AcousticVocab.StudyAudio.Editor.AudioBuild.' } 'ResponsePanel' { 'AcousticVocab.ResponsePanel.Editor.ResponsePanelBuild.' } 'Workcell' { 'AcousticVocab.Workcell.Editor.WorkcellBuild.' } 'StateSources' { 'AcousticVocab.StateIntegration.Editor.StateSourceBuild.' } default { 'AcousticVocab.Foundation.Editor.FoundationBuild.' } }
     $unityArguments += @('-quit','-executeMethod',($builder+$method))
 }
 $process = Start-Process -FilePath $Unity -ArgumentList $unityArguments -Environment $environment -WindowStyle Hidden -PassThru
