@@ -48,6 +48,8 @@ class ResetManager:
         self.tolerances = tolerances or Tolerances()
         self._exposure_ready = False
         self._owner_thread = threading.get_ident()
+        self._last_verification_ns = None
+        self._last_verification_ok = False
 
     @property
     def exposure_ready(self):
@@ -56,6 +58,14 @@ class ResetManager:
     def _check_thread(self):
         if threading.get_ident() != self._owner_thread:
             raise RuntimeError("reset and verification must run on the owning simulation thread")
+
+    def verification_status(self):
+        """Read-only cached verification age; this method does not access USD."""
+        self._check_thread()
+        stamp = self._last_verification_ns
+        return {"verified": self._last_verification_ok,
+                "host_mono_ms": None if stamp is None else stamp/1e6,
+                "age_ms": None if stamp is None else (time.monotonic_ns()-stamp)/1e6}
 
     @property
     def neutral_state(self):
@@ -113,6 +123,8 @@ class ResetManager:
         except (ValueError, TypeError, KeyError, OverflowError) as exc:
             failures.append({"item": "state", "reason": "invalid_readback", "detail": str(exc)})
         result = {"reset_ok": not failures, "failures": failures, "worst_deviation": worst}
+        self._last_verification_ns = time.monotonic_ns()
+        self._last_verification_ok = not failures
         if failures:
             self._exposure_ready = False
         return result
@@ -123,6 +135,8 @@ class ResetManager:
             return self.verify_state(self.adapter.read_state())
         except Exception as exc:
             self._exposure_ready = False
+            self._last_verification_ns = time.monotonic_ns()
+            self._last_verification_ok = False
             return {"reset_ok": False, "failures": [{"item": "adapter", "reason": "read_failed", "detail": type(exc).__name__}], "worst_deviation": {}}
 
     def reset(self):
