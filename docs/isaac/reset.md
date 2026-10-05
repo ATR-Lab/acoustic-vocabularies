@@ -23,6 +23,12 @@ rigid-body frames including the head and both palms. Card faces, arrows, lid
 fractions, tags and location anchors are restored; washer counts follow the
 complete washer inventory and exact location fields.
 
+Appearance coverage is the registered workcell material colors/roughness and
+fixed workcell dome-light colors/intensity. It does not read or restore the
+robot asset's MDL shader inputs or per-mesh visibility. The private command API
+does not expose those robot appearance properties, but arbitrary external stage
+edits to them are outside this accessor's verification guard.
+
 The #52 registry independently validates the exact object IDs and per-object
 state keys. Snapshot comparison rejects missing or additional objects, changed
 joint ordering, environmental property changes and missing measured frames.
