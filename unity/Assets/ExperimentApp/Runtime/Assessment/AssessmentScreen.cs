@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using AcousticVocab.Foundation;
 using AcousticVocab.ResponsePanel;
+using AcousticVocab.Teaching;
 using UnityEngine;
 using UnityEngine.XR;
 using UnityEngine.XR.Hands;
@@ -10,12 +11,13 @@ namespace AcousticVocab.Assessment
 {
     // World-space administrative-free presentation. No content/schedule/answer
     // identifier is accepted by the acknowledgment surface.
-    public sealed class AssessmentScreen : MonoBehaviour,IAssessmentView
+    public sealed class AssessmentScreen : MonoBehaviour,IAssessmentView,IPostStudyDictionaryView
     {
         public FoundationBootstrap foundation;
         public Transform trackingSpace;
         public Font font;
         public Shader unlitShader;
+        public Shader dictionaryShader;
         public ResponsePanelController inputSource;
         public event Action<string> Faulted;
         public string VisibleText => root!=null&&root.gameObject.activeInHierarchy?text.text:"";
@@ -24,6 +26,7 @@ namespace AcousticVocab.Assessment
         Transform root;
         TextMesh text;
         AssessmentAcknowledgmentView acknowledgment;
+        GameObject dictionaryImage;Texture2D dictionaryTexture;Material dictionaryMaterial;
         readonly List<(BoxCollider collider,int value)> buttons=new List<(BoxCollider,int)>();
         readonly List<Material> materials=new List<Material>();
         readonly List<XRHandSubsystem> hands=new List<XRHandSubsystem>();
@@ -55,13 +58,13 @@ namespace AcousticVocab.Assessment
             foreach(var material in materials)if(material!=null)Destroy(material);materials.Clear();
             buttons.Clear();armed=false;down=false;haveTip=false;
         }
-        void Show(string value)
+        void Show(string value,float height=.05f)
         {
             if(root==null||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");
-            text.text=value;Fit(text,.75f,.05f);root.gameObject.SetActive(value.Length>0||formsVisible);
+            ClearDictionary();text.transform.localPosition=Vector3.zero;text.text=value;Fit(text,.75f,height);root.gameObject.SetActive(value.Length>0||formsVisible);
         }
-        public void Neutral(){formsVisible=false;ClearButtons();if(root!=null&&!failed)acknowledgment.Neutral();}
-        public void Acknowledgment(){formsVisible=false;ClearButtons();if(root==null||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");acknowledgment.Acknowledgment();}
+        public void Neutral(){formsVisible=false;ClearButtons();ClearDictionary();if(root!=null&&!failed){text.transform.localPosition=Vector3.zero;acknowledgment.Neutral();}}
+        public void Acknowledgment(){formsVisible=false;ClearButtons();ClearDictionary();if(root==null||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");text.transform.localPosition=Vector3.zero;acknowledgment.Acknowledgment();}
         public void BeginForms()
         {
             if(!foundation.Ready||failed)throw new AssessmentFault("ASSESSMENT_VIEW_UNAVAILABLE");
@@ -71,7 +74,24 @@ namespace AcousticVocab.Assessment
         public void ShowInstruction(AssessmentScripts scripts,string block)
         {
             if(scripts==null||!foundation.Ready||failed)throw new AssessmentFault("ASSESSMENT_SCRIPT_UNAVAILABLE");
-            stages.RequireSafeBoundary();formsVisible=false;ClearButtons();Show(scripts.For(block));
+            stages.RequireSafeBoundary();formsVisible=false;ClearButtons();Show(scripts.For(block),.40f);
+        }
+        void IPostStudyDictionaryView.Show(TeachingDisplay display)
+        {
+            if(display==null||!stages.OptionalStarted||dictionaryShader==null||!foundation.Ready)throw new AssessmentFault("ASSESSMENT_OPTIONAL_VIEW_BLOCKED");
+            stages.RequireSafeBoundary();formsVisible=false;ClearButtons();Show(display.Definition+"\n"+display.ActionWords+display.TargetWords,.13f);text.transform.localPosition=new Vector3(0,.2f,0);
+            dictionaryTexture=new Texture2D(2,2,TextureFormat.RGBA32,false);
+            if(!dictionaryTexture.LoadImage(display.CopyImage(),true)||dictionaryTexture.width>2048||dictionaryTexture.height>2048){ClearDictionary();throw new AssessmentFault("ASSESSMENT_OPTIONAL_IMAGE_INVALID");}
+            dictionaryImage=GameObject.CreatePrimitive(PrimitiveType.Quad);dictionaryImage.name="Optional dictionary image";dictionaryImage.transform.SetParent(root,false);
+            dictionaryImage.transform.localPosition=new Vector3(0,-.05f,0);dictionaryImage.transform.localScale=new Vector3(.55f,.30f,1);
+            Destroy(dictionaryImage.GetComponent<Collider>());dictionaryMaterial=new Material(dictionaryShader){mainTexture=dictionaryTexture};dictionaryImage.GetComponent<MeshRenderer>().sharedMaterial=dictionaryMaterial;
+        }
+        void IPostStudyDictionaryView.Hide()=>Neutral();
+        void ClearDictionary()
+        {
+            if(dictionaryImage!=null){dictionaryImage.SetActive(false);Destroy(dictionaryImage);dictionaryImage=null;}
+            if(dictionaryMaterial!=null){Destroy(dictionaryMaterial);dictionaryMaterial=null;}
+            if(dictionaryTexture!=null){Destroy(dictionaryTexture);dictionaryTexture=null;}
         }
         void ShowRating()
         {
@@ -82,7 +102,7 @@ namespace AcousticVocab.Assessment
                 if(!stages.FormsComplete)stages.CompleteForms();
                 formsVisible=false;Show("Responses recorded");return;
             }
-            Show(item.Question+"\n"+item.LowLabel+" — "+item.HighLabel);
+            Show(item.Question+"\n"+item.LowLabel+" — "+item.HighLabel,.10f);
             for(int value=item.Minimum;value<=item.Maximum;value++)
             {
                 int i=value-item.Minimum;var button=GameObject.CreatePrimitive(PrimitiveType.Cube);button.name="Rating choice";
@@ -146,6 +166,6 @@ namespace AcousticVocab.Assessment
         { failed=true;formsVisible=false;if(root!=null)root.gameObject.SetActive(false);Faulted?.Invoke(reason); }
         void OnApplicationFocus(bool value){focused=value;if(!value&&formsVisible)Fail("ASSESSMENT_FOCUS_LOST");}
         void OnDisable(){if(root!=null)Fail("ASSESSMENT_VIEW_DISABLED");}
-        void OnDestroy(){foreach(var material in materials)if(material!=null)Destroy(material);}
+        void OnDestroy(){ClearDictionary();foreach(var material in materials)if(material!=null)Destroy(material);}
     }
 }

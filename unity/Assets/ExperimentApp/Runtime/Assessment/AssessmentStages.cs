@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StudyAudio;
+using AcousticVocab.Teaching;
 
 namespace AcousticVocab.Assessment
 {
@@ -85,6 +86,7 @@ namespace AcousticVocab.Assessment
         double lastTime=-1;
         bool failed;
         string pendingOptionalKind,pendingOptionalItem;
+        long optionalGeneration;
         public bool FormsStarted { get; private set; }
         public bool FormsComplete { get; private set; }
         public bool OptionalStarted { get; private set; }
@@ -140,7 +142,7 @@ namespace AcousticVocab.Assessment
                 case "optional_help":
                 case "optional_execution":
                     Need(OptionalStarted&&record.Stage=="post_w4_optional"&&record.ItemId!=null&&record.Value==null&&CanOptionalRecord(record.EventKind,record.ItemId,record.OutcomeCode),"ASSESSMENT_HISTORY_ORDER");
-                    if(record.OutcomeCode=="requested"){pendingOptionalKind=record.EventKind;pendingOptionalItem=record.ItemId;}else{pendingOptionalKind=null;pendingOptionalItem=null;}break;
+                    if(record.OutcomeCode=="requested"){optionalGeneration++;pendingOptionalKind=record.EventKind;pendingOptionalItem=record.ItemId;}else{pendingOptionalKind=null;pendingOptionalItem=null;}break;
             }
         }
         public void BeginForms()
@@ -158,9 +160,16 @@ namespace AcousticVocab.Assessment
         { Need(safeBoundary()&&ProtectedComplete&&FormsStarted&&!FormsComplete&&ratings.Count==RatingItems.Count,"ASSESSMENT_FORMS_BLOCKED");Write("forms_completed","forms"); }
         public void RequireValidity()
         { Need(FinalDelayed&&ProtectedComplete&&FormsComplete,"ASSESSMENT_VALIDITY_BLOCKED"); }
+        public void ValidateValidityBank(SpeechBank bank)
+        {
+            RequireValidity();
+            if(schedule.Blocks.SelectMany(b=>b.Items).Any(x=>x.Phase=="validity"&&x.TrialType=="speech"))
+                Need(bank!=null&&bank.Reviewed&&!bank.Demo&&!schedule.Demo&&bank.Study==schedule.Study&&bank.Set==schedule.SetName&&
+                    bank.SpeechListSha256==schedule.SpeechListSha256,"ASSESSMENT_SPEECH_SCOPE");
+        }
         public ISpeechSlotAuthorization SpeechPermit(SlotContext context,SpeechBank bank,Func<bool> currentCue)
         {
-            RequireValidity();Need(context.Item.TrialType=="speech"&&schedule.Blocks.SelectMany(b=>b.Items).Any(x=>x.TrialId==context.OpportunityId&&x.TrialType==context.Item.TrialType&&x.ContentId==context.Item.ContentId&&x.Phase=="validity")&&
+            ValidateValidityBank(bank);Need(context.Item.TrialType=="speech"&&schedule.Blocks.SelectMany(b=>b.Items).Any(x=>x.TrialId==context.OpportunityId&&x.TrialType==context.Item.TrialType&&x.ContentId==context.Item.ContentId&&x.Phase=="validity")&&
                 bank!=null&&bank.Reviewed&&!bank.Demo&&!schedule.Demo&&bank.Study==schedule.Study&&bank.Set==schedule.SetName&&
                 bank.SpeechListSha256==schedule.SpeechListSha256&&currentCue!=null,"ASSESSMENT_SPEECH_SCOPE");
             return new SpeechAuthority(this,context.Item.ContentId,bank.ManifestSha256,currentCue);
@@ -191,6 +200,23 @@ namespace AcousticVocab.Assessment
         {
             Need(safeBoundary()&&OptionalStarted&&OptionalRequestPending,"ASSESSMENT_OPTIONAL_BLOCKED");
             Write(pendingOptionalKind,"post_w4_optional",pendingOptionalItem,null,"cancelled");
+        }
+        public IPostStudyDictionaryAuthorization DictionaryPermit(string atomId)
+        {
+            Need(safeBoundary()&&OptionalStarted&&pendingOptionalKind=="optional_help"&&pendingOptionalItem==atomId&&
+                atomId!=null&&Regex.IsMatch(atomId,@"\A[KQ]-[ar][1-4]\z"),"ASSESSMENT_OPTIONAL_BLOCKED");
+            return new DictionaryAuthority(this,atomId);
+        }
+        sealed class DictionaryAuthority:IPostStudyDictionaryAuthorization
+        {
+            readonly AssessmentStages owner;readonly string atom;readonly long generation;bool used;
+            public DictionaryAuthority(AssessmentStages owner,string atom){this.owner=owner;this.atom=atom;generation=owner.optionalGeneration;}
+            public bool TryConsume(string package,string schedule,string id)
+            {
+                if(used||owner.failed||generation!=owner.optionalGeneration||!owner.safeBoundary()||!owner.OptionalStarted||owner.pendingOptionalKind!="optional_help"||owner.pendingOptionalItem!=atom||
+                    package!=owner.schedule.PackageSha256||schedule!=owner.schedule.Sha256||id!=atom)return false;
+                used=true;return true;
+            }
         }
     }
 }

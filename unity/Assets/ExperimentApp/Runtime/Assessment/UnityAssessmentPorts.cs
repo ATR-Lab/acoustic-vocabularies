@@ -33,19 +33,21 @@ namespace AcousticVocab.Assessment
         public bool FocusOk=>foundation.Ready;
     }
 
-    public sealed class UnityAssessmentPanel : IAssessmentPanel
+    public sealed class UnityAssessmentPanel : IAssessmentPanel,IDisposable
     {
         readonly ResponsePanelController panel;
         public UnityAssessmentPanel(ResponsePanelController panel)
         {
             this.panel=panel??throw new ArgumentNullException(nameof(panel));
-            panel.Responded+=value=>Responded?.Invoke(value.Code==ResponseCode.Commit?"commit":value.Code==ResponseCode.DontKnow?"dont_know":"timeout");
+            panel.Responded+=OnResponse;
         }
+        void OnResponse(PanelResponse value)=>Responded?.Invoke(value.Code==ResponseCode.Commit?"commit":value.Code==ResponseCode.DontKnow?"dont_know":"timeout");
         public bool Ready=>panel.ReadyForTrial;
         public event Action<string> Responded;
         public void Tick()=>panel.State?.Tick();
         public void Open(PanelRequest request)=>panel.Open(request);
         public void Hide()=>panel.CloseAtBoundary();
+        public void Dispose()=>panel.Responded-=OnResponse;
     }
 
     public readonly struct AudioSelection
@@ -73,10 +75,10 @@ namespace AcousticVocab.Assessment
         SlotContext context;
         AudioSelection choice;
         PcmWave prepared;
-        bool requested;
+        bool requested,disposed;
         public double? QualifiedOnsetMonoMs { get; private set; }
         public string FaultCode { get; private set; }
-        public bool Ready=>FaultCode==null&&player.TrialReady;
+        public bool Ready=>!disposed&&FaultCode==null&&player.TrialReady;
         public UnityAssessmentAudio(LoadedAudioPackage package,AudioPlayer player,SpeechBank speech,
             IAssessmentSelections selections,Action<AudioPlaybackEvent> durableAudioSink)
         {
@@ -92,7 +94,7 @@ namespace AcousticVocab.Assessment
         }
         public void Prepare(SlotContext value)
         {
-            if(player.Playing)throw new AssessmentFault("ASSESSMENT_AUDIO_BUSY");
+            if(disposed||player.Playing)throw new AssessmentFault("ASSESSMENT_AUDIO_BUSY");
             context=value;requested=false;FaultCode=null;QualifiedOnsetMonoMs=null;prepared=null;
             string type=value.Item.TrialType,id=value.Item.ContentId;
             if(type=="speech")
@@ -126,13 +128,17 @@ namespace AcousticVocab.Assessment
         }
         void OnAudio(AudioPlaybackEvent value)
         {
-            persist(value); // durable before granting the response anchor
             if(context.Item==null||value.AudioId!=context.AudioRequestIds[0])return;
+            persist(value); // durable before granting the response anchor
             if(value.Code=="AUDIO_ONSET_ESTIMATED"&&value.Timing.OnsetEstimateMonoSeconds.HasValue)
                 QualifiedOnsetMonoMs=value.Timing.OnsetEstimateMonoSeconds.Value*1000;
             else if(value.Code is not ("AUDIO_REQUESTED" or "AUDIO_PLAYBACK_COMPLETED"))FaultCode=value.Code;
         }
         public void Stop(string fault)=>player.Abort(fault);
-        public void Dispose()=>player.Event-=OnAudio;
+        public void Dispose()
+        {
+            if(disposed)return;disposed=true;
+            try{player.Abort("ASSESSMENT_AUDIO_DISPOSED");}finally{player.Event-=OnAudio;}
+        }
     }
 }

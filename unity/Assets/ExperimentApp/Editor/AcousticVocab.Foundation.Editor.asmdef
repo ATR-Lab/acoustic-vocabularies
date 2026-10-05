@@ -12,7 +12,9 @@
     "AcousticVocab.StudyAudio",
     "UnityEngine.UI",
     "AcousticVocab.ResponsePanel",
-    "AcousticVocab.StateIntegration"
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.Assessment"
   ],
   "includePlatforms": [
     "Editor"
