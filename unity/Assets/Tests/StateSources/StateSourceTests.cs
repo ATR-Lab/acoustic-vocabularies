@@ -111,6 +111,21 @@ namespace AcousticVocab.Tests
             Assert.That(source.Stale,Is.True);
         }
         [Test]
+        public void AppliedObservationArrivalRemainsLatestAcceptedSampleNotInterpolationOrReplay()
+        {
+            var source=new LiveIsaacSource(0,.1);
+            Assert.That(source.Latest,Is.Null);
+            Assert.That(source.Receive(Frame(0,0),0,0),Is.True);
+            Assert.That(source.Receive(Frame(1,.1),.1,.1),Is.True);
+            Assert.That(source.Render(.15).Sequence,Is.EqualTo(0));
+            Assert.That(source.LastReceivedMonoSeconds,Is.EqualTo(.1));
+            Assert.That(source.Receive(Frame(1,.1),.2,.2),Is.False);
+            Assert.That(source.LastReceivedMonoSeconds,Is.EqualTo(.1));
+            source.Render(.36);
+            Assert.That(source.Stale,Is.True);
+            Assert.That(source.LastReceivedMonoSeconds,Is.EqualTo(.1));
+        }
+        [Test]
         public void ResetNeedsClockEvidenceAndBothLatestAndRenderedNeutral()
         {
             var source=new LiveIsaacSource(0,0);
