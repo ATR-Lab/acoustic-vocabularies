@@ -128,5 +128,41 @@
     "Seven planned native fault injections and recovery",
     "Actual presented/displayed/recorded reconciliation and source-clock/acoustic qualification",
     "Screen recordings and complete mock apparatus manifest"
-  ]
+  ],
+  "independent_python": {
+    "full_suite": {
+      "passed": 641,
+      "skipped": 14,
+      "failed": 0,
+      "xml_sha256": "52504b0da8d306a862bc7227898bc2d2d31cc54476f260d9f660a0773c62689a"
+    },
+    "fresh_native_export_mutations": {
+      "passed": 16,
+      "skipped": 0,
+      "new_previously_skipped_cases": 4,
+      "xml_sha256": "376c250dd17c316f8dc0385da19c0a6c41ac97b380d46dc1385e413ee134cf31"
+    },
+    "unique_verified_passes": 645,
+    "remaining_platform_skips": 10,
+    "fixture_and_console_with_existing_dependencies": {
+      "passed": 19,
+      "skipped": 0,
+      "xml_sha256": "a189bec205bf778cf7d60fb14c91d09af1496374e10edb11a5225f250b325e5f"
+    },
+    "minimal_repository_environment": {
+      "passed": 14,
+      "skipped": 5,
+      "skip_reason": "NumPy-dependent producer fixture tests run in existing locked sound CI",
+      "xml_sha256": "20a2196d640e0ff7415f92d44945325580e5baabd1dafcf9ea261552f7533179"
+    }
+  },
+  "command_integrity": {
+    "permutations": 3,
+    "cases_per_permutation": 160,
+    "tuples_per_permutation": 32,
+    "total_cases": 480,
+    "scope": "controlled_clock_real_modules_no_acoustic_evidence",
+    "callback_observed": false,
+    "verification_sha256": "949f2428896dcffd4ecc6095e6d94ad5423bdd6fd56dcf7e25709c97b1d65304"
+  }
 }

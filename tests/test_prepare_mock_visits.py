@@ -11,6 +11,7 @@ from tools.prepare_mock_visits import ROOT, attestation, prepare, rating_items
 
 @pytest.fixture(scope="module")
 def demo_package(tmp_path_factory):
+    pytest.importorskip("numpy", reason="Actual mock package fixtures run in the locked sound CI on all three OS")
     spec = importlib.util.spec_from_file_location("mock_example", ROOT / "sound/tools/build_example_package.py")
     example = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(example)
