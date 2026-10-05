@@ -57,14 +57,29 @@ Pause before a scheduled onset interrupts the pending request but conservatively
 retains it as uncertain consumed unless a trustworthy no-onset receipt arrives.
 There is no automatic cue retry or automatic interruption recovery.
 
-The 52 current pure tests cover all seven real public DEMO visit contracts,
+The 54 current edit-mode tests cover all seven real public DEMO visit contracts,
 semantic fault injection, 36 × 14 s virtual timing, first response/deadlines,
 individual gate refusal, crash boundaries, one-use novel authorization,
 contradictory onset evidence, journal tampering and repeated torn-tail recovery.
 Separate integration also loaded real producer-sealed DEMO A/B audio packages
 through `PackageLoader` and the generated #32 hash chain for all seven visits.
-These are software checks, not acoustic or participant acceptance. Unity/native
-integration and a real elapsed-time mock-content block are pending.
+Unity 6000.6.0f1 passed all 54 cases. These are software checks, not acoustic or
+participant acceptance.
+
+A real elapsed-time desktop run with mock content, early responses and the
+durable disk journal completed 36 opportunities in 504.0179885 seconds measured
+from the first scheduled onset. Its maximum observed engine-Tick gap was
+823.0419 ms under desktop workload; the result establishes total block duration,
+not cue delivery latency or headset performance. No audio was played. Private
+raw evidence is retained and its hashes are in `session-engine-validation.json`.
+
+Three play-mode lifecycle tests inject focus loss, reopen the durable journal
+across engine recreation, and withhold the new post-item reset acknowledgement.
+They use mock content and a controlled clock. Native engineering builds retain
+the pure engine assembly for compilation; the Foundation scene does not yet
+bind participant content. Physical on-device mock blocks, process-kill/device
+recovery, qualified onset evidence, #62/#65 bindings and #68–70 modules remain
+pending. Engine recreation is not described as a process-kill test.
 
 See [the journal handoff](../interfaces/session-journal.md) for the #72 adapter
 boundary. Exact methodology CSV headers, export, encrypted archival and upload
