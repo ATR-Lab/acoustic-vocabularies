@@ -143,11 +143,11 @@ Field notes:
 
 Example: line 0 of the synthetic book `DEMO-P1` built by the growth demo
 (section 6). Its SHA-256, the chain head after `create_book`, is
-`a562b70f498c3a836fb9ff895e832f74bda1f5a71f863b07ed1bfa97c57b3b1d` (`create_head` in
+`450bb48d3862dbf3d022e1dab195e26670545fc0688ccf62f6af1f4e4202620e` (`create_head` in
 [`../testvectors/store/growth.json`](../testvectors/store/growth.json)).
 
 ```json
-{"book_id":"DEMO-P1","event":"create_book","kind":"synthetic","prev_sha256":"0000000000000000000000000000000000000000000000000000000000000000","profile":"P1","record_sha256":"75542df0272d4526aa3a34058f7e88e7f377dca2534bbde9eeab25dff7564d5b","record_version":1,"renderer_hash":"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d","renderer_version":"0.1.0","seq":0,"threshold":"0.1","timestamp":"2026-01-01T00:00:00.000Z","validator_hash":"85389bc00f7e91c6bccbf22fd39dace876052a2b3f964059a4096419d28081f7","validator_version":"0.1.0"}
+{"book_id":"DEMO-P1","event":"create_book","kind":"synthetic","prev_sha256":"0000000000000000000000000000000000000000000000000000000000000000","profile":"P1","record_sha256":"8bc9b0fca4b66aea59237359be56fb4119703a58f780f966ed9a198aa30460ce","record_version":1,"renderer_hash":"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d","renderer_version":"0.1.0","seq":0,"threshold":"0.1","timestamp":"2026-01-01T00:00:00.000Z","validator_hash":"45732801e0c1943f30e9c532bf218b61958f665f9f06830a47870487fb879b02","validator_version":"0.1.0"}
 ```
 
 ## 3. Operations
