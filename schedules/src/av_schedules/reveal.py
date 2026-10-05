@@ -21,8 +21,10 @@ Each log line is canonical JSON (sorted keys, no spaces) with ``line``, ``event`
 ``at``, ``staff``, ``list_sha256`` and ``prev_sha256`` (SHA-256 of the previous line's
 bytes; 64 zeros for the first), so edits and truncation are detected on load.
 
-This is a stub: it assumes one console process per log and a trusted file system. The
-file-format agreement with the console owner (#73) is pending.
+This low-level compatibility policy is not an admission authority: it assumes one
+process per log and a trusted file system. Operator entry must use
+``admission.DurableRevealLog`` and the pinned receipt handoff, which add verified
+orientation evidence, OS serialization, fsync and independently retained heads.
 """
 
 from __future__ import annotations
