@@ -98,6 +98,10 @@ namespace AcousticVocab.SessionEngine
         void Interrupt(string boundedCode);
     }
     public interface ISlotContentFactory { ISlotContent Create(SlotItem item); }
+    // One owner pumps input deadlines, transport and retired presentation tails
+    // before the engine evaluates a boundary. A factory multiplexer delegates
+    // to its active modules here instead of relying on MonoBehaviour order.
+    public interface ISessionContentPump { void Pump(); }
     public interface ISessionClock { double NowMs { get; } }
     public interface ISessionJournal
     {

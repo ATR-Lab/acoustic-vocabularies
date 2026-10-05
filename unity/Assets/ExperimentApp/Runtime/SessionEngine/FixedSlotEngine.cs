@@ -22,7 +22,7 @@ namespace AcousticVocab.SessionEngine
         double lastNow=-1,nextOnset,tailEnd;
         SessionState? stateAfterTail;
         int blockIndex,itemIndex,retryIndex;
-        bool pausedRequested,stopRequested,inRetry,consumed,opened,closed,transitioning;
+        bool pausedRequested,stopRequested,inRetry,consumed,opened,closed,transitioning,pumping,faulting;
         string fault,response;
         AudibleStatus audible;
         ISlotContent content;
@@ -117,7 +117,16 @@ namespace AcousticVocab.SessionEngine
         }
         public void Tick()
         {
-            if(Status!=SessionState.Running || transitioning) return;
+            if(Status!=SessionState.Running || transitioning || pumping || faulting) return;
+            if(factory is ISessionContentPump pump)
+            {
+                pumping=true;
+                try { pump.Pump(); }
+                catch(SessionFault error) { Fault(error.Code); }
+                catch(Exception) { Fault("SESSION_CONTENT_PUMP_FAILED"); }
+                finally { pumping=false; }
+                if(Status!=SessionState.Running) return;
+            }
             double now=Now();
             if(stateAfterTail.HasValue)
             {
@@ -222,7 +231,11 @@ namespace AcousticVocab.SessionEngine
         }
         public void Fault(string code)
         {
-            if(Status==SessionState.Faulted) return;fault=new SessionFault(code).Code;pausedRequested=true;
+            if(Status==SessionState.Faulted || faulting) return;
+            faulting=true;
+            try
+            {
+            fault=new SessionFault(code).Code;pausedRequested=true;
             if(content!=null) { try { content.Interrupt(fault); } catch { } }
             Write("item_fault",Now(),CurrentState);
             // A started opportunity is kept through its fixed end; no new cue
@@ -234,6 +247,8 @@ namespace AcousticVocab.SessionEngine
                 Transition(ItemState.Reset);
                 try { content.RequestReset(context); } catch { }
             }
+            }
+            finally { faulting=false; }
         }
         void FinishItem()
         {
