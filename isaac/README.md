@@ -12,6 +12,8 @@ The Phase 2 backend is built in stacked, unmerged issue branches:
 
 See [publisher contract](../docs/isaac/publisher.md) and
 [rate-test runbook](../docs/spikes/O5.2.3-runbook.md).
+The related [reset contract](../docs/isaac/reset.md) and
+[private command API](https://github.com/ATR-Lab/acoustic-vocabularies/pull/112) are supplied by #53 and #55.
 Fetched assets, generated USD, station configurations and raw evidence stay in
 ignored local storage. Generated scene assets must not be committed as ordinary
 Git blobs while repository LFS service is unavailable.
