@@ -64,13 +64,13 @@ namespace AcousticVocab.OperatorConsole.Tests
             internal readonly VisitSchedule Visit;
             internal readonly FixedSlotEngine Engine;
             internal readonly OperatorMailbox Mailbox;
-            internal bool Admitted = true, Healthy = true;
+            internal bool Admitted = true, Healthy = true;internal Action<FixedSlotEngine> BeforeResume;
             internal Fixture(int count = 2)
             {
                 var items=Enumerable.Range(0,count).Select(i=>Construct<SlotItem>("private-trial-"+i,"trained","private-content",null,null,"protected",false,14,1,1)).ToArray();
                 Visit=Construct<VisitSchedule>(Schedule,Package,"private-person","private-visit",true,new[]{Construct<ScheduleBlock>("private-block",items)},null,null,null);
                 Engine=new FixedSlotEngine(Visit,Clock,Session,Factory);
-                Mailbox=new OperatorMailbox(Directory,Nonce,Manifest,Engine,Journal,()=>new OperatorAdmission(Admitted,Admitted,Admitted),()=>new OperatorHealth(Healthy,Healthy,Healthy,Healthy,Healthy?5:300,14,14),()=>Clock.Time);
+                Mailbox=new OperatorMailbox(Directory,Nonce,Manifest,Engine,Journal,()=>new OperatorAdmission(Admitted,Admitted,Admitted),()=>new OperatorHealth(Healthy,Healthy,Healthy,Healthy,Healthy?5:300,14,14),()=>Clock.Time,prepareResume:e=>BeforeResume?.Invoke(e));
             }
             internal OperatorReceipt Send(long sequence,string command,string id=null,string nonce=Nonce,string hash=Manifest)=>Mailbox.Handle(OperatorRequest.Parse(Bytes(Packet(sequence,command,id,nonce,hash))));
             public void Dispose()=>Mailbox.Dispose();
@@ -79,6 +79,17 @@ namespace AcousticVocab.OperatorConsole.Tests
         {
             using var f=new Fixture();Assert.That(f.Send(1,"start").Accepted,Is.False);Assert.That(f.Factory.Created,Is.Empty);Assert.That(f.Send(2,"load").Accepted,Is.True);
             f.Factory.BeforeCreate=()=>Assert.That(f.Journal.Records.Last().Kind,Is.EqualTo("request"));Assert.That(f.Send(3,"start").Accepted,Is.True);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Factory.Created.Count,Is.EqualTo(1));Assert.That(f.Journal.Records.Last().Receipt.Accepted,Is.True);
+        }
+        [Test] public void ResumePreparationRunsAfterDurableRequestAndBeforeEngineAdvance()
+        {
+            using var f=new Fixture();f.Send(1,"load");int calls=0;
+            f.BeforeResume=e=>{calls++;Assert.That(f.Journal.Records.Last().Kind,Is.EqualTo("request"));Assert.That(e.Status,Is.EqualTo(SessionState.AwaitingOperator));Assert.That(f.Factory.Created,Is.Empty);};
+            Assert.That(f.Send(2,"start").Accepted,Is.True);Assert.That(calls,Is.EqualTo(1));
+        }
+        [Test] public void FailedResumePreparationBlocksCueAndLatchesAdapter()
+        {
+            using var f=new Fixture();f.Send(1,"load");f.BeforeResume=_=>throw new SessionFault("SESSION_MODULE_CREATION_FAILED");
+            Assert.That(f.Send(2,"start").Accepted,Is.False);Assert.That(f.Mailbox.Failed,Is.True);Assert.That(f.Factory.Created,Is.Empty);
         }
         [Test] public void DuplicateExactRequestNeverRepeatsEngineAction()
         {

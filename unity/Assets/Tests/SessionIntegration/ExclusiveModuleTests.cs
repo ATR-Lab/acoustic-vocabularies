@@ -34,13 +34,13 @@ namespace AcousticVocab.SessionIntegration.Tests
                 Engine=new FixedSlotEngine(Schedule,Clock,new Journal(),Mux);
             }
             internal void Start(){Mux.PrepareBlockAtBoundary(Engine);Engine.ConfirmResume();Engine.Tick();}
-            internal void ToTail(){Clock.Time=250;Engine.Tick();Clock.Time=7250;Engine.Tick();}
-            internal void ToNextBoundary(){ToTail();Clock.Time=10250;Engine.Tick();Assert.That(Engine.Status,Is.EqualTo(SessionState.Paused));}
+            internal void ToTail(){Clock.Time=Mux.RetainedTailEndMs-3000;Engine.Tick();}
+            internal void ToNextBoundary(){ToTail();Clock.Time=Mux.RetainedTailEndMs;Engine.Tick();Assert.That(Engine.Status,Is.EqualTo(SessionState.Paused));}
         }
         [Test] public void LazyFactoriesCreateNothingUntilExplicitBoundaryAndNeverOverlap()
         {
             var f=new Fixture();Assert.That(f.Made,Is.Empty);f.Start();f.ToTail();Assert.That(f.Made.Count,Is.EqualTo(1));int pumps=f.Made[0].Pumps;f.Clock.Time=8000;f.Engine.Tick();Assert.That(f.Made[0].Pumps,Is.GreaterThan(pumps));Assert.That(f.Made[0].Closes,Is.Zero);
-            f.Clock.Time=10250;f.Engine.Tick();f.Mux.PrepareBlockAtBoundary(f.Engine);Assert.That(f.Order,Is.EqualTo(new[]{"create:first","dispose:first","create:second"}));f.Engine.ConfirmResume();f.Mux.Dispose();Assert.That(f.Made[1].Closes,Is.EqualTo(1));
+            f.Clock.Time=f.Mux.RetainedTailEndMs;f.Engine.Tick();f.Mux.PrepareBlockAtBoundary(f.Engine);Assert.That(f.Order,Is.EqualTo(new[]{"create:first","dispose:first","create:second"}));f.Engine.ConfirmResume();f.Mux.Dispose();Assert.That(f.Made[1].Closes,Is.EqualTo(1));
         }
         [Test] public void SwitchingDuringRetainedTailLatchesAndDoesNotCreateSecondLease()
         {var f=new Fixture();f.Start();f.ToTail();Assert.Throws<SessionFault>(()=>f.Mux.PrepareBlockAtBoundary(f.Engine));Assert.That(f.Made.Count,Is.EqualTo(1));Assert.That(f.Mux.Failed,Is.True);f.Mux.Dispose();}
