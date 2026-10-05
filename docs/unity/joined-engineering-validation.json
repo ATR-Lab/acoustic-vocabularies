@@ -1,140 +1,246 @@
 {
-  "version": 1,
-  "scope": "DEMO_engineering_staged_bootstrap_not_complete_visit",
-  "runtime_source_commit": "61bb8e8c90fdd6957f8cda9329dc1fced21ce4e1",
-  "native_build_source_commit": "ce1d95008389f4d48c2343e014054ae442b84b2d",
+  "version": 2,
+  "scope": "DEMO_engineering_joined_entry_not_participant_or_complete_visit_qualification",
+  "runtime_source_commit": "b7bcd2c9b7f44846107f69288983a588fdb24554",
+  "native_build_source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
   "editor_version": "6000.6.0f1",
   "test_framework": "builtin_1.8.0",
   "nunit": "builtin_2.1.0",
   "tests": [
     {
-      "run": "joined-tests-003",
+      "run": "joined-grammar-final-edit-001",
       "kind": "EditMode",
-      "total": 598,
-      "passed": 592,
+      "total": 698,
+      "passed": 697,
       "failed": 0,
-      "skipped": 6,
-      "xml_sha256": "5013fe701e82ecd388938f2b77f74d14027625b3ea05a8b0b9032bc60813fc5f"
+      "errors": 0,
+      "skipped": 1,
+      "xml_sha256": "4385fbba621150425bfeb53c62ce6e34c804f687b0cd0b82e5de4912193bde55",
+      "source_commit": "b7bcd2c9b7f44846107f69288983a588fdb24554"
     },
     {
-      "run": "joined-focused-004",
-      "kind": "EditMode",
-      "total": 6,
-      "passed": 6,
-      "failed": 0,
-      "skipped": 0,
-      "xml_sha256": "00c7a9d6d0ccd8cf1ad14cbc47c036402c4c63529fa7eed5a369c82eb66dcc70"
-    },
-    {
-      "run": "joined-play-001",
+      "run": "joined-grammar-final-play-001",
       "kind": "PlayMode_headless",
-      "total": 17,
-      "passed": 17,
+      "total": 21,
+      "passed": 21,
       "failed": 0,
+      "errors": 0,
       "skipped": 0,
-      "xml_sha256": "fb5a7526a67138a0d283a001237440bd21020cd8b86868721a702ec4c8475424"
+      "xml_sha256": "fdaf84d26887f1b2d7709e5befeaeaedad3e0c23fedf2bb6a35104ab1435e65b",
+      "source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3"
     },
     {
-      "run": "joined-preparation-tests",
-      "kind": "Python_actual_sealed_DEMO_package",
-      "total": 39,
-      "passed": 38,
+      "run": "joined-grammar-tests-005",
+      "kind": "focused_grammar_mailbox_staging",
+      "total": 48,
+      "passed": 48,
       "failed": 0,
-      "skipped": 1,
-      "xml_sha256": "089db3c690794296d00c819785abeda189c6cd99270054785954a0909bf87a7a"
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "981f7a6be20154e2d99577c9aea1fc6fc9f661f7b0650a94fe71b27f3c4715a1",
+      "source_commit": null
     },
     {
-      "run": "joined-python-final",
-      "kind": "Python_repository_checks",
-      "total": 40,
-      "passed": 39,
+      "run": "joined-final-edit-002",
+      "kind": "pre_grammar_EditMode",
+      "total": 678,
+      "passed": 677,
       "failed": 0,
+      "errors": 0,
       "skipped": 1,
-      "xml_sha256": "2b8af07d571d593af9429a44d2931827a085584dd6f9716a10e0aa36350be0c2"
+      "xml_sha256": "6729fe5de3ffe8a6c2e2d03f54a664b616b17d70da3c954a0c2d7f98382e5b12",
+      "source_commit": "e2742fe345f27b453198e7e971222eb791926875"
+    },
+    {
+      "run": "joined-final-play-002",
+      "kind": "pre_grammar_PlayMode",
+      "total": 21,
+      "passed": 21,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "0b4e92fb1f2c9cc084bf50425a3112e8c08541821e259e61e41dc72e8ffa2557",
+      "source_commit": "072a9833dafb7f82d0ea7f82dc33b9cc1d8e91df"
+    },
+    {
+      "run": "root-final-python",
+      "kind": "Python_repository_independent",
+      "total": 548,
+      "passed": 534,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 13,
+      "xml_sha256": "8bc6b5294d0773d55ef074e21359b15ada2ec73e563764eef5b42a576d3850e5",
+      "source_commit": "b7bcd2c9b7f44846107f69288983a588fdb24554"
+    },
+    {
+      "run": "root-final-fixture-retest",
+      "kind": "Python_generated_fixture_retest",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "fef55cd07e0c3daa7fb7c566f4d8d0c9714e87622fe2a0bff30246b2005d3056",
+      "source_commit": "b7bcd2c9b7f44846107f69288983a588fdb24554"
+    },
+    {
+      "run": "root-grammar-integrity-001",
+      "kind": "Python_independent_actual_480_export_verifier",
+      "total": 59,
+      "passed": 59,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "ee7e9da7e8305159da1dbeb94a39da242171af3fef06e45cc6df67f34d0f5189",
+      "source_commit": "b7bcd2c9b7f44846107f69288983a588fdb24554"
     }
   ],
   "test_notes": [
-    "Broad EditMode baseline retained: five missing private MenuCatalog fixture cases and one unavailable real-directory-link case skipped; zero failures. Wrapper returned nonzero for unexpected skips.",
-    "Focused run supplies existing package and grammar calibration files for all five MenuCatalog cases and adds malformed completed forms-history recovery: six passed, no skips.",
-    "Windows did not permit the owned temporary symlink, so no actual link-creation test pass is claimed. Strict path/reparse validation remains implemented.",
-    "Headless PlayMode excludes GraphicsRequired cases; it proves software lifecycle, not real headset presentation.",
-    "Stager tests ran in the existing sound dependency environment: 38 passed, one Windows symlink-privilege skip. Minimal repository Python environment separately passed 39 checks and explicitly skipped the NumPy-dependent staging module.",
-    "Runtime tests ran on the working source subsequently committed as 61bb8e8; ce1d950 only merges final menu evidence documentation. Native builds used that clean commit."
+    "Final broad Unity: 697 passed, zero failures, one real-directory-symlink skip because Windows account lacks link-creation privilege. Wrapper returned nonzero for that explicit skip; no pass is fabricated.",
+    "PlayMode excludes GraphicsRequired. No physical headset/acoustic qualification follows from these tests.",
+    "Fresh actual producer package exports cover three permutations x160 controlled-clock command cases. Independent verification passed all480 mappings and59 Python checks; callback observations were not fabricated.",
+    "Repository Python initial run:534 pass/13 skip/1 missing-generated-triangle fixture setup error; documented CI fixture generator followed by focused1/1 pass resolves that setup error. These are separate retained runs, not one fabricated all-pass execution. Existing locked hosted property suites cover tests requiring unavailable local hypothesis.",
+    "Focused grammar repairs retained: canonical synthetic command formatting, nullable JSON value normalization, synthetic floating timestamp roundtrip, and export-after-writer-close test corrections. The nullable reducer correction is covered by the final broad suite.",
+    "The 7965eb8 merge after b7bcd2c adds only reviewed G2 documents; native builds and PlayMode use the same runtime source."
   ],
   "repository_checks": {
-    "schemas": 31,
-    "synthetic_examples": 5,
-    "reachable_history_guard": "pass",
-    "guard_log_sha256": "99305cd7323f7c6494c4d9d86e25d8961c163fb672582425c7c860fb6ddac5a7"
+    "public_history_lfs_guard": "pass",
+    "schemas": 41,
+    "synthetic_examples": 11,
+    "independent_integrity_cases": 480,
+    "local_python_unique_verified_passes": 535,
+    "local_python_explicit_skips": 13
   },
   "builds": {
-    "Windows": {
+    "Joined_Windows": {
       "result": "Succeeded",
       "errors": 0,
-      "source_commit": "ce1d95008389f4d48c2343e014054ae442b84b2d",
-      "build_id": "joined-native-001",
+      "source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+      "build_id": "joined-grammar-win-001",
       "dirty_source": false,
-      "unity_reported_total_bytes": 158551788,
-      "manifest_listed_file_bytes": 158551788,
+      "unity_reported_total_bytes": 158673239,
+      "manifest_listed_file_bytes": 158673239,
       "primary_bytes": 667136,
       "primary_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
-      "manifest_sha256": "ccd0d75d7c70566955870983e359bd35210299005240b5e49eb4bc1023069a8c",
       "manifest": "joined-engineering-builds/windows.json",
-      "raw_build_manifest_sha256": "85e2109b605b347b26c38c831e28cc2150a67e8d3bf455c82bf1a62dc0c5eaa1"
+      "manifest_sha256": "f207fc15707937a64a6bab42761ea73f9480ec7d2b3a9162b3e9625bdcc9894e",
+      "raw_build_manifest_sha256": "5e7f8b2257a9d6e46796b8546e39c7d69f0062836afeb59edd9cf3088a8e9d20"
     },
-    "Android": {
+    "Joined_Android": {
       "result": "Succeeded",
       "errors": 0,
-      "source_commit": "ce1d95008389f4d48c2343e014054ae442b84b2d",
-      "build_id": "joined-native-001",
+      "source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+      "build_id": "joined-grammar-quest-001",
       "dirty_source": false,
-      "unity_reported_total_bytes": 793696915,
-      "manifest_listed_file_bytes": 55869206,
-      "primary_bytes": 55869206,
-      "primary_sha256": "1aa74754471bebe9a2edd47b257e67870e6dd69a6f47e4cd167b01b4198ea184",
-      "manifest_sha256": "331dcef66a8977033c592d8c3e186efd84bfdab4a99021aebec20af2ac2203de",
+      "unity_reported_total_bytes": 797139974,
+      "manifest_listed_file_bytes": 55987174,
+      "primary_bytes": 55987174,
+      "primary_sha256": "93e92732c6c2d08aa596bffade82ec738f5e6e28c7f3b96b60dfdbaeea4b9d32",
       "manifest": "joined-engineering-builds/android.json",
-      "raw_build_manifest_sha256": "5906dd7d653ddf9d8aa11272b828c005608ca69fab5eef014aea4c25c5f066f6"
+      "manifest_sha256": "77cf337df61b67dc91aef796e73a0153a6a98e518f0d1632df05c603c5b22c55",
+      "raw_build_manifest_sha256": "4b702b9901d0f529c0bd7b7d67236992e185c58164955c0d9773929960acc53c"
+    },
+    "Preallocation_Windows": {
+      "result": "Succeeded",
+      "errors": 0,
+      "source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+      "build_id": "preallocation-win-001",
+      "dirty_source": false,
+      "unity_reported_total_bytes": 158673607,
+      "manifest_listed_file_bytes": 158673607,
+      "primary_bytes": 667136,
+      "primary_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
+      "manifest": "joined-engineering-builds/preallocation-windows.json",
+      "manifest_sha256": "02fc27d141830350e9c161e022d8b36686cca4894c659a8756d96b63d7cdb847",
+      "raw_build_manifest_sha256": "188ee74e335c775ba7d2662a8676f6948519bea4214d803f9df2ffe1da9e149f"
+    },
+    "Preallocation_Android": {
+      "result": "Succeeded",
+      "errors": 0,
+      "source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+      "build_id": "preallocation-quest-001",
+      "dirty_source": false,
+      "unity_reported_total_bytes": 797140580,
+      "manifest_listed_file_bytes": 55987258,
+      "primary_bytes": 55987258,
+      "primary_sha256": "967c016f95cfb2eda394803b90836070f8e29a6cbb308cd802c5379fe8880c31",
+      "manifest": "joined-engineering-builds/preallocation-android.json",
+      "manifest_sha256": "58693e336a499871812ecc24d0556a5caa2b5809e653f54645b50926ef5fb930",
+      "raw_build_manifest_sha256": "caf7f7f1f84110a08033c05ea7bd90536668189f93b27a25c5bb501b6e74bd38"
     }
   },
-  "android_archive_crc": "pass",
-  "android_architectures": [
-    "arm64-v8a"
-  ],
-  "android_backend": "IL2CPP",
-  "android_internet_permission": true,
+  "android_verification": {
+    "joined-grammar-quest-001": {
+      "archive_crc": "pass",
+      "architectures": [
+        "arm64-v8a"
+      ],
+      "backend": "IL2CPP",
+      "internet_permission": true,
+      "bytes": 55987174,
+      "sha256": "93e92732c6c2d08aa596bffade82ec738f5e6e28c7f3b96b60dfdbaeea4b9d32"
+    },
+    "preallocation-quest-001": {
+      "archive_crc": "pass",
+      "architectures": [
+        "arm64-v8a"
+      ],
+      "backend": "IL2CPP",
+      "internet_permission": true,
+      "bytes": 55987258,
+      "sha256": "967c016f95cfb2eda394803b90836070f8e29a6cbb308cd802c5379fe8880c31"
+    },
+    "device_check": {
+      "enumeration_succeeded": true,
+      "count": 0,
+      "states": [],
+      "serials_retained": false,
+      "device_runtime_tested": false
+    }
+  },
   "native_startup": {
-    "build_id": "joined-native-001",
-    "configuration_sha256": "bbc636648261717a8e6b14327d3c5f4d945541aee0b80df3c49b14c769be46aa",
+    "build_id": "joined-grammar-win-001",
+    "source_commit": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+    "configuration_sha256": "8a4d18e8381db08bc8038786880e5f61b46edc1b993b3f13e39bd3eb7dab423a",
     "configuration_inputs": "actual_sealed_DEMO_package_and_recorded_G1_snapshot_with_missing_optional_authorities",
     "observed_status": "JOIN_AUDIO_CALIBRATION_MISSING",
-    "participant_admission": false,
-    "joined_output_files_created": 0,
     "joined_trial_admission": "refused_before_owner_creation",
-    "observation_seconds": 20,
-    "close_deadline_seconds": 10,
-    "forced_owned_process_stop": true,
-    "native_exit": -1,
-    "clean_shutdown_verified": false,
+    "participant_admission": false,
+    "diagnostic_quit_requested": true,
+    "native_exit": 0,
+    "forced_owned_process_stop": false,
+    "clean_shutdown_verified": true,
     "four_private_configuration_files_restored": true,
-    "player_log_sha256": "5c59b9a6a083b6e6860fb9d02aad899d7d0c4a5d827f086bfd2e79d2b19c4f08",
-    "restoration_record_sha256": "65c58b898ba50605a0a03ba08d08461a453a0940ffe5cce7c98c76fa6f0912c9",
+    "player_log_sha256": "dd7a7b21a83362a0671f88bde8ce212a1b70a972942bdbd6c3c1fe00cbcaf9c9",
+    "restoration_record_sha256": "d1749dabbb9f00e974060ef54ec163836e14d6b89f5b26c19c266e0d6975a7f0",
     "physical_headset_qualification": false
   },
-  "runtime_settings_changed": false,
-  "selected_runtime": "Meta XR Simulator v205.0 retained by user instruction",
-  "unfinished_software": [
-    "Joined yoked admission needs independently bound active ledger/schedule and explicit single-use current-process future anchor.",
-    "Completed-engine forms-only native view reconstruction remains unavailable; ordered durable completed forms can be recognized, otherwise JOIN_FORMS_RECOVERY_REQUIRED.",
-    "Silent orientation/grammar entry, participant allocation and complete production visit owner remain separate admission work."
+  "historical_startup_limitation": {
+    "build_id": "joined-native-001",
+    "source_commit": "ce1d95008389f4d48c2343e014054ae442b84b2d",
+    "native_exit": -1,
+    "forced_owned_process_stop": true,
+    "preserved_player_log_sha256": "5c59b9a6a083b6e6860fb9d02aad899d7d0c4a5d827f086bfd2e79d2b19c4f08",
+    "superseded_only_by_actual_new_exit_zero_diagnostics": true
+  },
+  "implemented_entry_boundaries": [
+    "Silent preallocation scene keeps package loader disabled until independently pinned orientation/eligibility/reveal/mapping handoff.",
+    "Forms-only completed-engine recovery uses strict durable stage history and real view without cue/control restart.",
+    "Yoked startup binds independent active schedule/ledger and explicit current-process one-use future anchor.",
+    "Reviewed reserved grammar is explicitly operator-started; another command resumes teaching after durable software completion. Partial histories refuse replay.",
+    "Native Soak observation binds actual visible live applications and renderer callbacks; it never grants trial admission."
   ],
   "qualification_pending": [
-    "Reviewed materials and rating/assessment/teaching scripts.",
-    "Qualified motion recordings, final sound bank handoff, measured acoustic route and comfortable-gain history.",
+    "Reviewed orientation demonstrations and wording; real eligible orientation/allocation handoff has not been exercised.",
+    "Reviewed teaching/menu/assessment/rating/grammar materials, final sound-bank handoff, measured acoustic route and comfortable-gain history.",
+    "No full joined native visit with those actual authorities was run. ParticipantAdmission remains false.",
     "DEMO speech validity remains refused; optional W4 motion remains qualification-blocked.",
-    "Physical Quest presentation budget, full live workload, three eligible volunteers and apparatus freeze.",
+    "Physical Quest presentation/input/legibility budget, paired deployment/full workload, volunteers and apparatus freeze.",
     "Approved encrypted storage and exact external export headers."
   ],
+  "runtime_settings_changed": false,
+  "selected_runtime": "Meta XR Simulator v205.0 retained by user instruction",
   "original_frame_evidence": "../frame-budget/validation.json",
-  "manifest_format_note": "Public manifest JSON preserves all fields and uses LF line endings; raw_build_manifest_sha256 identifies the original local Unity manifest bytes."
+  "manifest_format_note": "Public manifest JSON preserves fields with LF endings; raw_build_manifest_sha256 identifies original local Unity manifest bytes."
 }
