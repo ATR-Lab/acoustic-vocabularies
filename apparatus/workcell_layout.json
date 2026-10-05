@@ -1,0 +1,2695 @@
+{
+  "anchor_ids": [
+    "container_E/home",
+    "container_E/tag_free",
+    "container_F/home",
+    "container_F/tag_free",
+    "container_G/home",
+    "container_G/tag_free",
+    "container_H/home",
+    "container_H/tag_free",
+    "quarantine_E",
+    "quarantine_F",
+    "quarantine_G",
+    "quarantine_H",
+    "return_cup",
+    "robot/left_hand",
+    "robot/right_hand",
+    "supply_cup",
+    "tray_A",
+    "tray_B",
+    "tray_C",
+    "tray_D"
+  ],
+  "anchors": {
+    "container_E/home": {
+      "position_m": [
+        0.115,
+        0.075,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_E/tag_free": {
+      "position_m": [
+        0.18,
+        0.075,
+        0.84
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_F/home": {
+      "position_m": [
+        0.115,
+        0.285,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_F/tag_free": {
+      "position_m": [
+        0.18,
+        0.285,
+        0.84
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_G/home": {
+      "position_m": [
+        0.335,
+        0.075,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_G/tag_free": {
+      "position_m": [
+        0.4,
+        0.075,
+        0.84
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_H/home": {
+      "position_m": [
+        0.335,
+        0.285,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "container_H/tag_free": {
+      "position_m": [
+        0.4,
+        0.285,
+        0.84
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "quarantine_E": {
+      "position_m": [
+        0.115,
+        0.18,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "quarantine_F": {
+      "position_m": [
+        0.115,
+        0.38999999999999996,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "quarantine_G": {
+      "position_m": [
+        0.335,
+        0.18,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "quarantine_H": {
+      "position_m": [
+        0.335,
+        0.38999999999999996,
+        0.875
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "return_cup": {
+      "position_m": [
+        0.045,
+        0.405,
+        0.845
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "supply_cup": {
+      "position_m": [
+        0.045,
+        -0.405,
+        0.845
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "tray_A": {
+      "position_m": [
+        0.16,
+        -0.105,
+        0.87
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "tray_B": {
+      "position_m": [
+        0.16,
+        -0.295,
+        0.87
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "tray_C": {
+      "position_m": [
+        0.38,
+        -0.105,
+        0.87
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "tray_D": {
+      "position_m": [
+        0.38,
+        -0.295,
+        0.87
+      ],
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  },
+  "angle_unit": "rad",
+  "articulation_anchors": {
+    "robot/left_hand": "left_hand_palm_link",
+    "robot/right_hand": "right_hand_palm_link"
+  },
+  "authority": "GitHub issue52 only; Common procedures sections2/3 require human reconciliation",
+  "coordinate_frame": "isaac_world_rh_z_up",
+  "left_right_reference": "observer looking toward robot; left is negative world Y",
+  "length_unit": "m",
+  "lights": [
+    {
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "id": "fixed_dome",
+      "intensity": 2000.0,
+      "kind": "dome"
+    }
+  ],
+  "materials": {
+    "arrow": [
+      0.12,
+      0.14,
+      0.16
+    ],
+    "card": [
+      0.9,
+      0.9,
+      0.88
+    ],
+    "ink": [
+      0.015,
+      0.015,
+      0.015
+    ],
+    "label": [
+      0.96,
+      0.96,
+      0.94
+    ],
+    "neutral": [
+      0.72,
+      0.74,
+      0.76
+    ],
+    "quarantine": [
+      0.68,
+      0.68,
+      0.66
+    ],
+    "surface": [
+      0.55,
+      0.57,
+      0.6
+    ],
+    "tag": [
+      0.52,
+      0.54,
+      0.56
+    ],
+    "washer": [
+      0.28,
+      0.3,
+      0.32
+    ]
+  },
+  "mutable_lights": [],
+  "mutable_materials": [],
+  "neutral_supply_washers": 12,
+  "neutral_washers_per_tray": 3,
+  "objects": [
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.075
+      ],
+      "enabled": true,
+      "id": "container_E",
+      "kind": "container",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.115,
+        0.075,
+        0.875
+      ],
+      "prim_path": "/World/Workcell/Objects/container_E",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_E/home"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.002,
+        0.078,
+        0.024
+      ],
+      "enabled": true,
+      "id": "container_E/code",
+      "kind": "code",
+      "label": "E001",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "label",
+      "position_m": [
+        0.164,
+        0.075,
+        0.884
+      ],
+      "prim_path": "/World/Workcell/Objects/container_E__code",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.006
+      ],
+      "enabled": true,
+      "hinge_axis": "Y",
+      "id": "container_E/lid",
+      "kind": "lid",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "open_angle_rad": -1.9198621771937625,
+      "position_m": [
+        0.0675,
+        0.075,
+        0.9125
+      ],
+      "prim_path": "/World/Workcell/Objects/container_E__lid",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "lid_open_fraction": 1.0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.027,
+        0.021,
+        0.006
+      ],
+      "enabled": true,
+      "id": "container_E/tag",
+      "kind": "tag",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "tag",
+      "position_m": [
+        0.18,
+        0.075,
+        0.84
+      ],
+      "prim_path": "/World/Workcell/Objects/container_E__tag",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_E/tag_free",
+        "tag_attached": false
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.075
+      ],
+      "enabled": true,
+      "id": "container_F",
+      "kind": "container",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.115,
+        0.285,
+        0.875
+      ],
+      "prim_path": "/World/Workcell/Objects/container_F",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_F/home"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.002,
+        0.078,
+        0.024
+      ],
+      "enabled": true,
+      "id": "container_F/code",
+      "kind": "code",
+      "label": "F001",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "label",
+      "position_m": [
+        0.164,
+        0.285,
+        0.884
+      ],
+      "prim_path": "/World/Workcell/Objects/container_F__code",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.006
+      ],
+      "enabled": true,
+      "hinge_axis": "Y",
+      "id": "container_F/lid",
+      "kind": "lid",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "open_angle_rad": -1.9198621771937625,
+      "position_m": [
+        0.0675,
+        0.285,
+        0.9125
+      ],
+      "prim_path": "/World/Workcell/Objects/container_F__lid",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "lid_open_fraction": 1.0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.027,
+        0.021,
+        0.006
+      ],
+      "enabled": true,
+      "id": "container_F/tag",
+      "kind": "tag",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "tag",
+      "position_m": [
+        0.18,
+        0.285,
+        0.84
+      ],
+      "prim_path": "/World/Workcell/Objects/container_F__tag",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_F/tag_free",
+        "tag_attached": false
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.075
+      ],
+      "enabled": true,
+      "id": "container_G",
+      "kind": "container",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.335,
+        0.075,
+        0.875
+      ],
+      "prim_path": "/World/Workcell/Objects/container_G",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_G/home"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.002,
+        0.078,
+        0.024
+      ],
+      "enabled": true,
+      "id": "container_G/code",
+      "kind": "code",
+      "label": "G001",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "label",
+      "position_m": [
+        0.384,
+        0.075,
+        0.884
+      ],
+      "prim_path": "/World/Workcell/Objects/container_G__code",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.006
+      ],
+      "enabled": true,
+      "hinge_axis": "Y",
+      "id": "container_G/lid",
+      "kind": "lid",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "open_angle_rad": -1.9198621771937625,
+      "position_m": [
+        0.28750000000000003,
+        0.075,
+        0.9125
+      ],
+      "prim_path": "/World/Workcell/Objects/container_G__lid",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "lid_open_fraction": 1.0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.027,
+        0.021,
+        0.006
+      ],
+      "enabled": true,
+      "id": "container_G/tag",
+      "kind": "tag",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "tag",
+      "position_m": [
+        0.4,
+        0.075,
+        0.84
+      ],
+      "prim_path": "/World/Workcell/Objects/container_G__tag",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_G/tag_free",
+        "tag_attached": false
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.075
+      ],
+      "enabled": true,
+      "id": "container_H",
+      "kind": "container",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.335,
+        0.285,
+        0.875
+      ],
+      "prim_path": "/World/Workcell/Objects/container_H",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_H/home"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.002,
+        0.078,
+        0.024
+      ],
+      "enabled": true,
+      "id": "container_H/code",
+      "kind": "code",
+      "label": "H001",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "label",
+      "position_m": [
+        0.384,
+        0.285,
+        0.884
+      ],
+      "prim_path": "/World/Workcell/Objects/container_H__code",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.09,
+        0.006
+      ],
+      "enabled": true,
+      "hinge_axis": "Y",
+      "id": "container_H/lid",
+      "kind": "lid",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "open_angle_rad": -1.9198621771937625,
+      "position_m": [
+        0.28750000000000003,
+        0.285,
+        0.9125
+      ],
+      "prim_path": "/World/Workcell/Objects/container_H__lid",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "lid_open_fraction": 1.0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.027,
+        0.021,
+        0.006
+      ],
+      "enabled": true,
+      "id": "container_H/tag",
+      "kind": "tag",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "tag",
+      "position_m": [
+        0.4,
+        0.285,
+        0.84
+      ],
+      "prim_path": "/World/Workcell/Objects/container_H__tag",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "container_H/tag_free",
+        "tag_attached": false
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.095,
+        0.004
+      ],
+      "enabled": true,
+      "id": "quarantine_E",
+      "kind": "quarantine",
+      "label": "E",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "quarantine",
+      "position_m": [
+        0.115,
+        0.18,
+        0.837
+      ],
+      "prim_path": "/World/Workcell/Objects/quarantine_E",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.095,
+        0.004
+      ],
+      "enabled": true,
+      "id": "quarantine_F",
+      "kind": "quarantine",
+      "label": "F",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "quarantine",
+      "position_m": [
+        0.115,
+        0.38999999999999996,
+        0.837
+      ],
+      "prim_path": "/World/Workcell/Objects/quarantine_F",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.095,
+        0.004
+      ],
+      "enabled": true,
+      "id": "quarantine_G",
+      "kind": "quarantine",
+      "label": "G",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "quarantine",
+      "position_m": [
+        0.335,
+        0.18,
+        0.837
+      ],
+      "prim_path": "/World/Workcell/Objects/quarantine_G",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.095,
+        0.095,
+        0.004
+      ],
+      "enabled": true,
+      "id": "quarantine_H",
+      "kind": "quarantine",
+      "label": "H",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "quarantine",
+      "position_m": [
+        0.335,
+        0.38999999999999996,
+        0.837
+      ],
+      "prim_path": "/World/Workcell/Objects/quarantine_H",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "capacity": 24,
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.066,
+        0.066,
+        0.042
+      ],
+      "enabled": true,
+      "id": "return_cup",
+      "kind": "cup",
+      "label": "RETURN",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.045,
+        0.405,
+        0.856
+      ],
+      "prim_path": "/World/Workcell/Objects/return_cup",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_0",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.031,
+        -0.419,
+        0.842
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_0",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_1",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.059,
+        -0.419,
+        0.842
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_1",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_10",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.031,
+        -0.391,
+        0.854
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_10",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_11",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.059,
+        -0.391,
+        0.854
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_11",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_2",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.031,
+        -0.391,
+        0.842
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_2",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_3",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.059,
+        -0.391,
+        0.842
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_3",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_4",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.031,
+        -0.419,
+        0.848
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_4",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_5",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.059,
+        -0.419,
+        0.848
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_5",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_6",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.031,
+        -0.391,
+        0.848
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_6",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_7",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.059,
+        -0.391,
+        0.848
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_7",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_8",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.031,
+        -0.419,
+        0.854
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_8",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "supply/washer_9",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.059,
+        -0.419,
+        0.854
+      ],
+      "prim_path": "/World/Workcell/Objects/supply__washer_9",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "supply_cup"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "capacity": 24,
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.066,
+        0.066,
+        0.042
+      ],
+      "enabled": true,
+      "id": "supply_cup",
+      "kind": "cup",
+      "label": "SUPPLY",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.045,
+        -0.405,
+        0.856
+      ],
+      "prim_path": "/World/Workcell/Objects/supply_cup",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.47,
+        0.43,
+        0.04
+      ],
+      "enabled": true,
+      "id": "surface_left",
+      "kind": "surface",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "surface",
+      "position_m": [
+        0.235,
+        -0.225,
+        0.815
+      ],
+      "prim_path": "/World/Workcell/Objects/surface_left",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.47,
+        0.43,
+        0.04
+      ],
+      "enabled": true,
+      "id": "surface_right",
+      "kind": "surface",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "surface",
+      "position_m": [
+        0.235,
+        0.225,
+        0.815
+      ],
+      "prim_path": "/World/Workcell/Objects/surface_right",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "capacity": 6,
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.18,
+        0.16,
+        0.032
+      ],
+      "enabled": true,
+      "id": "tray_A",
+      "kind": "tray",
+      "label": "A",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.115,
+        -0.105,
+        0.851
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_A",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.052,
+        0.052,
+        0.005
+      ],
+      "enabled": true,
+      "id": "tray_A/arrow",
+      "kind": "arrow",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "arrow",
+      "position_m": [
+        0.067,
+        -0.06999999999999999,
+        0.872
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_A__arrow",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "arrow_angle_rad": 1.5707963267948966
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.055,
+        0.048,
+        0.004
+      ],
+      "enabled": true,
+      "id": "tray_A/card",
+      "kind": "card",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "card",
+      "position_m": [
+        0.067,
+        -0.14,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_A__card",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "card_face": 0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_A/washer_0",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.16,
+        -0.149,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_A__washer_0",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_A"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_A/washer_1",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.16,
+        -0.105,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_A__washer_1",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_A"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_A/washer_2",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.16,
+        -0.061,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_A__washer_2",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_A"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "capacity": 6,
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.18,
+        0.16,
+        0.032
+      ],
+      "enabled": true,
+      "id": "tray_B",
+      "kind": "tray",
+      "label": "B",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.115,
+        -0.295,
+        0.851
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_B",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.052,
+        0.052,
+        0.005
+      ],
+      "enabled": true,
+      "id": "tray_B/arrow",
+      "kind": "arrow",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "arrow",
+      "position_m": [
+        0.067,
+        -0.26,
+        0.872
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_B__arrow",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "arrow_angle_rad": 1.5707963267948966
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.055,
+        0.048,
+        0.004
+      ],
+      "enabled": true,
+      "id": "tray_B/card",
+      "kind": "card",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "card",
+      "position_m": [
+        0.067,
+        -0.32999999999999996,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_B__card",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "card_face": 0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_B/washer_0",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.16,
+        -0.339,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_B__washer_0",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_B"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_B/washer_1",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.16,
+        -0.295,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_B__washer_1",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_B"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_B/washer_2",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.16,
+        -0.251,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_B__washer_2",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_B"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "capacity": 6,
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.18,
+        0.16,
+        0.032
+      ],
+      "enabled": true,
+      "id": "tray_C",
+      "kind": "tray",
+      "label": "C",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.335,
+        -0.105,
+        0.851
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_C",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.052,
+        0.052,
+        0.005
+      ],
+      "enabled": true,
+      "id": "tray_C/arrow",
+      "kind": "arrow",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "arrow",
+      "position_m": [
+        0.28700000000000003,
+        -0.06999999999999999,
+        0.872
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_C__arrow",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "arrow_angle_rad": 1.5707963267948966
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.055,
+        0.048,
+        0.004
+      ],
+      "enabled": true,
+      "id": "tray_C/card",
+      "kind": "card",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "card",
+      "position_m": [
+        0.28700000000000003,
+        -0.14,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_C__card",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "card_face": 0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_C/washer_0",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.38,
+        -0.149,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_C__washer_0",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_C"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_C/washer_1",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.38,
+        -0.105,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_C__washer_1",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_C"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_C/washer_2",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.38,
+        -0.061,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_C__washer_2",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_C"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "capacity": 6,
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.18,
+        0.16,
+        0.032
+      ],
+      "enabled": true,
+      "id": "tray_D",
+      "kind": "tray",
+      "label": "D",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "neutral",
+      "position_m": [
+        0.335,
+        -0.295,
+        0.851
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_D",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {},
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.052,
+        0.052,
+        0.005
+      ],
+      "enabled": true,
+      "id": "tray_D/arrow",
+      "kind": "arrow",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "arrow",
+      "position_m": [
+        0.28700000000000003,
+        -0.26,
+        0.872
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_D__arrow",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "arrow_angle_rad": 1.5707963267948966
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.055,
+        0.048,
+        0.004
+      ],
+      "enabled": true,
+      "id": "tray_D/card",
+      "kind": "card",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "card",
+      "position_m": [
+        0.28700000000000003,
+        -0.32999999999999996,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_D__card",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "card_face": 0
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_D/washer_0",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.38,
+        -0.339,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_D__washer_0",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_D"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_D/washer_1",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.38,
+        -0.295,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_D__washer_1",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_D"
+      },
+      "visible": true
+    },
+    {
+      "angular_velocity_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "collision_enabled": false,
+      "dimensions_m": [
+        0.025,
+        0.025,
+        0.006
+      ],
+      "enabled": true,
+      "id": "tray_D/washer_2",
+      "kind": "washer",
+      "label": "",
+      "linear_velocity_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "washer",
+      "position_m": [
+        0.38,
+        -0.251,
+        0.871
+      ],
+      "prim_path": "/World/Workcell/Objects/tray_D__washer_2",
+      "rotation_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "state": {
+        "location": "tray_D"
+      },
+      "visible": true
+    }
+  ],
+  "observer": {
+    "focal_length_mm": 24.0,
+    "height": 1440,
+    "horizontal_aperture_mm": 36.0,
+    "look_at_m": [
+      0.15,
+      0.0,
+      0.96
+    ],
+    "position_m": [
+      1.65,
+      0.0,
+      1.3
+    ],
+    "status": "provisional_not_ADR_accepted",
+    "up_axis": "Z",
+    "width": 2560
+  },
+  "quaternion_order": "xyzw",
+  "robot": {
+    "body_joint_count": 29,
+    "configuration": "G129_CFG_WITH_DEX3_BASE_FIX",
+    "fixed_base": true,
+    "left_hand_joint_count": 7,
+    "position_m": [
+      0.0,
+      0.0,
+      0.75
+    ],
+    "prim_path": "/World/Robot",
+    "right_hand_joint_count": 7
+  },
+  "status": "provisional_issue_52_engineering_layout",
+  "unity_position_mapping": "(-y,z,x)",
+  "version": 1
+}
