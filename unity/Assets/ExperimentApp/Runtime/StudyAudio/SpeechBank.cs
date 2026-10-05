@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using AcousticVocab.Foundation;
 
 namespace AcousticVocab.StudyAudio
 {
@@ -27,17 +28,21 @@ namespace AcousticVocab.StudyAudio
         public string Set { get; }
         public bool Demo { get; }
         public bool Reviewed { get; }
+        public bool SimulationOnly{get;private set;}
+        public bool CanPresentValidity=>Reviewed&&!Demo||SimulationOnly;
+        public static SpeechBank LoadSimulation(string directory,string manifestSha,byte[] attestation,string attestationSha,string speechListSha,SimulationTestAuthority simulation)
+        {PackageRules.Require(simulation!=null&&PcmWave.Hash(attestation)==attestationSha);simulation.Attest(PackageRules.Json(attestation),"speech",new JObject{["manifest_sha256"]=manifestSha,["speech_list_sha256"]=speechListSha});var result=new SpeechBank(directory,manifestSha,attestationSha,speechListSha,true,true);PackageRules.Require(result.Demo&&result.SpeechListSha256==speechListSha);return result;}
         public IReadOnlyList<string> BalancedIds => Array.AsReadOnly(chosen.Select(id=>scheduleIds.First(p=>p.Value==id).Key).ToArray());
         public int VerifiedFiles => entries.Count;
         public static SpeechBank InspectEngineering(string directory,string manifestSha256) => new SpeechBank(directory,manifestSha256,null,null,true);
         public static SpeechBank LoadReviewed(string directory,string manifestSha256,string reviewSha256,string speechListSha256) => new SpeechBank(directory,manifestSha256,reviewSha256,speechListSha256,false);
 
-        SpeechBank(string root,string manifestHash,string reviewHash,string speechListHash,bool engineering)
+        SpeechBank(string root,string manifestHash,string reviewHash,string speechListHash,bool engineering,bool simulation=false)
         {
             try
             {
                 PackageRules.Require(PackageRules.IsHash(manifestHash));
-                directory=Path.GetFullPath(root);ManifestSha256=manifestHash;expectedReviewSha256=reviewHash;
+                directory=Path.GetFullPath(root);ManifestSha256=manifestHash;expectedReviewSha256=reviewHash;SimulationOnly=simulation;
                 byte[] raw=PackageRules.Read(directory,"manifest.local.json",512*1024);
                 PackageRules.Require(PcmWave.Hash(raw)==manifestHash);var value=PackageRules.Json(raw);
                 PackageRules.Keys(value,"version","status","voice","rule","source","items","balanced_list","listening_review_sha256","demo","study","set");
@@ -110,10 +115,11 @@ namespace AcousticVocab.StudyAudio
         void CheckDirectory()
         {
             PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"manifest.local.json",512*1024))==ManifestSha256);
-            if(Reviewed)PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"listening-review.local.json",128*1024))==expectedReviewSha256);
+            if(Reviewed||SimulationOnly)PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"listening-review.local.json",128*1024))==expectedReviewSha256);
             PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"selection.local.json",128*1024))==SpeechListSha256);
             var files=new HashSet<string>(entries.Keys.Select(x=>x+".wav"),StringComparer.Ordinal){"manifest.local.json","manifest.sha256","selection.local.json"};
             if(Reviewed)files.Add("listening-review.local.json");else{files.Add("manifest.local.csv");files.Add("listening-review.template.local.json");}
+            if(SimulationOnly)files.Add("listening-review.local.json");
             var actual=new HashSet<string>();
             foreach(var path in Directory.EnumerateFileSystemEntries(directory))
             {
@@ -134,7 +140,7 @@ namespace AcousticVocab.StudyAudio
         }
         public PcmWave ReadForValidity(string speechId,ISpeechSlotAuthorization authorization)
         {
-            if(!Reviewed||Demo||authorization==null||!scheduleIds.TryGetValue(speechId,out var fileId))throw new AudioFault("SPEECH_SLOT_NOT_AUTHORIZED");
+            if(!CanPresentValidity||authorization==null||!scheduleIds.TryGetValue(speechId,out var fileId))throw new AudioFault("SPEECH_SLOT_NOT_AUTHORIZED");
             try
             {
                 CheckDirectory();var wave=ReadChecked(fileId);

@@ -11,7 +11,7 @@ namespace AcousticVocab.Assessment
 {
     // World-space administrative-free presentation. No content/schedule/answer
     // identifier is accepted by the acknowledgment surface.
-    public sealed class AssessmentScreen : MonoBehaviour,IAssessmentView,IPostStudyDictionaryView
+    public sealed class AssessmentScreen : MonoBehaviour,IAssessmentView,IPostStudyDictionaryView,IAssessmentViewEvidence
     {
         public FoundationBootstrap foundation;
         public Transform trackingSpace;
@@ -20,8 +20,13 @@ namespace AcousticVocab.Assessment
         public Shader dictionaryShader;
         public ResponsePanelController inputSource;
         public event Action<string> Faulted;
+        public event Action<string,string,double> ViewObserved;
+        public void ObserveView(string attemptId,string phase,double observedMonoMs)=>ViewObserved?.Invoke(attemptId,phase,observedMonoMs);
         public string VisibleText => root!=null&&root.gameObject.activeInHierarchy?text.text:"";
         public bool FormsVisible=>formsVisible;
+        public string SimulationRatingId=>formsVisible&&!failed&&focused&&foundation.Ready?stages?.CurrentRating?.Id:null;
+        public bool SimulationRate(SimulationTestAuthority authority)
+        {if(authority==null||!SimulationTestAuthority.CompiledCapability)throw new AssessmentFault("SIMULATION_INPUT_AUTHORITY");if(SimulationRatingId==null)return false;var item=stages.CurrentRating;SelectRating((item.Minimum+item.Maximum)/2);return true;}
         // These are station-schema values, not the response panel's local
         // controller_ray/hand_poke binding names.
         public static bool UsesControllers(string stationInput)=>stationInput switch
@@ -104,9 +109,9 @@ namespace AcousticVocab.Assessment
             if(item==null)
             {
                 if(!stages.FormsComplete)stages.CompleteForms();
-                formsVisible=false;Show("Responses recorded");return;
+                formsVisible=false;Show("Responses recorded");ObserveView(null,"forms_complete",AcousticVocab.StudyAudio.AudioPlayer.Now*1000);return;
             }
-            Show(item.Question+"\n"+item.LowLabel+" — "+item.HighLabel,.10f);
+            Show(item.Question+"\n"+item.LowLabel+" — "+item.HighLabel,.10f);ObserveView(null,"rating_"+item.Id,AcousticVocab.StudyAudio.AudioPlayer.Now*1000);
             for(int value=item.Minimum;value<=item.Maximum;value++)
             {
                 int i=value-item.Minimum;var button=GameObject.CreatePrimitive(PrimitiveType.Cube);button.name="Rating choice";

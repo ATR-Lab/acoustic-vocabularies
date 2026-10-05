@@ -235,6 +235,7 @@ namespace AcousticVocab.Foundation.Editor
             if (scene.GetRootGameObjects().SelectMany(x => x.GetComponentsInChildren<Component>(true)).Any(x => x.GetType().GetMethod("OnGUI", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic) != null))
                 throw new BuildFailedException("Participant scene contains an OnGUI developer overlay.");
         }
+        public static bool SimulationTestBuild { get; set; }
         public static void BuildAndroid() => Build(BuildTarget.Android, "Builds/Android/experiment.apk");
         public static void BuildWindows() => Build(BuildTarget.StandaloneWindows64, "Builds/Windows/experiment.exe");
         static void Build(BuildTarget target, string output)
@@ -260,7 +261,7 @@ namespace AcousticVocab.Foundation.Editor
             File.WriteAllText("Assets/Generated.local.data/Resources/BuildIdentity.json", identity.ToString() + "\n");
             AssetDatabase.Refresh();
             Directory.CreateDirectory(Path.GetDirectoryName(output));
-            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ParticipantScenePath }, locationPathName = output, target = target, options = BuildOptions.None });
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ParticipantScenePath }, locationPathName = output, target = target, options = BuildOptions.None, extraScriptingDefines = SimulationTestBuild ? new[]{"AV_SIMULATION_TEST"} : System.Array.Empty<string>() });
             var record = new JObject { ["build_identity"] = identity, ["result"] = report.summary.result.ToString(), ["errors"] = report.summary.totalErrors,
                 ["duration_seconds"] = report.summary.totalTime.TotalSeconds, ["total_bytes"] = report.summary.totalSize, ["development_build"] = false,
                 ["files"] = new JArray(Directory.GetFiles(Path.GetDirectoryName(output), "*", SearchOption.AllDirectories).OrderBy(x => x).Select(x => new JObject {

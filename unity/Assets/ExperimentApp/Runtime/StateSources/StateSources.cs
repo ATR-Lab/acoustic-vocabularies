@@ -83,6 +83,10 @@ namespace AcousticVocab.StateSources
         // local Stopwatch clock. This is not the publisher clock or an
         // interpolated frame's acquisition time; Latest is null before receipt.
         public double LastReceivedMonoSeconds => lastReceived;
+        // Local software-test evidence only, independent of remote clock
+        // qualification. Invalidated/replayed/queued frames cannot satisfy it.
+        public bool LocalProgressFresh(double now)
+        {Tick(now);return sampleEligible&&latest!=null&&!stale&&now>=lastReceived&&now-lastReceived<=.25;}
         public event Action<SourceEvent> Event;
         public LiveIsaacSource(double startMonoSeconds, double interpolationDelaySeconds=2.0/30, SourceClock sourceClock=null)
         {

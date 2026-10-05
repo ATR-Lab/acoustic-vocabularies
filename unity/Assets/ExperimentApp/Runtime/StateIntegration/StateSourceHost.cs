@@ -33,6 +33,11 @@ namespace AcousticVocab.StateIntegration
         StateSourceJournal journal;
         WorkcellStateRenderer renderer;
         bool failed, confirmedAtBoundary, refreshing;
+        SimulationTestAuthority simulation;
+        public bool RemoteClockQualified=>source is LiveIsaacSource live&&live.SourceFresh;
+        public double SimulationLocalReceiptAgeSeconds {get{if(simulation==null||!RefreshSource()||source is not LiveIsaacSource live||live.Latest==null)return double.PositiveInfinity;return LiveSocketClient.Now-live.LastReceivedMonoSeconds;}}
+        public void EnableSimulationChecks(SimulationTestAuthority authority)
+        {if(authority==null||!SimulationTestAuthority.CompiledCapability||simulation!=null||confirmedAtBoundary)throw new StateFault("SIMULATION_SOURCE_BINDING");simulation=authority;}
         double nextSample;
 
         void Awake() { if(workcell!=null) workcell.gameObject.SetActive(false); }
@@ -100,7 +105,7 @@ namespace AcousticVocab.StateIntegration
             try
             {
                 double now=LiveSocketClient.Now; socket?.Pump(now); var frame=source.Render(now);
-                if(!foundation.Ready || !source.ResetConfirmed) confirmedAtBoundary=false;
+                if(!foundation.Ready || (simulation==null?!source.ResetConfirmed:!LocalNeutral(now,frame))) confirmedAtBoundary=false;
                 if(frame!=null) renderer.Apply(frame);
                 workcell.gameObject.SetActive(foundation.Ready && frame!=null);
                 if(foundation.Ready && frame!=null && frame.Provenance=="live" && workcell.gameObject.activeInHierarchy && source is LiveIsaacSource live && live.Latest!=null)
@@ -118,8 +123,9 @@ namespace AcousticVocab.StateIntegration
         // before LateUpdate notices the outage. This never creates a grant.
         public bool CheckExposureReady()
         {
-            return RefreshSource() && confirmedAtBoundary && foundation.Ready && source.ResetConfirmed && !source.Stale;
+            return RefreshSource() && confirmedAtBoundary && foundation.Ready && (simulation!=null?LocalNeutral(LiveSocketClient.Now,source.Render(LiveSocketClient.Now)):source.ResetConfirmed&&!source.Stale);
         }
+        bool LocalNeutral(double now,SceneFrame rendered)=>simulation!=null&&source is LiveIsaacSource live&&live.LocalProgressFresh(now)&&NeutralComparison.Matches(live.Latest,snapshot.Neutral)&&NeutralComparison.Matches(rendered,snapshot.Neutral);
         // Explicit per-trial gate. A rendered neutral never manufactures the
         // backend reset acknowledgment; the session must require both.
         public bool ConfirmReset()
@@ -128,9 +134,9 @@ namespace AcousticVocab.StateIntegration
             try
             {
                 double now=LiveSocketClient.Now; socket?.Pump(now);
-                bool valid=source.ConfirmReset(snapshot.Neutral,now); var frame=source.Render(now);
+                var frame=source.Render(now);bool valid=simulation!=null?LocalNeutral(now,frame):source.ConfirmReset(snapshot.Neutral,now);
                 if(frame!=null) renderer.Apply(frame);
-                OnEvent(new SourceEvent(valid?"STATE_RESET_CONFIRMED":"STATE_RESET_REFUSED",now,now));
+                OnEvent(new SourceEvent(simulation!=null?(valid?"SIMULATION_LOCAL_RESET_CONFIRMED":"SIMULATION_LOCAL_RESET_REFUSED"):(valid?"STATE_RESET_CONFIRMED":"STATE_RESET_REFUSED"),now,now));
                 confirmedAtBoundary=valid;
                 return valid;
             }

@@ -39,7 +39,7 @@ namespace AcousticVocab.SelectionMenus
         {MenuJson.NoLinks(path);var info=new FileInfo(path);Check(info.Exists&&info.Length>0&&info.Length<=maximum);var bytes=File.ReadAllBytes(path);Check(bytes.Length<=maximum);return bytes;}
         public static MenuCatalog Load(string scriptDirectory,string scriptSha256,string reviewSha256,LoadedAudioPackage package,VisitSchedule schedule,
             TeachingCatalog teaching,byte[] packageManifest,byte[] permutationBytes,byte[] allocationBytes,string allocationSha256,string bankSha256,
-            string exampleDirectory,byte[] reservedRegistry,string registrySha256,bool engineeringPreview=false)
+            string exampleDirectory,byte[] reservedRegistry,string registrySha256,bool engineeringPreview=false,SimulationTestAuthority simulation=null)
         {
             try
             {
@@ -60,7 +60,8 @@ namespace AcousticVocab.SelectionMenus
                 MenuJson.Keys(script,"format","package_sha256","profile_display_id","profile_names","profile_instructions","atom_instructions","active_choice_instructions","yoked_choice_instructions","candidate_labels");
                 Check((string)script["format"]=="av-menu-script/1"&&(string)script["package_sha256"]==package.PackageSha256&&MenuRules.Id(Text(script["profile_display_id"])));MenuJson.Keys((JObject)script["profile_names"],"P1","P2","P3");foreach(var x in ((JObject)script["profile_names"]).Properties())Text(x.Value,80);
                 foreach(string key in new[]{"profile_instructions","atom_instructions","active_choice_instructions","yoked_choice_instructions"})Text(script[key]);Check(script["candidate_labels"] is JArray&&script["candidate_labels"].Count()==3);foreach(var x in script["candidate_labels"])Text(x,80);
-                MenuJson.Keys(review,"version","approved","script_sha256","teaching_review_sha256","methodology_sha256");Check(MenuJson.Integer(review["version"],1,1)==1&&review["approved"]?.Type==JTokenType.Boolean&&(bool)review["approved"]&&(string)review["script_sha256"]==scriptSha256&&(string)review["teaching_review_sha256"]==teaching.ReviewSha256&&(string)review["methodology_sha256"]==teaching.MethodologySha256);
+                if(simulation!=null)simulation.Attest(review,"menu",new JObject{["script_sha256"]=scriptSha256,["teaching_review_sha256"]=teaching.ReviewSha256});
+                else{MenuJson.Keys(review,"version","approved","script_sha256","teaching_review_sha256","methodology_sha256");Check(MenuJson.Integer(review["version"],1,1)==1&&review["approved"]?.Type==JTokenType.Boolean&&(bool)review["approved"]&&(string)review["script_sha256"]==scriptSha256&&(string)review["teaching_review_sha256"]==teaching.ReviewSha256&&(string)review["methodology_sha256"]==teaching.MethodologySha256);}
                 Check(Directory.GetFileSystemEntries(scriptDirectory).Select(Path.GetFileName).OrderBy(x=>x,StringComparer.Ordinal).SequenceEqual(new[]{"menu-script.local.json","review.local.json"}));
                 Check(reservedRegistry!=null&&PcmWave.Hash(reservedRegistry)==registrySha256);var registry=Json(reservedRegistry);Check(registry["registry_version"]?.Type==JTokenType.Integer&&(int)registry["registry_version"]==1&&registry["entries"] is JArray);
                 var examples=new Dictionary<string,PcmWave>(StringComparer.Ordinal);foreach(string profile in order)

@@ -88,6 +88,16 @@ namespace AcousticVocab.ResponsePanel
             FaultLatched = false; lastFault = null; return true;
         }
         public void CloseAtBoundary() { State?.Abort(); if (panel != null) panel.gameObject.SetActive(false); }
+        public bool SimulationResponse(SimulationTestAuthority authority,string response,string target,string action)
+        {
+            if(authority==null||!SimulationTestAuthority.CompiledCapability)throw new InvalidOperationException("SIMULATION_INPUT_AUTHORITY");
+            if(!ReadyForTrial||State?.Request==null||!State.WindowOpen)return false;
+            if(response=="dont_know"){Press(keys.Find(x=>x.Value=="dont_know"));return State.Locked;}
+            if(response!="commit")throw new InvalidOperationException("SIMULATION_INPUT_VALUE");
+            if(State.Request.Role!=PanelRole.Action)Press(keys.Find(x=>x.Kind=="target"&&x.Value==target));
+            if(State.Request.Role!=PanelRole.Target)Press(keys.Find(x=>x.Kind=="action"&&x.Value==action));
+            Press(keys.Find(x=>x.Value=="commit"));return State.Locked;
+        }
         void FoundationFault(string _) => Fail("foundation_fault");
         void Fail(string reason)
         {
@@ -122,7 +132,7 @@ namespace AcousticVocab.ResponsePanel
         }
         void Press(Key key)
         {
-            if (!isActiveAndEnabled || !focused || paused || !foundation.Ready || FaultLatched || State?.Request == null) return;
+            if (key==null || !isActiveAndEnabled || !focused || paused || !foundation.Ready || FaultLatched || State?.Request == null) return;
             if (key.Kind == "target") State.SelectTarget(key.Value);
             else if (key.Kind == "action") State.SelectAction(key.Value);
             else if (key.Value == "commit") State.Commit();

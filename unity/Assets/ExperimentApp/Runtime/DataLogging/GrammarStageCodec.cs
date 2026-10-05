@@ -27,9 +27,11 @@ namespace AcousticVocab.DataLogging
         public static JObject Audio(AudioPlaybackEvent value,string waveformHash)
         {
             var t=value?.Timing??throw new DataFault("DATA_AUDIO_TIMING");
-            return new JObject{["code"]=value.Code,["audio_id"]=value.AudioId,["waveform_sha256"]=waveformHash,["pcm_sha256"]=value.PcmSha256,["action_pcm_sha256"]=value.ActionPcmSha256,["referent_pcm_sha256"]=value.ReferentPcmSha256,
+            var result=new JObject{["code"]=value.Code,["audio_id"]=value.AudioId,["waveform_sha256"]=waveformHash,["pcm_sha256"]=value.PcmSha256,["action_pcm_sha256"]=value.ActionPcmSha256,["referent_pcm_sha256"]=value.ReferentPcmSha256,
                 ["observed_mono_ms"]=value.ObservedMonoSeconds*1000,["request_mono_ms"]=t.RequestMonoSeconds*1000,["scheduled_mono_ms"]=t.ScheduledMonoSeconds*1000,["scheduled_dsp_s"]=t.ScheduledDspSeconds,
                 ["onset_estimate_mono_ms"]=t.OnsetEstimateMonoSeconds*1000,["onset_uncertainty_ms"]=t.OnsetUncertaintyMs,["first_callback_dsp_s"]=value.FirstOutputCallbackDspSeconds,["delivered_samples"]=value.DeliveredSamples,["callback_count"]=value.CallbackCount};
+            if(t.SimulationOnly){result["simulation_test"]=true;result["software_output_estimate_mono_ms"]=t.SoftwareOutputEstimateMonoSeconds*1000;result["software_output_uncertainty_ms"]=t.SoftwareOutputUncertaintyMs;}
+            return result;
         }
     }
 }
