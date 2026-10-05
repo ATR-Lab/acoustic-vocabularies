@@ -51,7 +51,9 @@ stay in private operator storage; only synthetic tests may be committed.
 `group: orientation` rows. The remaining execution rows are not played or parsed
 as orientation items. The producer must report a complete 40-record suite. The
 consumer checks the exact station, scene, neutral and canonical joint-order hash;
-eight distinct actions; successful reset/replay flags; 300 frames at nominal
+eight distinct actions; successful reset/replay and execution flags, empty
+execution failures, a protected-factory unchanged-state proof, exact private
+plan identity and a valid expected-object hash; 300 frames at nominal
 30 Hz; a common nominal 10-second duration; retained host timestamps; and no
 time compression. Retained frame timestamps must match the declared span and
 interval statistics. All streams pass the real #62 public-v2 parser and neutral
@@ -124,6 +126,22 @@ Play-mode tests move the real panel state machine through the three score paths
 over actual Unity frames with an explicitly injected test clock. These are
 software tests, not elapsed-time, headset or human eligibility measurements.
 
-Actual #56 recordings, live demo control, operator-console/allocation integration,
+The retained actual #56 library is present and is deliberately rejected: its
+`recording_complete` flag is false. `OrientationRecordedEvidence.VerifyRejected`
+uses its exact index and neutral hashes and confirms
+`ORIENTATION_DEMO_UNQUALIFIED` before any frame is applied. This is a successful
+rejection test, not a demonstration qualification. The library's failed timing
+and visible grasp issues remain with #56; no flag or timestamp is rewritten.
+
+The static preview tool renders five synthetic screen states without applying a
+robot demo, accessing persistent application configuration or producing human
+eligibility evidence. The wide camera shows the complete provisional layout;
+the screen is above the response panel, and the panel obscures part of the
+workcell. Glyph size, viewing angle and reach still require headset review.
+Three synthetic journal traces also verify that an actual on-disk outcome is
+readable before its callback runs. They use an injected clock and draft content;
+they never grant the host's allocation gate.
+
+Qualified #56 recordings, live demo control, operator-console/allocation integration,
 approved protocol content and physical checks remain explicit qualification work.
 Issue Acceptance criteria are reserved for human review.

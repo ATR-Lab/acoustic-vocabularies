@@ -1,0 +1,10 @@
+{
+  "qualification": "actual_failed_library_rejection_only",
+  "index_sha256": "7a65411ae663be6382f19cac760d82627793e2fcef14511c80b761b0548519b3",
+  "neutral_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "recording_complete": false,
+  "rejection_code": "ORIENTATION_DEMO_UNQUALIFIED",
+  "passed": true,
+  "frames_applied": 0,
+  "human_eligibility_evidence": false
+}

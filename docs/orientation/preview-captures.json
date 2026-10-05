@@ -1,0 +1,40 @@
+{
+  "qualification": "static_UI_preview_only_no_robot_demo_no_eligibility_evidence",
+  "captures": [
+    {
+      "file": "intro.png",
+      "sha256": "7621871ee2bb52c46bedf629edef236d025bfee6edd91837ef319e320f59c24c",
+      "stage": "NotStarted",
+      "synthetic_ui_state": true,
+      "demo_playback_performed": false
+    },
+    {
+      "file": "action.png",
+      "sha256": "a8c9357ac69db94addf95c0dc616c0ca15b30b056e33b2de1e0af0bbbb62b8ec",
+      "stage": "Action",
+      "synthetic_ui_state": true,
+      "demo_playback_performed": false
+    },
+    {
+      "file": "target.png",
+      "sha256": "a79bfc5d50d30d3f77345c4a4cc36861995f19a5b78e55c98ed007b9f3088831",
+      "stage": "Target",
+      "synthetic_ui_state": true,
+      "demo_playback_performed": false
+    },
+    {
+      "file": "practice.png",
+      "sha256": "80224ddf9b68c14c06557dd0912956e7d2a452a32db662ac6d9abbf74a4e086d",
+      "stage": "Practice",
+      "synthetic_ui_state": true,
+      "demo_playback_performed": false
+    },
+    {
+      "file": "feedback.png",
+      "sha256": "ddb375f20e8f318218f3518383cbd00289c6a557310d8d390a26a3d695506272",
+      "stage": "Feedback",
+      "synthetic_ui_state": true,
+      "demo_playback_performed": false
+    }
+  ]
+}
