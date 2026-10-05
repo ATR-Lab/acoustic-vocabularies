@@ -98,6 +98,14 @@ namespace AcousticVocab.SelectionMenus
             Emit("play_complete",now,play:i+1,option:options[i<6?i/2:final-1],source:replay?.SourceEvents[i]);completed[i]=true;
         }
         public void Interrupt(double now)
-        {Clock(now);if(failed)return;failed=true;Phase=MenuPhase.Ended;try{Emit("menu_interrupted",now);}finally{DisplayChanged?.Invoke(MenuPhase.Hidden,null);}}
+        {
+            Clock(now);if(failed)return;failed=true;Phase=MenuPhase.Ended;
+            // Prepare alone exposes no menu and emits no menu events. The
+            // engine retains its pre-cue cancellation/fault audit, while a new
+            // owned lease may still use this untouched visit ledger. Once Start
+            // has been attempted, preserve the partial-menu failure permanently.
+            try{if(started)Emit("menu_interrupted",now);}
+            finally{DisplayChanged?.Invoke(MenuPhase.Hidden,null);}
+        }
     }
 }
