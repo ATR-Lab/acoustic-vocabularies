@@ -75,7 +75,7 @@ namespace AcousticVocab.DataLogging.Tests
             using(var writer=new DataJournal(raw,SyntheticData.Identity,new string('3',32),()=>clock.Time))
             {
                 var items=Enumerable.Range(0,36).Select(i=>Construct<SlotItem>("SYNTHETIC-"+i,"trained","synthetic-content",null,null,"protected",false,14,1,1)).ToArray();
-                var block=Construct<ScheduleBlock>("trained",items);var schedule=Construct<VisitSchedule>(new string('b',64),new string('c',64),"SYNTHETIC","DEMO",true,new[]{block});var factory=new Factory(writer);var engine=new FixedSlotEngine(schedule,clock,new SessionDataJournal(writer),factory);
+                var block=Construct<ScheduleBlock>("trained",items);var schedule=Construct<VisitSchedule>(new string('b',64),new string('c',64),"SYNTHETIC","DEMO",true,new[]{block},"A","A",null);var factory=new Factory(writer);var engine=new FixedSlotEngine(schedule,clock,new SessionDataJournal(writer),factory);
                 foreach(var item in items)writer.Append(DataObservations.Opportunity(item.TrialId,"primary","synthetic-masked",schedule.Sha256));
                 engine.ConfirmResume();engine.Tick();string responded=null;
                 while(engine.Status==SessionState.Running&&clock.Time<505000){clock.Time+=50;if(engine.CurrentTrialId=="SYNTHETIC-35"&&engine.CurrentState==ItemState.ResponseOpen&&clock.Time==750+35*14000+12000)engine.RecordResponse("timeout");engine.Tick();if(engine.CurrentState==ItemState.ResponseOpen&&responded!=engine.CurrentTrialId&&engine.CurrentTrialId!="SYNTHETIC-35"){responded=engine.CurrentTrialId;engine.RecordResponse("commit");}}

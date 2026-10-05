@@ -121,4 +121,3 @@ namespace AcousticVocab.DataLogging.Tests
         {var value=DataObservations.Device(null,"focus",1,true).Payload;value["name"]="synthetic-not-allowed";Assert.Throws<DataFault>(()=>new EventDraft("device",null,value));Assert.Throws<DataFault>(()=>new EventDraft("unregistered",null,new JObject()));}
     }
 }
-

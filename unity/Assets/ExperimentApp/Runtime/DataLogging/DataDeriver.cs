@@ -51,7 +51,7 @@ namespace AcousticVocab.DataLogging
             Attempt Need(EventContext c)
             {
                 DataJson.Require(c.AttemptId!=null&&c.OpportunityId!=null,"DATA_ATTEMPT_CONTEXT");
-                if(!attempts.TryGetValue(c.AttemptId,out var a)){a=new Attempt{Row=Base(TrialHeaders,identity,c)};a.Row["focus_ok"]="";a.Row["reset_ok"]="false";a.Row["frame_freeze_ms"]="0";attempts.Add(c.AttemptId,a);}
+                if(!attempts.TryGetValue(c.AttemptId,out var a)){a=new Attempt{Row=Base(TrialHeaders,identity,c)};a.Row["focus_ok"]="";a.Row["reset_ok"]="false";a.Row["frame_freeze_ms"]="";attempts.Add(c.AttemptId,a);}
                 DataJson.Require(a.Row["opportunity_id"]==c.OpportunityId,"DATA_ATTEMPT_CONTEXT");return a;
             }
             foreach(var record in snapshot.Records)
@@ -105,7 +105,7 @@ namespace AcousticVocab.DataLogging
                         if(c.AttemptId==null)break;var deviceAttempt=Need(c);string device=(string)p["kind"];
                         if(device=="focus"&&p["value"].Type==JTokenType.Boolean){if(!(bool)p["value"])deviceAttempt.Row["focus_ok"]="false";else if(deviceAttempt.Row["focus_ok"].Length==0)deviceAttempt.Row["focus_ok"]="true";}
                         if(device=="reset"&&p["value"].Type==JTokenType.Boolean)deviceAttempt.Row["reset_ok"]=Value(p["value"]);
-                        if(device=="frame_freeze"&&p["duration_ms"].Type!=JTokenType.Null)deviceAttempt.Row["frame_freeze_ms"]=(double.Parse(deviceAttempt.Row["frame_freeze_ms"],CultureInfo.InvariantCulture)+(double)p["duration_ms"]).ToString("R",CultureInfo.InvariantCulture);
+                        if(device=="frame_freeze"&&p["duration_ms"].Type!=JTokenType.Null)deviceAttempt.Row["frame_freeze_ms"]=Math.Max(deviceAttempt.Row["frame_freeze_ms"].Length==0?0:double.Parse(deviceAttempt.Row["frame_freeze_ms"],CultureInfo.InvariantCulture),(double)p["duration_ms"]).ToString("R",CultureInfo.InvariantCulture);
                         if(device=="pause"&&c.AudioRequestId!=null&&p["duration_ms"].Type!=JTokenType.Null&&audio.TryGetValue(c.AudioRequestId,out var paused)){SameContext(paused,c);paused.Row["pause_ms"]=(double.Parse(paused.Row["pause_ms"],CultureInfo.InvariantCulture)+(double)p["duration_ms"]).ToString("R",CultureInfo.InvariantCulture);}
                         Fault(deviceAttempt.Row,Value(p["code"]));break;
                 }

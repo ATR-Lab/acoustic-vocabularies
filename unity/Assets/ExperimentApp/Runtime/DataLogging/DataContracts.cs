@@ -90,6 +90,9 @@ namespace AcousticVocab.DataLogging
         {
             switch(kind)
             {
+                case "assessment_stage":
+                    DataJson.Require(c.OpportunityId==null&&c.AttemptId==null&&c.AudioRequestId==null,"DATA_ASSESSMENT_CONTEXT");
+                    try{AcousticVocab.Assessment.AssessmentRecordCodec.FromJson(p);}catch{throw new DataFault("DATA_ASSESSMENT_PAYLOAD");}break;
                 case "session":
                     var r=SessionRecordCodec.FromJson(p);DataJson.Require(c.OpportunityId==r.OpportunityId&&c.AttemptId==r.TrialId&&c.AudioRequestId==null,"DATA_SESSION_CONTEXT");break;
                 case "opportunity":

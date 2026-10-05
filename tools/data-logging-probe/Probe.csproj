@@ -7,4 +7,3 @@
     <Reference Include="Newtonsoft.Json"><HintPath>$(NewtonsoftAssembly)</HintPath></Reference>
   </ItemGroup>
 </Project>
-

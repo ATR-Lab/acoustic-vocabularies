@@ -1,6 +1,13 @@
 {
   "name": "AcousticVocab.DataLogging",
-  "references": ["AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio", "AcousticVocab.ResponsePanel"],
+  "references": [
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.Assessment"
+  ],
   "overrideReferences": true,
-  "precompiledReferences": ["Newtonsoft.Json.dll"]
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ]
 }
