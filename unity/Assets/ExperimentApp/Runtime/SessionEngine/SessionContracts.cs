@@ -59,10 +59,10 @@ namespace AcousticVocab.SessionEngine
     // neutral does not manufacture a backend reset acknowledgement.
     public readonly struct SlotReadiness
     {
-        public readonly bool HashVerified,AudioPreloaded,ResetAcknowledged,RendererReady,PanelIdle,FocusOk,InputOk;
-        public bool Ready => HashVerified && AudioPreloaded && ResetAcknowledged && RendererReady && PanelIdle && FocusOk && InputOk;
-        public SlotReadiness(bool hash,bool preload,bool resetAck,bool renderer,bool panel,bool focus,bool input)
-        { HashVerified=hash;AudioPreloaded=preload;ResetAcknowledged=resetAck;RendererReady=renderer;PanelIdle=panel;FocusOk=focus;InputOk=input; }
+        public readonly bool HashVerified,AudioPreloaded,ResetAcknowledged,RendererReady,PanelIdle,FocusOk,InputOk,ModeAcknowledged;
+        public bool Ready => HashVerified && AudioPreloaded && ResetAcknowledged && RendererReady && PanelIdle && FocusOk && InputOk && ModeAcknowledged;
+        public SlotReadiness(bool hash,bool preload,bool resetAck,bool renderer,bool panel,bool focus,bool input,bool modeAck)
+        { HashVerified=hash;AudioPreloaded=preload;ResetAcknowledged=resetAck;RendererReady=renderer;PanelIdle=panel;FocusOk=focus;InputOk=input;ModeAcknowledged=modeAck; }
     }
     public readonly struct SlotContext
     {
@@ -70,7 +70,14 @@ namespace AcousticVocab.SessionEngine
         public double OnsetMonoMs { get; }
         public double EndMonoMs => OnsetMonoMs+Item.SlotSeconds*1000;
         public string RetryOf { get; }
-        public SlotContext(SlotItem item,double onset,string retryOf) { Item=item;OnsetMonoMs=onset;RetryOf=retryOf; }
+        public string OpportunityId => RetryOf??Item.TrialId;
+        public IReadOnlyList<string> AudioRequestIds { get; }
+        public SlotContext(SlotItem item,double onset,string retryOf)
+        {
+            Item=item;OnsetMonoMs=onset;RetryOf=retryOf;
+            var ids=new string[item.Plays];for(int i=0;i<ids.Length;i++)ids[i]=Guid.NewGuid().ToString("N");
+            AudioRequestIds=Array.AsReadOnly(ids);
+        }
     }
     // Content modules implement lessons/test/menu internals. The engine owns
     // order, timing, permission, durable exposure and fault/retry decisions.
@@ -116,9 +123,12 @@ namespace AcousticVocab.SessionEngine
         public string TechnicalFaultCode { get; }
         public string ResponseCode { get; }
         public string EvidenceSha256 { get; }
+        public string OpportunityId { get; }
+        public IReadOnlyList<string> AudioRequestIds { get; }
         internal SessionRecord(string kind,string epoch,string hash,string trial,string retry,int block,int item,double mono,double? onset,ItemState? state,
-            AudibleStatus audible,bool consumed,bool reset,bool focus,string fault,string response,string evidence=null)
+            AudibleStatus audible,bool consumed,bool reset,bool focus,string fault,string response,string evidence=null,string opportunity=null,IEnumerable<string> audioRequests=null)
         { Event=kind;ClockEpoch=epoch;ScheduleSha256=hash;TrialId=trial;RetryOf=retry;BlockIndex=block;ItemIndex=item;MonoMs=mono;ScheduledOnsetMonoMs=onset;State=state;
-          AudibleStatus=audible;ExposureConsumed=consumed;ResetOk=reset;FocusOk=focus;TechnicalFaultCode=fault;ResponseCode=response;EvidenceSha256=evidence; }
+          AudibleStatus=audible;ExposureConsumed=consumed;ResetOk=reset;FocusOk=focus;TechnicalFaultCode=fault;ResponseCode=response;EvidenceSha256=evidence;
+          OpportunityId=opportunity;AudioRequestIds=new List<string>(audioRequests??Array.Empty<string>()).AsReadOnly(); }
     }
 }

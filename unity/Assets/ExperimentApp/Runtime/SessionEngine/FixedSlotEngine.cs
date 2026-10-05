@@ -67,7 +67,7 @@ namespace AcousticVocab.SessionEngine
             {
                 var original=schedule.Blocks.SelectMany(x=>x.Items).SingleOrDefault(x=>x.TrialId==pair.Value);
                 if(original==null) throw new SessionFault("SESSION_RETRY_JOURNAL_INVALID");
-                if(!completed.Contains(pair.Key)) retries.Add(original.Retry(pair.Key));
+                if(!completed.Contains(pair.Key) && RetryEvidenceAllows(pair.Value)) retries.Add(original.Retry(pair.Key));
             }
             AdvancePastCompleted();
             if(blockIndex>=schedule.Blocks.Count) Status=SessionState.Complete;
@@ -79,7 +79,7 @@ namespace AcousticVocab.SessionEngine
                 var block=schedule.Blocks[blockIndex];
                 while(itemIndex<block.Items.Count && completed.Contains(block.Items[itemIndex].TrialId)) itemIndex++;
                 if(itemIndex<block.Items.Count) return;
-                var pending=retries.Where(x=>!completed.Contains(x.TrialId) && block.Items.Any(i=>i.TrialId==retryOf[x.TrialId])).ToArray();
+                var pending=retries.Where(x=>!completed.Contains(x.TrialId) && RetryEvidenceAllows(retryOf[x.TrialId]) && block.Items.Any(i=>i.TrialId==retryOf[x.TrialId])).ToArray();
                 if(pending.Length>0) { inRetry=true;retryIndex=retries.IndexOf(pending[0]);return; }
                 blockIndex++;itemIndex=0;inRetry=false;
             }
@@ -118,7 +118,7 @@ namespace AcousticVocab.SessionEngine
             double now=Now();
             if(stateAfterTail.HasValue)
             {
-                if(now>=tailEnd) { Status=stateAfterTail.Value;stateAfterTail=null;Write(Status==SessionState.Complete?"visit_complete":"session_paused",now,null); }
+                if(now>=tailEnd) { Status=stateAfterTail.Value;stateAfterTail=null;Write(Status==SessionState.Complete?"visit_complete":Status==SessionState.Stopped?"session_stopped":"session_paused",now,null); }
                 return;
             }
             if(content==null) return;
@@ -174,7 +174,8 @@ namespace AcousticVocab.SessionEngine
         {
             SlotReadiness ready=content==null?default:content.Readiness;
             var record=new SessionRecord(kind,epoch,schedule.Sha256,content==null?null:context.Item.TrialId,content==null?null:context.RetryOf,
-                blockIndex,itemIndex,now,content==null?(double?)null:context.OnsetMonoMs,state,audible,consumed,ready.ResetAcknowledged,ready.FocusOk,fault,response,evidence);
+                blockIndex,itemIndex,now,content==null?(double?)null:context.OnsetMonoMs,state,audible,consumed,ready.ResetAcknowledged,ready.FocusOk,fault,response,evidence,
+                content==null?null:context.OpportunityId,content==null?null:context.AudioRequestIds);
             try { journal.Append(record);if(record.TrialId!=null) latest[record.TrialId]=record; }
             catch { Emergency("SESSION_JOURNAL_FAILED");throw new SessionFault("SESSION_JOURNAL_FAILED"); }
         }
@@ -200,7 +201,14 @@ namespace AcousticVocab.SessionEngine
         public void RequestPause()
         {
             if(Status!=SessionState.Running) return;pausedRequested=true;
-            if(CurrentState>=ItemState.CueRequested) { fault=fault??"SESSION_PAUSE_DURING_ITEM";Write("pause_requested",Now(),CurrentState); }
+            if(CurrentState>=ItemState.CueRequested)
+            {
+                fault=fault??"SESSION_PAUSE_DURING_ITEM";Write("pause_requested",Now(),CurrentState);
+                // A scheduled cue may already have been handed to the device.
+                // Stop it before a future onset when possible, but retain the
+                // uncertain consumed opportunity without a no-onset receipt.
+                if(Now()<context.OnsetMonoMs)Fault("SESSION_PAUSE_AFTER_CUE_REQUEST");
+            }
             else AtBoundary();
         }
         public void RequestStop()
@@ -217,7 +225,12 @@ namespace AcousticVocab.SessionEngine
             // A started opportunity is kept through its fixed end; no new cue
             // can occur. Before a request, this is an unplayed safe boundary.
             if(CurrentState<ItemState.CueRequested || CurrentState==null) AtBoundary();
-            else { closed=true;CurrentState=ItemState.Reset; }
+            else
+            {
+                closed=true;permit=null;
+                Transition(ItemState.Reset);
+                try { content.RequestReset(context); } catch { }
+            }
         }
         void FinishItem()
         {
@@ -243,6 +256,8 @@ namespace AcousticVocab.SessionEngine
             try { Write("retry_queued",Now(),null); } finally { context=saved; }
             retries.Add(retry);retryOf.Add(newId,id);
         }
+        bool RetryEvidenceAllows(string original) => latest.TryGetValue(original,out var value) &&
+            value.AudibleStatus==AudibleStatus.ConfirmedNoOnset && !value.ExposureConsumed;
         void AtBoundary()
         {
             if(content!=null && CurrentState<ItemState.CueRequested) { try { content.Interrupt("SESSION_PAUSED_BEFORE_CUE"); } catch { } content=null;CurrentState=null; }
