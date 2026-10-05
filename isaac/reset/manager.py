@@ -132,10 +132,18 @@ class ResetManager:
             self._exposure_ready = False
         return result
 
-    def verify_current(self):
+    def verify_current(self, *, capture=None):
         self._check_thread()
         try:
-            return self.verify_state(self.adapter.read_state())
+            if capture is not None:
+                if capture.manager is not self:
+                    raise ValueError("Capture belongs to a different reset manager")
+                capture.before_read()
+            state = self.adapter.read_state()
+            result = self.verify_state(state)
+            if capture is not None:
+                capture.after_read(state, result)
+            return result
         except Exception as exc:
             self._exposure_ready = False
             self._last_verification_ns = time.monotonic_ns()

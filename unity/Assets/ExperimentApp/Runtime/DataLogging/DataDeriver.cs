@@ -87,7 +87,7 @@ namespace AcousticVocab.DataLogging
                         {observed.Row["audio_onset_estimate_mono_ms"]=Value(p["onset_estimate_mono_ms"]);observed.Row["onset_uncertainty_ms"]=Value(p["onset_uncertainty_ms"]);if(observed.Evidence==null)observed.Row["audible_status"]="estimated";}
                         string code=(string)p["code"];
                         if(code=="AUDIO_PLAYBACK_COMPLETED"&&callback){if(observed.Evidence==null)observed.Row["playback_status"]="callback_complete";}
-                        else if(!new[]{"AUDIO_ONSET_ESTIMATED","CALIBRATION_DELIVERY_OBSERVED"}.Contains(code))
+                        else if(!new[]{"AUDIO_ONSET_ESTIMATED","CALIBRATION_DELIVERY_OBSERVED","SIMULATION_DELIVERY_OBSERVED"}.Contains(code))
                         {Fault(observed.Row,code);observed.Row["playback_status"]="uncertain";observed.Consumed=true;}
                         break;
                     case "audio_evidence":

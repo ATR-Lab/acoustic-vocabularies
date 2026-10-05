@@ -394,129 +394,256 @@
       "then": {
         "properties": {
           "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "audio_id",
-              "waveform_sha256",
-              "pcm_sha256",
-              "action_pcm_sha256",
-              "referent_pcm_sha256",
-              "observed_mono_ms",
-              "request_mono_ms",
-              "scheduled_mono_ms",
-              "scheduled_dsp_s",
-              "onset_estimate_mono_ms",
-              "onset_uncertainty_ms",
-              "first_callback_dsp_s",
-              "delivered_samples",
-              "callback_count"
-            ],
-            "properties": {
-              "code": {
-                "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
-              },
-              "audio_id": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
-              },
-              "waveform_sha256": {
-                "anyOf": [
-                  {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
                   },
-                  {
-                    "type": "null"
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "request_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onset_uncertainty_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
                   }
-                ]
+                }
               },
-              "pcm_sha256": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
-              },
-              "action_pcm_sha256": {
-                "anyOf": [
-                  {
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count",
+                  "simulation_test",
+                  "software_output_estimate_mono_ms",
+                  "software_output_uncertainty_ms"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "referent_pcm_sha256": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "observed_mono_ms": {
-                "type": "number",
-                "minimum": 0
-              },
-              "request_mono_ms": {
-                "type": "number",
-                "minimum": 0
-              },
-              "scheduled_mono_ms": {
-                "type": "number",
-                "minimum": 0
-              },
-              "scheduled_dsp_s": {
-                "type": "number",
-                "minimum": 0
-              },
-              "onset_estimate_mono_ms": {
-                "anyOf": [
-                  {
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
                     "type": "number",
                     "minimum": 0
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "onset_uncertainty_ms": {
-                "anyOf": [
-                  {
+                  "request_mono_ms": {
                     "type": "number",
                     "minimum": 0
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "first_callback_dsp_s": {
-                "anyOf": [
-                  {
+                  "scheduled_mono_ms": {
                     "type": "number",
                     "minimum": 0
                   },
-                  {
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
                     "type": "null"
+                  },
+                  "onset_uncertainty_ms": {
+                    "type": "null"
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "simulation_test": {
+                    "const": true
+                  },
+                  "software_output_estimate_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "software_output_uncertainty_ms": {
+                    "type": "number",
+                    "minimum": 0
                   }
-                ]
-              },
-              "delivered_samples": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "callback_count": {
-                "type": "integer",
-                "minimum": 0
+                }
               }
-            }
+            ]
           }
         }
       }
@@ -532,129 +659,256 @@
       "then": {
         "properties": {
           "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "audio_id",
-              "waveform_sha256",
-              "pcm_sha256",
-              "action_pcm_sha256",
-              "referent_pcm_sha256",
-              "observed_mono_ms",
-              "request_mono_ms",
-              "scheduled_mono_ms",
-              "scheduled_dsp_s",
-              "onset_estimate_mono_ms",
-              "onset_uncertainty_ms",
-              "first_callback_dsp_s",
-              "delivered_samples",
-              "callback_count"
-            ],
-            "properties": {
-              "code": {
-                "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
-              },
-              "audio_id": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
-              },
-              "waveform_sha256": {
-                "anyOf": [
-                  {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
                   },
-                  {
-                    "type": "null"
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "request_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onset_uncertainty_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
                   }
-                ]
+                }
               },
-              "pcm_sha256": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
-              },
-              "action_pcm_sha256": {
-                "anyOf": [
-                  {
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count",
+                  "simulation_test",
+                  "software_output_estimate_mono_ms",
+                  "software_output_uncertainty_ms"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "referent_pcm_sha256": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "observed_mono_ms": {
-                "type": "number",
-                "minimum": 0
-              },
-              "request_mono_ms": {
-                "type": "number",
-                "minimum": 0
-              },
-              "scheduled_mono_ms": {
-                "type": "number",
-                "minimum": 0
-              },
-              "scheduled_dsp_s": {
-                "type": "number",
-                "minimum": 0
-              },
-              "onset_estimate_mono_ms": {
-                "anyOf": [
-                  {
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
                     "type": "number",
                     "minimum": 0
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "onset_uncertainty_ms": {
-                "anyOf": [
-                  {
+                  "request_mono_ms": {
                     "type": "number",
                     "minimum": 0
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "first_callback_dsp_s": {
-                "anyOf": [
-                  {
+                  "scheduled_mono_ms": {
                     "type": "number",
                     "minimum": 0
                   },
-                  {
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
                     "type": "null"
+                  },
+                  "onset_uncertainty_ms": {
+                    "type": "null"
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "simulation_test": {
+                    "const": true
+                  },
+                  "software_output_estimate_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "software_output_uncertainty_ms": {
+                    "type": "number",
+                    "minimum": 0
                   }
-                ]
-              },
-              "delivered_samples": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "callback_count": {
-                "type": "integer",
-                "minimum": 0
+                }
               }
-            }
+            ]
           }
         }
       }

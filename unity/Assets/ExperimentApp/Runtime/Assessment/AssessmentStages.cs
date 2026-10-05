@@ -173,13 +173,13 @@ namespace AcousticVocab.Assessment
         {
             RequireValidity();
             if(schedule.Blocks.SelectMany(b=>b.Items).Any(x=>x.Phase=="validity"&&x.TrialType=="speech"))
-                Need(bank!=null&&bank.Reviewed&&!bank.Demo&&!schedule.Demo&&bank.Study==schedule.Study&&bank.Set==schedule.SetName&&
+                Need(bank!=null&&(bank.Reviewed&&!bank.Demo&&!schedule.Demo||bank.SimulationOnly&&schedule.Demo)&&bank.Study==schedule.Study&&bank.Set==schedule.SetName&&
                     bank.SpeechListSha256==schedule.SpeechListSha256,"ASSESSMENT_SPEECH_SCOPE");
         }
         public ISpeechSlotAuthorization SpeechPermit(SlotContext context,SpeechBank bank,Func<bool> currentCue)
         {
             ValidateValidityBank(bank);Need(context.Item.TrialType=="speech"&&schedule.Blocks.SelectMany(b=>b.Items).Any(x=>x.TrialId==context.OpportunityId&&x.TrialType==context.Item.TrialType&&x.ContentId==context.Item.ContentId&&x.Phase=="validity")&&
-                bank!=null&&bank.Reviewed&&!bank.Demo&&!schedule.Demo&&bank.Study==schedule.Study&&bank.Set==schedule.SetName&&
+                bank!=null&&(bank.Reviewed&&!bank.Demo&&!schedule.Demo||bank.SimulationOnly&&schedule.Demo)&&bank.Study==schedule.Study&&bank.Set==schedule.SetName&&
                 bank.SpeechListSha256==schedule.SpeechListSha256&&currentCue!=null,"ASSESSMENT_SPEECH_SCOPE");
             return new SpeechAuthority(this,context.Item.ContentId,bank.ManifestSha256,currentCue);
         }

@@ -30,6 +30,9 @@ namespace AcousticVocab.SessionIntegration.Editor
         }
         public static void BuildWindows(){Configure();FoundationBuild.BuildWindows();}
         public static void BuildAndroid(){Configure();FoundationBuild.BuildAndroid();}
+        public static void ConfigureSimulation()
+        {Configure();var owner=Object.FindAnyObjectByType<JoinedEngineeringBootstrap>();owner.simulationTestScene=true;EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(),ScenePath);AssetDatabase.SaveAssets();}
+        public static void BuildSimulationWindows(){ConfigureSimulation();FoundationBuild.SimulationTestBuild=true;try{FoundationBuild.BuildWindows();}finally{FoundationBuild.SimulationTestBuild=false;}}
     }
     public static class PreallocationBuild
     {
@@ -46,5 +49,8 @@ namespace AcousticVocab.SessionIntegration.Editor
         }
         public static void BuildWindows(){Configure();FoundationBuild.BuildWindows();}
         public static void BuildAndroid(){Configure();FoundationBuild.BuildAndroid();}
+        public static void ConfigureSimulation()
+        {Configure();var owner=Object.FindAnyObjectByType<JoinedEngineeringBootstrap>();owner.simulationTestScene=true;EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(),ScenePath);AssetDatabase.SaveAssets();}
+        public static void BuildSimulationWindows(){ConfigureSimulation();FoundationBuild.SimulationTestBuild=true;try{FoundationBuild.BuildWindows();}finally{FoundationBuild.SimulationTestBuild=false;}}
     }
 }

@@ -24,12 +24,15 @@ namespace AcousticVocab.SelectionMenus
         string visibleOwner,visibleImage,packageHash,scheduleHash,inputMethod;bool leftHand,failed,focused=true,paused,handlingFault,readOnly,choosing,triggerArmed,triggerDown,haveTip,pokeArmed;Vector3 previousTip;
         public bool Installed=>factory!=null&&!failed&&isActiveAndEnabled;
         public bool InputAvailable{get;private set;}
+        public string SimulationChoiceOwner=>Installed&&InputAvailable&&choosing&&!readOnly&&canvas!=null&&canvas.gameObject.activeInHierarchy?visibleOwner:null;
+        public bool SimulationChoose(SimulationTestAuthority authority,int index)
+        {MenuRules.Require(authority!=null&&SimulationTestAuthority.CompiledCapability&&index>=1&&index<=3,"SIMULATION_INPUT_AUTHORITY");if(SimulationChoiceOwner==null)return false;Chosen?.Invoke(index);return true;}
         public string FaultCode{get;private set;}public string CleanupFailureCode{get;private set;}
         public event Action<int> Chosen;public event Action<string> Faulted;
         public MenuContentFactory Install(MenuCatalog catalog,IMenuStore store,PrivateModeResetClient backend,AudioRouteCalibration route,float gain,
             Action<MenuEvent> durableMenuSink,Action<AudioPlaybackEvent> durableAudioSink,Action<string> faultSink,MenuReplaySequence replay=null,bool engineeringPreview=false,Action<SlotContext,int,PcmWave> bindAudio=null)
         {
-            MenuRules.Require(factory==null&&!failed&&catalog!=null&&foundation!=null&&foundation.Ready&&panel!=null&&source!=null&&player!=null&&route!=null&&route.IsQualified&&route.UncertaintyMs<=20&&Faulted!=null&&faultSink!=null&&(!catalog.Demo||engineeringPreview),"MENU_HOST_NOT_READY");
+            MenuRules.Require(factory==null&&!failed&&catalog!=null&&foundation!=null&&foundation.Ready&&panel!=null&&source!=null&&player!=null&&route!=null&&route.CanScheduleSoftware&&route.UncertaintyMs<=20&&Faulted!=null&&faultSink!=null&&(!catalog.Demo||engineeringPreview),"MENU_HOST_NOT_READY");
             inputMethod=(string)foundation.Configuration?["input_method"];MenuRules.Require((inputMethod=="controllers"||inputMethod=="hands")&&panel.ConfiguredLeftHand.HasValue,"MENU_INPUT_CONFIGURATION");leftHand=panel.ConfiguredLeftHand.Value;if(canvas==null)CreateView();packageHash=catalog.PackageSha256;scheduleHash=catalog.ScheduleSha256;
             factory=new MenuContentFactory(catalog,store,backend,player,panel,source,this,()=>isActiveAndEnabled&&focused&&!paused&&!failed&&foundation.Ready,durableMenuSink,durableAudioSink,code=>{var error=Attempt(()=>Fail(code),()=>faultSink(code));if(error!=null)throw error;},replay,bindAudio);
             try{player.Configure(route,()=>factory.ExposureGate);player.SetComfortableGain(gain);return factory;}catch{Attempt(()=>factory.Dispose(),()=>player.Abort("MENU_INSTALL_FAILED"));failed=true;throw;}

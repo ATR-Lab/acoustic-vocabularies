@@ -40,7 +40,7 @@ namespace AcousticVocab.Teaching
             Action<AudioPlaybackEvent> durableAudioSink,Action<string> responseSink,Action<string> faultSink,bool engineeringPreview=false,Action<SlotContext,int,PcmWave> beforeSchedule=null)
         {
             LessonTimeline.Require(factory==null&&!uninstalled&&!failed&&foundation!=null&&foundation.Ready&&panel!=null&&source!=null&&player!=null&&
-                qualifiedRoute!=null&&qualifiedRoute.IsQualified&&qualifiedRoute.UncertaintyMs<=20&&Faulted!=null&&(!catalog.Demo||engineeringPreview)&&(grammar==null||grammar.Complete),"LESSON_HOST_NOT_READY");
+                qualifiedRoute!=null&&qualifiedRoute.CanScheduleSoftware&&qualifiedRoute.UncertaintyMs<=20&&Faulted!=null&&(!catalog.Demo||engineeringPreview)&&(grammar==null||grammar.Complete),"LESSON_HOST_NOT_READY");
             grammar?.Dispose();grammar=null;if(canvas==null)CreateView();
             scheduleHash=catalog.ScheduleSha256;packageHash=catalog.PackageSha256;
             factory=new TeachingContentFactory(catalog,selections,backend,player,panel,source,this,

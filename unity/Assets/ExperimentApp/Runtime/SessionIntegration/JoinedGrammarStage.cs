@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using AcousticVocab.DataLogging;
+using AcousticVocab.Foundation;
 using AcousticVocab.OperatorConsole;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StudyAudio;
@@ -13,13 +14,14 @@ namespace AcousticVocab.SessionIntegration
     {
         public string Sha256{get;}public string RegistrySha256{get;}
         JoinedGrammarReview(string hash,string registry){Sha256=hash;RegistrySha256=registry;}
-        public static JoinedGrammarReview Load(byte[] bytes,string rawSha,string registrySha,string methodologySha)
+        public static JoinedGrammarReview Load(byte[] bytes,string rawSha,string registrySha,string methodologySha,SimulationTestAuthority simulation=null)
         {
             if(bytes==null||PcmWave.Hash(bytes)!=rawSha)throw new SessionFault("JOIN_GRAMMAR_REVIEW_HASH");
             var p=JoinedVisitArtifacts.Json(bytes);
             var expected=new JObject{["version"]=1,["approved"]=true,["methodology_sha256"]=methodologySha,["registry_sha256"]=registrySha,
                 ["boundary"]="before_first_teaching_block",["repeat_policy"]="once_per_visit_no_partial_replay",["scheduling_lead_ms"]=750,
                 ["completion_authority"]="software_delivery_only",["labels"]=new JObject{["ready"]="READY",["action"]="Action",["target"]="Target"}};
+            if(simulation!=null){expected.Remove("version");expected.Remove("approved");expected.Remove("methodology_sha256");simulation.Attest(p,"grammar",expected);return new JoinedGrammarReview(rawSha,registrySha);}
             if(!JToken.DeepEquals(p,expected))throw new SessionFault("JOIN_GRAMMAR_REVIEW");return new JoinedGrammarReview(rawSha,registrySha);
         }
     }
@@ -62,7 +64,7 @@ namespace AcousticVocab.SessionIntegration
                 string code=(string)a["code"];
                 if(code=="AUDIO_REQUESTED"){Need(!s.Requested);s.Requested=true;}
                 else{Need(s.Requested&&!s.Delivered);if(code=="AUDIO_PLAYBACK_COMPLETED"){Need((long)a["callback_count"]>0&&(long)a["delivered_samples"]==wave.SampleCount&&a["first_callback_dsp_s"].Type!=JTokenType.Null);s.Delivered=true;}
-                    else if(code!="AUDIO_ONSET_ESTIMATED")s.Interrupted=true;}
+                    else if(code!="AUDIO_ONSET_ESTIMATED"&&code!="SIMULATION_DELIVERY_OBSERVED")s.Interrupted=true;}
             }
             return s;
         }

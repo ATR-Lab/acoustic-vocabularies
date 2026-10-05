@@ -44,8 +44,8 @@ namespace AcousticVocab.Teaching
         {
             LessonTimeline.Require(assets!=null&&player!=null&&route!=null&&neutralFocusGate!=null&&showRoleLabels!=null&&durableGrammarSink!=null&&durableAudioSink!=null&&faultSink!=null,"GRAMMAR_CONFIGURATION");
             this.player=player;audioSink=durableAudioSink;fault=faultSink;
-            flow=new GrammarFlow((kind,id,now)=>durableGrammarSink(new JObject{["kind"]=kind,["audio_request_id"]=id,["host_mono_ms"]=now,["registry_sha256"]=assets.RegistrySha256,["calibration_only"]=!route.IsQualified}));
-            flow.Display+=showRoleLabels;flow.Play+=(id,onset)=>{if(route.IsQualified)player.Schedule(id,onset/1000);else player.ScheduleCalibration(id,onset/1000);};
+            flow=new GrammarFlow((kind,id,now)=>durableGrammarSink(new JObject{["kind"]=kind,["audio_request_id"]=id,["host_mono_ms"]=now,["registry_sha256"]=assets.RegistrySha256,["calibration_only"]=!route.CanScheduleSoftware}));
+            flow.Display+=showRoleLabels;flow.Play+=(id,onset)=>{if(route.CanScheduleSoftware)player.Schedule(id,onset/1000);else player.ScheduleCalibration(id,onset/1000);};
             player.Event+=OnAudio;
             try{player.Configure(route,neutralFocusGate);player.SetComfortableGain(gain);player.Preload(assets.Preload(flow.ReadyId,flow.ClicksId),1024*1024);}catch{player.Event-=OnAudio;throw;}
         }
@@ -55,7 +55,7 @@ namespace AcousticVocab.Teaching
             audioSink(value);LessonTimeline.Require(value.AudioId==flow.ReadyId||value.AudioId==flow.ClicksId,"GRAMMAR_AUDIO_CONTEXT");
             if(value.Code=="AUDIO_PLAYBACK_COMPLETED")
             {LessonTimeline.Require(value.CallbackCount>0,"GRAMMAR_DELIVERY_MISSING");flow.Completed(value.AudioId,value.ObservedMonoSeconds*1000);}
-            else if(value.Code!="AUDIO_REQUESTED"&&value.Code!="AUDIO_ONSET_ESTIMATED"&&value.Code!="CALIBRATION_DELIVERY_OBSERVED")Abort(value.Code);
+            else if(value.Code!="AUDIO_REQUESTED"&&value.Code!="AUDIO_ONSET_ESTIMATED"&&value.Code!="CALIBRATION_DELIVERY_OBSERVED"&&value.Code!="SIMULATION_DELIVERY_OBSERVED")Abort(value.Code);
         }
         void Abort(string code)
         {if(disposed||aborting)return;aborting=true;try{TeachingCleanup.ThrowFirst(TeachingCleanup.Attempt(()=>flow.Abort(AudioPlayer.Now*1000),()=>player.Abort(code),()=>fault(code)));}finally{aborting=false;}}
