@@ -245,6 +245,17 @@ namespace AcousticVocab.SessionIntegration
                     ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
                 ["control_health"]=activePreflight?.Diagnostic()});
         }
+        void RecordContentGateRefusal(ContentCueGateRefusal refusal)
+        {
+            var r=refusal.Readiness;
+            audit.Write("module",new JObject{["kind"]="content_cue_gate_refused",["code"]=refusal.Code,
+                ["attempt_id"]=refusal.Context.Item.TrialId,["opportunity_id"]=refusal.Context.OpportunityId,
+                ["checked_mono_ms"]=refusal.CheckedMonoMs,["scheduled_onset_mono_ms"]=refusal.Context.OnsetMonoMs,
+                ["remaining_lead_ms"]=refusal.Context.OnsetMonoMs-refusal.CheckedMonoMs,
+                ["readiness"]=new JObject{["hash_verified"]=r.HashVerified,["audio_preloaded"]=r.AudioPreloaded,["reset_acknowledged"]=r.ResetAcknowledged,
+                    ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
+                ["control_health"]=activePreflight?.Diagnostic()});
+        }
         void Fail(string code)
         {
             if(failed||closed)return;failed=true;string reported=new SessionFault(code).Code;Report(owner?.Engine.PrimaryFaultCode??reported);
@@ -389,7 +400,7 @@ namespace AcousticVocab.SessionIntegration
                 if(kind==JoinedModuleKind.Teaching)
                 {
                     EnsureTeachingView();var view=teachingView;
-                    result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,host.audit.Lesson,shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,host.audit.Lesson,shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio,host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 else if(kind==JoinedModuleKind.Assessment)
                 {
@@ -402,7 +413,7 @@ namespace AcousticVocab.SessionIntegration
                 else
                 {
                     var view=go.AddComponent<MenuSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.presentationParent=host.foundation.presentationRoot.transform;view.font=host.font;view.Faulted+=host.Fail;scope.RegisterCleanup(view.Uninstall);
-                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay,engineeringPreview:true,bindAudio:shared.BindAudio);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay,engineeringPreview:true,bindAudio:shared.BindAudio,cueRefused:host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 host.audit.Write("module",new JObject{["kind"]="prepared_view",["block"]=block,["module"]=kind.ToString()});return result;
             }

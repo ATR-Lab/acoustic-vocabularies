@@ -35,18 +35,20 @@ namespace AcousticVocab.SelectionMenus
         readonly AudioPlayer audio;readonly ResponsePanelController panel;readonly StateSourceHost source;readonly IMenuView view;
         readonly Func<bool> focused;readonly Action<MenuEvent> persist;readonly Action<AudioPlaybackEvent> audioPersist;readonly Action<string> faultSink;
         readonly Action<SlotContext,int,PcmWave> bindAudio;readonly MenuReplaySequence replay;readonly List<Content> live=new List<Content>();bool disposed;
+        readonly ContentCueGate cueGate;
         public MenuContentFactory(MenuCatalog catalog,IMenuStore store,PrivateModeResetClient backend,AudioPlayer audio,ResponsePanelController panel,
-            StateSourceHost source,IMenuView view,Func<bool> focused,Action<MenuEvent> durableMenuSink,Action<AudioPlaybackEvent> durableAudioSink,Action<string> faultSink,MenuReplaySequence replay=null,Action<SlotContext,int,PcmWave> bindAudio=null)
+            StateSourceHost source,IMenuView view,Func<bool> focused,Action<MenuEvent> durableMenuSink,Action<AudioPlaybackEvent> durableAudioSink,Action<string> faultSink,MenuReplaySequence replay=null,Action<SlotContext,int,PcmWave> bindAudio=null,Action<ContentCueGateRefusal> cueRefused=null)
         {
+            cueGate=new ContentCueGate("MENU_CUE_REFUSED",cueRefused);
             MenuRules.Require(catalog!=null&&store!=null&&store.PackageSha256==catalog.PackageSha256&&store.BankSha256==catalog.BankSha256&&backend!=null&&backend.RequiredMode=="test"&&audio!=null&&panel!=null&&source!=null&&view!=null&&focused!=null&&durableMenuSink!=null&&durableAudioSink!=null&&faultSink!=null&&(catalog.Role=="yoked")== (replay!=null),"MENU_DEPENDENCIES");
             this.catalog=catalog;this.store=store;this.backend=backend;this.audio=audio;this.panel=panel;this.source=source;this.view=view;this.focused=focused;persist=durableMenuSink;audioPersist=durableAudioSink;this.faultSink=faultSink;this.replay=replay;this.bindAudio=bindAudio;
             audio.Event+=AudioEvent;view.Chosen+=Choose;
             try{if(!backend.ModeAcknowledged)backend.RequestMode();}catch{audio.Event-=AudioEvent;view.Chosen-=Choose;throw;}
         }
-        public bool ExposureGate=>!disposed&&focused()&&view.InputAvailable&&panel.ReadyForTrial&&source.CheckExposureReady()&&backend.ModeAcknowledged&&backend.NeutralHoldHealthy&&store.Ready&&store.OldHashesVerified;
+        public bool ExposureGate=>!disposed&&!cueGate.Failed&&focused()&&view.InputAvailable&&panel.ReadyForTrial&&source.CheckExposureReady()&&backend.ModeAcknowledged&&backend.NeutralHoldHealthy&&store.Ready&&store.OldHashesVerified;
         public double MinimumGapBeforeMs(SlotItem item,double baseline)=>replay?.MinimumGapBeforeMs(item,baseline)??0;
         public ISlotContent Create(SlotItem item)
-        {MenuRules.Require(!disposed&&store.Ready&&store.OldHashesVerified,"MENU_STORE_UNVERIFIED");var content=new Content(this,catalog.Prepare(item,store.Profile));live.Add(content);return content;}
+        {MenuRules.Require(!disposed&&!cueGate.Failed&&store.Ready&&store.OldHashesVerified,"MENU_STORE_UNVERIFIED");var content=new Content(this,catalog.Prepare(item,store.Profile));live.Add(content);return content;}
         public void Pump()
         {
             if(disposed)return;
@@ -99,9 +101,9 @@ namespace AcousticVocab.SelectionMenus
                 initialReset=owner.backend.RequestReset();prepared=true;
             }
             bool ExposureReady=>!interrupted&&owner.ExposureGate;
-            public SlotReadiness Readiness=>new SlotReadiness(prepared&&owner.store.Ready&&owner.store.OldHashesVerified,prepared&&!interrupted&&(owner.audio.TrialReady||owner.audio.Playing),initialReset!=null&&owner.backend.ResetAcknowledged(initialReset),initialRenderer&&owner.source.CheckExposureReady(),owner.panel.State!=null&&(owner.panel.State.Request==null||owner.panel.State.Locked),owner.focused(),owner.view.InputAvailable&&owner.panel.ReadyForTrial,owner.backend.ModeAcknowledged&&owner.backend.NeutralHoldHealthy);
+            public SlotReadiness Readiness=>new SlotReadiness(prepared&&owner.store.Ready&&owner.store.OldHashesVerified,!owner.cueGate.Failed&&prepared&&!interrupted&&(owner.audio.TrialReady||owner.audio.Playing),initialReset!=null&&owner.backend.ResetAcknowledged(initialReset),initialRenderer&&owner.source.CheckExposureReady(),owner.panel.State!=null&&(owner.panel.State.Request==null||owner.panel.State.Locked),owner.focused(),owner.view.InputAvailable&&owner.panel.ReadyForTrial,owner.backend.ModeAcknowledged&&owner.backend.NeutralHoldHealthy);
             public bool ResetComplete=>owner.store.Ready&&owner.store.OldHashesVerified&&finalReset!=null&&owner.backend.ResetAcknowledged(finalReset)&&finalRenderer&&owner.source.CheckExposureReady();
-            public void RequestCue(SlotContext context,INovelSlotAuthorization authorization){MenuRules.Require(authorization==null&&Readiness.Ready&&!interrupted,"MENU_CUE_REFUSED");Timeline.Start(AudioPlayer.Now*1000);}
+            public void RequestCue(SlotContext context,INovelSlotAuthorization authorization){owner.cueGate.Check(context,()=>authorization==null,()=>Readiness,()=>!interrupted,()=>AudioPlayer.Now*1000);Timeline.Start(AudioPlayer.Now*1000);}
             public void OpenResponse(SlotContext context){} // Choice is the private menu deadline, not the engine tail.
             public void CloseResponse(SlotContext context){}
             public void RequestReset(SlotContext context){resetWanted=true;}

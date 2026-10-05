@@ -34,12 +34,14 @@ namespace AcousticVocab.Teaching
         readonly AudioPlayer audio;readonly ResponsePanelController panel;readonly StateSourceHost source;readonly ITeachingView view;
         readonly Func<bool> focused;readonly Action<LessonEvent> persist;readonly Action<AudioPlaybackEvent> audioPersist;readonly Action<string> responseSink,faultSink;
         readonly Action<SlotContext,int,PcmWave> beforeSchedule;
+        readonly ContentCueGate cueGate;
         readonly List<Content> live=new List<Content>();
         bool disposed;
         public TeachingContentFactory(TeachingCatalog catalog,ITeachingSelections selections,ITeachingBackend backend,AudioPlayer audio,
             ResponsePanelController panel,StateSourceHost source,ITeachingView view,Func<bool> focused,Action<LessonEvent> persist,
-            Action<AudioPlaybackEvent> audioPersist,Action<string> responseSink,Action<string> faultSink,Action<SlotContext,int,PcmWave> beforeSchedule=null)
+            Action<AudioPlaybackEvent> audioPersist,Action<string> responseSink,Action<string> faultSink,Action<SlotContext,int,PcmWave> beforeSchedule=null,Action<ContentCueGateRefusal> cueRefused=null)
         {
+            cueGate=new ContentCueGate("LESSON_CUE_REFUSED",cueRefused);
             this.beforeSchedule=beforeSchedule;this.catalog=catalog??throw new ArgumentNullException(nameof(catalog));this.selections=selections;this.backend=backend??throw new ArgumentNullException(nameof(backend));
             this.audio=audio??throw new ArgumentNullException(nameof(audio));this.panel=panel??throw new ArgumentNullException(nameof(panel));this.source=source??throw new ArgumentNullException(nameof(source));
             this.view=view??throw new ArgumentNullException(nameof(view));this.focused=focused??throw new ArgumentNullException(nameof(focused));this.persist=persist??throw new ArgumentNullException(nameof(persist));
@@ -48,9 +50,9 @@ namespace AcousticVocab.Teaching
             try{if(!backend.TeachingModeAcknowledged)backend.RequestTeachingMode();}
             catch{audio.Event-=AudioEvent;panel.Responded-=PanelResponse;panel.Faulted-=PanelFault;throw;}
         }
-        public bool ExposureGate => !disposed&&focused()&&panel.ReadyForTrial&&source.CheckExposureReady()&&backend.TeachingModeAcknowledged&&backend.NeutralHoldHealthy;
+        public bool ExposureGate => !disposed&&!cueGate.Failed&&focused()&&panel.ReadyForTrial&&source.CheckExposureReady()&&backend.TeachingModeAcknowledged&&backend.NeutralHoldHealthy;
         public ISlotContent Create(SlotItem item)
-        {LessonTimeline.Require(!disposed,"LESSON_DISPOSED");catalog.Validate(item);var content=new Content(this,catalog.Prepare(item,selections));live.Add(content);return content;}
+        {LessonTimeline.Require(!disposed&&!cueGate.Failed,"LESSON_DISPOSED");catalog.Validate(item);var content=new Content(this,catalog.Prepare(item,selections));live.Add(content);return content;}
         public void Tick()
         {
             if(disposed)return;
@@ -130,11 +132,11 @@ namespace AcousticVocab.Teaching
                 initialReset=owner.backend.RequestReset();prepared=true;
             }
             internal bool Retired => Timeline!=null&&Timeline.Ended&&finalRenderer;
-            public SlotReadiness Readiness => new SlotReadiness(prepared,!interrupted&&prepared&&(owner.audio.TrialReady||owner.audio.Playing),initialReset!=null&&owner.backend.ResetAcknowledged(initialReset),
+            public SlotReadiness Readiness => new SlotReadiness(prepared,!owner.cueGate.Failed&&!interrupted&&prepared&&(owner.audio.TrialReady||owner.audio.Playing),initialReset!=null&&owner.backend.ResetAcknowledged(initialReset),
                 initialRenderer&&owner.source.CheckExposureReady(),owner.panel.State!=null&&(owner.panel.State.Request==null||owner.panel.State.Locked),owner.focused(),owner.panel.ReadyForTrial,owner.backend.TeachingModeAcknowledged&&owner.backend.NeutralHoldHealthy);
             public bool ResetComplete => finalReset!=null&&owner.backend.ResetAcknowledged(finalReset)&&finalRenderer&&owner.source.CheckExposureReady();
             public void RequestCue(SlotContext context,INovelSlotAuthorization authorization)
-            {LessonTimeline.Require(authorization==null&&!interrupted&&Readiness.Ready,"LESSON_CUE_REFUSED");Timeline.Start(AudioPlayer.Now*1000);}
+            {owner.cueGate.Check(context,()=>authorization==null&&!interrupted,()=>Readiness,()=>true,()=>AudioPlayer.Now*1000);Timeline.Start(AudioPlayer.Now*1000);}
             public void OpenResponse(SlotContext context)
             {
                 if(interrupted)return;
