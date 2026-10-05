@@ -58,14 +58,17 @@ $process.WaitForExit()
 if ($process.ExitCode -ne 0) { throw "Unity failed with exit code $($process.ExitCode). Inspect the private build log." }
 if ($Target -in @('Test','TestPlayMode')) {
     [xml]$result = Get-Content -Raw -LiteralPath $results
-    $optionalRecordedCheck = 'AcousticVocab.Tests.RecordedIsaacContractTests.ActualIsaacSnapshotAndWireSamplesMatchUnityRegistry'
+    $optionalRecordedChecks = @(
+        'AcousticVocab.Tests.RecordedIsaacContractTests.ActualIsaacSnapshotAndWireSamplesMatchUnityRegistry',
+        'AcousticVocab.Tests.ActualNeutralRendererTests.RecordedProtectedLiveFramesMatchSnapshotAndImportedRenderer'
+    )
     $skippedTests = @($result.SelectNodes('//test-case[@result="Skipped"]'))
-    $unexpectedSkip = @($skippedTests | Where-Object { $_.fullname -ne $optionalRecordedCheck })
+    $unexpectedSkip = @($skippedTests | Where-Object { $_.fullname -notin $optionalRecordedChecks })
     if ([int]$result.'test-run'.failed -ne 0 -or [int]$result.'test-run'.inconclusive -ne 0 -or
-        [int]$result.'test-run'.passed -lt 1 -or $unexpectedSkip.Count -ne 0 -or $skippedTests.Count -gt 1) {
+        [int]$result.'test-run'.passed -lt 1 -or $unexpectedSkip.Count -ne 0 -or $skippedTests.Count -gt $optionalRecordedChecks.Count) {
         throw 'Unity tests failed, were inconclusive, unexpectedly skipped, or discovered no passing tests.'
     }
-    if ($skippedTests.Count -eq 1) { Write-Output 'Optional recorded-Isaac evidence check skipped: private fixture directory was not supplied.' }
+    foreach ($skipped in $skippedTests) { Write-Output ('Optional recorded-Isaac evidence check skipped: '+$skipped.fullname) }
 }
 if ($Target -in @('Android','Windows')) {
     $binary = if ($Target -eq 'Android') { 'experiment.apk' } else { 'experiment.exe' }

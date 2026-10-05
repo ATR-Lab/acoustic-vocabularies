@@ -133,3 +133,11 @@ the natural stream shutdown under concurrent development load. Local receive age
 is not cross-host latency. Every sampled reset grant stayed false; natural stream
 termination logged disconnects and stale state. The app closed normally and the
 owned diagnostic relay/tunnel were stopped. Failed timing evidence remains retained.
+
+The later lifecycle revision `f9957fd` passes 93 edit-mode tests and fresh Windows
+and Android builds. Four play-mode tests pass with the new host-disable regression:
+disabling an initialized host immediately removes its grant, hides the workcell,
+closes the source and latches `STATE_HOST_DISABLED`. Re-enabling cannot restart it.
+Foundation readiness also requires an active component and explicit operator
+recovery after disable. Simulator observations above retain their original binary
+identity; these newer builds were not used to retroactively label those runs.
