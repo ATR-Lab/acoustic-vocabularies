@@ -22,10 +22,15 @@ namespace AcousticVocab.StudyAudio
         public int SampleCount => pcm.Length / 2;
         public string PcmSha256 { get; }
         public string FileSha256 { get; }
-        internal PcmWave(byte[] samples, string fileHash = null)
+        public string ActionPcmSha256 { get; }
+        public string ReferentPcmSha256 { get; }
+        internal PcmWave(byte[] samples, string fileHash = null, string actionPcmSha256 = null, string referentPcmSha256 = null)
         {
             if(samples==null || samples.Length==0 || samples.Length%2!=0) throw new AudioIntegrityException();
+            if((actionPcmSha256==null)!=(referentPcmSha256==null) || actionPcmSha256!=null &&
+                (!PackageRules.IsHash(actionPcmSha256) || !PackageRules.IsHash(referentPcmSha256))) throw new AudioIntegrityException();
             pcm=(byte[])samples.Clone(); PcmSha256=Hash(pcm); FileSha256=fileHash;
+            ActionPcmSha256=actionPcmSha256;ReferentPcmSha256=referentPcmSha256;
         }
         public void Verify() { if(Hash(pcm)!=PcmSha256) throw new AudioIntegrityException(); }
         public byte[] CopyPcm16() { Verify(); return (byte[])pcm.Clone(); }

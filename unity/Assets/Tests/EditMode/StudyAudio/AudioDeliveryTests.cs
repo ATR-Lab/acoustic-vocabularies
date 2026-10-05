@@ -12,6 +12,7 @@ namespace AcousticVocab.Tests.StudyAudio
             for(int frame=-128;frame<96000;frame+=512) delivery.Observe(1+(double)frame/48000,512,48000);
             Assert.That(delivery.Status,Is.EqualTo(AudioDelivery.Complete));
             Assert.That(delivery.CoveredSamples,Is.EqualTo(96000));Assert.That(delivery.DeadlineFault(),Is.Null);
+            Assert.That(delivery.FirstOutputCallbackDspSeconds,Is.EqualTo(1-128d/48000).Within(1e-12));
         }
         [Test] public void MissingCallbackIsNotSuccessfulPlayback()
         { var delivery=new AudioDelivery(1,96000);Assert.That(delivery.DeadlineFault(),Is.EqualTo("AUDIO_MISSING_PLAYBACK")); }
@@ -25,6 +26,11 @@ namespace AcousticVocab.Tests.StudyAudio
         {
             var delivery=new AudioDelivery(1,96000);delivery.Observe(1,512,48000);delivery.Observe(1,512,48000);
             Assert.That(delivery.DeadlineFault(),Is.EqualTo("AUDIO_CALLBACK_INVALID"));Assert.That(delivery.CoveredSamples,Is.EqualTo(512));
+        }
+        [Test] public void AdvancingButOverlappingBufferIsNotValidCoverage()
+        {
+            var delivery=new AudioDelivery(1,96000);delivery.Observe(1,512,48000);delivery.Observe(1+128d/48000,512,48000);
+            Assert.That(delivery.Status,Is.EqualTo(AudioDelivery.InvalidCallback));Assert.That(delivery.CoveredSamples,Is.EqualTo(512));
         }
         [TestCase(double.NaN,512,48000)] [TestCase(1,0,48000)] [TestCase(1,512,44100)]
         public void InvalidCallbackLatchesFailure(double dsp,int frames,int rate)

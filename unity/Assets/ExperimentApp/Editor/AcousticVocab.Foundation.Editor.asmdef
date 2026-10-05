@@ -10,7 +10,7 @@
     "Unity.XR.OpenXR.Editor",
     "AcousticVocab.Workcell",
     "AcousticVocab.StudyAudio",
-    "Unity.ugui"
+    "UnityEngine.UI"
   ],
   "includePlatforms": [
     "Editor"

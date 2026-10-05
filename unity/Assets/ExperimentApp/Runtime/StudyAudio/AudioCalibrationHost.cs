@@ -194,6 +194,8 @@ namespace AcousticVocab.StudyAudio
             {
                 var timing=value.Timing;
                 Write("audio_playback",new JObject { ["playback_status"]=value.Code,["audio_id"]=value.AudioId,["pcm_sha256"]=value.PcmSha256,
+                    ["action_pcm_sha256"]=value.ActionPcmSha256,["referent_pcm_sha256"]=value.ReferentPcmSha256,
+                    ["first_output_callback_dsp_s"]=value.FirstOutputCallbackDspSeconds.HasValue?new JValue(value.FirstOutputCallbackDspSeconds.Value):JValue.CreateNull(),
                     ["audio_request_mono_ms"]=timing.RequestMonoSeconds*1000,["scheduled_mono_ms"]=timing.ScheduledMonoSeconds*1000,
                     ["scheduled_dsp_s"]=timing.ScheduledDspSeconds,["audio_onset_estimate_mono_ms"]=timing.OnsetEstimateMonoSeconds.HasValue?new JValue(timing.OnsetEstimateMonoSeconds.Value*1000):JValue.CreateNull(),
                     ["onset_uncertainty_ms"]=timing.OnsetUncertaintyMs.HasValue?new JValue(timing.OnsetUncertaintyMs.Value):JValue.CreateNull(),

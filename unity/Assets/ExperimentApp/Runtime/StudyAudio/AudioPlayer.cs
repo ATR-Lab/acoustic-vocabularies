@@ -12,12 +12,15 @@ namespace AcousticVocab.StudyAudio
         public string Code { get; }
         public string AudioId { get; }
         public string PcmSha256 { get; }
+        public string ActionPcmSha256 { get; }
+        public string ReferentPcmSha256 { get; }
+        public double? FirstOutputCallbackDspSeconds { get; }
         public AudioScheduleTiming Timing { get; }
         public double ObservedMonoSeconds { get; }
         public long DeliveredSamples { get; }
         public long CallbackCount { get; }
-        internal AudioPlaybackEvent(string code,string id,string hash,AudioScheduleTiming timing,double observed,long samples,long callbacks)
-        { Code=code;AudioId=id;PcmSha256=hash;Timing=timing;ObservedMonoSeconds=observed;DeliveredSamples=samples;CallbackCount=callbacks; }
+        internal AudioPlaybackEvent(string code,string id,string hash,string actionHash,string referentHash,AudioScheduleTiming timing,double observed,long samples,long callbacks,double? callbackDsp)
+        { Code=code;AudioId=id;PcmSha256=hash;ActionPcmSha256=actionHash;ReferentPcmSha256=referentHash;Timing=timing;ObservedMonoSeconds=observed;DeliveredSamples=samples;CallbackCount=callbacks;FirstOutputCallbackDspSeconds=callbackDsp; }
     }
 
     [DisallowMultipleComponent,RequireComponent(typeof(AudioSource))]
@@ -26,7 +29,7 @@ namespace AcousticVocab.StudyAudio
         sealed class Prepared { public AudioClip Clip;public PcmWave Wave; }
         sealed class Ticket
         {
-            public string Id,Hash;public AudioScheduleTiming Timing;public AudioDelivery Delivery;
+            public string Id,Hash,ActionHash,ReferentHash;public AudioScheduleTiming Timing;public AudioDelivery Delivery;
             public int Samples;public bool OnsetReported;public AudioClip Clip;
         }
         readonly Dictionary<string,Prepared> prepared=new Dictionary<string,Prepared>(StringComparer.Ordinal);
@@ -38,7 +41,7 @@ namespace AcousticVocab.StudyAudio
         bool configured,failed,scheduling;
         int outputRate,bufferFrames,bufferCount;
         float gain=.1f;
-        public bool Ready => configured && !failed && !scheduling && prepared.Count>0 && current==null;
+        public bool Ready => isActiveAndEnabled && configured && !failed && !scheduling && prepared.Count>0 && current==null;
         public bool Playing => current!=null;
         public bool TrialReady => Ready && route.IsQualified;
         public float CurrentGain => gain;
@@ -114,12 +117,13 @@ namespace AcousticVocab.StudyAudio
                 double before=Now,dsp=AudioSettings.dspTime,after=Now;
                 mapping.Observe(before,dsp,after,(double)bufferFrames/outputRate);
                 var timing=mapping.Schedule(Now,requestedOnsetMonoSeconds,route,Math.Max(.1,(double)bufferFrames*bufferCount/outputRate),calibrationOnly);
-                var ticket=new Ticket { Id=audioId,Hash=item.Wave.PcmSha256,Timing=timing,Samples=item.Wave.SampleCount,Clip=item.Clip,
+                var ticket=new Ticket { Id=audioId,Hash=item.Wave.PcmSha256,ActionHash=item.Wave.ActionPcmSha256,ReferentHash=item.Wave.ReferentPcmSha256,Timing=timing,Samples=item.Wave.SampleCount,Clip=item.Clip,
                     Delivery=new AudioDelivery(timing.ScheduledDspSeconds,item.Wave.SampleCount) };
                 // A request is persisted before scheduling. Returning from this
                 // API never counts as delivery or completion.
                 Emit("AUDIO_REQUESTED",ticket);
-                if(!gate()) throw new AudioFault("AUDIO_EXPOSURE_BLOCKED");
+                if(failed || !isActiveAndEnabled || !gate()) throw new AudioFault("AUDIO_EXPOSURE_BLOCKED");
+                CheckSource();
                 output.clip=item.Clip;Volatile.Write(ref current,ticket);output.PlayScheduled(timing.ScheduledDspSeconds);
             }
             catch { Abort("AUDIO_SCHEDULE_FAILED");throw; }
@@ -167,7 +171,7 @@ namespace AcousticVocab.StudyAudio
         void Emit(string code,Ticket ticket)
         {
             var sink=Event;if(sink==null) throw new AudioFault("AUDIO_EVIDENCE_UNAVAILABLE");
-            sink(new AudioPlaybackEvent(new AudioFault(code).Code,ticket.Id,ticket.Hash,ticket.Timing,Now,ticket.Delivery.CoveredSamples,ticket.Delivery.CallbackCount));
+            sink(new AudioPlaybackEvent(new AudioFault(code).Code,ticket.Id,ticket.Hash,ticket.ActionHash,ticket.ReferentHash,ticket.Timing,Now,ticket.Delivery.CoveredSamples,ticket.Delivery.CallbackCount,ticket.Delivery.FirstOutputCallbackDspSeconds));
         }
         public void Abort(string code="AUDIO_CANCELLED")
         {
@@ -177,6 +181,7 @@ namespace AcousticVocab.StudyAudio
         void OnAudioConfigurationChanged(bool _) { if(configured) Abort("AUDIO_DEVICE_CHANGED"); }
         void OnApplicationPause(bool paused) { if(paused && configured) Abort("AUDIO_APPLICATION_PAUSED"); }
         void OnApplicationFocus(bool focused) { if(!focused && configured) Abort("AUDIO_FOCUS_LOST"); }
+        void OnDisable() { if(configured) Abort("AUDIO_COMPONENT_DISABLED"); }
         void ClearPrepared() { foreach(var item in prepared.Values) if(item.Clip!=null) Destroy(item.Clip);prepared.Clear();EstimatedPreloadBytes=0; }
         void OnDestroy() { AudioSettings.OnAudioConfigurationChanged-=OnAudioConfigurationChanged;Abort("AUDIO_SHUTDOWN");ClearPrepared(); }
     }

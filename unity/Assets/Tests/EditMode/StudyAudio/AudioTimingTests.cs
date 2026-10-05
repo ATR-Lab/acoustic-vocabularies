@@ -1,6 +1,8 @@
 using System;
 using AcousticVocab.StudyAudio;
 using NUnit.Framework;
+using Newtonsoft.Json.Linq;
+using System.Text;
 
 namespace AcousticVocab.Tests.StudyAudio
 {
@@ -42,5 +44,17 @@ namespace AcousticVocab.Tests.StudyAudio
         [TestCase("route\nprivate")] [TestCase("")] [TestCase("route with spaces")]
         public void CalibrationIdentifiersAreBounded(string route)
         { Assert.Throws<AudioFault>(()=>new AudioRouteCalibration(route,0,1,new string('b',64))); }
+        [Test] public void StationOffsetNeedsMatchingMeasuredRouteAndUncertainty()
+        {
+            var station=new JObject { ["audio"]=new JObject { ["route"]="route-01",["route_offset_ms"]=42 } };
+            var report=new JObject { ["schema_version"]=1,["route"]="route-01",["route_offset_ms"]=42,["onset_uncertainty_ms"]=2,["measurement_sha256"]=new string('a',64) };
+            byte[] Bytes()=>Encoding.UTF8.GetBytes(report.ToString());
+            Assert.That(AudioRouteCalibration.FromStationConfig(station,Bytes()).OffsetMs,Is.EqualTo(42));
+            report["route"]="route-02";Assert.Throws<AudioFault>(()=>AudioRouteCalibration.FromStationConfig(station,Bytes()));
+            report["route"]="route-01";station["audio"]["route_offset_ms"]=null;
+            Assert.Throws<AudioFault>(()=>AudioRouteCalibration.FromStationConfig(station,Bytes()));
+            station["audio"]["route_offset_ms"]=42;report.Remove("onset_uncertainty_ms");
+            Assert.Throws<AudioFault>(()=>AudioRouteCalibration.FromStationConfig(station,Bytes()));
+        }
     }
 }

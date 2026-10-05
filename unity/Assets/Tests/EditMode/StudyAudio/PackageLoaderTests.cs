@@ -135,8 +135,20 @@ namespace AcousticVocab.Tests.StudyAudio
             var package=Load(); int before=Directory.GetFiles(directory,"*",SearchOption.AllDirectories).Length;
             Assert.Throws<NovelSlotException>(()=>package.ComposeApprovedNovel("K-a1-r2",null)); var permit=new Permit(Hash);
             var wave=package.ComposeApprovedNovel("K-a1-r2",permit); Assert.That(wave.PcmSha256,Is.EqualTo(package.CompositeHash("K-a1-r2")));
+            Assert.That(wave.ActionPcmSha256,Is.EqualTo(package.ReadAtom("K-a1").PcmSha256));
+            Assert.That(wave.ReferentPcmSha256,Is.EqualTo(package.ReadAtom("K-r2").PcmSha256));
             Assert.That(wave.FileSha256,Is.Null); Assert.Throws<NovelSlotException>(()=>package.ComposeApprovedNovel("K-a1-r2",permit));
             Assert.That(permit.Calls,Is.EqualTo(2)); Assert.That(Directory.GetFiles(directory,"*",SearchOption.AllDirectories).Length,Is.EqualTo(before));
+        }
+        [Test] public void CompositionProvenanceIsAudioOnlyAndUnavailableOnStandaloneAtoms()
+        {
+            var package=Load();var action=package.ReadAtom("K-a1");var referent=package.ReadAtom("K-r1");
+            Assert.That(action.ActionPcmSha256,Is.Null);Assert.That(action.ReferentPcmSha256,Is.Null);
+            var composed=package.ComposeTrainedMessage("K-a1-r1");
+            Assert.That(composed.ActionPcmSha256,Is.EqualTo(action.PcmSha256));
+            Assert.That(composed.ReferentPcmSha256,Is.EqualTo(referent.PcmSha256));
+            Assert.That(typeof(PcmWave).GetProperty("ActionPcmSha256").CanWrite,Is.False);
+            Assert.That(typeof(PcmWave).GetProperty("ReferentPcmSha256").CanWrite,Is.False);
         }
         [Test] public void ProducerManifestCanonicalHashMatchesCommittedVector()
         {

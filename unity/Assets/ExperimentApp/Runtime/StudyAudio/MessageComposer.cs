@@ -34,7 +34,7 @@ namespace AcousticVocab.StudyAudio
             if(CompositeHash(action,referent)!=expected) throw new AudioIntegrityException();
             var pcm=new byte[(action.SampleCount+GapSamples+referent.SampleCount)*2];
             action.CopyInto(pcm,0); referent.CopyInto(pcm,(action.SampleCount+GapSamples)*2);
-            var result=new PcmWave(pcm);
+            var result=new PcmWave(pcm,actionPcmSha256:action.PcmSha256,referentPcmSha256:referent.PcmSha256);
             if(result.PcmSha256!=expected) throw new AudioIntegrityException();
             return result;
         }

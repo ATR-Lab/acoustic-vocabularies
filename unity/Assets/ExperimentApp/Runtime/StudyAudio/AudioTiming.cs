@@ -1,5 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
 
 namespace AcousticVocab.StudyAudio
 {
@@ -23,6 +24,27 @@ namespace AcousticVocab.StudyAudio
             Route=route;IsQualified=false;
         }
         public static AudioRouteCalibration Unmeasured(string route) => new AudioRouteCalibration(route);
+        // Read station configuration plus a separately provisioned #80 report.
+        // A station offset alone never supplies uncertainty or qualification.
+        public static AudioRouteCalibration FromStationConfig(JObject station,byte[] calibrationBytes)
+        {
+            try
+            {
+                if(station==null || calibrationBytes==null || calibrationBytes.Length>16384) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
+                var report=PackageRules.Json(calibrationBytes);
+                PackageRules.Keys(report,"schema_version","route","route_offset_ms","onset_uncertainty_ms","measurement_sha256");
+                if(PackageRules.Integer(report["schema_version"])!=1) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
+                string route=PackageRules.String(station["audio"]?["route"]);
+                if(PackageRules.String(report["route"])!=route ||
+                    station["audio"]?["route_offset_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float) ||
+                    report["route_offset_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float) ||
+                    report["onset_uncertainty_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float)) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
+                double offset=(double)report["route_offset_ms"];
+                if((double)station["audio"]["route_offset_ms"]!=offset) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
+                return new AudioRouteCalibration(route,offset,(double)report["onset_uncertainty_ms"],PackageRules.String(report["measurement_sha256"]));
+            }
+            catch(Exception) { throw new AudioFault("AUDIO_CALIBRATION_INVALID"); }
+        }
         internal static bool Finite(double n) => !double.IsNaN(n) && !double.IsInfinity(n);
     }
 

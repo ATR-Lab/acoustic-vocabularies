@@ -67,5 +67,13 @@ namespace AcousticVocab.Tests.StudyAudio
             yield return null;Assert.That(player.Playing,Is.False);Assert.That(player.Ready,Is.False);
             Assert.That(events[events.Count-1].Code,Is.EqualTo("AUDIO_PATH_CHANGED"));
         }
+        [UnityTest] public IEnumerator DisablingObserverStopsSeparateAudioSourceAndLatchesFault()
+        {
+            player.ScheduleCalibration("silence",AudioPlayer.Now+.3);player.enabled=false;
+            Assert.That(player.Playing,Is.False);Assert.That(player.Ready,Is.False);
+            Assert.That(sourceObject.GetComponent<AudioSource>().isPlaying,Is.False);
+            Assert.That(events[events.Count-1].Code,Is.EqualTo("AUDIO_COMPONENT_DISABLED"));
+            player.enabled=true;yield return null;Assert.That(player.Ready,Is.False);
+        }
     }
 }

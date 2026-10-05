@@ -11,10 +11,12 @@ namespace AcousticVocab.StudyAudio
         readonly double start;
         readonly int samples, rate;
         long covered, callbacks;
+        long firstCallbackBits;
         int status;
         public long CoveredSamples => Interlocked.Read(ref covered);
         public long CallbackCount => Interlocked.Read(ref callbacks);
         public int Status => Volatile.Read(ref status);
+        public double? FirstOutputCallbackDspSeconds => CallbackCount==0?(double?)null:BitConverter.Int64BitsToDouble(Interlocked.Read(ref firstCallbackBits));
         public AudioDelivery(double scheduledDspSeconds,int sampleCount,int sampleRate=48000)
         {
             if(!AudioRouteCalibration.Finite(scheduledDspSeconds) || scheduledDspSeconds<0 || sampleCount<=0 ||
@@ -38,7 +40,9 @@ namespace AcousticVocab.StudyAudio
             from=Math.Max(0,from); to=Math.Min(samples,to);
             long prior=CoveredSamples;
             if(from>prior+1) { Volatile.Write(ref status,Underrun); return; }
+            if(CallbackCount>0 && from<prior-1) { Volatile.Write(ref status,InvalidCallback); return; }
             if(to<=prior) { Volatile.Write(ref status,InvalidCallback); return; }
+            if(CallbackCount==0) Interlocked.Exchange(ref firstCallbackBits,BitConverter.DoubleToInt64Bits(callbackDspSeconds));
             Interlocked.Increment(ref callbacks);
             Interlocked.Exchange(ref covered,to);
             if(to>=samples) Volatile.Write(ref status,Complete);
