@@ -34,6 +34,9 @@ namespace AcousticVocab.SessionEngine
         public string CurrentBlock => blockIndex<schedule.Blocks.Count?schedule.Blocks[blockIndex].Name:null;
         public bool ExposureConsumed => content!=null && consumed;
         public int CompletedOpportunities => completed.Count;
+        public string ScheduleSha256 => schedule.Sha256;
+        public string PackageSha256 => schedule.PackageSha256;
+        public IReadOnlyList<int> CompletedCounts => Array.AsReadOnly(schedule.Blocks.Select(block => block.Items.Count(item => completed.Contains(item.TrialId))).ToArray());
         public bool NeedsOperatorConfirmation => Status==SessionState.AwaitingOperator || Status==SessionState.Paused;
         public FixedSlotEngine(VisitSchedule schedule,ISessionClock clock,ISessionJournal journal,ISlotContentFactory factory)
         {
