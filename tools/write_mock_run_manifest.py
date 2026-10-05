@@ -65,6 +65,7 @@ def emit(root, *, run_id, role, config, config_sha256, capability, capability_sh
         kind="other"
         if name==process_result:kind="process_result"
         elif f.name=="fixture-provenance.local.json":kind="fixture_provenance"
+        elif f.name=="native-result.local.json":kind="native_result"
         elif name==package_name:kind="package_manifest"
         elif name==speech_name:kind="speech_manifest"
         elif name==selected_name:kind="selection_snapshot"

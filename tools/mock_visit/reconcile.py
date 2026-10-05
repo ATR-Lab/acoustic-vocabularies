@@ -30,7 +30,7 @@ MAX_CAPTURE = 1024**3
 MAX_RUN_BYTES = 2 * 1024**3
 KINDS = {"export_manifest", "joined_journal", "menu_journal", "operator_journal",
          "frame_manifest", "capture", "fault_plan", "content_binding", "package_manifest",
-         "selection_snapshot", "speech_manifest", "fixture_index", "fixture_provenance", "process_result", "other"}
+         "selection_snapshot", "speech_manifest", "fixture_index", "fixture_provenance", "process_result", "native_result", "other"}
 TIMING = {"profile_menu": (60, 8), "atom_menus": (45, 8),
           "atomic_lessons": (20, 3), "message_lessons": (24, 3),
           "pre_old": (14, 1), "trained": (14, 1), "novel": (14, 1),
@@ -418,7 +418,19 @@ def reconcile(manifest_path, expected_hash):
         frame_missing, frame_report = native.frames(root, artifacts["frame_manifest"], result["attempts"], table, read, relative)
         incomplete.update(frame_missing)
     joined = [r for chain in supplemental["joined_journal"] for r in chain]
-    process_report = provenance.interval(process, records, joined)
+    post_cleanup=None
+    require(len(artifacts["native_result"]) <= 1,"MOCK_NATIVE_RESULT_COUNT")
+    if not artifacts["native_result"]:incomplete.add("NATIVE_POST_CLEANUP_RESULT_MISSING")
+    else:
+        terminal_artifact,terminal_raw=artifacts["native_result"][0];post_cleanup=strict(terminal_raw)
+        incomplete.update(provenance.native_result(post_cleanup,m,process,artifact["sha256"],
+            [r["session_nonce"] for chain in supplemental["operator_journal"] for r in chain],
+            max((r["host_mono_ms"] for r in records+joined),default=0)))
+        require(Path(terminal_artifact["path"]).name == "native-result.local.json"
+                and Path(terminal_artifact["path"]).parent.name == "joined-"+post_cleanup["session_nonce"]
+                and Path(artifact["path"]).parent.name == "export-"+post_cleanup["session_nonce"],"MOCK_NATIVE_RESULT_PATH_BINDING")
+    end_rows=[] if post_cleanup is None else [dict(host_mono_ms=post_cleanup["host_mono_ms"])]
+    process_report = provenance.interval(process, records, joined+end_rows)
     joined_faults=[]
     for row in joined:
         if row["kind"] != "fault":continue
@@ -454,6 +466,7 @@ def reconcile(manifest_path, expected_hash):
             "selection_count": None if selection is None else len(selection["entries"]),
             "native_claimed_complete": m["complete"], "process_exit": m["process_exit"],
             "build_provenance": build_report, "process_interval": process_report,
+            "native_post_cleanup_complete": post_cleanup is not None and post_cleanup["complete"],
             "frames": frame_report,
             "acoustic_onset_qualified": False, "participant_qualified": False,
             "methodology_headers_qualified": False, "issue81_accepted": False}

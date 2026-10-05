@@ -84,7 +84,9 @@ def display(joined, attempts, items, study, visit):
             exact(p, "kind status complete scope participant_admission")
             require(p["scope"] == "SIMULATION_TEST" and p["participant_admission"] is False and type(p["complete"]) is bool, "MOCK_RUN_END_SCOPE")
         require(len(terminal) == 1, "MOCK_RUN_END_DUPLICATE")
-        if not terminal[-1]["complete"] or terminal[-1]["status"] != "JOIN_COMPLETE_FORMS_RECORDED":
+        # This row is a pre-cleanup intent. The separate, mandatory native_result
+        # artifact binds actual teardown/export success to the process receipt.
+        if terminal[-1]["status"] != "JOIN_COMPLETE_FORMS_RECORDED":
             incomplete.add("NATIVE_RUN_END_INCOMPLETE")
     return incomplete
 

@@ -112,3 +112,26 @@ def fixtures(artifacts, config, config_root, manifest, read, relative):
                 and value["role"] == role and value["fixture_set_sha256"] == manifest["fixture_set_sha256"]
                 and isinstance(value["bindings"],dict),"MOCK_MATERIAL_ATTESTATION_SCOPE")
     return set()
+
+
+def native_result(value, manifest, process, export_hash, operator_nonces, earliest_result_mono_ms=0):
+    """Only this post-cleanup native record may certify software termination."""
+    exact(value,"version scope session_nonce process_id source_commit config_sha256 simulation_capability_sha256 status complete cleanup_succeeded export_succeeded export_manifest_sha256 host_mono_ms participant_admission")
+    from .records import guid
+    require(type(value["version"]) is int and value["version"] == 1 and value["scope"] == "SIMULATION_TEST"
+            and value["participant_admission"] is False and guid(value["session_nonce"])
+            and type(value["process_id"]) is int and value["process_id"] == process["process_id"]
+            and value["source_commit"] == manifest["source_commit"] == process["source_commit"]
+            and value["config_sha256"] == manifest["config"]["sha256"]
+            and value["simulation_capability_sha256"] == manifest["simulation_capability"]["sha256"]
+            and number(value["host_mono_ms"]) and all(type(value[k]) is bool for k in ("complete","cleanup_succeeded","export_succeeded")),
+            "MOCK_NATIVE_RESULT_BINDING")
+    require(not operator_nonces or set(operator_nonces) == {value["session_nonce"]},"MOCK_NATIVE_RESULT_NONCE")
+    require(value["host_mono_ms"] >= earliest_result_mono_ms,"MOCK_NATIVE_RESULT_ORDER")
+    require(isinstance(value["status"],str) and 1 <= len(value["status"]) <= 128,"MOCK_NATIVE_RESULT_STATUS")
+    if value["export_succeeded"]:
+        require(value["export_manifest_sha256"] == export_hash,"MOCK_NATIVE_RESULT_EXPORT")
+    else:require(value["export_manifest_sha256"] is None,"MOCK_NATIVE_RESULT_EXPORT")
+    complete=value["cleanup_succeeded"] and value["export_succeeded"] and value["status"] == "JOIN_COMPLETE_FORMS_RECORDED"
+    require(value["complete"] == complete,"MOCK_NATIVE_RESULT_FALSE_SUCCESS")
+    return set() if complete else {"NATIVE_POST_CLEANUP_RESULT_INCOMPLETE"}

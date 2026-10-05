@@ -83,6 +83,43 @@ class Provenance(unittest.TestCase):
             self.assertEqual(capture_pin(p,pin),(size,pin))
             with self.assertRaisesRegex(EvidenceError,"MOCK_FILE_HASH"):capture_pin(p,H)
 
+    def terminal(self):
+        p=dict(version=1,scope="SIMULATION_TEST",session_nonce="a"*32,process_id=123,source_commit="b"*40,
+               config_sha256=H,simulation_capability_sha256=H,status="JOIN_COMPLETE_FORMS_RECORDED",complete=True,
+               cleanup_succeeded=True,export_succeeded=True,export_manifest_sha256=H,host_mono_ms=2000.,participant_admission=False)
+        manifest=dict(source_commit="b"*40,config=dict(sha256=H),simulation_capability=dict(sha256=H))
+        process=dict(process_id=123,source_commit="b"*40)
+        return p,manifest,process,H,["a"*32]
+
+    def test_post_cleanup_success_is_separate_from_close_intent(self):
+        self.assertEqual(provenance.native_result(*self.terminal()),set())
+        p=dict(kind="module",payload=dict(kind="native_run_end",status="JOIN_COMPLETE_FORMS_RECORDED",complete=False,scope="SIMULATION_TEST",participant_admission=False))
+        self.assertNotIn("NATIVE_RUN_END_INCOMPLETE",native.display([p],{},{},"A","D0"))
+
+    def test_throwing_cleanup_cannot_be_completed_by_successful_export(self):
+        args=self.terminal();args[0].update(status="JOIN_DISPOSE_FAILED",complete=False,cleanup_succeeded=False)
+        self.assertIn("NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",provenance.native_result(*args))
+        args[0]["complete"]=True
+        with self.assertRaisesRegex(EvidenceError,"MOCK_NATIVE_RESULT_FALSE_SUCCESS"):provenance.native_result(*args)
+
+    def test_throwing_export_cannot_be_complete(self):
+        args=self.terminal();args[0].update(status="JOIN_EXPORT_FAILED",complete=False,export_succeeded=False,export_manifest_sha256=None)
+        self.assertIn("NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",provenance.native_result(*args))
+
+    def test_native_result_process_source_and_capability_pins(self):
+        for key,value in (("process_id",124),("source_commit","c"*40),("simulation_capability_sha256","c"*64)):
+            args=self.terminal();args[0][key]=value
+            with self.subTest(key=key),self.assertRaisesRegex(EvidenceError,"MOCK_NATIVE_RESULT_BINDING"):provenance.native_result(*args)
+
+    def test_native_result_requires_exact_export_and_nonce(self):
+        args=self.terminal();args[0]["export_manifest_sha256"]="c"*64
+        with self.assertRaisesRegex(EvidenceError,"MOCK_NATIVE_RESULT_EXPORT"):provenance.native_result(*args)
+        args=self.terminal();args[0]["session_nonce"]="c"*32
+        with self.assertRaisesRegex(EvidenceError,"MOCK_NATIVE_RESULT_NONCE"):provenance.native_result(*args)
+
+    def test_native_result_cannot_predate_last_durable_row(self):
+        with self.assertRaisesRegex(EvidenceError,"MOCK_NATIVE_RESULT_ORDER"):provenance.native_result(*self.terminal(),2001.)
+
 
 class Profiles(unittest.TestCase):
     def fixture(self,root):

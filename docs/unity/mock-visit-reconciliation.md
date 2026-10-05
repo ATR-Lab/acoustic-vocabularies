@@ -45,6 +45,15 @@ completion from records. An optional `--selection-snapshot` names an additional
 final snapshot inside the root; if present it must exactly match the final
 durable mailbox response. It cannot replace missing store history.
 
+The native player must also finish its create-new/fsynced
+`joined-<nonce>/native-result.local.json` **after all cleanup and export
+attempts**. This closed record binds the process ID, source commit, configuration,
+simulation capability, session nonce and exact export manifest hash. Software
+completion requires its cleanup/export success flags and
+`JOIN_COMPLETE_FORMS_RECORDED` status. Missing, failed or pending-only finalizer
+evidence remains incomplete. The earlier `native_run_end` journal row is a
+pre-cleanup intent, never proof that disposal or export succeeded.
+
 Files, links, paths, JSON duplicates, finite numbers, sizes and closed record
 shapes are checked. JSON/journals are capped at 64 MiB, manifests at 1 MiB where
 specified. Captures are hashed in chunks, at most 1 GiB each and 2 GiB total run
