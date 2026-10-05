@@ -78,6 +78,22 @@ namespace AcousticVocab.FrameBudget.Tests
             {var m=new FrameMonitor(72,writer);m.Render(0,new RenderSample(0),true);m.Register(new FrameAttempt("a","a",1,100,0),new FrameWindow("r","response",1,80),0);for(int i=1;i<=10;i++)m.Render(i*10,new RenderSample(i),true);}
             Assert.That(File.ReadLines(Path.Combine(path,"frames.csv")).Count(),Is.GreaterThan(1));var manifest=JObject.Parse(File.ReadAllText(Path.Combine(path,"manifest.json")));Assert.That(((JArray)manifest["files"]).Count,Is.EqualTo(3));Assert.Throws<FrameFault>(()=>new FrameCsvEvidence(path,new JObject()));
         }
+        sealed class FailingCloseStream : FileStream
+        {
+            internal bool RejectFlush,Closed;
+            internal FailingCloseStream(string p):base(p,FileMode.CreateNew,FileAccess.Write,FileShare.Read){}
+            public override void Flush(){if(RejectFlush)throw new IOException("synthetic_flush");base.Flush();}
+            public override void Flush(bool disk){if(RejectFlush)throw new IOException("synthetic_flush");base.Flush(disk);}
+            protected override void Dispose(bool disposing){Closed=true;base.Dispose(disposing);}
+        }
+        [Test] public void FlushFailureClosesBothStreamsAndNeverPublishesManifest()
+        {
+            string path=Fresh("close-failure");var streams=new List<FailingCloseStream>();
+            var writer=new FrameCsvEvidence(path,new JObject(),p=>{var stream=new FailingCloseStream(p);streams.Add(stream);return stream;});
+            streams[0].RejectFlush=true;Assert.Throws<FrameFault>(()=>writer.Dispose());
+            Assert.That(streams.All(x=>x.Closed),Is.True);Assert.That(File.Exists(Path.Combine(path,"manifest.json")),Is.False);
+            Assert.That(File.Exists(Path.Combine(path,"frames.csv")),Is.True);writer.Dispose();
+        }
         static DataIdentity Identity=>new DataIdentity(new string('1',32),"synthetic","visit","station-01","engineering",new string('a',64));
         [Test] public void TrialExportUsesMaximumNotSumAndMissingMeasurementStaysBlank()
         {

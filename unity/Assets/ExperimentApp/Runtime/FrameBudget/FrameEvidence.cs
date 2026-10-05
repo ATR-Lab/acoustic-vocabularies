@@ -67,14 +67,19 @@ namespace AcousticVocab.FrameBudget
     public sealed class FrameCsvEvidence : IFrameEvidence,IDisposable
     {
         readonly object sync=new object();readonly string directory;readonly FileStream frameFile,eventFile;readonly StreamWriter frames,events;bool failed,closed;
-        public FrameCsvEvidence(string freshDirectory,JObject metadata)
+        public FrameCsvEvidence(string freshDirectory,JObject metadata):this(freshDirectory,metadata,path=>new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read)){}
+        internal FrameCsvEvidence(string freshDirectory,JObject metadata,Func<string,FileStream> open)
         {
             directory=Path.GetFullPath(freshDirectory);Check.That(!Directory.Exists(directory),"FRAME_OUTPUT_EXISTS");
             for(var p=new DirectoryInfo(Path.GetDirectoryName(directory));p!=null;p=p.Parent)if(p.Exists)Check.That((p.Attributes&FileAttributes.ReparsePoint)==0,"FRAME_OUTPUT_LINK");
             Directory.CreateDirectory(directory);WriteNew(Path.Combine(directory,"metadata.json"),Encoding.UTF8.GetBytes(metadata.ToString(Formatting.Indented)+"\n"));
-            frameFile=new FileStream(Path.Combine(directory,"frames.csv"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);eventFile=new FileStream(Path.Combine(directory,"events.jsonl"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);
+            try
+            {
+            frameFile=open(Path.Combine(directory,"frames.csv"));eventFile=open(Path.Combine(directory,"events.jsonl"));
             frames=new StreamWriter(frameFile,new UTF8Encoding(false),65536,true){NewLine="\n"};events=new StreamWriter(eventFile,new UTF8Encoding(false),4096,true){NewLine="\n"};
             frames.WriteLine("attempt_id,opportunity_id,window_id,window_kind,frame_index,from_mono_ms,to_mono_ms,render_interval_ms,overlap_ms,cpu_ms_delayed,gpu_ms_delayed,runtime_refresh_hz,unity_fixed_step_ms,physics_steps,presented_count_reported,dropped_count_reported");Flush();
+            }
+            catch{failed=true;closed=true;CloseHandles();throw new FrameFault("FRAME_LOG_FAILED");}
         }
         static void WriteNew(string path,byte[] bytes){using var f=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read);f.Write(bytes,0,bytes.Length);f.Flush(true);}
         static string N(object value)=>value==null?"":Convert.ToString(value,CultureInfo.InvariantCulture);
@@ -85,12 +90,22 @@ namespace AcousticVocab.FrameBudget
         public void Fault(FrameFaultRecord x)=>Do(()=>{events.WriteLine(new JObject{["kind"]="fault",["attempt_id"]=x.Attempt.AttemptId,["opportunity_id"]=x.Attempt.OpportunityId,["observed_mono_ms"]=x.ObservedMs,["technical_fault_code"]=x.Code,["render_gap_ms"]=x.GapMs,["watchdog"]=x.Watchdog}.ToString(Formatting.None));Flush();});
         public void Summary(FrameSummary x)=>Do(()=>{events.WriteLine(new JObject{["kind"]="summary",["attempt_id"]=x.Attempt.AttemptId,["opportunity_id"]=x.Attempt.OpportunityId,["observed_mono_ms"]=x.ObservedMs,["frame_freeze_ms"]=x.MaximumMs,["frame_count"]=x.FrameCount,["within_1_5x_count"]=x.WithinBudgetCount,["capture_complete"]=x.Complete}.ToString(Formatting.None));Flush();});
         public void Rate(JObject report)=>Do(()=>WriteNew(Path.Combine(directory,"runtime-rate.json"),Encoding.UTF8.GetBytes(report.ToString(Formatting.Indented)+"\n")));
+        Exception CloseHandles()
+        {
+            Exception first=null;
+            foreach(IDisposable handle in new IDisposable[]{frames,events,frameFile,eventFile})
+                try{handle?.Dispose();}catch(Exception e){first??=e;}
+            return first;
+        }
         public void Dispose()
         {
             lock(sync)
             {
                 if(closed)return;
-                try{if(!failed)Flush();}finally{closed=true;frames.Dispose();events.Dispose();frameFile.Dispose();eventFile.Dispose();}
+                Exception first=null;
+                try{if(!failed)Flush();}catch(Exception e){first=e;failed=true;}
+                finally{closed=true;var closing=CloseHandles();if(closing!=null){failed=true;first??=closing;}}
+                if(first!=null)throw new FrameFault("FRAME_LOG_FAILED");
                 if(!failed)
                 {
                     var files=new JArray();foreach(string name in new[]{"metadata.json","frames.csv","events.jsonl","runtime-rate.json"}.Where(n=>File.Exists(Path.Combine(directory,n)))){using var stream=File.OpenRead(Path.Combine(directory,name));using var hash=SHA256.Create();files.Add(new JObject{["path"]=name,["bytes"]=stream.Length,["sha256"]=BitConverter.ToString(hash.ComputeHash(stream)).Replace("-","").ToLowerInvariant()});}
