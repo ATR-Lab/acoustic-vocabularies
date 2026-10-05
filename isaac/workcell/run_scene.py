@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--capture',action='store_true')
     parser.add_argument('--integration-overlay',type=Path)
     parser.add_argument('--publisher-seconds',type=float,default=0.)
+    parser.add_argument('--command-check',action='store_true')
     early,_=parser.parse_known_args()
     verify_loopback_only()
     pins=json.loads((ROOT/'spikes/O5.1.2/pins.json').read_text())
@@ -115,6 +116,21 @@ def main():
             adapter=IsaacResetAdapter(robot,accessors,sim,scene_hash)
             reset=run_reset_check(adapter,args.output/'reset-check',cycles=args.reset_cycles,
                                   capture_image=capture if args.capture else None)
+        commands=None
+        if args.command_check:
+            if reset is None: raise ValueError('Command diagnostic requires actual reset snapshot')
+            import uuid
+            from isaac.commands.benchmark import run_command_check
+            from isaac.reset.snapshot import load_snapshot
+            from isaac.reset.manager import ResetManager
+            from isaac.reset.event_log import DurableResetLog
+            snapshot=load_snapshot(args.output/'reset-check/neutral_v1.json',reset['reset_snapshot_sha256'])
+            event_log=DurableResetLog(args.output/'command-reset-events.jsonl',session_id=uuid.uuid4().hex,
+                apparatus_version='workcell-development-v1',protocol_version='unresolved-methodology')
+            try:
+                manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
+                commands=run_command_check(manager,args.output/'command-check',physics_steps=240)
+            finally: event_log.close()
         publisher=None
         if args.publisher_seconds:
             if reset is None: raise ValueError('Publisher diagnostic requires actual reset snapshot')
@@ -132,10 +148,10 @@ def main():
             scene_reload_sha256=reloaded_hash,reload_state_identical=original_state==reload_state,
             semantic_objects=len(actual),joint_names=list(robot.joint_names),joint_count=len(robot.joint_names),
             fixed_base=robot.is_fixed_base,preconditions_possible=conditions['possible_count'],
-            simulation_time=float(sim.current_time),physics_integrated=bool(publisher),
+            simulation_time=float(sim.current_time),physics_integrated=bool(publisher or commands),
             unitree_dds_started=False,network_interfaces=['lo'],methodology_review_complete=False,
             reach_summary={k:v for k,v in reach.items() if k!='results'} if reach else None,
-            reset_summary=reset,publisher_summary=publisher,
+            reset_summary=reset,publisher_summary=publisher,command_summary=commands,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))
