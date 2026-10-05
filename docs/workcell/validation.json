@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "engineering_validation_not_gate_qualification",
-  "source_commit": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+  "source_commit": "8200da49cf06665c58c5d19ccb1d3fa2f3efcb20",
   "editor": "6000.6.0f1",
   "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
   "object_count": 60,
@@ -10,9 +10,9 @@
   "rendered_robot_triangles": 629338,
   "material_metadata_sha256": "87318a34dce2ca6d5ffb84b11252d201054406ef9ba3973e62155c226f9fd67b",
   "tests": {
-    "edit_mode_total": 41,
-    "edit_mode_passed": 41,
-    "xml_sha256": "b54c7e7a48ab098722e7bda2a21920c3795e4acafdcd8a4aa652e1ffb5d22149",
+    "edit_mode_total": 42,
+    "edit_mode_passed": 42,
+    "xml_sha256": "4328dc70e476d6854db2d3a9bea54d0201ddf917eac26dd448c248c7d98841e7",
     "python_passed": 12,
     "repository_guard": "passed",
     "schema_validation": "2 schemas and 2 examples passed"
@@ -40,14 +40,14 @@
   "builds": [
     {
       "target": "Windows",
-      "manifest_sha256": "4ffd6422905307a8edb7a430c21e2f3bb35273bc0a86f5714dc5b7458a72e45e",
+      "manifest_sha256": "4b3d2da1b9277ff94a9f2d9af58609579aadadf5ff9057fc34c1f5e7433b9207",
       "result": "Succeeded",
       "errors": 0,
       "development_build": false,
       "build_identity": {
         "schema_version": 1,
-        "build_id": "workcell-link-002",
-        "commit_sha": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+        "build_id": "workcell-link-003",
+        "commit_sha": "8200da49cf06665c58c5d19ccb1d3fa2f3efcb20",
         "protocol_version": "engineering-pending-review",
         "editor_version": "6000.6.0f1",
         "target": "StandaloneWindows64",
@@ -61,18 +61,18 @@
         "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
       },
       "unity_reported_total_bytes": 157859013,
-      "raw_manifest_sha256": "4c0f849a96b09c88e6de6c111bb6cbc27581a34de3a68957e7a5be87ff4f6ab8"
+      "raw_manifest_sha256": "bb786207ba697bd4dbca9deee1cef7ddb71fcf2e7658b3f9b1d1c80f7bad6029"
     },
     {
       "target": "Android",
-      "manifest_sha256": "0ea0da6605be9719045ef773494f611055537a18b8f2d44d1926b64d38d5e68c",
+      "manifest_sha256": "0220be75ac5af2b03d14d306c60836b82e059b12147e0ad15a00d3665a8a6b7b",
       "result": "Succeeded",
       "errors": 0,
       "development_build": false,
       "build_identity": {
         "schema_version": 1,
-        "build_id": "workcell-quest-001",
-        "commit_sha": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+        "build_id": "workcell-quest-002",
+        "commit_sha": "8200da49cf06665c58c5d19ccb1d3fa2f3efcb20",
         "protocol_version": "engineering-pending-review",
         "editor_version": "6000.6.0f1",
         "target": "Android",
@@ -82,11 +82,11 @@
       },
       "entry_file": {
         "path": "experiment.apk",
-        "bytes": 54424416,
-        "sha256": "680eb249ec94092c0792ae06e099b853ba11298133e2baf61cd94d9cbbf880a0"
+        "bytes": 54425012,
+        "sha256": "db4c8f86e1daf8cd00c31ea12eb868cc23e8835b10a915ccadf681e520462555"
       },
-      "unity_reported_total_bytes": 752254642,
-      "raw_manifest_sha256": "8fb1178938ce2df689eaa66c00b7c94955d47b80f545e40e56d34525ee6ee859"
+      "unity_reported_total_bytes": 752179705,
+      "raw_manifest_sha256": "bcc8fe360c66acbb7d7379ba080198b21ca5656da52bb624f3c33d3ac6f42e68"
     }
   ],
   "android": {
@@ -107,5 +107,5 @@
     "Formal 32-target leakage review #79",
     "Git LFS availability"
   ],
-  "build_size_note": "Use entry_file.bytes for the actual APK/EXE byte size. Unity reported aggregate build bytes are retained separately and are not represented as APK size."
+  "build_size_note": "Use entry_file.bytes for actual APK/EXE bytes. Unity reported aggregate build bytes are separate."
 }

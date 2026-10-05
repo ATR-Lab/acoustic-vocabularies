@@ -1,8 +1,8 @@
 {
   "build_identity": {
     "schema_version": 1,
-    "build_id": "workcell-link-002",
-    "commit_sha": "3249543a8d5ff37b2be552f9baaf3de245f0dd18",
+    "build_id": "workcell-link-003",
+    "commit_sha": "8200da49cf06665c58c5d19ccb1d3fa2f3efcb20",
     "protocol_version": "engineering-pending-review",
     "editor_version": "6000.6.0f1",
     "target": "StandaloneWindows64",
@@ -12,7 +12,7 @@
   },
   "result": "Succeeded",
   "errors": 0,
-  "duration_seconds": 3.6732036,
+  "duration_seconds": 6.4036718,
   "total_bytes": 157859013,
   "development_build": false,
   "files": [
@@ -44,7 +44,7 @@
     {
       "path": "experiment_Data/boot.config",
       "bytes": 292,
-      "sha256": "8009bbf5e20384cd932f8d0e64e3b5019b147dcf9d44c916ae15cb9a346ae151"
+      "sha256": "d9e2c82d9a4f1377efaef96018ee47452f33ef6b5d62dd34f43fa18197dd6c29"
     },
     {
       "path": "experiment_Data/globalgamemanagers",
@@ -64,12 +64,12 @@
     {
       "path": "experiment_Data/level0",
       "bytes": 355392,
-      "sha256": "ff2fa88652f6acb2d1fce8982b5b41068f1720ea17463fe7da403c5d27035cc0"
+      "sha256": "4c95dbcf77c1cde62c633bc14898fcbe613b36a4621fa6cdacbf3869326a1c03"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.Foundation.dll",
       "bytes": 19456,
-      "sha256": "6a17b6582bcd3495adbc83387e3a08638ab76000707e29dbd45a2f6d73eba34a"
+      "sha256": "361b995c0f42579744d335e7533754d5a3e552b9530bf2cf3a9d3091ffbc23d7"
     },
     {
       "path": "experiment_Data/Managed/AcousticVocab.Workcell.dll",
@@ -819,7 +819,7 @@
     {
       "path": "experiment_Data/resources.assets",
       "bytes": 69308,
-      "sha256": "876f3ae6e449ee18ec5b1716d23442c7651cb0570c00125e1e2a74c7db03fa4f"
+      "sha256": "be8be3e211d4bcf4f45238749136638f3deaff0c1c8b3eda72e04a2e1c99b97c"
     },
     {
       "path": "experiment_Data/Resources/unity default resources",

@@ -108,12 +108,12 @@ by this change.
 
 ## Recorded validation
 
-`validation.json` records 41 passing edit-mode tests, actual neutral-pose parity,
+`validation.json` records 42 passing edit-mode tests, actual neutral-pose parity,
 independently inspected capture hashes, and both final native builds from clean
-source `3249543a8d5ff37b2be552f9baaf3de245f0dd18`. `build-manifests/` contains the
+source `8200da49cf06665c58c5d19ccb1d3fa2f3efcb20`. `build-manifests/` contains the
 verified relative-path file hashes. Windows succeeded with zero errors; the
-Android ARM64 IL2CPP APK is 54,424,416 bytes, ZIP integrity passed, SDK32/36,
+Android ARM64 IL2CPP APK is 54,425,012 bytes, ZIP integrity passed, SDK32/36,
 INTERNET permission present, and debuggable absent/default false. The APK SHA256
-is `680eb249ec94092c0792ae06e099b853ba11298133e2baf61cd94d9cbbf880a0`.
+is `db4c8f86e1daf8cd00c31ea12eb868cc23e8835b10a915ccadf681e520462555`.
 Unity's aggregate reported build size is retained separately from actual APK
 bytes. No headset was connected, so no device install or runtime pass is claimed.
