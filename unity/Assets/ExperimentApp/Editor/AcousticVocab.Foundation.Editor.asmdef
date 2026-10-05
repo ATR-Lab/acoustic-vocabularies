@@ -8,7 +8,9 @@
     "Unity.XR.Management.Editor",
     "Unity.XR.OpenXR",
     "Unity.XR.OpenXR.Editor",
-    "AcousticVocab.Workcell"
+    "AcousticVocab.Workcell",
+    "AcousticVocab.StudyAudio",
+    "Unity.ugui"
   ],
   "includePlatforms": [
     "Editor"

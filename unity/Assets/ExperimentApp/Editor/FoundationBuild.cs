@@ -25,6 +25,7 @@ namespace AcousticVocab.Foundation.Editor
     public static class FoundationBuild
     {
         public const string ScenePath = "Assets/ExperimentApp/Scenes/Foundation.unity";
+        public const string CalibrationScenePath = "Assets/Generated.local.data/StudyAudio/Calibration.unity";
         public static string ParticipantScenePath { get; set; } = ScenePath;
         public static string RepositoryRoot => Directory.GetParent(Application.dataPath).Parent.FullName;
         public static void Configure()
@@ -161,6 +162,18 @@ namespace AcousticVocab.Foundation.Editor
             }
             var scene = EditorSceneManager.OpenScene(ParticipantScenePath);
             var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap), typeof(MeshFilter), typeof(MeshRenderer), typeof(Light), typeof(AcousticVocab.Workcell.WorkcellRegistry) };
+            if(ParticipantScenePath==CalibrationScenePath)
+            {
+                allowed=allowed.Concat(new[] { typeof(AcousticVocab.StudyAudio.AudioCalibrationHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource),
+                    typeof(RectTransform),typeof(Canvas),typeof(CanvasRenderer),typeof(UnityEngine.UI.GraphicRaycaster),typeof(UnityEngine.UI.Text),
+                    typeof(UnityEngine.UI.Image),typeof(UnityEngine.UI.Button),typeof(UnityEngine.EventSystems.EventSystem),
+                    typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule),typeof(LineRenderer) }).ToArray();
+                if(UnityEngine.Object.FindObjectsByType<AcousticVocab.StudyAudio.AudioCalibrationHost>(FindObjectsInactive.Include).Length!=1 ||
+                    UnityEngine.Object.FindObjectsByType<AcousticVocab.StudyAudio.AudioPlayer>(FindObjectsInactive.Include).Length!=1 ||
+                    UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Length!=1 ||
+                    UnityEngine.Object.FindObjectsByType<AcousticVocab.Workcell.WorkcellRegistry>(FindObjectsInactive.Include).Length!=0)
+                    throw new BuildFailedException("Calibration scene requires one isolated calibration host/audio source and no study workcell.");
+            }
             foreach (var root in scene.GetRootGameObjects())
                 foreach (var component in root.GetComponentsInChildren<Component>(true))
                     if (component == null || !allowed.Contains(component.GetType())) throw new BuildFailedException("Foundation scene has an unexpected component.");

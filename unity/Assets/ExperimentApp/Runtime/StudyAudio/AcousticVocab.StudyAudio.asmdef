@@ -1,0 +1,6 @@
+{
+  "name": "AcousticVocab.StudyAudio",
+  "references": ["AcousticVocab.Foundation", "Unity.InputSystem", "Unity.ugui"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"]
+}
