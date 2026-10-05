@@ -53,7 +53,7 @@ def edit_target_restore(stage):
 
 def import_restore(stage):
     layer = stage.GetRootLayer(); original = layer.ExportToString()
-    replacement = Sdf.Layer.CreateAnonymous(); replacement.ImportFromString(original)
+    replacement = Sdf.Layer.CreateAnonymous('replacement.usda'); replacement.ImportFromString(original)
     replacement.customLayerData = {"engineering_mutation": 1}
     assert layer.ImportFromString(replacement.ExportToString())
     assert layer.ImportFromString(original)
