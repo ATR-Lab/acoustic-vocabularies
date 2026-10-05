@@ -37,12 +37,12 @@ namespace AcousticVocab.SelectionMenus
         internal static int Integer(JToken value,int min,int max)
         {MenuRules.Require(value?.Type==JTokenType.Integer,"MENU_LEDGER_SCHEMA");long n=(long)value;MenuRules.Require(n>=min&&n<=max,"MENU_LEDGER_SCHEMA");return(int)n;}
         internal static JObject Event(MenuEvent value)
-        {var row=new JObject{["kind"]=value.Kind,["event_id"]=value.EventId,["attempt_id"]=value.AttemptId,["opportunity_id"]=value.OpportunityId,["menu_key"]=value.MenuKey,["meaning_display_id"]=value.MeaningDisplayId,["slot_start_mono_ms"]=value.SlotStartMonoMs,["mono_ms"]=value.MonoMs,["expected_mono_ms"]=value.ExpectedMonoMs,["onset_uncertainty_ms"]=value.OnsetUncertaintyMs,["audio_request_id"]=value.AudioRequestId,["presentation_index"]=value.PresentationIndex,["candidate_id"]=value.CandidateId,["pcm_sha256"]=value.PcmSha256,["file_sha256"]=value.FileSha256,["yoked_source_event_id"]=value.YokedSourceEventId,["selected_index"]=value.SelectedIndex,["defaulted"]=value.Defaulted,["phase"]=value.Phase?.ToString(),["receipt_sha256"]=value.ReceiptSha256};
+        {var row=new JObject{["kind"]=value.Kind,["event_id"]=value.EventId,["attempt_id"]=value.AttemptId,["opportunity_id"]=value.OpportunityId,["menu_key"]=value.MenuKey,["meaning_display_id"]=value.MeaningDisplayId,["slot_start_mono_ms"]=value.SlotStartMonoMs,["mono_ms"]=value.MonoMs,["expected_mono_ms"]=value.ExpectedMonoMs,["onset_uncertainty_ms"]=value.OnsetUncertaintyMs,["audio_request_id"]=value.AudioRequestId,["presentation_index"]=value.PresentationIndex,["candidate_id"]=value.CandidateId,["pcm_sha256"]=value.PcmSha256,["file_sha256"]=value.FileSha256,["yoked_source_event_id"]=value.YokedSourceEventId,["selected_index"]=value.SelectedIndex,["defaulted"]=value.Defaulted,["phase"]=value.Phase?.ToString(),["matching_deviation_id"]=value.MatchingDeviationId,["receipt_sha256"]=value.ReceiptSha256};
             foreach(var property in row.Properties().ToArray())if(property.Value is JValue v&&v.Value==null)property.Value=JValue.CreateNull();return row;
         }
         internal static void CheckEvent(JObject row)
         {
-            Keys(row,"kind","event_id","attempt_id","opportunity_id","menu_key","meaning_display_id","slot_start_mono_ms","mono_ms","expected_mono_ms","onset_uncertainty_ms","audio_request_id","presentation_index","candidate_id","pcm_sha256","file_sha256","yoked_source_event_id","selected_index","defaulted","phase","receipt_sha256");
+            Keys(row,"kind","event_id","attempt_id","opportunity_id","menu_key","meaning_display_id","slot_start_mono_ms","mono_ms","expected_mono_ms","onset_uncertainty_ms","audio_request_id","presentation_index","candidate_id","pcm_sha256","file_sha256","yoked_source_event_id","selected_index","defaulted","phase","matching_deviation_id","receipt_sha256");
             foreach(string field in new[]{"kind","event_id","attempt_id","opportunity_id","menu_key","meaning_display_id"})MenuRules.Require(row[field].Type==JTokenType.String,"MENU_LEDGER_SCHEMA");
             string kind=(string)row["kind"];MenuRules.Require(new[]{"menu_start","choice_revised","choice_final","selection_verified","display_request","display_changed","play_request","onset_authority","play_complete","menu_interrupted"}.Contains(kind)&&MenuRules.Guid((string)row["event_id"])&&MenuRules.Id((string)row["attempt_id"])&&MenuRules.Id((string)row["opportunity_id"])&&MenuRules.Id((string)row["menu_key"])&&MenuRules.Id((string)row["meaning_display_id"]),"MENU_LEDGER_SCHEMA");
             Number(row["slot_start_mono_ms"]);Number(row["mono_ms"]);if(row["expected_mono_ms"].Type!=JTokenType.Null)Number(row["expected_mono_ms"]);
@@ -61,7 +61,8 @@ namespace AcousticVocab.SelectionMenus
             MenuRules.Require(hasExpected==(row["expected_mono_ms"].Type!=JTokenType.Null),"MENU_LEDGER_SCHEMA");
             bool choice=kind is "choice_final" or "selection_verified",display=kind is "display_request" or "display_changed";
             MenuRules.Require((choice||kind=="choice_revised"||display&&(string)row["phase"]=="Selected")== (row["selected_index"].Type!=JTokenType.Null)&&choice==(row["defaulted"].Type!=JTokenType.Null)&&display==(row["phase"].Type!=JTokenType.Null)&&(kind=="selection_verified")== (row["receipt_sha256"].Type!=JTokenType.Null),"MENU_LEDGER_SCHEMA");
-            MenuRules.Require(play||choice||row["yoked_source_event_id"].Type==JTokenType.Null,"MENU_LEDGER_SCHEMA");
+            MenuRules.Require(kind=="menu_interrupted"?row["matching_deviation_id"].Type==JTokenType.String&&(string)row["matching_deviation_id"]==(string)row["event_id"]:row["matching_deviation_id"].Type==JTokenType.Null,"MENU_LEDGER_SCHEMA");
+            MenuRules.Require(play||choice||display||kind=="menu_start"||row["yoked_source_event_id"].Type==JTokenType.Null,"MENU_LEDGER_SCHEMA");
         }
         internal static void NoLinks(string path)
         {for(FileSystemInfo entry=new FileInfo(Path.GetFullPath(path));entry!=null;entry=entry is FileInfo f?f.Directory:((DirectoryInfo)entry).Parent)if(entry.Exists)MenuRules.Require((entry.Attributes&FileAttributes.ReparsePoint)==0,"MENU_LEDGER_LINK");}
@@ -102,6 +103,8 @@ namespace AcousticVocab.SelectionMenus
             MenuReplaySequence.ValidateRecords(records,binding,verification);
             Write(new JObject{["kind"]="sealed",["menu_count"]=binding.MenuKeys.Count});sealedLedger=true;
         }
+        public MenuReplayComparison SealYoked(MenuReplaySequence source,MenuLedgerVerification verification)
+        {MenuRules.Require(source!=null,"MENU_YOKED_BINDING");var comparison=source.CompareYokedRecords(records,binding,verification);Write(new JObject{["kind"]="sealed_yoked",["menu_count"]=binding.MenuKeys.Count,["active_ledger_sha256"]=comparison.ActiveLedgerSha256,["yoked_event_sha256"]=comparison.YokedEventSha256});sealedLedger=true;return comparison;}
         public void Dispose(){if(closed)return;closed=true;try{output.Flush(true);}finally{output.Dispose();}}
     }
 }

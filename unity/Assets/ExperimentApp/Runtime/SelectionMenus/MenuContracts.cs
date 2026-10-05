@@ -18,15 +18,19 @@ namespace AcousticVocab.SelectionMenus
     // Its offsets are actual recorded host times relative to the active start.
     public sealed class MenuReplay
     {
-        internal readonly double[] OffsetsMs;
+        internal readonly double[] OffsetsMs,DisplayOffsetsMs;
+        internal readonly string[] DisplayRequestEvents,DisplayChangedEvents;
+        internal readonly string StartEventId,VerificationEventId;
         internal readonly string[] SourceEvents;
         internal readonly int SelectedIndex;
         internal readonly bool Defaulted;
         internal readonly string SelectionEventId,SelectionReceiptSha256;
-        internal MenuReplay(double[] offsets,string[] events,int selected,bool defaulted,string choiceEvent,string receipt)
+        internal MenuReplay(double[] offsets,string[] events,int selected,bool defaulted,string choiceEvent,string receipt,double[] displayOffsets=null,string[] displayRequests=null,string[] displayChanges=null,string startEvent=null,string verificationEvent=null)
         {
             MenuRules.Require(offsets!=null&&offsets.Length==8&&offsets.All(MenuRules.Finite)&&offsets.All(x=>x>=0)&&offsets.Zip(offsets.Skip(1),(a,b)=>b>a).All(x=>x)&&
                 events!=null&&events.Length==8&&events.All(MenuRules.Guid)&&events.Distinct().Count()==8&&selected>=1&&selected<=3&&(!defaulted||selected==1)&&MenuRules.Guid(choiceEvent)&&MenuRules.Hash(receipt),"MENU_REPLAY_INVALID");
+            if(displayOffsets!=null)MenuRules.Require(displayOffsets.Length==6&&displayOffsets.All(MenuRules.Finite)&&displayRequests?.Length==6&&displayChanges?.Length==6&&displayRequests.All(MenuRules.Guid)&&displayChanges.All(MenuRules.Guid)&&MenuRules.Guid(startEvent)&&MenuRules.Guid(verificationEvent),"MENU_REPLAY_INVALID");
+            DisplayOffsetsMs=displayOffsets==null?null:(double[])displayOffsets.Clone();DisplayRequestEvents=displayRequests==null?null:(string[])displayRequests.Clone();DisplayChangedEvents=displayChanges==null?null:(string[])displayChanges.Clone();StartEventId=startEvent;VerificationEventId=verificationEvent;
             OffsetsMs=(double[])offsets.Clone();SourceEvents=(string[])events.Clone();SelectedIndex=selected;Defaulted=defaulted;SelectionEventId=choiceEvent;SelectionReceiptSha256=receipt;
         }
     }
@@ -52,6 +56,7 @@ namespace AcousticVocab.SelectionMenus
         public bool? Defaulted {get;}
         public MenuPhase? Phase {get;}
         public string ReceiptSha256 {get;}
+        public string MatchingDeviationId=>Kind=="menu_interrupted"?EventId:null;
         internal MenuEvent(string kind,SlotContext context,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? defaulted=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null,string meaningDisplayId=null)
         {MeaningDisplayId=meaningDisplayId;OnsetUncertaintyMs=uncertainty;Kind=kind;AttemptId=context.Item.TrialId;OpportunityId=context.OpportunityId;MenuKey=context.Item.TrialType=="profile_menu"?"profile":context.Item.ContentId;SlotStartMonoMs=context.OnsetMonoMs;MonoMs=now;ExpectedMonoMs=expected;PresentationIndex=play;AudioRequestId=play.HasValue?context.AudioRequestIds[play.Value-1]:null;CandidateId=option?.CandidateId;PcmSha256=option?.Wave.PcmSha256;FileSha256=option?.Wave.FileSha256;YokedSourceEventId=source;SelectedIndex=selected;Defaulted=defaulted;Phase=phase;ReceiptSha256=receipt;}
     }

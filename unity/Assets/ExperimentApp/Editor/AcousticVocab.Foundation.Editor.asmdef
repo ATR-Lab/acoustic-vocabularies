@@ -13,7 +13,8 @@
     "UnityEngine.UI",
     "AcousticVocab.ResponsePanel",
     "AcousticVocab.StateIntegration",
-    "AcousticVocab.Teaching"
+    "AcousticVocab.Teaching",
+    "AcousticVocab.SelectionMenus"
   ],
   "includePlatforms": [
     "Editor"

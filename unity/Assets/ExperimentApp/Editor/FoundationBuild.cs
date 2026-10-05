@@ -172,6 +172,13 @@ namespace AcousticVocab.Foundation.Editor
                     UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Length!=1)
                     throw new BuildFailedException("Teaching scene requires one host and one isolated verified audio source.");
             }
+            if(ParticipantScenePath=="Assets/Generated.local.data/SelectionMenus/Menus.unity")
+            {
+                allowed=allowed.Concat(new[] {typeof(AcousticVocab.SelectionMenus.MenuSessionHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource)}).ToArray();
+                if(UnityEngine.Object.FindObjectsByType<AcousticVocab.SelectionMenus.MenuSessionHost>(FindObjectsInactive.Include).Length!=1 ||
+                    UnityEngine.Object.FindObjectsByType<AcousticVocab.StudyAudio.AudioPlayer>(FindObjectsInactive.Include).Length!=1 || UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Length!=1)
+                    throw new BuildFailedException("Menu scene requires one host and one isolated verified audio source.");
+            }
             if(ParticipantScenePath==CalibrationScenePath)
             {
                 allowed=allowed.Concat(new[] { typeof(AcousticVocab.StudyAudio.AudioCalibrationHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource),

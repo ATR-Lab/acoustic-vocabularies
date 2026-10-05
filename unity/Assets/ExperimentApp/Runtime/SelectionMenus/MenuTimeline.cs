@@ -9,7 +9,7 @@ namespace AcousticVocab.SelectionMenus
     public sealed class MenuTimeline
     {
         readonly SlotContext context;readonly MenuOption[] options;readonly MenuReplay replay;readonly Action<MenuEvent> persist;readonly Func<double> observed;
-        readonly double[] offsets;readonly bool profile;readonly string meaningDisplayId;
+        readonly double[] offsets,displayOffsets;readonly bool profile;readonly string meaningDisplayId;
         readonly bool[] requested=new bool[8],completed=new bool[8],onset=new bool[8];
         double last=-1;int choice,final;bool started,failed,finalized,committed,defaulted;
         public MenuPhase Phase {get;private set;}=MenuPhase.Hidden;
@@ -28,6 +28,7 @@ namespace AcousticVocab.SelectionMenus
             MenuRules.Require(MenuRules.Id(meaningDisplayId),"MENU_DISPLAY_ID");this.meaningDisplayId=meaningDisplayId;
             this.context=context;this.options=(MenuOption[])options.Clone();this.persist=durableSink;this.replay=replay;observed=observedClock;profile=context.Item.TrialType=="profile_menu";
             offsets=replay==null?(profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000}):(double[])replay.OffsetsMs.Clone();
+            displayOffsets=replay?.DisplayOffsetsMs??(profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000});
             MenuRules.Require(options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_DURATION");
             if(replay!=null)
             {
@@ -44,7 +45,7 @@ namespace AcousticVocab.SelectionMenus
             double stamp=observed==null?now:observed();MenuRules.Require(MenuRules.Finite(stamp)&&stamp>=now,"MENU_CLOCK");
             persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt,uncertainty,meaningDisplayId));
         }
-        public void Start(double now){Clock(now);MenuRules.Require(!started&&!failed&&now<=context.OnsetMonoMs,"MENU_START");started=true;Emit("menu_start",now,context.OnsetMonoMs);Tick(now);}
+        public void Start(double now){Clock(now);MenuRules.Require(!started&&!failed&&now<=context.OnsetMonoMs,"MENU_START");started=true;Emit("menu_start",now,context.OnsetMonoMs,source:replay?.StartEventId);Tick(now);}
         public void Choose(int index,double now)
         {
             Clock(now);double elapsed=now-context.OnsetMonoMs;
@@ -54,7 +55,7 @@ namespace AcousticVocab.SelectionMenus
         public void ConfirmSelection(int index,string receiptSha256,double now)
         {
             Clock(now);MenuRules.Require(finalized&&!committed&&!failed&&index==final&&MenuRules.Hash(receiptSha256),"MENU_COMMIT_REFUSED");
-            Emit("selection_verified",now,selected:final,isDefault:defaulted,source:replay?.SelectionEventId,receipt:receiptSha256);committed=true;
+            Emit("selection_verified",now,selected:final,isDefault:defaulted,source:replay?.VerificationEventId,receipt:receiptSha256);committed=true;
         }
         public void Tick(double now)
         {
@@ -66,14 +67,14 @@ namespace AcousticVocab.SelectionMenus
                 Emit("choice_final",now,context.OnsetMonoMs+ChoiceDeadline,source:replay?.SelectionEventId,selected:final,isDefault:defaulted);finalized=true;
                 if(Yoked)ConfirmSelection(final,replay.SelectionReceiptSha256,now);else SelectionRequested?.Invoke(final,defaulted);
             }
-            MenuPhase wanted=elapsed<0?MenuPhase.Hidden:elapsed<(profile?6000:4000)?MenuPhase.Instructions:elapsed<ChoiceOpen?MenuPhase.Audition:
-                elapsed<ChoiceDeadline?MenuPhase.Choice:elapsed<NeutralStart?MenuPhase.Selected:elapsed<context.Item.SlotSeconds*1000?MenuPhase.Neutral:MenuPhase.Ended;
+            MenuPhase wanted=elapsed<displayOffsets[0]?MenuPhase.Hidden:elapsed<displayOffsets[1]?MenuPhase.Instructions:elapsed<displayOffsets[2]?MenuPhase.Audition:
+                elapsed<displayOffsets[3]?MenuPhase.Choice:elapsed<displayOffsets[4]?MenuPhase.Selected:elapsed<displayOffsets[5]?MenuPhase.Neutral:MenuPhase.Ended;
             if(wanted!=Phase)
             {
                 MenuRules.Require((int)wanted<=(int)Phase+1,"MENU_DISPLAY_BOUNDARY_MISSED");
                 if(wanted==MenuPhase.Ended)MenuRules.Require(committed&&completed.All(x=>x),"MENU_INCOMPLETE");
-                Emit("display_request",now,phase:wanted,selected:wanted==MenuPhase.Selected?final:(int?)null);
-                Phase=wanted;DisplayChanged?.Invoke(Phase,Phase==MenuPhase.Selected?final:(int?)null);Emit("display_changed",now,phase:Phase,selected:Phase==MenuPhase.Selected?final:(int?)null);
+                Emit("display_request",now,source:replay?.DisplayRequestEvents?[(int)wanted-1],phase:wanted,selected:wanted==MenuPhase.Selected?final:(int?)null);
+                Phase=wanted;DisplayChanged?.Invoke(Phase,Phase==MenuPhase.Selected?final:(int?)null);Emit("display_changed",now,source:replay?.DisplayChangedEvents?[(int)Phase-1],phase:Phase,selected:Phase==MenuPhase.Selected?final:(int?)null);
             }
             for(int i=0;i<8;i++)
             {
@@ -88,7 +89,7 @@ namespace AcousticVocab.SelectionMenus
         public void Onset(string id,double estimateMs,double uncertaintyMs,double now)
         {
             Clock(now);int i=context.AudioRequestIds.ToList().IndexOf(id);
-            MenuRules.Require(!failed&&i>=0&&requested[i]&&!onset[i]&&MenuRules.Finite(estimateMs)&&MenuRules.Finite(uncertaintyMs)&&uncertaintyMs>=0&&uncertaintyMs<=20&&Math.Abs(estimateMs-context.OnsetMonoMs-offsets[i])<=20,"MENU_ONSET_AUTHORITY");
+            MenuRules.Require(!failed&&i>=0&&requested[i]&&!onset[i]&&MenuRules.Finite(estimateMs)&&MenuRules.Finite(uncertaintyMs)&&uncertaintyMs>=0&&uncertaintyMs<=20&&Math.Abs(estimateMs-context.OnsetMonoMs-offsets[i])<=uncertaintyMs+.000001,"MENU_ONSET_AUTHORITY");
             Emit("onset_authority",now,estimateMs,i+1,options[i<6?i/2:final-1],replay?.SourceEvents[i],uncertainty:uncertaintyMs);onset[i]=true;
         }
         public void Completed(string id,double now)

@@ -61,6 +61,8 @@ namespace AcousticVocab.SelectionMenus.Tests
         }
         [Test]public void LateSchedulingDoesNotBackfillMissedPlay()
         {var run=new Run(false);run.Timeline.Tick(750);run.Timeline.Tick(4750);Assert.Throws<SessionFault>(()=>run.Timeline.Tick(5700));Assert.That(run.Plays,Is.Empty);}
+        [TestCase(2,true)][TestCase(19,false)]public void OnsetResidualUsesItsReportedUncertainty(double residual,bool accepted)
+        {var run=new Run(false);run.Timeline.Tick(750);run.Timeline.Tick(4750);run.Timeline.Tick(5000);var play=run.Plays.Single();if(accepted)Assert.DoesNotThrow(()=>run.Timeline.Onset(play.id,play.at+residual,2,play.at+residual));else Assert.Throws<SessionFault>(()=>run.Timeline.Onset(play.id,play.at+residual,2,play.at+residual));}
         [Test]public void InterruptionRetainsPartialEventsAndStopsAllLaterPlays()
         {var run=new Run(false);run.Timeline.Tick(750);run.Timeline.Tick(4750);run.Timeline.Tick(5000);run.Timeline.Interrupt(5100);run.Timeline.Tick(50000);Assert.That(run.Timeline.Interrupted,Is.True);Assert.That(run.Timeline.Complete,Is.False);Assert.That(run.Plays.Count,Is.EqualTo(1));Assert.That(run.Events.Last().Kind,Is.EqualTo("menu_interrupted"));}
         [Test]public void ReplayCannotTimeCompressFailedTimingIntoNominalSchedule()

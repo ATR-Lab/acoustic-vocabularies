@@ -19,6 +19,7 @@ namespace AcousticVocab.ResponsePanel
         public ResponseState State { get; private set; }
         public bool InputAvailable { get; private set; }
         public bool FaultLatched { get; private set; }
+        public bool? ConfiguredLeftHand => settings?.LeftHand;
         public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
         public event Action<PanelResponse> Responded;
         public event Action<string> Faulted;
