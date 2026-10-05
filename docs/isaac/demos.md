@@ -121,3 +121,25 @@ test. Rendering is outside timing measurement. `grasp_contact_validated`,
 `collision_reviewed`, and `complete_action_demonstrated` remain false. Review
 the actual pickup/closure/lift and cup clearance before extending this candidate
 to the action library; keep any failed probe and its full diagnostics.
+
+The first complete actual suite produced 40 captures / 12,000 public v2 frames;
+all 40 endpoint replays and following resets passed. Only 4 of 40 passed the
+provisional timing screen (host spans 9.9626–11.3376 s), so
+`recording_complete=false`. The ADD_ONE wrist-offset visual failure independently
+prevents acceptance. The raw failed suite is retained unchanged.
+
+The bounded corrected probe at `ed268fa` completed pickup/lift/replacement and
+reset. At the closed/lift samples, the selected thumb/middle mesh vertices were
+approximately -0.0224 mm / +0.4946 mm from the washer's outer surface; the actual
+close-up places the washer between the fingers. However, a separate geometry
+screen transforms the pinned STL vertices using actual PhysX link poses and
+finds them inside the supply cup's 4 mm walls during approach, closure and
+replacement, up to about 2 mm from a wall boundary. This is a confirmed collision
+failure; clear lifted samples do not qualify the pickup. Complete transfer to
+the tray remains unresolved. No layout change or full-action qualification is
+implied. Sanitized hashes and counts are in [demo-diagnostics.json](demo-diagnostics.json).
+
+Reproduce the read-only cup screen with
+`python -m isaac.demos.grip_geometry --summary <private-probe-summary> --layout apparatus/workcell_layout.json --mesh-directory <approved-pinned-G1-meshes> --out <private-diagnostic-output>`.
+It verifies both distal STL hashes. A positive vertex/box intersection proves a
+failure; its absence would not prove triangle or whole-robot collision freedom.

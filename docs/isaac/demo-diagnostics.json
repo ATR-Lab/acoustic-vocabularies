@@ -1,0 +1,190 @@
+{
+  "diagnostic_suite": {
+    "actual_public_v2_frames": 12000,
+    "capture_complete": 40,
+    "following_reset_ok": 40,
+    "index_sha256": "7a65411ae663be6382f19cac760d82627793e2fcef14511c80b761b0548519b3",
+    "maximum_sample_interval_ms": 49.392807,
+    "measured_host_span_seconds": {
+      "max": 11.337567653,
+      "median": 10.160368642000002,
+      "min": 9.96255138
+    },
+    "motion_source_revision": "f3cb899",
+    "protected_real_factory": {
+      "after_sha256": "ee91a5a5573966acad8d712c3c8c924e1e287948e94d7c151b1ed6ae296978b0",
+      "before_sha256": "ee91a5a5573966acad8d712c3c8c924e1e287948e94d7c151b1ed6ae296978b0",
+      "factory_ran": false,
+      "rejected": 32,
+      "unchanged": true
+    },
+    "recording_complete": false,
+    "recordings": 40,
+    "replay_end_state_ok": 40,
+    "scene_runner_revision": "abd8166",
+    "summary_sha256": "7a65411ae663be6382f19cac760d82627793e2fcef14511c80b761b0548519b3",
+    "timing_pass": 4,
+    "visual_review": "ADD_ONE A failed: washer outside fingers near wrist; remaining actions not accepted"
+  },
+  "grip_probe": {
+    "closed_sampled_surface_distance_mm": [
+      {
+        "distances": [
+          -0.022419139193284587,
+          0.4944986841373196
+        ],
+        "sample": 72
+      },
+      {
+        "distances": [
+          -0.022401187453034016,
+          0.49455251139916706
+        ],
+        "sample": 102
+      },
+      {
+        "distances": [
+          -0.022401187453034016,
+          0.49455251139916706
+        ],
+        "sample": 150
+      },
+      {
+        "distances": [
+          -0.022395059654760005,
+          0.49456048732295566
+        ],
+        "sample": 191
+      }
+    ],
+    "collision_reviewed": false,
+    "complete_action_demonstrated": false,
+    "completed": true,
+    "cup_geometry": {
+      "intersection_threshold_m": 0.0001,
+      "kind": "actual_PhysX_frames_pinned_STL_vertex_vs_cup_shell",
+      "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+      "no_intersection_is_not_collision_clearance": true,
+      "rows": [
+        {
+          "cup_vertex_intersections": [],
+          "sample": 30
+        },
+        {
+          "cup_vertex_intersections": [
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.00189708793607961,
+              "penetrating_vertex_count": 120,
+              "wall": "Back"
+            },
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.0019997092391073144,
+              "penetrating_vertex_count": 509,
+              "wall": "Right"
+            }
+          ],
+          "sample": 60
+        },
+        {
+          "cup_vertex_intersections": [
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.001977257436315107,
+              "penetrating_vertex_count": 988,
+              "wall": "Back"
+            },
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.0019970892324276523,
+              "penetrating_vertex_count": 943,
+              "wall": "Right"
+            },
+            {
+              "link": "right_hand_middle_1_link",
+              "max_vertex_depth_m": 0.001997776835640985,
+              "penetrating_vertex_count": 2791,
+              "wall": "Front"
+            }
+          ],
+          "sample": 72
+        },
+        {
+          "cup_vertex_intersections": [],
+          "sample": 102
+        },
+        {
+          "cup_vertex_intersections": [],
+          "sample": 150
+        },
+        {
+          "cup_vertex_intersections": [
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.001972750884116416,
+              "penetrating_vertex_count": 989,
+              "wall": "Back"
+            },
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.0019997488303620473,
+              "penetrating_vertex_count": 944,
+              "wall": "Right"
+            },
+            {
+              "link": "right_hand_middle_1_link",
+              "max_vertex_depth_m": 0.001998185853000026,
+              "penetrating_vertex_count": 2789,
+              "wall": "Front"
+            }
+          ],
+          "sample": 191
+        },
+        {
+          "cup_vertex_intersections": [
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.0018925750666155903,
+              "penetrating_vertex_count": 120,
+              "wall": "Back"
+            },
+            {
+              "link": "right_hand_thumb_2_link",
+              "max_vertex_depth_m": 0.001993628548306285,
+              "penetrating_vertex_count": 511,
+              "wall": "Right"
+            }
+          ],
+          "sample": 209
+        }
+      ],
+      "shell_wall_m": 0.004,
+      "summary_sha256": "c35cfc498ef69804bf086cf11e726cb3fb464cc441f8a3faa858b4519937e4a7"
+    },
+    "diagnostic_stage": "pickup_and_replace_only",
+    "following_reset_ok": true,
+    "grasp_contact_validated": false,
+    "inspected_image_sha256": {
+      "060-close.png": "5594499109a7b0ddb7f04d2d07b0b47488c63e1234ea0101c09e50b0c1c147c1",
+      "072-close.png": "b8975926f1751325be6e62adf7a7e6b412009bedf71e4d4841a01d3378c17ff8",
+      "102-close.png": "134b0bf6b6408afbf11bf2cdd8a1ca8d7074b2910f29900834dba9891351984a",
+      "191-close.png": "067d906df8dcd7124c3aa91170b86ae6ed17e2c5ad77f952738144adf61b23be"
+    },
+    "observation": "Washer between distal thumb and middle finger during lift; supply-cup wall penetration confirmed from actual PhysX link poses and pinned STL vertices",
+    "scene_runner_revision": "70159f4",
+    "source_revision": "ed268fa",
+    "summary_sha256": "c35cfc498ef69804bf086cf11e726cb3fb464cc441f8a3faa858b4519937e4a7"
+  },
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "remaining": [
+    "Collision-aware pickup without cup wall penetration",
+    "Reachable corrected transfer and release for all actions",
+    "Review full40 actual motions for visual intelligibility and collisions",
+    "Rerecord all40 under measured timing screen; do not time-compress failed captures",
+    "Methodology/operator review"
+  ],
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "status": "NOT_QUALIFIED"
+}

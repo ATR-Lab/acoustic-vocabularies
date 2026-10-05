@@ -6,6 +6,7 @@ import pytest
 
 from isaac.demos.grip_probe import (CLOSED, OPEN, FINGER_NAMES, compile_grip_plan,
     cylinder_distance, hand_positions)
+from isaac.demos.grip_geometry import box_vertex_depth
 from isaac.demos.runtime import DemoLibrary
 from isaac.workcell.layout import neutral_layout
 from test_demos import FakeBackend, FakeAccessors
@@ -23,6 +24,14 @@ def test_outer_cylinder_distance_faces_and_interior():
     assert cylinder_distance([0, 0, .003]) == 0
     assert cylinder_distance([.0135, 0, 0]) == pytest.approx(.001)
     assert cylinder_distance([0, 0, 0]) == pytest.approx(-.003)
+
+
+def test_vertex_depth_proves_inside_box_but_boundary_is_not_penetration():
+    assert box_vertex_depth([0, 0, 0], [0, 0, 0], [.004, .1, .1]) == pytest.approx(.002)
+    assert box_vertex_depth([.002, 0, 0], [0, 0, 0], [.004, .1, .1]) == 0.
+    assert box_vertex_depth([.003, 0, 0], [0, 0, 0], [.004, .1, .1]) == 0.
+    with pytest.raises(ValueError):
+        box_vertex_depth([math.nan, 0, 0], [0, 0, 0], [.004, .1, .1])
 
 
 @pytest.mark.parametrize('closure', [-1., 1.1, math.nan, math.inf])
