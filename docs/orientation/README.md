@@ -117,6 +117,15 @@ runs the full preallocation check and does not invent a refresher schedule.
 
 ## Validation scope
 
+[Validation metadata](validation.json) records 186/186 edit-mode tests, 8/8
+play-mode tests, 137 Python passes (one Linux-only skip), schema checks and the
+exact build/test revisions. Both clean native builds succeeded with zero errors:
+Windows Mono `orientation-link-001` and Android ARM64 IL2CPP
+`orientation-quest-002`. The latter APK is 54,742,242 bytes, SHA-256
+`6ff6272d6eadba69a22ce74091f9ccece83dd87a0bac1bd68236dac8cc6b982d`.
+The full public manifests record every output file; binaries and raw logs stay
+private. No Quest was connected for deployment or runtime verification.
+
 Edit-mode tests cover the three required score paths, every first-check mistake
 position, a maximum of one re-explanation, no eligibility before durable write,
 draft-content blocking, missing/short/late demos, list coverage and invalid

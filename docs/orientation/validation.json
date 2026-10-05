@@ -1,7 +1,7 @@
 {
   "issue": 66,
   "qualification": "engineering_validation_not_human_eligibility_or_acceptance",
-  "runtime_commit": "e7c84e8279b23dd6a9711e12d021b8b365822385",
+  "runtime_commit": "9b067fb15457a84d96b9a9c372f9740c6aee6081",
   "editor": "6000.6.0f1",
   "packages_added": false,
   "edit_mode": {
@@ -34,7 +34,8 @@
   "preview": {
     "file": "docs/orientation/preview-captures.json",
     "sha256": "2d0a15255deea1a5c3e4e69f132f655fceb29d2fca838a6027585b831c23e90a",
-    "original_local_sha256": "54e80f060d03e2e015deb37c98e19655e4222b3cf312502626817e29231e8a5d"
+    "original_local_sha256": "54e80f060d03e2e015deb37c98e19655e4222b3cf312502626817e29231e8a5d",
+    "source_commit": "e7c84e8279b23dd6a9711e12d021b8b365822385"
   },
   "actual_failed_library_rejection": {
     "file": "docs/orientation/actual-demo-rejection.json",
@@ -67,7 +68,28 @@
       "response_count": 16
     }
   ],
-  "native_builds": [],
+  "native_builds": [
+    {
+      "file": "docs/orientation/build-manifests/orientation-quest-002.build.json",
+      "sha256": "becacedeb9152ac0553c5ca92cbd2b5fcc7001ef7bb8ae961d5209ffec12f3e7",
+      "original_local_sha256": "c88b530351b7bba4364ba8f158cac208979fe549efcfdd971b32171250f5ab51",
+      "build_id": "orientation-quest-002",
+      "target": "Android",
+      "runtime_commit": "9b067fb15457a84d96b9a9c372f9740c6aee6081",
+      "errors": 0,
+      "unity_report_total_bytes": 761326973
+    },
+    {
+      "file": "docs/orientation/build-manifests/orientation-link-001.build.json",
+      "sha256": "a1ca87a62600349d876f6fe98c39df1906408973cbc1cf2db5d02df993626819",
+      "original_local_sha256": "f1d60f6cbee96f2c077030bf2c9d37a700720b8a80f903e7151df6708124132f",
+      "build_id": "orientation-link-001",
+      "target": "Windows",
+      "runtime_commit": "9b067fb15457a84d96b9a9c372f9740c6aee6081",
+      "errors": 0,
+      "unity_report_total_bytes": 158012841
+    }
+  ],
   "independent_review": "Durable outcome ordering and bounded checks reviewed. Execution-status validation gap corrected with regression tests before final validation.",
   "pending": [
     "Qualified equal-duration actual #56 demonstrations",
@@ -77,5 +99,20 @@
     "Physical view angle, glyph legibility, reach, input, comfort and occlusion review",
     "Configured Unity CI runner/license",
     "Connected Quest runtime and deployment"
-  ]
+  ],
+  "test_source_commit": "e7c84e8279b23dd6a9711e12d021b8b365822385",
+  "post_test_change": "Only the feedback caption changed from Response to Expected; no logic, timing or dependency change.",
+  "android_package": {
+    "bytes": 54742242,
+    "sha256": "6ff6272d6eadba69a22ce74091f9ccece83dd87a0bac1bd68236dac8cc6b982d",
+    "zip_crc_valid": true,
+    "il2cpp_library_present": true,
+    "abi": "arm64-v8a",
+    "min_sdk": 32,
+    "target_sdk": 36,
+    "internet_permission": true,
+    "debuggable_attribute_absent_default_false": true,
+    "connected_quest_count": 0,
+    "runtime_verified_on_quest": false
+  }
 }
