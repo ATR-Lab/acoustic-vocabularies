@@ -64,6 +64,46 @@ ports or audit filenames from racing the same engine.
 #67 remains the authority for onset consumption and neutral pause boundaries;
 an acknowledgment is not evidence the headset is already paused.
 
+### Native owner integration
+
+`AcousticVocab.OperatorConsole.OperatorMailbox` accepts an already validated
+`FixedSlotEngine`, a synchronous durable `IOperatorCommandJournal`, and trusted
+admission, health and monotonic-clock providers. `FileOperatorCommandJournal`
+creates a new nonce-specific, append/fsync, sequence/hash-chain audit. It never
+overwrites an older process journal. Generate a fresh GUID32 nonce for every
+process; keep the directory private and retain all failed/torn evidence. An
+exclusive writer handle prevents two engine owners. This adapter does not load
+participants, reveal allocations, construct content factories or grant readiness.
+
+The owner calls `OperatorMailbox.Tick()` on its engine thread. This is the sole
+driver of `FixedSlotEngine.Tick()`: a factory implementing `ISessionContentPump`
+is pumped by the engine before slot and response boundaries. Do not add a separate
+Unity Update scheduler for module deadlines. Disposal or a durable-write/host
+failure latches the adapter and stops active content; recovery requires a new
+trusted owner and explicit console load. Restart does not replay unacknowledged
+commands. A request without a durable terminal result remains uncertain.
+
+Load checks trusted admission. Start/resume additionally check trusted health and
+the engine boundary. Pause/stop remain available after admission or health fails.
+The snapshot counts completed original scheduled IDs in producer block order;
+retries do not double-count them. No trial or answer fields leave the adapter.
+
+The qualified implementation target is same-PC Windows Link. State publication
+flushes a fresh temporary file and uses same-directory `MoveFileExW` replacement.
+Only Windows errors 5/32/33 permit up to ten 2 ms waits for transient contention;
+the same file publication is retried, never an engine action. Persistent failure
+retains the temporary file, latches the engine and leaves old state to become stale.
+The Python reader opens one file generation with delete sharing and validates its
+type/byte bound through the opened descriptor. Freshness, nonce and sequence checks
+are unchanged. See Microsoft's [MoveFileExW contract](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
+This is software recovery behavior, not a power-loss durability qualification.
+Android IL2CPP compilation does not provision this Windows transport; invoking
+publication on an unqualified platform fails closed.
+
+No participant scene host is fabricated by this issue. A joined host must supply
+the real validated schedule, durable session/content journals and measured
+readiness authorities, and implement/capture the neutral participant pause view.
+
 ## Masked records
 
 Visible state is rebuilt from closed fields. Intended tuple, correctness,
