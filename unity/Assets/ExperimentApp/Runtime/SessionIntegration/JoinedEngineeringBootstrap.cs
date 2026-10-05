@@ -319,7 +319,12 @@ namespace AcousticVocab.SessionIntegration
                 if(host.store!=null&&!host.store.OldHashesVerified)return "GRAMMAR_STORE_NOT_VERIFIED";
                 return null;
             }
-            void GrammarGateRefused(string code)=>host.audit.Write("module",new JObject{["kind"]="grammar_gate_refused",["code"]=code});
+            void GrammarGateRefused(string code)
+            {
+                var detail=new JObject{["kind"]="grammar_gate_refused",["code"]=code};
+                if(code=="GRAMMAR_RESET_ACK_NOT_CURRENT"||code=="GRAMMAR_PRIVATE_HOLD_NOT_CURRENT")detail["control_health"]=control?.ReadinessDiagnostic(reset);
+                host.audit.Write("module",detail);
+            }
             bool GrammarControlGate()
             {
                 string code=ControlReadinessFailure();
