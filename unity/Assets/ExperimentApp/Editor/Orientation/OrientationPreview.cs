@@ -41,7 +41,7 @@ namespace AcousticVocab.Orientation.Editor
                 }
                 if(name!="practice")panel.CloseAtBoundary();
                 typeof(OrientationHost).GetMethod("CreateDisplay",Flags).Invoke(host,new object[]{StationConfig.ReferencePose(foundation.Configuration)});
-                var camera=foundation.observerCamera;camera.transform.SetPositionAndRotation(new Vector3(0,1.5f,1.45f),Quaternion.LookRotation(new Vector3(0,.04f,-.95f),Vector3.up));camera.fieldOfView=60;
+                var camera=foundation.observerCamera;camera.transform.SetPositionAndRotation(new Vector3(0,1.5f,1.45f),Quaternion.LookRotation(new Vector3(0,-.18f,-.7f),Vector3.up));camera.fieldOfView=80;
                 var target=new RenderTexture(1920,1080,24);var pixels=new Texture2D(1920,1080,TextureFormat.RGB24,false);var old=RenderTexture.active;camera.targetTexture=target;
                 try {camera.Render();RenderTexture.active=target;pixels.ReadPixels(new Rect(0,0,1920,1080),0,0);pixels.Apply();byte[] png=pixels.EncodeToPNG();string file=name+".png";File.WriteAllBytes(Path.Combine(directory,file),png);captures.Add(new JObject { ["file"]=file,["sha256"]=FoundationBuild.Hash(png),["stage"]=flow.Stage.ToString(),["synthetic_ui_state"]=true,["demo_playback_performed"]=false });}
                 finally {RenderTexture.active=old;camera.targetTexture=null;UnityEngine.Object.DestroyImmediate(target);UnityEngine.Object.DestroyImmediate(pixels);}

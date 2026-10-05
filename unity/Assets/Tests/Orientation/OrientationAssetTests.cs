@@ -33,10 +33,10 @@ namespace AcousticVocab.Orientation.Tests
             }
             byte[] trajectory=Encoding.UTF8.GetBytes(text.ToString());File.WriteAllBytes(Path.Combine(directory,"synthetic.ndjson"),trajectory);
             var intervals=times.Skip(1).Select((t,i)=>(t-times[i])/1e6).ToArray();var ordered=intervals.OrderBy(x=>x).ToArray();var rows=new JArray();
-            foreach(string action in PublicCommands.Actions) rows.Add(JObject.FromObject(new {group="orientation",action,target=PublicCommands.ActionFamily(action)==0?"tray_A":"container_E",
-                capture=new {file="synthetic.ndjson",sha256=SceneRegistry.Hash(trajectory),frame_count=300,nominal_sample_hz=30,nominal_duration_seconds=10,measured_first_to_last_host_seconds=(times.Last()-times[0])/1e9,interval_ms=new {min=ordered[0],max=ordered.Last(),p95=ordered[(95*ordered.Length+99)/100-1],mean=intervals.Average()},capture_complete=true,timing_ok=true,actual_host_timestamps_preserved=true,time_compressed=false,timing_rule="synthetic unit fixture only"},execution=new{},error=(string)null,reset_ok=true,replay_end_state_ok=true,expected_objects_sha256=new string('d',64)}));
+            foreach(string action in PublicCommands.Actions) rows.Add(JObject.FromObject(new {group="orientation",action,private_plan_key=action+"/"+(PublicCommands.ActionFamily(action)==0?"tray_A":"container_E"),target=PublicCommands.ActionFamily(action)==0?"tray_A":"container_E",
+                capture=new {file="synthetic.ndjson",sha256=SceneRegistry.Hash(trajectory),frame_count=300,nominal_sample_hz=30,nominal_duration_seconds=10,measured_first_to_last_host_seconds=(times.Last()-times[0])/1e9,interval_ms=new {min=ordered[0],max=ordered.Last(),p95=ordered[(95*ordered.Length+99)/100-1],mean=intervals.Average()},capture_complete=true,timing_ok=true,actual_host_timestamps_preserved=true,time_compressed=false,timing_rule="synthetic unit fixture only"},execution=new{collision_reviewed=false,events=new object[0],execution_ok=true,failures=new object[0],grasp_contact_validated=false,nominal_duration_seconds=10,private_result=new{},robot_neutral_error_rad=0,sample_count=300,semantic_error=false},error=(string)null,reset_ok=true,replay_end_state_ok=true,expected_objects_sha256=new string('d',64)}));
             for(int i=0;i<32;i++)rows.Add(new JObject { ["group"]="execution" });
-            index=JObject.FromObject(new {kind="actual_G1_kinematic_visualization",scene_sha256=registry.SceneHash,reset_snapshot_sha256=registry.SnapshotHash,planning_pairs=32,feasible_pairs=32,planning_reset_ok=true,collision_reviewed=false,grasp_contact_validated=false,methodology_review_complete=false,recording_complete=true,rows,joint_names_sha256=SceneRegistry.Hash(Encoding.UTF8.GetBytes(string.Join("\n",names)+"\n")),station_id=registry.StationId,nominal_duration_seconds=10});
+            index=JObject.FromObject(new {kind="actual_G1_kinematic_visualization",scene_sha256=registry.SceneHash,reset_snapshot_sha256=registry.SnapshotHash,planning_pairs=32,feasible_pairs=32,planning_reset_ok=true,protected_real_factory=new{before_sha256=new string('b',64),after_sha256=new string('b',64),factory_ran=false,rejected=32,unchanged=true},collision_reviewed=false,grasp_contact_validated=false,methodology_review_complete=false,recording_complete=true,rows,joint_names_sha256=SceneRegistry.Hash(Encoding.UTF8.GetBytes(string.Join("\n",names)+"\n")),station_id=registry.StationId,nominal_duration_seconds=10});
         }
         OrientationDemos Load(bool draft=true)
         { byte[] data=Encoding.UTF8.GetBytes(index.ToString(Formatting.None));File.WriteAllBytes(Path.Combine(directory,"index.private.json"),data);return OrientationDemos.Load(directory,SceneRegistry.Hash(data),registry,neutral,draft); }
@@ -61,5 +61,20 @@ namespace AcousticVocab.Orientation.Tests
         }
         [Test] public void EightDistinctActionsAreRequired()
         { index["rows"][1]["action"]=index["rows"][0]["action"];Assert.Throws<OrientationFault>(()=>Load()); }
+        [Test] public void FailedExecutionCannotBeHiddenBehindSuccessfulCaptureFlags()
+        {
+            var execution=(JObject)index["rows"][0]["execution"];
+            execution["execution_ok"]=false;Assert.Throws<OrientationFault>(()=>Load());execution["execution_ok"]=true;
+            execution["semantic_error"]=true;Assert.Throws<OrientationFault>(()=>Load());execution["semantic_error"]=false;
+            execution["failures"]=new JArray("synthetic failure");Assert.Throws<OrientationFault>(()=>Load());execution["failures"]=new JArray();
+            execution["robot_neutral_error_rad"]=.00101;Assert.Throws<OrientationFault>(()=>Load());execution["robot_neutral_error_rad"]=0;
+            execution["sample_count"]=299;Assert.Throws<OrientationFault>(()=>Load());
+        }
+        [Test] public void ProtectedGuardPlanIdentityAndExpectedStateHashAreRequired()
+        {
+            index["protected_real_factory"]["factory_ran"]=true;Assert.Throws<OrientationFault>(()=>Load());index["protected_real_factory"]["factory_ran"]=false;
+            index["rows"][0]["private_plan_key"]="SCAN/container_E";Assert.Throws<OrientationFault>(()=>Load());index["rows"][0]["private_plan_key"]="ADD_ONE/tray_A";
+            index["rows"][0]["expected_objects_sha256"]="not-a-hash";Assert.Throws<OrientationFault>(()=>Load());
+        }
     }
 }

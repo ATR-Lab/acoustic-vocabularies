@@ -59,6 +59,26 @@ namespace AcousticVocab.Orientation.Tests
             bool notified=false;Setup(false,row=> { if((string)row["event"]=="eligibility_outcome")throw new IOException("synthetic"); });flow.OutcomeRecorded+=_=>notified=true;Introduction(true);
             Assert.Throws<OrientationFault>(()=>Check());Assert.That(flow.Stage,Is.EqualTo(OrientationStage.Fault));Assert.That(flow.Outcome,Is.Null);Assert.That(flow.EligibleOutcomeRecorded,Is.False);Assert.That(notified,Is.False);
         }
+        [TestCase(-1,-1,"pass_first")] [TestCase(7,-1,"pass_second")] [TestCase(7,7,"fail")]
+        public void ActualJournalContainsOutcomeBeforeCallback(int wrongFirst,int wrongSecond,string expected)
+        {
+            string directory=Path.Combine(FoundationBuild.RepositoryRoot,".local","orientation-durable-"+expected+"-"+Guid.NewGuid().ToString("N"));
+            using(var journal=new OrientationJournal(directory,new JObject { ["qualification"]="synthetic_logic_only_no_human_eligibility" },"synthetic-station",new string('a',64),new string('b',64)))
+            {
+                Setup(true,journal.Record);bool received=false;
+                flow.OutcomeRecorded+=_=> {
+                    using(var stream=new FileStream(Directory.GetFiles(directory,"*.jsonl").Single(),FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                    using(var reader=new StreamReader(stream))
+                    {
+                        var events=reader.ReadToEnd().Split('\n').Where(x=>!string.IsNullOrWhiteSpace(x)).Select(JObject.Parse).ToArray();
+                        Assert.That((string)events.Last()["event"],Is.EqualTo("eligibility_outcome"));Assert.That((string)events.Last()["outcome"],Is.EqualTo(expected));
+                        Assert.That(events.Count(x=>(string)x["event"]=="practice_response"),Is.EqualTo(wrongFirst<0?8:16));received=true;
+                    }
+                };
+                Introduction(true);Check(wrongFirst);if(wrongFirst>=0){flow.Next();Introduction(false);Check(wrongSecond);}
+                Assert.That(received,Is.True);Assert.That(flow.EligibleOutcomeRecorded,Is.False,"Synthetic engineering traces cannot grant eligibility");
+            }
+        }
         [Test] public void MissingOrShortDemoCannotAdvanceToPractice()
         {
             Setup();flow.Start();Assert.Throws<OrientationFault>(()=>flow.Next());now=9999;flow.CompleteDemo(flow.CurrentCard.Id,9999,10000,1000d/30);Assert.That(flow.Stage,Is.EqualTo(OrientationStage.Fault));Assert.That(flow.Outcome,Is.Null);

@@ -5,6 +5,8 @@ using AcousticVocab.ResponsePanel;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEngine.TestTools;
+using UnityEngine;
+using System.Reflection;
 
 namespace AcousticVocab.Orientation.PlayModeTests
 {
@@ -38,5 +40,16 @@ namespace AcousticVocab.Orientation.PlayModeTests
         [UnityTest] public IEnumerator EightFirstUsesRealPanelStateAcrossFrames() => Run(-1,-1,EligibilityCode.PassFirst);
         [UnityTest] public IEnumerator SevenThenEightUsesOneReexplanation() => Run(7,-1,EligibilityCode.PassSecond);
         [UnityTest] public IEnumerator SevenThenSevenStopsBeforeAllocation() => Run(7,7,EligibilityCode.Fail);
+        [UnityTest] public IEnumerator DisablingHostImmediatelyRevokesItsGateAndLatchesFault()
+        {
+            var gameObject=new GameObject("Synthetic orientation lifecycle test");gameObject.SetActive(false);
+            var host=gameObject.AddComponent<OrientationHost>();var rows=new List<JObject>();var flow=new OrientationFlow(SyntheticPlan(),()=>0,rows.Add);
+            typeof(OrientationHost).GetProperty("Flow").SetValue(host,flow);
+            LogAssert.Expect(LogType.Error,"ORIENTATION_COMPONENT_DISABLED");
+            typeof(OrientationHost).GetMethod("OnDisable",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(host,null);
+            Assert.That(flow.Stage,Is.EqualTo(OrientationStage.Fault));Assert.That(host.EligibleOutcomeRecorded,Is.False);
+            Assert.That((string)rows.Last()["code"],Is.EqualTo("ORIENTATION_COMPONENT_DISABLED"));
+            Object.Destroy(gameObject);yield return null;
+        }
     }
 }

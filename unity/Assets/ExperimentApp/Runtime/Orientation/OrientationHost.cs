@@ -24,7 +24,7 @@ namespace AcousticVocab.Orientation
         public Shader shader;
         public Font font;
         public OrientationFlow Flow { get; private set; }
-        public bool EligibleOutcomeRecorded => !failed && Flow?.EligibleOutcomeRecorded==true;
+        public bool EligibleOutcomeRecorded => isActiveAndEnabled && !failed && Flow?.EligibleOutcomeRecorded==true;
         public event Action<OrientationOutcome> OutcomeRecorded;
         OrientationSetup setup;OrientationDemos demos;OrientationJournal journal;PanelSettings input;
         OrientationDemo activeDemo;Transform display;TextMesh title,body,buttonText;BoxCollider button;MeshRenderer buttonSurface;LineRenderer pointer;

@@ -32,7 +32,13 @@ namespace AcousticVocab.Orientation
         }
         internal static string Basename(JToken token,string extension)
         { string name=OrientationPlan.Text(token,110);OrientationPlan.Require(Regex.IsMatch(name,@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,95}\."+extension+@"\z")&&!name.Contains(".."),"ORIENTATION_ASSET_PATH");return name; }
-        internal static byte[] Read(string path,long maximum) { var file=new FileInfo(path);OrientationPlan.Require(file.Exists && file.Length>0 && file.Length<=maximum,"ORIENTATION_ASSET_MISSING_OR_LARGE");return File.ReadAllBytes(path); }
+        internal static byte[] Read(string path,long maximum)
+        {
+            var file=new FileInfo(path);OrientationPlan.Require(file.Exists && file.Length>0 && file.Length<=maximum,"ORIENTATION_ASSET_MISSING_OR_LARGE");
+            for(FileSystemInfo item=file;item!=null;item=item is FileInfo f?f.Directory:((DirectoryInfo)item).Parent)
+                OrientationPlan.Require((item.Attributes&FileAttributes.ReparsePoint)==0,"ORIENTATION_ASSET_REPARSE_POINT");
+            return File.ReadAllBytes(path);
+        }
         internal static string Utf8(byte[] bytes) { try{return new UTF8Encoding(false,true).GetString(bytes);}catch{throw new OrientationFault("ORIENTATION_ENCODING");} }
     }
     public sealed class OrientationDemo
@@ -58,11 +64,15 @@ namespace AcousticVocab.Orientation
             byte[] bytes=OrientationSetup.Read(Path.Combine(directory,"index.private.json"),1024*1024);
             OrientationPlan.Require(OrientationPlan.Hash(indexHash)&&SceneRegistry.Hash(bytes)==indexHash,"ORIENTATION_DEMO_INDEX_HASH");
             var index=StationConfig.ParseStrict(OrientationSetup.Utf8(bytes));
-            OrientationPlan.Keys(index,"kind","scene_sha256","reset_snapshot_sha256","planning_pairs","feasible_pairs","planning_reset_ok","collision_reviewed","grasp_contact_validated","methodology_review_complete","recording_complete","rows","joint_names_sha256","station_id","nominal_duration_seconds");
+            OrientationPlan.Keys(index,"kind","scene_sha256","reset_snapshot_sha256","planning_pairs","feasible_pairs","planning_reset_ok","protected_real_factory","collision_reviewed","grasp_contact_validated","methodology_review_complete","recording_complete","rows","joint_names_sha256","station_id","nominal_duration_seconds");
             OrientationPlan.Require((string)index["kind"]=="actual_G1_kinematic_visualization" && (string)index["scene_sha256"]==registry.SceneHash && (string)index["reset_snapshot_sha256"]==registry.SnapshotHash && (string)index["station_id"]==registry.StationId,"ORIENTATION_DEMO_IDENTITY");
             string jointHash=SceneRegistry.Hash(Encoding.UTF8.GetBytes(string.Join("\n",registry.JointNames)+"\n"));
             OrientationPlan.Require((string)index["joint_names_sha256"]==jointHash,"ORIENTATION_DEMO_JOINTS");
             True(index["recording_complete"]);True(index["planning_reset_ok"]);
+            var guard=index["protected_real_factory"] as JObject;
+            OrientationPlan.Keys(guard,"before_sha256","after_sha256","factory_ran","rejected","unchanged");
+            True(guard["unchanged"]);
+            OrientationPlan.Require(guard["factory_ran"].Type==JTokenType.Boolean && !(bool)guard["factory_ran"] && OrientationPlan.Number(guard["rejected"])==32 && OrientationPlan.Hash((string)guard["before_sha256"]) && (string)guard["before_sha256"]==(string)guard["after_sha256"],"ORIENTATION_DEMO_PROTECTED_GUARD");
             OrientationPlan.Require(OrientationPlan.Number(index["planning_pairs"])==32 && OrientationPlan.Number(index["feasible_pairs"])==32,"ORIENTATION_DEMO_INCOMPLETE");
             if(!engineeringDraft) { True(index["collision_reviewed"]);True(index["methodology_review_complete"]); }
             OrientationPlan.Require(index["rows"] is JArray rows && rows.Count==40,"ORIENTATION_DEMO_INCOMPLETE");
@@ -70,10 +80,17 @@ namespace AcousticVocab.Orientation
             var results=new Dictionary<string,OrientationDemo>(StringComparer.Ordinal);long total=0;
             foreach(var row in ((JArray)index["rows"]).OfType<JObject>().Where(x=>(string)x["group"]=="orientation"))
             {
-                OrientationPlan.Keys(row,"group","action","target","capture","execution","error","reset_ok","replay_end_state_ok","expected_objects_sha256");
+                OrientationPlan.Keys(row,"group","action","target","private_plan_key","capture","execution","error","reset_ok","replay_end_state_ok","expected_objects_sha256");
                 string action=OrientationPlan.Id(row["action"]),target=OrientationPlan.Id(row["target"]);
                 OrientationPlan.Require(PublicCommands.ActionFamily(action)>=0 && target==(PublicCommands.ActionFamily(action)==0?"tray_A":"container_E") && !results.ContainsKey(action) && row["error"].Type==JTokenType.Null,"ORIENTATION_DEMO_PAIR");
+                OrientationPlan.Require((string)row["private_plan_key"]==action+"/"+target && OrientationPlan.Hash((string)row["expected_objects_sha256"]),"ORIENTATION_DEMO_PAIR");
                 True(row["reset_ok"]);True(row["replay_end_state_ok"]);
+                var execution=row["execution"] as JObject;
+                OrientationPlan.Keys(execution,"collision_reviewed","events","execution_ok","failures","grasp_contact_validated","nominal_duration_seconds","private_result","robot_neutral_error_rad","sample_count","semantic_error");
+                True(execution["execution_ok"]);
+                OrientationPlan.Require(execution["semantic_error"].Type==JTokenType.Boolean && !(bool)execution["semantic_error"] && execution["failures"] is JArray failures && failures.Count==0 && execution["events"] is JArray && execution["private_result"] is JObject && OrientationPlan.Number(execution["sample_count"])==300 && OrientationPlan.Number(execution["nominal_duration_seconds"])==duration && OrientationPlan.Number(execution["robot_neutral_error_rad"])>=0 && OrientationPlan.Number(execution["robot_neutral_error_rad"])<=.001,"ORIENTATION_DEMO_EXECUTION_FAILED");
+                OrientationPlan.Require(execution["collision_reviewed"].Type==JTokenType.Boolean && execution["grasp_contact_validated"].Type==JTokenType.Boolean,"ORIENTATION_DEMO_EXECUTION_FLAGS");
+                if(!engineeringDraft)True(execution["collision_reviewed"]);
                 var capture=row["capture"] as JObject;
                 OrientationPlan.Keys(capture,"file","sha256","frame_count","nominal_sample_hz","nominal_duration_seconds","measured_first_to_last_host_seconds","interval_ms","capture_complete","timing_ok","actual_host_timestamps_preserved","time_compressed","timing_rule");
                 True(capture["capture_complete"]);True(capture["timing_ok"]);True(capture["actual_host_timestamps_preserved"]);
