@@ -260,14 +260,14 @@ def prepare(map_path, map_sha256, output):
     need(is_hash(map_sha256), "MAP_PIN")
     doc = strict_json(read_file(map_path, MAX_MAP, map_sha256))
     need(isinstance(doc, dict) and "version" in doc and "scope" in doc, "MAP_SHAPE")
-    need(type(doc.get("version")) is int and doc["version"] in (1, 2)
+    need(type(doc.get("version")) is int and doc["version"] in (1, 2, 3)
          and doc.get("scope") == "DEMO_ENGINEERING", "MAP_SCOPE")
     version = doc["version"]
     exact(doc, ("version", "scope", "protocol_version", "identity", "files", "directories", "pins", "control")
-          + (("yoked_start",) if version == 2 else ()))
-    if version == 2:
+          + (("yoked_start",) if version >= 2 else ()))
+    if version >= 2:
         yoked_start_check(doc["yoked_start"])
-    optional_files = OPTIONAL_FILES + (YOKED_FILES if version == 2 else ())
+    optional_files = OPTIONAL_FILES + (YOKED_FILES if version >= 2 else ()) + (("grammar_review",) if version == 3 else ())
     need(opaque_id(doc["protocol_version"]), "PROTOCOL_ID")
     exact(doc["identity"], IDENTITY_NAMES, "IDENTITY_SHAPE")
     for key, value in doc["identity"].items():
@@ -315,7 +315,7 @@ def prepare(map_path, map_sha256, output):
             need(read_file(expected, cap(role), digest(files[role][1])) == files[role][1], "DOMAIN_FILE_BINDING")
     output.mkdir(parents=True, exist_ok=False)
     config = {key: doc[key] for key in ("version", "scope", "protocol_version", "identity", "pins", "control")}
-    if version == 2:
+    if version >= 2:
         # Copy explicit future-start policy only. An anchor cannot be authored
         # by staging or copied from another process's monotonic clock.
         config["yoked_start"] = doc["yoked_start"]
