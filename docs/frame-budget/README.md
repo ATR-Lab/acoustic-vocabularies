@@ -1,5 +1,9 @@
 # Frame timing contract
 
+Software and native build evidence is recorded in [validation.json](validation.json),
+with [Windows file hashes](windows-build.json) and [Android file hashes](android-build.json).
+These records distinguish the Unity build report size from the actual packaged file size.
+
 `AcousticVocab.FrameBudget` instruments explicitly registered attempt windows. A
 trusted session owner wraps its content factory with `FrameContentFactory` and
 composes `FrameAudioAdapter.Record` into its durable audio event sink, resolving
