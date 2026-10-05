@@ -106,7 +106,9 @@ namespace AcousticVocab.SessionEngine
             if(Status!=SessionState.Running) return;
             var item=NextItem();if(item==null) { Status=SessionState.Complete;Write("visit_complete",Now(),null);return; }
             consumed=false;audible=item.Plays==0?AudibleStatus.NoCue:AudibleStatus.NotRequested;fault=response=null;opened=closed=false;
-            CurrentState=null;
+            // Start-plan failures are pre-admission faults. Detach all prior
+            // ownership before asking a factory for the upcoming slot timing.
+            content=null;context=default;permit=null;CurrentState=null;
             try
             {
                 double gap=factory is ISlotStartPlan plan?plan.MinimumGapBeforeMs(item,nextOnset):0;
