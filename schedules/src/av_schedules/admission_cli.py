@@ -41,7 +41,9 @@ def main(argv: list[str] | None = None) -> int:
         output = checked_path(Path(args.output), missing=True)
         if output.exists():
             raise RevealError("OUTPUT_EXISTS")
-        if not any(p.lower() in {"private", ".local", "local-data"} for p in output.parent.parts[2:]):
+        if not any(
+            p.lower() in {"private", ".local", "local-data"} for p in output.parent.parts[2:]
+        ):
             raise RevealError("PRIVATE_RECEIPT_REQUIRED")
         raw = read(Path(args.request), 65536)
         if sha(raw) != _hash(args.request_sha256):
