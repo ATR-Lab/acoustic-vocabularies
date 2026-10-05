@@ -173,6 +173,8 @@ namespace AcousticVocab.Foundation.Tests
                 Assert.That(view.activeSelf,Is.False);Assert.That(bootstrap.observerCamera.backgroundColor,Is.EqualTo(Color.black));Assert.That(reference.RestorePending,Is.True);
                 bootstrap.enabled=true;Assert.That(bootstrap.Ready,Is.False);Assert.That(view.activeSelf,Is.False);
                 Assert.That(bootstrap.RestoreAtSafeBoundary("startup"),Is.False);Assert.That(bootstrap.RestoreAtSafeBoundary("between_trials"),Is.False);
+                ((FoundationLog)typeof(FoundationBootstrap).GetField("log",flags).GetValue(bootstrap)).Dispose();
+                typeof(FoundationBootstrap).GetField("log",flags).SetValue(bootstrap,null);
                 var rows=File.ReadAllLines(Directory.GetFiles(directory).Single()).Select(JObject.Parse).ToArray();
                 Assert.That(rows.Count(x=>(string)x["reason"]=="foundation_component_disabled"),Is.EqualTo(1));
             }
