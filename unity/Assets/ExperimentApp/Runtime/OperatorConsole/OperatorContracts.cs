@@ -113,6 +113,11 @@ namespace AcousticVocab.OperatorConsole
             for (; item != null; item = item is FileInfo f ? f.Directory : ((DirectoryInfo)item).Parent)
                 if (item.Exists) Require((item.Attributes & FileAttributes.ReparsePoint) == 0, "mailbox_link");
         }
+        #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", EntryPoint = "MoveFileExW", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        static extern bool MoveFileEx(string existing, string replacement, uint flags);
+#endif
         internal static void Atomic(string path, byte[] bytes)
         {
             Require(bytes.Length <= MaximumBytes, "state_limit"); NoLinks(path);
@@ -120,7 +125,15 @@ namespace AcousticVocab.OperatorConsole
             using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.Read, 4096, FileOptions.WriteThrough))
             { file.Write(bytes, 0, bytes.Length); file.Flush(true); }
             // Preserve an incomplete temp file on failure for investigation.
-            if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
+            #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            // Same-directory rename with replacement; no cross-volume copy or
+            // reboot operation. File.Replace showed a reader-visible target gap
+            // in the retained actual .NET/Python interoperability probe.
+            if (!MoveFileEx(temporary, path, 0x1 | 0x8))
+                throw new OperatorFault("state_publish_failed");
+#else
+            throw new OperatorFault("mailbox_platform_unqualified");
+#endif
         }
     }
 }

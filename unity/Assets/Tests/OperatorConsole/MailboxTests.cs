@@ -97,6 +97,10 @@ namespace AcousticVocab.OperatorConsole.Tests
         {
             using var f=new Fixture();f.Send(1,"load");f.Send(2,"start");Assert.That(f.Send(5,"resume").Code,Is.EqualTo("sequence_rejected"));var stop=f.Send(5,"stop");Assert.That(stop.Accepted,Is.True);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Stopped));Assert.That(f.Mailbox.ConsumedSequence,Is.EqualTo(5));Assert.That(f.Send(3,"start").Code,Is.EqualTo("sequence_rejected"));Assert.That((long)f.Mailbox.Snapshot()["receipt"]["sequence"],Is.EqualTo(5));Assert.That(f.Journal.Records.Any(x=>x.Request.Command=="stop"&&x.PreviousConsumedSequence==2&&x.Kind=="request"),Is.True);
         }
+        [Test] public void LoadDoesNotGrantAdmissionWhenTrustedOwnerRejectsIt()
+        {
+            using var f=new Fixture();f.Admitted=false;Assert.That(f.Send(1,"load").Code,Is.EqualTo("admission_failed"));Assert.That(f.Mailbox.Loaded,Is.False);Assert.That(f.Send(2,"stop").Accepted,Is.True);
+        }
         [Test] public void StopAndPauseRemainAvailableAfterAdmissionFailure()
         {
             using var f=new Fixture();f.Send(1,"load");f.Send(2,"start");f.Admitted=false;f.Healthy=false;Assert.That(f.Send(3,"pause").Accepted,Is.True);Assert.That(f.Send(4,"resume").Accepted,Is.False);Assert.That(f.Send(5,"stop").Accepted,Is.True);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Stopped));

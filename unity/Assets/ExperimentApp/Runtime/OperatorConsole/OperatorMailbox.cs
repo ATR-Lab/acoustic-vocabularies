@@ -90,7 +90,7 @@ namespace AcousticVocab.OperatorConsole
             {
                 try
                 {
-                    if (request.Command == "load") loaded = true;
+                    if (request.Command == "load") { Wire.Require(admission()?.Allowed == true, "admission_failed"); loaded = true; }
                     else if (request.Command == "pause") engine.RequestPause();
                     else if (request.Command == "stop") engine.RequestStop();
                     else
