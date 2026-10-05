@@ -25,6 +25,7 @@ namespace AcousticVocab.Foundation.Editor
     public static class FoundationBuild
     {
         public const string ScenePath = "Assets/ExperimentApp/Scenes/Foundation.unity";
+        public static string ParticipantScenePath { get; set; } = ScenePath;
         public static string RepositoryRoot => Directory.GetParent(Application.dataPath).Parent.FullName;
         public static void Configure()
         {
@@ -101,7 +102,7 @@ namespace AcousticVocab.Foundation.Editor
             EditorUserBuildSettings.connectProfiler = false;
             EditorUserBuildSettings.allowDebugging = false;
             if (!File.Exists(ScenePath)) CreateScene();
-            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ParticipantScenePath, true) };
             AssetDatabase.SaveAssets();
             VerifySchema();
             Debug.Log("FOUNDATION_CONFIGURED editor=" + Application.unityVersion);
@@ -158,8 +159,8 @@ namespace AcousticVocab.Foundation.Editor
                     if (!features.Any(x => x.GetType().Name == required && x.enabled))
                         throw new BuildFailedException("Required OpenXR feature disabled: " + required);
             }
-            var scene = EditorSceneManager.OpenScene(ScenePath);
-            var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap) };
+            var scene = EditorSceneManager.OpenScene(ParticipantScenePath);
+            var allowed = new[] { typeof(Transform), typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver), typeof(XROrigin), typeof(FoundationBootstrap), typeof(MeshFilter), typeof(MeshRenderer), typeof(Light), typeof(AcousticVocab.Workcell.WorkcellRegistry) };
             foreach (var root in scene.GetRootGameObjects())
                 foreach (var component in root.GetComponentsInChildren<Component>(true))
                     if (component == null || !allowed.Contains(component.GetType())) throw new BuildFailedException("Foundation scene has an unexpected component.");
@@ -196,7 +197,7 @@ namespace AcousticVocab.Foundation.Editor
             File.WriteAllText("Assets/Generated.local.data/Resources/BuildIdentity.json", identity.ToString() + "\n");
             AssetDatabase.Refresh();
             Directory.CreateDirectory(Path.GetDirectoryName(output));
-            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath }, locationPathName = output, target = target, options = BuildOptions.None });
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ParticipantScenePath }, locationPathName = output, target = target, options = BuildOptions.None });
             var record = new JObject { ["build_identity"] = identity, ["result"] = report.summary.result.ToString(), ["errors"] = report.summary.totalErrors,
                 ["duration_seconds"] = report.summary.totalTime.TotalSeconds, ["total_bytes"] = report.summary.totalSize, ["development_build"] = false,
                 ["files"] = new JArray(Directory.GetFiles(Path.GetDirectoryName(output), "*", SearchOption.AllDirectories).OrderBy(x => x).Select(x => new JObject {

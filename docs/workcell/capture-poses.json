@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "status": "proposed_engineering_capture_poses_not_HMD_calibration",
+  "coordinate_frame": "isaac_world_rh_z_up",
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "optics": {
+    "width": 2560,
+    "height": 1440,
+    "focal_length_mm": 24.0,
+    "horizontal_aperture_mm": 36.0
+  },
+  "poses": [
+    {
+      "id": "reference",
+      "position_m": [
+        1.45,
+        0.0,
+        1.5
+      ],
+      "look_at_m": [
+        0.15,
+        0.0,
+        0.96
+      ]
+    },
+    {
+      "id": "left_10cm",
+      "position_m": [
+        1.45,
+        -0.1,
+        1.5
+      ],
+      "look_at_m": [
+        0.15,
+        0.0,
+        0.96
+      ]
+    },
+    {
+      "id": "right_10cm",
+      "position_m": [
+        1.45,
+        0.1,
+        1.5
+      ],
+      "look_at_m": [
+        0.15,
+        0.0,
+        0.96
+      ]
+    },
+    {
+      "id": "up_5cm",
+      "position_m": [
+        1.45,
+        0.0,
+        1.55
+      ],
+      "look_at_m": [
+        0.15,
+        0.0,
+        0.96
+      ]
+    },
+    {
+      "id": "down_5cm",
+      "position_m": [
+        1.45,
+        0.0,
+        1.45
+      ],
+      "look_at_m": [
+        0.15,
+        0.0,
+        0.96
+      ]
+    }
+  ]
+}
