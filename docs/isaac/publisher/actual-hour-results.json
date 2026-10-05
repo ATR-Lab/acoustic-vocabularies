@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "source_kind": "actual_isaac_sim_5.1",
+  "protected_mode": false,
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "publisher": {
+    "rate_hz": 30,
+    "duration_s": 3600.012913233,
+    "required_duration_s": 3600,
+    "frames": 107917,
+    "source_kind": "live",
+    "complete": true,
+    "contiguous": true,
+    "simulation_progressing": true,
+    "interval_median_ms": 33.340162,
+    "interval_p99_ms": 36.441443750000005,
+    "absolute_period_error_p99_ms": 3.5759651833333375,
+    "nominal_period_ms": 33.333333333333336,
+    "max_gap_ms": 45.270001,
+    "gaps_over_250_ms": 0,
+    "queue_overwrites": 0,
+    "missed_deadlines": 84,
+    "timing_screen": false,
+    "rate_screen": false,
+    "raw_csv_sha256": "f44bc9ed6cb9ac7be277bbf9156b38fb6445fd0796ecc8501876900d40517b67",
+    "limitations": [
+      "Publisher timing only; does not qualify network, clocks or headset rendering",
+      "Disconnect/reconnect simulation-cost comparison is a separate check"
+    ]
+  },
+  "local_receiver": {
+    "received": 107917,
+    "sequence_gaps": 0,
+    "runtime_validated_frames": 107917
+  },
+  "independent_checks": {
+    "csv_summary_recomputed": true,
+    "retained_samples_json_schema_validated": 2
+  },
+  "disconnect": {
+    "elapsed_s": 120.015493254,
+    "phases": [
+      {
+        "phase": "no_client",
+        "steps": 2491,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 83.03333333333333,
+        "physics_call_median_ms": 7.340689,
+        "publisher_call_median_ms": 0.007099,
+        "active_processing_total_s": 29.98438476600002
+      },
+      {
+        "phase": "connected",
+        "steps": 2222,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 74.06666666666666,
+        "physics_call_median_ms": 7.6028525,
+        "publisher_call_median_ms": 0.007318,
+        "active_processing_total_s": 29.970183348000013
+      },
+      {
+        "phase": "disconnected",
+        "steps": 2500,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 83.33333333333333,
+        "physics_call_median_ms": 7.353934000000001,
+        "publisher_call_median_ms": 0.007112,
+        "active_processing_total_s": 29.982079184000014
+      },
+      {
+        "phase": "reconnected",
+        "steps": 2229,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 74.3,
+        "physics_call_median_ms": 7.595129,
+        "publisher_call_median_ms": 0.00733,
+        "active_processing_total_s": 29.95830568
+      }
+    ],
+    "comparisons": [
+      {
+        "reference": "no_client",
+        "comparison": "connected",
+        "absolute_rate_change_fraction": 0.10798875953432359,
+        "within_five_percent": false
+      },
+      {
+        "reference": "connected",
+        "comparison": "disconnected",
+        "absolute_rate_change_fraction": 0.1251125112511251,
+        "within_five_percent": false
+      },
+      {
+        "reference": "disconnected",
+        "comparison": "reconnected",
+        "absolute_rate_change_fraction": 0.10839999999999998,
+        "within_five_percent": false
+      },
+      {
+        "reference": "no_client",
+        "comparison": "disconnected",
+        "absolute_rate_change_fraction": 0.0036130068245684125,
+        "within_five_percent": true
+      },
+      {
+        "reference": "no_client",
+        "comparison": "reconnected",
+        "absolute_rate_change_fraction": 0.10517864311521478,
+        "within_five_percent": false
+      }
+    ],
+    "no_main_loop_wait_for_client": true,
+    "unpaced_simulation": true,
+    "five_percent_disconnect_screen": false
+  },
+  "raw_evidence_sha256": {
+    "publisher-check/summary.json": "b051c83ca9f0c56695d16ef2807bc435752b16824cb07d80ff4c37e709a11323",
+    "publisher-check/metadata.json": "a252efbe97332c2736da3ce05fa650a86dbc15c191eadd37ece054bf34701aa8",
+    "publisher-check/publish.csv": "f44bc9ed6cb9ac7be277bbf9156b38fb6445fd0796ecc8501876900d40517b67",
+    "publisher-check/sample-first.json": "d58c1b19c032b2854fcf452b1018134e9a58e57e169e9abfa1101a65b526c17a",
+    "publisher-check/sample-last.json": "1f395fba4cc6f19d7d9d4acac5fb7bf4cf8121ea9337a3c0edd1293c3ded7aa4",
+    "disconnect-check/summary.json": "2c8e3ddd61a4ef00a7a491291dc8017dc88a67c98da60038b527afb1415501ca",
+    "disconnect-check/steps.csv": "fae3d5c18a651969e892d8e05b8176f4ec04c17f0d9ad4d871106e2af9e4646a"
+  },
+  "qualification": "FAIL: publisher timing/rate and five-percent disconnect screens",
+  "limitations": [
+    "Unprotected simulator workload; no neutral-pose claim for sampled frames",
+    "Local draining receiver in simulator process; does not isolate worker or receiver overhead",
+    "No network latency, headset rendering, acoustic onset or G2 acceptance",
+    "Ubuntu 24.04 container deviation from requested Ubuntu 22.04 remains open"
+  ]
+}
