@@ -145,3 +145,17 @@ actual headset disconnection, methodology review, or participant readiness.
 `mock-visit-reconciliation.validation.json` records synthetic tests and retained
 artifact compatibility checks. No actual full visit is included. The minimal
 repository Python environment is sufficient; there are no new dependencies.
+
+Profile-menu allocation lookup uses the schedule's full `person_id`, bound to
+the configured `coded_id` and `unit_id`. The schedule's short `person_slot`
+must compose that full identity with its unit; it is not an allocation member
+ID. The allocation must contain exactly one matching unit/member and role.
+Raw file, canonical PCM, frozen profile order and receipt checks still apply.
+
+`mock-profile-identity.validation.json` records the regression and a retained
+partial native B visit. Its original manifest incorrectly labelled the active
+role as `reference`; a separate manifest corrects only that derived metadata
+after checking the pinned allocation and actual menu ledger. Both manifests
+and every raw artifact remain preserved. The corrected analyzer verifies
+integrity and reports the actual focus interruption and incomplete visit; it
+does not convert the run into a passed visit or qualification.
