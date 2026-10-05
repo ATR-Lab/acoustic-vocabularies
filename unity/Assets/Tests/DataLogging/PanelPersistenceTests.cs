@@ -28,4 +28,3 @@ namespace AcousticVocab.DataLogging.Tests
         }
     }
 }
-

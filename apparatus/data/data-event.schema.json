@@ -90,7 +90,8 @@
         "choice",
         "deviation_reference",
         "visit_exit",
-        "recovery"
+        "recovery",
+        "assessment_stage"
       ]
     },
     "opportunity_id": {
@@ -1471,6 +1472,276 @@
                 ]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "assessment_stage"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_kind",
+              "schedule_sha256",
+              "host_mono_ms",
+              "clock_epoch",
+              "stage",
+              "item_id",
+              "value",
+              "outcome_code"
+            ],
+            "properties": {
+              "event_kind": {
+                "enum": [
+                  "forms_started",
+                  "rating",
+                  "forms_completed",
+                  "optional_started",
+                  "optional_help",
+                  "optional_execution"
+                ]
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "host_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "stage": {
+                "enum": [
+                  "forms",
+                  "post_w4_optional"
+                ]
+              },
+              "item_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "value": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "outcome_code": {
+                "enum": [
+                  null,
+                  "requested",
+                  "completed",
+                  "failed",
+                  "cancelled"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "forms_started",
+                        "forms_completed"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "forms"
+                    },
+                    "item_id": {
+                      "type": "null"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "optional_started"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "post_w4_optional"
+                    },
+                    "item_id": {
+                      "type": "null"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "rating"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "forms"
+                    },
+                    "item_id": {
+                      "enum": [
+                        "difficulty",
+                        "pleasantness",
+                        "usability",
+                        "ownership",
+                        "preference_fit",
+                        "influence",
+                        "mental_demand"
+                      ]
+                    },
+                    "value": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10
+                    },
+                    "outcome_code": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "const": "rating"
+                    },
+                    "item_id": {
+                      "not": {
+                        "const": "mental_demand"
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 7
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "optional_help"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "post_w4_optional"
+                    },
+                    "item_id": {
+                      "type": "string",
+                      "pattern": "^[KQ]-[ar][1-4]$(?![\\s\\S])"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "enum": [
+                        "requested",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "optional_execution"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "post_w4_optional"
+                    },
+                    "item_id": {
+                      "type": "string",
+                      "pattern": "^execute_([A-D]_(ADD_ONE|REMOVE_ONE|FLIP_CARD|ALIGN_ARROW)|[E-H]_(SCAN|TAG|CLOSE|QUARANTINE))$(?![\\s\\S])"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "enum": [
+                        "requested",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "opportunity_id": {
+            "type": "null"
+          },
+          "attempt_id": {
+            "type": "null"
+          },
+          "audio_request_id": {
+            "type": "null"
           }
         }
       }

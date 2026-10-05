@@ -32,6 +32,15 @@ namespace AcousticVocab.Assessment
                 !Regex.IsMatch(clockEpoch,@"\A[0-9a-f]{32}\z")||stage is not ("forms" or "post_w4_optional")||item!=null&&!Regex.IsMatch(item,@"\A[A-Za-z][A-Za-z0-9_-]{0,63}\z")||
                 outcome!=null&&!new[]{"requested","completed","failed","cancelled"}.Contains(outcome))
                 throw new AssessmentFault("ASSESSMENT_RECORD_INVALID");
+            bool rating=kind=="rating",optional=kind.StartsWith("optional_",StringComparison.Ordinal),activity=kind is "optional_help" or "optional_execution";
+            if(stage!=(optional?"post_w4_optional":"forms")||rating&&(item==null||!value.HasValue||outcome!=null)||
+                !rating&&value.HasValue||activity&&(item==null||outcome==null)||!activity&&!rating&&(item!=null||outcome!=null))
+                throw new AssessmentFault("ASSESSMENT_RECORD_INVALID");
+            if(rating&&(!new[]{"difficulty","pleasantness","usability","ownership","preference_fit","influence","mental_demand"}.Contains(item)||
+                value<(item=="mental_demand"?0:1)||value>(item=="mental_demand"?10:7)))throw new AssessmentFault("ASSESSMENT_RECORD_INVALID");
+            if(kind=="optional_help"&&!Regex.IsMatch(item,@"\A[KQ]-[ar][1-4]\z"))throw new AssessmentFault("ASSESSMENT_RECORD_INVALID");
+            if(kind=="optional_execution"&&(!item.StartsWith("execute_",StringComparison.Ordinal)||item.Length<=10||item[9]!='_'||
+                !AcousticVocab.ResponsePanel.PublicCommands.Legal(item.Substring(8,1),item.Substring(10))))throw new AssessmentFault("ASSESSMENT_RECORD_INVALID");
             EventKind=kind;ScheduleSha256=schedule;HostMonoMs=mono;ClockEpoch=clockEpoch;Stage=stage;ItemId=item;Value=value;OutcomeCode=outcome;
         }
     }

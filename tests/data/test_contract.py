@@ -56,3 +56,27 @@ def test_synthetic_export_hashes_bind_the_exact_published_bytes():
     assert manifest['trial_rows'] == 36
     assert manifest['exposure_rows'] == 36
     assert manifest['protocol_headers_qualified'] is False
+
+
+def test_assessment_stage_schema_rejects_attempt_context_and_cross_stage_ratings():
+    schema = json.loads((ROOT / 'apparatus/data/data-event.schema.json').read_text())
+    validator = Draft202012Validator(schema)
+    event = json.loads((ROOT / 'docs/data/synthetic-visit/events.jsonl').read_text().splitlines()[0])
+    event.update(event_type='assessment_stage', opportunity_id=None, attempt_id=None, audio_request_id=None)
+    event['payload'] = dict(event_kind='rating', schedule_sha256='a' * 64,
+                            host_mono_ms=1, clock_epoch='b' * 32, stage='forms',
+                            item_id='pleasantness', value=7, outcome_code=None)
+    validator.validate(event)
+    for key, value in [('value', 8), ('stage', 'post_w4_optional'), ('outcome_code', 'completed')]:
+        bad = copy.deepcopy(event); bad['payload'][key] = value
+        assert list(validator.iter_errors(bad))
+    bad = copy.deepcopy(event); bad['attempt_id'] = 'trial'
+    assert list(validator.iter_errors(bad))
+    event['payload'].update(event_kind='optional_help', stage='post_w4_optional', item_id='K-a1', value=None, outcome_code='completed')
+    validator.validate(event)
+    event['payload']['item_id'] = 'K-a1-r1'
+    assert list(validator.iter_errors(event))
+    event['payload'].update(event_kind='optional_execution', item_id='execute_A_ADD_ONE')
+    validator.validate(event)
+    event['payload']['item_id'] = 'execute_A_SCAN'
+    assert list(validator.iter_errors(event))
