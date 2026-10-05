@@ -28,8 +28,15 @@ hide, and ancestor concealment. The numerical contrast threshold is a software
 palette regression; it does not establish actual headset readability.
 `JoinedViewPlacementTests` separately checks the existing calibrated poses.
 
-Validation at this checkpoint: schema validation passed (45 schemas, 14
-synthetic examples) and the diff passed whitespace checks. Unity execution of
-the new tests and an affected native teaching/menu capture are pending. Issue
-#155 remains open until the native view is checked at the configured observer;
-physical headset readability and study qualification are separate requirements.
+Validation: schema validation passed (45 schemas, 14 synthetic examples), the
+diff passed whitespace checks, and the reachable-history public guard passed.
+Unity compiled the exact contrast source `087f697e462dc53eb89b2ed7e08f34846fe82c37`
+in integration checkpoint `2248a79`. All four new contrast cases and both existing
+placement cases passed. The combined run passed 155 of 156 cases and exited 2:
+an unrelated diagnostic null-token assertion failed. The retained raw test XML
+has SHA-256 `58c13f94e24ed1e9f5bf7b02309f781d6776a1d425a0516308400d615585f882`.
+No native build or corrected-view capture is claimed by this test run.
+
+Issue #155 remains open until an affected native teaching/menu view is checked
+at the configured observer. Physical headset readability and study
+qualification remain separate requirements.
