@@ -10,7 +10,8 @@ FIELDS = {"position_m", "rotation_xyzw", "visible", "enabled", "collision_enable
           "linear_velocity_m_s", "angular_velocity_rad_s", "state"}
 
 
-def validate_states(layout, states, *, public_only=False):
+def _validate_states(layout, states, *, public_only=False):
+    """Validate in place without retaining or cloning the caller's values."""
     definitions = {item["id"]: item for item in layout["objects"]}
     if not isinstance(states, dict) or set(states) != set(definitions):
         raise ValueError("Exact semantic object registry required")
@@ -48,12 +49,25 @@ def validate_states(layout, states, *, public_only=False):
                     raise ValueError("Lid fraction outside0..1")
             else:
                 raise ValueError("Unsupported visual state field")
-    return deepcopy(states)
+    return states
+
+
+def validate_states(layout, states, *, public_only=False):
+    """Validate and detach caller-owned input before any state mutation."""
+    return deepcopy(_validate_states(layout, states, public_only=public_only))
 
 
 class StateAccessors:
-    def __init__(self, stage, layout):
-        self.stage, self.layout = stage, layout
+    def __init__(self, stage, layout, *, enable_handle_cache=False):
+        # Registry authority is detached once. Individual reads never retain
+        # caller-owned output or mutable values from earlier samples.
+        self.stage, self._origin_stage = stage, stage
+        self.layout = layout = deepcopy(layout)
+        self._cache_guard = None
+        self._records = None
+        self._ancestor_records = None
+        self._closed = False
+        self._structure_error = None
         self.anchor_ids = tuple(layout["anchor_ids"])
         self.definitions = {item["id"]: item for item in layout["objects"]}
         from pxr import UsdPhysics
@@ -78,84 +92,178 @@ class StateAccessors:
             self._allowed_changes.update("/World/Workcell/Lights/"+light["id"]+".inputs:"+key for key in ("color","intensity"))
         from pxr import Tf, Usd
         self._notice = Tf.Notice.Register(Usd.Notice.ObjectsChanged, self._on_stage_changed, stage)
+        if enable_handle_cache:
+            self.enable_handle_cache()
+
+    @property
+    def handle_cache_enabled(self):
+        return self._records is not None
+
+    def _invalidate(self, reason):
+        self._structure_changed = True
+        if self._structure_error is None:
+            self._structure_error = reason
 
     def _on_stage_changed(self, notice, sender):
-        # Cached geometry handles remain safe only while topology is unchanged.
-        if any(path.IsPrimPath() and str(path).startswith("/World/Workcell") for path in notice.GetResyncedPaths()):
-            self._structure_changed = True
-        for path in notice.GetChangedInfoOnlyPaths():
-            value=str(path)
-            if value.startswith("/World/Workcell") and value not in self._allowed_changes:
-                self._structure_changed = True
+        from .cache_guard import affects_workcell
+        try:
+            if any(affects_workcell(path) for path in notice.GetResyncedPaths()):
+                self._invalidate("Workcell prim, property or ancestry was resynced")
+            for path in notice.GetChangedInfoOnlyPaths():
+                if not affects_workcell(path):
+                    continue
+                # A value edit is allowed; changing its type, connection,
+                # variability or other metadata is a structural fault.
+                if (str(path) not in self._allowed_changes or
+                        set(notice.GetChangedFields(path)) != {"default"}):
+                    self._invalidate("Unsupported workcell property or metadata change: " + str(path))
+        except Exception:
+            self._invalidate("USD change notice could not be validated")
+
+    def enable_handle_cache(self):
+        """Explicit experimental opt-in after construction; never implicit fallback.
+
+        Required notice bindings and actual tamper tests must be qualified in the
+        pinned runtime before a caller enables this in a performance run.
+        """
+        if self.handle_cache_enabled:
+            raise ValueError("Handle cache already initialized")
+        self._check_structure()
+        from .cache_guard import HandleCacheGuard
+        try:
+            self._cache_guard = HandleCacheGuard(self.stage, self._invalidate)
+            self._ancestor_records = self._get_ancestor_records()
+            self._records = {identifier: self._get_record(definition)
+                             for identifier, definition in self.definitions.items()}
+            # Check all captured handles and the complete live state before use.
+            self.read_state()
+            self.read_environment()
+        except Exception:
+            if self._cache_guard is not None:
+                self._cache_guard.close()
+            self._cache_guard = self._records = self._ancestor_records = None
+            self._invalidate("Handle cache initialization failed")
+            raise
+
+    def close(self):
+        self._closed = True
+        self._notice.Revoke()
+        if self._cache_guard is not None:
+            self._cache_guard.close()
+
+    def _get_ancestor_records(self):
+        from pxr import UsdGeom
+        result = []
+        for path in ("/World", "/World/Workcell", "/World/Workcell/Objects"):
+            prim = self.stage.GetPrimAtPath(path)
+            if not prim:
+                raise ValueError("Missing workcell ancestor: " + path)
+            # USD may create untyped namespace ancestors. They have no schema
+            # attributes until authored, and that later creation is a resync.
+            order = prim.GetAttribute("xformOpOrder") if prim.HasAttribute("xformOpOrder") else None
+            visibility = prim.GetAttribute("visibility") if prim.HasAttribute("visibility") else None
+            result.append((prim, order, visibility))
+        return result
+
+    def _check_structure(self):
+        from pxr import UsdGeom
+        if self._closed:
+            raise ValueError("State accessor is closed")
+        if self.stage is not self._origin_stage:
+            self._invalidate("Accessor stage identity changed")
+        if self._cache_guard is not None:
+            try:
+                self._cache_guard.check()
+            except Exception:
+                self._invalidate("USD layer identity check failed")
+        if self._structure_changed:
+            raise ValueError(self._structure_error or "Workcell topology changed after registry capture")
+        records = self._ancestor_records or self._get_ancestor_records()
+        for prim, order, visibility in records:
+            if not prim or (order is not None and not order) or (visibility is not None and not visibility):
+                self._invalidate("Workcell ancestor handle invalid")
+                raise ValueError(self._structure_error)
+            if order is not None and order.Get():
+                self._invalidate("Workcell ancestry must have identity transforms")
+                raise ValueError(self._structure_error)
+            if visibility is not None and visibility.Get() == UsdGeom.Tokens.invisible:
+                self._invalidate("Workcell ancestor unexpectedly hidden")
+                raise ValueError(self._structure_error)
+
+    def _get_record(self, definition):
+        from pxr import UsdGeom
+        prim = self.stage.GetPrimAtPath(definition["prim_path"])
+        if not prim:
+            raise ValueError("Missing semantic prim: " + definition["id"])
+        order = UsdGeom.Xformable(prim).GetXformOpOrderAttr()
+        if list(order.Get() or []) != ["xformOp:translate", "xformOp:orient"]:
+            raise ValueError("Unexpected semantic transform operations")
+        names = ("xformOp:translate", "xformOp:orient", "visibility", "workcell:enabled",
+                 "workcell:linearVelocity", "workcell:angularVelocity")
+        attributes = {name: prim.GetAttribute(name) for name in names}
+        state = {key: prim.GetAttribute("workcell:" + key) for key in definition["state"]}
+        visual = self.stage.GetPrimAtPath(definition["prim_path"] + "/Visual")
+        visual_attributes = []
+        for key, operation, factor in (
+            ("card_face", "xformOp:rotateX", 180.),
+            ("arrow_angle_rad", "xformOp:rotateZ", 180. / math.pi),
+            ("lid_open_fraction", "xformOp:rotateY", math.degrees(definition.get("open_angle_rad", 0.)))):
+            if key in state:
+                visual_attributes.append((key, visual.GetAttribute(operation), factor))
+        handles = (prim, order, *attributes.values(), *state.values(),
+                   *(item[1] for item in visual_attributes),
+                   *self._collision_attributes[definition["id"]])
+        if not all(handles):
+            raise ValueError("Missing semantic attribute or geometry handle")
+        return attributes, state, visual_attributes, handles
+
+    def _read_objects(self, *, public_only):
+        from pxr import UsdGeom
+        self._check_structure()
+        result = {}
+        for identifier, definition in self.definitions.items():
+            record = self._records[identifier] if self._records is not None else self._get_record(definition)
+            attributes, state_attributes, visual_attributes, handles = record
+            if not all(handles):
+                self._invalidate("Semantic handle invalid: " + identifier)
+                raise ValueError(self._structure_error)
+            if list(handles[1].Get() or []) != ["xformOp:translate", "xformOp:orient"]:
+                self._invalidate("Semantic transform operation order changed")
+                raise ValueError(self._structure_error)
+            # Every sample obtains values from USD. Handles, never values or
+            # validation results, are reused by the optional cache.
+            q = attributes["xformOp:orient"].Get()
+            visibility = attributes["visibility"].Get()
+            if visibility not in (UsdGeom.Tokens.inherited, UsdGeom.Tokens.invisible):
+                raise ValueError("Invalid semantic visibility token: " + identifier)
+            item = dict(
+                position_m=list(attributes["xformOp:translate"].Get()),
+                rotation_xyzw=[*q.GetImaginary(), q.GetReal()],
+                visible=visibility != UsdGeom.Tokens.invisible,
+                enabled=attributes["workcell:enabled"].Get(),
+                state={key: attribute.Get() for key, attribute in state_attributes.items()})
+            if not public_only:
+                collision = [attribute.Get() for attribute in self._collision_attributes[identifier]]
+                if not collision or any(type(value) is not bool for value in collision) or len(set(collision)) != 1:
+                    raise ValueError("Collision state must be uniformly authored booleans")
+                item.update(collision_enabled=collision[0],
+                            linear_velocity_m_s=list(attributes["workcell:linearVelocity"].Get()),
+                            angular_velocity_rad_s=list(attributes["workcell:angularVelocity"].Get()))
+            for key, attribute, factor in visual_attributes:
+                visual_value = attribute.Get()
+                if (type(visual_value) not in (int, float) or not math.isfinite(visual_value) or
+                        abs(visual_value - factor * item["state"][key]) > 2e-5):
+                    raise ValueError("Visual geometry disagrees with semantic state: " + identifier)
+            result[identifier] = item
+        # All containers above are new and all leaf values are schema primitives.
+        # The public validator still detaches external mutation inputs.
+        return _validate_states(self.layout, result, public_only=public_only)
 
     def read_public_state(self):
-        from pxr import UsdGeom, UsdPhysics
-        for parent in ("/World", "/World/Workcell", "/World/Workcell/Objects"):
-            prim = self.stage.GetPrimAtPath(parent)
-            if prim and prim.IsA(UsdGeom.Xformable) and UsdGeom.Xformable(prim).GetOrderedXformOps():
-                raise ValueError("Workcell ancestry must have identity transforms")
-            if prim and prim.IsA(UsdGeom.Imageable) and UsdGeom.Imageable(prim).GetVisibilityAttr().Get() == UsdGeom.Tokens.invisible:
-                raise ValueError("Workcell ancestor unexpectedly hidden")
-        if self._structure_changed: raise ValueError("Workcell topology changed after registry capture")
-        result = {}
-        for identifier, definition in self.definitions.items():
-            prim = self.stage.GetPrimAtPath(definition["prim_path"])
-            if not prim: raise ValueError("Missing semantic prim: " + identifier)
-            if [str(op.GetOpName()) for op in UsdGeom.Xformable(prim).GetOrderedXformOps()] != ["xformOp:translate", "xformOp:orient"]:
-                raise ValueError("Unexpected semantic transform operations")
-            q = prim.GetAttribute("xformOp:orient").Get()
-            result[identifier] = dict(
-                position_m=list(prim.GetAttribute("xformOp:translate").Get()),
-                rotation_xyzw=[*q.GetImaginary(), q.GetReal()],
-                visible=UsdGeom.Imageable(prim).GetVisibilityAttr().Get() != UsdGeom.Tokens.invisible,
-                enabled=prim.GetAttribute("workcell:enabled").Get(),
-                state={key: prim.GetAttribute("workcell:" + key).Get() for key in definition["state"]})
-            state = result[identifier]["state"]
-            visual = self.stage.GetPrimAtPath(str(prim.GetPath()) + "/Visual")
-            for key, operation, expected in (
-                ("card_face", "xformOp:rotateX", lambda v: 180. * v),
-                ("arrow_angle_rad", "xformOp:rotateZ", math.degrees),
-                ("lid_open_fraction", "xformOp:rotateY", lambda v: math.degrees(definition["open_angle_rad"]) * v)):
-                if key in state and abs(visual.GetAttribute(operation).Get() - expected(state[key])) > 2e-5:
-                    raise ValueError("Visual geometry disagrees with semantic state: " + identifier)
-        return validate_states(self.layout, result, public_only=True)
+        return self._read_objects(public_only=True)
 
     def read_state(self):
-        from pxr import UsdGeom, UsdPhysics
-        for parent in ("/World", "/World/Workcell", "/World/Workcell/Objects"):
-            prim = self.stage.GetPrimAtPath(parent)
-            if prim and prim.IsA(UsdGeom.Xformable) and UsdGeom.Xformable(prim).GetOrderedXformOps():
-                raise ValueError("Workcell ancestry must have identity transforms")
-            if prim and prim.IsA(UsdGeom.Imageable) and UsdGeom.Imageable(prim).GetVisibilityAttr().Get() == UsdGeom.Tokens.invisible:
-                raise ValueError("Workcell ancestor unexpectedly hidden")
-        if self._structure_changed: raise ValueError("Workcell topology changed after registry capture")
-        result = {}
-        for identifier, definition in self.definitions.items():
-            prim = self.stage.GetPrimAtPath(definition["prim_path"])
-            if not prim: raise ValueError("Missing semantic prim: " + identifier)
-            if [str(op.GetOpName()) for op in UsdGeom.Xformable(prim).GetOrderedXformOps()] != ["xformOp:translate", "xformOp:orient"]:
-                raise ValueError("Unexpected semantic transform operations")
-            q = prim.GetAttribute("xformOp:orient").Get()
-            collision = [bool(attribute.Get()) for attribute in self._collision_attributes[identifier]]
-            if not collision or len(set(collision)) != 1:
-                raise ValueError("Collision state must be uniformly authored")
-            result[identifier] = dict(
-                position_m=list(prim.GetAttribute("xformOp:translate").Get()),
-                rotation_xyzw=[*q.GetImaginary(), q.GetReal()],
-                visible=UsdGeom.Imageable(prim).GetVisibilityAttr().Get() != UsdGeom.Tokens.invisible,
-                enabled=prim.GetAttribute("workcell:enabled").Get(), collision_enabled=collision[0],
-                linear_velocity_m_s=list(prim.GetAttribute("workcell:linearVelocity").Get()),
-                angular_velocity_rad_s=list(prim.GetAttribute("workcell:angularVelocity").Get()),
-                state={key: prim.GetAttribute("workcell:" + key).Get() for key in definition["state"]})
-            state = result[identifier]["state"]
-            visual = self.stage.GetPrimAtPath(str(prim.GetPath()) + "/Visual")
-            for key, operation, expected in (
-                ("card_face", "xformOp:rotateX", lambda v: 180. * v),
-                ("arrow_angle_rad", "xformOp:rotateZ", math.degrees),
-                ("lid_open_fraction", "xformOp:rotateY", lambda v: math.degrees(definition["open_angle_rad"]) * v)):
-                if key in state and abs(visual.GetAttribute(operation).Get() - expected(state[key])) > 2e-5:
-                    raise ValueError("Visual geometry disagrees with semantic state: " + identifier)
-        return validate_states(self.layout, result)
+        return self._read_objects(public_only=False)
 
     @staticmethod
     def _collision_prims(root):
@@ -178,7 +286,7 @@ class StateAccessors:
 
     def _apply_validated(self, states):
         from pxr import Gf, UsdGeom, UsdPhysics
-        if self._structure_changed: raise ValueError("Workcell static geometry changed")
+        self._check_structure()
         for identifier, item in states.items():
             prim = self.stage.GetPrimAtPath(self.definitions[identifier]["prim_path"])
             prim.GetAttribute("xformOp:translate").Set(Gf.Vec3d(*item["position_m"]))
@@ -204,6 +312,7 @@ class StateAccessors:
             visual.GetAttribute("xformOp:rotateY").Set(math.degrees(definition["open_angle_rad"]) * state["lid_open_fraction"])
 
     def read_environment(self):
+        self._check_structure()
         result = {"materials": {}, "lights": {}}
         for name in self.layout["materials"]:
             prim = self.stage.GetPrimAtPath("/World/Workcell/Materials/" + name + "/Shader")
