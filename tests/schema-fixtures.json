@@ -42,5 +42,13 @@
   {
     "schema": "docs/adr/schemas/bridge-state.schema.json",
     "instance": "tests/fixtures/bridge-state.json"
+  },
+  {
+    "schema": "apparatus/schemas/apparatus-manifest-input.schema.json",
+    "instance": "apparatus/examples/apparatus-manifest-input.example.json"
+  },
+  {
+    "schema": "apparatus/schemas/apparatus-manifest.schema.json",
+    "instance": "apparatus/examples/apparatus-manifest.example.json"
   }
 ]
