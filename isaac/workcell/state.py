@@ -10,22 +10,24 @@ FIELDS = {"position_m", "rotation_xyzw", "visible", "enabled", "collision_enable
           "linear_velocity_m_s", "angular_velocity_rad_s", "state"}
 
 
-def validate_states(layout, states):
+def validate_states(layout, states, *, public_only=False):
     definitions = {item["id"]: item for item in layout["objects"]}
     if not isinstance(states, dict) or set(states) != set(definitions):
         raise ValueError("Exact semantic object registry required")
     for identifier, item in states.items():
-        if set(item) != FIELDS:
+        expected = FIELDS - {"collision_enabled", "linear_velocity_m_s", "angular_velocity_rad_s"} if public_only else FIELDS
+        if set(item) != expected:
             raise ValueError("State fields differ: " + identifier)
-        for key, length in (("position_m", 3), ("rotation_xyzw", 4),
-                            ("linear_velocity_m_s", 3), ("angular_velocity_rad_s", 3)):
+        vectors = [("position_m", 3), ("rotation_xyzw", 4)]
+        if not public_only: vectors += [("linear_velocity_m_s", 3), ("angular_velocity_rad_s", 3)]
+        for key, length in vectors:
             value = item[key]
             if not isinstance(value, (list, tuple)) or len(value) != length or not all(
                     type(v) in (int, float) and math.isfinite(v) for v in value):
                 raise ValueError("Invalid finite vector: " + key)
         if abs(sum(v*v for v in item["rotation_xyzw"]) - 1) > 1e-5:
             raise ValueError("Unit quaternion required")
-        for key in ("visible", "enabled", "collision_enabled"):
+        for key in (("visible", "enabled") if public_only else ("visible", "enabled", "collision_enabled")):
             if type(item[key]) is not bool:
                 raise ValueError("Boolean required: " + key)
         neutral = definitions[identifier]["state"]
@@ -54,16 +56,87 @@ class StateAccessors:
         self.stage, self.layout = stage, layout
         self.anchor_ids = tuple(layout["anchor_ids"])
         self.definitions = {item["id"]: item for item in layout["objects"]}
+        from pxr import UsdPhysics
+        self._collision_attributes = {
+            identifier: [UsdPhysics.CollisionAPI(prim).GetCollisionEnabledAttr() for prim in
+                         self._collision_prims(stage.GetPrimAtPath(definition["prim_path"]))]
+            for identifier, definition in self.definitions.items()}
+        self._structure_changed = False
+        self._allowed_changes = set()
+        for identifier, definition in self.definitions.items():
+            path=definition["prim_path"]
+            names=["xformOp:translate","xformOp:orient","visibility","workcell:enabled",
+                   "workcell:linearVelocity","workcell:angularVelocity"]
+            names += ["workcell:"+key for key in definition["state"]]
+            self._allowed_changes.update(path+"."+name for name in names)
+            for key,operation in (("card_face","rotateX"),("arrow_angle_rad","rotateZ"),("lid_open_fraction","rotateY")):
+                if key in definition["state"]: self._allowed_changes.add(path+"/Visual.xformOp:"+operation)
+            self._allowed_changes.update(str(attribute.GetPath()) for attribute in self._collision_attributes[identifier])
+        for name in layout["materials"]:
+            self._allowed_changes.update("/World/Workcell/Materials/"+name+"/Shader.inputs:"+key for key in ("diffuseColor","roughness"))
+        for light in layout["lights"]:
+            self._allowed_changes.update("/World/Workcell/Lights/"+light["id"]+".inputs:"+key for key in ("color","intensity"))
+        from pxr import Tf, Usd
+        self._notice = Tf.Notice.Register(Usd.Notice.ObjectsChanged, self._on_stage_changed, stage)
 
-    def read_state(self):
+    def _on_stage_changed(self, notice, sender):
+        # Cached geometry handles remain safe only while topology is unchanged.
+        if any(path.IsPrimPath() and str(path).startswith("/World/Workcell") for path in notice.GetResyncedPaths()):
+            self._structure_changed = True
+        for path in notice.GetChangedInfoOnlyPaths():
+            value=str(path)
+            if value.startswith("/World/Workcell") and value not in self._allowed_changes:
+                self._structure_changed = True
+
+    def read_public_state(self):
         from pxr import UsdGeom, UsdPhysics
+        for parent in ("/World", "/World/Workcell", "/World/Workcell/Objects"):
+            prim = self.stage.GetPrimAtPath(parent)
+            if prim and prim.IsA(UsdGeom.Xformable) and UsdGeom.Xformable(prim).GetOrderedXformOps():
+                raise ValueError("Workcell ancestry must have identity transforms")
+            if prim and prim.IsA(UsdGeom.Imageable) and UsdGeom.Imageable(prim).GetVisibilityAttr().Get() == UsdGeom.Tokens.invisible:
+                raise ValueError("Workcell ancestor unexpectedly hidden")
+        if self._structure_changed: raise ValueError("Workcell topology changed after registry capture")
         result = {}
         for identifier, definition in self.definitions.items():
             prim = self.stage.GetPrimAtPath(definition["prim_path"])
             if not prim: raise ValueError("Missing semantic prim: " + identifier)
+            if [str(op.GetOpName()) for op in UsdGeom.Xformable(prim).GetOrderedXformOps()] != ["xformOp:translate", "xformOp:orient"]:
+                raise ValueError("Unexpected semantic transform operations")
             q = prim.GetAttribute("xformOp:orient").Get()
-            children = list(self._collision_prims(prim))
-            collision = [bool(UsdPhysics.CollisionAPI(p).GetCollisionEnabledAttr().Get()) for p in children]
+            result[identifier] = dict(
+                position_m=list(prim.GetAttribute("xformOp:translate").Get()),
+                rotation_xyzw=[*q.GetImaginary(), q.GetReal()],
+                visible=UsdGeom.Imageable(prim).GetVisibilityAttr().Get() != UsdGeom.Tokens.invisible,
+                enabled=prim.GetAttribute("workcell:enabled").Get(),
+                state={key: prim.GetAttribute("workcell:" + key).Get() for key in definition["state"]})
+            state = result[identifier]["state"]
+            visual = self.stage.GetPrimAtPath(str(prim.GetPath()) + "/Visual")
+            for key, operation, expected in (
+                ("card_face", "xformOp:rotateX", lambda v: 180. * v),
+                ("arrow_angle_rad", "xformOp:rotateZ", math.degrees),
+                ("lid_open_fraction", "xformOp:rotateY", lambda v: math.degrees(definition["open_angle_rad"]) * v)):
+                if key in state and abs(visual.GetAttribute(operation).Get() - expected(state[key])) > 2e-5:
+                    raise ValueError("Visual geometry disagrees with semantic state: " + identifier)
+        return validate_states(self.layout, result, public_only=True)
+
+    def read_state(self):
+        from pxr import UsdGeom, UsdPhysics
+        for parent in ("/World", "/World/Workcell", "/World/Workcell/Objects"):
+            prim = self.stage.GetPrimAtPath(parent)
+            if prim and prim.IsA(UsdGeom.Xformable) and UsdGeom.Xformable(prim).GetOrderedXformOps():
+                raise ValueError("Workcell ancestry must have identity transforms")
+            if prim and prim.IsA(UsdGeom.Imageable) and UsdGeom.Imageable(prim).GetVisibilityAttr().Get() == UsdGeom.Tokens.invisible:
+                raise ValueError("Workcell ancestor unexpectedly hidden")
+        if self._structure_changed: raise ValueError("Workcell topology changed after registry capture")
+        result = {}
+        for identifier, definition in self.definitions.items():
+            prim = self.stage.GetPrimAtPath(definition["prim_path"])
+            if not prim: raise ValueError("Missing semantic prim: " + identifier)
+            if [str(op.GetOpName()) for op in UsdGeom.Xformable(prim).GetOrderedXformOps()] != ["xformOp:translate", "xformOp:orient"]:
+                raise ValueError("Unexpected semantic transform operations")
+            q = prim.GetAttribute("xformOp:orient").Get()
+            collision = [bool(attribute.Get()) for attribute in self._collision_attributes[identifier]]
             if not collision or len(set(collision)) != 1:
                 raise ValueError("Collision state must be uniformly authored")
             result[identifier] = dict(
@@ -74,6 +147,14 @@ class StateAccessors:
                 linear_velocity_m_s=list(prim.GetAttribute("workcell:linearVelocity").Get()),
                 angular_velocity_rad_s=list(prim.GetAttribute("workcell:angularVelocity").Get()),
                 state={key: prim.GetAttribute("workcell:" + key).Get() for key in definition["state"]})
+            state = result[identifier]["state"]
+            visual = self.stage.GetPrimAtPath(str(prim.GetPath()) + "/Visual")
+            for key, operation, expected in (
+                ("card_face", "xformOp:rotateX", lambda v: 180. * v),
+                ("arrow_angle_rad", "xformOp:rotateZ", math.degrees),
+                ("lid_open_fraction", "xformOp:rotateY", lambda v: math.degrees(definition["open_angle_rad"]) * v)):
+                if key in state and abs(visual.GetAttribute(operation).Get() - expected(state[key])) > 2e-5:
+                    raise ValueError("Visual geometry disagrees with semantic state: " + identifier)
         return validate_states(self.layout, result)
 
     @staticmethod
@@ -93,8 +174,8 @@ class StateAccessors:
             prim.GetAttribute("workcell:enabled").Set(item["enabled"])
             prim.GetAttribute("workcell:linearVelocity").Set(Gf.Vec3d(*item["linear_velocity_m_s"]))
             prim.GetAttribute("workcell:angularVelocity").Set(Gf.Vec3d(*item["angular_velocity_rad_s"]))
-            for child in self._collision_prims(prim):
-                UsdPhysics.CollisionAPI(child).GetCollisionEnabledAttr().Set(item["collision_enabled"])
+            for attribute in self._collision_attributes[identifier]:
+                attribute.Set(item["collision_enabled"])
             for key, value in item["state"].items():
                 prim.GetAttribute("workcell:" + key).Set(value)
             self._apply_visual_state(prim, item["state"], self.definitions[identifier])
