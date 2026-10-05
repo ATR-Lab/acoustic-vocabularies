@@ -1,0 +1,5 @@
+{
+  "name": "AcousticVocab.Teaching.PlayModeTests",
+  "references": ["AcousticVocab.Teaching", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}
