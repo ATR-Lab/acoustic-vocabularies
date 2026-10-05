@@ -16,10 +16,73 @@ final class MessagesModel {
         case composed(MessageRef, ComposeResult, AudioClip, expected: CompositeHashResult)
         /// A held-out message: the engine's refusal and the expected hash only.
         case heldOut(MessageRef, refusal: BridgeError?, unexpectedAudio: Bool, hash: CompositeHashResult?)
-        /// A trained message that this scratch book would make the same audio as held-out
-        /// `heldOut` (for example when two slots hold the same recipe). It is not composed:
-        /// a held-out message never exists as audio, under its own ID or another one.
-        case sameAsHeldOut(MessageRef, heldOut: [MessageRef], hash: CompositeHashResult)
+        /// A trained message that this scratch book would make the same audio as the
+        /// held-out messages `heldOut` (for example when two slots hold the same recipe):
+        /// of this book, of the profile's DEMO book or DEMO fallback book, or of an earlier
+        /// state of a scratch book in this session. It is not composed: a held-out message
+        /// never exists as audio, under its own ID or another one.
+        case sameAsHeldOut(MessageRef, heldOut: [HeldOutTwin], hash: CompositeHashResult)
+    }
+
+    /// A held-out message whose audio a trained message would be, and the book in which
+    /// that held-out message has this audio.
+    struct HeldOutTwin: Equatable, Sendable {
+        enum Origin: Equatable, Sendable {
+            /// The current scratch book.
+            case scratchBook
+            /// The synthetic DEMO book of the profile (`DEMO-P2`).
+            case demoBook(String)
+            /// The DEMO fallback book of the profile (its seed, `DEMO-fallback-v1`).
+            case fallbackBook(String)
+            /// An earlier state of a scratch book in this session (for example this book
+            /// before an edit, or a book that was replaced).
+            case earlier
+        }
+
+        let message: MessageRef
+        let origin: Origin
+
+        /// "held-out K-a1-r2 of this scratch book", ...
+        var text: String {
+            switch origin {
+            case .scratchBook: "held-out \(message.messageID) of this scratch book"
+            case .demoBook(let id): "held-out \(message.messageID) of the DEMO book \(id)"
+            case .fallbackBook(let seed): "held-out \(message.messageID) of the DEMO fallback book (seed \(seed))"
+            case .earlier: "held-out \(message.messageID) of an earlier state of a scratch book in this session"
+            }
+        }
+    }
+
+    /// A held-out message with the recipes its atoms have in a book, rendered at
+    /// `profile`: its composite is audio that must never exist.
+    struct HeldOutPair: Hashable, Sendable {
+        let message: MessageRef
+        let profile: Profile
+        let action: Recipe
+        let referent: Recipe
+
+        var key: CompositeKey { CompositeKey(profile: profile, action: action, referent: referent) }
+    }
+
+    /// What a composite hash depends on: the two recipes and the profile (not the
+    /// message, atom or book IDs).
+    struct CompositeKey: Hashable, Sendable {
+        let profile: Profile
+        let action: Recipe
+        let referent: Recipe
+    }
+
+    /// A fixed book of a profile whose held-out messages are checked (DEMO, fallback).
+    private struct FixedBook {
+        let origin: HeldOutTwin.Origin
+        let atoms: [String: Recipe]
+    }
+
+    /// A scratch-book state recorded before the grammar (which names the held-out
+    /// messages) was loaded.
+    private struct BookState: Hashable {
+        let profile: Profile
+        let atoms: [String: Recipe]
     }
 
     /// What an outcome was made from: both atom references and the book ID sent with them,
@@ -55,6 +118,40 @@ final class MessagesModel {
     /// click asks for it, and so does a message that waits for its atoms; a recomposition
     /// after a book change does not.
     @ObservationIgnored private var wantsPlay = false
+    /// The held-out messages of every state of the scratch books in this session (every
+    /// profile), with their atoms: `record(books:)`. Kept across book changes, profile
+    /// changes and bridge restarts, so that no later edit turns one of them into audio
+    /// under a trained ID, whether or not Messages showed that state.
+    @ObservationIgnored private var earlierPairs: Set<HeldOutPair> = []
+    /// Book states recorded while the grammar was not loaded (sorted into `earlierPairs`
+    /// by the next check).
+    @ObservationIgnored private var unsortedStates: Set<BookState> = []
+    /// Composite hashes from the current bridge, by recipes and profile (`nil`: the
+    /// engine cannot hash those atoms, so they make no audio).
+    @ObservationIgnored private var compositeHashes: [CompositeKey: String?] = [:]
+    /// The DEMO book and the DEMO fallback book of each profile, fetched once per bridge.
+    @ObservationIgnored private var fixedBookCache: [Profile: [FixedBook]] = [:]
+
+    /// The bridge stopped or was replaced (perhaps by one of another checkout): the fixed
+    /// books and every hash are asked for again. The recorded book states stay.
+    func bridgeDidStop() {
+        fixedBookCache = [:]
+        compositeHashes = [:]
+    }
+
+    /// Records the held-out messages of `books` (called with every new state of the
+    /// scratch books).
+    func record(books: [Profile: ScratchBook]) {
+        guard let heldOut = app?.grammar?.heldoutMessages else {
+            for (profile, book) in books where !book.isEmpty {
+                unsortedStates.insert(BookState(profile: profile, atoms: book.atoms))
+            }
+            return
+        }
+        for (profile, book) in books {
+            earlierPairs.formUnion(Self.heldOutPairs(of: heldOut, in: book.atoms, profile: profile))
+        }
+    }
 
     func profileDidChange() {
         clearSelection()
@@ -152,20 +249,25 @@ final class MessagesModel {
                 try Task.checkCancellation()
                 let hash = try await client.compositeHash(
                     action: action, referent: referent, profile: profile, bookID: bookID)
+                self?.note(
+                    HeldOutPair(message: message, profile: profile, action: action.recipe, referent: referent.recipe),
+                    hash: hash.compositeSHA256, client: client)
                 try Task.checkCancellation()
                 guard let self else { return }
                 self.outcome = .heldOut(message, refusal: refusal, unexpectedAudio: unexpectedAudio, hash: hash)
                 self.wantsPlay = false
             } else {
                 // Before any audio exists: the expected hash (composite_hash returns no
-                // audio), then the held-out messages of this book with the same hash.
-                // When there is one, the message is not composed.
+                // audio), then the held-out messages with the same hash (of this book, of
+                // the DEMO or fallback book, or of an earlier book state). When there is
+                // one, the message is not composed.
                 guard let heldOutMessages else { throw AppError("The grammar is not loaded yet. Try again.") }
                 let expected = try await client.compositeHash(
                     action: action, referent: referent, profile: profile, bookID: bookID)
                 try Task.checkCancellation()
-                let twins = try await Self.heldOutTwins(
+                guard let twins = try await self?.heldOutTwins(
                     of: expected.compositeSHA256, among: heldOutMessages, in: book, profile: profile, client: client)
+                else { return }
                 try Task.checkCancellation()
                 if !twins.isEmpty {
                     guard let self else { return }
@@ -199,26 +301,106 @@ final class MessagesModel {
         [message.action, message.referent].filter { book.atoms[$0] == nil }
     }
 
-    /// The held-out messages whose composite in `book` has the PCM hash `hash`: a trained
-    /// message with that hash would be their audio. Each held-out message with both atoms
-    /// in the book is hashed with `composite_hash`, which never returns audio. A held-out
-    /// message the engine cannot hash (an atom that does not render, for example) has no
-    /// audio, so it cannot be equal; any other failure is thrown (nothing is composed).
-    static func heldOutTwins(
+    /// The held-out messages whose audio a trained message with the PCM hash `hash` would
+    /// be, in this order: those of `book` (its atoms now), those of the profile's synthetic
+    /// DEMO book and DEMO fallback book (the fixed books the app shows and copies into the
+    /// scratch book), and those of every earlier state of a scratch book in this session
+    /// (`earlierPairs`, any profile). So no edit, of this atom or any other, turns a
+    /// held-out message of any of these books into audio under a trained ID. Hashes come
+    /// from `composite_hash`, which never returns audio, and are kept per bridge. A
+    /// held-out message the engine cannot hash (an atom that does not render, for example)
+    /// has no audio, so it cannot be equal; any other failure is thrown (nothing is
+    /// composed).
+    func heldOutTwins(
         of hash: String, among heldOut: [MessageRef], in book: ScratchBook, profile: Profile, client: BridgeClient
-    ) async throws -> [MessageRef] {
-        var twins: [MessageRef] = []
-        for message in heldOut where message.isHeldout {
-            guard let source = source(of: message, in: book) else { continue }
-            do {
-                let result = try await client.compositeHash(
-                    action: source.action, referent: source.referent, profile: profile, bookID: source.bookID)
-                if result.compositeSHA256 == hash { twins.append(message) }
-            } catch let error as BridgeError where error.engineType != nil {
-                continue
-            }
+    ) async throws -> [HeldOutTwin] {
+        for state in unsortedStates {
+            earlierPairs.formUnion(Self.heldOutPairs(of: heldOut, in: state.atoms, profile: state.profile))
+        }
+        unsortedStates = []
+        let current = Self.heldOutPairs(of: heldOut, in: book.atoms, profile: profile)
+        earlierPairs.formUnion(current)
+        let recorded = Array(earlierPairs)  // the states recorded so far
+        let inBook = try await matches(of: hash, among: current, client: client)
+        var fixed: [(origin: HeldOutTwin.Origin, messages: [MessageRef])] = []
+        for fixedBook in try await fixedBooks(profile: profile, client: client) {
+            let pairs = Self.heldOutPairs(of: heldOut, in: fixedBook.atoms, profile: profile)
+            fixed.append((fixedBook.origin, try await matches(of: hash, among: pairs, client: client)))
+        }
+        let earlier = try await matches(of: hash, among: recorded, client: client)
+            .sorted { $0.messageID < $1.messageID }
+        return Self.twins(inBook: inBook, fixed: fixed, earlier: earlier)
+    }
+
+    /// The matches of `heldOutTwins`, each held-out message once, under its first origin:
+    /// this book, then the fixed books in order, then the earlier book states.
+    static func twins(
+        inBook: [MessageRef], fixed: [(origin: HeldOutTwin.Origin, messages: [MessageRef])], earlier: [MessageRef]
+    ) -> [HeldOutTwin] {
+        var twins: [HeldOutTwin] = []
+        let candidates = inBook.map { HeldOutTwin(message: $0, origin: .scratchBook) }
+            + fixed.flatMap { book in book.messages.map { HeldOutTwin(message: $0, origin: book.origin) } }
+            + earlier.map { HeldOutTwin(message: $0, origin: .earlier) }
+        for twin in candidates where !twins.contains(where: { $0.message.messageID == twin.message.messageID }) {
+            twins.append(twin)
         }
         return twins
+    }
+
+    /// The held-out messages of `heldOut` with both atoms in `atoms`, with their recipes.
+    static func heldOutPairs(of heldOut: [MessageRef], in atoms: [String: Recipe], profile: Profile) -> [HeldOutPair] {
+        heldOut.compactMap { message in
+            guard message.isHeldout, let action = atoms[message.action], let referent = atoms[message.referent]
+            else { return nil }
+            return HeldOutPair(message: message, profile: profile, action: action, referent: referent)
+        }
+    }
+
+    /// The held-out messages among `pairs` whose composite hash is `hash`, each once.
+    private func matches(of hash: String, among pairs: [HeldOutPair], client: BridgeClient) async throws -> [MessageRef] {
+        var found: [MessageRef] = []
+        for pair in pairs where try await compositeHash(of: pair, client: client) == hash {
+            if !found.contains(where: { $0.messageID == pair.message.messageID }) { found.append(pair.message) }
+        }
+        return found
+    }
+
+    /// The composite hash of `pair` (`composite_hash`, no audio), asked for once per
+    /// bridge; `nil` when the engine cannot hash it.
+    private func compositeHash(of pair: HeldOutPair, client: BridgeClient) async throws -> String? {
+        if let known = compositeHashes[pair.key] { return known }
+        let digest: String?
+        do {
+            digest = try await client.compositeHash(
+                action: AtomReference(refID: pair.message.action, recipe: pair.action),
+                referent: AtomReference(refID: pair.message.referent, recipe: pair.referent),
+                profile: pair.profile, bookID: nil
+            ).compositeSHA256
+        } catch let error as BridgeError where error.engineType != nil {
+            digest = nil
+        }
+        if app?.client === client { compositeHashes[pair.key] = .some(digest) }  // not from a replaced bridge
+        return digest
+    }
+
+    /// The synthetic DEMO book and the DEMO fallback book of `profile`, fetched once per
+    /// profile and bridge (`synthetic_book`, `fallback_demo`; no audio).
+    private func fixedBooks(profile: Profile, client: BridgeClient) async throws -> [FixedBook] {
+        if let known = fixedBookCache[profile] { return known }
+        let synthetic = try await client.syntheticBook(profile: profile)
+        let fallback = try await client.fallbackDemo(profile: profile)
+        let books = [
+            FixedBook(origin: .demoBook(synthetic.bookID), atoms: ScratchBook.demo(synthetic).atoms),
+            FixedBook(origin: .fallbackBook(fallback.seedLabel), atoms: ScratchBook.fallback(fallback, profile: profile).atoms),
+        ]
+        if app?.client === client { fixedBookCache[profile] = books }  // not from a replaced bridge
+        return books
+    }
+
+    /// A held-out message's hash, shown in its card: it is recorded, and kept.
+    private func note(_ pair: HeldOutPair, hash: String, client: BridgeClient) {
+        earlierPairs.insert(pair)
+        if app?.client === client { compositeHashes[pair.key] = .some(hash) }
     }
 
     /// Stops the composed clip of the current outcome if it is the sound that plays.
@@ -237,7 +419,7 @@ struct MessagesView: View {
         @Bindable var messages = app.messages
         SectionPage(.messages, summary: "The fixed 4 \u{00D7} 4 message matrix of each family: action atom (rows) then 200 ms of silence then referent atom (columns). Trained cells compose from the scratch book; held-out cells are never composed: the engine refuses them and only their expected hash is shown.") {
             Card("Matrix", systemImage: "square.grid.4x3.fill",
-                 subtitle: "Profile \(app.profile.rawValue) \u{00B7} scratch book: \(app.book.count) of 16 atoms\(app.book.origin.map { " (\($0))" } ?? "")") {
+                 subtitle: "Profile \(app.profile.rawValue) \u{00B7} scratch book: \(app.book.count) of 16 atoms\(app.book.label.map { " (\($0))" } ?? "")") {
                 HStack {
                     Picker("Family", selection: $messages.family) {
                         ForEach(AtomSlots.families, id: \.self) { Text("Family \($0)").tag($0) }
@@ -561,18 +743,19 @@ private struct HeldOutView: View {
 private struct SameAsHeldOutView: View {
     @Environment(AppModel.self) private var app
     let message: MessageRef
-    let heldOut: [MessageRef]
+    let heldOut: [MessagesModel.HeldOutTwin]
     let hash: CompositeHashResult
 
     var body: some View {
-        let ids = heldOut.map(\.messageID).joined(separator: ", ")
+        let ids = heldOut.map(\.message.messageID).joined(separator: ", ")
+        let named = heldOut.map(\.text).joined(separator: "; ")
         VStack(alignment: .leading, spacing: 12) {
             MessageTitle(message: message)
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "hand.raised.fill").foregroundStyle(.orange).font(.title3)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Not composed: this pair is also held-out \(ids)").font(.headline)
-                    Text("In this scratch book, \(message.messageID) (\(message.action) + \(message.referent)) has the same composite hash as held-out \(ids): its atoms make the same sounds, for example because two slots hold the same recipe. A held-out message never exists as audio, so \(message.messageID) is not composed or played either. Give each atom its own recipe (Validator & Book), or load the DEMO book.")
+                    Text("Not composed: this audio is held-out \(ids)").font(.headline)
+                    Text("In this scratch book, \(message.messageID) (\(message.action) + \(message.referent)) has the same composite hash as \(named): its atoms make the same sounds, for example because two slots hold the same recipe. A held-out message never exists as audio, under its own ID or another one, so \(message.messageID) is not composed or played either. Changing other atoms does not change this hash: give \(message.action) or \(message.referent) a recipe of its own (Validator & Book), or load the DEMO book.")
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -582,7 +765,13 @@ private struct SameAsHeldOutView: View {
                 .foregroundStyle(.secondary)
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 InfoRow("Composite hash") { HashText(hash: hash.compositeSHA256, length: 24) }
-                InfoRow("Same as", ids)
+                InfoRow("Same as") {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(heldOut, id: \.message.messageID) { twin in
+                            Text(twin.text).textSelection(.enabled)
+                        }
+                    }
+                }
             }
             HStack {
                 Button("Open Validator & Book") { app.selection = .validator }

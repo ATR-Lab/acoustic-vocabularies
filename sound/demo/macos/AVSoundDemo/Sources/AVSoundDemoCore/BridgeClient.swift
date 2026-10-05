@@ -184,12 +184,16 @@ public actor BridgeClient {
                     ?? (cancelled ? "Start cancelled." : error.localizedDescription)
                 appendLog(.client, message)
                 generation += 1
-                if let current = transport, current === newTransport {
-                    transport = nil
-                    await current.terminate(gracePeriod: .seconds(1))
-                }
+                let failed = transport === newTransport ? newTransport : nil
+                if failed != nil { transport = nil }
+                // The state changes come before the wait for the process to end (up to the
+                // grace period and more for an unresponsive `uv`): the actor is re-entrant
+                // there, and a stop or a new start (`restart()`) may run meanwhile. After
+                // the wait this start changes nothing, so it can neither fail the new
+                // start's pending hello nor overwrite its status.
                 failAllPending(.notRunning)
                 setStatus(cancelled ? .stopped : .failed(message))
+                await failed?.terminate(gracePeriod: .seconds(1))
             }
             throw error
         }

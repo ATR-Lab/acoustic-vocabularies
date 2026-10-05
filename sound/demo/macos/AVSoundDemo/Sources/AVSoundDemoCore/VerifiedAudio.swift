@@ -119,7 +119,7 @@ public enum CanonicalWAV {
     /// int16 little-endian sample bytes.
     public static func pcmData(samples: [Int16]) -> Data {
         var data = Data(count: samples.count * 2)
-        data.withUnsafeMutableBytes { raw in
+        data.withUnsafeMutableBytes { (raw: UnsafeMutableRawBufferPointer) in
             for (i, sample) in samples.enumerated() {
                 raw.storeBytes(of: sample.littleEndian, toByteOffset: 2 * i, as: Int16.self)
             }
@@ -214,7 +214,7 @@ public struct VerifiedAudio: Sendable, Identifiable {
             throw AudioVerificationError.pcmHashMismatch(expected: expectedPCM, actual: actualPCM)
         }
         var samples = [Int16](repeating: 0, count: count)
-        pcm.withUnsafeBytes { raw in
+        pcm.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             for i in 0..<count {
                 samples[i] = Int16(littleEndian: raw.loadUnaligned(fromByteOffset: 2 * i, as: Int16.self))
             }

@@ -43,10 +43,15 @@ outside the package. The `build/` folder is ignored by git.
 The app finds the repository by going up from its own location, so build it inside the
 checkout. It finds `uv` on `PATH` and in the usual install folders
 (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`, `~/.cargo/bin`). If it cannot find
-one of them, a setup sheet asks for the paths. `AV_SOUND_REPO=<path>` overrides the
-repository search. When it is set to a folder that is not the repository, the app does
-not use another checkout in its place: the setup sheet names the variable and the path
-(and the self-check fails, see below).
+one of them, a setup sheet asks for the paths. The paths chosen there (or in Settings)
+are saved. The saved `uv` comes first at the next launch. The saved repository comes
+last: the app uses it only when it is not inside a checkout (for example after you move
+the app bundle), so an app built inside a checkout always runs that checkout's engine.
+`AV_SOUND_REPO=<path>` overrides the repository search, the saved path included. When it
+is set to a folder that is not the repository, the app does not use another checkout in
+its place: the setup sheet names the variable and the path, also when `uv` is missing
+too (the sheet lists every problem), and the self-check fails (see below). The
+self-check finds the repository and `uv` the same way as the app.
 
 Without the app bundle:
 
@@ -87,7 +92,8 @@ The self-check opens no window. It starts the bridge and does these checks:
 Then it stops the bridge and prints a JSON summary (`ok`, `passed`, `failed`, `checks`) on
 stdout. Progress goes to stderr. Options: `--repo PATH`, `--uv PATH` and `--count N` (the
 number of random recipes, default 10). `--repo` comes before `AV_SOUND_REPO`, and
-`AV_SOUND_REPO` before the search. The exit status is 0 when all checks pass, 1 when an
+`AV_SOUND_REPO` before the app's own search (its location, the current directory, then
+the saved repository). The exit status is 0 when all checks pass, 1 when an
 engine check fails, and 2 when the bridge cannot run: the repository or `uv` is not
 found (also when `--repo` or `AV_SOUND_REPO` names a folder that is not the
 repository), or the bridge does not start and answer `hello` (for example when the
@@ -112,7 +118,8 @@ engine's Python environment is missing).
   again. A message plays only while Messages is shown. When the engine cannot answer
   (for example the bridge stopped), the card says so and Try Again asks again. A trained
   message that the scratch book makes equal to a held-out message (for example when two
-  slots hold the same recipe) is not composed: the card names the held-out message.
+  slots hold the same recipe) is not composed: the card names the held-out message and
+  where it has this audio (see Safety).
   Missing atoms are listed as the book changes.
 - **Nonlexical:** the reserved assets (calibration tones, the READY cue, grammar clicks),
   with their levels. Each WAV is checked against both hashes before it plays.
@@ -122,16 +129,26 @@ engine's Python environment is missing).
   cut of the freeze record or of the only record (`create_book`) is found without help
   (`E_MARKER`, `E_EVENT`). Any other cut, for example of a commit of an open book or of a
   refused commit logged after the freeze, leaves a self-consistent log: only "Require
-  the recorded chain head" finds that one (`E_ANCHOR`). The Store log says which case
-  the cut left. Each profile has its own book; going back to a book keeps its own
-  recorded head and damage.
+  the recorded chain head" finds that one (`E_ANCHOR`). The recorded head follows the
+  book's log only while the log still holds it, so a commit or freeze after such a cut
+  does not move it, and the cut stays detected. The Store log says which case the cut
+  left. Damage stays: "Flip a blob byte" pressed again damages the next intact
+  blob of the book, or is refused when every committed blob is damaged; it never flips
+  a damaged blob back. Each profile has its own book. When the store already has the
+  book of the current profile, the button reads "Open DEMO-Px" instead of "Create
+  DEMO-Px" and goes back to that book, with its own recorded head and damage.
 - **Fallback:** the fallback bank and book from the public seed `DEMO-fallback-v1`, and a
-  bank scan against the scratch book. The DEMO books are too far from every bank recipe
+  bank scan against the scratch book. Use as Scratch Book copies the fallback book into
+  the scratch book, which Validator & Book labels `DEMO fallback Px (DEMO-fallback-v1)`
+  until its first edit. Play renders a row and marks it when the audio matches the
+  listed waveform hash. The DEMO books are too far from every bank recipe
   to cause a rejection. To see one, scan, put the entry the scan selected (the starred
   row; the scan also selects it in the Bank table) into a scratch-book slot, and scan
   again: the scan rejects it (`E_DUPLICATE`, `E_SEPARATION`) and selects a later entry.
   The scan stops at its first admissible entry, so a later row is never reached and
-  cannot be rejected. Used indices are integers separated by commas or spaces.
+  cannot be rejected. Used indices are integers separated by commas or spaces. Scan is
+  off while the bank shown is another profile's (for example after its load failed):
+  Reload loads the bank of the current profile.
 - **Packages:** build, seal, load and leak-scan the synthetic `DEMO` package in a temp
   directory. Build Again builds a new package (the previous one is removed). When the
   bridge stops or restarts, the package goes with its temp directory.
@@ -156,9 +173,14 @@ engine's Python environment is missing).
   `uv run --frozen`, so uv uses `sound/uv.lock` as it is: it never re-resolves the
   dependencies (no network) and never rewrites that tracked file, even when
   `sound/pyproject.toml` or your uv settings no longer match the lock.
-- The app never composes a held-out message, under its own ID or another one. For a
-  held-out ID, `compose` returns the engine's refusal (`HeldOutMessageError`,
-  `E_HELDOUT`) and the app shows only the expected hash. The app also does not compose
-  a trained message whose `composite_hash` equals that of a held-out message of the
-  scratch book: it compares the hashes first, without audio.
+- The app never composes a held-out message under its own ID: `compose` returns the
+  engine's refusal (`HeldOutMessageError`, `E_HELDOUT`) and the app shows only the
+  expected hash. Nor does it compose one under a trained ID: it does not compose a
+  trained message whose `composite_hash` equals that of a held-out message of the
+  scratch book, of the synthetic `DEMO` book or the `DEMO` fallback book of the profile
+  (the two fixed books the app shows), or of any earlier state of a scratch book in the
+  session (the app records the held-out messages of every state its scratch books take,
+  also states that Messages never showed). It compares the hashes first, without audio.
+  So no edit, of the refused atoms or of others, turns a held-out message of these
+  books into audio.
 - `store_tamper` damages only the bridge's own temp store.

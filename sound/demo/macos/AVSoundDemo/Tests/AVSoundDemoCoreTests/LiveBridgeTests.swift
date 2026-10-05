@@ -122,7 +122,17 @@ struct LiveBridgeTests {
         _ = try await client.storeTamper(bookID: bookID, kind: .flipBlobByte)
         let damaged = try await client.storeVerify(bookID: bookID, expectedHead: frozen.chainHead)
         #expect(!damaged.ok)
-        #expect(!damaged.issues.isEmpty)
+        #expect(damaged.issues.map(\.code).contains("E_BLOB_HASH"))
+        // PROTOCOL.md, "Damaged books": a second flip never repairs the only blob; it is
+        // refused, and the book stays damaged.
+        do {
+            _ = try await client.storeTamper(bookID: bookID, kind: .flipBlobByte)
+            Issue.record("a second flip of the only committed blob was accepted")
+        } catch let error as BridgeError {
+            #expect(error.engineType == "ValueError")
+        }
+        let still = try await client.storeVerify(bookID: bookID, expectedHead: frozen.chainHead)
+        #expect(still.issues.map(\.code).contains("E_BLOB_HASH"))
         do {
             _ = try await client.storeCreate(bookID: "STUDY-1", profile: .p1)
             Issue.record("a non-DEMO book was created")

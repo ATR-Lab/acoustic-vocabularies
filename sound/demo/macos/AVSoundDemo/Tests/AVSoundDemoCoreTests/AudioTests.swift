@@ -276,8 +276,9 @@ struct WaveformSummaryTests {
 @Suite("AudioPlayer")
 @MainActor
 struct AudioPlayerTests {
-    /// The mono WAV signal goes into both channels of a two-channel player: the mixer
-    /// plays a mono connection 3 dB lower on 44.1 kHz outputs (see `AudioPlayer`).
+    /// The mono WAV signal goes into both channels of a two-channel player (for a stereo
+    /// output: the mixer plays a mono connection 3 dB lower on 44.1 kHz stereo outputs, see
+    /// `AudioPlayer`), or into the one channel of a mono player (for a mono output).
     @Test func convertsInt16ToFloatInBothChannels() throws {
         let samples: [Int16] = [0, 16_384, -32_768, 32_767, -1]
         let expected: [Float] = [0, 0.5, -1, 32_767 / 32_768, -1 / 32_768]
@@ -294,6 +295,66 @@ struct AudioPlayerTests {
             #expect((0..<5).map { channels[channel][$0] } == expected, "channel \(channel)")
         }
         #expect(AudioPlayer.makeBuffer(samples: []) == nil)
+
+        let mono = try #require(AudioPlayer.makeBuffer(samples: samples, channels: 1))
+        #expect(mono.format == AudioPlayer.makeFormat(channels: 1))
+        #expect(mono.format.channelCount == 1 && mono.format.sampleRate == 48_000 && mono.frameLength == 5)
+        let monoData = try #require(mono.floatChannelData)
+        #expect((0..<5).map { monoData[0][$0] } == expected)
+        #expect(AudioPlayer.makeBuffer(samples: samples, channels: 3) == nil)
+    }
+
+    /// The player matches a mono output with one channel and any other output with two.
+    @Test func thePlayerChannelsFollowTheOutput() {
+        #expect(AudioPlayer.playerChannelCount(outputChannels: 1) == 1)
+        for outputs: AVAudioChannelCount in [0, 2, 6, 8] {
+            #expect(AudioPlayer.playerChannelCount(outputChannels: outputs) == 2, "\(outputs) output channels")
+        }
+    }
+
+    /// What the mixer sends to the output is `sample / 32768` at unity gain for mono and
+    /// stereo outputs at 44.1 and 48 kHz, through the player's own connection
+    /// (`AudioPlayer.attach`). Rendered offline (no audio device): the output format is
+    /// the manual rendering format, and the main mixer is connected to it explicitly, as
+    /// the engine does for a device. The signal is a quiet DC plateau (328 / 32768) with
+    /// raised-cosine ramps. A two-channel player into a mono output would give sqrt(2).
+    @Test(arguments: [1, 2] as [AVAudioChannelCount], [44_100.0, 48_000.0])
+    func theOutputGetsUnityGainOffline(outputChannels: AVAudioChannelCount, outputRate: Double) throws {
+        let level: Int16 = 328
+        let ramp = 4_800
+        let rise = (0..<ramp).map { i in
+            Int16((Double(level) * (1 - cos(Double.pi * Double(i) / Double(ramp))) / 2).rounded())
+        }
+        let samples = rise + [Int16](repeating: level, count: 19_200) + rise.reversed()
+
+        let engine = AVAudioEngine()
+        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: outputRate, channels: outputChannels))
+        let maxFrames: AVAudioFrameCount = 4_096
+        try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: maxFrames)
+        engine.connect(engine.mainMixerNode, to: engine.outputNode, format: format)
+        let player = AVAudioPlayerNode()
+        let channels = AudioPlayer.attach(player, to: engine)
+        #expect(channels == (outputChannels == 1 ? 1 : 2))
+        #expect(engine.mainMixerNode.outputFormat(forBus: 0).channelCount == outputChannels)
+        let buffer = try #require(AudioPlayer.makeBuffer(samples: samples, channels: channels))
+        try engine.start()
+        defer { engine.stop() }
+        player.scheduleBuffer(buffer)
+        player.play()
+
+        let output = try #require(AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat, frameCapacity: maxFrames))
+        let peak = PeakMeter()
+        let total = Int((Double(samples.count) * outputRate / 48_000).rounded(.up)) + Int(maxFrames) * 2
+        var rendered = 0
+        while rendered < total {
+            let status = try engine.renderOffline(maxFrames, to: output)
+            #expect(status == .success)
+            guard status == .success, output.frameLength > 0 else { break }
+            peak.record(output)
+            rendered += Int(output.frameLength)
+        }
+        let gain = peak.value / (Float(level) / 32_768)
+        #expect(abs(gain - 1) < 1e-3, "gain \(gain) into \(outputChannels) channel(s) at \(outputRate) Hz")
     }
 
     @Test func oneBufferHoldsAWholeMessage() throws {
@@ -428,7 +489,8 @@ struct AudioPlaybackTests {
     /// What reaches the output is `sample / 32768` at unity gain, whatever the output's
     /// sample rate. A tap on the main mixer reads a quiet DC plateau (328 / 32768, about
     /// -40 dBFS, with 100 ms raised-cosine ramps: nothing to hear) at the player's volume 1.
-    /// A mono player gives 0.7071 here on a 44.1 kHz output.
+    /// A mono player gives 0.7071 here on a 44.1 kHz stereo output. Only this device is
+    /// measured; `theOutputGetsUnityGainOffline` covers mono and stereo outputs.
     @Test func theMixerPlaysSamplesAtUnityGain() async throws {
         let level: Int16 = 328
         let ramp = 4_800

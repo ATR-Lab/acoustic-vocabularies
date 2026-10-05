@@ -76,6 +76,7 @@ final class ValidatorModel {
         activity.run("validate") { [weak self] in
             let result = try await client.validate(
                 candidate, profile: profile, committed: committed, threshold: threshold, useReserved: useReserved)
+            guard self?.app?.isCurrent(client) == true else { return }  // a replaced bridge's verdict
             self?.outcome = Outcome(
                 source: source, profile: profile, bookCount: committed.count, threshold: threshold, result: result)
         }
@@ -119,8 +120,9 @@ private struct BookPanel: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Scratch book \u{00B7} \(app.profile.rawValue)").font(.headline)
                 Spacer()
-                if let origin = book.origin {
-                    Pill(text: origin, tint: .green)
+                if let label = book.label {
+                    Pill(text: label, tint: .green)
+                        .help("An unchanged copy of \(label); any change makes it an edited book")
                 } else if !book.isEmpty {
                     Pill(text: "edited", tint: .orange)
                 }

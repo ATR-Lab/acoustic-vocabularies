@@ -30,10 +30,13 @@ enum AtomSlots {
 /// A user-editable book of atom recipes for one profile.
 ///
 /// `origin` is the synthetic book ID (`DEMO-P2`) while the book is exactly the synthetic
-/// DEMO book; any change clears it.
+/// DEMO book; it is sent as the `book_id` of `compose`. `label` names the fixed book the
+/// scratch book is an unchanged copy of (the synthetic DEMO book, or the DEMO fallback
+/// book), for display only. Any change clears both.
 struct ScratchBook: Hashable, Sendable {
     var atoms: [String: Recipe] = [:]
     var origin: String?
+    var label: String?
 
     var count: Int { atoms.count }
     var isEmpty: Bool { atoms.isEmpty }
@@ -51,12 +54,25 @@ struct ScratchBook: Hashable, Sendable {
         guard atoms[atomID] != recipe else { return }
         atoms[atomID] = recipe
         origin = nil
+        label = nil
     }
 
     static func demo(_ book: SyntheticBook) -> ScratchBook {
         ScratchBook(
             atoms: Dictionary(book.atoms.map { ($0.atomID, $0.recipe) }, uniquingKeysWith: { first, _ in first }),
-            origin: book.bookID)
+            origin: book.bookID, label: book.bookID)
+    }
+
+    /// The DEMO fallback book of `profile` (from `fallback_demo`): no synthetic book ID,
+    /// labeled with its seed (`DEMO fallback P2 (DEMO-fallback-v1)`).
+    static func fallback(_ demo: FallbackDemo, profile: Profile) -> ScratchBook {
+        ScratchBook(
+            atoms: Dictionary(demo.book.map { ($0.atomID, $0.recipe) }, uniquingKeysWith: { first, _ in first }),
+            origin: nil, label: fallbackLabel(seed: demo.seedLabel, profile: profile))
+    }
+
+    static func fallbackLabel(seed: String, profile: Profile) -> String {
+        "DEMO fallback \(profile.rawValue) (\(seed))"
     }
 }
 

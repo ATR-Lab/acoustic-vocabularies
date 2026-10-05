@@ -89,6 +89,115 @@ struct SelfCheckExitStatusTests {
     }
 }
 
+@Suite("Launch search")
+struct LaunchSearchTests {
+    /// The app's launch and the self-check use one search (`AppModel.launchConfiguration`):
+    /// a saved repository comes after the checkout the app is in (README: "an app built
+    /// inside a checkout always runs that checkout's engine") and is used when the app is
+    /// in none. `AV_SOUND_REPO` comes before both, and `--repo` before that; the saved uv
+    /// comes before the uv search.
+    @Test func aSavedRepositoryComesAfterTheAppsOwnCheckout() throws {
+        let fileManager = FileManager.default
+        let dir = fileManager.temporaryDirectory.appendingPathComponent("av-sound-launch-\(UUID().uuidString)")
+        defer { try? fileManager.removeItem(at: dir) }
+        func create(_ url: URL, executable: Bool = false) throws {
+            try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            #expect(fileManager.createFile(
+                atPath: url.path, contents: Data(), attributes: executable ? [.posixPermissions: 0o755] : nil))
+        }
+        func checkout(_ name: String) throws -> URL {
+            let root = dir.appendingPathComponent(name)
+            for file in RepoLocator.requiredFiles { try create(root.appendingPathComponent(file)) }
+            return root.standardizedFileURL
+        }
+        let saved = try checkout("A")
+        let own = try checkout("B")
+        let uv = dir.appendingPathComponent("tools/uv")
+        try create(uv, executable: true)
+
+        // One fixed suite name (macOS keeps a plist per suite name).
+        let suiteName = "AVSoundDemoAppTests.launch"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        RepoLocator.persist(saved, defaults: defaults)
+        defaults.set(uv.path, forKey: AppModel.uvDefaultsKey)
+
+        let environment = ["HOME": dir.path, "PATH": ""]
+        let inOwn = own.appendingPathComponent(
+            "sound/demo/macos/AVSoundDemo/build/AV Sound Demo.app/Contents/MacOS/AVSoundDemo")
+        let elsewhere = dir.appendingPathComponent("Applications/AV Sound Demo.app/Contents/MacOS/AVSoundDemo")
+        func repo(_ repo: URL? = nil, env: [String: String] = environment, executable: URL) throws -> String? {
+            let configuration = try AppModel.launchConfiguration(
+                repo: repo, environment: env, executableURL: executable, bundleURL: nil,
+                currentDirectory: dir, defaults: defaults)
+            #expect(configuration.executableURL.path == uv.path)  // the saved uv
+            return configuration.currentDirectoryURL?.path
+        }
+        #expect(try repo(executable: inOwn) == own.path)
+        #expect(try repo(executable: elsewhere) == saved.path)
+        var withVariable = environment
+        withVariable[RepoLocator.environmentKey] = saved.path
+        #expect(try repo(env: withVariable, executable: inOwn) == saved.path)
+        #expect(try repo(own, env: withVariable, executable: elsewhere) == own.path)
+    }
+
+    /// The setup sheet names every launch problem. `launchConfiguration` stops at the
+    /// first one (uv), so with uv missing too, an `AV_SOUND_REPO` that is not the
+    /// repository must still be named, and its path (not the saved repository) fills the
+    /// field (README: "the setup sheet names the variable and the path").
+    @Test func theSetupSheetNamesAnInvalidEnvironmentRepoAlsoWithoutUV() throws {
+        let fileManager = FileManager.default
+        let dir = fileManager.temporaryDirectory.appendingPathComponent("av-sound-setup-\(UUID().uuidString)")
+        defer { try? fileManager.removeItem(at: dir) }
+        let saved = dir.appendingPathComponent("A").standardizedFileURL
+        for file in RepoLocator.requiredFiles {
+            let url = saved.appendingPathComponent(file)
+            try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            #expect(fileManager.createFile(atPath: url.path, contents: Data()))
+        }
+        let wrong = dir.appendingPathComponent("not-a-checkout").standardizedFileURL
+        try fileManager.createDirectory(at: wrong, withIntermediateDirectories: true)
+        let uv = dir.appendingPathComponent("tools/uv").path
+
+        let suiteName = "AVSoundDemoAppTests.setup"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        RepoLocator.persist(saved, defaults: defaults)
+        defaults.set(uv, forKey: AppModel.uvDefaultsKey)
+
+        let environment = ["HOME": dir.path, "PATH": ""]
+        var withVariable = environment
+        withVariable[RepoLocator.environmentKey] = wrong.path
+        func draft(_ error: BridgeSetupError, env: [String: String], uvFound: Bool) -> AppModel.SetupDraft {
+            AppModel.setupDraft(
+                after: error, environment: env, executableURL: nil, bundleURL: nil, currentDirectory: nil,
+                defaults: defaults, isExecutable: { uvFound && $0 == uv })
+        }
+
+        // No uv and an invalid AV_SOUND_REPO: both are named, and the field shows the
+        // variable's path (invalid), not the saved repository.
+        let both = draft(.uvNotFound(searched: []), env: withVariable, uvFound: false)
+        #expect(both.message.contains("uv was not found"))
+        #expect(both.message.contains("\(RepoLocator.environmentKey) is set to \(wrong.path)"))
+        #expect(both.repoPath == wrong.path)
+        #expect(both.uvPath == uv)  // the saved path, shown as not executable
+
+        // No uv, no variable: only uv is named, and the saved repository fills the field.
+        let uvOnly = draft(.uvNotFound(searched: []), env: environment, uvFound: false)
+        #expect(uvOnly.message.contains("uv was not found"))
+        #expect(!uvOnly.message.contains(RepoLocator.environmentKey))
+        #expect(uvOnly.repoPath == saved.path)
+
+        // uv found, invalid variable: only the variable is named.
+        let variableOnly = draft(.environmentRepoInvalid(path: wrong.path), env: withVariable, uvFound: true)
+        #expect(!variableOnly.message.contains("uv was not found"))
+        #expect(variableOnly.message.contains(wrong.path))
+        #expect(variableOnly.repoPath == wrong.path && variableOnly.uvPath == uv)
+    }
+}
+
 @Suite("AppModel playback state")
 @MainActor
 struct AppModelPlaybackTests {
@@ -229,6 +338,73 @@ struct MessagesModelTests {
         #expect(MessagesModel.source(of: message, in: book)?.referent != first.referent)
         book.set("K-a1", nil)
         #expect(MessagesModel.source(of: message, in: book) == nil)
+    }
+
+    /// Each held-out message is named once, under its first origin: this book, then the
+    /// fixed books (DEMO, then fallback), then the earlier book states.
+    @Test func heldOutTwinsAreNamedOnceInOriginOrder() throws {
+        let a = try heldOutRef("K-a1-r2"), b = try heldOutRef("K-a2-r3"), c = try heldOutRef("K-a3-r4")
+        let d = try heldOutRef("K-a4-r1")
+        let none: [(origin: MessagesModel.HeldOutTwin.Origin, messages: [MessageRef])] = [
+            (.demoBook("DEMO-P1"), []), (.fallbackBook("DEMO-fallback-v1"), []),
+        ]
+        #expect(MessagesModel.twins(inBook: [], fixed: none, earlier: []).isEmpty)
+        let twins = MessagesModel.twins(
+            inBook: [a],
+            fixed: [(.demoBook("DEMO-P1"), [a, b]), (.fallbackBook("DEMO-fallback-v1"), [b, c])],
+            earlier: [c, d])
+        #expect(twins == [
+            .init(message: a, origin: .scratchBook),
+            .init(message: b, origin: .demoBook("DEMO-P1")),
+            .init(message: c, origin: .fallbackBook("DEMO-fallback-v1")),
+            .init(message: d, origin: .earlier),
+        ])
+        #expect(twins[1].text == "held-out K-a2-r3 of the DEMO book DEMO-P1")
+        #expect(twins[2].text == "held-out K-a3-r4 of the DEMO fallback book (seed DEMO-fallback-v1)")
+    }
+
+    /// The held-out messages of a book state are those with both atoms in it, with the
+    /// recipes they have there; trained messages are never among them.
+    @Test func heldOutPairsHoldTheAtomsOfTheBook() throws {
+        let heldOut = try heldOutRef("K-a1-r2")
+        let trained = try JSONDecoder().decode(MessageRef.self, from: Data("""
+            {"message_id":"K-a1-r1","family":"K","action":"K-a1","referent":"K-r1","status":"trained",
+             "training_wave":1,"heldout_set":null,"is_heldout":false}
+            """.utf8))
+        var other = Recipe.example
+        other.pitches[0] += 1
+        #expect(MessagesModel.heldOutPairs(of: [heldOut, trained], in: ["K-a1": .example], profile: .p1).isEmpty)
+        let pairs = MessagesModel.heldOutPairs(
+            of: [heldOut, trained], in: ["K-a1": .example, "K-r1": .example, "K-r2": other], profile: .p1)
+        #expect(pairs == [.init(message: heldOut, profile: .p1, action: .example, referent: other)])
+        #expect(pairs.first?.key == .init(profile: .p1, action: .example, referent: other))
+    }
+
+    /// A scratch book copied from a fixed book is labeled as that book until its first
+    /// edit; only the synthetic DEMO book has a book ID to send (`origin`).
+    @Test func aCopiedBookKeepsItsLabelUntilItsFirstEdit() throws {
+        let synthetic = try JSONDecoder().decode(SyntheticBook.self, from: Data("""
+            {"book_id":"DEMO-P2","atoms":[{"atom_id":"K-a1","recipe":\(Recipe.example.canonicalJSON),
+             "pcm_sha256":"\(String(repeating: "a", count: 64))","n_samples":28800}]}
+            """.utf8))
+        var demo = ScratchBook.demo(synthetic)
+        #expect(demo.origin == "DEMO-P2" && demo.label == "DEMO-P2")
+        demo.set("K-a1", .example)  // no change
+        #expect(demo.label == "DEMO-P2")
+        demo.set("K-r1", .example)
+        #expect(demo.origin == nil && demo.label == nil)
+
+        let fallback = try JSONDecoder().decode(FallbackDemo.self, from: Data("""
+            {"seed_label":"DEMO-fallback-v1","fallback_bank_hash":"\(String(repeating: "b", count: 64))",
+             "bank":[],"book":[{"atom_id":"K-a1","recipe":\(Recipe.example.canonicalJSON),
+             "pcm_sha256":"\(String(repeating: "c", count: 64))"}]}
+            """.utf8))
+        var copy = ScratchBook.fallback(fallback, profile: .p2)
+        #expect(copy.origin == nil)
+        #expect(copy.label == "DEMO fallback P2 (DEMO-fallback-v1)")
+        #expect(copy.atoms == ["K-a1": .example])
+        copy.set("K-a1", nil)
+        #expect(copy.label == nil)
     }
 
     @Test func theMissingAtomsAreReadFromTheBook() throws {
@@ -522,7 +698,7 @@ struct AppModelLiveTests {
         messages.select(trained)
         try await waitUntil("the refusal", timeout: .seconds(30)) { sameAsHeldOut(messages) != nil }
         let refused = try #require(sameAsHeldOut(messages))
-        #expect(refused.heldOut.map(\.messageID).contains(heldOut.messageID))
+        #expect(refused.heldOut.contains(.init(message: heldOut, origin: .scratchBook)))
         #expect(refused.hash.compositeSHA256 == heldOutHash.compositeSHA256)
         #expect(app.nowPlaying == nil && app.player.current == nil && app.player.lastError == nil)
 
@@ -539,6 +715,69 @@ struct AppModelLiveTests {
         #expect(!app.isPlaying(clip) && app.nowPlaying == nil)
         try await waitUntil("the refusal", timeout: .seconds(30)) { sameAsHeldOut(messages) != nil }
         #expect(app.player.current == nil)
+        await app.shutdown()
+    }
+
+    /// Following the refusal card by changing another atom does not make the refused audio
+    /// playable: the pair is still refused, as the DEMO book's held-out message (here the
+    /// edited book is no longer the DEMO book) or as the held-out message the refusal
+    /// showed (a book of random recipes). Nothing is composed or played.
+    @Test func aRefusedPairStaysRefusedWhenAnotherAtomChanges() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .messages
+        app.profile = .p1
+        app.start(with: configuration)
+        try await waitUntil("the grammar") { app.isReady && app.grammar != nil }
+        let grammar = try #require(app.grammar)
+        let pair = grammar.trainedMessages.lazy.compactMap { trained in
+            grammar.heldoutMessages.first { $0.action == trained.action && $0.referent != trained.referent }
+                .map { (trained, $0) }
+        }.first
+        let (trained, heldOut) = try #require(pair)
+        let client = try #require(app.client)
+        let messages = app.messages
+        func expectRefused(as origin: MessagesModel.HeldOutTwin.Origin, hash: String) async throws {
+            try await waitUntil("the refusal", timeout: .seconds(60)) {
+                sameAsHeldOut(messages) != nil && !messages.isAsking
+            }
+            let refused = try #require(sameAsHeldOut(messages))
+            #expect(refused.heldOut.contains(.init(message: heldOut, origin: origin)), "\(refused.heldOut.map(\.text))")
+            #expect(refused.hash.compositeSHA256 == hash)
+            #expect(composedClip(messages) == nil)
+            #expect(app.nowPlaying == nil && app.player.current == nil && app.player.lastError == nil)
+        }
+
+        // The DEMO book: the referent slot gets the held-out referent's recipe (refused),
+        // then the held-out referent gets a recipe of its own, as the card advises.
+        app.loadDemoBook()
+        try await waitUntil("the DEMO book") { app.book.count == 16 }
+        let demo = app.book
+        let demoHash = try await client.compositeHash(
+            action: try #require(demo.reference(heldOut.action)),
+            referent: try #require(demo.reference(heldOut.referent)), profile: .p1, bookID: demo.origin)
+        app.setAtom(trained.referent, recipe: demo.atoms[heldOut.referent])
+        messages.select(trained)
+        try await expectRefused(as: .scratchBook, hash: demoHash.compositeSHA256)
+        app.setAtom(heldOut.referent, recipe: try await client.randomRecipe(seed: 9_001))
+        try await expectRefused(as: .demoBook("DEMO-P1"), hash: demoHash.compositeSHA256)
+
+        // A book of random recipes, which the DEMO book does not know.
+        var book = ScratchBook()
+        for (index, slot) in [trained.action, trained.referent, heldOut.referent].enumerated() {
+            book.set(slot, try await client.randomRecipe(seed: 7_100 + index))
+        }
+        app.book = book
+        try await waitUntil("the composed message", timeout: .seconds(60)) { composedClip(messages) != nil }
+        app.stopPlayback()
+        let randomHash = try await client.compositeHash(
+            action: try #require(book.reference(heldOut.action)),
+            referent: try #require(book.reference(heldOut.referent)), profile: .p1, bookID: nil)
+        app.setAtom(trained.referent, recipe: book.atoms[heldOut.referent])
+        try await expectRefused(as: .scratchBook, hash: randomHash.compositeSHA256)
+        app.setAtom(heldOut.referent, recipe: try await client.randomRecipe(seed: 7_200))
+        try await expectRefused(as: .earlier, hash: randomHash.compositeSHA256)
         await app.shutdown()
     }
 
@@ -713,8 +952,45 @@ struct AppModelLiveTests {
         await app.shutdown()
     }
 
-    /// Going back to a book with "Create DEMO-Px" (BookExists) brings back that book's own
-    /// recorded head and tamper state: not the other book's head, damage or verification.
+    /// While the bank shown is another profile's (its load failed, or has not run: here
+    /// the profile changed without the view's reload), Scan is off: a scan would run for
+    /// the current profile and never be shown. The load's error stays shown. Once the
+    /// current profile's set is loaded, Scan works again.
+    @Test func scanIsOffWhileAnotherProfilesBankIsShown() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .fallback
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let fallback = app.fallback
+        fallback.load()
+        try await waitUntil("the P2 bank") { fallback.demoProfile == .p2 && !fallback.activity.isRunning("load") }
+        #expect(fallback.scanBlocker == nil)
+
+        app.profile = .p3  // no reload: the P2 bank stays shown
+        #expect(fallback.isStale)
+        let blocker = try #require(fallback.scanBlocker)
+        #expect(blocker.contains("Reload") && blocker.contains("P2") && blocker.contains("P3"))
+        fallback.activity.error = "the P3 load failed"  // as a failed load leaves it
+        fallback.scanCurrentBook()
+        #expect(!fallback.activity.isRunning("scan"))
+        #expect(fallback.scan == nil && fallback.bankSelection == nil)
+        #expect(fallback.activity.error == "the P3 load failed")
+
+        fallback.load()  // Reload
+        try await waitUntil("the P3 bank") { fallback.demoProfile == .p3 && !fallback.activity.isRunning("load") }
+        #expect(fallback.scanBlocker == nil)
+        fallback.scanCurrentBook()
+        try await waitUntil("the scan") { fallback.currentScan != nil && !fallback.activity.isRunning("scan") }
+        #expect(fallback.scanProfile == .p3)
+        await app.shutdown()
+    }
+
+    /// Going back to a book with "Open DEMO-Px" (the button's title once the store has the
+    /// book) brings back that book's own recorded head and tamper state: not the other
+    /// book's head, damage or verification. The switch is logged as information, never as
+    /// a refusal.
     @Test func returningToABookKeepsItsOwnHeadAndDamage() async throws {
         let configuration = try #require(AppRepo.liveConfiguration)
         let app = AppModel()
@@ -725,15 +1001,18 @@ struct AppModelLiveTests {
         let store = app.store
         store.reset()
         try await waitUntil("store_reset") { store.root != nil && !store.activity.isBusy }
-        store.createBook()
+        #expect(store.bookAction(for: .p2) == .create("DEMO-P2"))
+        store.createOrOpenBook()
         try await waitUntil("DEMO-P2") { store.bookID == "DEMO-P2" && store.listing != nil && !store.activity.isBusy }
+        #expect(store.bookAction(for: .p2) == .current("DEMO-P2"))
         store.commitCurrent()  // the example recipe as K-a1 (ADD_ONE)
         try await waitUntil("the commit") { store.listing?.entries.count == 1 && !store.activity.isBusy }
         let p2Head = try #require(store.listing?.chainHead)
         #expect(store.recordedHead == p2Head)
 
         app.profile = .p1
-        store.createBook()
+        #expect(store.bookAction(for: .p1) == .create("DEMO-P1"))
+        store.createOrOpenBook()
         try await waitUntil("DEMO-P1") { store.bookID == "DEMO-P1" && store.listing != nil && !store.activity.isBusy }
         let p1Head = try #require(store.recordedHead)
         #expect(store.verification == nil)
@@ -743,10 +1022,16 @@ struct AppModelLiveTests {
         #expect(store.verification?.ok == false)
 
         app.profile = .p2
-        store.createBook()  // refused (BookExists): back to DEMO-P2
+        #expect(store.bookAction(for: .p2) == .open("DEMO-P2"))
+        let refusals = store.events.filter { $0.kind == .refused }.count
+        store.createOrOpenBook()  // "Open DEMO-P2"
         try await waitUntil("back to DEMO-P2") {
             store.bookID == "DEMO-P2" && store.listing != nil && !store.activity.isBusy
         }
+        #expect(store.events.first?.kind == .info && store.events.first?.title.hasPrefix("Opened DEMO-P2") == true)
+        #expect(store.events.filter { $0.kind == .refused }.count == refusals)
+        #expect(store.bookAction(for: .p2) == .current("DEMO-P2"))
+        #expect(store.bookAction(for: .p1) == .open("DEMO-P1"))
         #expect(store.bookProfile == .p2)
         #expect(!store.isTampered)
         #expect(store.recordedHead == p2Head)
@@ -760,8 +1045,9 @@ struct AppModelLiveTests {
         #expect(store.verifiedAgainstHead == p2Head)
 
         app.profile = .p1
-        store.createBook()  // back to the damaged DEMO-P1: its damage is still reported
+        store.createOrOpenBook()  // back to the damaged DEMO-P1: its damage is still reported
         try await waitUntil("back to DEMO-P1") { store.bookID == "DEMO-P1" && !store.activity.isBusy }
+        #expect(store.events.filter { $0.kind == .refused }.count == refusals)
         #expect(store.isTampered)
         #expect(store.recordedHead == p1Head)
         #expect(store.verification == nil)
@@ -770,6 +1056,67 @@ struct AppModelLiveTests {
         try await waitUntil("the verification") { store.verification != nil && !store.activity.isBusy }
         #expect(store.verification?.ok == false)
         #expect(store.verifiedAgainstHead == p1Head)
+        await app.shutdown()
+    }
+
+    /// A book the section did not know (created by another client of the same bridge) is
+    /// offered as "Create"; the store answers BookExists and the section opens the book,
+    /// logged as information, not as a refusal.
+    @Test func creatingABookTheStoreAlreadyHasOpensIt() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .store
+        app.profile = .p3
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let store = app.store
+        store.reset()
+        try await waitUntil("store_reset") { store.root != nil && !store.activity.isBusy }
+        let client = try #require(app.client)
+        let created = try await client.storeCreate(bookID: "DEMO-P3", profile: .p3)
+        #expect(store.bookAction(for: .p3) == .create("DEMO-P3"))
+        store.createOrOpenBook()
+        try await waitUntil("DEMO-P3") { store.bookID == "DEMO-P3" && store.listing != nil && !store.activity.isBusy }
+        #expect(store.events.first?.kind == .info)
+        #expect(store.events.first?.title.contains("already has it") == true)
+        #expect(!store.events.contains { $0.kind == .refused })
+        #expect(store.recordedHead == created.chainHead)
+        #expect(store.bookAction(for: .p3) == .current("DEMO-P3"))
+        await app.shutdown()
+    }
+
+    /// "Flip a blob byte" pressed again never repairs the book (PROTOCOL.md, "Damaged
+    /// books"): with one committed atom the second flip is refused (logged), and the
+    /// verification that follows still reports the damage.
+    @Test func aRepeatedBlobFlipKeepsTheBookDamaged() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .store
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let store = app.store
+        store.reset()
+        try await waitUntil("store_reset") { store.root != nil && !store.activity.isBusy }
+        store.createOrOpenBook()
+        try await waitUntil("DEMO-P2") { store.bookID == "DEMO-P2" && store.listing != nil && !store.activity.isBusy }
+        store.commitCurrent()
+        try await waitUntil("the commit") { store.listing?.entries.count == 1 && !store.activity.isBusy }
+
+        store.tamper(.flipBlobByte)
+        try await waitUntil("the first flip") { store.verification != nil && !store.activity.isBusy }
+        #expect(store.verification?.ok == false)
+        #expect(store.verification?.issues.map(\.code).contains("E_BLOB_HASH") == true)
+        let refusals = store.events.filter { $0.kind == .refused }.count
+
+        store.tamper(.flipBlobByte)
+        try await waitUntil("the second flip") { !store.activity.isBusy }
+        #expect(store.events.filter { $0.kind == .refused }.count == refusals + 1)
+        #expect(store.events.contains { $0.kind == .refused && ($0.detail ?? "").contains("already damaged") })
+        #expect(!store.events.contains { $0.title.hasSuffix(": intact") })
+        #expect(store.verification?.ok == false)
+        #expect(store.verification?.issues.map(\.code).contains("E_BLOB_HASH") == true)
+        #expect(store.activity.error == nil)
         await app.shutdown()
     }
 
@@ -861,6 +1208,235 @@ struct AppModelLiveTests {
         #expect(!model.assets.isEmpty)
         await app.shutdown()
     }
+
+    /// A commit or freeze after a self-consistent log cut does not move the recorded head
+    /// (README: only "Require the recorded chain head" finds that cut): it moves only while
+    /// the log still holds it, so Verify keeps reporting the cut (E_ANCHOR), never "intact".
+    @Test func aWriteAfterALogCutKeepsTheRecordedHead() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .store
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let synthetic = try await #require(app.client).syntheticBook(profile: .p2)
+        let store = app.store
+        store.verifyAgainstRecordedHead = true
+        store.reset()
+        try await waitUntil("store_reset") { store.root != nil && !store.activity.isBusy }
+        store.createOrOpenBook()
+        try await waitUntil("DEMO-P2") { store.bookID == "DEMO-P2" && store.listing != nil && !store.activity.isBusy }
+        func commit(_ atomID: String) async throws {
+            app.recipe = try #require(synthetic.atom(atomID)?.recipe)
+            store.commitAtomID = atomID
+            store.commitCurrent()
+            try await waitUntil("the commit of \(atomID)") {
+                store.listing?.entries.contains { $0.atomID == atomID } == true && !store.activity.isBusy
+            }
+        }
+        func verify() async throws -> [String] {
+            store.verify()
+            try await waitUntil("the verification") { !store.activity.isBusy }
+            return store.verification?.issues.map(\.code) ?? ["not verified"]
+        }
+        try await commit("K-a1")
+        try await commit("K-a2")
+        let beforeCut = try #require(store.recordedHead)
+        #expect(beforeCut == store.listing?.chainHead)  // writes move it while the log holds it
+
+        store.tamper(.truncateLog)
+        try await waitUntil("the cut") { store.verification != nil && !store.activity.isBusy }
+        #expect(store.verification?.issues.map(\.code) == ["E_ANCHOR"])
+        #expect(store.listing?.entries.map(\.atomID) == ["K-a1"])  // a self-consistent log
+        #expect(store.recordedHead == beforeCut)
+        #expect(store.events.contains { $0.title.contains("no longer holds the recorded head") })
+
+        try await commit("K-a3")  // accepted by the store
+        #expect(store.listing?.entries.map(\.atomID) == ["K-a1", "K-a3"])
+        #expect(store.listing?.chainHead != beforeCut)
+        #expect(store.recordedHead == beforeCut)
+        #expect(try await verify() == ["E_ANCHOR"])
+
+        store.freeze()
+        try await waitUntil("the freeze") { store.listing?.isFrozen == true && !store.activity.isBusy }
+        #expect(store.recordedHead == beforeCut)
+        #expect(try await verify() == ["E_ANCHOR"])
+        #expect(!store.events.contains { $0.title.hasSuffix(": intact") })
+        await app.shutdown()
+    }
+
+    /// Settings "Apply & Restart" while requests are queued on the old bridge: they still
+    /// succeed there, but the Store and Packages sections drop what they return (the old
+    /// temp store and package are gone), so nothing of the old bridge is shown as current.
+    @Test func repliesOfAReplacedBridgeAreDropped() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .packages
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let old = try #require(app.client)
+        let busy = Task { try? await old.goldenCheck() }  // the requests below queue behind it
+        try await Task.sleep(for: .milliseconds(30))
+        app.packages.build()
+        app.store.reset()
+        app.start(with: configuration)
+        #expect(app.packages.package == nil && app.store.root == nil)
+        _ = await busy.value
+        try await waitUntil("the new bridge and the old replies") {
+            app.isReady && !app.packages.activity.isBusy && !app.store.activity.isBusy
+        }
+        #expect(app.packages.package == nil && app.packages.builtAt == nil)
+        #expect(app.store.root == nil && !app.store.hasBook)
+        #expect(!app.store.events.contains { $0.title == "Fresh temp store" })
+        await app.shutdown()
+    }
+
+    /// Bridge > Stop Bridge while a replacement waits for the old bridge to stop: the new
+    /// bridge is not launched, and the app shows Stopped (not Starting, then Ready). Start
+    /// then launches it.
+    @Test func aStopDuringAReplacementIsNotLost() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.selection = .settings
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let old = try #require(app.client)
+        let busy = Task { try? await old.goldenCheck() }  // the old bridge stops slowly
+        try await Task.sleep(for: .milliseconds(50))
+        app.start(with: configuration)
+        let new = try #require(app.client)
+        try await Task.sleep(for: .milliseconds(100))
+        try #require(app.isReplacing, "the old bridge stopped too early for this test")
+        #expect(app.status == .starting)
+        app.stopBridge()
+        #expect(app.status == .stopped && !app.isReplacing)
+        _ = await busy.value
+        await old.stop()  // joins the old bridge's stop
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(app.status == .stopped)
+        #expect(await new.status == .stopped)
+        app.startBridge()
+        try await waitUntil("the new bridge") { app.isReady }
+        #expect(app.client === new)
+        await app.shutdown()
+    }
+
+    /// A row render that returns after another profile's set was loaded (the load was
+    /// queued before it) marks only the row it checked: no row of the new set gets the
+    /// "Rendered audio matched" seal or the row spinner.
+    @Test func aRenderForAnotherProfilesSetMarksNoRowOfTheNewSet() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .fallback
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the bridge") { app.isReady }
+        let fallback = app.fallback
+        fallback.load()
+        try await waitUntil("the P2 set") { fallback.demoProfile == .p2 && !fallback.activity.isRunning("load") }
+        let p2Row = try #require(fallback.demo?.bank.first { $0.index == 3 })
+        let client = try #require(app.client)
+        let busy = Task { try? await client.goldenCheck() }  // the P3 load queues behind it
+        try await Task.sleep(for: .milliseconds(30))
+        app.profile = .p3
+        fallback.loadIfNeeded()  // what the view's onChange(of: profile) does
+        fallback.play(bank: p2Row)  // a click on the P2 row still shown
+        #expect(fallback.activity.isRunning(FallbackModel.playKey(p2Row.pcmSHA256)))
+        _ = await busy.value
+        try await waitUntil("the P3 set and the render") { fallback.demoProfile == .p3 && !fallback.activity.isBusy }
+        let p3Row = try #require(fallback.demo?.bank.first { $0.index == 3 })
+        #expect(p3Row.pcmSHA256 != p2Row.pcmSHA256)
+        #expect(!fallback.isVerified(p3Row.pcmSHA256))
+        #expect(fallback.isVerified(p2Row.pcmSHA256))
+        #expect(fallback.activity.error == nil)
+        await app.shutdown()
+    }
+
+    /// The DEMO fallback book, copied into the scratch book with "Use as Scratch Book"
+    /// (labeled as that book until the first edit), is guarded like the DEMO book: moving
+    /// a held-out message's referent recipe into a trained message's referent slot does
+    /// not compose that held-out message's audio under the trained ID.
+    @Test func aTrainedMessageEqualToAHeldOutMessageOfTheFallbackBookIsNotComposed() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .fallback
+        app.profile = .p1
+        app.start(with: configuration)
+        try await waitUntil("the grammar") { app.isReady && app.grammar != nil }
+        let (trained, heldOut) = try #require(trainedAndHeldOutPair(app.grammar))
+        let fallback = app.fallback
+        fallback.load()
+        try await waitUntil("the P1 set") { fallback.demoProfile == .p1 && !fallback.activity.isRunning("load") }
+        fallback.useBookAsScratch()
+        let copy = app.book
+        #expect(copy.count == 16 && copy.origin == nil)
+        #expect(copy.label == "DEMO fallback P1 (DEMO-fallback-v1)")
+        let heldOutHash = try await #require(app.client).compositeHash(
+            action: try #require(copy.reference(heldOut.action)),
+            referent: try #require(copy.reference(heldOut.referent)), profile: .p1, bookID: nil)
+
+        // Validator & Book: open the held-out referent in the Recipe Lab, remove it and the
+        // trained referent, then put the current recipe into the trained referent.
+        app.recipe = try #require(copy.atoms[heldOut.referent])
+        app.setAtom(heldOut.referent, recipe: nil)
+        app.setAtom(trained.referent, recipe: nil)
+        app.setAtom(trained.referent, recipe: app.recipe)
+        #expect(app.book.label == nil)  // edited
+        app.selection = .messages
+        let messages = app.messages
+        messages.select(trained)
+        try await waitUntil("the refusal", timeout: .seconds(60)) { sameAsHeldOut(messages) != nil && !messages.isAsking }
+        let refused = try #require(sameAsHeldOut(messages))
+        #expect(refused.heldOut.contains(.init(message: heldOut, origin: .fallbackBook("DEMO-fallback-v1"))),
+                "\(refused.heldOut.map(\.text))")
+        #expect(refused.hash.compositeSHA256 == heldOutHash.compositeSHA256)
+        #expect(composedClip(messages) == nil)
+        #expect(app.nowPlaying == nil && app.player.current == nil && app.player.lastError == nil)
+        await app.shutdown()
+    }
+
+    /// A held-out message of a book state that Messages never showed (here a book of
+    /// random recipes, edited before any message was selected) is not composed under a
+    /// trained ID either: every state of the scratch book is recorded.
+    @Test func aHeldOutMessageOfAnEarlierBookStateIsNotComposed() async throws {
+        let configuration = try #require(AppRepo.liveConfiguration)
+        let app = AppModel()
+        app.player.volume = 0
+        app.selection = .validator
+        app.profile = .p2
+        app.start(with: configuration)
+        try await waitUntil("the grammar") { app.isReady && app.grammar != nil }
+        let (trained, heldOut) = try #require(trainedAndHeldOutPair(app.grammar))
+        let client = try #require(app.client)
+        var book = ScratchBook()
+        for (index, slot) in [trained.action, trained.referent, heldOut.referent].enumerated() {
+            book.set(slot, try await client.randomRecipe(seed: 8_300 + index))
+        }
+        app.book = book
+        let heldOutHash = try await client.compositeHash(
+            action: try #require(book.reference(heldOut.action)),
+            referent: try #require(book.reference(heldOut.referent)), profile: .p2, bookID: nil)
+
+        app.setAtom(trained.referent, recipe: book.atoms[heldOut.referent])
+        app.setAtom(heldOut.referent, recipe: try await client.randomRecipe(seed: 8_400))
+        app.selection = .messages
+        let messages = app.messages
+        messages.select(trained)
+        try await waitUntil("the refusal", timeout: .seconds(60)) { sameAsHeldOut(messages) != nil && !messages.isAsking }
+        let refused = try #require(sameAsHeldOut(messages))
+        #expect(refused.heldOut == [.init(message: heldOut, origin: .earlier)], "\(refused.heldOut.map(\.text))")
+        #expect(refused.hash.compositeSHA256 == heldOutHash.compositeSHA256)
+        #expect(composedClip(messages) == nil)
+        #expect(app.nowPlaying == nil && app.player.current == nil && app.player.lastError == nil)
+
+        // A recipe of its own for the trained referent: composed.
+        app.setAtom(trained.referent, recipe: try await client.randomRecipe(seed: 8_500))
+        try await waitUntil("the composed message", timeout: .seconds(60)) { composedClip(messages) != nil }
+        #expect(composedClip(messages)?.audio.pcmSHA256 != heldOutHash.compositeSHA256)
+        await app.shutdown()
+    }
 }
 
 @MainActor
@@ -888,7 +1464,27 @@ private func isHeldOut(_ messages: MessagesModel) -> Bool {
 }
 
 @MainActor
-private func sameAsHeldOut(_ messages: MessagesModel) -> (heldOut: [MessageRef], hash: CompositeHashResult)? {
+private func sameAsHeldOut(
+    _ messages: MessagesModel
+) -> (heldOut: [MessagesModel.HeldOutTwin], hash: CompositeHashResult)? {
     if case .sameAsHeldOut(_, let heldOut, let hash)? = messages.outcome { return (heldOut, hash) }
     return nil
+}
+
+/// A held-out message reference such as `K-a1-r2`.
+private func heldOutRef(_ id: String) throws -> MessageRef {
+    let parts = id.split(separator: "-")
+    return try JSONDecoder().decode(MessageRef.self, from: Data("""
+        {"message_id":"\(id)","family":"\(parts[0])","action":"\(parts[0])-\(parts[1])","referent":"\(parts[0])-\(parts[2])",
+         "status":"H-V1","training_wave":null,"heldout_set":"H-V1","is_heldout":true}
+        """.utf8))
+}
+
+/// A trained message (a, r) and a held-out message (a, r') of the same family.
+private func trainedAndHeldOutPair(_ grammar: Grammar?) -> (MessageRef, MessageRef)? {
+    guard let grammar else { return nil }
+    return grammar.trainedMessages.lazy.compactMap { trained in
+        grammar.heldoutMessages.first { $0.action == trained.action && $0.referent != trained.referent }
+            .map { (trained, $0) }
+    }.first
 }

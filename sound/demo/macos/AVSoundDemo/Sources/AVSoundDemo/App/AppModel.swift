@@ -130,9 +130,14 @@ final class AppModel {
     /// Whether Messages is the visible section: only then does a composed message play.
     var isMessagesVisible: Bool { selection == .messages }
 
-    /// One scratch book per profile.
+    /// One scratch book per profile. Messages records the held-out messages of every state
+    /// of these books, so that no later edit turns one of them into audio.
     var books: [Profile: ScratchBook] = [:] {
-        didSet { if oldValue != books { messages.bookDidChange() } }
+        didSet {
+            guard oldValue != books else { return }
+            messages.record(books: books)
+            messages.bookDidChange()
+        }
     }
     private(set) var grammar: Grammar?
 
@@ -151,6 +156,11 @@ final class AppModel {
 
     @ObservationIgnored private var statusTask: Task<Void, Never>?
     @ObservationIgnored private var logTask: Task<Void, Never>?
+    /// The replacement in progress (`start(with:)`): it starts the new client once the old
+    /// bridge has stopped. `nil` once it has started it, or when a stop (or another
+    /// replacement) came first: then it starts nothing.
+    @ObservationIgnored private var pendingReplacement: UUID?
+    @ObservationIgnored private var replacementTask: Task<Void, Never>?
 
     init() {
         lab.app = self
@@ -172,36 +182,100 @@ final class AppModel {
 
     // MARK: Launch and setup
 
-    /// Locates uv and the repository and starts the bridge, or opens the setup sheet.
+    /// The launch configuration. The app's launch and the self-check both use it, so
+    /// they run the same checkout.
     ///
-    /// Repository order: `AV_SOUND_REPO`, then the path saved from the setup sheet or
-    /// Settings, then `RepoLocator`'s search (the app's location, the current directory).
-    /// A set `AV_SOUND_REPO` overrides the rest: when it is not the repository, the setup
-    /// sheet says so (no other checkout is used in its place).
-    /// uv: the saved path, then `UVLocator`'s search.
+    /// uv: `uv` (`--uv`), else the path saved from the setup sheet or Settings, else
+    /// `UVLocator`'s search. Repository: `repo` (`--repo`), else `AV_SOUND_REPO` (a value
+    /// that is not the repository is an error: no other checkout is used in its place),
+    /// else `RepoLocator`'s search: the app's own location (executable, bundle), the
+    /// current directory, and only then the saved repository. So an app built inside a
+    /// checkout runs that checkout's engine, whatever was saved before; the saved path is
+    /// for an app that is not inside a checkout.
+    nonisolated static func launchConfiguration(
+        repo: URL? = nil, uv: String? = nil,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        executableURL: URL? = Bundle.main.executableURL,
+        bundleURL: URL? = Bundle.main.bundleURL,
+        currentDirectory: URL? = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+        defaults: UserDefaults = .standard
+    ) throws -> ProcessBridgeTransport.Configuration {
+        let savedUV = uv == nil ? defaults.string(forKey: uvDefaultsKey)?.nonEmpty : nil
+        return try ProcessBridgeTransport.Configuration.locate(
+            explicitUV: uv ?? savedUV, explicitRepo: repo, environment: environment,
+            executableURL: executableURL, bundleURL: bundleURL, currentDirectory: currentDirectory,
+            defaults: defaults)
+    }
+
+    /// Locates uv and the repository (`launchConfiguration`) and starts the bridge, or
+    /// opens the setup sheet.
     func launch() {
-        let defaults = UserDefaults.standard
-        let savedUV = defaults.string(forKey: Self.uvDefaultsKey)?.nonEmpty
-        let hasEnvironmentRepo = RepoLocator.environmentPath(ProcessInfo.processInfo.environment) != nil
-        let savedRepo = defaults.string(forKey: RepoLocator.defaultsKey)?.nonEmpty
-            .map { URL(fileURLWithPath: $0) }
-            .flatMap { RepoLocator.isValidRepo($0) && !hasEnvironmentRepo ? $0 : nil }
         do {
-            let configuration = try ProcessBridgeTransport.Configuration.locate(
-                explicitUV: savedUV, explicitRepo: savedRepo)
+            let configuration = try Self.launchConfiguration()
             draftRepoPath = configuration.currentDirectoryURL?.path ?? ""
             draftUVPath = configuration.executableURL.path
             start(with: configuration)
         } catch {
-            if case BridgeSetupError.environmentRepoInvalid(let path) = error {
-                draftRepoPath = path  // shown as invalid next to the message
-            } else {
-                draftRepoPath = RepoLocator.locate()?.url.path ?? savedRepo?.path ?? ""
-            }
-            draftUVPath = UVLocator.locate(explicit: savedUV)?.path ?? savedUV ?? ""
-            setupMessage = userMessage(error)
+            let draft = Self.setupDraft(after: error)
+            draftRepoPath = draft.repoPath
+            draftUVPath = draft.uvPath
+            setupMessage = draft.message
             isSetupPresented = true
         }
+    }
+
+    /// What the setup sheet shows when `launchConfiguration` failed.
+    struct SetupDraft: Equatable {
+        /// Every problem found, uv first.
+        let message: String
+        let repoPath: String
+        let uvPath: String
+    }
+
+    /// The setup sheet after `error` from `launchConfiguration`, which stops at the first
+    /// problem (uv is looked up first). Here uv and the repository are looked up
+    /// separately, the same way, so the message names every problem: an `AV_SOUND_REPO`
+    /// that is not the repository is named also when uv is missing too. The repository
+    /// field gets the repository found, else that invalid `AV_SOUND_REPO` value (shown as
+    /// invalid: no other checkout, such as the saved one, is put in its place), else
+    /// nothing. The uv field gets the uv found, else the saved path.
+    nonisolated static func setupDraft(
+        after error: any Error,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        executableURL: URL? = Bundle.main.executableURL,
+        bundleURL: URL? = Bundle.main.bundleURL,
+        currentDirectory: URL? = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+        defaults: UserDefaults = .standard,
+        isExecutable: (String) -> Bool = { path in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+                && !isDirectory.boolValue && FileManager.default.isExecutableFile(atPath: path)
+        }
+    ) -> SetupDraft {
+        let savedUV = defaults.string(forKey: uvDefaultsKey)?.nonEmpty
+        var problems: [String] = []
+        let uv = UVLocator.locate(explicit: savedUV, environment: environment, isExecutable: isExecutable)
+        if uv == nil {
+            let searched = UVLocator.candidates(explicit: savedUV, environment: environment).map(\.path)
+            problems.append(BridgeSetupError.uvNotFound(searched: searched).message)
+        }
+        let repoPath: String
+        do {
+            repoPath = try RepoLocator.resolve(
+                environment: environment, executableURL: executableURL, bundleURL: bundleURL,
+                currentDirectory: currentDirectory, defaults: defaults
+            ).url.path
+        } catch {
+            problems.append(error.message)
+            if case .environmentRepoInvalid(let path) = error {
+                repoPath = path
+            } else {
+                repoPath = ""
+            }
+        }
+        if problems.isEmpty { problems.append(userMessage(error)) }
+        return SetupDraft(
+            message: problems.joined(separator: "\n\n"), repoPath: repoPath, uvPath: uv?.path ?? savedUV ?? "")
     }
 
     /// Validates the draft paths, persists them, and (re)starts the bridge with them.
@@ -259,9 +333,13 @@ final class AppModel {
     /// The old client's own status updates are no longer applied once it is replaced, so
     /// the change to `.starting` goes through `apply`: when the old bridge was ready, its
     /// temp store and package are gone and the Store and Packages sections are reset (as
-    /// for a restart), and the Nonlexical list is fetched again from the new bridge. The new client stays `.stopped` until the old bridge has stopped
-    /// (seconds when it is busy), so its status is applied only from its own start on:
-    /// until then the app shows `.starting`, not `.stopped` with a Start button.
+    /// for a restart), and the Nonlexical list is fetched again from the new bridge.
+    /// Requests still queued on the old bridge may succeed after this reset; the sections
+    /// drop what they return (`isCurrent`). The new client stays `.stopped` until the old
+    /// bridge has stopped (seconds when it is busy), so its status is applied only from its
+    /// own start on: until then the app shows `.starting`, not `.stopped` with a Start
+    /// button. A Stop meanwhile (`stopBridge`) cancels the replacement's start; a Start or
+    /// Restart meanwhile is the replacement's own start.
     func start(with configuration: ProcessBridgeTransport.Configuration) {
         let previous = client
         statusTask?.cancel()
@@ -286,22 +364,61 @@ final class AppModel {
                 self.appendLog(entry)
             }
         }
-        Task {
+        let token = UUID()
+        pendingReplacement = token
+        let earlier = replacementTask
+        // The task ends once the old bridge has stopped and the new start has begun (not
+        // when the new bridge is ready), so waiting for it never waits for a start.
+        replacementTask = Task { [weak self] in
+            await earlier?.value  // an earlier replacement's old bridge is stopped first
             await previous?.stop()
-            _ = try? await client.start()
+            guard let self, self.pendingReplacement == token else { return }  // stopped meanwhile
+            self.pendingReplacement = nil
+            Task { _ = try? await client.start() }
         }
     }
+
+    /// Whether `client` is the app's client. A section drops what a replaced client
+    /// returns (Settings "Apply & Restart"): its bridge, and that bridge's temp store and
+    /// package, are gone, and the section was reset for the new bridge.
+    func isCurrent(_ client: BridgeClient) -> Bool {
+        self.client === client
+    }
+
+    /// Whether a replacement (`start(with:)`) still waits for the old bridge to stop
+    /// before it starts the new one.
+    var isReplacing: Bool { pendingReplacement != nil }
 
     func restartBridge() {
         guard let client else {
             launch()
             return
         }
-        Task { _ = try? await client.restart() }
+        guard !isReplacing else { return }  // the replacement starts the new bridge
+        afterReplacement(of: client) { _ = try? await client.restart() }
     }
 
+    /// Runs `body` once the old bridge of the last replacement has stopped (at once when
+    /// there is none), unless `client` has been replaced meanwhile.
+    private func afterReplacement(of client: BridgeClient, _ body: @escaping @MainActor () async -> Void) {
+        let replacement = replacementTask
+        Task { [weak self] in
+            await replacement?.value
+            guard let self, self.client === client else { return }
+            await body()
+        }
+    }
+
+    /// Stops the bridge. During a replacement the new bridge has not been launched yet:
+    /// the replacement then starts nothing, and the app shows `.stopped` (the old bridge
+    /// still stops).
     func stopBridge() {
         guard let client else { return }
+        if isReplacing {
+            pendingReplacement = nil
+            apply(.stopped)
+            appendLocalLog("Stopped before the new bridge was launched.")
+        }
         Task { await client.stop() }
     }
 
@@ -310,13 +427,17 @@ final class AppModel {
             launch()
             return
         }
-        Task { _ = try? await client.start() }
+        guard !isReplacing else { return }  // the replacement starts the new bridge
+        afterReplacement(of: client) { _ = try? await client.start() }
     }
 
-    /// Stops playback and the bridge (application termination).
+    /// Stops playback and the bridge (application termination), also the old bridge of a
+    /// replacement in progress.
     func shutdown() async {
         player.stop()
         nowPlaying = nil
+        pendingReplacement = nil
+        await replacementTask?.value
         await client?.stop()
     }
 
@@ -338,6 +459,7 @@ final class AppModel {
             store.bridgeDidStop()
             packages.bridgeDidStop()
             nonlexical.bridgeDidStop()
+            messages.bridgeDidStop()
         }
     }
 
@@ -432,6 +554,7 @@ final class AppModel {
             throw AppError("The motif overflowed (peak \(result.peak)); no canonical WAV exists.")
         }
         let clip = try await Offload.clip(result.audio)
+        guard isCurrent(client) else { throw CancellationError() }  // the bridge was replaced meanwhile
         if let expectedPCM, clip.audio.pcmSHA256 != expectedPCM {
             throw AppError(
                 "Rendered waveform hash \(Fmt.shortHash(clip.audio.pcmSHA256)) differs from the expected "

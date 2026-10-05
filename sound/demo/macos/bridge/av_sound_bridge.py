@@ -105,7 +105,7 @@ from av_sound.nonlexical import NonlexicalAsset
 from av_sound.recipe import AMPLITUDES, GAPS_MS, PITCHES, RHYTHM_WEIGHTS, TOTAL_MS
 from av_sound.store import E_POLICY, NotFound, canonical_json, validator_code_hash
 from av_sound.synthetic import synthetic_book_id, synthetic_recipes
-from av_sound.wav import file_sha256, wav_bytes
+from av_sound.wav import HEADER_SIZE, file_sha256, pcm_from_wav, wav_bytes
 
 BRIDGE_VERSION: Final = 1
 """Bumped together with PROTOCOL.md and the Swift client."""
@@ -422,6 +422,19 @@ def _rewrite(path: Path, data: bytes) -> None:
             f.write(data)
     finally:
         os.chmod(path, mode)
+
+
+def _intact_blob(blob: Path, pcm_hash: str) -> bytearray | None:
+    """The bytes of a canonical WAV blob whose samples hash to `pcm_hash`, else `None`
+    (missing, not canonical, no samples, or already damaged)."""
+    try:
+        data = blob.read_bytes()
+        pcm = pcm_from_wav(data)
+    except (OSError, ValueError):
+        return None
+    if not pcm or hashlib.sha256(pcm).hexdigest() != pcm_hash:
+        return None
+    return bytearray(data)
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -903,7 +916,7 @@ class Bridge:
             raise NotFound(f"no book {book_id} in the demo store")
         lines = log.read_bytes().splitlines(keepends=True)
         if kind == "flip_blob_byte":
-            return {"done": self._flip_blob_byte(store, root, lines)}
+            return {"done": self._flip_blob_byte(store, root, book_id, lines)}
         if kind == "edit_log_line":
             return {"done": self._edit_log_line(log, lines)}
         return {"done": self._truncate_log(store, book_id, log, lines)}
@@ -926,18 +939,88 @@ class Bridge:
         if path.is_symlink() or not _inside(path, root):
             raise StoreError(E_POLICY, f"{path.name} is outside the bridge's temp store; refused")
 
-    def _flip_blob_byte(self, store: VocabularyStore, root: Path, lines: list[bytes]) -> str:
-        for line in lines:
-            record = _record(line)
-            if record is not None and record.get("event") == "commit":
-                blob = store.blob_path(str(record["pcm_sha256"]))
-                self._check_target(blob, root)
-                data = bytearray(blob.read_bytes())
-                offset = 44 + (len(data) - 44) // 2  # a byte in the middle of the samples
-                data[offset] ^= 0x01
-                _rewrite(blob, bytes(data))
-                return f"flipped one bit of byte {offset} in the blob of {record['atom_id']}"
-        raise ValueError("the book has no committed atom whose blob could be damaged")
+    def _flip_blob_byte(
+        self, store: VocabularyStore, root: Path, book_id: str, lines: list[bytes]
+    ) -> str:
+        """Flips one bit in the samples of the book's first intact committed blob.
+
+        PROTOCOL.md, "Damaged books": a repeated tamper never repairs the damage. A blob
+        that is already damaged is never flipped again, since a second flip of the same
+        bit would undo the first: a repeated request damages the next intact blob of the
+        book (log order) and is refused (`ValueError`, nothing changed) when none is
+        left. Blobs are content-addressed and shared by the whole store
+        (`blobs/<pcm_sha256>.wav`), so the flip also damages every other book of the
+        store that holds the same waveform; the text names them. The store repairs a
+        damaged blob on the next write of the same waveform (a `store_commit` to an intact
+        book quarantines the damaged file and writes the correct bytes), which the text
+        says when other books share the blob.
+        """
+        commits = [
+            (str(r.get("atom_id")), pcm_hash)
+            for r in map(_record, lines)
+            if r is not None
+            and r.get("event") == "commit"
+            and isinstance(pcm_hash := r.get("pcm_sha256"), str)
+        ]
+        if not commits:
+            raise ValueError(f"{book_id} has no committed atom whose blob could be damaged")
+        tried: set[str] = set()
+        for atom_id, pcm_hash in commits:
+            if pcm_hash in tried:
+                continue
+            tried.add(pcm_hash)
+            try:
+                blob = store.blob_path(pcm_hash)
+            except ValueError:  # a damaged log line: no blob name
+                continue
+            self._check_target(blob, root)
+            data = _intact_blob(blob, pcm_hash)
+            if data is None:
+                continue  # already damaged or missing: another flip could undo the damage
+            offset = HEADER_SIZE + (len(data) - HEADER_SIZE) // 2  # a byte of the samples
+            data[offset] ^= 0x01
+            _rewrite(blob, bytes(data))
+            what = (
+                f"flipped one bit of byte {offset} in the blob of {atom_id} in {book_id}; "
+                "store_verify reports E_BLOB_HASH, and the other store commands refuse the book"
+            )
+            shared = self._books_holding(store, pcm_hash, book_id)
+            if shared:
+                what += (
+                    f". The store shares this blob: {', '.join(shared)} "
+                    f"{'holds' if len(shared) == 1 else 'hold'} the same waveform and "
+                    f"{'is' if len(shared) == 1 else 'are'} damaged too. A later store_commit "
+                    "of this waveform to an intact book of the store replaces the damaged blob "
+                    "(the store quarantines it), which repairs every book that holds it"
+                )
+            return what
+        raise ValueError(
+            f"every committed blob of {book_id} is already damaged; flipping one again "
+            "could undo the damage, so nothing was changed"
+        )
+
+    @staticmethod
+    def _books_holding(store: VocabularyStore, pcm_hash: str, book_id: str) -> list[str]:
+        """The other books of `store` with a commit of the waveform `pcm_hash` (read from
+        their raw logs: a damaged book is listed too)."""
+        books = []
+        for other in store.books():
+            if other == book_id:
+                continue
+            try:
+                lines = store.log_path(other).read_bytes().splitlines()
+            except OSError:
+                continue
+            for line in lines:
+                record = _record(line)
+                if (
+                    record is not None
+                    and record.get("event") == "commit"
+                    and record.get("pcm_sha256") == pcm_hash
+                ):
+                    books.append(other)
+                    break
+        return books
 
     @staticmethod
     def _edit_log_line(log: Path, lines: list[bytes]) -> str:

@@ -25,9 +25,11 @@ final class PackageModel {
         guard let client = app?.client else { return }
         activity.run("build") { [weak self] in
             let package = try await client.packageDemo()
-            self?.package = package
-            self?.builtAt = Date()
-            self?.notice = nil
+            // A package of a replaced bridge went with its temp directory.
+            guard let self, self.app?.isCurrent(client) == true else { return }
+            self.package = package
+            self.builtAt = Date()
+            self.notice = nil
         }
     }
 

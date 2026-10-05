@@ -4,12 +4,16 @@ import Observation
 
 /// Plays `VerifiedAudio` (and only that) through `AVAudioEngine`.
 ///
-/// The player node runs at 48 kHz Float32 with the same signal (`sample / 32768`) in two
-/// channels; the main mixer converts to the output device at unity gain, so what is played
-/// is `sample / 32768` at any output sample rate. (A mono connection is not: the mixer
-/// plays mono input 3 dB lower, by 1/sqrt(2), on 44.1 kHz outputs, and at full level on
-/// 48 kHz outputs.) A sound is scheduled as one buffer, so a composed message keeps its
-/// exact 9,600-sample gap. Engine start failures and output device changes never crash:
+/// The player node runs at 48 kHz Float32 with the same signal (`sample / 32768`) in each
+/// channel, and has as many channels as the output needs for unity gain: two for a
+/// stereo (or larger) output, one for a mono output. The main mixer then converts to the
+/// output device at unity gain, so what is played is `sample / 32768` at any output
+/// sample rate and channel count. (Other pairings are not: the mixer plays a mono input
+/// 3 dB lower, by 1/sqrt(2), into a 44.1 kHz stereo output, and sums the two equal
+/// channels of a stereo input 3 dB hot, by sqrt(2), into a mono output such as a
+/// Bluetooth headset in hands-free mode.) The channel count is chosen when the engine is
+/// built, and an output device change rebuilds the engine. A sound is scheduled as one
+/// buffer, so a composed message keeps its exact 9,600-sample gap. Engine start failures and output device changes never crash:
 /// they set `lastError` and end playback. A sound that the player itself stops (an output
 /// device change) is reported through `onInterruption`, because its `completion` does not
 /// run.
@@ -20,16 +24,33 @@ import Observation
 @MainActor
 @Observable
 public final class AudioPlayer {
-    /// Channels of the player node: the mono signal of the WAV, the same in both.
-    public nonisolated static let channelCount: AVAudioChannelCount = 2
+    /// Channels of the player node for an output (the main mixer's output) with
+    /// `outputChannels` channels: one for a mono output, two otherwise. Each channel
+    /// carries the mono signal of the WAV.
+    public nonisolated static func playerChannelCount(outputChannels: AVAudioChannelCount) -> AVAudioChannelCount {
+        outputChannels == 1 ? 1 : 2
+    }
 
-    /// The player node format: 48 kHz two-channel Float32, non-interleaved.
-    public nonisolated static func makeFormat() -> AVAudioFormat {
-        guard let format = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32, sampleRate: Double(VerifiedAudio.sampleRate),
-            channels: channelCount, interleaved: false)
-        else { fatalError("48 kHz two-channel Float32 is always a valid format") }
+    /// The player node format: 48 kHz Float32, non-interleaved, with `channels` (1 or 2)
+    /// channels.
+    public nonisolated static func makeFormat(channels: AVAudioChannelCount = 2) -> AVAudioFormat {
+        guard (1...2).contains(channels),
+            let format = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32, sampleRate: Double(VerifiedAudio.sampleRate),
+                channels: channels, interleaved: false)
+        else { fatalError("48 kHz one- or two-channel Float32 is always a valid format") }
         return format
+    }
+
+    /// Attaches `player` to `engine` and connects it to the main mixer in the format that
+    /// plays at unity gain on the mixer's output (the output device's format, which the
+    /// main mixer's output follows); returns the player's channel count.
+    static func attach(_ player: AVAudioPlayerNode, to engine: AVAudioEngine) -> AVAudioChannelCount {
+        let mixer = engine.mainMixerNode
+        let channels = playerChannelCount(outputChannels: mixer.outputFormat(forBus: 0).channelCount)
+        engine.attach(player)
+        engine.connect(player, to: mixer, format: makeFormat(channels: channels))
+        return channels
     }
 
     /// True from `play` until the sound has been played back or `stop()` is called.
@@ -50,6 +71,8 @@ public final class AudioPlayer {
 
     @ObservationIgnored private var engine: AVAudioEngine?
     @ObservationIgnored private var player: AVAudioPlayerNode?
+    /// The channel count of `player` (see `attach`).
+    @ObservationIgnored private var playerChannels: AVAudioChannelCount = 2
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var completion: (@MainActor () -> Void)?
     @ObservationIgnored nonisolated(unsafe) private var configurationObserver: (any NSObjectProtocol)?
@@ -90,12 +113,12 @@ public final class AudioPlayer {
             completion?()
             return
         }
-        guard let buffer = Self.makeBuffer(samples: audio.samples) else {
-            lastError = "Could not allocate an audio buffer."
-            return
-        }
         do {
             let (engine, player) = try readyEngine()
+            guard let buffer = Self.makeBuffer(samples: audio.samples, channels: playerChannels) else {
+                lastError = "Could not allocate an audio buffer."
+                return
+            }
             generation += 1
             let token = generation
             self.completion = completion
@@ -132,20 +155,22 @@ public final class AudioPlayer {
         samples.map { Float($0) / 32768 }
     }
 
-    /// One 48 kHz Float32 buffer holding all samples, `sample / 32768` in both channels.
-    public nonisolated static func makeBuffer(samples: [Int16]) -> AVAudioPCMBuffer? {
-        guard !samples.isEmpty,
-            let buffer = AVAudioPCMBuffer(pcmFormat: makeFormat(), frameCapacity: AVAudioFrameCount(samples.count)),
-            let channels = buffer.floatChannelData, buffer.format.channelCount == channelCount
+    /// One 48 kHz Float32 buffer holding all samples, `sample / 32768` in each of its
+    /// `channels` (1 or 2) channels.
+    public nonisolated static func makeBuffer(samples: [Int16], channels: AVAudioChannelCount = 2) -> AVAudioPCMBuffer? {
+        guard !samples.isEmpty, (1...2).contains(channels),
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: makeFormat(channels: channels), frameCapacity: AVAudioFrameCount(samples.count)),
+            let data = buffer.floatChannelData, buffer.format.channelCount == channels
         else { return nil }
-        let left = channels[0]
-        let right = channels[1]
+        let first = data[0]
         samples.withUnsafeBufferPointer { source in
             for i in 0..<source.count {
-                let value = Float(source[i]) / 32768
-                left[i] = value
-                right[i] = value
+                first[i] = Float(source[i]) / 32768
             }
+        }
+        for channel in 1..<Int(channels) {
+            data[channel].update(from: first, count: samples.count)
         }
         buffer.frameLength = AVAudioFrameCount(samples.count)
         return buffer
@@ -157,8 +182,7 @@ public final class AudioPlayer {
         if let engine, let player { return (engine, player) }
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: Self.makeFormat())
+        playerChannels = Self.attach(player, to: engine)
         player.volume = volume
         engine.prepare()
         configurationObserver = NotificationCenter.default.addObserver(

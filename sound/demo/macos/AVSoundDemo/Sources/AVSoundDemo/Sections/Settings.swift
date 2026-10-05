@@ -130,7 +130,7 @@ private struct LocationsCard: View {
 
     var body: some View {
         Card("Locations", systemImage: "folder",
-             subtitle: "The bridge runs: uv run --frozen --project <repository>/sound python <repository>/sound/demo/macos/bridge/av_sound_bridge.py (--frozen: uv never rewrites sound/uv.lock). Applying saves both paths for the next launch.") {
+             subtitle: "The bridge runs: uv run --frozen --project <repository>/sound python <repository>/sound/demo/macos/bridge/av_sound_bridge.py (--frozen: uv never rewrites sound/uv.lock). Apply & Restart uses both paths now and saves them. At launch the saved uv comes first. The saved repository comes last: AV_SOUND_REPO and the checkout the app is in come first (the self-check searches the same way).") {
             HStack {
                 Button("Forget Saved Paths") { app.forgetSavedPaths() }
                     .help("The next launch searches AV_SOUND_REPO, the app's location, the current directory and PATH again")
@@ -145,6 +145,13 @@ private struct LocationsCard: View {
             }
             if let repo = app.repoURL, let uv = app.uvURL {
                 Text("Running with \(repo.path) and \(uv.path).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            if let environmentRepo = RepoLocator.environmentPath(ProcessInfo.processInfo.environment) {
+                Label("\(RepoLocator.environmentKey) is set to \(environmentRepo): every launch uses it, not the saved repository.",
+                      systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)

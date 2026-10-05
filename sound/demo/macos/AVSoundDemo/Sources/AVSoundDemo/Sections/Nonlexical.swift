@@ -39,7 +39,8 @@ final class NonlexicalModel {
         guard let app, let client = app.client else { return }
         activity.run("list") { [weak self] in
             let assets = try await client.nonlexicalList()
-            guard let self else { return }
+            // A replaced bridge's list may not be the new bridge's (another checkout).
+            guard let self, self.app?.isCurrent(client) == true else { return }
             self.assets = assets
             self.isListingStale = false
             // Clips of bytes the new list no longer names are dropped.
@@ -71,6 +72,7 @@ final class NonlexicalModel {
             guard clip.audio.pcmSHA256 == asset.pcmSHA256, clip.audio.fileSHA256 == asset.fileSHA256 else {
                 throw AppError("The audio of \(asset.id) does not match the hashes listed by nonlexical_list.")
             }
+            guard app.isCurrent(client) else { return }  // the bridge was replaced meanwhile
             self?.remember(clip)
             app.play(clip)
         }

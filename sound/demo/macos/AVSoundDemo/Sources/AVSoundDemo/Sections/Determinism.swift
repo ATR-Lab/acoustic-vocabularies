@@ -44,24 +44,30 @@ final class DeterminismModel {
     func runSelfTest() {
         guard let client = app?.client else { return }
         activity.run("selfTest") { [weak self] in
-            self?.selfTest = try await client.selfTest()
-            self?.checkedAt["selfTest"] = Date()
+            let result = try await client.selfTest()
+            guard let self, self.app?.isCurrent(client) == true else { return }  // a replaced bridge's check
+            self.selfTest = result
+            self.checkedAt["selfTest"] = Date()
         }
     }
 
     func runVectors() {
         guard let client = app?.client else { return }
         activity.run("vectors") { [weak self] in
-            self?.vectors = try await client.vectorsCheck()
-            self?.checkedAt["vectors"] = Date()
+            let result = try await client.vectorsCheck()
+            guard let self, self.app?.isCurrent(client) == true else { return }
+            self.vectors = result
+            self.checkedAt["vectors"] = Date()
         }
     }
 
     func runGolden() {
         guard let client = app?.client else { return }
         activity.run("golden") { [weak self] in
-            self?.golden = try await client.goldenCheck()
-            self?.checkedAt["golden"] = Date()
+            let result = try await client.goldenCheck()
+            guard let self, self.app?.isCurrent(client) == true else { return }
+            self.golden = result
+            self.checkedAt["golden"] = Date()
         }
     }
 
@@ -90,6 +96,7 @@ final class DeterminismModel {
                     let profile = Conformance.profile(index: i, cycling: cycle, fixed: fixed)
                     let row = try await Conformance.check(
                         seed: firstSeed + i, profile: profile, admissibleOnly: admissibleOnly, client: client)
+                    guard self?.app?.isCurrent(client) == true else { return }  // the bridge was replaced
                     self?.rows.append(row)
                 }
             } catch is CancellationError {
@@ -135,6 +142,7 @@ final class DeterminismModel {
                     let bridge = try await client.compositeHash(
                         action: action.reference, referent: referent.reference, profile: profile, bookID: book.bookID)
                     let swift = await Conformance.swiftComposite(action: actionPCM, referent: referentPCM)
+                    guard self?.app?.isCurrent(client) == true else { return }  // the bridge was replaced
                     self?.compositeRows.append(CompositeRow(
                         messageID: message.messageID, status: message.status, isHeldout: message.isHeldout,
                         bridgeHash: bridge.compositeSHA256, swiftHash: swift, bridgeSamples: bridge.nSamples,

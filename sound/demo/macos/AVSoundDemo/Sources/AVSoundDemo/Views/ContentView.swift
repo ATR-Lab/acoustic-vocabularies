@@ -113,7 +113,7 @@ struct SetupSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Label("Connect the sound engine", systemImage: "wrench.and.screwdriver")
                 .font(.title2.weight(.semibold))
-            Text("The demo runs the Python engine through uv:\n`uv run --frozen --project <repository>/sound python <repository>/sound/demo/macos/bridge/av_sound_bridge.py`.\nChoose the repository checkout (the folder that contains sound/pyproject.toml) and the uv executable. Both choices are saved for the next launch.")
+            Text("The demo runs the Python engine through uv:\n`uv run --frozen --project <repository>/sound python <repository>/sound/demo/macos/bridge/av_sound_bridge.py`.\nChoose the repository checkout (the folder that contains sound/pyproject.toml) and the uv executable. Both choices are saved: later launches use the saved uv, and the saved repository when AV_SOUND_REPO is not set and the app is not inside a checkout.")
                 .fixedSize(horizontal: false, vertical: true)
             if let message = app.setupMessage {
                 Label {

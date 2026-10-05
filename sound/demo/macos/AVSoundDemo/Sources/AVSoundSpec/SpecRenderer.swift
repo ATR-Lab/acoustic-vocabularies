@@ -204,7 +204,7 @@ public enum SpecRenderer {
     /// int16 little-endian bytes. Callers guarantee no overflow.
     static func pcmBytes(_ y: [Int64]) -> Data {
         var data = Data(count: 2 * y.count)
-        data.withUnsafeMutableBytes { raw in
+        data.withUnsafeMutableBytes { (raw: UnsafeMutableRawBufferPointer) in
             for (i, v) in y.enumerated() {
                 let u = UInt16(bitPattern: Int16(v))
                 raw[2 * i] = UInt8(truncatingIfNeeded: u)

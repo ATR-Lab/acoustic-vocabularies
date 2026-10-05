@@ -20,8 +20,10 @@ final class FallbackModel {
     var bookSelection: FallbackBookAtom.ID?
     /// The scratch-book slot that "Put in Scratch Book" fills with the selected bank recipe.
     var targetSlot = "K-a1"
-    /// Bank or book rows whose bridge render matched the listed waveform hash.
-    private(set) var verifiedRows: Set<String> = []
+    /// The waveform hashes (`pcm_sha256`) of bank and book rows whose bridge render
+    /// matched them. Keyed by what was checked, not by the row: a render that returns after
+    /// another profile's set was loaded marks no row of that set.
+    private(set) var verifiedPCM: Set<String> = []
     let activity = Activity()
 
     var isStale: Bool { demo != nil && demoProfile != app?.profile }
@@ -38,11 +40,11 @@ final class FallbackModel {
         let profile = app.profile
         let task = activity.run("load") { [weak self] in
             let demo = try await client.fallbackDemo(profile: profile)
-            guard let self else { return }
+            guard let self, self.app?.isCurrent(client) == true else { return }  // a replaced bridge's set
             if self.demoProfile != profile { self.clearScan() }
             self.demo = demo
             self.demoProfile = profile
-            self.verifiedRows = []
+            self.verifiedPCM = []
             self.bankSelection = nil
             self.bookSelection = nil
         }
@@ -107,21 +109,27 @@ final class FallbackModel {
 
     func play(bank entry: FallbackBankEntry) {
         bankSelection = entry.index
-        play(recipe: entry.recipe, expectedPCM: entry.pcmSHA256, key: "bank-\(entry.index)")
+        play(recipe: entry.recipe, expectedPCM: entry.pcmSHA256)
     }
 
     func play(atom: FallbackBookAtom) {
         bookSelection = atom.atomID
-        play(recipe: atom.recipe, expectedPCM: atom.pcmSHA256, key: "book-\(atom.atomID)")
+        play(recipe: atom.recipe, expectedPCM: atom.pcmSHA256)
     }
 
-    /// Copies the fallback book into the scratch book of its profile.
+    /// Whether the row with the waveform hash `pcm` was rendered and matched it.
+    func isVerified(_ pcm: String) -> Bool { verifiedPCM.contains(pcm) }
+
+    /// The activity key of the render of the row with the waveform hash `pcm` (its
+    /// spinner), keyed like `verifiedPCM`.
+    static func playKey(_ pcm: String) -> String { "play-\(pcm)" }
+
+    /// Copies the fallback book into the scratch book of its profile. The scratch book is
+    /// labeled as this book until its first edit; it is no synthetic DEMO book, so no
+    /// book ID is sent with it (`origin` stays `nil`).
     func useBookAsScratch() {
         guard let app, let demo, let profile = demoProfile else { return }
-        var book = ScratchBook()
-        for atom in demo.book { book.atoms[atom.atomID] = atom.recipe }
-        book.origin = nil
-        app.books[profile] = book
+        app.books[profile] = .fallback(demo, profile: profile)
     }
 
     /// Parses the `used` field: bank indices separated by commas or white space. Every
@@ -147,9 +155,23 @@ final class FallbackModel {
         }
     }
 
-    /// Scans the bank against the current scratch book (`fallback_scan`).
+    /// Why Scan cannot run now (its help, and a note in the card; Scan is disabled
+    /// meanwhile): the `used` field does not parse, or the bank shown is another profile's.
+    /// A scan runs for the current profile, and a scan of a bank that is not shown would
+    /// never be shown either (`currentScan`).
+    var scanBlocker: String? {
+        if let usedError { return usedError }
+        guard isStale, let shown = demoProfile, let profile = app?.profile else { return nil }
+        if activity.isRunning("load") {
+            return "The \(profile.rawValue) set is loading; Scan is available once it is shown."
+        }
+        return "The bank shown is the \(shown.rawValue) set, not the \(profile.rawValue) set: Reload loads the \(profile.rawValue) set, then Scan scans it."
+    }
+
+    /// Scans the bank against the current scratch book (`fallback_scan`). Not while the
+    /// bank shown is another profile's (`scanBlocker`): the load's error stays shown.
     func scanCurrentBook() {
-        guard let app else { return }
+        guard let app, !isStale else { return }
         let used: [Int]
         do {
             used = try Self.parseUsed(usedText)
@@ -162,6 +184,7 @@ final class FallbackModel {
         let book = app.book.references
         activity.run("scan") { [weak self] in
             let result = try await client.fallbackScan(profile: profile, book: book, used: used.isEmpty ? nil : used)
+            guard self?.app?.isCurrent(client) == true else { return }
             self?.scan = result
             self?.scanProfile = profile
             self?.scanBookCount = book.count
@@ -169,11 +192,11 @@ final class FallbackModel {
         }
     }
 
-    private func play(recipe: Recipe, expectedPCM: String, key: String) {
+    private func play(recipe: Recipe, expectedPCM: String) {
         guard let app, let profile = demoProfile else { return }
-        activity.run(key) { [weak self] in
+        activity.run(Self.playKey(expectedPCM)) { [weak self] in
             try await app.renderAndPlay(recipe, profile: profile, expectedPCM: expectedPCM)
-            self?.verifiedRows.insert(key)
+            self?.verifiedPCM.insert(expectedPCM)
         }
     }
 }
@@ -262,13 +285,17 @@ private struct ScanCard: View {
                 ActionButton("Scan", systemImage: "play.circle", isRunning: model.activity.isRunning("scan"), prominent: true) {
                     model.scanCurrentBook()
                 }
-                .disabled(model.usedError != nil)
+                .disabled(model.scanBlocker != nil)
+                .help(model.scanBlocker ?? "Scan the bank against the scratch book")
             }
             .requiresBridge()
         } content: {
             if let usedError = model.usedError {
                 Label(usedError, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
+            } else if let blocker = model.scanBlocker {
+                Label(blocker, systemImage: "exclamationmark.circle")
+                    .foregroundStyle(.orange)
             }
             if let scan = model.currentScan {
                 VStack(alignment: .leading, spacing: 10) {
@@ -353,7 +380,7 @@ private struct BankCard: View {
             }
             Table(model.demo?.bank ?? [], selection: $model.bankSelection) {
                 TableColumn("") { entry in
-                    RowPlayButton(key: "bank-\(entry.index)", name: "bank recipe \(entry.index)") { model.play(bank: entry) }
+                    RowPlayButton(pcm: entry.pcmSHA256, name: "bank recipe \(entry.index)") { model.play(bank: entry) }
                 }
                 .width(28)
                 TableColumn("#") { entry in
@@ -372,7 +399,7 @@ private struct BankCard: View {
                 TableColumn("pcm_sha256") { entry in
                     HStack(spacing: 4) {
                         Text(Fmt.shortHash(entry.pcmSHA256)).font(.body.monospaced()).help(entry.pcmSHA256)
-                        if model.verifiedRows.contains("bank-\(entry.index)") {
+                        if model.isVerified(entry.pcmSHA256) {
                             Image(systemName: "checkmark.seal.fill").foregroundStyle(.green).help("Rendered audio matched")
                         }
                     }
@@ -398,7 +425,7 @@ private struct FallbackBookCard: View {
         } content: {
             Table(model.demo?.book ?? [], selection: $model.bookSelection) {
                 TableColumn("") { atom in
-                    RowPlayButton(key: "book-\(atom.atomID)", name: "fallback atom \(atom.atomID)") { model.play(atom: atom) }
+                    RowPlayButton(pcm: atom.pcmSHA256, name: "fallback atom \(atom.atomID)") { model.play(atom: atom) }
                 }
                 .width(28)
                 TableColumn("Atom") { atom in Text(atom.atomID).font(.body.monospaced()) }.width(54)
@@ -409,7 +436,7 @@ private struct FallbackBookCard: View {
                 TableColumn("pcm_sha256") { atom in
                     HStack(spacing: 4) {
                         Text(Fmt.shortHash(atom.pcmSHA256)).font(.body.monospaced()).help(atom.pcmSHA256)
-                        if model.verifiedRows.contains("book-\(atom.atomID)") {
+                        if model.isVerified(atom.pcmSHA256) {
                             Image(systemName: "checkmark.seal.fill").foregroundStyle(.green).help("Rendered audio matched")
                         }
                     }
@@ -424,14 +451,15 @@ private struct FallbackBookCard: View {
 
 private struct RowPlayButton: View {
     @Environment(AppModel.self) private var app
-    let key: String
+    /// The row's waveform hash: its render's spinner is keyed by it (`playKey`).
+    let pcm: String
     /// What the row plays, for VoiceOver ("bank recipe 3").
     let name: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            if app.fallback.activity.isRunning(key) {
+            if app.fallback.activity.isRunning(FallbackModel.playKey(pcm)) {
                 ProgressView().controlSize(.mini)
             } else {
                 Image(systemName: "play.fill")

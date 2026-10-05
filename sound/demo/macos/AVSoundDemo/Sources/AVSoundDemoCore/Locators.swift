@@ -218,18 +218,26 @@ extension BridgeSetupError: LocalizedError {
 }
 
 extension ProcessBridgeTransport.Configuration {
-    /// Locates uv and the repository and returns the launch configuration.
+    /// Locates uv and the repository and returns the launch configuration. The search
+    /// inputs (the executable's and the bundle's location, the current directory, the
+    /// saved repository) default to this process's.
     public static func locate(
         explicitUV: String? = nil, explicitRepo: URL? = nil,
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        executableURL: URL? = Bundle.main.executableURL,
+        bundleURL: URL? = Bundle.main.bundleURL,
+        currentDirectory: URL? = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+        defaults: UserDefaults? = .standard
     ) throws -> ProcessBridgeTransport.Configuration {
         guard let uv = UVLocator.locate(explicit: explicitUV, environment: environment) else {
             throw BridgeSetupError.uvNotFound(
                 searched: UVLocator.candidates(explicit: explicitUV, environment: environment).map(\.path))
         }
         // A valid explicit path first, else AV_SOUND_REPO (an invalid value is an error,
-        // not a fall-through), else the search.
-        let repo = try RepoLocator.resolve(explicit: explicitRepo, environment: environment)
+        // not a fall-through), else the search (the saved repository last).
+        let repo = try RepoLocator.resolve(
+            explicit: explicitRepo, environment: environment, executableURL: executableURL,
+            bundleURL: bundleURL, currentDirectory: currentDirectory, defaults: defaults)
         return .bridge(uv: uv, repoRoot: repo.url, baseEnvironment: environment)
     }
 }

@@ -107,7 +107,8 @@ enum SelfCheck {
         let started = clock.now
         var report = Report()
 
-        // Setup: an explicit --repo/--uv must be valid; otherwise search as the app does.
+        // Setup: an explicit --repo/--uv must be valid; otherwise search as the app does
+        // (`AppModel.launchConfiguration`, the same code).
         let configuration: ProcessBridgeTransport.Configuration
         do {
             configuration = try locate(options)
@@ -149,7 +150,8 @@ enum SelfCheck {
 
     /// The launch configuration: a valid `--repo` first, else `AV_SOUND_REPO` (a value
     /// that is not the repository fails `locate`, exit 2, and no other checkout is
-    /// checked in its place), else the app's search.
+    /// checked in its place), else the app's own search (`AppModel.launchConfiguration`:
+    /// the app's location, the current directory, then the saved repository).
     static func locate(
         _ options: Options, environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> ProcessBridgeTransport.Configuration {
@@ -164,9 +166,8 @@ enum SelfCheck {
         if let uv = options.uv, !isExecutableFile(uv.expandingTilde) {
             throw AppError("--uv \(uv) is not an executable file")
         }
-        let savedUV = options.uv == nil ? UserDefaults.standard.string(forKey: AppModel.uvDefaultsKey) : nil
-        return try ProcessBridgeTransport.Configuration.locate(
-            explicitUV: options.uv?.expandingTilde ?? savedUV, explicitRepo: repoURL, environment: environment)
+        return try AppModel.launchConfiguration(
+            repo: repoURL, uv: options.uv?.expandingTilde, environment: environment)
     }
 
     private static func engineChecks(_ report: inout Report, client: BridgeClient, conformanceCount: Int) async {

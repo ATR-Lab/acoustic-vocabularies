@@ -111,7 +111,7 @@ Failure (the bridge never exits because of a bad request):
 | `store_records` | `book_id` | `records` (the parsed log records, in order, of a book that passes the integrity checks; see Details) |
 | `store_freeze` | `book_id` | `chain_head` |
 | `store_verify` | `book_id`, `expected_head` (optional) | `ok`, `issues` (`[{"code","line","message"}]`; `line` is an integer or `null`) |
-| `store_tamper` | `book_id`, `kind` (`"flip_blob_byte"`, `"edit_log_line"` or `"truncate_log"`) | `done` (string: what was damaged and how it is detected). Demo only: it damages the temp store so `store_verify` can show detection (the other `store_*` commands then refuse the book, except after some log cuts; see Details). It refuses any root that is not the bridge's own temp store. |
+| `store_tamper` | `book_id`, `kind` (`"flip_blob_byte"`, `"edit_log_line"` or `"truncate_log"`) | `done` (string: what was damaged and how it is detected). Demo only: it damages the temp store so `store_verify` can show detection (the other `store_*` commands then refuse the book, except after some log cuts; see Details). A repeated tamper never repairs earlier damage; `flip_blob_byte` is refused (`ValueError`) when every committed blob of the book is already damaged. It refuses any root that is not the bridge's own temp store. |
 | `fallback_demo` | `profile` | `seed_label` (`DEMO-...`), `fallback_bank_hash`, `bank` (64 × `{"index","recipe","pcm_sha256"}`), `book` (16 × `{"atom_id","recipe","pcm_sha256"}`) |
 | `fallback_scan` | `profile`, `book` ([atom references]), `used` (list of integer bank indices, optional) | the engine's `ScanResult.to_dict()` |
 | `package_demo` | `{}` | `package_sha256`, `files` (`[{"path","sha256","bytes"}]`), `counts` (`{"atom_wavs","message_wavs","heldout_ids"}`), `loader_ok`, `leak_report` (dict), `answers_preview` (first 5 answers), `dir` (temp path). Every request builds, seals, loads and scans a new package in a new `dir` and then removes the previous one. |
@@ -167,7 +167,22 @@ These points complete the table above. Both sides follow them in version 1.
   reports the damage, issue by issue. So the `records` of `store_records` are the parsed
   records of a log that passed the checks, never the damaged lines. After
   `store_tamper` with `flip_blob_byte` or `edit_log_line`, every one of these commands
-  refuses the book. `truncate_log` removes the last line of the log, a whole record.
+  refuses the book, also after the same tamper is repeated: a repeated tamper never
+  repairs the damage. `flip_blob_byte` flips one bit in the samples of the book's first
+  committed blob (in log order) that is still intact. It never flips a damaged blob
+  again, since a second flip of the same bit would repair it: a repeated request damages
+  the next intact blob of the book, and when none is left it is refused with
+  `ValueError` and changes nothing. Blobs are content-addressed and shared by the whole
+  store (`blobs/<pcm_sha256>.wav`), so a flip damages every book of the store that holds
+  the same waveform. The `done` text names those other books, and they then refuse a
+  flip of that blob too. A write of the same waveform does repair a damaged blob (the
+  store's own rule, `sound/docs/store.md`, "Blobs"): a later `store_commit` of that
+  waveform to an intact book of the store (another book, or a new one; a damaged book
+  refuses the commit) moves the damaged file to `blobs/quarantine/` and writes the
+  correct bytes. Every book that holds that blob then passes the checks again, unless
+  it has other damage. The demo app's books never share a waveform (one book per
+  profile), so the app never repairs a blob this way. `truncate_log` removes the last
+  line of the log, a whole record.
   What an intact book shows after that cut depends on the record that was removed:
   - The freeze record (the last line right after `store_freeze`): the book's `FROZEN`
     marker remains, but no record matches it. These commands refuse the book
@@ -204,7 +219,11 @@ These points complete the table above. Both sides follow them in version 1.
 - The demo never composes a held-out message. `compose` returns the engine's refusal.
   The bridge checks this by message ID, so the app adds a check on its side: it never
   sends `compose` for a trained message whose composite would equal that of a held-out
-  message of its scratch book (for example when two slots hold the same recipe). It
-  first compares the `composite_hash` of the trained message with those of the held-out
-  messages of the book (hashes only, no audio) and refuses the message when one is
-  equal.
+  message of its scratch book (for example when two slots hold the same recipe), of the
+  two fixed books of the profile that the app shows (the synthetic `DEMO` book and the
+  `DEMO` fallback book), or of any earlier state of a scratch book in this session. The
+  app records the held-out messages of every state its scratch books take, with their
+  recipes, whether or not Messages showed that state, so no later edit turns one of them
+  into audio under a trained ID. It first compares the `composite_hash` of the trained
+  message with those hashes (hashes only, no audio; the fixed books come from
+  `synthetic_book` and `fallback_demo`) and refuses the message when one is equal.

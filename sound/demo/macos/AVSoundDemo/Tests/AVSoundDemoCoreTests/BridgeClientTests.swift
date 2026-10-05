@@ -343,6 +343,53 @@ struct BridgeClientTests {
         #expect(await client.status == .stopped)
     }
 
+    /// A start that fails (here: a wrong bridge_version) while its bridge takes long to
+    /// end (an unresponsive `uv` under the grace period): a restart during that wait gets a
+    /// ready bridge. The failed start neither fails the new start's hello (answered before
+    /// or after the old bridge has ended) nor sets its failure as the status afterwards.
+    @Test(arguments: [Duration.milliseconds(50), .milliseconds(1_500)])
+    func aRestartWhileAFailedStartEndsGetsAReadyBridge(helloDelay: Duration) async throws {
+        let badHello = Fixtures.hello.replacingOccurrences(
+            of: #""bridge_version":1"#, with: #""bridge_version":2"#)
+        let first = SlowTerminateTransport(fakeBridge(hello: badHello), delay: .milliseconds(800))
+        let second = InMemoryBridgeTransport { line, t in
+            guard let request = try? BridgeRequest(line: line) else { return }
+            switch request.cmd {
+            case "hello":
+                Task {
+                    try? await Task.sleep(for: helloDelay)
+                    t.emitStdout(reply(request.id, Fixtures.hello))
+                }
+            case "shutdown":
+                t.emitStdout(reply(request.id, "{}"))
+                t.emitExit(status: 0)
+            default:
+                t.emitStdout(reply(request.id, "{}"))
+            }
+        }
+        let launches = Mutex(0)
+        let client = BridgeClient {
+            let launch = launches.withLock { n -> Int in
+                n += 1
+                return n
+            }
+            if launch == 1 { return first }
+            return second
+        }
+        let failing = Task { try await client.start(timeout: .seconds(5)) }
+        while !first.isTerminating { try await Task.sleep(for: .milliseconds(5)) }
+        let hello = try await client.restart(timeout: .seconds(5))
+        #expect(hello.bridgeVersion == 1)
+        await #expect(throws: BridgeError.self) { try await failing.value }
+        #expect(first.hasTerminated)  // the failed start has ended: nothing of it is left
+        #expect(await client.status == .ready(hello))
+        let answer: JSONValue = try await client.call("echo", EmptyArgs())
+        #expect(answer == [:])
+        #expect(launches.withLock { $0 } == 2)
+        await client.stop()
+        #expect(await client.status == .stopped)
+    }
+
     @Test func cancellationEndsTheCall() async throws {
         let transport = fakeBridge { _, _ in }
         let client = try await startedClient(transport)
@@ -464,5 +511,33 @@ struct BridgeClientTests {
         _ = try await client.packageDemo()
         let sent = Set(transport.sentRequests.map(\.cmd))
         #expect(sent.isSuperset(of: Set(results.keys)))
+    }
+}
+
+
+/// An in-memory bridge whose `terminate` takes `delay` before the process ends, like an
+/// unresponsive `uv` that only the grace period's SIGTERM ends.
+final class SlowTerminateTransport: BridgeTransport {
+    private let inner: InMemoryBridgeTransport
+    private let delay: Duration
+    private let phase = Mutex<(terminating: Bool, terminated: Bool)>((false, false))
+
+    init(_ inner: InMemoryBridgeTransport, delay: Duration) {
+        self.inner = inner
+        self.delay = delay
+    }
+
+    var isTerminating: Bool { phase.withLock { $0.terminating } }
+    var hasTerminated: Bool { phase.withLock { $0.terminated } }
+
+    func start() throws -> AsyncStream<BridgeTransportEvent> { try inner.start() }
+    func send(_ line: Data) throws { try inner.send(line) }
+    func closeInput() { inner.closeInput() }
+
+    func terminate(gracePeriod: Duration) async {
+        phase.withLock { $0.terminating = true }
+        try? await Task.sleep(for: delay)
+        await inner.terminate(gracePeriod: gracePeriod)
+        phase.withLock { $0.terminated = true }
     }
 }

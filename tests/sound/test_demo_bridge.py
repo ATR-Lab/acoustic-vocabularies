@@ -843,6 +843,91 @@ def test_store_tamper_is_detected(bridge: Any, kind: str, codes: set[str]) -> No
         assert (error["type"], error["code"]) == ("StoreIntegrityError", "E_INTEGRITY"), cmd
 
 
+def _blob_hash_lines(b: Any, book_id: str) -> list[int]:
+    report = ok(b, "store_verify", {"book_id": book_id})
+    assert report["ok"] is False
+    return sorted(i["line"] for i in report["issues"] if i["code"] == "E_BLOB_HASH")
+
+
+def test_a_repeated_blob_flip_never_undoes_the_damage(fresh: Any) -> None:
+    """PROTOCOL.md, "Damaged books": a flip never touches a blob that is already damaged
+    (the same bit flipped twice would repair it). The next flip damages the next intact
+    blob, and with none left it is refused: the book stays damaged."""
+    _small_book(fresh, "DEMO-FLIP")  # K-a1 (line 1) and K-a2 (line 2)
+    args = {"book_id": "DEMO-FLIP", "kind": "flip_blob_byte"}
+    first = ok(fresh, "store_tamper", args)["done"]
+    assert "blob of K-a1" in first and "E_BLOB_HASH" in first and "shares" not in first
+    assert _blob_hash_lines(fresh, "DEMO-FLIP") == [1]
+    second = ok(fresh, "store_tamper", args)["done"]
+    assert "blob of K-a2" in second
+    assert _blob_hash_lines(fresh, "DEMO-FLIP") == [1, 2]
+    error = err(fresh, "store_tamper", args)
+    assert error["type"] == "ValueError" and "already damaged" in error["message"]
+    assert _blob_hash_lines(fresh, "DEMO-FLIP") == [1, 2]  # the refusal changed nothing
+    _readers_refuse(fresh, "DEMO-FLIP")
+
+
+def test_two_blob_flips_of_a_one_atom_book_keep_it_damaged(fresh: Any) -> None:
+    ok(fresh, "store_create", {"book_id": "DEMO-ONE", "profile": "P1"})
+    commit = {"book_id": "DEMO-ONE", "atom_id": "K-a1", "semantic_label": "ADD_ONE"}
+    ok(fresh, "store_commit", {**commit, "recipe": P1["K-a1"]})
+    args = {"book_id": "DEMO-ONE", "kind": "flip_blob_byte"}
+    ok(fresh, "store_tamper", args)
+    assert _blob_hash_lines(fresh, "DEMO-ONE") == [1]
+    error = err(fresh, "store_tamper", args)
+    assert error["type"] == "ValueError" and "already damaged" in error["message"]
+    assert _blob_hash_lines(fresh, "DEMO-ONE") == [1]
+    _readers_refuse(fresh, "DEMO-ONE")
+
+
+def test_a_blob_flip_damages_every_book_holding_the_waveform(fresh: Any) -> None:
+    """Blobs are content-addressed and shared by the store: a flip in one book damages
+    every book with the same waveform, the text names them, and a flip of the other book
+    does not repair the shared blob."""
+    ok(fresh, "store_reset")
+    for book_id in ("DEMO-B", "DEMO-C"):
+        ok(fresh, "store_create", {"book_id": book_id, "profile": "P1"})
+        commit = {"book_id": book_id, "atom_id": "K-a1", "semantic_label": "ADD_ONE"}
+        ok(fresh, "store_commit", {**commit, "recipe": P1["K-a1"]})
+    done = ok(fresh, "store_tamper", {"book_id": "DEMO-B", "kind": "flip_blob_byte"})["done"]
+    assert "DEMO-C holds the same waveform" in done
+    error = err(fresh, "store_tamper", {"book_id": "DEMO-C", "kind": "flip_blob_byte"})
+    assert error["type"] == "ValueError" and "already damaged" in error["message"]
+    for book_id in ("DEMO-B", "DEMO-C"):
+        assert _blob_hash_lines(fresh, book_id) == [1]
+        _readers_refuse(fresh, book_id)
+
+
+def test_a_commit_of_the_same_waveform_to_an_intact_book_repairs_a_flipped_blob(
+    fresh: Any,
+) -> None:
+    """PROTOCOL.md, "Damaged books": the store repairs a damaged blob on the next write of
+    the same waveform. The damaged book itself refuses the commit; a commit to an intact
+    book (here a new one) quarantines the damaged file and writes the correct bytes, so
+    every book holding the blob passes the checks again."""
+    ok(fresh, "store_reset")
+    ok(fresh, "store_create", {"book_id": "DEMO-A", "profile": "P1"})
+    commit = {"atom_id": "K-a1", "semantic_label": "ADD_ONE", "recipe": P1["K-a1"]}
+    ok(fresh, "store_commit", {"book_id": "DEMO-A", **commit})
+    ok(fresh, "store_tamper", {"book_id": "DEMO-A", "kind": "flip_blob_byte"})
+    assert _blob_hash_lines(fresh, "DEMO-A") == [1]
+    refused = err(fresh, "store_commit", {"book_id": "DEMO-A", **{**commit, "atom_id": "K-a2"}})
+    assert (refused["type"], refused["code"]) == ("StoreIntegrityError", "E_INTEGRITY")
+    _readers_refuse(fresh, "DEMO-A")
+
+    ok(fresh, "store_create", {"book_id": "DEMO-B", "profile": "P1"})
+    ok(fresh, "store_commit", {"book_id": "DEMO-B", **commit})
+    assert ok(fresh, "store_verify", {"book_id": "DEMO-A"}) == {"ok": True, "issues": []}
+    assert [e["atom_id"] for e in ok(fresh, "store_list", {"book_id": "DEMO-A"})["entries"]] == [
+        "K-a1"
+    ]
+    quarantine = Path(fresh.store_root) / "blobs" / "quarantine"
+    assert quarantine.is_dir() and any(quarantine.iterdir())
+    # The shared-blob text says so when another book holds the waveform.
+    done = ok(fresh, "store_tamper", {"book_id": "DEMO-A", "kind": "flip_blob_byte"})["done"]
+    assert "DEMO-B holds the same waveform" in done and "repairs every book" in done
+
+
 def test_store_truncation_is_detected_against_the_earlier_head(bridge: Any) -> None:
     head = _small_book(bridge, "DEMO-TRUNC")
     done = ok(bridge, "store_tamper", {"book_id": "DEMO-TRUNC", "kind": "truncate_log"})["done"]
