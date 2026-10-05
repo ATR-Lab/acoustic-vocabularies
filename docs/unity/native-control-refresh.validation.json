@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "SIMULATION_TEST_private_health_and_view_correction",
-  "runtime_source_commit": "edf482a9d609c16d696a3cd47d2fd7bef393a61b",
+  "runtime_source_commit": "19bab511b8c752bba8bd659510b6b69d72165987",
   "change_source_commit": "21b0296",
   "tests": [
     {
@@ -21,18 +21,27 @@
       "failed": 0,
       "skipped": 0,
       "xml_sha256": "125f4b718ba18ce402ceeaa518c49c0eba51906e829c929aac6097ad981c8c19"
+    },
+    {
+      "run": "control-cadence-001",
+      "kind": "cadence_queue_health_and_actual_host_placement",
+      "total": 41,
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "3ecbf75f8d8e56e88edfe12cd283f2fb1565fe71b06c396e2d3d677ddc07df41"
     }
   ],
   "native_build": {
-    "build_id": "simulation-native-006",
+    "build_id": "simulation-native-007",
     "result": "Succeeded",
     "errors": 0,
     "dirty_source": false,
     "files": 205,
-    "total_bytes": 158699511,
-    "inventory": "native-simulation-builds/windows-006.json",
-    "inventory_sha256": "8939449f7821fb7f3fd11c13c64473f9e810a163e5aded57b9f9e58e8915c037",
-    "native_inventory_raw_sha256": "ed72a6b81074d2b3169358e145a61f860f34f01ca8a8fedb23ef3180efe4193c",
+    "total_bytes": 158700247,
+    "inventory": "native-simulation-builds/windows-007.json",
+    "inventory_sha256": "68253c864111a970b5862a13b3cc31f835c41bfa42de23156b4b8899de5f9c3a",
+    "native_inventory_raw_sha256": "af91822eb2c3a4f97b7971ae24ec03af728cf72662d17426fe689a0630276081",
     "native_launch_attempted": false
   },
   "prior_build005_attempts": [
@@ -79,11 +88,52 @@
     "The 250 ms bound, strict schemas/session and queue-age checks remain unchanged.",
     "A gate drains only the bounded batch already present; it never waits for network or renews duplicate freshness.",
     "Per-frame source ConfirmReset behavior is unchanged.",
-    "View pose is observer-calibrated and remains under focus concealment."
+    "View pose is observer-calibrated and remains under focus concealment.",
+    "Sequential health polling targets75 ms including actual request duration, with at least1 ms asynchronous yield; no parallel network requests."
   ],
   "limitations": [
-    "Build006 is prepared for a fresh native run; tests and compilation do not establish a completed visit.",
+    "Build007 is prepared for a fresh native run; tests and compilation do not establish a completed visit.",
     "Build005 full002 terminated with0xC0000005 after incomplete cleanup/export evidence; the independent process result is retained.",
     "No participant, acoustic, physical headset, or issue81 qualification is established."
-  ]
+  ],
+  "previous_native_builds": [
+    {
+      "build_id": "simulation-native-006",
+      "result": "Succeeded",
+      "errors": 0,
+      "dirty_source": false,
+      "files": 205,
+      "total_bytes": 158699511,
+      "inventory": "native-simulation-builds/windows-006.json",
+      "inventory_sha256": "8939449f7821fb7f3fd11c13c64473f9e810a163e5aded57b9f9e58e8915c037",
+      "native_inventory_raw_sha256": "ed72a6b81074d2b3169358e145a61f860f34f01ca8a8fedb23ef3180efe4193c",
+      "native_launch_attempted": true
+    }
+  ],
+  "cadence_source_commit": "19bab511b8c752bba8bd659510b6b69d72165987",
+  "actual_build006": {
+    "status": "AUDIO_EXPOSURE_INTERRUPTED",
+    "complete": false,
+    "cleanup_succeeded": true,
+    "export_succeeded": true,
+    "native_result_sha256": "edbbff6a5a9ba285cbc7c81fb0b77b854d9b0b244b65ec8956c38248c1191139",
+    "process_exit": 0,
+    "process_result_sha256": "969fb65c8a90a0e63eec8f7e3dac9db1445f645800be7e93bb11db65e316720a",
+    "refusal_row_sha256": "ac4517c957bc94f2d2a2640f2a5b78feb5c6245079161c8836b5859205f50795",
+    "control_health": {
+      "health_progressing_and_valid": true,
+      "observed_local_mono_ms": 22773.1803,
+      "receipt_elapsed_ms": 139.99209999999948,
+      "round_trip_ms": 80.92150000000038,
+      "neutral_age_ms": 34.818907181793215,
+      "publisher_age_ms": 15.108730181793213,
+      "effective_age_ms": 255.73250718179307,
+      "maximum_age_ms": 250,
+      "failed": false,
+      "disposed": false,
+      "mode_acknowledged": true,
+      "exact_reset_recorded": true,
+      "queued_arrivals": 0
+    }
+  }
 }

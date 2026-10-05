@@ -53,6 +53,15 @@ canvases also use the calibrated observer's world pose while retaining their
 focus-concealment parent. [Follow-up validation](native-control-refresh.validation.json)
 records the queue and actual-host placement tests and clean build006 inventory.
 
+The actual build006 attempt still refused the gate, now with retained numeric
+evidence: a valid reset and progressing health sample, an empty receive queue,
+139.9921 ms receipt age, 80.9215 ms round trip, and 34.8189 ms source age gave
+255.7325 ms against the unchanged 250 ms limit. The sequential poller added a
+fixed 75 ms sleep after the request. Build007 instead targets a total 75 ms cycle
+including request time, with a minimum 1 ms asynchronous yield. Requests remain
+sequential, and slow or stale evidence still refuses admission. The incomplete
+build006 attempt and its normal process exit remain separately retained.
+
 ## Build and provision
 
 Use `tools/build-unity.ps1 -Target Windows -Scene SimulationTest` with a fresh
