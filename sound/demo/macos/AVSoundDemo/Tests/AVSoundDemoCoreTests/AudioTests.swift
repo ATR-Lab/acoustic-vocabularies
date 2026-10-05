@@ -322,10 +322,7 @@ struct AudioPlayerTests {
     func theOutputGetsUnityGainOffline(outputChannels: AVAudioChannelCount, outputRate: Double) throws {
         let level: Int16 = 328
         let ramp = 4_800
-        let rise = (0..<ramp).map { i in
-            Int16((Double(level) * (1 - cos(Double.pi * Double(i) / Double(ramp))) / 2).rounded())
-        }
-        let samples = rise + [Int16](repeating: level, count: 19_200) + rise.reversed()
+        let samples = plateauSamples(level: level, ramp: ramp)
 
         let engine = AVAudioEngine()
         let format = try #require(AVAudioFormat(standardFormatWithSampleRate: outputRate, channels: outputChannels))
@@ -494,10 +491,7 @@ struct AudioPlaybackTests {
     @Test func theMixerPlaysSamplesAtUnityGain() async throws {
         let level: Int16 = 328
         let ramp = 4_800
-        let rise = (0..<ramp).map { i in
-            Int16((Double(level) * (1 - cos(Double.pi * Double(i) / Double(ramp))) / 2).rounded())
-        }
-        let samples = rise + [Int16](repeating: level, count: 19_200) + rise.reversed()
+        let samples = plateauSamples(level: level, ramp: ramp)
         let audio = try TestWAV(samples: samples).verify()
         let player = AudioPlayer()
         #expect(player.volume == 1)
@@ -567,4 +561,21 @@ final class PeakMeter: Sendable {
         }
         peak.withLock { $0 = max($0, largest) }
     }
+}
+
+/// A quiet DC plateau at `level` with raised-cosine ramps of `ramp` samples and a
+/// 19,200-sample hold. Written with explicit types: older compilers (Swift 6.2) time out
+/// type-checking the equivalent one-line closure.
+private func plateauSamples(level: Int16, ramp: Int) -> [Int16] {
+    var rise: [Int16] = []
+    rise.reserveCapacity(ramp)
+    for i in 0..<ramp {
+        let phase: Double = Double.pi * Double(i) / Double(ramp)
+        let gain: Double = (1.0 - cos(phase)) / 2.0
+        let value: Double = (Double(level) * gain).rounded()
+        rise.append(Int16(value))
+    }
+    let hold: [Int16] = [Int16](repeating: level, count: 19_200)
+    let fall: [Int16] = Array(rise.reversed())
+    return rise + hold + fall
 }
