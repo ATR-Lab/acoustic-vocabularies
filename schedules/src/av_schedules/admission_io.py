@@ -1,26 +1,29 @@
 """Bounded local private I/O for the allocation admission facade (stdlib only)."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import os
 import stat
+import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .reveal import RevealError
 
 
-def canonical(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
-                      allow_nan=False).encode("ascii")
+def canonical(value: object) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+    ).encode("ascii")
 
 
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def parse(data: bytes) -> Any:
+def parse(data: bytes) -> object:
     def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for key, value in items:
@@ -28,11 +31,12 @@ def parse(data: bytes) -> Any:
                 raise RevealError("DUPLICATE_JSON_KEY")
             result[key] = value
         return result
+
     def nonfinite(_: str) -> None:
         raise RevealError("NONFINITE_JSON")
+
     try:
-        return json.loads(data.decode("utf-8"), object_pairs_hook=pairs,
-                          parse_constant=nonfinite)
+        return cast(object, json.loads(data.decode("utf-8"), object_pairs_hook=pairs, parse_constant=nonfinite))
     except (UnicodeError, ValueError, RecursionError) as exc:
         raise RevealError("INVALID_JSON") from exc
 
@@ -41,8 +45,9 @@ def checked_path(path: Path, *, missing: bool = False, directory: bool = False) 
     raw = str(path)
     if raw.startswith(("\\\\", "//")) or not path.is_absolute() or ".." in path.parts:
         raise RevealError("LOCAL_ABSOLUTE_PATH_REQUIRED")
-    if os.name == "nt":
+    if sys.platform == "win32":
         import ctypes
+
         if ":" in raw[2:] or ctypes.windll.kernel32.GetDriveTypeW(path.anchor) == 4:
             raise RevealError("LOCAL_PATH_REQUIRED")
     for item in reversed([path, *path.parents]):
@@ -73,14 +78,16 @@ def read(path: Path, limit: int = 8 * 1024 * 1024) -> bytes:
         data = stream.read(limit + 1)
         after = os.fstat(stream.fileno())
     last = checked_path(path).stat()
-    identities = {(x.st_dev, x.st_ino, x.st_size, x.st_mtime_ns) for x in (before, opened, after, last)}
+    identities = {
+        (x.st_dev, x.st_ino, x.st_size, x.st_mtime_ns) for x in (before, opened, after, last)
+    }
     if len(data) > limit or len(identities) != 1 or len(data) != before.st_size:
         raise RevealError("FILE_CHANGED")
     return data
 
 
 def sync_directory(path: Path) -> None:
-    if os.name != "nt":
+    if sys.platform != "win32":
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
         try:
             os.fsync(fd)
@@ -90,6 +97,7 @@ def sync_directory(path: Path) -> None:
 
 class WriterLock:
     """One operation owns the lock across replay, policy decision, append and checkpoint."""
+
     def __init__(self, path: Path) -> None:
         self.path = path
         self.fd = -1
@@ -99,8 +107,9 @@ class WriterLock:
         self.fd = os.open(self.path, os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
         try:
             checked_path(self.path)
-            if os.name == "nt":
+            if sys.platform == "win32":
                 import msvcrt
+
                 if os.fstat(self.fd).st_size == 0:
                     os.write(self.fd, b"0")
                     os.fsync(self.fd)
@@ -108,6 +117,7 @@ class WriterLock:
                 msvcrt.locking(self.fd, msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl
+
                 fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as exc:
             os.close(self.fd)
@@ -115,7 +125,7 @@ class WriterLock:
             raise RevealError("WRITER_BUSY") from exc
         return self
 
-    def __exit__(self, *_: Any) -> None:
+    def __exit__(self, *_: object) -> None:
         if self.fd >= 0:
             os.close(self.fd)
             self.fd = -1

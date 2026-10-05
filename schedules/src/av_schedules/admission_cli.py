@@ -1,4 +1,5 @@
 """Private operator handoff CLI; never opens study audio, package or schedule files."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,8 +25,15 @@ def write_receipt(path: Path, value: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("allocation-list", "list-file-sha256", "journal", "expected-head",
-                 "request", "request-sha256", "output"):
+    for name in (
+        "allocation-list",
+        "list-file-sha256",
+        "journal",
+        "expected-head",
+        "request",
+        "request-sha256",
+        "output",
+    ):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--recover-tail", action="store_true")
     args = parser.parse_args(argv)
@@ -39,34 +47,84 @@ def main(argv: list[str] | None = None) -> int:
         if sha(raw) != _hash(args.request_sha256):
             raise RevealError("REQUEST_HASH")
         request = parse(raw)
-        if not isinstance(request, dict) or type(request.get("schema_version")) is not int or request["schema_version"] != 1:
+        if (
+            not isinstance(request, dict)
+            or type(request.get("schema_version")) is not int
+            or request["schema_version"] != 1
+        ):
             raise RevealError("REQUEST_VERSION")
-        log = DurableRevealLog(Path(args.allocation_list), args.list_file_sha256, Path(args.journal),
-                               expected_head=args.expected_head, recover_tail=args.recover_tail)
+        log = DurableRevealLog(
+            Path(args.allocation_list),
+            args.list_file_sha256,
+            Path(args.journal),
+            expected_head=args.expected_head,
+            recover_tail=args.recover_tail,
+        )
         op = request.get("operation")
         if op == "eligibility":
-            _exact(request, {"schema_version", "operation", "screening_ids", "staff", "checks", "orientation_files"})
+            _exact(
+                request,
+                {
+                    "schema_version",
+                    "operation",
+                    "screening_ids",
+                    "staff",
+                    "checks",
+                    "orientation_files",
+                },
+            )
             files = []
-            if not isinstance(request["orientation_files"], list) or not 1 <= len(request["orientation_files"]) <= 2:
+            if (
+                not isinstance(request["orientation_files"], list)
+                or not 1 <= len(request["orientation_files"]) <= 2
+            ):
                 raise RevealError("ORIENTATION_FILES_REQUIRED")
             for item in request["orientation_files"]:
                 _exact(item, {"receipt_path", "receipt_file_sha256", "journal_path"})
-                files.append((Path(item["receipt_path"]), item["receipt_file_sha256"], Path(item["journal_path"])))
-            receipt = log.log_eligibility(request["screening_ids"], staff=request["staff"],
-                                          checks=request["checks"], orientation_files=files)
+                files.append(
+                    (
+                        Path(item["receipt_path"]),
+                        item["receipt_file_sha256"],
+                        Path(item["journal_path"]),
+                    )
+                )
+            receipt = log.log_eligibility(
+                request["screening_ids"],
+                staff=request["staff"],
+                checks=request["checks"],
+                orientation_files=files,
+            )
         elif op == "reveal":
-            _exact(request, {"schema_version", "operation", "eligibility_id", "eligibility_receipt_sha256", "staff"})
-            receipt = log.reveal_next(request["eligibility_id"], staff=request["staff"],
-                                      eligibility_receipt_sha256=request["eligibility_receipt_sha256"])
+            _exact(
+                request,
+                {
+                    "schema_version",
+                    "operation",
+                    "eligibility_id",
+                    "eligibility_receipt_sha256",
+                    "staff",
+                },
+            )
+            receipt = log.reveal_next(
+                request["eligibility_id"],
+                staff=request["staff"],
+                eligibility_receipt_sha256=request["eligibility_receipt_sha256"],
+            )
         elif op == "eligibility_receipt":
             _exact(request, {"schema_version", "operation", "eligibility_id"})
             receipt = log.eligibility_receipt(request["eligibility_id"])
         else:
             raise RevealError("OPERATION_INVALID")
         write_receipt(output, receipt)
-        print(canonical({"receipt_file_sha256": sha(canonical(receipt)),
-                         "receipt_sha256": receipt["receipt_sha256"],
-                         "current_journal_head_sha256": log.head}).decode("ascii"))
+        print(
+            canonical(
+                {
+                    "receipt_file_sha256": sha(canonical(receipt)),
+                    "receipt_sha256": receipt["receipt_sha256"],
+                    "current_journal_head_sha256": log.head,
+                }
+            ).decode("ascii")
+        )
         return 0
     except (RevealError, OSError, ValueError, TypeError, KeyError):
         # No raw path, participant code, allocation identity or exception text on stdout.
