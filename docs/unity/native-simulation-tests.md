@@ -16,6 +16,8 @@ The actual backend and owned relays were subsequently stopped cleanly, and the
 four temporary persistent files were restored. A later approved attempt requires
 fresh backend readiness, its actual control-session pin, and newly pinned run
 configuration; the blocked attempt's configuration is retained as evidence.
+The later `simulation-native-004` build adds durable post-cleanup evidence and
+passed compilation and focused component tests. It has not been launched.
 
 ## Build and provision
 
@@ -113,6 +115,14 @@ ledger where applicable, and immutable export bundle. Native completion requires
 the durable visit history, full retained tail, completed forms, successful cleanup,
 and export. `-simulationQuitOnComplete` exits nonzero if cleanup or export fails.
 An inventory flag alone cannot establish completion.
+The journal's `native_run_end` is only a close intent, with `complete:false`.
+After every cleanup stage and the export attempt, the player writes
+`native-result.local.json` through a create-new temporary file, flushes and closes
+it, then publishes it without overwriting existing evidence. Reconciliation
+requires the actual successful final result, matching process/source/configuration
+and capability pins, session nonce, and the exact closed export manifest hash.
+Failure to publish a receipt cannot qualify the run. Repeated Close calls do not
+retry a failed teardown or replace an existing result.
 
 Run the independent native reconciliation tool against those actual artifacts.
 It must distinguish software callback observations from acoustic evidence and

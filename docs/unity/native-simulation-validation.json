@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "SIMULATION_TEST_software_only_native_launch_blocked",
-  "runtime_source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+  "runtime_source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
   "test_source_commit": "5d19835121673757569563b62bbb352c63bdc9ad",
   "editor_version": "6000.6.0f1",
   "test_framework": "builtin_1.8.0",
@@ -83,6 +83,17 @@
       "skipped": 0,
       "result": "Passed",
       "xml_sha256": "c0d771c384e2a5f9ec0cdcbc836b663596286ba4c1adb68b48276f37f2415e6c"
+    },
+    {
+      "run": "simulation-close-tests-001",
+      "total": 18,
+      "passed": 18,
+      "xml_sha256": "25ee74e003d12d35878988ffaa4422605a68b82ef031537b0d2a146f18905965",
+      "source_commit": "f14e94d",
+      "failed": 0,
+      "kind": "actual_host_post_cleanup_and_simulation_authority",
+      "skipped": 0,
+      "result": "Passed"
     }
   ],
   "broad_test_failure_resolution": {
@@ -93,15 +104,17 @@
     "remaining_skip": "Windows refused temporary symlink creation; no symlink enforcement pass claimed"
   },
   "native_build": {
-    "build_id": "simulation-native-003",
+    "inventory_sha256": "1068b586826640e46b9d99deeb6bc9ff90f5e4820b7de3d43b844a0b08c105d4",
+    "native_inventory_raw_sha256": "0f211bc2d686ac166de6d9cde919351e201f5e488cbe9dd79da3b906cc15323d",
+    "native_launch_attempted": false,
+    "inventory": "native-simulation-builds/windows-004.json",
+    "build_id": "simulation-native-004",
+    "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
     "result": "Succeeded",
-    "errors": 0,
-    "inventory": "native-simulation-builds/windows-003.json",
-    "inventory_sha256": "b83b81f63a82639231de9e53f5d013e5def3cfd5f1814bba6adbc300912637a4",
-    "source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+    "public_inventory_encoding": "UTF8 LF; same parsed inventory, original native CRLF bytes separately pinned",
+    "total_bytes": 158695895,
     "dirty_source": false,
-    "native_inventory_raw_sha256": "6375bf1339c850f327edef52e4854f1fbc239eb1ccc006c5ad9a922eed61c9a4",
-    "public_inventory_encoding": "UTF8 LF; same parsed inventory, original native CRLF bytes separately pinned"
+    "errors": 0
   },
   "native_launch": {
     "native_process_created": false,
@@ -113,7 +126,8 @@
     "policy_changed": false,
     "alternate_execution_attempted": false,
     "appdata_restoration_verified": true,
-    "receipt_sha256": "e744d1bda5d6af76bc73103242ada1435a5b84e827cab75e90ab80aa570b9803"
+    "receipt_sha256": "e744d1bda5d6af76bc73103242ada1435a5b84e827cab75e90ab80aa570b9803",
+    "build_id": "simulation-native-003"
   },
   "qualification": {
     "participant_admission": false,
@@ -168,7 +182,7 @@
     "verification_sha256": "949f2428896dcffd4ecc6095e6d94ad5423bdd6fd56dcf7e25709c97b1d65304"
   },
   "reconciliation_tools": {
-    "source_commit": "dbfcedc",
+    "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
     "pending_semantics": [
       "external fault injection provenance",
       "screening and eligibility",
@@ -180,11 +194,31 @@
     "suite_acceptance_available": false,
     "scope": "synthetic_contract_and_retained_artifact_compatibility",
     "tests": {
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "a46ee36630f54438fb266779d8c2945e2e2d795cc782cb56f15b3797d184542c",
+      "pytest_passed": 62
+    },
+    "previous_tests": {
       "skipped": 0,
       "unittest_passed": 56,
       "failed": 0,
       "pytest_passed": 56,
       "xml_sha256": "103208be3e277341c1f074f6e19f56ad17d7f4a97a3ddee909e2369ae7f6d1e5"
     }
-  }
+  },
+  "previous_runtime_source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+  "previous_native_builds": [
+    {
+      "build_id": "simulation-native-003",
+      "result": "Succeeded",
+      "errors": 0,
+      "inventory": "native-simulation-builds/windows-003.json",
+      "inventory_sha256": "b83b81f63a82639231de9e53f5d013e5def3cfd5f1814bba6adbc300912637a4",
+      "source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+      "dirty_source": false,
+      "native_inventory_raw_sha256": "6375bf1339c850f327edef52e4854f1fbc239eb1ccc006c5ad9a922eed61c9a4",
+      "public_inventory_encoding": "UTF8 LF; same parsed inventory, original native CRLF bytes separately pinned"
+    }
+  ]
 }
