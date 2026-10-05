@@ -18,14 +18,15 @@ namespace AcousticVocab.StateIntegration
             (bool?)state["tag_attached"],(string)state["location"]);
         public void VerifyImportedNeutral(SceneFrame neutral)
         {
+            if(workcell.ImportedLayout==null) throw new StateFault("SOURCE_IMPORTED_LAYOUT_MISSING");
+            var layout=StateParser.Json(workcell.ImportedLayout.text);
+            var states=((JArray)layout["objects"]).ToDictionary(x=>(string)x["id"],x=>(JObject)x["state"],StringComparer.Ordinal);
             var objects=workcell.objects.OrderBy(x=>x.id,StringComparer.Ordinal).Select(item=>
             {
-                var state=new JObject();
-                if(item.hasCardFace) state["card_face"]=item.neutralCardFace;
-                if(item.hasArrowAngle) state["arrow_angle_rad"]=item.neutralArrowAngle;
-                if(item.hasLidFraction) state["lid_open_fraction"]=item.neutralLidFraction;
-                if(item.hasTagAttached) state["tag_attached"]=item.neutralTagAttached;
-                if(item.hasLocation) state["location"]=item.neutralLocation;
+                // Preserve exact semantic values from the hash-bound layout.
+                // Unity's serialized float angles are a rendering conversion,
+                // not a new neutral-state definition (pi/2 is not float-exact).
+                var state=states[item.id];
                 var q=item.neutralRotation;
                 return new SceneObject(item.id,SceneCoordinates.InversePosition(item.neutralPosition),
                     new Quaternion(-q.z,q.x,-q.y,q.w),item.neutralVisible,item.neutralEnabled,state);

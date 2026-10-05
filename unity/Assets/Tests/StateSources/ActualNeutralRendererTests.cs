@@ -40,7 +40,7 @@ namespace AcousticVocab.Tests
                 {
                     var state=item.NeutralState;
                     if(field.Name=="card_face") Assert.That((int)field.Value,Is.EqualTo(state.cardFace),value.Id);
-                    if(field.Name=="arrow_angle_rad") Assert.That((double)field.Value,Is.EqualTo((double)state.arrowAngleRad.Value),value.Id);
+                    if(field.Name=="arrow_angle_rad") Assert.That((double)field.Value,Is.EqualTo((double)state.arrowAngleRad.Value).Within(1e-6),value.Id);
                     if(field.Name=="lid_open_fraction") Assert.That((double)field.Value,Is.EqualTo((double)state.lidOpenFraction.Value),value.Id);
                     if(field.Name=="tag_attached") Assert.That((bool)field.Value,Is.EqualTo(state.tagAttached),value.Id);
                     if(field.Name=="location") Assert.That((string)field.Value,Is.EqualTo(state.location),value.Id);
