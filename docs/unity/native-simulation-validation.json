@@ -166,5 +166,25 @@
     "scope": "controlled_clock_real_modules_no_acoustic_evidence",
     "callback_observed": false,
     "verification_sha256": "949f2428896dcffd4ecc6095e6d94ad5423bdd6fd56dcf7e25709c97b1d65304"
+  },
+  "reconciliation_tools": {
+    "source_commit": "dbfcedc",
+    "pending_semantics": [
+      "external fault injection provenance",
+      "screening and eligibility",
+      "screen recording semantic review",
+      "O4.5.1 script-result review",
+      "killed-run and multi-process recovery provenance"
+    ],
+    "actual_native_run": false,
+    "suite_acceptance_available": false,
+    "scope": "synthetic_contract_and_retained_artifact_compatibility",
+    "tests": {
+      "skipped": 0,
+      "unittest_passed": 56,
+      "failed": 0,
+      "pytest_passed": 56,
+      "xml_sha256": "103208be3e277341c1f074f6e19f56ad17d7f4a97a3ddee909e2369ae7f6d1e5"
+    }
   }
 }
