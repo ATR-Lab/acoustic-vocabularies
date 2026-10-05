@@ -28,6 +28,24 @@ namespace AcousticVocab.Tests
             var registry=new SceneRegistry("station-01",(string)snapshot["scene_sha256"],SceneRegistry.Hash(bytes),
                 workcell.CanonicalJointNames,keys,workcell.anchorIds);
             var offline=new SnapshotSource(bytes,registry,0); var renderer=new WorkcellStateRenderer(workcell);
+            for(int i=0;i<43;i++) Assert.That(Math.Abs(offline.Neutral.Joints[i]-workcell.joints[i].neutralRad),Is.LessThan(Math.PI/360),"joint "+workcell.joints[i].name);
+            foreach(var value in offline.Neutral.Objects)
+            {
+                Assert.That(workcell.TryGetObject(value.Id,out var item),Is.True);
+                Assert.That(Vector3.Distance(SceneCoordinates.Position(value.Position),item.neutralPosition),Is.LessThan(.001),"position "+value.Id);
+                Assert.That(Quaternion.Angle(SceneCoordinates.Rotation(value.Rotation),item.neutralRotation),Is.LessThan(.5),"rotation "+value.Id);
+                Assert.That(value.Visible,Is.EqualTo(item.neutralVisible),"visible "+value.Id);
+                Assert.That(value.Enabled,Is.EqualTo(item.neutralEnabled),"enabled "+value.Id);
+                foreach(var field in value.VisualState.Properties())
+                {
+                    var state=item.NeutralState;
+                    if(field.Name=="card_face") Assert.That((int)field.Value,Is.EqualTo(state.cardFace),value.Id);
+                    if(field.Name=="arrow_angle_rad") Assert.That((double)field.Value,Is.EqualTo((double)state.arrowAngleRad.Value),value.Id);
+                    if(field.Name=="lid_open_fraction") Assert.That((double)field.Value,Is.EqualTo((double)state.lidOpenFraction.Value),value.Id);
+                    if(field.Name=="tag_attached") Assert.That((bool)field.Value,Is.EqualTo(state.tagAttached),value.Id);
+                    if(field.Name=="location") Assert.That((string)field.Value,Is.EqualTo(state.location),value.Id);
+                }
+            }
             renderer.VerifyImportedNeutral(offline.Neutral);renderer.Apply(offline.Render(0));
             Assert.That(offline.ConfirmReset(offline.Neutral,0),Is.True);
             // This is an explicitly synthetic wire projection of an actual

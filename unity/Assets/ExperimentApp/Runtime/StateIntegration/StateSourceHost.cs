@@ -17,9 +17,9 @@ namespace AcousticVocab.StateIntegration
         public WorkcellRegistry workcell;
         public string Kind => source?.Kind ?? "unresolved";
         public bool Initialized => source!=null && !failed;
-        public bool ResetConfirmed => Initialized && confirmedAtBoundary && foundation.Ready && source.ResetConfirmed && !source.Stale;
+        public bool ResetConfirmed => CheckExposureReady();
         public double LastSimTime => source?.LastSimTime ?? 0;
-        public double SampleAgeSeconds => source?.SampleAgeSeconds ?? double.PositiveInfinity;
+        public double SampleAgeSeconds { get { RefreshSource(); return source?.SampleAgeSeconds ?? double.PositiveInfinity; } }
         public bool Stale => source?.Stale ?? true;
         public event Action<SourceEvent> Event;
         IRobotStateSource source;
@@ -27,7 +27,7 @@ namespace AcousticVocab.StateIntegration
         LiveSocketClient socket;
         StateSourceJournal journal;
         WorkcellStateRenderer renderer;
-        bool failed, confirmedAtBoundary;
+        bool failed, confirmedAtBoundary, refreshing;
         double nextSample;
 
         void Awake() { if(workcell!=null) workcell.gameObject.SetActive(false); }
@@ -83,9 +83,11 @@ namespace AcousticVocab.StateIntegration
             // Bounded codes only; no private paths, endpoint or exception text.
             Debug.LogError("STATE_SOURCE_FAULT "+code); Event?.Invoke(value);
         }
-        void LateUpdate()
+        void LateUpdate() => RefreshSource();
+        bool RefreshSource()
         {
-            if(!Initialized) return;
+            if(!Initialized || refreshing) return false;
+            refreshing=true;
             try
             {
                 double now=LiveSocketClient.Now; socket?.Pump(now); var frame=source.Render(now);
@@ -93,9 +95,19 @@ namespace AcousticVocab.StateIntegration
                 if(frame!=null) renderer.Apply(frame);
                 workcell.gameObject.SetActive(foundation.Ready && frame!=null);
                 if(now>=nextSample) { journal.Sample(source,now); nextSample=now+1.0/30; }
+                return true;
             }
             catch(StateFault error) { Fail(error.Message); }
             catch(Exception) { Fail("STATE_SOURCE_RENDER_FAILED"); }
+            finally { refreshing=false; }
+            return false;
+        }
+        // Main-thread query at the actual cue boundary. It ages and applies
+        // state synchronously; a stalled Update cannot read last frame's grant
+        // before LateUpdate notices the outage. This never creates a grant.
+        public bool CheckExposureReady()
+        {
+            return RefreshSource() && confirmedAtBoundary && foundation.Ready && source.ResetConfirmed && !source.Stale;
         }
         // Explicit per-trial gate. A rendered neutral never manufactures the
         // backend reset acknowledgment; the session must require both.
