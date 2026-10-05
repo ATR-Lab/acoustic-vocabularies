@@ -41,10 +41,18 @@ namespace AcousticVocab.FrameBudget
     {
         readonly FrameCaptureHost host;readonly Func<AudioPlaybackEvent,FrameCueBinding> resolve;
         public FrameAudioAdapter(FrameCaptureHost host,Func<AudioPlaybackEvent,FrameCueBinding> resolve){this.host=host??throw new ArgumentNullException(nameof(host));this.resolve=resolve??throw new ArgumentNullException(nameof(resolve));}
+        public static FrameWindow PlannedWindow(string audioId,AudioScheduleTiming timing,FrameCueBinding binding)
+        {
+            Check.That(timing!=null&&!timing.CalibrationOnly&&timing.OnsetEstimateMonoSeconds.HasValue&&binding!=null,"FRAME_AUDIO_BINDING");
+            // The protected window follows the qualified planned onset anchor.
+            // ScheduledMonoSeconds precedes it by the measured route offset.
+            double start=timing.OnsetEstimateMonoSeconds.Value*1000;
+            return new FrameWindow(audioId,"cue",start,start+binding.SampleCount*1000d/binding.SampleRate);
+        }
         public void Record(AudioPlaybackEvent value)
         {
             if(value.Code!="AUDIO_REQUESTED")return;var b=resolve(value);Check.That(b!=null&&b.PcmSha256==value.PcmSha256,"FRAME_AUDIO_BINDING");
-            double start=value.Timing.ScheduledMonoSeconds*1000;host.RegisterCue(b.AttemptId,new FrameWindow(value.AudioId,"cue",start,start+b.SampleCount*1000d/b.SampleRate));
+            host.RegisterCue(b.AttemptId,PlannedWindow(value.AudioId,value.Timing,b));
         }
     }
     // Wrap the trusted factory/multiplexer, not the engine's current trial ID.

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using AcousticVocab.DataLogging;
 using AcousticVocab.OperatorConsole;
+using AcousticVocab.StudyAudio;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
@@ -91,6 +92,17 @@ namespace AcousticVocab.FrameBudget.Tests
         {
             var e=new Memory();var m=Monitor(e);var trusted=new OperatorHealth(true,true,true,true,2,14,14);Assert.That(FrameDataAdapter.Health(trusted,m,false).Ready,Is.False);m.Render(300,new RenderSample(1),true);var health=FrameDataAdapter.Health(trusted,m,true);Assert.That(health.Ready,Is.False);Assert.That(health.MaxGapMs,Is.EqualTo(300));
         }
+        [Test] public void QualifiedPlannedCueUsesOnsetAnchorAndNotOffsetScheduledStart()
+        {
+            var clock=new DspClockMapping();clock.Observe(10,20,10.001,.01);
+            var timing=clock.Schedule(10.002,11,new AudioRouteCalibration("synthetic",50,2,new string('a',64)));
+            var window=FrameAudioAdapter.PlannedWindow("audio",timing,new FrameCueBinding("attempt",new string('a',64),24000,48000));
+            Assert.That(timing.ScheduledMonoSeconds,Is.EqualTo(10.95));Assert.That(window.StartMs,Is.EqualTo(11000));Assert.That(window.EndMs,Is.EqualTo(11500));
+            var calibration=clock.Schedule(10.002,11,AudioRouteCalibration.Unmeasured("synthetic"),calibrationOnly:true);
+            Assert.Throws<FrameFault>(()=>FrameAudioAdapter.PlannedWindow("audio",calibration,new FrameCueBinding("attempt",new string('a',64),24000,48000)));
+        }
+        [Test] public void RepeatedRenderSequenceLatchesFailure()
+        {var e=new Memory();var m=Monitor(e);Assert.Throws<FrameFault>(()=>m.Render(1,new RenderSample(0),true));Assert.That(m.Healthy,Is.False);}
         sealed class Runtime : IDisplayRate
         {internal double Hz=72;internal double[] Rates=new double[]{72,90};internal int Requests;internal bool Accepted=true;public bool Running=>true;public bool TryOffered(out double[] rates){rates=Rates;return rates!=null;}public bool TryCurrent(out double hz){hz=Hz;return true;}public bool Request(double hz){Requests++;return Accepted;}}
         static FrameSetup Setup(string control="request")=>FrameSetup.Load(Encoding.UTF8.GetBytes("{\"version\":1,\"protocol_version\":\"engineering\",\"station_id\":\"station-01\",\"refresh_control\":\""+control+"\",\"watchdog_poll_ms\":10,\"engineering_stall_hook\":false}"),new JObject{["protocol_version"]="engineering",["station_id"]="station-01",["refresh_hz"]=72});

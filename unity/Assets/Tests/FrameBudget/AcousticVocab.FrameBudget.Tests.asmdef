@@ -1,1 +1,20 @@
-{"name":"AcousticVocab.FrameBudget.Tests","references":["AcousticVocab.FrameBudget","AcousticVocab.DataLogging","AcousticVocab.OperatorConsole","Unity.Newtonsoft.Json"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}
+{
+  "name": "AcousticVocab.FrameBudget.Tests",
+  "references": [
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.DataLogging",
+    "AcousticVocab.OperatorConsole",
+    "AcousticVocab.StudyAudio"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll",
+    "nunit.framework.dll"
+  ]
+}

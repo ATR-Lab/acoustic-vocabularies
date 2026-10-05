@@ -68,7 +68,7 @@ namespace AcousticVocab.OperatorConsole.Tests
             internal Fixture(int count = 2)
             {
                 var items=Enumerable.Range(0,count).Select(i=>Construct<SlotItem>("private-trial-"+i,"trained","private-content",null,null,"protected",false,14,1,1)).ToArray();
-                Visit=Construct<VisitSchedule>(Schedule,Package,"private-person","private-visit",true,new[]{Construct<ScheduleBlock>("private-block",items)});
+                Visit=Construct<VisitSchedule>(Schedule,Package,"private-person","private-visit",true,new[]{Construct<ScheduleBlock>("private-block",items)},null,null,null);
                 Engine=new FixedSlotEngine(Visit,Clock,Session,Factory);
                 Mailbox=new OperatorMailbox(Directory,Nonce,Manifest,Engine,Journal,()=>new OperatorAdmission(Admitted,Admitted,Admitted),()=>new OperatorHealth(Healthy,Healthy,Healthy,Healthy,Healthy?5:300,14,14),()=>Clock.Time);
             }

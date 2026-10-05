@@ -21,7 +21,7 @@ namespace AcousticVocab.FrameBudget
         public ResponsePanelController panel;
         readonly object timingLock=new object();readonly List<XRDisplaySubsystem> displays=new List<XRDisplaySubsystem>();readonly FrameTiming[] timing=new FrameTiming[1];
         FrameSetup setup;RefreshPin refresh;FrameCsvEvidence evidence;FrameMonitor monitor;FrameDataAdapter data;Action<string> engineFault;Timer watchdog;
-        bool installed,closed,failed,rateRecorded;long lastFrame=-1;int physicsSteps;double installedMs;
+        volatile bool installed,closed,failed;bool rateRecorded;long lastFrame=-1;int physicsSteps;double installedMs;
         public bool Ready=>installed&&!closed&&!failed&&isActiveAndEnabled&&foundation!=null&&foundation.Ready&&refresh.Ready&&monitor.Healthy&&monitor.HasRenderSample;
         public FrameMonitor Monitor=>monitor;
         static double Now=>AudioPlayer.Now*1000;

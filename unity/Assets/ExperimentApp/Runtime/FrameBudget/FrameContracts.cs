@@ -95,7 +95,7 @@ namespace AcousticVocab.FrameBudget
         {
             lock(sync)
             {
-                Clock(now);Check.That(sample!=null&&sample.FrameIndex>lastFrame,"FRAME_SEQUENCE_INVALID");lastFrame=sample.FrameIndex;input=responseInputAvailable;
+                Clock(now);if(sample==null||sample.FrameIndex<=lastFrame){failed=true;throw new FrameFault("FRAME_SEQUENCE_INVALID");}lastFrame=sample.FrameIndex;input=responseInputAvailable;
                 if(previous.HasValue)
                 {
                     lastInterval=now-previous.Value;
