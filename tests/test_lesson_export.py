@@ -6,7 +6,10 @@ import json
 import re
 import unittest
 from pathlib import Path
-from jsonschema import Draft202012Validator
+try:
+    from jsonschema import Draft202012Validator
+except ImportError:
+    Draft202012Validator = None
 from tools.mock_visit import lessons
 from tools.mock_visit.records import EvidenceError, validate_data_payload
 
@@ -107,6 +110,17 @@ class LessonExportTests(unittest.TestCase):
         joined[0]["payload"]["meaning_display_id"]="other"
         with self.assertRaisesRegex(EvidenceError,"SUPPLEMENTAL"):lessons.reconcile(rows,joined,items,H,H)
 
+    def test_supplemental_intent_without_schedule_is_incomplete_not_a_play(self):
+        from tools.mock_visit.native import lesson
+        rows,_=fixture();event=rows[1];joined=[dict(kind="lesson",payload={k:event["payload"][k] for k in lessons.EVENT_FIELDS})]
+        attempts={"DEMO-lesson":{"first":rows[0]}}
+        items={"DEMO-lesson":{"block":"atomic_lessons"}}
+        result=lesson(joined,attempts,items,{})
+        self.assertIn("LESSON_AUDIO_REQUEST_MISSING",result)
+        joined[0]["payload"]["kind"]="onset_authority"
+        with self.assertRaisesRegex(EvidenceError,"PCM"): lesson(joined,attempts,items,{})
+
+    @unittest.skipIf(Draft202012Validator is None, "Schema validator runs in required repository checks")
     def test_closed_payload_json_schema_and_runtime_header_oracle(self):
         root=Path(__file__).resolve().parents[1];schema=json.loads((root/'apparatus/data/data-event.schema.json').read_text());validator=Draft202012Validator(schema)
         base=json.loads((root/'docs/data/synthetic-visit/events.jsonl').read_text().splitlines()[0]);rows,_=fixture()

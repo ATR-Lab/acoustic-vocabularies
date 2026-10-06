@@ -103,7 +103,10 @@ def lesson(joined, attempts, items, requests):
             require(p["audio_request_id"] in attempts[p["attempt_id"]]["first"]["payload"]["audio_request_ids"], "MOCK_LESSON_AUDIO_ID")
             if p["pcm_sha256"] is not None:
                 request = requests.get(p["audio_request_id"])
-                require(request is not None and p["pcm_sha256"] == request["payload"]["pcm_sha256"], "MOCK_LESSON_PCM")
+                if request is None and p["kind"] == "play_request":
+                    incomplete.add("LESSON_AUDIO_REQUEST_MISSING")
+                else:
+                    require(request is not None and p["pcm_sha256"] == request["payload"]["pcm_sha256"], "MOCK_LESSON_PCM")
         seen[p["attempt_id"]].append(p)
     for aid in attempts:
         if not items[aid]["block"].endswith("lessons"): continue

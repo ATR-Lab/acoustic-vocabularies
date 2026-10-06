@@ -27,7 +27,7 @@ def validate(row):
     require(p["lesson_type"] in {"atomic_lesson", "message_lesson"} and p["kind"] in KINDS, "MOCK_LESSON_KIND")
     require(all(identifier(p[k]) for k in ("attempt_id", "opportunity_id", "meaning_display_id"))
             and all(row[k] == p[k] for k in ("attempt_id", "opportunity_id", "audio_request_id")), "MOCK_LESSON_CONTEXT")
-    require(number(row["host_mono_ms"]) and p["observed_mono_ms"] <= row["host_mono_ms"], "MOCK_LESSON_FUTURE_EVENT")
+    require(number(row["host_mono_ms"]) and number(p["observed_mono_ms"]) and p["observed_mono_ms"] <= row["host_mono_ms"], "MOCK_LESSON_FUTURE_EVENT")
     ids = p["audio_request_ids"]
     require(isinstance(ids, list) and len(ids) == 3 and all(guid(x) for x in ids) and len(set(ids)) == 3, "MOCK_LESSON_AUDIO_IDS")
     if p["kind"] in PLAY:
