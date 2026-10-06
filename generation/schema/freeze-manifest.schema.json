@@ -132,7 +132,7 @@
             ]
           },
           "path": {
-            "description": "Repository-relative POSIX path of the committed file a file item is read from; null otherwise.",
+            "description": "Repository-relative POSIX path of the committed file a file item is read from, or of the committed file or directory a config item must hash to whenever the repository carries it (llm.manifest_sha256: generation/llm/manifest.json; prompts.a3_sha256, prompts.b_sha256: generation/prompts/a3, generation/prompts/b); null otherwise.",
             "oneOf": [
               {
                 "type": "string",

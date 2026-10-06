@@ -8,15 +8,23 @@ its source and its `guard`, so that it can be read without the code
 (`generation/docs/freeze.md`):
 
 - `code`: recomputed from the running code at every guard run (renderer and validator
-  versions and hashes, model pin, decoding values, seeds, budgets, A2 and selector rules);
+  versions and hashes, model pin, decoding values, seeds, budgets, A2, selector and Study
+  B rules, and `generation.code`: the code digests of every generation module, the
+  fallback scan, the store, the atom order, the Study B bank builder and the LLM server
+  config);
 - `file`: recomputed from the committed file at `path` (golden manifest, renderer spec,
   separation threshold, reserved signals);
 - `config`: copied from the frozen generation config, which is itself an item
   (`config.document`, hashed as `config.frozen_sha256`) and must equal the running code
-  (`genconfig.config_differences`);
+  (`genconfig.config_differences`); a `config` item with a `path` must also equal the
+  hash of that committed input whenever the repository carries it (`llm.manifest_sha256`:
+  the LLM manifest of #16; `prompts.a3_sha256`, `prompts.b_sha256`: the prompt sets of
+  #17);
 - `recorded`: recorded at the freeze from the GPU host, restricted storage or a human
   decision (runtime, weights, chat template, decoding implementation, threshold evidence,
-  per-profile fallback bank digests, pilot timing review and audit hashes).
+  per-profile fallback bank digests, pilot timing review and audit hashes). Where the
+  committed LLM manifest records the same value (`LLM_MANIFEST_FIELDS`), the two must
+  agree.
 
 A `draft` may leave any non-code item pending (`value: null`, source `PENDING ...`); a
 `frozen` manifest may not, and needs the repository commit, the tag and owner and advisor
@@ -25,11 +33,15 @@ sign-off (roles and links only, never names). The apparatus-manifest fields
 
 The CI freeze guard (`freeze_differences(active_manifest_path(), current_values())`, run
 by `tests/generation/test_freeze_manifest.py` on every OS) fails when any frozen value
-differs from the repository. Confirmatory runs (#28, O7.1.1) refuse to start when their
-config hash differs: `genconfig.check_run_config(config, kind=..., freeze_manifest=...)`
-compares `config.frozen_sha256` (shared, so #20 and #26 need nothing from this module
-beyond `load_freeze_manifest`). `verify_fallback_hashes` re-renders the fallback set with
-the running renderer and compares its hashes with the manifest.
+differs from the repository. `config` and `recorded` items are compared with the
+committed inputs only once the manifest holds a config document, so the committed draft
+does not go stale when #16 and #17 land their files. Confirmatory runs (#28, O7.1.1)
+load the manifest with `load_freeze_manifest(path, require_frozen=True)`, which runs the
+same guard against the running code and refuses any difference, then refuse to start
+when their config hash differs: `genconfig.check_run_config(config, kind=...,
+freeze_manifest=...)` compares `config.frozen_sha256`. `verify_fallback_hashes`
+re-renders the fallback set with the running renderer and compares its hashes with the
+manifest.
 
 Command line: `python -m av_generation.freeze {check,refresh,record,build,verify,config,
 weights,table}` (`main`).
@@ -38,6 +50,7 @@ weights,table}` (`main`).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import math
 import os
 import re
@@ -95,7 +108,21 @@ RENDERER_SPEC_PATH: Final = "sound/docs/renderer-spec.md"
 VALIDATOR_CONFIG_PATH: Final = "sound/config/validator.json"
 RESERVED_REGISTRY_PATH: Final = "sound/reserved/registry.json"
 LLM_MANIFEST_PATH: Final = "generation/llm/manifest.json"
-"""The LLM manifest (#16); when the repository carries it, its hash must equal the config's."""
+"""The LLM manifest (#16): when the repository carries it, its file SHA-256 must equal
+`llm.manifest_sha256`, and its fields `LLM_MANIFEST_FIELDS` the matching items (at the
+build and, once the manifest holds a config document, at every guard run)."""
+LLM_SERVER_CONFIG_PATH: Final = "generation/llm/server-config.json"
+"""The vLLM launch config (#16): part of `generation.code` when the repository carries it."""
+PROMPT_SET_PATHS: Final[Mapping[str, str]] = {
+    "prompts.a3_sha256": "generation/prompts/a3",
+    "prompts.b_sha256": "generation/prompts/b",
+}
+"""The committed prompt sets (#17) and their items: each directory hashes to its item
+(`jsonio.file_set_sha256` over `{<mode>/<file>: SHA-256}`, as `PromptSet.a3_sha256`)."""
+GENERATION_PACKAGE_PATH: Final = "generation/src/av_generation"
+SOUND_PACKAGE_PATH: Final = "sound/src/av_sound"
+BANKS_PACKAGE_PATH: Final = "banks/src/av_banks"
+"""The Study B bank builder (#26): part of `generation.code` when the repository carries it."""
 WEIGHTS_SUFFIX: Final = ".safetensors"
 
 REFERENCE_BATCH_NS: Final = "A-C01"
@@ -108,6 +135,8 @@ E_STATUS: Final = "E_STATUS"
 E_CONFIG: Final = "E_CONFIG"
 E_FALLBACK: Final = "E_FALLBACK"
 E_PENDING: Final = "E_PENDING"
+E_GUARD: Final = "E_GUARD"
+"""The running code or a committed file differs from the freeze manifest."""
 
 Guard = Literal["code", "file", "config", "recorded"]
 Kind = Literal["sha256", "sha256_map", "revision", "text", "decimal", "integer", "number", "object"]
@@ -147,9 +176,11 @@ class ItemSpec:
     pending: str = ""
     """Source text of the item while it is pending in a draft (how to fill it)."""
     path: str | None = None
-    """Repository-relative POSIX path of the committed file (`file` items)."""
+    """Repository-relative POSIX path of the committed input: the file a `file` item is
+    read from, or the file or directory a `config` item must hash to when the repository
+    carries it (`committed_values`)."""
     draft_pending: bool = False
-    """A `code` item left pending in drafts (filled by `build`; see `GENERATION_CODE_MODULES`)."""
+    """A `code` item left pending in drafts (filled by `build`; see `generation_code_digests`)."""
 
     @property
     def category(self) -> str:
@@ -294,13 +325,15 @@ ITEM_SPECS: Final[tuple[ItemSpec, ...]] = (
         "prompts.a3_sha256",
         "config",
         "sha256",
-        _cfg("PromptSet.set_sha256 of the frozen A3 prompt set (#17)"),
+        _cfg("PromptSet.a3_sha256 (file-set hash of generation/prompts/a3, #17)"),
+        path=PROMPT_SET_PATHS["prompts.a3_sha256"],
     ),
     ItemSpec(
         "prompts.b_sha256",
         "config",
         "sha256",
-        _cfg("PromptSet.set_sha256 of the frozen Study B prompt set (#17)"),
+        _cfg("PromptSet.b_sha256 (file-set hash of generation/prompts/b, #17)"),
+        path=PROMPT_SET_PATHS["prompts.b_sha256"],
     ),
     ItemSpec(
         "meanings.sha256",
@@ -313,6 +346,7 @@ ITEM_SPECS: Final[tuple[ItemSpec, ...]] = (
         "config",
         "sha256",
         _cfg("file SHA-256 of the LLM manifest (#16)"),
+        path=LLM_MANIFEST_PATH,
     ),
     ItemSpec("seeds.function", "code", "text"),
     ItemSpec("seeds.namespaces", "code", "object"),
@@ -326,7 +360,8 @@ ITEM_SPECS: Final[tuple[ItemSpec, ...]] = (
         "code",
         "object",
         "PENDING (G4): code digests of the generation modules, computed by `python -m "
-        "av_generation.freeze build`; left pending in the draft while #16-#20 implement them",
+        "av_generation.freeze build`; left pending in the draft while the parallel generation "
+        "issues add and change modules",
         draft_pending=True,
     ),
     ItemSpec(
@@ -367,27 +402,71 @@ ITEM_SPECS: Final[tuple[ItemSpec, ...]] = (
 )
 """Every freeze item in manifest order."""
 
-GENERATION_CODE_MODULES: Final[tuple[str, ...]] = (
-    "a1.py",
-    "a2.py",
-    "a3.py",
-    "constants.py",
-    "domain.py",
-    "genconfig.py",
-    "ledger.py",
-    "llm.py",
-    "meanings.py",
-    "orchestrator.py",
-    "outcomes.py",
-    "parser.py",
-    "prompts.py",
-    "proposers.py",
-    "seeds.py",
-    "selector.py",
-)
-"""`av_generation` modules whose code decides what a method proposes and what is
-admitted, selected and committed (item `generation.code`). Reports, the panel and the
-tools (audit, dry run, threshold tool) may still be fixed after G4."""
+GENERATION_CODE_EXCLUDED: Final[Mapping[str, str]] = {
+    "_a1_cli.py": "A1 designer practice sessions (#19), stored apart from study data",
+    "_a1_practice.py": "A1 designer practice sessions (#19), stored apart from study data",
+    "_a2_credibility.py": "A2 development check on synthetic scores (#18)",
+    "_audit_synth.py": "synthetic logs for the audit tests and the DEMO audit (#24)",
+    "_batch_sim.py": "synthetic batch runs of the orchestrator (#20)",
+    "_demo_ledger.py": "synthetic slot fixtures and the DEMO ledger (#17)",
+    "_prompt_budget.py": "offline worst-case prompt token estimates (#17)",
+    "audit.py": "audit reports read from the logs (#24)",
+    "dryrun.py": "synthetic-panel dry run (#22)",
+    "freeze.py": "this freeze tooling; its rule texts are items (a2, selector, budget.study_b)",
+    "llm_bench.py": "LLM latency and repeatability benchmark (#16)",
+    "llm_fake.py": "scripted LLM client for tests",
+    "mock_llm.py": "mock LLM server for tests, the dry run and the benchmark (#16)",
+    "panel_demo.py": "scripted panel sessions (#21)",
+    "panel_skew.py": "station onset timing evidence (#21)",
+    "rater.py": "bot rater for synthetic panels (#21, #22)",
+    "threshold.py": "O6.2.2 listening tool (#23); its outcome is the separation.* items",
+    "threshold_cli.py": "O6.2.2 listening tool (#23); its outcome is the separation.* items",
+    "threshold_runner.py": "O6.2.2 listening tool (#23); its outcome is the separation.* items",
+    "web/threshold/": "O6.2.2 listening tool pages (#23)",
+}
+"""Files of the `av_generation` package left out of `generation.code` (relative POSIX
+paths; a key ending in `/` excludes a directory), with the reason: reports, demos,
+simulators, benchmarks, test doubles, practice sessions, pre-G4 tools and this module.
+Every other `*.py` module and every file under `web/` (the A1 screen and the rater
+station), including any added later, is frozen by default: its code decides what a method
+proposes, what is admitted, shown, rated, selected and committed, or how the LLM server is
+launched. After G4 a new file either joins this list in review, with its reason, or needs
+a new freeze version."""
+
+SOUND_CODE_MODULES: Final[Mapping[str, str]] = {
+    "fallback.py": "fallback banks and books and the fallback scan (first unused bank recipe "
+    "that passes; Study A protocol section 3.7)",
+    "grammar.py": "atom IDs and their stored order (first atom, fallback-book slots)",
+    "store.py": "append-only book store, committed references and book persistence",
+}
+"""`av_sound` modules in `generation.code` besides the renderer and validator modules,
+which `renderer.hash` and `validator.hash` already cover."""
+
+BANKS_CODE_EXCLUDED: Final[Mapping[str, str]] = {
+    "throughput.py": "throughput report of a bank attempt (#26)",
+}
+"""Modules of the Study B bank builder (`banks/src/av_banks`, #26) left out of
+`generation.code`. Every other module is frozen once the repository carries the builder:
+it decides the traversal, the retention of the first 4 options per cell, the menu and
+reserve, the attempts and the bank amendments (Study B protocol section 4)."""
+
+LLM_MANIFEST_FIELDS: Final[Mapping[str, tuple[str, str]]] = {
+    "model.id": ("model", "id"),
+    "model.revision": ("model", "revision"),
+    "model.tokenizer_revision": ("model", "tokenizer_revision"),
+    "model.weights_sha256": ("model", "weights_sha256"),
+    "model.license": ("model", "license"),
+    "runtime.vllm_version": ("runtime", "version"),
+    "runtime.cuda_version": ("hardware", "cuda_version"),
+    "runtime.driver_version": ("hardware", "driver_version"),
+    "runtime.precision": ("runtime", "precision"),
+    "runtime.max_model_len": ("runtime", "max_model_len"),
+    "runtime.chat_template_sha256": ("chat_template", "sha256"),
+    "schema.decoding_sha256": ("decoding_schema", "sha256"),
+}
+"""Item key -> (section, field) of the committed LLM manifest (#16,
+`llm_manifest.freeze_values`) that holds the same value. A field that is absent or `null`
+(e.g. the hardware section before it is recorded) is not compared."""
 
 SPECS: Final[Mapping[str, ItemSpec]] = {spec.key: spec for spec in ITEM_SPECS}
 
@@ -448,6 +527,24 @@ SELECTOR_RULES_TEXT: Final[Mapping[str, str]] = {
 """Selector, first-atom, tie and fallback rules (Study A protocol sections 3.3, 3.7;
 implemented by `selector` and `orchestrator`)."""
 
+STUDY_B_RULES_TEXT: Final[Mapping[str, str]] = {
+    "traversal": "the 16 atoms in the stored order under each of P1, P2 and P3",
+    "retention": "per cell, in slot order, retain the first 4 technically valid options "
+    "whose waveform hashes are distinct in the cell and that pass the checks against every "
+    "option retained for another atom under that profile",
+    "menu": "retained options 1-3 are the displayed menu; option 4 is the reserve",
+    "slots": "invalid, duplicate, incompatible, timed-out and malformed proposals consume "
+    "their slots; no corrective calls beyond the cap",
+    "attempts": "a cell without 4 retained options after its slots fails the attempt; the "
+    "next attempt is independently seeded; the first complete attempt is used; no cells "
+    "are mixed across attempts; after the last failed attempt the bank is unavailable",
+    "feedback": "meanings, schema and profile constraints, validation history and the "
+    "retained options; no rater, participant or test feedback",
+    "reserve": "the reserve may replace an unusable unheard, uncommitted menu option only "
+    "before either partner hears that wave's menu (recorded bank amendment, rechecked)",
+}
+"""Study B bank rules (Study B protocol section 4; implemented by the bank builder, #26)."""
+
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -506,6 +603,21 @@ def _show(value: object, limit: int = 80) -> str:
     except (TypeError, ValueError):
         text = repr(value)
     return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def _delta(frozen: object, current: object) -> str:
+    """For two objects, the keys that changed, appeared or disappeared (else "")."""
+    if not isinstance(frozen, Mapping) or not isinstance(current, Mapping):
+        return ""
+    parts = []
+    for label, names in (
+        ("changed", [k for k in frozen if k in current and not _same(frozen[k], current[k])]),
+        ("added", [k for k in current if k not in frozen]),
+        ("removed", [k for k in frozen if k not in current]),
+    ):
+        if names:
+            parts.append(f"{label}: {', '.join(sorted(str(n) for n in names))}")
+    return "; " + "; ".join(parts) if parts else ""
 
 
 def item_sha256(kind: Kind, value: object) -> str | None:
@@ -630,6 +742,7 @@ def _budget_b() -> dict[str, Any]:
         "cells": C.B_CELLS,
         "slots_per_attempt": C.B_SLOTS_PER_ATTEMPT,
         "max_slots": C.B_MAX_SLOTS,
+        **STUDY_B_RULES_TEXT,
     }
 
 
@@ -651,15 +764,145 @@ def _selector_rules() -> dict[str, Any]:
     }
 
 
-def generation_code_digests() -> dict[str, str]:
-    """`{module file: code digest}` of `GENERATION_CODE_MODULES` (running code)."""
-    package = Path(__file__).resolve().parent
-    return {name: _version.code_digest(package / name) for name in GENERATION_CODE_MODULES}
+def _excluded(name: str, excluded: Mapping[str, str]) -> bool:
+    return name in excluded or any(key.endswith("/") and name.startswith(key) for key in excluded)
+
+
+def _code_files(base: Path, excluded: Mapping[str, str], *, web: bool) -> list[str]:
+    """Sorted POSIX paths, relative to `base`, of its `*.py` modules and (with `web`) the
+    files under `web/`, without hidden files, caches and `excluded`."""
+    names = []
+    for path in base.rglob("*"):
+        rel = path.relative_to(base)
+        if not path.is_file() or any(part.startswith((".", "__pycache__")) for part in rel.parts):
+            continue
+        name = rel.as_posix()
+        if (name.endswith(".py") or (web and name.startswith("web/"))) and not _excluded(
+            name, excluded
+        ):
+            names.append(name)
+    return sorted(names)
+
+
+def _text_sha256(path: Path) -> str:
+    """SHA-256 of a text file with CRLF read as LF (the same on every checkout)."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def _code_digest(path: Path) -> str:
+    """`av_sound.version.code_digest` (AST without docstrings) of a module, else
+    `_text_sha256` of a web asset or config file."""
+    return _version.code_digest(path) if path.suffix == ".py" else _text_sha256(path)
+
+
+def generation_code_modules(package: str | os.PathLike[str] | None = None) -> list[str]:
+    """Sorted POSIX paths, relative to the `av_generation` package directory (or
+    `package`), of the files of the package that `generation.code` freezes: every `*.py`
+    module and every file under `web/`, except `GENERATION_CODE_EXCLUDED`."""
+    base = Path(package) if package is not None else Path(__file__).resolve().parent
+    return _code_files(base, GENERATION_CODE_EXCLUDED, web=True)
+
+
+def generation_code_digests(
+    *,
+    package: str | os.PathLike[str] | None = None,
+    sound: str | os.PathLike[str] | None = None,
+    root: str | os.PathLike[str] | None = None,
+) -> dict[str, str]:
+    """Value of `generation.code`: `{repository-relative POSIX path: digest}` (sorted) of
+
+    - the running `av_generation` package (or `package`): `generation_code_modules`;
+    - the running `av_sound` package (or `sound`): `SOUND_CODE_MODULES`;
+    - when the repository (`root`) carries them: the Study B bank builder
+      `banks/src/av_banks` (every module except `BANKS_CODE_EXCLUDED`) and the LLM server
+      config `generation/llm/server-config.json` (#16).
+
+    Modules count by `av_sound.version.code_digest` (comments, docstrings and formatting
+    do not count); other files by their SHA-256 with CRLF read as LF.
+    """
+    gen = Path(package) if package is not None else Path(__file__).resolve().parent
+    snd = Path(sound) if sound is not None else Path(_renderer.__file__).resolve().parent
+    base = Path(root) if root is not None else repo_root()
+    files: dict[str, Path] = {
+        f"{GENERATION_PACKAGE_PATH}/{name}": gen.joinpath(*name.split("/"))
+        for name in generation_code_modules(gen)
+    }
+    files.update({f"{SOUND_PACKAGE_PATH}/{name}": snd / name for name in SOUND_CODE_MODULES})
+    banks = base.joinpath(*BANKS_PACKAGE_PATH.split("/"))
+    if banks.is_dir():
+        files.update(
+            {
+                f"{BANKS_PACKAGE_PATH}/{name}": banks.joinpath(*name.split("/"))
+                for name in _code_files(banks, BANKS_CODE_EXCLUDED, web=False)
+            }
+        )
+    server = base.joinpath(*LLM_SERVER_CONFIG_PATH.split("/"))
+    if server.is_file():
+        files[LLM_SERVER_CONFIG_PATH] = server
+    return {name: _code_digest(files[name]) for name in sorted(files)}
+
+
+def _dir_sha256(directory: Path) -> str:
+    """`jsonio.file_set_sha256` of `{<directory name>/<relative path>: file SHA-256}` over
+    every file under `directory` (the prompt-set hash of #17's `PromptSet.a3_sha256`)."""
+    files = {
+        f"{directory.name}/{path.relative_to(directory).as_posix()}": file_sha256(path)
+        for path in directory.rglob("*")
+        if path.is_file()
+    }
+    return file_set_sha256(files)
+
+
+def llm_manifest_values(path: str | os.PathLike[str]) -> dict[str, FreezeValue]:
+    """The items an LLM manifest (#16) pins (`LLM_MANIFEST_FIELDS`, fields that are set)."""
+    try:
+        doc = read_json(path)
+    except (OSError, CodecError) as err:
+        raise FreezeError(
+            E_INPUT, f"cannot read the LLM manifest {Path(path).name}: {err}"
+        ) from err
+    if not isinstance(doc, dict):
+        raise FreezeError(E_INPUT, f"the LLM manifest {Path(path).name} is not a JSON object")
+    out = {}
+    for key, (section, field) in LLM_MANIFEST_FIELDS.items():
+        part = doc.get(section)
+        value = part.get(field) if isinstance(part, dict) else None
+        if value is not None:
+            out[key] = FreezeValue(value, f"{section}.{field} of {LLM_MANIFEST_PATH} (#16)")
+    return out
+
+
+def committed_values(root: str | os.PathLike[str] | None = None) -> dict[str, FreezeValue]:
+    """Values that the committed inputs of other issues pin, for those the repository
+    (`root`) carries: `llm.manifest_sha256` and `llm_manifest_values` of the LLM manifest
+    (#16), and `prompts.a3_sha256` / `prompts.b_sha256` of the prompt sets (#17)."""
+    base = Path(root) if root is not None else repo_root()
+    out: dict[str, FreezeValue] = {}
+    llm = base.joinpath(*LLM_MANIFEST_PATH.split("/"))
+    if llm.is_file():
+        out.update(llm_manifest_values(llm))
+        out["llm.manifest_sha256"] = FreezeValue(
+            file_sha256(llm),
+            f"file SHA-256 of the committed {LLM_MANIFEST_PATH} (#16); the frozen config "
+            "must name this file",
+        )
+    for key, rel in PROMPT_SET_PATHS.items():
+        directory = base.joinpath(*rel.split("/"))
+        if directory.is_dir():
+            out[key] = FreezeValue(
+                _dir_sha256(directory),
+                f"jsonio.file_set_sha256 of the committed {rel} (#17 PromptSet); the frozen "
+                "config must name this prompt set",
+            )
+    return out
 
 
 def current_values(root: str | os.PathLike[str] | None = None) -> dict[str, FreezeValue]:
-    """The `code` and `file` items as the repository and the running code give them now
-    (what the CI guard compares a manifest with). `root` is the repository root."""
+    """What the CI guard compares a manifest with: the `code` and `file` items as the
+    running code and the repository give them now, plus the `config` and `recorded` items
+    that committed inputs pin (`committed_values`: LLM manifest, prompt sets) when the
+    repository carries them. `root` is the repository root (committed files, the bank
+    builder and the LLM server config); Python packages are the running code."""
     base = Path(root) if root is not None else repo_root()
     decoding = C.FROZEN_DECODING
     threshold_doc = read_json(_repo_file(base, VALIDATOR_CONFIG_PATH))
@@ -760,8 +1003,9 @@ def current_values(root: str | os.PathLike[str] | None = None) -> dict[str, Free
         ),
         "budget.study_b": FreezeValue(
             _budget_b(),
-            "av_generation.constants (Study B protocol section 4): 12 slots per cell, 4 "
-            "retained (3 shown + 1 reserve), 576 slots per attempt, 4 attempts",
+            "av_generation.constants and freeze.STUDY_B_RULES_TEXT (Study B protocol section "
+            "4): 12 slots per cell, 4 retained (3 shown + 1 reserve), 576 slots per attempt, "
+            "4 attempts; implemented by the bank builder (#26, in generation.code)",
         ),
         "a2.rules": FreezeValue(
             _a2_rules(),
@@ -769,10 +1013,11 @@ def current_values(root: str | os.PathLike[str] | None = None) -> dict[str, Free
             "implemented by av_generation.a2 (Study A protocol section 3.5)",
         ),
         "generation.code": FreezeValue(
-            generation_code_digests(),
-            "av_sound.version.code_digest (Python 3.11 AST without docstrings, so comments "
-            "and formatting do not count) of freeze.GENERATION_CODE_MODULES: the proposers, "
-            "prompts, parser, ledger, LLM client, selector and orchestrator",
+            generation_code_digests(root=base),
+            "freeze.generation_code_digests: AST code digests (comments, docstrings and "
+            "formatting do not count) of every av_generation module but GENERATION_CODE_"
+            "EXCLUDED, av_sound fallback, grammar and store, and the Study B bank builder; "
+            "LF SHA-256 of the A1 and rater web pages and the LLM server config",
         ),
         "selector.rules": FreezeValue(
             _selector_rules(),
@@ -780,6 +1025,11 @@ def current_values(root: str | os.PathLike[str] | None = None) -> dict[str, Free
             "freeze.SELECTOR_RULES_TEXT, implemented by av_generation.selector and orchestrator "
             "(Study A protocol sections 3.3, 3.7)",
         ),
+        **{
+            key: value
+            for key, value in committed_values(base).items()
+            if SPECS[key].guard in ("config", "recorded")
+        },
     }
 
 
@@ -1135,9 +1385,11 @@ def freeze_differences(
     `current` maps item keys to current values (`FreezeValue`s or plain values), normally
     `current_values()`. Reported, in this order: every `manifest_problems` finding; every
     current item missing from the manifest or different from its value (pending items of
-    a draft are skipped; a frozen manifest has none); every field of the frozen
-    generation config that differs from the running code (`genconfig.config_differences`).
-    An empty list means nothing frozen has changed.
+    a draft are skipped, and so are `config` and `recorded` items while the manifest holds
+    no config document; a frozen manifest has neither), including the hashes of the
+    committed LLM manifest and prompt sets and the LLM manifest's fields; every field of
+    the frozen generation config that differs from the running code
+    (`genconfig.config_differences`). An empty list means nothing frozen has changed.
     """
     path = Path(manifest_path)
     try:
@@ -1149,17 +1401,23 @@ def freeze_differences(
     out = manifest_problems(manifest)
     frozen = manifest.get("status") == "frozen"
     items = _items_by_key(manifest)
+    has_config = item_values(manifest).get("config.document") is not None
     for key, raw in current.items():
         now = raw.value if isinstance(raw, FreezeValue) else raw
         item = items.get(key)
         if item is None:
             out.append(f"{key}: not in the manifest")
             continue
+        spec = SPECS.get(key)
+        if spec is not None and spec.guard in ("config", "recorded") and not has_config:
+            continue
         recorded = item.get("value")
         if now is None or (recorded is None and not frozen):
             continue
         if not _same(recorded, now):
-            out.append(f"{key}: frozen {_show(recorded)}, current {_show(now)}")
+            out.append(
+                f"{key}: frozen {_show(recorded)}, current {_show(now)}{_delta(recorded, now)}"
+            )
     doc = item_values(manifest).get("config.document")
     if doc is not None:
         config, _ = _decode_config(doc)
@@ -1176,12 +1434,17 @@ def freeze_differences(
 
 
 def _recorded_from(manifest: Mapping[str, Any]) -> dict[str, FreezeValue]:
-    """The `config` and `recorded` items of a manifest as values (pending ones included)."""
+    """The `config` and `recorded` items of a manifest as values; pending ones carry the
+    current fill-in source of their spec."""
     out = {}
     for key, item in _items_by_key(manifest).items():
         spec = SPECS.get(key)
-        if spec is not None and spec.guard in ("config", "recorded"):
-            out[key] = FreezeValue(item.get("value"), str(item.get("source", spec.pending)))
+        if spec is None or spec.guard not in ("config", "recorded"):
+            continue
+        value = item.get("value")
+        out[key] = (
+            pending_value(key) if value is None else FreezeValue(value, str(item.get("source")))
+        )
     return out
 
 
@@ -1262,25 +1525,37 @@ def freeze_values(
     *,
     root: str | os.PathLike[str] | None = None,
 ) -> dict[str, FreezeValue]:
-    """Every item for a G4 build: recorded items (from a filled draft), the config items,
-    the fallback bank digests and the current code and file items. Checks that the
-    fallback set is the one the config pins and, when the repository carries the LLM
-    manifest, that its hash is the config's."""
+    """Every item for a G4 build: the current code and file items, recorded items (from a
+    filled draft), the config items and the fallback bank digests.
+
+    Checks that the fallback set is the one the config pins and was built at its
+    threshold (`E_FALLBACK`), and that every value the committed inputs pin
+    (`committed_values`: the LLM manifest's hash and fields, the prompt-set hashes) equals
+    the value of the build wherever both are set (`E_CONFIG`). A DEMO config may name no
+    LLM manifest (`llm_manifest_sha256` null); a frozen manifest refuses a DEMO config.
+    """
     base = Path(root) if root is not None else repo_root()
-    llm_manifest = base.joinpath(*LLM_MANIFEST_PATH.split("/"))
-    if llm_manifest.is_file() and file_sha256(llm_manifest) != config.llm_manifest_sha256:
-        raise FreezeError(E_CONFIG, f"{LLM_MANIFEST_PATH} does not hash to the config's value")
+    current = current_values(base)
     values: dict[str, FreezeValue] = {
-        key: value
-        for key, value in recorded.items()
-        if key in SPECS and SPECS[key].guard == "recorded"
+        key: value for key, value in current.items() if SPECS[key].guard in ("code", "file")
     }
     for spec in ITEM_SPECS:
-        if spec.guard == "recorded" and spec.key not in values:
-            values[spec.key] = pending_value(spec.key)
+        if spec.guard == "recorded":
+            given = recorded.get(spec.key)
+            values[spec.key] = given if given is not None else pending_value(spec.key)
     values.update(config_values(config))
     values.update(fallback_values(fallback, config))
-    values.update(current_values(base))
+    conflicts = [
+        f"{key}: {_show(values[key].value)} in the build, {_show(pinned.value)} in {pinned.source}"
+        for key, pinned in committed_values(base).items()
+        if values[key].value is not None and not _same(values[key].value, pinned.value)
+    ]
+    if conflicts:
+        raise FreezeError(
+            E_CONFIG,
+            "the build disagrees with the committed LLM manifest or prompt sets",
+            conflicts,
+        )
     return values
 
 
@@ -1298,10 +1573,23 @@ class FreezeManifestFile:
 
 
 def load_freeze_manifest(
-    path: str | os.PathLike[str], *, require_frozen: bool = False
+    path: str | os.PathLike[str],
+    *,
+    require_frozen: bool = False,
+    check_repository: bool | None = None,
+    root: str | os.PathLike[str] | None = None,
 ) -> FreezeManifestFile:
-    """Read and check a freeze manifest (`manifest_problems` must be empty); pass
-    `.manifest` to `genconfig.check_run_config(..., freeze_manifest=)`."""
+    """Read and check a freeze manifest; pass `.manifest` to
+    `genconfig.check_run_config(..., freeze_manifest=)` and `.sha256` to
+    `RunManifest.freeze_manifest_sha256`.
+
+    Raises `FreezeError`: `E_INPUT` (unreadable), `E_MANIFEST` (`manifest_problems`),
+    `E_STATUS` (`require_frozen` and a draft) and, with `check_repository` (default: on
+    when `require_frozen`), `E_GUARD` when the running code or a committed file differs
+    from the manifest (`freeze_differences(path, current_values(root))`, the CI guard run
+    at start-up, so a run from a locally changed checkout never starts). Confirmatory
+    batches (#20) and banks (#26) call it with `require_frozen=True`.
+    """
     try:
         manifest = read_json(path)
     except (OSError, CodecError) as err:
@@ -1313,6 +1601,14 @@ def load_freeze_manifest(
         raise FreezeError(E_MANIFEST, f"{Path(path).name} is not a valid freeze manifest", problems)
     if require_frozen and manifest["status"] != "frozen":
         raise FreezeError(E_STATUS, f"{Path(path).name} is a draft, not a frozen manifest")
+    if require_frozen if check_repository is None else check_repository:
+        differences = freeze_differences(path, current_values(root))
+        if differences:
+            raise FreezeError(
+                E_GUARD,
+                f"the running code or the repository differs from {Path(path).name}",
+                differences,
+            )
     return FreezeManifestFile(Path(path), manifest, file_sha256(path))
 
 
@@ -1600,6 +1896,11 @@ def _cmd_build(args: argparse.Namespace) -> int:
     print(f"wrote {args.out.name} ({args.status}), file SHA-256 {digest}")
     print(f"config.frozen_sha256 {config.frozen_sha256()}")
     print(f"fallback re-rendered: {len(fset.banks)} banks, {len(fset.books)} books reproduce")
+    code = values["generation.code"].value
+    print(f"generation.code: {len(code)} files")
+    for rel in (BANKS_PACKAGE_PATH, LLM_SERVER_CONFIG_PATH):
+        if not any(name == rel or name.startswith(f"{rel}/") for name in code):
+            print(f"note: {rel} is not in the repository, so generation.code does not cover it")
     if pending:
         print(f"pending ({len(pending)}): {', '.join(pending)}")
     return 0

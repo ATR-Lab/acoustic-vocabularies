@@ -23,9 +23,9 @@ check (O6.2.2), the GPU host and the owner and advisor sign-off (section 6).
 | A3 and B prompt hashes, schema hash | `prompts.a3_sha256`, `prompts.b_sha256`, `schema.decoding_sha256`, `meanings.sha256` | frozen generation config |
 | Decoding (0.7, 0.9, 50, 1.0, 512, 16,384) | `decoding.*` | constants; `decoding.implementation` from the GPU host |
 | Seed function and namespaces | `seeds.function`, `seeds.namespaces`, `seeds.reference_digest` | code |
-| Budgets (A: 4 x 3 slots, 40 s, 20-s rating; B: 12 per cell, 576 per attempt, 4 attempts) | `budget.study_a`, `budget.study_b` | constants |
+| Budgets (A: 4 x 3 slots, 40 s, 20-s rating; B: 12 per cell, 576 per attempt, 4 attempts) | `budget.study_a`, `budget.study_b` (with the Study B retention, menu, reserve and attempt rules), `generation.code` | constants, rule text and code (bank builder #26, rater station) |
 | A2 rules (steps, reflection, no restarts) | `a2.rules`, `generation.code` | constants and code |
-| Selector, first-atom, tie and fallback rules | `selector.rules`, `generation.code` | constants and code |
+| Selector, first-atom, tie and fallback rules | `selector.rules`, `generation.code` | constants and code (selector, orchestrator and its helpers, `av_sound` fallback scan, store and atom order) |
 | Fallback banks (64 per profile) and books | `fallback.bank_hash`, `fallback.banks_sha256`, `fallback.books_sha256` | restricted fallback build, re-rendered at the build |
 | Pilot panel timing review | `pilot.timing_review`, `pilot.audit_sha256` | human (O6.2.1, #24 audit tables) |
 | One config hash for every confirmatory run | `config.frozen_sha256`, `config.document` | frozen `generation-config.json` |
@@ -64,8 +64,8 @@ Each item has `key`, `category` (the first part of the key), `value`, `sha256`, 
 | --- | --- |
 | `code` | recomputed from the running code at every guard run |
 | `file` | recomputed from the committed file at `path` at every guard run |
-| `config` | copied from `config.document`; the guard checks the document's hash, compares it with the other items and with the running code (`genconfig.config_differences`) |
-| `recorded` | recorded at the freeze from the GPU host, restricted storage or a human decision; the guard checks its form and that it is present in a frozen manifest |
+| `config` | copied from `config.document`; the guard checks the document's hash, compares it with the other items and with the running code (`genconfig.config_differences`). An item with a `path` must also equal the hash of that committed input whenever the repository carries it: `llm.manifest_sha256` the file SHA-256 of `generation/llm/manifest.json` (#16), `prompts.a3_sha256` and `prompts.b_sha256` the file-set hashes of `generation/prompts/a3` and `generation/prompts/b` (#17) |
+| `recorded` | recorded at the freeze from the GPU host, restricted storage or a human decision; the guard checks its form and that it is present in a frozen manifest. Where the committed LLM manifest records the same value (`freeze.LLM_MANIFEST_FIELDS`: model tokenizer revision, weights, licence, vLLM version, CUDA and driver versions, precision, `max_model_len`, chat template hash), the two must agree |
 
 A frozen manifest has no pending item, a `repo_commit`, a `tag`, an owner and an advisor
 sign-off, and a non-DEMO config. `manifest_problems(manifest)` lists every violation of
@@ -101,13 +101,15 @@ which is the canonical hash of the frozen config's `prompts` object.
 | `runtime.precision`, `runtime.max_model_len`, `runtime.chat_template_sha256` | recorded | LLM manifest (#16) and server log (planned: bfloat16, at least 16,896) |
 | `decoding.temperature` .. `decoding.max_input_tokens` | code | `constants.FROZEN_DECODING`, `constants.MAX_INPUT_TOKENS` |
 | `decoding.implementation` | recorded | structured-output path of the frozen runtime (#16) |
-| `schema.decoding_sha256`, `prompts.a3_sha256`, `prompts.b_sha256`, `meanings.sha256`, `llm.manifest_sha256` | config | the shared hash definitions of `jsonio`, `prompts` and `meanings` |
+| `schema.decoding_sha256`, `meanings.sha256` | config | `jsonio.schema_sha256` of the decoding schema (equal to the LLM manifest's `decoding_schema.sha256`), `MeaningSet.sha256()` |
+| `prompts.a3_sha256`, `prompts.b_sha256` | config | `PromptSet.a3_sha256`, `PromptSet.b_sha256`: `jsonio.file_set_sha256` of `{<mode>/<file>: SHA-256}` under `generation/prompts/<mode>` (`path`) |
+| `llm.manifest_sha256` | config | file SHA-256 of `generation/llm/manifest.json` (`path`) |
 | `seeds.function` | code | `genconfig.SEED_FUNCTION` |
 | `seeds.namespaces` | code | key namespaces, key formats, batch and bank namespace rules, bank ID patterns |
 | `seeds.reference_digest` | code | `seeds.seeds_digest(freeze.reference_seed_keys())` over 2,880 keys: any change to the derivation changes it |
-| `budget.study_a`, `budget.study_b` | code | every budget constant and its derived totals |
+| `budget.study_a`, `budget.study_b` | code | every budget constant and its derived totals; `budget.study_b` also holds the Study B bank rules `freeze.STUDY_B_RULES_TEXT` (traversal, retention of the first 4 options, menu and reserve, slots, attempts, feedback, reserve amendments) |
 | `a2.rules`, `selector.rules` | code | step sets and thresholds from `constants`, and the rule texts `freeze.A2_RULES_TEXT`, `freeze.SELECTOR_RULES_TEXT` |
-| `generation.code` | code | `{module: code digest}` of `freeze.GENERATION_CODE_MODULES` (proposers, prompts, parser, ledger, LLM client, selector, orchestrator); Python 3.11 AST without docstrings, as for the renderer hash. Pending in the draft (section 8) |
+| `generation.code` | code | `freeze.generation_code_digests()`: `{repository path: digest}` of every module and `web/` page of `av_generation` except `freeze.GENERATION_CODE_EXCLUDED`, of `av_sound` `fallback.py`, `grammar.py` and `store.py`, and, once committed, of the Study B bank builder `banks/src/av_banks` (except `freeze.BANKS_CODE_EXCLUDED`) and `generation/llm/server-config.json`. Modules count by their Python 3.11 AST without docstrings (as for the renderer hash), other files by SHA-256 with CRLF read as LF. Pending in the draft (section 8) |
 | `fallback.bank_hash`, `fallback.books_sha256` | config | `fallback_bank_hash` and `book_sha256` per profile of the restricted fallback build |
 | `fallback.banks_sha256` | recorded | `bank_sha256` per profile, filled by `build` after re-rendering |
 | `pilot.timing_review` | recorded | `{panel_sessions, pilot_books, max_atom_minutes, within_budget or bookings_extended, reference}` |
@@ -125,18 +127,28 @@ freeze_differences(active_manifest_path(), current_values()) == []
 - `active_manifest_path()` is the highest frozen `generation/FREEZE-vX.Y.json`, or the
   draft when none exists.
 - `current_values()` recomputes every `code` and `file` item from the running code and the
-  committed files.
+  committed files. Where the repository carries them, it adds what the committed inputs of
+  #16 and #17 pin (`committed_values()`): the hash of the LLM manifest and its fields, and
+  the hashes of the prompt sets.
 - `freeze_differences` reports every `manifest_problems` finding, every item whose current
-  value differs (pending items of a draft are skipped), and every field of
-  `config.document` that differs from the running code.
+  value differs, and every field of `config.document` that differs from the running code.
+  Pending items of a draft are skipped, and so are `config` and `recorded` items while the
+  manifest has no config document: the committed draft does not go stale when #16 and #17
+  land or change their files.
 
-Before G4 the guard checks the draft. A change to a guarded value, for example a new
-threshold after O6.2.2 or the renderer bump to 1.0.0, fails the test until the draft is
-refreshed in the same pull request:
+Before G4 the guard checks the draft. A change to a guarded value fails the test until the
+draft is refreshed in the same pull request:
 
 ```bash
 uv run --project generation python -m av_generation.freeze refresh
 ```
+
+The freeze tests take every value that may change before G4 (the threshold, the renderer
+version, the files of #16 and #17) from the repository, so the refreshed draft is all a
+pull request needs from #25. Two changes need more, from the sound stack, in the same pull
+request (`sound/docs/fallback.md` section 8): a new threshold after O6.2.2 and the
+renderer bump to 1.0.0 both regenerate the DEMO fallback manifest, which the tests use as
+the fallback set.
 
 After G4 the guard checks `FREEZE-v1.0.json`. Any change to a frozen value fails CI. The
 fix is not a refresh: it needs a new protocol version and a new freeze
@@ -202,8 +214,8 @@ a work copy of the commit to freeze. Keep restricted files outside the repositor
    `pilot.timing_review` and `pilot.audit_sha256` (#24 audit tables of the pilot books).
 4. **Frozen config:** build the frozen `generation-config.json` with
    `genconfig.build_generation_config` (the same call as the pilot runs), using the
-   frozen LLM manifest, decoding schema, prompt sets, meaning set, threshold and
-   restricted fallback set.
+   committed LLM manifest (`generation/llm/manifest.json`), decoding schema, committed
+   prompt sets (`generation/prompts/`), meaning set, threshold and restricted fallback set.
 5. **Sign-off (human):** the owner and the advisor comment on #25 with the draft's
    `table` output. Copy the links of the comments.
 6. **Build:**
@@ -219,12 +231,17 @@ a work copy of the commit to freeze. Keep restricted files outside the repositor
 
    `build` takes the recorded values from the draft and the config values from the
    config, and recomputes the code and file values. It re-renders the fallback set and
-   refuses a pending item, a DEMO config or fallback set, a missing sign-off, or an LLM
-   manifest in the repository that does not hash to the config's value.
+   refuses a pending item, a DEMO config or fallback set, a missing sign-off, a fallback
+   set that does not reproduce, and any value that disagrees with the committed LLM
+   manifest (its file hash, precision, `max_model_len`, chat template, tokenizer revision,
+   weights, ...) or prompt sets. It prints how many files `generation.code` covers and a
+   note when the bank builder or the LLM server config is not in the repository.
 7. **Check:** run `python -m av_generation.freeze check` (it now picks
    `FREEZE-v1.0.json`) and `verify generation/FREEZE-v1.0.json --fallback <restricted manifest>`.
 8. **Commit and tag (human):** delete the draft, commit `FREEZE-v1.0.json`, create a signed
-   tag (`git tag -s generation-freeze-v1.0`) and push. Copy the five `apparatus` values
+   tag (`git tag -s generation-freeze-v1.0`) and push. No test needs a change: the tests
+   that read the committed draft skip once it is gone, the others build their own draft,
+   and `test_post_g4_layout_keeps_the_guard_green` checks this layout. Copy the five `apparatus` values
    into the apparatus manifest. Record the tag and the manifest's file SHA-256 on #25.
 9. **Runs:** confirmatory batches and banks use
    `python -m av_generation.freeze config generation/FREEZE-v1.0.json --out <run>/generation-config.json`
@@ -239,6 +256,11 @@ genconfig.check_run_config(config, kind="confirmatory", freeze_manifest=loaded.m
 # RunManifest.freeze_manifest_sha256 = loaded.sha256
 ```
 
+With `require_frozen=True`, `load_freeze_manifest` also runs the CI guard against the
+running code and the committed files of the run host (`check_repository`, on by default
+for frozen manifests) and raises `E_GUARD` with every difference. A run from a checkout
+with an edited selector, prompt template or LLM manifest therefore never starts.
+Confirmatory batches (#20, O7.1.1) and banks (#26, #28) call it this way.
 `check_run_config` refuses a draft (`E_FREEZE_STATUS`) and a config whose hash differs
 from `config.frozen_sha256` (`E_FREEZE_MISMATCH`). Pilot runs record their own unfrozen
 config hash. Pilot books and banks keep their pilot IDs (`A-P..`, `bank-P..`) and stay
@@ -250,7 +272,7 @@ archived. `bank_manifest.require_bank_set` refuses a pilot bank in a confirmator
 guard. It contains:
 
 - every `code` and `file` item, from this commit. `generation.code` stays pending while
-  #16-#20 implement those modules: the code digests are taken by `build` at G4.
+  the parallel issues add and change modules: the code digests are taken by `build` at G4.
 - three development-time values from Hugging Face API metadata at the pinned revision:
   `model.weights_sha256` (from the LFS SHA-256 of the four shards), `model.tokenizer_revision`
   and `model.license`. Confirm them on the GPU host at G4.
@@ -267,6 +289,10 @@ Keep it current with `python -m av_generation.freeze refresh`. Delete it in the 
 | The frozen config document is an item (`config.document`) | one self-contained file; the config hash, the config items and the running code are cross-checked |
 | Extra items: `config.document`, `renderer.implementation`, `renderer.spec_sha256`, `validator.reserved_sha256`, `separation.evidence_sha256`, `seeds.reference_digest`, `fallback.banks_sha256`, `pilot.audit_sha256`, `generation.code` | the checklist names the implementation manifest, the O6.2.2 evidence, both fallback parts, the pilot audits and frozen rules; values alone do not freeze code |
 | `generation.code` is pending in the draft and computed by `build` | the modules are implemented by parallel issues before G4; a digest in the draft would go stale with each of them |
+| `generation.code` freezes every module and page of `av_generation` except a named exclusion list (reports, demos, simulators, benchmarks, test doubles, practice sessions, the threshold tool, this module), plus the `av_sound` fallback scan, store and atom order, the bank builder and the LLM server config | private helper modules of #16 and #20 and the Study B builder implement frozen rules; an include list would miss them. A module added later is frozen unless review adds it to the list |
+| The Study B bank rules are rule text in `budget.study_b` | the retention, menu, reserve and attempt rules can be read without the code; the builder's code is in `generation.code` |
+| The committed LLM manifest and prompt sets are compared only once a manifest has a config document | the draft does not go stale when #16 and #17 land; a frozen manifest is compared with them at every guard run |
+| `load_freeze_manifest(..., require_frozen=True)` runs the guard at run start | CI only checks pushed commits; a run host could carry local edits |
 | `prompt_hash` = canonical hash of the config's `prompts` object | the apparatus has one prompt field for two prompt sets |
 | `model.weights_sha256` = `file_set_sha256` of the `*.safetensors` files | the shared file-set definition; computable from Hugging Face LFS metadata and on the GPU host |
 | Threshold compared as text | the frozen value is the exact decimal text of `sound/config/validator.json` |

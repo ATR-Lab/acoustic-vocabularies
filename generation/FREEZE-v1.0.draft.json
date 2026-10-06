@@ -351,18 +351,18 @@
       "category": "prompts",
       "guard": "config",
       "key": "prompts.a3_sha256",
-      "path": null,
+      "path": "generation/prompts/a3",
       "sha256": null,
-      "source": "PENDING (G4): PromptSet.set_sha256 of the frozen A3 prompt set (#17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "source": "PENDING (G4): PromptSet.a3_sha256 (file-set hash of generation/prompts/a3, #17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
       "value": null
     },
     {
       "category": "prompts",
       "guard": "config",
       "key": "prompts.b_sha256",
-      "path": null,
+      "path": "generation/prompts/b",
       "sha256": null,
-      "source": "PENDING (G4): PromptSet.set_sha256 of the frozen Study B prompt set (#17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "source": "PENDING (G4): PromptSet.b_sha256 (file-set hash of generation/prompts/b, #17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
       "value": null
     },
     {
@@ -378,7 +378,7 @@
       "category": "llm",
       "guard": "config",
       "key": "llm.manifest_sha256",
-      "path": null,
+      "path": "generation/llm/manifest.json",
       "sha256": null,
       "source": "PENDING (G4): file SHA-256 of the LLM manifest (#16); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
       "value": null
@@ -459,17 +459,24 @@
       "guard": "code",
       "key": "budget.study_b",
       "path": null,
-      "sha256": "617b2e2a4ca0a55a79c675bdde856fa2993f245dd3a1575750a3a7119e6c8883",
-      "source": "av_generation.constants (Study B protocol section 4): 12 slots per cell, 4 retained (3 shown + 1 reserve), 576 slots per attempt, 4 attempts",
+      "sha256": "9572d9d42d6b65d8a3e4563d663bfe5d29d30cc9e8a8387b77b59bd3e77970f5",
+      "source": "av_generation.constants and freeze.STUDY_B_RULES_TEXT (Study B protocol section 4): 12 slots per cell, 4 retained (3 shown + 1 reserve), 576 slots per attempt, 4 attempts; implemented by the bank builder (#26, in generation.code)",
       "value": {
+        "attempts": "a cell without 4 retained options after its slots fails the attempt; the next attempt is independently seeded; the first complete attempt is used; no cells are mixed across attempts; after the last failed attempt the bank is unavailable",
         "cells": 48,
+        "feedback": "meanings, schema and profile constraints, validation history and the retained options; no rater, participant or test feedback",
         "max_attempts": 4,
         "max_slots": 2304,
+        "menu": "retained options 1-3 are the displayed menu; option 4 is the reserve",
         "options_per_cell": 4,
+        "reserve": "the reserve may replace an unusable unheard, uncommitted menu option only before either partner hears that wave's menu (recorded bank amendment, rechecked)",
+        "retention": "per cell, in slot order, retain the first 4 technically valid options whose waveform hashes are distinct in the cell and that pass the checks against every option retained for another atom under that profile",
         "shown_options": 3,
         "slot_cap_ms": 40000,
+        "slots": "invalid, duplicate, incompatible, timed-out and malformed proposals consume their slots; no corrective calls beyond the cap",
         "slots_per_attempt": 576,
-        "slots_per_cell": 12
+        "slots_per_cell": 12,
+        "traversal": "the 16 atoms in the stored order under each of P1, P2 and P3"
       }
     },
     {
@@ -529,7 +536,7 @@
       "key": "generation.code",
       "path": null,
       "sha256": null,
-      "source": "PENDING (G4): code digests of the generation modules, computed by `python -m av_generation.freeze build`; left pending in the draft while #16-#20 implement them",
+      "source": "PENDING (G4): code digests of the generation modules, computed by `python -m av_generation.freeze build`; left pending in the draft while the parallel generation issues add and change modules",
       "value": null
     },
     {
