@@ -61,7 +61,8 @@ def prepare(package_directory, package_hash, output, *, speech_directory=None, s
     from av_sound.package import load_package
     source = local_path(package_directory)
     output = local_path(output)
-    need(any(part in (".local", "private", "local-data") for part in output.parts), "MOCK_PRIVATE_OUTPUT")
+    # Skip the root and first level: on macOS every temp path resolves under the system /private.
+    need(any(part in (".local", "private", "local-data") for part in output.parts[2:]), "MOCK_PRIVATE_OUTPUT")
     need(not output.exists() and output != source and source not in output.parents, "MOCK_OUTPUT_EXISTS_OR_OVERLAPS")
     need(is_hash(package_hash), "MOCK_PACKAGE_HASH")
     package = load_package(source)
