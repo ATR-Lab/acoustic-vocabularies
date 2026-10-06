@@ -21,7 +21,7 @@ every candidate.
 | Bank ID | dyad-slot sequence (schedules allocation, #31): `bank-P001`.., `bank-C001`..`bank-C064` (main), `bank-C065`..`bank-C072` (spares), or `DEMO-...` | names, slot IDs, cap keys, the default seed namespace |
 | `permutation.json` of the unit | schedules (#29), package-safe (`av-schedules/permutation` v2) | `labels` (atom -> semantic label), `atom_order` (the traversal order), `unit_id` (the manifest's `dyad_slot`) |
 | `generation-config.json` | generation config (`genconfig`) | separation threshold, code pins, budgets; its hash is the bank's `generation_config_sha256` |
-| Meaning set, B prompt set, decoding schema | #17, `meanings` | the prompt; their hashes must equal the config's |
+| Meaning set, B prompt set, decoding schema | #17 (`generation/prompts/`), `meanings`, #16 (`sound/schema/recipe.schema.json`, unchanged) | the prompt and the model call; the meaning-set hash, the B prompt hash (`prompts.b_sha256`) and the decoding-schema hash must equal the config's |
 | LLM endpoint | #16 (pinned vLLM server on the LLM host) | one call per slot |
 | Freeze manifest | #25 (G4) | confirmatory banks only: its `config.frozen_sha256` must equal the config hash |
 
@@ -211,7 +211,7 @@ exits 0 or 1.
 | Module | API |
 | --- | --- |
 | `builder` | `bank_spec(bank_id, permutation, *, bank_version="1.0.0", seed_namespace=None) -> BankSpec`; `BankBuilder(spec, bank_dir, *, config, proposer, clock, run_id, kind=None, freeze_manifest=None, ledger_factory=slot_ledger, workers=1, reserved=None, fsync=True)` with `.check()`, `.open()`, `.run_attempt(n) -> AttemptSummary`, `.build() -> BuildResult`; `AttemptRun(builder, attempt).run_slot(profile, atom) -> SlotRecord`; `default_seed_namespace`; `BankBuildError` (`E_EXISTS`, `E_ORDER`, `E_SPEC`, `E_INTERNAL`); `LedgerLike`, `LedgerFactory` |
-| `proposer` | `SlotProposer` protocol (`check_config(config)`, `propose(cell, *, seed_key, slot_id) -> Proposal`); `LlmSlotProposer(client, prompt_set, decoding_schema, *, prompt_builder=build_b_prompt, parser=parse_output)`; `check_prompt_inputs`; `Proposal`; `ProposerConfigError` |
+| `proposer` | `SlotProposer` protocol (`check_config(config)`, `propose(cell, *, seed_key, slot_id) -> Proposal`); `LlmSlotProposer(client, prompt_set, decoding_schema, *, prompt_builder=build_b_prompt, parser=parse_output, threshold=None)` (the CLI passes the config threshold to the prompt builder); `check_prompt_inputs`, `b_prompt_sha256(prompt_set)` (#17's `b_sha256`); `Proposal`; `ProposerConfigError` |
 | `run` | `build_banks(specs, *, runs_root, run_id, config, proposer, clock, kind=None, freeze_manifest=None, freeze_manifest_sha256=None, llm_runtime=None, workers=3, parallel_banks=1, ledger_factory=slot_ledger) -> RunResult` |
 | `manifest` | `BankManifest` (typed `bank-manifest`; `.read`, `.write`, `.bank_sha256()`, `.cell()`, `.menu(amendments)`), `read_manifest`, `read_amendments`, `manifest_from_files`, `AttemptSummary` (`attempt.json`), `to_dyad_bank(manifest) -> av_sound.dyad_bank.DyadBank` |
 | `verify` | `verify_bank(bank_dir) -> VerifyReport` (`ok`, `problems`, `bank_sha256`, `pairs_checked`, ...); `check_pairs`, `check_against`; `PAIRS_PER_PROFILE = 1920` |

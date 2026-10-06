@@ -29,6 +29,7 @@ import importlib.util
 if importlib.util.find_spec("av_banks") is None or importlib.util.find_spec("hypothesis") is None:
     collect_ignore_glob = ["*"]
 else:
+    import dataclasses
     import hashlib
     import json
     import random
@@ -78,7 +79,7 @@ else:
 
     from av_banks.builder import BankBuilder, bank_spec
     from av_banks.permutation import load_permutation
-    from av_banks.proposer import LlmSlotProposer
+    from av_banks.proposer import LlmSlotProposer, b_prompt_sha256
 
     ROOT = Path(__file__).resolve().parents[2]
     FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -169,10 +170,11 @@ else:
             kwargs["cap"] = 10**6
             super().__init__(path, **kwargs)
 
-    def dump_prompt(cell, *, prompt_set):
+    def dump_prompt(cell, *, prompt_set, threshold=None):
         """A B prompt holding everything in the `BCellState` (and the meaning text)."""
         context = to_json_value(cell)
         context["meaning"] = prompt_set.meanings.text(cell.semantic_label)
+        context["threshold"] = threshold
         text = json.dumps(context, sort_keys=True, separators=(",", ":"))
         messages = (
             {"role": "system", "content": prompt_set.b_instruction},
@@ -385,16 +387,25 @@ else:
         return json.loads(sound_schema_path("recipe.schema.json").read_text(encoding="utf-8"))
 
     def make_prompt_set(meanings, instruction="DEMO B instruction (synthetic, not a study text)"):
-        files = {"b-instruction.txt": hashlib.sha256(instruction.encode()).hexdigest()}
-        return PromptSet(
-            name="DEMO-prompts-b",
-            demo=True,
-            a3_instruction="DEMO A3 instruction (synthetic)",
-            b_instruction=instruction,
-            meanings=meanings,
-            files=files,
-            set_sha256=file_set_sha256(files),
-        )
+        """A synthetic B prompt set. Fields #17 adds to `PromptSet` (sections, per-mode
+        hashes) are filled when the class has them, so the kit works before and after #17."""
+        files = {"b/instruction.txt": hashlib.sha256(instruction.encode()).hexdigest()}
+        values = {
+            "name": "DEMO-prompts-b",
+            "demo": True,
+            "a3_instruction": "DEMO A3 instruction (synthetic)",
+            "b_instruction": instruction,
+            "meanings": meanings,
+            "files": files,
+            "set_sha256": file_set_sha256(files),
+            "a3_sections": {},
+            "b_sections": {},
+            "a3_sha256": file_set_sha256({"a3/instruction.txt": "a" * 64}),
+            "b_sha256": file_set_sha256(files),
+            "schema_sha256": schema_sha256(_decoding_schema()),
+        }
+        names = {f.name for f in dataclasses.fields(PromptSet)}
+        return PromptSet(**{k: v for k, v in values.items() if k in names})
 
     def make_config(name="DEMO-gen-banks", *, prompt_set, llm=None, threshold=THRESHOLD):
         fallback = load_fallback(ROOT / "sound/testvectors/fallback/demo-manifest.json")
@@ -402,7 +413,7 @@ else:
             name,
             llm_manifest_sha256=llm,
             decoding_schema_sha256=schema_sha256(_decoding_schema()),
-            prompts=gc.PromptHashes("a" * 64, prompt_set.set_sha256),
+            prompts=gc.PromptHashes("a" * 64, b_prompt_sha256(prompt_set)),
             meanings_sha256=prompt_set.meanings.sha256(),
             separation_threshold=threshold,
             fallback=gc.fallback_pins(fallback),
@@ -421,6 +432,7 @@ else:
                 self.decoding_schema,
                 prompt_builder=dump_prompt,
                 parser=strict_parser,
+                threshold=self.config.separation_threshold,
             )
 
         def spec(self, bank_id="DEMO-bank-01", permutation=None, **kwargs):

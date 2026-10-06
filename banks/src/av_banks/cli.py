@@ -90,7 +90,7 @@ def make_proposer(args: argparse.Namespace, config: GenerationConfig) -> Any:  #
     """The model proposer for `build`: a factory over the new run's layout, so the #16
     client logs every call to the run's `logs/llm-requests.jsonl`."""
     meanings = load_meanings(args.meanings, expected_sha256=config.meanings_sha256)
-    prompt_set = load_prompt_set(args.prompts, meanings=meanings)
+    prompt_set = load_prompt_set(args.prompts, meanings=meanings)  # #17 checks its hash file
     schema = read_json(args.decoding_schema)
     if not isinstance(schema, dict):
         raise ValueError(f"{args.decoding_schema}: a JSON Schema is an object")
@@ -107,7 +107,7 @@ def make_proposer(args: argparse.Namespace, config: GenerationConfig) -> Any:  #
             runtime=args.llm_runtime,
             model_revision=config.model.revision,
         )
-        return LlmSlotProposer(client, prompt_set, schema)
+        return LlmSlotProposer(client, prompt_set, schema, threshold=config.separation_threshold)
 
     return factory
 

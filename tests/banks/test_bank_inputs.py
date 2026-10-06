@@ -204,6 +204,10 @@ def test_proposer_inputs_must_match_the_config(kit):
     with pytest.raises(ProposerConfigError, match="decoding schema"):
         LlmSlotProposer(script.client(), kit.prompt_set, schema).check_config(kit.config)
     LlmSlotProposer(script.client(), kit.prompt_set, kit.decoding_schema).check_config(kit.config)
+    with pytest.raises(ProposerConfigError, match="prompt threshold"):
+        LlmSlotProposer(
+            script.client(), kit.prompt_set, kit.decoding_schema, threshold="0.20"
+        ).check_config(kit.config)
 
 
 # -- the proposer's model steps ----------------------------------------------

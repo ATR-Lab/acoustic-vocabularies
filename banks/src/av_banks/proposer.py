@@ -4,7 +4,7 @@ The bank builder (`av_banks.builder`) owns the slot: it reserves it in the ledge
 validates the candidate against the retained options and consumes it. The proposer only
 turns one `BCellState` into one `Proposal`:
 
-1. `build_b_prompt(cell, prompt_set=)` (#17 B mode): meanings, schema/profile
+1. `build_b_prompt(cell, prompt_set=, threshold=)` (#17 B mode): meanings, schema/profile
    constraints, validation history and the full retained-prefix constraints; never a
    rating, participant or test field (`BCellState` carries none);
 2. `client.count_prompt_tokens(messages)` (#16, the server's `/tokenize`); above
@@ -88,13 +88,21 @@ Parser = Callable[[str | None], ParsedOutput]
 """`parse_output(text) -> ParsedOutput` (#17)."""
 
 
+def b_prompt_sha256(prompt_set: PromptSet) -> str:
+    """The B prompt-set hash the config pins (`GenerationConfig.prompts.b_sha256`): #17's
+    `PromptSet.b_sha256` (the `b/` files), or the whole set's hash for a set without it."""
+    value = getattr(prompt_set, "b_sha256", None)
+    return value if isinstance(value, str) else prompt_set.set_sha256
+
+
 def check_prompt_inputs(
     prompt_set: PromptSet, decoding_schema: Mapping[str, Any], config: GenerationConfig
 ) -> None:
     """Refuse a B prompt set, meaning set or decoding schema other than the config's."""
     problems = []
-    if prompt_set.set_sha256 != config.prompts.b_sha256:
-        problems.append(f"B prompt set {prompt_set.set_sha256} != config {config.prompts.b_sha256}")
+    found_b = b_prompt_sha256(prompt_set)
+    if found_b != config.prompts.b_sha256:
+        problems.append(f"B prompt set {found_b} != config {config.prompts.b_sha256}")
     if prompt_set.meanings.sha256() != config.meanings_sha256:
         problems.append("the prompt set's meaning set differs from the config's")
     found = schema_sha256(dict(decoding_schema))
@@ -120,8 +128,12 @@ class LlmSlotProposer:
         prompt_builder: PromptBuilder = build_b_prompt,
         parser: Parser = parse_output,
         max_input_tokens: int = MAX_INPUT_TOKENS,
+        threshold: str | None = None,
     ) -> None:
         self.client = client
+        self.threshold = threshold
+        """The separation threshold shown in the prompt (the config's; passed to the
+        prompt builder as `threshold=`). `None` leaves the builder's default."""
         self.prompt_set = prompt_set
         self.decoding_schema = dict(decoding_schema)
         self.schema_sha256 = schema_sha256(self.decoding_schema)
@@ -131,10 +143,15 @@ class LlmSlotProposer:
 
     def check_config(self, config: GenerationConfig) -> None:
         check_prompt_inputs(self.prompt_set, self.decoding_schema, config)
+        if self.threshold is not None and self.threshold != config.separation_threshold:
+            raise ProposerConfigError(
+                f"prompt threshold {self.threshold} != config {config.separation_threshold}"
+            )
 
     def propose(self, cell: BCellState, *, seed_key: str, slot_id: str) -> Proposal:
         seed = seed_from_key(seed_key)
-        prompt = self._build(cell, prompt_set=self.prompt_set)
+        extra = {} if self.threshold is None else {"threshold": self.threshold}
+        prompt = self._build(cell, prompt_set=self.prompt_set, **extra)
         prompt_sha = prompt.prompt_sha256
         try:
             tokens_in = self.client.count_prompt_tokens(prompt.messages)
