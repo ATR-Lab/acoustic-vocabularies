@@ -91,7 +91,7 @@ from the provisional headers to the template headers is still **Pending**.
 | trial log `response_code` | `commit`, `dont_know`, `timeout`; empty = no response recorded | producer |
 | `technical_fault_code` | empty, or codes `^[A-Z][A-Z0-9_]{0,79}$` joined by `;`; fault type by `vocab.fault_type` (`AUDIO_UNDERRUN`, `MISSING_PLAYBACK`, `HASH_MISMATCH`, `FAILED_RESET`, `MISSING_RESPONSE_LOG`, `PRESENTATION_FREEZE` and known producer codes; any other code: `other`); also `presentation_freeze` when `frame_freeze_ms` > 250 and `failed_reset` when `reset_ok` is `false` | producer codes; mapping proposal |
 | `waveform_sha256` | file SHA-256 for playback from a package file; PCM-sample SHA-256 (`composite_sha256`, `pcm_sha256`) for audio composed in memory; empty only for composed audio with a `pcm_sha256` extension value | **Pending** #64/#72 |
-| extension columns | trial log and exposure ledger may end with `pcm_sha256` (`templates.EXTENSION_COLUMNS`) | proposal |
+| extension columns | trial log may end with `pcm_sha256`; exposure ledger with `pcm_sha256`, `trial_ref` (the `trial_id` of the attempt that requested the play), in that order, each optional (`templates.EXTENSION_COLUMNS`) | proposal |
 | run sheet `start_time`, `end_time`; deviations `timestamp` | ISO 8601 with seconds and a UTC offset, e.g. `2027-03-01T09:30:00+01:00` (`Z` for UTC); naive times refused | proposal |
 | deviations `operator`, `reviewer`; run sheet `operator_signoff` | coded staff IDs `^[A-Z]{1,3}[0-9]{2,4}$` (e.g. `S03`), never names; never copied to outputs | proposal |
 | run sheet `comfort_check` | `ok`, `adjusted`, `stopped` | proposal |
@@ -173,26 +173,64 @@ without editing `schemas.py`.
 ## Reconciliation (#33)
 
 Producer: reconciliation scripts (#33). Consumers: #34 (derived tables), #35 (reconciled
-tables), data-lock gates (reports). Design: `analysis/docs/reconciliation.md` (with the
-discrepancy-code guide).
+tables), data-lock gates O7.3.1 and O8.3.1 (reports and manifests), engineering-pilot
+check 8 (Common procedures section 2). Design, rules and the discrepancy-code guide:
+[`analysis/docs/reconciliation.md`](../../analysis/docs/reconciliation.md). Sample
+reports: [`analysis/examples/reconciliation-demo/`](../../analysis/examples/reconciliation-demo/README.md).
+
+Commands (exit 0 success, 1 findings, 2 refused input):
 
 - `av-analysis reconcile <visit_id>... --root DIR` (or `--all`): checks C1-C8 per visit,
   `reconciled/<visit_id>/reconciliation.json`
   ([schema](../../analysis/schema/reconciliation.schema.json)): `inputs` (every file read,
-  with SHA-256), `raw_unchanged`, `checks` (C1..C8: `status` `pass`, `explained`, `fail`,
-  `not_applicable`; counts), `discrepancies` (`seq`, `check`, `code`, `rows`,
-  `deviation_id`, `resolved`, `suspension_event`, `detail`), `summary`. Same inputs, same
-  bytes. Exit 1 when a visit fails.
-- `av-analysis derive --root DIR`: the six tables and the area manifests.
-- `av-analysis synth-logs --demo-seed DEMO-... --out DIR [--fault NAME --visit ID]`:
-  SYNTHETIC roots for every visit type; fault injection (`codes.FAULT_INJECTIONS`).
+  with size and SHA-256), `raw_unchanged`, `checks` (C1..C8: `status` `pass`,
+  `explained`, `fail`, `not_applicable`; counts), `discrepancies` (`seq`, `check`,
+  `code`, `rows`, `deviation_id`, `resolved`, `suspension_event`, `detail`), `summary`.
+  Same inputs, same bytes. Exit 1 when a visit fails.
+- `av-analysis derive --root DIR`: the six tables and `reconciled/manifest.json`,
+  `derived/manifest.json`; refuses a report whose inputs changed since it was written.
+- `av-analysis synth-logs --demo-seed DEMO-... --out DIR [--study] [--set] [--units N]
+  [--max-persons N]`: a SYNTHETIC root with clean logs for every visit type;
+  `--fault NAME --visit ID [--documented]` injects a fault (`codes.FAULT_INJECTIONS`);
+  `--fault-suite` runs all of them; `--examples` rewrites the sample reports.
 
-Synthetic generators write `raw/` and `inputs/` only through
-`paths.write_synthetic_input`; synthetic event IDs are opaque.
+Raw-log rules beyond `vocab` (Pending confirmation by #67, #72, #73; full table in the
+guide): trial-log `message_id` is the cue (message, atom or speech ID; empty for the
+profile menu and no-cue trials); exposure-ledger `stage` is the trial type of the play's
+opportunity (or `practice`), `atom_or_message_id` the item heard (menus: the atom),
+`candidate_id` `<atom_id>-<rank>` or the preset `P1`..`P3`, `presentation_index` the play
+number within its trial, and `trial_ref` links the play to its trial; deviations
+`prior_audio_exposure` is `none`, `audible` or `uncertain` (empty: uncertain).
 
-**Pending (#33):** loader value rules, reference-input details, the per-check rules,
-how counts in `visit-status` and `enrollment` are computed, sample reports per visit
-type, timings.
+Deviation links: a row-level link (`deviation_id`, `matching_deviation_id`) or a record
+whose `event_id` names a row resolves any code; a record naming only the visit, person
+slot or participant resolves codes whose category fits
+(`reconcile_checks.LINK_CATEGORIES`). Unresolved discrepancies fail the visit through C8
+`DEVIATION_MISSING`.
+
+How the tables are computed (details in the guide, section 8):
+
+- `trials`: scheduled trials and retries linked to a logged trial; `valid_delivery` needs
+  the scheduled linked plays all `confirmed_audible` or `estimated` with
+  `observed_complete` (no-cue trials: always), a response code for test trials, no fault
+  type and no hash or play-count discrepancy; prior counts and `novelty` from the
+  exposure fold (plays linked by `trial_ref`, trial-log order); a `COUNT_MISSING_TRIAL`
+  resolved by a `technical` or `audio` record becomes a `row_source` deviation row.
+- `endpoints`: `accounted_n` counts trials rows that are not retries (lost rows
+  included); `valid_delivery_n` counts an opportunity valid also when its retry is;
+  `missing_reason` `withdrawn_mid_battery` when a missing trial is resolved by a
+  `withdrawal` or `comfort` record, `technical_stop` when unresolved in an interrupted
+  export.
+- `visit-status`: `withdrawn` and `missed` from `withdrawal` and `missed_visit` records;
+  `pair_gap_hours` is the absolute gap between the two members' session starts;
+  deviation counts include study-wide records naming the visit or a row of it.
+- `exposure-cumulative`: counts of plays that consumed exposure, by phase;
+  `violations` are the C4 codes of the person's reports naming the item.
+- `enrollment`: from the reveal logs; `screening_cases_n` null (Pending #73).
+
+Not checkable yet (Pending): nonsemantic profile-example and speech-command hashes (#64,
+#71), per-atom recipe identity (#70, #26), the deviations log's append-only prefix
+across runs, screening cases.
 
 ## Analysis pipeline (#34)
 

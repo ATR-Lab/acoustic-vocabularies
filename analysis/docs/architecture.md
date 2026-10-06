@@ -273,8 +273,9 @@ apparatus faults.
 
 - **Templates are the log format; values follow the producer.** Loaders accept the
   methodology template headers exactly, plus the listed extension columns
-  (`templates.EXTENSION_COLUMNS`: `pcm_sha256`). The provisional exports on main (ADR-007,
-  `data-csv-provisional-1`) use other headers; their values (`playback_status`,
+  (`templates.EXTENSION_COLUMNS`: `pcm_sha256`; exposure ledger also `trial_ref`, #33).
+  The provisional exports on main (ADR-007, `data-csv-provisional-1`) use other
+  headers; their values (`playback_status`,
   `audible_status`, `response_code`, `;`-joined uppercase `technical_fault_code`) are
   adopted in `vocab`, so the remaining adapter maps columns only: **Pending** (#72/#73
   with #33).

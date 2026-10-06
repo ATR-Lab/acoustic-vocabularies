@@ -192,10 +192,13 @@ TEMPLATE_SHA256: Final[dict[str, str]] = {t.filename: t.sha256 for t in TEMPLATE
 
 # Optional trailing columns accepted after the template columns, in this order (the
 # loaders refuse any other extra column). ``pcm_sha256``: the PCM-sample hash of composed
-# audio, which has no file hash (``vocab``: ``waveform_sha256``).
+# audio, which has no file hash (``vocab``: ``waveform_sha256``). ``trial_ref`` (#33): the
+# trial-log ``trial_id`` of the attempt that requested the play (the provisional export's
+# ``attempt_id``); the exposure-ledger template has no link from a play to its scheduled
+# opportunity, and reconciliation needs one to count plays per trial and verify delivery.
 EXTENSION_COLUMNS: Final[dict[TemplateName, tuple[str, ...]]] = {
     "trial-log": ("pcm_sha256",),
-    "exposure-ledger": ("pcm_sha256",),
+    "exposure-ledger": ("pcm_sha256", "trial_ref"),
     "visit-run-sheet": (),
     "deviations": (),
 }
@@ -314,6 +317,7 @@ COLUMN_CLASS: Final[dict[str, ColumnClass]] = {
     "matching_deviation_id": "link",
     # extension columns
     "pcm_sha256": "audio",
+    "trial_ref": "identity",
     # free text
     "deviations": "free_text",
     "observed_problem": "free_text",
