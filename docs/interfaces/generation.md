@@ -83,13 +83,30 @@ practice-mode storage, kiosk setup.
 
 ## Separation-threshold listening tool (#23)
 
-*Pending (#23).* Skeleton: `generate_stimuli(set_id, config=DEFAULT_CONFIG) ->
-ThresholdStimulusSet`, `plan_session(stimuli, session_id, *, listener_id, station,
-gain_db, tryout, created_utc) -> ThresholdSession`, `summarize(trials)`,
-`export_csv(trials, stimuli, path)`, `TRIAL_CSV_COLUMNS`, `SUMMARY_CSV_COLUMNS`; records
-`ThresholdStimulusSet`, `ThresholdSession` (`threshold-session.schema.json`),
-`ThresholdTrial`, `PlayEvent` (`threshold_first`/`threshold_second`). To fill: runner
-routes, operator guide link.
+Implemented. Guide, formats and decisions:
+[`generation/docs/threshold-tool.md`](../../generation/docs/threshold-tool.md). Hand-off to
+O6.2.2: the tool, the operator guide, the CSV formats and the summary script; to G4
+(#25): the summary document (`summary.json`, `av-generation/threshold-summary` v1) as
+the threshold evidence file. The tool reports data and never sets the threshold.
+
+| Module | Public API |
+| --- | --- |
+| `threshold` | `DEFAULT_CONFIG` (3 profiles x 7 bins 0.050..0.200, half-width 0.0125, 8 pairs per bin, 56 catch pairs, 500-ms gap = 224 trials); `check_config`, `load_config`, `n_trials`, `bin_limits`, `in_bin` (exact, `[c-h, c+h)`); `generate_stimuli(set_id, config=DEFAULT_CONFIG, *, reserved=None) -> ThresholdStimulusSet`; `check_stimuli(stimuli, *, reserved=None, render=True) -> tuple[str, ...]`; `coverage`, `expected_pair_ids`, `expected_seed_keys`, `write_stimuli`; `plan_session(stimuli, session_id, *, listener_id, station, gain_db, tryout, created_utc) -> ThresholdSession`; `check_session`; `session_presentations`, `trial_id`; `check_plays(session, stimuli, plays, trials, *, complete=True) -> PlayCheck`; `export_csv(trials, stimuli, path) -> sha256`, `read_trials_csv(path)`, `TRIAL_CSV_COLUMNS`; `summarize(trials)` (`SUMMARY_CSV_COLUMNS`), `wilson_interval(k, n)`, `fit_logistic`, `fit_summary` (`FIT_COLUMNS`), `build_summary`, `write_summary`, `write_summary_csv`, `write_fits_csv`, `plot_summary`; `ThresholdError(code)` |
+| `threshold_runner` | `open_threshold_run(runs_root, run_id, kind, stimuli, *, clock) -> RunLayout`, `load_run`, `read_run_records`; `ThresholdRunner(layout, stimuli, session, *, clock, fsync=True)`; `create_threshold_app(runner)` with `ROUTES` (`/threshold/`, `/threshold/api/state`, `next`, `audio/{token}`, `trials/{i}/played`, `trials/{i}/response`, `trials/{i}/skip`), static page `STATIC_DIR` (`web/threshold/`); `BotListener`, `run_bot_session(client, session, stimuli, listener=None)`; `export_run(layout, out_dir, *, tryout, label=None, plot=True) -> ExportResult`; `RunnerError(code, status)` |
+| `threshold_cli` | `python -m av_generation.threshold_cli stimuli \| check \| session \| export \| summary \| demo`; `run_demo(out_dir, *, sessions, small)` |
+
+Records: `ThresholdStimulusSet` (`threshold/stimuli.json` of the run; set hash `sha256()`;
+DEMO example `generation/examples/threshold/demo-stimuli.json`, set `DEMO-T1`),
+`ThresholdSession` (`threshold/sessions/<session>.json`, written before the first trial;
+`ab_order_rule = "balanced_per_bin"`), `ThresholdTrial` (`logs/threshold-trials.jsonl`),
+`PlayEvent` (`logs/plays.jsonl`, contexts `threshold_first`/`threshold_second`,
+`audio_kind="atom"`, `trial_id = <session>.t<NNN>`, refusals `E_TOKEN_USED` and
+`E_ALREADY_PLAYED`) and `TimingEvent` (`component="threshold"`: `session_start`,
+`session_end`, `operator_action` for skips, `log_repaired`). Seed keys:
+`THRESHOLD|<set>|pair|<profile>|<center>|<k>`, `THRESHOLD|<set>|same|<profile>|<k>`,
+`THRESHOLD|<set>|order|<session>`, `THRESHOLD|<set>|bot|<session>` (bot listeners only).
+Runs: purpose `threshold`; DEMO sets only in demo/synthetic runs; pilot runs (listeners,
+internal tryout) outside any git work tree.
 
 ## Round orchestrator, selector and panel session host (#20)
 
