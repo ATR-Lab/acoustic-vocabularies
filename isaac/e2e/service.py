@@ -55,7 +55,7 @@ def advance_once(adapter, dispatcher, handoff, publisher, sim_step, trace=None, 
 
 def run_joined_service(reset_manager, layout, output, *, seconds, station_id,
                        host_uid, public_socket, private_socket, control_session_id=None, joint_csv=None,
-                       private_timing_seconds=0):
+                       private_timing_seconds=0, view_observation=None):
     """Bounded service; fresh output and explicitly owned private Unix paths.
 
 Both sockets are permission0600, owned by the explicitly supplied host relay UID.
@@ -80,6 +80,9 @@ loopback-only operator actions; this function never creates a host TCP listener.
         raise ValueError('Private timing is disabled0 or explicitly bounded1..900s within the service lease')
     if type(host_uid) is not int or host_uid < 0:
         raise ValueError('Explicit host relay UID required')
+    if view_observation is not None:
+        from isaac.view_capture.observations import validate_options
+        validate_options(view_observation,seconds)
     if not isinstance(control_session_id,str) or not re.fullmatch(r'[0-9a-f]{32}',control_session_id):
         raise ValueError('Explicit pinned control session32hex required')
     public_socket, private_socket = Path(public_socket), Path(private_socket)
@@ -99,7 +102,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
         reset_manager.reset_snapshot_sha256, station_id,
         joint_csv or Path(__file__).resolve().parents[2]/'docs/spikes/isaac/joint_inventory.csv')
     output=Path(output); output.mkdir(parents=True, exist_ok=False)
-    public=publisher=command_log=dispatcher=handoff=private=trace=timing=None
+    public=publisher=command_log=dispatcher=handoff=private=trace=timing=observation=None
     started=ended=time.monotonic_ns(); steps=0; first=last=None
     failure=None; end_reason='duration'; ready=False; cleanup_errors=[]
     def save(name, value):
@@ -123,7 +126,15 @@ loopback-only operator actions; this function never creates a host TCP listener.
         public.health_provider=publisher.health
         command_log=DurableCommandLog(output/'commands.jsonl',session_id=uuid.uuid4().hex,
             apparatus_version='joined-e2e-development',protocol_version='SIMULATION_TEST')
-        dispatcher=CommandDispatcher(reset_manager,command_log,station_id=station_id,
+        command_sink=command_log
+        if view_observation is not None:
+            from isaac.view_capture.observations import ObservationJournal
+            observation=ObservationJournal(output/'view-observation',registry=registry,
+                public_session_id=publisher.encoder.session_id,control_session_id=control_session_id,
+                allowed_client=f'uid:{host_uid}',commands_path=output/'commands.jsonl',**view_observation)
+            publisher.observation=observation
+            command_sink=observation.command_sink(command_log)
+        dispatcher=CommandDispatcher(reset_manager,command_sink,station_id=station_id,
             allowed_client=f'uid:{host_uid}',hold_robot=make_robot_hold(adapter),publisher=publisher)
         dispatcher.control_session_id=control_session_id
         handoff=CommandQueue(dispatcher,timing=timing)
@@ -147,6 +158,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
                         source_pid=os.getpid(),source_ready_host_ns=str(time.monotonic_ns()),health=health))
                     ready=True
                     if timing is not None: timing.start()
+                    if observation is not None: observation.start()
             if stopped: end_reason='private_stop'; break
             deadline=started+steps*1_000_000_000//60
             remaining=(deadline-time.monotonic_ns())/1e9
@@ -155,14 +167,18 @@ loopback-only operator actions; this function never creates a host TCP listener.
     except Exception as error:
         ended=time.monotonic_ns(); failure=type(error).__name__+': '+str(error)
         end_reason='fault'
+        if observation is not None: observation.fail('OBS_SOURCE_FAILED')
     finally:
         # Each resource is finalized independently, even after partial startup.
         for name,resource in [('private',private),('handoff',handoff),
                               ('publisher',publisher),('public',public if publisher is None else None),
-                              ('trace',trace),('command_log',command_log),('private_timing',timing)]:
+                              ('trace',trace),('command_log',command_log),('private_timing',timing),
+                              ('view_observation',observation)]:
             if resource is not None:
                 try: resource.close()
-                except Exception as error: cleanup_errors.append(name+': '+type(error).__name__)
+                except Exception as error:
+                    cleanup_errors.append(name+': '+type(error).__name__)
+                    if observation is not None: observation.fail('OBS_SOURCE_CLEANUP_FAILED')
     if last is not None: save('sample-last.json',last)
     publish_rows=list(csv.DictReader((output/'publish.csv').open(newline=''))) if (output/'publish.csv').exists() else []
     command_rows=[json.loads(line) for line in (output/'commands.jsonl').read_text().splitlines()] if (output/'commands.jsonl').exists() else []
@@ -185,6 +201,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
             'No demo motion implementation enabled; teaching retains neutral robot',
             'Client/command counts may include explicit diagnostics; they do not prove a native visit',
             'Full dispatcher hold/readback and protected publisher guards retained'])
+    if observation is not None: report['view_observation']=observation.result
     report['hashes']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in output.iterdir() if p.is_file()}
     save('summary.json',report)
     return report
