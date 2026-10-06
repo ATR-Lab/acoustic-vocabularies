@@ -1,0 +1,79 @@
+{
+  "atom_order": [
+    "Q-a2",
+    "K-a4",
+    "Q-r2",
+    "K-r4",
+    "Q-a3",
+    "K-a1",
+    "Q-r1",
+    "K-r1",
+    "Q-a4",
+    "K-a2",
+    "Q-r3",
+    "K-r2",
+    "Q-a1",
+    "K-a3",
+    "Q-r4",
+    "K-r3"
+  ],
+  "batch_id": "DEMO-A-P01",
+  "books": [
+    {
+      "book_id": "DEMO-BK-7QX4",
+      "designer_id": "D1",
+      "method": "A1"
+    },
+    {
+      "book_id": "DEMO-BK-M2RW",
+      "designer_id": null,
+      "method": "A2"
+    },
+    {
+      "book_id": "DEMO-BK-H9TC",
+      "designer_id": null,
+      "method": "A3"
+    }
+  ],
+  "fallback_bank_hash": "549f0c47e5435dab92bd6a2bec2cf41563c270545cded9ab4355e25887ff7571",
+  "fallback_manifest_sha256": "17957d842e2465d8c4725d430af65338106d2079bb0b79ab303904e326d39c56",
+  "format": "av-generation/batch-config",
+  "format_version": 1,
+  "labels": {
+    "K-a1": "ALIGN_ARROW",
+    "K-a2": "REMOVE_ONE",
+    "K-a3": "FLIP_CARD",
+    "K-a4": "ADD_ONE",
+    "K-r1": "C",
+    "K-r2": "A",
+    "K-r3": "D",
+    "K-r4": "B",
+    "Q-a1": "TAG",
+    "Q-a2": "QUARANTINE",
+    "Q-a3": "CLOSE",
+    "Q-a4": "SCAN",
+    "Q-r1": "G",
+    "Q-r2": "F",
+    "Q-r3": "H",
+    "Q-r4": "E"
+  },
+  "panel": {
+    "order": [
+      "DEMO-BK-M2RW",
+      "DEMO-BK-H9TC",
+      "DEMO-BK-7QX4"
+    ],
+    "order_index": 4,
+    "panel_id": "DEMO-PANEL-01"
+  },
+  "profile": "P1",
+  "seed_namespace": "DEMO-A-P01",
+  "set": "demo",
+  "sources": {
+    "batch_table_sha256": "a7d173981fbe2696b5e446c440e380d7fef994e1c5303bd564217843a9d58acf",
+    "book_key_sha256": null,
+    "panel_schedule_sha256": null,
+    "permutation_sha256": null
+  },
+  "threshold": "0.10"
+}

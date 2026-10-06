@@ -1,0 +1,93 @@
+name: Generation
+
+on:
+  pull_request:
+    paths:
+      - "generation/**"
+      - "tests/generation/**"
+      - "sound/**"
+      - ".github/workflows/generation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "generation/**"
+      - "tests/generation/**"
+      - "sound/**"
+      - ".github/workflows/generation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: generation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: generation (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: generation/uv.lock
+      - name: Install (Python 3.11, locked; av-sound from ../sound)
+        run: uv sync --project generation --locked
+      - name: Lint and format
+        run: |
+          uv run --project generation ruff check --config generation/pyproject.toml generation tests/generation
+          uv run --project generation ruff format --config generation/pyproject.toml --check generation tests/generation
+      - name: Type check
+        working-directory: generation
+        run: uv run mypy
+      - name: Tests (no browser)
+        run: >
+          uv run --project generation pytest --import-mode=importlib -p no:cacheprovider
+          -m "not browser" tests/generation
+          --cov=av_generation --cov-config=generation/pyproject.toml --cov-report=term
+          --cov-fail-under=85
+      - name: Seed fingerprint
+        run: |
+          uv run --project generation python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import platform, sys
+          from av_generation.seeds import a3_seed_key, b_seed_key, seed_from_key
+          keys = [a3_seed_key("A-P01", "K-a1", 2, 3), b_seed_key("bank-C001", 1, "P2", "Q-r4", 7)]
+          print(f"### Generation seeds on {platform.system()} {platform.machine()}, Python {sys.version.split()[0]}")
+          for key in keys:
+              print(f"- `{key}` -> {seed_from_key(key)}")
+          EOF
+
+  browser:
+    name: generation browser tests (ubuntu, Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: generation/uv.lock
+      - name: Install (Python 3.11, locked)
+        run: uv sync --project generation --locked
+      - name: Install Playwright Chromium
+        run: uv run --project generation playwright install --with-deps chromium
+      - name: Browser tests
+        env:
+          AV_GENERATION_BROWSER: "1"
+        run: >
+          uv run --project generation pytest --import-mode=importlib -p no:cacheprovider
+          -m browser tests/generation

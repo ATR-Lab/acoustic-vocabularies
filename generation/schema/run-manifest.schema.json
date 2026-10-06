@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/run-manifest.schema.json",
+  "title": "Run manifest",
+  "description": "run-manifest.json at the root of a run directory (av_generation.rundir). It holds the method map (books), so it is restricted unless the run is demo or synthetic. files (relative POSIX path -> SHA-256) is written when the run closes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bank_ids",
+    "books",
+    "clock",
+    "clock_speed",
+    "closed_utc",
+    "code",
+    "config_sha256",
+    "created_utc",
+    "files",
+    "format",
+    "format_version",
+    "kind",
+    "llm_manifest_sha256",
+    "llm_runtime",
+    "purpose",
+    "run_id",
+    "seed_namespace",
+    "study",
+    "threshold"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/run-manifest"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "$ref": "common.schema.json#/$defs/run_kind"
+    },
+    "study": {
+      "$ref": "common.schema.json#/$defs/study"
+    },
+    "purpose": {
+      "enum": [
+        "batch",
+        "dry_run",
+        "bank",
+        "threshold",
+        "benchmark",
+        "practice",
+        "test"
+      ]
+    },
+    "clock": {
+      "enum": [
+        "real",
+        "scaled",
+        "manual"
+      ]
+    },
+    "created_utc": {
+      "$ref": "common.schema.json#/$defs/utc"
+    },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "av_generation",
+        "git_commit",
+        "renderer_hash",
+        "renderer_version",
+        "validator_hash",
+        "validator_version"
+      ],
+      "properties": {
+        "av_generation": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "renderer_version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "renderer_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "validator_version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "validator_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "git_commit": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "threshold": {
+      "$ref": "common.schema.json#/$defs/decimal"
+    },
+    "clock_speed": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "config_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "seed_namespace": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "books": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "book_id",
+          "designer_id",
+          "method"
+        ],
+        "properties": {
+          "book_id": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          },
+          "method": {
+            "$ref": "common.schema.json#/$defs/study_a_method"
+          },
+          "designer_id": {
+            "oneOf": [
+              {
+                "$ref": "common.schema.json#/$defs/coded_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "bank_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "llm_manifest_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "llm_runtime": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[ -~]{1,64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "closed_utc": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/utc"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "files": {
+      "oneOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9._/-]{1,256}$"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "demo",
+              "synthetic"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "run_id": {
+            "pattern": "^DEMO-"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "run_id": {
+            "not": {
+              "pattern": "^DEMO-"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

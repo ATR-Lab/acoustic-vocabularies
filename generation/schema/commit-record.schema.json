@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/commit-record.schema.json",
+  "title": "Commit record",
+  "description": "One atom committed to the vocabulary store for one book (#20; Study A protocol §3.3, §3.7). source selector: the incumbent after round 4 (slot_id set); fallback_bank: the first passing unused bank recipe (bank_index set); fallback_book: an atom of the frozen fallback book after whole-book substitution (failed_generation true; store_book_id is the new store book). chain_head is the store anchor returned by the commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "atom_id",
+    "bank_index",
+    "batch_id",
+    "book_id",
+    "chain_head",
+    "failed_generation",
+    "file_sha256",
+    "pcm_sha256",
+    "recipe",
+    "recipe_sha256",
+    "record",
+    "record_version",
+    "run_id",
+    "semantic_label",
+    "slot_id",
+    "source",
+    "store_book_id",
+    "store_source",
+    "t_ms"
+  ],
+  "properties": {
+    "record": {
+      "const": "commit"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "book_id": {
+      "$ref": "common.schema.json#/$defs/book_id"
+    },
+    "store_book_id": {
+      "$ref": "common.schema.json#/$defs/book_id"
+    },
+    "atom_id": {
+      "$ref": "common.schema.json#/$defs/atom_id"
+    },
+    "semantic_label": {
+      "$ref": "common.schema.json#/$defs/semantic_label"
+    },
+    "source": {
+      "enum": [
+        "selector",
+        "fallback_bank",
+        "fallback_book"
+      ]
+    },
+    "store_source": {
+      "type": "string",
+      "pattern": "^[!-~]{1,128}$"
+    },
+    "recipe": {
+      "$ref": "common.schema.json#/$defs/recipe"
+    },
+    "recipe_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "pcm_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "file_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "chain_head": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "failed_generation": {
+      "type": "boolean"
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "slot_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/proposal_slot_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bank_index": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "const": "selector"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "slot_id": {
+            "$ref": "common.schema.json#/$defs/proposal_slot_id"
+          },
+          "bank_index": {
+            "type": "null"
+          },
+          "failed_generation": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "const": "fallback_bank"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "slot_id": {
+            "type": "null"
+          },
+          "bank_index": {
+            "type": "integer"
+          },
+          "failed_generation": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "const": "fallback_book"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "slot_id": {
+            "type": "null"
+          },
+          "bank_index": {
+            "type": "null"
+          },
+          "failed_generation": {
+            "const": true
+          }
+        }
+      }
+    }
+  ]
+}

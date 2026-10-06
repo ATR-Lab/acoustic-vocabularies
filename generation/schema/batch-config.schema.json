@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/batch-config.schema.json",
+  "title": "Study A batch configuration",
+  "description": "Configuration of one Study A batch run (#20): profile, stored atom order and label permutation (schedules #29), the three anonymous books and their methods (book key #31), the panel's presentation order (one of the 6 method orders, PANEL_ORDERS index 1..6), the seed namespace of the A1/A2/A3 seed keys, the separation threshold and the fallback set. Restricted (method map) unless set is demo. Cross-field rules: av_generation.config.BatchConfig.check_consistency.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "atom_order",
+    "batch_id",
+    "books",
+    "fallback_bank_hash",
+    "fallback_manifest_sha256",
+    "format",
+    "format_version",
+    "labels",
+    "panel",
+    "profile",
+    "seed_namespace",
+    "set",
+    "sources",
+    "threshold"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/batch-config"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "set": {
+      "enum": [
+        "demo",
+        "pilot",
+        "confirmatory"
+      ]
+    },
+    "profile": {
+      "$ref": "common.schema.json#/$defs/profile"
+    },
+    "atom_order": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/atom_id"
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "K-a1",
+        "K-a2",
+        "K-a3",
+        "K-a4",
+        "K-r1",
+        "K-r2",
+        "K-r3",
+        "K-r4",
+        "Q-a1",
+        "Q-a2",
+        "Q-a3",
+        "Q-a4",
+        "Q-r1",
+        "Q-r2",
+        "Q-r3",
+        "Q-r4"
+      ],
+      "properties": {
+        "K-a1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-a2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-a3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-a4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        }
+      }
+    },
+    "books": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "book_id",
+          "designer_id",
+          "method"
+        ],
+        "properties": {
+          "book_id": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          },
+          "method": {
+            "$ref": "common.schema.json#/$defs/study_a_method"
+          },
+          "designer_id": {
+            "oneOf": [
+              {
+                "$ref": "common.schema.json#/$defs/coded_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "panel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order",
+        "order_index",
+        "panel_id"
+      ],
+      "properties": {
+        "panel_id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "order_index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "order": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          }
+        }
+      }
+    },
+    "seed_namespace": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$"
+    },
+    "threshold": {
+      "$ref": "common.schema.json#/$defs/decimal"
+    },
+    "fallback_manifest_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "fallback_bank_hash": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "batch_table_sha256",
+        "book_key_sha256",
+        "panel_schedule_sha256",
+        "permutation_sha256"
+      ],
+      "properties": {
+        "batch_table_sha256": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "book_key_sha256": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "permutation_sha256": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "panel_schedule_sha256": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

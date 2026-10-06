@@ -1,0 +1,600 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/rater-message.schema.json",
+  "title": "Rater panel protocol message",
+  "description": "One WebSocket text frame between the panel server (#20) and a rater station (#21), protocol version 1 (av_generation.rater_protocol). Messages carry no method label, book ID, proposal-slot ID or seed. Ratings are integers 1-7 and a binary comfort choice; no free text.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/hello"
+    },
+    {
+      "$ref": "#/$defs/sync_request"
+    },
+    {
+      "$ref": "#/$defs/asset_ready"
+    },
+    {
+      "$ref": "#/$defs/played"
+    },
+    {
+      "$ref": "#/$defs/rating"
+    },
+    {
+      "$ref": "#/$defs/withdraw"
+    },
+    {
+      "$ref": "#/$defs/welcome"
+    },
+    {
+      "$ref": "#/$defs/sync_reply"
+    },
+    {
+      "$ref": "#/$defs/preload"
+    },
+    {
+      "$ref": "#/$defs/slot"
+    },
+    {
+      "$ref": "#/$defs/rating_ack"
+    },
+    {
+      "$ref": "#/$defs/pause"
+    },
+    {
+      "$ref": "#/$defs/resume"
+    },
+    {
+      "$ref": "#/$defs/end"
+    },
+    {
+      "$ref": "#/$defs/error"
+    }
+  ],
+  "$defs": {
+    "hello": {
+      "description": "Station -> server: first message after connecting (also after a reconnect).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_ms",
+        "protocol_version",
+        "rater_id",
+        "resume_rating_slot_id",
+        "station",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "hello"
+        },
+        "protocol_version": {
+          "const": 1
+        },
+        "station": {
+          "$ref": "common.schema.json#/$defs/station"
+        },
+        "rater_id": {
+          "$ref": "common.schema.json#/$defs/coded_id"
+        },
+        "client_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "resume_rating_slot_id": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/rating_slot_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "sync_request": {
+      "description": "Station -> server: clock-sync probe (client monotonic ms).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_ms",
+        "seq",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "sync_request"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "client_ms": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "asset_ready": {
+      "description": "Station -> server: an asset was preloaded; ok is false when its SHA-256 did not match asset_id.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "ok",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "asset_ready"
+        },
+        "asset_id": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "ok": {
+          "type": "boolean"
+        }
+      }
+    },
+    "played": {
+      "description": "Station -> server: an asset started playing (estimated onset on the server clock).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "onset_server_ms",
+        "rating_slot_id",
+        "role",
+        "scheduled_server_ms",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "played"
+        },
+        "rating_slot_id": {
+          "$ref": "common.schema.json#/$defs/rating_slot_id"
+        },
+        "role": {
+          "enum": [
+            "candidate",
+            "reference"
+          ]
+        },
+        "asset_id": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "scheduled_server_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onset_server_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "rating": {
+      "description": "Station -> server: the three fixed judgments (distinguishability null on first-atom slots). No other field, so no free text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "association",
+        "comfort",
+        "distinguishability",
+        "rating_slot_id",
+        "rt_ms",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "rating"
+        },
+        "rating_slot_id": {
+          "$ref": "common.schema.json#/$defs/rating_slot_id"
+        },
+        "association": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "distinguishability": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comfort": {
+          "enum": [
+            "acceptable",
+            "unacceptable"
+          ]
+        },
+        "rt_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "withdraw": {
+      "description": "Station -> server: the rater withdraws from the batch.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "withdraw"
+        },
+        "reason": {
+          "enum": [
+            "rater_request",
+            "discomfort",
+            "technical",
+            "other"
+          ]
+        }
+      }
+    },
+    "welcome": {
+      "description": "Server -> station: reply to hello.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "server_ms",
+        "session_id",
+        "state",
+        "station",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "welcome"
+        },
+        "protocol_version": {
+          "const": 1
+        },
+        "session_id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "station": {
+          "$ref": "common.schema.json#/$defs/station"
+        },
+        "server_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "enum": [
+            "waiting",
+            "slot",
+            "paused",
+            "between_atoms",
+            "ended"
+          ]
+        }
+      }
+    },
+    "sync_reply": {
+      "description": "Server -> station: clock-sync reply (echoes client_ms).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_ms",
+        "seq",
+        "server_ms",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "sync_reply"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "client_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "server_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "preload": {
+      "description": "Server -> station: assets to fetch and hash-check before their slots.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assets",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "preload"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "asset_id",
+              "n_bytes",
+              "url"
+            ],
+            "properties": {
+              "asset_id": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^/panel/assets/[0-9a-f]{64}\\.wav$"
+              },
+              "n_bytes": {
+                "type": "integer",
+                "minimum": 44
+              }
+            }
+          }
+        }
+      }
+    },
+    "slot": {
+      "description": "Server -> station: the next rating slot. Placeholder slots have no candidate, no meaning and no controls. rejoin true: the station reconnected mid-slot and must not play audio whose start has passed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ask_distinguishability",
+        "candidate",
+        "duration_ms",
+        "lock_offset_ms",
+        "meaning",
+        "placeholder",
+        "position",
+        "rating_slot_id",
+        "reference",
+        "rejoin",
+        "start_server_ms",
+        "type",
+        "unlock_offset_ms"
+      ],
+      "properties": {
+        "type": {
+          "const": "slot"
+        },
+        "rating_slot_id": {
+          "$ref": "common.schema.json#/$defs/rating_slot_id"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "start_server_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "const": 20000
+        },
+        "placeholder": {
+          "type": "boolean"
+        },
+        "meaning": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[ -~]{1,200}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "asset_id",
+                "offset_ms"
+              ],
+              "properties": {
+                "asset_id": {
+                  "$ref": "common.schema.json#/$defs/sha256"
+                },
+                "offset_ms": {
+                  "const": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reference": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "asset_id",
+                "meaning",
+                "offset_ms"
+              ],
+              "properties": {
+                "asset_id": {
+                  "$ref": "common.schema.json#/$defs/sha256"
+                },
+                "offset_ms": {
+                  "const": 2000
+                },
+                "meaning": {
+                  "type": "string",
+                  "pattern": "^[ -~]{1,200}$"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ask_distinguishability": {
+          "type": "boolean"
+        },
+        "unlock_offset_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "lock_offset_ms": {
+          "const": 20000
+        },
+        "rejoin": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rating_ack": {
+      "description": "Server -> station: rating stored (accepted) or refused with a code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted",
+        "code",
+        "rating_slot_id",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "rating_ack"
+        },
+        "rating_slot_id": {
+          "$ref": "common.schema.json#/$defs/rating_slot_id"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "code": {
+          "oneOf": [
+            {
+              "enum": [
+                "E_PROTOCOL",
+                "E_UNKNOWN_SLOT",
+                "E_SLOT_CLOSED",
+                "E_LOCKED",
+                "E_DUPLICATE_RATING",
+                "E_PLACEHOLDER",
+                "E_FIRST_ATOM"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "pause": {
+      "description": "Server -> station: show the neutral pause screen.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "pause"
+        },
+        "reason": {
+          "enum": [
+            "operator",
+            "between_atoms",
+            "break"
+          ]
+        }
+      }
+    },
+    "resume": {
+      "description": "Server -> station: leave the pause screen.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "resume"
+        }
+      }
+    },
+    "end": {
+      "description": "Server -> station: the session ended.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "end"
+        },
+        "reason": {
+          "enum": [
+            "batch_complete",
+            "appointment_complete",
+            "withdrawn",
+            "aborted"
+          ]
+        }
+      }
+    },
+    "error": {
+      "description": "Server -> station: a protocol error.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "error"
+        },
+        "code": {
+          "enum": [
+            "E_PROTOCOL",
+            "E_UNKNOWN_SLOT",
+            "E_SLOT_CLOSED",
+            "E_LOCKED",
+            "E_DUPLICATE_RATING",
+            "E_PLACEHOLDER",
+            "E_FIRST_ATOM"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "pattern": "^[ -~]{0,200}$"
+        }
+      }
+    }
+  }
+}

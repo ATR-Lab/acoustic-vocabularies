@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/decision-record.schema.json",
+  "title": "Selector decision record",
+  "description": "Selector state of one book's atom after one round (#20; Study A protocol §3.3): this round's candidates with eligibility and exact score, and the incumbent so far (ties to the lowest slot index). final is true after round 4; action is commit when an incumbent exists, else fallback_scan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action",
+    "atom_id",
+    "batch_id",
+    "book_id",
+    "candidates",
+    "final",
+    "first_atom",
+    "incumbent_changed",
+    "incumbent_score",
+    "incumbent_slot_id",
+    "record",
+    "record_version",
+    "round",
+    "run_id",
+    "t_ms"
+  ],
+  "properties": {
+    "record": {
+      "const": "decision"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "book_id": {
+      "$ref": "common.schema.json#/$defs/book_id"
+    },
+    "atom_id": {
+      "$ref": "common.schema.json#/$defs/atom_id"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "first_atom": {
+      "type": "boolean"
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eligible",
+          "flagged_missing",
+          "n_acceptable",
+          "n_ratings",
+          "score",
+          "score_raters",
+          "slot_id",
+          "slot_index",
+          "technically_valid"
+        ],
+        "properties": {
+          "slot_id": {
+            "$ref": "common.schema.json#/$defs/proposal_slot_id"
+          },
+          "slot_index": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "technically_valid": {
+            "type": "boolean"
+          },
+          "n_ratings": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "n_acceptable": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "eligible": {
+            "type": "boolean"
+          },
+          "score": {
+            "oneOf": [
+              {
+                "$ref": "common.schema.json#/$defs/fraction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score_raters": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "flagged_missing": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "incumbent_slot_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/proposal_slot_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "incumbent_score": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/fraction"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "incumbent_changed": {
+      "type": "boolean"
+    },
+    "final": {
+      "type": "boolean"
+    },
+    "action": {
+      "enum": [
+        "continue",
+        "commit",
+        "fallback_scan"
+      ]
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    }
+  }
+}

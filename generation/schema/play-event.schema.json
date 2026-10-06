@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/play-event.schema.json",
+  "title": "Audio play event",
+  "description": "One audio play, or one refused play request (result refused, e.g. a second use of a single-use token), by the A1 interface (#19), a rater station (#21) or the listening tool (#23). audio_kind message must never occur: generation plays atomic motifs only (Study A protocol §3.1). asset_id is the SHA-256 of the canonical WAV file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor_id",
+    "asset_id",
+    "audio_kind",
+    "context",
+    "onset_ms",
+    "pcm_sha256",
+    "rating_slot_id",
+    "reason",
+    "record",
+    "record_version",
+    "result",
+    "run_id",
+    "scheduled_ms",
+    "slot_id",
+    "station",
+    "t_ms",
+    "token_id",
+    "trial_id"
+  ],
+  "properties": {
+    "record": {
+      "const": "play"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "context": {
+      "enum": [
+        "a1_preview",
+        "a1_practice",
+        "rating_candidate",
+        "rating_reference",
+        "threshold_first",
+        "threshold_second"
+      ]
+    },
+    "audio_kind": {
+      "enum": [
+        "atom",
+        "message",
+        "nonlexical"
+      ]
+    },
+    "asset_id": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "result": {
+      "enum": [
+        "played",
+        "refused"
+      ]
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "pcm_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reason": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^E_[A-Z0-9_]{1,40}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "station": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/station"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "actor_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/coded_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "slot_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/slot_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rating_slot_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/rating_slot_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "trial_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[!-~]{1,128}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "token_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,128}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "scheduled_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "onset_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "refused"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "onset_ms": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

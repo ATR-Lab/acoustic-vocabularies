@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/timing-event.schema.json",
+  "title": "Timing event",
+  "description": "A phase boundary or operator event on the run clock (Study A protocol §3.3: startup, design time, model runtime and operator time are logged separately). Fields that do not apply are null. component names the subsystem (llm, renderer, a1, panel, orchestrator, bank, threshold).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor_id",
+    "appointment",
+    "atom_id",
+    "attempt",
+    "bank_id",
+    "batch_id",
+    "book_id",
+    "component",
+    "detail",
+    "duration_ms",
+    "event",
+    "profile",
+    "record",
+    "record_version",
+    "round",
+    "run_id",
+    "station",
+    "t_ms",
+    "wall_utc"
+  ],
+  "properties": {
+    "record": {
+      "const": "timing"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "event": {
+      "enum": [
+        "run_start",
+        "run_end",
+        "startup_start",
+        "startup_end",
+        "appointment_start",
+        "appointment_end",
+        "atom_start",
+        "atom_end",
+        "round_start",
+        "round_end",
+        "proposal_window_start",
+        "proposal_window_end",
+        "rating_window_start",
+        "rating_window_end",
+        "feedback_sent",
+        "pause",
+        "resume",
+        "operator_action",
+        "rater_withdrawal",
+        "batch_incomplete",
+        "station_connect",
+        "station_disconnect",
+        "station_reconnect",
+        "clock_sync",
+        "familiarization_start",
+        "familiarization_end",
+        "design_active_start",
+        "design_active_end",
+        "bank_start",
+        "bank_end",
+        "attempt_start",
+        "attempt_end",
+        "cell_start",
+        "cell_end",
+        "session_start",
+        "session_end"
+      ]
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "wall_utc": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/utc"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "batch_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "book_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/book_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bank_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "atom_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/atom_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "round": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "appointment": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "profile": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/profile"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "station": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/station"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "component": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "actor_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/coded_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "duration_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "detail": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
