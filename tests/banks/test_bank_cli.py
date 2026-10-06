@@ -13,6 +13,7 @@ from av_generation.rundir import RunPolicyError
 import av_banks.cli as cli
 from av_banks.builder import BankBuildError, bank_spec
 from av_banks.layout import BankLayout
+from av_banks.manifest import manifest_from_files
 from av_banks.permutation import load_permutation
 from av_banks.run import build_banks, clock_kind
 from av_banks.verify import verify_bank
@@ -128,6 +129,26 @@ def test_cli_verify_and_hash(cli_bank, built_bank, capsys):
     BankLayout(cli_bank).bank_hash.write_text("0" * 64 + "\n", encoding="utf-8")
     assert cli.main(["verify", str(cli_bank)]) == 1
     assert "PROBLEM" in capsys.readouterr().out
+
+
+def test_cli_works_from_inside_the_bank_directory(cli_bank, built_bank, monkeypatch, capsys):
+    monkeypatch.chdir(cli_bank)
+    assert BankLayout(Path(".")).bank_id == built_bank.bank_id
+    assert manifest_from_files(".").bank_sha256() == built_bank.bank_sha256
+    report = verify_bank(".")
+    assert report.ok, report.problems
+    assert report.bank_sha256 == built_bank.bank_sha256
+    assert cli.main(["verify", "."]) == 0
+    assert "OK" in capsys.readouterr().out
+    assert cli.main(["hash", "."]) == 0
+    assert capsys.readouterr().out.strip() == built_bank.bank_sha256
+    args = ["amend", ".", "--profile", "P1", "--atom", "Q-a2", "--rank", "3"]
+    assert cli.main([*args, "--reason", "DEMO", "--unheard-confirmed", "--date", "2026-12-01"]) == 0
+    assert json.loads(capsys.readouterr().out)["menu"][2] == "DEMO-bank-01.P1.Q-a2.4"
+    monkeypatch.chdir(cli_bank / "attempts")
+    assert BankLayout(Path("..")).bank_id == built_bank.bank_id
+    assert cli.main(["verify", ".."]) == 0
+    assert "OK" in capsys.readouterr().out
 
 
 def test_cli_amend(cli_bank, capsys):

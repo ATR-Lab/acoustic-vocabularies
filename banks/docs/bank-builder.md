@@ -146,9 +146,12 @@ A build is not reproducible byte for byte (wall times, run-clock times), but the
 manifest of stored files is: `verify` recomputes it.
 
 `bank_version` defaults to `1.0.0` and the seed namespace to the bank ID; a rebuild
-under a new version gets the namespace `<bank_id>-v<version>` (or an explicit
-`--seed-namespace`), so its seeds never repeat an earlier build's. A crashed build is not
-resumed: build again under a new version.
+under a new version gets the namespace `<bank_id>-v<version>`. Any other namespace
+(`--seed-namespace`) must be `<bank_id>-v<version>-<suffix>` (`builder.seed_namespace_error`;
+`bank_spec`, the builder and `verify` refuse any other value). The namespace thus names its bank and version: bank IDs hold no dot and versions
+only digits and dots, so two banks, two versions of one bank, or a pilot and a
+confirmatory bank never share seed keys, and a rebuild never repeats an earlier build's
+seeds. A crashed build is not resumed: build again under a new version.
 
 ## 4. `verify`
 
@@ -158,6 +161,7 @@ resumed: build again under a new version.
   recomputed hash and to `bank-sha256.txt`;
 - the config is the one the manifest names and the running renderer and validator are
   the ones it pins;
+- the seed namespace names the bank and its version (section 3);
 - every attempt's log: file hash and count, slot IDs and seed keys, at most 12 slots per
   cell and 576 per attempt, cells in the stored order, retention stopped at the 4th
   option, a failed attempt's cell used all 12 slots;
@@ -210,7 +214,7 @@ exits 0 or 1.
 
 | Module | API |
 | --- | --- |
-| `builder` | `bank_spec(bank_id, permutation, *, bank_version="1.0.0", seed_namespace=None) -> BankSpec`; `BankBuilder(spec, bank_dir, *, config, proposer, clock, run_id, kind=None, freeze_manifest=None, ledger_factory=slot_ledger, workers=1, reserved=None, fsync=True)` with `.check()`, `.open()`, `.run_attempt(n) -> AttemptSummary`, `.build() -> BuildResult`; `AttemptRun(builder, attempt).run_slot(profile, atom) -> SlotRecord`; `default_seed_namespace`; `BankBuildError` (`E_EXISTS`, `E_ORDER`, `E_SPEC`, `E_INTERNAL`); `LedgerLike`, `LedgerFactory` |
+| `builder` | `bank_spec(bank_id, permutation, *, bank_version="1.0.0", seed_namespace=None) -> BankSpec`; `BankBuilder(spec, bank_dir, *, config, proposer, clock, run_id, kind=None, freeze_manifest=None, ledger_factory=slot_ledger, workers=1, reserved=None, fsync=True)` with `.check()`, `.open()`, `.run_attempt(n) -> AttemptSummary`, `.build() -> BuildResult`; `AttemptRun(builder, attempt).run_slot(profile, atom) -> SlotRecord`; `default_seed_namespace`, `seed_namespace_error(bank_id, bank_version, namespace) -> str | None`; `BankBuildError` (`E_EXISTS`, `E_ORDER`, `E_SPEC`, `E_INTERNAL`); `LedgerLike`, `LedgerFactory` |
 | `proposer` | `SlotProposer` protocol (`check_config(config)`, `propose(cell, *, seed_key, slot_id) -> Proposal`); `LlmSlotProposer(client, prompt_set, decoding_schema, *, prompt_builder=build_b_prompt, parser=parse_output, threshold=None)` (the CLI passes the config threshold to the prompt builder); `check_prompt_inputs`, `b_prompt_sha256(prompt_set)` (#17's `b_sha256`); `Proposal`; `ProposerConfigError` |
 | `run` | `build_banks(specs, *, runs_root, run_id, config, proposer, clock, kind=None, freeze_manifest=None, freeze_manifest_sha256=None, llm_runtime=None, workers=3, parallel_banks=1, ledger_factory=slot_ledger) -> RunResult` |
 | `manifest` | `BankManifest` (typed `bank-manifest`; `.read`, `.write`, `.bank_sha256()`, `.cell()`, `.menu(amendments)`), `read_manifest`, `read_amendments`, `manifest_from_files`, `AttemptSummary` (`attempt.json`), `to_dyad_bank(manifest) -> av_sound.dyad_bank.DyadBank` |

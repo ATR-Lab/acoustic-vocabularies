@@ -188,6 +188,28 @@ def default_seed_namespace(bank_id: str, bank_version: str) -> str:
     return bank_id if bank_version == FIRST_VERSION else f"{bank_id}-v{bank_version}"
 
 
+def seed_namespace_error(bank_id: str, bank_version: str, namespace: str) -> str | None:
+    """Why `namespace` cannot be the seed namespace of version `bank_version` of bank
+    `bank_id`, or `None` when it can.
+
+    A namespace is the default (`default_seed_namespace`), `<bank_id>-v<version>` or
+    `<bank_id>-v<version>-<suffix>`. It names its bank and its version, so two banks, or
+    two versions of one bank, never share seed keys (Study B protocol §4: every bank and
+    attempt is independently seeded; pilot and confirmatory seeds stay disjoint). The
+    rule is unambiguous because bank IDs hold no dot and versions only digits and dots.
+    """
+    if not isinstance(namespace, str) or len(namespace) > 64 or not PART_RE.fullmatch(namespace):
+        return f"seed namespace {namespace!r} must match {PART_RE.pattern} (at most 64 characters)"
+    default = default_seed_namespace(bank_id, bank_version)
+    versioned = f"{bank_id}-v{bank_version}"
+    if namespace in (default, versioned) or namespace.startswith(f"{versioned}-"):
+        return None
+    return (
+        f"seed namespace {namespace!r} does not name bank {bank_id} version {bank_version}: "
+        f"use {default!r} or '{versioned}-<suffix>'"
+    )
+
+
 def bank_spec(
     bank_id: str,
     permutation: UnitPermutation,
@@ -195,15 +217,21 @@ def bank_spec(
     bank_version: str = FIRST_VERSION,
     seed_namespace: str | None = None,
 ) -> BankSpec:
-    """Check and bind a bank ID to its unit permutation (`permutation.check_bank_unit`)."""
+    """Check and bind a bank ID to its unit permutation (`permutation.check_bank_unit`)
+    and to a seed namespace of the bank and version (`seed_namespace_error`)."""
     check_id(bank_id, "bank ID")
     bank_set(bank_id)
     check_bank_unit(bank_id, permutation)
     if not VERSION_RE.fullmatch(bank_version):
         raise BankBuildError(E_SPEC, f"bank_version {bank_version!r} must look like 1.0.0")
-    namespace = seed_namespace or default_seed_namespace(bank_id, bank_version)
-    if not PART_RE.fullmatch(namespace) or len(namespace) > 64:
-        raise BankBuildError(E_SPEC, f"seed namespace {namespace!r} must match {PART_RE.pattern}")
+    namespace = (
+        seed_namespace
+        if seed_namespace is not None
+        else default_seed_namespace(bank_id, bank_version)
+    )
+    error = seed_namespace_error(bank_id, bank_version, namespace)
+    if error is not None:
+        raise BankBuildError(E_SPEC, error)
     return BankSpec(bank_id, bank_version, namespace, permutation)
 
 
@@ -623,6 +651,9 @@ class BankBuilder:
         self.timing: RecordWriter | None = None
         if self.layout.bank_id != spec.bank_id:
             raise BankBuildError(E_SPEC, f"bank directory {self.layout.root} is not {spec.bank_id}")
+        namespace_error = seed_namespace_error(spec.bank_id, spec.bank_version, spec.seed_namespace)
+        if namespace_error is not None:  # a BankSpec made without bank_spec
+            raise BankBuildError(E_SPEC, namespace_error)
 
     def check(self) -> None:
         """The checks before slot 1: run kind, generation config (and the G4 freeze for

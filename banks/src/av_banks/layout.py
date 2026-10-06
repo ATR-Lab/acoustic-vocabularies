@@ -58,7 +58,9 @@ class BankLayout:
 
     @property
     def bank_id(self) -> str:
-        return self.root.name
+        """The name of the bank directory. The path is made absolute first (lexically,
+        links are not resolved), so `.` or `..` name the directory they stand for."""
+        return Path(os.path.abspath(self.root)).name
 
     @property
     def manifest(self) -> Path:

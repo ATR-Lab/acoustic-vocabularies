@@ -6,11 +6,17 @@ from fractions import Fraction
 
 import pytest
 from av_generation.bank_manifest import bank_sha256, effective_menu
-from av_generation.jsonio import canonical_sha256, read_json
+from av_generation.constants import PROFILES
+from av_generation.ids import bank_slot_id
+from av_generation.jsonio import canonical_sha256, file_sha256, read_json
+from av_generation.outcomes import SlotOutcome
+from av_generation.seeds import b_seed_key
 from av_sound.dyad_bank import DyadBank
+from av_sound.recipe import Profile
+from av_sound.reserved import ReservedEntry, ReservedRegistry, load_reserved_registry
 
 from av_banks.amend import AmendError, amend_bank
-from av_banks.layout import BankLayout
+from av_banks.layout import BankLayout, option_wav
 from av_banks.manifest import (
     ManifestError,
     manifest_from_files,
@@ -308,3 +314,277 @@ def test_verify_detects_an_amendment_at_another_threshold(bank_copy):
     entry = dict(result.entry, recheck=dict(result.entry["recheck"], threshold="0.05"))
     bank_copy.amendments.write_text(json.dumps(entry) + "\n", encoding="utf-8")
     assert "rechecked at another threshold" in _problems(bank_copy)
+
+
+# -- rule checks on edited copies --------------------------------------------
+#
+# Each test breaks one rule of a built bank's slot log or options, keeps the attempt
+# summary's hash and count in step and re-derives manifest.json and the bank hash
+# whenever the stored files still give a manifest. The manifest is derived from the same
+# slot log, so these checks are the only guard against a builder that breaks the rule.
+
+
+@pytest.fixture(scope="module")
+def retried_bank(kit, tmp_path_factory):
+    """A DEMO bank whose attempt 1 failed at P1 on the 4th atom (3 complete cells before
+    it, 12 invalid slots in it) and whose attempt 2 is complete."""
+    failing = ("P1", kit.permutation.atom_order[3])
+
+    def kind(attempt, profile, atom, slot):
+        return "invalid_json" if attempt == 1 and (profile, atom) == failing else "valid"
+
+    result = kit.build(tmp_path_factory.mktemp("retried"), kit.script(kind))
+    assert result.attempt_used == 2 and result.attempts[0].failed_cell.atom_id == failing[1]
+    assert verify_bank(result.bank_dir).ok
+    return result
+
+
+@pytest.fixture
+def retried_copy(retried_bank, tmp_path):
+    target = tmp_path / retried_bank.bank_id
+    shutil.copytree(retried_bank.bank_dir, target)
+    return BankLayout(target)
+
+
+def _write_json(path, doc):
+    path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", "utf-8", newline="\n")
+
+
+def _slot_log(layout, attempt):
+    text = layout.slots(attempt).read_text(encoding="utf-8")
+    return [json.loads(line) for line in text.splitlines()]
+
+
+def _rederive(layout):
+    """Rewrite manifest.json and bank-sha256.txt from the stored files, if they give one."""
+    try:
+        manifest = manifest_from_files(layout.root)
+    except ManifestError:
+        return
+    layout.manifest.unlink()
+    manifest.write(layout.manifest)
+    layout.bank_hash.write_text(manifest.bank_sha256() + "\n", "utf-8", newline="\n")
+
+
+def _store(layout, attempt, records, **summary):
+    """Replace an attempt's slot log, keep attempt.json in step, re-derive the manifest."""
+    lines = "".join(json.dumps(r, sort_keys=True, separators=(",", ":")) + "\n" for r in records)
+    layout.slots(attempt).write_text(lines, "utf-8", newline="\n")
+    doc = read_json(layout.attempt_summary(attempt))
+    doc.update(slots_sha256=file_sha256(layout.slots(attempt)), slots_used=len(records))
+    doc.update(summary)
+    _write_json(layout.attempt_summary(attempt), doc)
+    _rederive(layout)
+
+
+def _moved(record, *, slot, atom=None, profile=None):
+    """A copy of a slot record moved to another slot, with a consistent slot ID and seed key."""
+    atom = atom or record["atom_id"]
+    profile = profile or record["profile"]
+    namespace = record["seed_key"].split("|")[1]
+    attempt = record["attempt"]
+    return dict(
+        record,
+        atom_id=atom,
+        profile=profile,
+        slot=slot,
+        slot_index=slot,
+        slot_id=bank_slot_id(record["bank_id"], attempt, profile, atom, slot),
+        seed_key=b_seed_key(namespace, attempt, profile, atom, slot),
+    )
+
+
+def _invalid(record):
+    """The record as an `invalid_json` slot (no recipe, no waveform)."""
+    return dict(
+        record,
+        outcome=SlotOutcome.INVALID_JSON.value,
+        raw_output="not json {",
+        recipe=None,
+        recipe_sha256=None,
+        validator_codes=[],
+        validator_messages=[],
+        pcm_sha256=None,
+        file_sha256=None,
+    )
+
+
+def _report_problems(layout, **kwargs):
+    report = verify_bank(layout.root, **kwargs)
+    assert not report.ok
+    return report.problems
+
+
+@pytest.mark.parametrize(
+    ("change", "expected"),
+    [
+        ({"attempt": 2}, "logged in attempt 1 but names attempt 2"),
+        ({"slot": 3, "slot_index": 3}, "slot ID, bank, attempt or cell fields disagree"),
+        ({"file_sha256": None}, "valid slot without recipe or hashes"),
+    ],
+)
+def test_verify_detects_inconsistent_slot_record_fields(bank_copy, change, expected):
+    records = _slot_log(bank_copy, 1)
+    records[5] = dict(records[5], **change)
+    _store(bank_copy, 1, records)
+    assert f"{records[5]['slot_id']}: {expected}" in _report_problems(bank_copy)
+
+
+def test_verify_detects_slots_out_of_order_in_a_cell(bank_copy):
+    records = _slot_log(bank_copy, 1)
+    cell = f"{records[0]['profile']} {records[0]['atom_id']}"
+    records[0], records[1] = records[1], records[0]
+    _store(bank_copy, 1, records)
+    assert _report_problems(bank_copy) == (
+        f"attempt 1 {cell}: slots [2, 1, 3, 4] are not 1..n in order",
+    )
+
+
+def test_verify_detects_slots_after_the_4th_option(bank_copy):
+    records = _slot_log(bank_copy, 1)
+    cell = f"{records[0]['profile']} {records[0]['atom_id']}"
+    extra = _invalid(_moved(records[3], slot=5))
+    _store(bank_copy, 1, [*records[:4], extra, *records[4:]])
+    assert _report_problems(bank_copy) == (
+        f"attempt 1 {cell}: slots continued after the 4th option",
+    )
+
+
+def test_verify_detects_a_5th_valid_slot(bank_copy):
+    records = _slot_log(bank_copy, 1)
+    cell = f"{records[0]['profile']} {records[0]['atom_id']}"
+    _store(bank_copy, 1, [*records[:4], _moved(records[3], slot=5), *records[4:]])
+    problems = _report_problems(bank_copy)
+    assert f"attempt 1 {cell}: more than 4 valid slots" in problems
+    assert f"attempt 1: complete, but {cell} has 5" in problems
+
+
+def test_verify_detects_a_complete_attempt_with_a_short_cell(kit, bank_copy):
+    records = _slot_log(bank_copy, 1)
+    records[-1] = _invalid(records[-1])  # the last cell: no traversal after it
+    _store(bank_copy, 1, records)
+    last = kit.permutation.atom_order[-1]
+    assert f"attempt 1: complete, but P3 {last} has 3" in _report_problems(bank_copy)
+
+
+def test_verify_detects_more_than_12_slots_in_a_cell(kit, retried_copy):
+    records = _slot_log(retried_copy, 1)
+    failed = f"P1 {kit.permutation.atom_order[3]}"
+    _store(retried_copy, 1, [*records, records[-1]])  # a 13th record in the failed cell
+    problems = _report_problems(retried_copy)
+    assert f"attempt 1 {failed}: 13 slots (cap 12)" in problems
+
+
+def test_verify_detects_more_than_576_slots_in_an_attempt(kit, retried_copy):
+    template = _invalid(_slot_log(retried_copy, 1)[0])
+    records = [
+        _moved(template, profile=profile, atom=atom, slot=slot)
+        for profile in PROFILES
+        for atom in kit.permutation.atom_order
+        for slot in range(1, 13)
+    ]
+    assert len(records) == 576
+    _store(retried_copy, 1, [*records, records[-1]], slots_used=576)
+    assert "attempt 1: 577 slots (cap 576)" in _report_problems(retried_copy)
+
+
+def test_verify_detects_cells_out_of_the_stored_order(kit, retried_copy):
+    skipped = ("P1", kit.permutation.atom_order[1])
+    records = [r for r in _slot_log(retried_copy, 1) if (r["profile"], r["atom_id"]) != skipped]
+    _store(retried_copy, 1, records)
+    assert _report_problems(retried_copy) == (
+        "attempt 1 P1: cells were not traversed in the stored order",
+    )
+
+
+def test_verify_detects_a_traversal_that_moved_on_without_4_options(kit, retried_copy):
+    order = kit.permutation.atom_order
+    records = _slot_log(retried_copy, 1)
+    extra = _invalid(_moved(records[0], atom=order[4], slot=1))
+    _store(retried_copy, 1, [*records, extra])
+    assert _report_problems(retried_copy) == (
+        f"attempt 1 P1 {order[3]}: traversal moved on without 4 options",
+    )
+
+
+def test_verify_detects_a_failed_cell_without_12_slots(kit, retried_copy):
+    records = _slot_log(retried_copy, 1)
+    _store(retried_copy, 1, records[:-1])  # the failed cell is the last one written
+    assert _report_problems(retried_copy) == (
+        f"attempt 1: failed cell P1 {kit.permutation.atom_order[3]} has 11 slots and 0 options",
+    )
+
+
+def test_verify_needs_the_failed_cell_of_a_failed_attempt(retried_copy):
+    doc = read_json(retried_copy.attempt_summary(1))
+    doc["failed_cell"] = None
+    _write_json(retried_copy.attempt_summary(1), doc)
+    problems = _report_problems(retried_copy)
+    assert any(
+        p.startswith("attempt 1: attempt summary does not match") and "failed_cell" in p
+        for p in problems
+    ), problems
+
+
+def test_verify_detects_an_option_from_another_attempt(retried_copy):
+    doc = read_json(retried_copy.manifest)
+    option = doc["cells"][0]["options"][0]
+    option["slot_id"] = option["slot_id"].replace(".t2.", ".t1.")
+    _write_json(retried_copy.manifest, doc)
+    problems = _report_problems(retried_copy)
+    assert f"{option['option_id']}: from attempt 1, not the attempt used" in problems
+
+
+def test_verify_detects_options_sharing_a_waveform_in_a_cell(bank_copy):
+    records = _slot_log(bank_copy, 1)
+    first, second = records[0], records[1]
+    for key in ("raw_output", "recipe", "recipe_sha256", "pcm_sha256", "file_sha256"):
+        second[key] = first[key]
+    profile, atom = first["profile"], first["atom_id"]
+    shutil.copyfile(
+        bank_copy.option(option_wav(profile, atom, 1)),
+        bank_copy.option(option_wav(profile, atom, 2)),
+    )
+    _store(bank_copy, 1, records)
+    assert _report_problems(bank_copy) == (f"{profile} {atom}: options share a waveform",)
+
+
+def test_verify_rechecks_the_technical_validity_of_every_option(bank_copy):
+    """A reserved signal equal to an option: the option still re-renders to its hashes,
+    and only the validator's reserved-signal check can catch it."""
+    manifest = read_manifest(bank_copy.root)
+    cell = manifest.cells[20]
+    option = cell.options[1]
+    registry = load_reserved_registry()
+    collision = ReservedEntry(
+        id="DEMO-collision",
+        kind="other",
+        profile=Profile(cell.profile),
+        n_samples=1,
+        pcm_sha256=option.pcm_sha256,
+        file_sha256=option.file_sha256,
+        recipe=None,
+        description="DEMO: a reserved signal equal to one bank option",
+    )
+    reserved = ReservedRegistry(
+        registry.registry_version,
+        registry.renderer_version,
+        (*registry.entries, collision),
+        registry.asset_spec_version,
+    )
+    problems = _report_problems(bank_copy, reserved=reserved)
+    assert len(problems) == 1, problems
+    assert problems[0].startswith(f"{option.option_id}: not technically valid")
+    assert "E_RESERVED" in problems[0]
+
+
+def test_verify_detects_a_seed_namespace_of_another_bank(bank_copy):
+    records = _slot_log(bank_copy, 1)
+    for record in records:
+        record["seed_key"] = record["seed_key"].replace("|DEMO-bank-01|", "|DEMO-bank-02|", 1)
+    _store(bank_copy, 1, records, seed_namespace="DEMO-bank-02")
+    problems = _report_problems(bank_copy)
+    assert len(problems) == 1, problems
+    assert problems[0].startswith(
+        "seed namespace 'DEMO-bank-02' does not name bank DEMO-bank-01 version 1.0.0"
+    )

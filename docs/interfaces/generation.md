@@ -190,10 +190,11 @@ JSON); recomputing the manifest from the stored files gives the same hash (`bank
 `banks hash`). Amendments never change it.
 
 **Verify** (`banks verify`, `av_banks.verify.verify_bank -> VerifyReport`): schema, manifest
-= stored files, bank hash, config pins, every attempt log (hash, counts, slot IDs, seed
-keys, caps, traversal order, retention), provenance of every option (a `valid` record of
-the attempt used), re-render and WAV hashes, technical validity, distinct waveforms per
-cell, all 1,920 different-atom pairs per profile, amendment chain.
+= stored files, bank hash, config pins, a seed namespace that names the bank and version
+(`<bank_id>` for 1.0.0, else `<bank_id>-v<version>[-<suffix>]`), every attempt log (hash,
+counts, slot IDs, seed keys, caps, traversal order, retention), provenance of every option
+(a `valid` record of the attempt used), re-render and WAV hashes, technical validity,
+distinct waveforms per cell, all 1,920 different-atom pairs per profile, amendment chain.
 
 **Amend** (`banks amend ... --unheard-confirmed`, `av_banks.amend.amend_bank`): the reserve
 replaces a shown option (rank 1-3) after the operator confirms it is unheard and

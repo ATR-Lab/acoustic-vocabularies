@@ -7,6 +7,7 @@ Checks (every problem is reported, none stops the others):
   stored files equals the stored one (and `bank-sha256.txt`);
 - the generation config is the one named by the manifest, and the running renderer and
   validator are the ones it pins (else re-rendering cannot reproduce the hashes);
+- the seed namespace names the bank and its version (`builder.seed_namespace_error`);
 - every attempt's slot log: hash and count as listed, slot IDs and B seed keys
   consistent, at most 12 slots per cell and 576 per attempt, cells traversed in the
   stored order, retention stopped at 4, a failed attempt's cell used 12 slots;
@@ -51,6 +52,7 @@ from av_sound.validate import validate
 from av_sound.wav import file_sha256 as wav_file_sha256
 from av_sound.wav import read_wav
 
+from av_banks.builder import seed_namespace_error
 from av_banks.layout import BankLayout
 from av_banks.manifest import (
     AttemptSummary,
@@ -204,7 +206,8 @@ class _Checker:
                     )
                     if n_valid != B_OPTIONS_PER_CELL:
                         self.problem(f"{where}: complete, but {profile} {atom} has {n_valid}")
-        elif summary.failed_cell is None:
+        elif summary.failed_cell is None:  # pragma: no cover - bank-attempt.schema.json
+            # requires a failed cell when the status is failed (`AttemptSummary.read`)
             self.problem(f"{where}: failed without a failed cell")
         else:
             failed = cells.get((summary.failed_cell.profile, summary.failed_cell.atom_id), [])
@@ -323,6 +326,11 @@ def verify_bank(
         manifest = BankManifest.read(layout.manifest)
     except (OSError, ValueError) as err:
         return VerifyReport(layout.bank_id, None, None, False, (f"manifest: {err}",), 0, 0, 0)
+    namespace_error = seed_namespace_error(
+        manifest.bank_id, manifest.bank_version, manifest.seed_namespace
+    )
+    if namespace_error is not None:
+        checker.problem(namespace_error)
     stored = manifest.bank_sha256()
     recomputed: str | None = None
     try:

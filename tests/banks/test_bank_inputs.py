@@ -22,7 +22,12 @@ from av_generation.records import SlotRecord
 from av_sound.recipe import Profile
 from av_sound.tables import SAMPLES_PER_MS
 
-from av_banks.builder import BankBuildError, bank_spec, default_seed_namespace
+from av_banks.builder import (
+    BankBuildError,
+    bank_spec,
+    default_seed_namespace,
+    seed_namespace_error,
+)
 from av_banks.permutation import (
     PermutationError,
     check_bank_unit,
@@ -145,14 +150,53 @@ def test_bank_spec_versions_and_namespaces(kit):
     rebuilt = bank_spec("DEMO-bank-01", kit.permutation, bank_version="1.1.0")
     assert rebuilt.seed_namespace == "DEMO-bank-01-v1.1.0"
     assert default_seed_namespace("bank-C001", "2.0.0") == "bank-C001-v2.0.0"
-    custom = bank_spec("DEMO-bank-01", kit.permutation, seed_namespace="DEMO-ns.2")
-    assert custom.seed_namespace == "DEMO-ns.2"
+    custom = bank_spec("DEMO-bank-01", kit.permutation, seed_namespace="DEMO-bank-01-v1.0.0-r2")
+    assert custom.seed_namespace == "DEMO-bank-01-v1.0.0-r2"
+    explicit = bank_spec(
+        "DEMO-bank-01", kit.permutation, bank_version="1.1.0", seed_namespace="DEMO-bank-01-v1.1.0"
+    )
+    assert explicit == rebuilt
     with pytest.raises(BankBuildError, match="bank_version"):
         bank_spec("DEMO-bank-01", kit.permutation, bank_version="v2")
     with pytest.raises(BankBuildError, match="seed namespace"):
         bank_spec("DEMO-bank-01", kit.permutation, seed_namespace="bad|ns")
+    with pytest.raises(BankBuildError, match="seed namespace"):
+        bank_spec("DEMO-bank-01", kit.permutation, seed_namespace="")
     with pytest.raises(IdError):
         bank_spec("-bad", kit.permutation)
+
+
+@pytest.mark.parametrize(
+    ("bank_id", "version", "namespace"),
+    [
+        ("DEMO-bank-02", "1.0.0", "DEMO-bank-01"),  # another bank's seeds
+        ("DEMO-bank-02", "1.0.0", "DEMO-bank-01-v1.0.0-r2"),
+        ("DEMO-bank-01", "1.1.0", "DEMO-bank-01"),  # a rebuild repeating v1.0.0's seeds
+        ("DEMO-bank-01", "1.2.0", "DEMO-bank-01-v1.1.0"),
+        ("DEMO-bank-01", "1.0.0", "DEMO-bank-01-v1.1.0"),
+        ("DEMO-bank-01", "1.0.0", "DEMO-bank-01-v1.0.01"),
+        ("DEMO-bank-01", "1.0.0", "DEMO-bank-01-r2"),
+        ("DEMO-bank-01", "1.0.0", "DEMO-ns.2"),
+    ],
+)
+def test_seed_namespaces_name_their_bank_and_version(kit, bank_id, version, namespace):
+    with pytest.raises(BankBuildError, match="E_SPEC: seed namespace .* does not name bank"):
+        bank_spec(bank_id, kit.permutation, bank_version=version, seed_namespace=namespace)
+    assert seed_namespace_error(bank_id, version, namespace) is not None
+
+
+def test_confirmatory_banks_cannot_take_pilot_seeds(kit, tmp_path):
+    unit = load_permutation(_unit(kit, tmp_path, demo=False, unit_id="B-C01"))
+    assert bank_spec("bank-C001", unit).seed_namespace == "bank-C001"
+    with pytest.raises(BankBuildError, match="does not name bank bank-C001"):
+        bank_spec("bank-C001", unit, seed_namespace="bank-P001")
+
+
+def test_the_builder_rechecks_the_seed_namespace(kit, tmp_path):
+    spec = dataclasses.replace(kit.spec(), seed_namespace="DEMO-bank-02")
+    with pytest.raises(BankBuildError, match="E_SPEC: seed namespace"):
+        kit.builder(tmp_path, kit.script(kit.all_kind("valid")), spec=spec)
+    assert not (tmp_path / "DEMO-bank-01").exists()
 
 
 # -- configuration checks ----------------------------------------------------

@@ -21,6 +21,7 @@ from hypothesis import strategies as st
 from av_banks.builder import AttemptRun, BankBuildError
 from av_banks.layout import BankLayout
 from av_banks.manifest import AttemptSummary
+from av_banks.verify import verify_bank
 
 
 def _cells_of(result):
@@ -281,11 +282,12 @@ def test_parallel_profile_streams_give_the_same_bank(kit, tmp_path, built_bank):
     assert parallel.attempts[0].slots_used == built_bank.attempts[0].slots_used
 
 
-def test_parallel_streams_stop_after_a_failed_profile(kit, tmp_path):
+@pytest.mark.parametrize("failing", [0, 3])
+def test_parallel_streams_stop_after_a_failed_profile(kit, tmp_path, failing):
     order = kit.permutation.atom_order
 
     def kind(attempt, profile, atom, slot):
-        if attempt == 1 and (profile, atom) == ("P2", order[0]):
+        if attempt == 1 and (profile, atom) == ("P2", order[failing]):
             return "timeout"
         return "valid"
 
@@ -293,9 +295,14 @@ def test_parallel_streams_stop_after_a_failed_profile(kit, tmp_path):
     assert result.status == "complete" and result.attempt_used == 2
     first = result.attempts[0]
     assert first.status == "failed" and first.failed_cell.profile == "P2"
+    assert first.failed_cell.atom_id == order[failing]
     statuses = {p.profile: p.status for p in first.profiles}
     assert statuses["P2"] == "failed"
     assert set(statuses.values()) <= {"failed", "stopped", "complete"}
+    # the stopped streams (a partly filled last cell) pass verify's traversal rules
+    report = verify_bank(result.bank_dir)
+    assert report.ok, report.problems
+    assert report.attempts_checked == 2
 
 
 class TickClock:
@@ -336,6 +343,24 @@ def test_throughput_and_timing_are_logged(kit, tmp_path):
     end = next(e for e in events if e.event == "attempt_end")
     assert "slots/min" in end.detail and end.duration_ms == summary.wall_ms
     assert json.loads(layout.attempt_summary(1).read_text(encoding="utf-8"))["throughput"]
+
+
+def test_a_rebuild_under_a_new_version_gets_its_own_seeds(kit, tmp_path, built_bank):
+    spec = kit.spec(bank_version="1.1.0")
+    result = kit.build(tmp_path, kit.script(kit.all_kind("valid")), spec=spec)
+    manifest = result.manifest
+    assert (manifest.bank_version, manifest.seed_namespace) == ("1.1.0", "DEMO-bank-01-v1.1.0")
+    records = read_records(BankLayout(result.bank_dir).slots(1), SlotRecord)
+    assert len(records) == result.slots_used >= 192
+    for record in records:
+        assert record.seed_key == (
+            f"B|DEMO-bank-01-v1.1.0|1|{record.profile.value}|{record.atom_id}|{record.slot}"
+        )
+    first = read_records(BankLayout(built_bank.bank_dir).slots(1), SlotRecord)
+    assert {r.seed for r in records}.isdisjoint({r.seed for r in first})
+    assert result.bank_sha256 != built_bank.bank_sha256
+    report = verify_bank(result.bank_dir)
+    assert report.ok, report.problems
 
 
 def test_slot_records_carry_the_b_seed_and_prompt_hashes(kit, built_bank):
