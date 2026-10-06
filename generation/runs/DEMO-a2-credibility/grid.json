@@ -1,0 +1,538 @@
+{
+  "centrality_drift": {
+    "after_1_mutations": 0.2784,
+    "after_3_mutations": 0.253,
+    "after_9_mutations": 0.2384,
+    "uniform": 0.2859
+  },
+  "scenarios": {
+    "atom1-int-noise0": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "403d1cfc52b2d8ca21eb68d95daead2938e72b54e58e26dcdabfea500e722665",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 1,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": true,
+          "noise_sd": 0.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8847,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.3958,
+          "mean_true_association": 2.5948,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.2974,
+          "mean_true_score_by_round": [
+            3.0616,
+            3.1891,
+            3.2582,
+            3.2974
+          ],
+          "valid_slot_rate": 0.9646
+        },
+        "uniform": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8028,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.4583,
+          "mean_true_association": 2.8207,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.4104,
+          "mean_true_score_by_round": [
+            3.0616,
+            3.2182,
+            3.3499,
+            3.4104
+          ],
+          "valid_slot_rate": 0.8972
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 40,
+        "a2_worse_books": 53,
+        "books": 120,
+        "ci95": [
+          -0.1988,
+          -0.0272
+        ],
+        "mean": -0.113,
+        "sd": 0.4747
+      }
+    },
+    "atom1-int-noise1": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "2e4d382fd8d7112534a3a89a6aa0803717ffd9d45a4a29f3a0d6568b99e50a8e",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 1,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": true,
+          "noise_sd": 1.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8833,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.6583,
+          "mean_true_association": 2.437,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.2185,
+          "mean_true_score_by_round": [
+            3.0323,
+            3.1171,
+            3.1724,
+            3.2185
+          ],
+          "valid_slot_rate": 0.9646
+        },
+        "uniform": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8028,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.5917,
+          "mean_true_association": 2.6814,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.3407,
+          "mean_true_score_by_round": [
+            3.0323,
+            3.1766,
+            3.3083,
+            3.3407
+          ],
+          "valid_slot_rate": 0.8972
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 42,
+        "a2_worse_books": 59,
+        "books": 120,
+        "ci95": [
+          -0.216,
+          -0.0284
+        ],
+        "mean": -0.1222,
+        "sd": 0.5188
+      }
+    },
+    "atom1-real-noise0": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "079dcfaba08f2be542cba96105469dacbaa31bce5a9605ebe7198fa926fc0472",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 1,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": false,
+          "noise_sd": 0.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8847,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.5451,
+          "mean_true_association": 3.0902,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.5451,
+          "mean_true_score_by_round": [
+            3.085,
+            3.2716,
+            3.4247,
+            3.5451
+          ],
+          "valid_slot_rate": 0.9625
+        },
+        "uniform": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8028,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.4559,
+          "mean_true_association": 2.9118,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.4559,
+          "mean_true_score_by_round": [
+            3.085,
+            3.256,
+            3.4015,
+            3.4559
+          ],
+          "valid_slot_rate": 0.8972
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 74,
+        "a2_worse_books": 45,
+        "books": 120,
+        "ci95": [
+          0.0115,
+          0.167
+        ],
+        "mean": 0.0892,
+        "sd": 0.4301
+      }
+    },
+    "atom1-real-noise1": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "cdca49fee2bb6938b33fac69fb4a259d6d224cae2b8cc3aeb23207141c11523d",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 1,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": false,
+          "noise_sd": 1.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8861,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.6966,
+          "mean_true_association": 2.5797,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.2899,
+          "mean_true_score_by_round": [
+            3.0406,
+            3.1588,
+            3.235,
+            3.2899
+          ],
+          "valid_slot_rate": 0.9646
+        },
+        "uniform": {
+          "atoms": 120,
+          "eligible_slot_rate": 0.8028,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 3.5997,
+          "mean_true_association": 2.6838,
+          "mean_true_distinguishability": 4.0,
+          "mean_true_score": 3.3419,
+          "mean_true_score_by_round": [
+            3.0406,
+            3.1849,
+            3.3089,
+            3.3419
+          ],
+          "valid_slot_rate": 0.8972
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 52,
+        "a2_worse_books": 55,
+        "books": 120,
+        "ci95": [
+          -0.1344,
+          0.0304
+        ],
+        "mean": -0.052,
+        "sd": 0.4559
+      }
+    },
+    "book-int-noise0": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "ac63f343981841beba9871e1e4b500b8c63072aed6d213d0cbda1a632bb7ad6c",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 16,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": true,
+          "noise_sd": 0.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8564,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.4047,
+          "mean_true_association": 2.1528,
+          "mean_true_distinguishability": 6.3608,
+          "mean_true_score": 4.2568,
+          "mean_true_score_by_round": [
+            4.0437,
+            4.1404,
+            4.2042,
+            4.2568
+          ],
+          "valid_slot_rate": 0.9577
+        },
+        "uniform": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8098,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.5344,
+          "mean_true_association": 2.4941,
+          "mean_true_distinguishability": 6.4026,
+          "mean_true_score": 4.4483,
+          "mean_true_score_by_round": [
+            4.0524,
+            4.2598,
+            4.3772,
+            4.4483
+          ],
+          "valid_slot_rate": 0.9079
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 10,
+        "a2_worse_books": 110,
+        "books": 120,
+        "ci95": [
+          -0.2173,
+          -0.1658
+        ],
+        "mean": -0.1915,
+        "sd": 0.1425
+      }
+    },
+    "book-int-noise1": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "09e63397ea94378a1487073dbc3967a17477fadf4d3600391d6dc5d82db1cfb1",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 16,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": true,
+          "noise_sd": 1.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8564,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.5847,
+          "mean_true_association": 2.0557,
+          "mean_true_distinguishability": 6.249,
+          "mean_true_score": 4.1523,
+          "mean_true_score_by_round": [
+            3.9954,
+            4.0606,
+            4.1111,
+            4.1523
+          ],
+          "valid_slot_rate": 0.9584
+        },
+        "uniform": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8096,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.6172,
+          "mean_true_association": 2.3678,
+          "mean_true_distinguishability": 6.3506,
+          "mean_true_score": 4.3592,
+          "mean_true_score_by_round": [
+            4.0167,
+            4.1838,
+            4.2934,
+            4.3592
+          ],
+          "valid_slot_rate": 0.9077
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 9,
+        "a2_worse_books": 111,
+        "books": 120,
+        "ci95": [
+          -0.2307,
+          -0.183
+        ],
+        "mean": -0.2069,
+        "sd": 0.1319
+      }
+    },
+    "book-real-noise0": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "a2245238493c2f2a1558346b50c74c5c911091e1a43064d49cff95f945462737",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 16,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": false,
+          "noise_sd": 0.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8544,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.4313,
+          "mean_true_association": 2.4629,
+          "mean_true_distinguishability": 6.3998,
+          "mean_true_score": 4.4313,
+          "mean_true_score_by_round": [
+            4.0461,
+            4.2032,
+            4.3279,
+            4.4313
+          ],
+          "valid_slot_rate": 0.9576
+        },
+        "uniform": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8098,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.514,
+          "mean_true_association": 2.602,
+          "mean_true_distinguishability": 6.4261,
+          "mean_true_score": 4.514,
+          "mean_true_score_by_round": [
+            4.0779,
+            4.3041,
+            4.4343,
+            4.514
+          ],
+          "valid_slot_rate": 0.9079
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 35,
+        "a2_worse_books": 85,
+        "books": 120,
+        "ci95": [
+          -0.1057,
+          -0.0597
+        ],
+        "mean": -0.0827,
+        "sd": 0.1272
+      }
+    },
+    "book-real-noise1": {
+      "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+      "books_sha256": "cffa9a536862d3bb9e9028b9245db629cbad9aeb9bc3ac6d6f9d26bd4548e56f",
+      "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+      "config": {
+        "atoms": 16,
+        "books_per_profile": 40,
+        "namespace": "DEMO-CRED",
+        "panel": {
+          "association_range": 0.5,
+          "distinguishability_range": 0.4,
+          "integer_ratings": false,
+          "noise_sd": 1.0,
+          "p_unacceptable": 0.1,
+          "p_unacceptable_high": 0.3,
+          "run_id": "DEMO-a2-credibility"
+        },
+        "threshold": "0.10"
+      },
+      "mean_fallback_difference_per_book": 0.0,
+      "methods": {
+        "A2": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8554,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.5636,
+          "mean_true_association": 2.1002,
+          "mean_true_distinguishability": 6.2346,
+          "mean_true_score": 4.1674,
+          "mean_true_score_by_round": [
+            3.9972,
+            4.07,
+            4.1262,
+            4.1674
+          ],
+          "valid_slot_rate": 0.958
+        },
+        "uniform": {
+          "atoms": 1920,
+          "eligible_slot_rate": 0.8097,
+          "fallback_rate": 0.0,
+          "mean_panel_score": 4.5965,
+          "mean_true_association": 2.3969,
+          "mean_true_distinguishability": 6.3333,
+          "mean_true_score": 4.3651,
+          "mean_true_score_by_round": [
+            4.0195,
+            4.1921,
+            4.2981,
+            4.3651
+          ],
+          "valid_slot_rate": 0.9078
+        }
+      },
+      "paired_true_score_difference": {
+        "a2_better_books": 7,
+        "a2_worse_books": 113,
+        "books": 120,
+        "ci95": [
+          -0.2201,
+          -0.1753
+        ],
+        "mean": -0.1977,
+        "sd": 0.124
+      }
+    }
+  }
+}
