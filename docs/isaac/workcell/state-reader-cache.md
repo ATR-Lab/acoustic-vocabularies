@@ -139,8 +139,11 @@ wire contracts are unchanged.
 Use the existing isolated runtime and pinned assets. Add `--e2e-handle-cache`
 only to a fresh `run_scene.py --reset-check --skip-reach --e2e-seconds <5..3600>`
 run with all existing explicit station, control-session, UID and Unix endpoint
-arguments. The flag rejects reach/camera or additional diagnostic workflows
+arguments. The flag rejects reach or additional diagnostic workflows
 before simulator startup. Other measurements must use separate fresh runs.
+The existing `--capture` camera setup and initial images remain allowed; they
+occur before enabling the cache and before the measured service. Keep that
+choice identical in both comparison arms to retain the same scene identity.
 The normal source remains unchanged when the option is absent.
 
 Before any comparison, retain the pinned-runtime live-read and 20-mutation /

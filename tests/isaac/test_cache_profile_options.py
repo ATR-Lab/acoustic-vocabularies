@@ -19,12 +19,13 @@ def test_normal_runner_does_not_require_a_cache_profile():
     validate_cache_profile(SimpleNamespace(e2e_handle_cache=False))
 
 
-def test_explicit_joined_profile_is_bounded_and_unambiguous():
-    validate_cache_profile(options())
+@pytest.mark.parametrize('capture', [False, True])
+def test_explicit_joined_profile_preserves_precaptured_camera_choice(capture):
+    validate_cache_profile(options(capture=capture))
 
 
 @pytest.mark.parametrize('changes', [
-    {'reset_check': False}, {'skip_reach': False}, {'capture': True},
+    {'reset_check': False}, {'skip_reach': False},
     *({'e2e_seconds': value} for value in (0, 4, 3601, float('nan'), float('inf'))),
     *({key: True} for key in ('command_check', 'published_command_check',
        'disconnect_check', 'demo_check', 'demo_preflight', 'grip_check', 'same_iteration_check')),

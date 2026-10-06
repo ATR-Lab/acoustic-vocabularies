@@ -19,7 +19,7 @@ def validate_cache_profile(args):
     """The opt-in measures only the existing bounded joined service."""
     if not args.e2e_handle_cache:
         return
-    if (not args.reset_check or not args.skip_reach or args.capture
+    if (not args.reset_check or not args.skip_reach
             or not math.isfinite(args.e2e_seconds) or not 5 <= args.e2e_seconds <= 3600
             or any((args.publisher_seconds, args.command_check, args.published_command_check,
                     args.disconnect_check, args.demo_check, args.demo_preflight, args.grip_check,
