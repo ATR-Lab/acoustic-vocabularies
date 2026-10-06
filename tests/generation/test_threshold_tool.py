@@ -393,10 +393,34 @@ def _plan(stimuli, session_id="DEMO-S01", **kw):
     return th.plan_session(stimuli, session_id, **{**args, **kw})
 
 
+DEMO_S01_PLAN_SHA256 = "1018b96ff346fcc2e95df1ca4d4e5ce61b59159b9395c3a9ffea3a6acb8efd8d"
+"""SHA-256 of the DEMO-S01 plan of set DEMO-T1, one `<trial_index> <pair_id> <order>\\n`
+line per trial. Pinned so that a change in how `plan_session` draws from its seeded
+stream (or a numpy upgrade that changes the stream) fails on every OS: stored session
+documents could no longer be checked or resumed."""
+
+DEMO_S01_PLAN_HEAD = [
+    ("P1-0.125-01", "BA"),
+    ("P2-0.125-03", "AB"),
+    ("P3-0.100-05", "AB"),
+    ("P1-0.075-04", "AB"),
+    ("P3-0.125-03", "AB"),
+    ("P2-same-06", "BA"),
+    ("P3-0.200-07", "BA"),
+    ("P1-0.125-05", "AB"),
+    ("P1-same-11", "BA"),
+    ("P2-0.100-03", "BA"),
+]
+
+
 def test_session_plan_is_seeded_complete_and_balanced(demo_set):
     session = _plan(demo_set)
     assert session.order_seed_key == "THRESHOLD|DEMO-T1|order|DEMO-S01"
-    assert session.order_seed == seed_from_key(session.order_seed_key)
+    assert session.order_seed == seed_from_key(session.order_seed_key) == 7307076573463306863
+    # the seeded order and A/B labels are pinned (not only compared with a fresh plan)
+    assert [(t.pair_id, t.order) for t in session.plan[:10]] == DEMO_S01_PLAN_HEAD
+    text = "".join(f"{t.trial_index} {t.pair_id} {t.order}\n" for t in session.plan)
+    assert hashlib.sha256(text.encode("ascii")).hexdigest() == DEMO_S01_PLAN_SHA256
     assert session.set_sha256 == demo_set.sha256()
     assert session.ab_order_rule == "balanced_per_bin"
     assert [t.trial_index for t in session.plan] == list(range(1, 225))

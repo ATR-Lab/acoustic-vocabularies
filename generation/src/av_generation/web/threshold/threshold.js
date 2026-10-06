@@ -3,13 +3,17 @@
 // Each pair plays once (single-use audio URLs); answers are never scored on this page.
 // Onsets, the opening of the answer buttons and the RT zero point are times at the
 // speaker: the AudioContext output latency is added and reported to the server.
+// The play is reported only after motif B has ended (its source fired `ended` and the
+// end has reached the speaker), so a reload or crash during playback leaves the trial
+// unreported, which the server makes skip-only: every answer follows both complete motifs.
 "use strict";
 
 (() => {
   const $ = (id) => document.getElementById(id);
   const LEAD_S = 0.15; // scheduling lead before motif A starts
+  const STALL_MS = 5000; // motif B not ended this long after its planned end: audio failed
   let ctx = null;
-  let trial = null; // {index, endPerf}
+  let trial = null; // {index, endPerf, reported}
 
   async function api(method, path, body) {
     const init = { method, cache: "no-store", headers: {} };
@@ -77,7 +81,7 @@
   function interrupted(index) {
     // The audio of this trial left the server before an interruption (reload or server
     // restart) and its play was never logged: it is not played again.
-    trial = { index, endPerf: null };
+    trial = { index, endPerf: null, reported: null };
     $("play").hidden = true;
     $("answer").hidden = true;
     $("status").textContent = "This pair was interrupted and cannot be played again. Please call the operator.";
@@ -98,6 +102,36 @@
     source.buffer = buffer; // no gain node: the station's fixed output gain applies
     source.connect(ctx.destination);
     source.start(when);
+    return source;
+  }
+
+  // Resolves when `source` has played to its end and `endPerf` (that end at the speaker)
+  // has passed; rejects (E_AUDIO_STALLED) when that has not happened STALL_MS later.
+  function heardToEnd(source, endPerf) {
+    return new Promise((resolve, reject) => {
+      let ended = false;
+      let reached = false;
+      const wait = () => Math.max(0, endPerf - performance.now());
+      const done = () => {
+        if (ended && reached) {
+          clearTimeout(watchdog);
+          resolve();
+        }
+      };
+      const watchdog = setTimeout(() => {
+        const err = new Error("motif B did not finish playing");
+        err.code = "E_AUDIO_STALLED";
+        reject(err);
+      }, wait() + STALL_MS);
+      source.addEventListener("ended", () => {
+        ended = true;
+        done();
+      }, { once: true });
+      setTimeout(() => {
+        reached = true;
+        done();
+      }, wait());
+    });
   }
 
   // Maps AudioContext times to performance.now() times: `scheduled` without and `heard`
@@ -129,9 +163,9 @@
     document.body.dataset.state = "listening";
     const next = await api("POST", "/threshold/api/next");
     const received = performance.now();
-    trial = { index: next.trial_index, endPerf: null };
+    trial = { index: next.trial_index, endPerf: null, reported: null };
     if (next.phase === "respond") {
-      openAnswer(null); // already played before a reload: answer without replay
+      openAnswer(null); // heard to the end before a reload: answer without replay
       return;
     }
     if (next.phase === "skip") {
@@ -147,21 +181,27 @@
     const onsetSecond = onsetFirst + first.duration + next.gap_ms / 1000;
     const endSecond = onsetSecond + second.duration;
     play(first, onsetFirst);
-    play(second, onsetSecond);
+    const sourceB = play(second, onsetSecond);
     const clock = clockMap();
-    await api("POST", `/threshold/api/trials/${trial.index}/played`, {
+    const endPerf = clock.heard(endSecond);
+    const body = {
       onset_first_ms: Math.max(0, Math.round(clock.heard(onsetFirst) - received)),
       onset_second_ms: Math.max(0, Math.round(clock.heard(onsetSecond) - received)),
       output_latency_ms: clock.latencyMs,
-    });
-    const endPerf = clock.heard(endSecond);
-    setTimeout(() => openAnswer(endPerf), Math.max(0, endPerf - performance.now()));
+    };
+    // Report only once both motifs have been heard to the end. Until then the server
+    // knows only that the audio was delivered, so an interruption makes it skip-only.
+    await heardToEnd(sourceB, endPerf);
+    trial.reported = api("POST", `/threshold/api/trials/${trial.index}/played`, body);
+    openAnswer(endPerf); // an answer is sent only after the play report succeeded
+    await trial.reported;
   }
 
   async function answer(response) {
     $("same").disabled = true;
     $("different").disabled = true;
     const rt = trial.endPerf === null ? null : Math.max(0, Math.round(performance.now() - trial.endPerf));
+    await trial.reported;
     const state = await api("POST", `/threshold/api/trials/${trial.index}/response`, {
       response,
       rt_ms: rt,

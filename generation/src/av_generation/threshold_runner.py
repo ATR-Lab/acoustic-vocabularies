@@ -11,18 +11,20 @@ work tree (`rundir.create_run_dir`).
 Trial flow (no replay, no feedback, self-paced): the listener presses Play; the server
 issues the current trial with two single-use audio tokens (`ROUTES["next"]`); the page
 fetches both WAVs once (each delivery is logged and synced to disk as a
-`threshold.DELIVERY_EVENT` timing event before the bytes leave the server), schedules
-motif A, the gap (`config.gap_ms`) and motif B with the Web Audio clock and reports the
-onsets at the speaker, output latency included (`ROUTES["played"]`), which logs one
-`threshold_first` and one `threshold_second` play event; the Same/Different buttons open
-when motif B ends at the speaker and the answer is logged as a `threshold_trial` record
-(`rt_ms` from the end of motif B). A second fetch of a token or a second play report is
-refused and logged (`result="refused"`). A trial whose audio was delivered but whose
-play was never reported (a reload or a server restart in between) is never issued
-again: its phase is `skip` and only the operator skip closes it. The page never learns
-the pair, its kind, bin or distance, and the answer is never scored. The station plays
-at its fixed output gain (recorded in the session document); the page has no volume
-control.
+`threshold.DELIVERY_EVENT` timing event before the bytes leave the server) and schedules
+motif A, the gap (`config.gap_ms`) and motif B with the Web Audio clock. Only after motif
+B has ended at the speaker does it report the play (`ROUTES["played"]`: the onsets at the
+speaker, output latency included), which logs one `threshold_first` and one
+`threshold_second` play event; the Same/Different buttons open at that end and the
+answer is logged as a `threshold_trial` record (`rt_ms` from the end of motif B). A
+second fetch of a token or a second play report is refused and logged
+(`result="refused"`). A trial whose audio was delivered but whose play was never
+reported (a reload, a crash or a server restart during playback or before the report
+arrived) is never issued again: its phase is `skip` and only the operator skip closes
+it. So a trial in the `respond` phase was heard to the end, and every answer follows
+both complete motifs. The page never learns the pair, its kind, bin or distance, and the
+answer is never scored. The station plays at its fixed output gain (recorded in the
+session document); the page has no volume control.
 """
 
 from __future__ import annotations
@@ -525,10 +527,12 @@ class ThresholdRunner:
         onset_second_ms: int,
         output_latency_ms: int | None = None,
     ) -> dict[str, Any]:
-        """Log the two plays of the current trial. Onsets are milliseconds since the page
-        received the trial (the latest `next` reply), at the speaker; they are stored on
-        the run clock (issue time + offset). With `output_latency_ms` (the audio output
-        latency the page added), `scheduled_ms` is the onset minus that latency.
+        """Log the two plays of the current trial. The page sends this report only after
+        motif B has ended at the speaker, so a logged play pair means both motifs were
+        heard to the end. Onsets are milliseconds since the page received the trial (the
+        latest `next` reply), at the speaker; they are stored on the run clock (issue time
+        + offset). With `output_latency_ms` (the audio output latency the page added),
+        `scheduled_ms` is the onset minus that latency.
 
         Refused: a second report (`E_ALREADY_PLAYED`, logged), a report before both
         motifs were fetched (`E_NOT_FETCHED`) and a report for audio delivered before

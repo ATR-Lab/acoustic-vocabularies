@@ -100,9 +100,9 @@ DEMO example `generation/examples/threshold/demo-stimuli.json`, set `DEMO-T1`),
 `ThresholdSession` (`threshold/sessions/<session>.json`, written before the first trial;
 `ab_order_rule = "balanced_per_bin"`), `ThresholdTrial` (`logs/threshold-trials.jsonl`),
 `PlayEvent` (`logs/plays.jsonl`, contexts `threshold_first`/`threshold_second`,
-`audio_kind="atom"`, `trial_id = <session>.t<NNN>`, `onset_ms` at the speaker and
-`scheduled_ms` = onset minus the output latency, refusals `E_TOKEN_USED`,
-`E_ALREADY_PLAYED` and `E_UNREPORTED`) and `TimingEvent` (`component="threshold"`:
+`audio_kind="atom"`, `trial_id = <session>.t<NNN>`, reported after motif B has ended,
+`onset_ms` at the speaker and `scheduled_ms` = onset minus the output latency, refusals
+`E_TOKEN_USED`, `E_ALREADY_PLAYED` and `E_UNREPORTED`) and `TimingEvent` (`component="threshold"`:
 `session_start`, `session_end`, `operator_action` for skips, `asset_ready` for each
 audio delivery with detail `<trial_id> <first|second> <token>`, `log_repaired`). Seed keys:
 `THRESHOLD|<set>|pair|<profile>|<center>|<k>`, `THRESHOLD|<set>|same|<profile>|<k>`,

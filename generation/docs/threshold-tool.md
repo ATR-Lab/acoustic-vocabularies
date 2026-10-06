@@ -155,33 +155,39 @@ pair exactly once, the A/B balance, and that the plan is the seeded plan.
    it logs the delivery and syncs it to disk: a timing event `asset_ready` with detail
    `<trial_id> <first|second> <token>`. The page schedules motif A, the gap and motif B
    on the Web Audio clock. It plays at the station's output gain: the page has no volume
-   control and no gain node. The page reports the two onsets at the speaker: the
-   scheduled times plus the audio output latency (from
-   `AudioContext.getOutputTimestamp()`, otherwise `outputLatency` or `baseLatency`),
-   and the latency it added. The server logs one `threshold_first` and one
-   `threshold_second` play event (`onset_ms` at the speaker, `scheduled_ms` = onset
-   minus that latency).
-3. When motif B ends at the speaker, the **Same** and **Different** buttons open. There
-   is no time limit. The answer is logged as a `threshold_trial` record. `rt_ms` is the
-   time from the end of motif B at the speaker to the click.
-4. There is no replay control and no feedback. A second fetch of an audio URL is refused
+   control and no gain node.
+3. The page reports the play only after motif B has ended: its audio source has fired
+   `ended` and the end has reached the speaker. If that does not happen within 5 s of
+   the planned end, the page shows an audio error (`E_AUDIO_STALLED`) and the operator
+   skips the trial. The report holds the two onsets at the speaker: the scheduled times
+   plus the audio output latency (from `AudioContext.getOutputTimestamp()`, otherwise
+   `outputLatency` or `baseLatency`), and the latency it added. The server logs one
+   `threshold_first` and one `threshold_second` play event (`onset_ms` at the speaker,
+   `scheduled_ms` = onset minus that latency). Their `t_ms`, the time the report
+   arrived, is after the end of motif B. So a logged play pair means that the listener
+   heard both motifs to the end.
+4. When motif B ends at the speaker, the **Same** and **Different** buttons open. There
+   is no time limit. The page sends the answer only after the server has accepted the
+   play report. The answer is logged as a `threshold_trial` record. `rt_ms` is the time
+   from the end of motif B at the speaker to the click.
+5. There is no replay control and no feedback. A second fetch of an audio URL is refused
    (`E_TOKEN_USED`, HTTP 410). A second play report is refused (`E_ALREADY_PLAYED`). Both
    refusals are logged as play events with `result = "refused"`.
-5. The next trial starts when the listener presses Play again, so the listener can rest
+6. The next trial starts when the listener presses Play again, so the listener can rest
    between trials.
 
 Recovery: if the page reloads or the server restarts, the session resumes from the logs.
 
-- A trial that has played (both play events logged) can be answered but is not played
-  again.
+- A trial that has played (both play events logged, so it was heard to the end) can be
+  answered but is not played again.
 - A trial whose audio left the server but whose play was not logged is never issued
-  again. This happens when the page reloads after the audio was fetched, when the play
-  report fails, or when the server stops before the report arrives. A crash between
-  the two play-event appends has the same effect, and `check_plays` reports that half
-  pair as a problem. The trial's phase is `skip`. The page says that
-  the pair was interrupted and shows only **Skip this trial (operator)**. Its old audio
-  URLs are refused (`E_TOKEN_USED`) and a late play report is refused
-  (`E_UNREPORTED`). Both refusals are logged.
+  again. This happens when the page reloads or crashes after the audio was fetched
+  (also while the pair is still playing), when the play report fails, or when the server
+  stops before the report arrives. A crash between the two play-event appends has the
+  same effect, and `check_plays` reports that half pair as a problem. The trial's phase
+  is `skip`. The page says that the pair was interrupted and shows only **Skip this
+  trial (operator)**. Its old audio URLs are refused (`E_TOKEN_USED`) and a late play
+  report is refused (`E_UNREPORTED`). Both refusals are logged.
 - A skipped trial is logged with `response` null and is never replayed. A skip after
   the audio was delivered is logged as the `operator_action` event `skip <trial_id>
   (audio delivered, play not reported)`. `check_plays` counts it in `n_unreported`: the
@@ -198,7 +204,7 @@ Recovery: if the page reloads or the server restarts, the session resumes from t
 | `GET /threshold/api/state` | | `n_trials`, `n_done`, `status` (`running`/`done`), `trial_index`, `phase` (`listen`/`respond`/`skip`) |
 | `POST /threshold/api/next` | | `trial_index`, `n_trials`, `phase`; for `listen` also `gap_ms`, `first`, `second` (audio URLs); `skip` gives nothing else |
 | `GET /threshold/api/audio/{token}` | | `audio/wav`, once (the delivery is logged first) |
-| `POST /threshold/api/trials/{i}/played` | `onset_first_ms`, `onset_second_ms` (ms at the speaker since the page got the trial), optional `output_latency_ms` (0 to 10000) | `{"ok": true}` |
+| `POST /threshold/api/trials/{i}/played` | sent after motif B has ended: `onset_first_ms`, `onset_second_ms` (ms at the speaker since the page got the trial), optional `output_latency_ms` (0 to 10000) | `{"ok": true}` |
 | `POST /threshold/api/trials/{i}/response` | `response` (`same`/`different`), `rt_ms` | `ok`, `n_trials`, `n_done`, `status` (no score) |
 | `POST /threshold/api/trials/{i}/skip` | | as `response` |
 
@@ -345,7 +351,7 @@ synthetic plots as artifacts.
 | Validity | `av_sound.validate` without references, reserved check at `threshold_default`; no reused waveform | "passes the validator apart from the separation rule"; one motif per pair keeps listeners from learning motifs |
 | Seeds | one key per pair (`pair`/`same`), one per session (`order`), bot answers (`bot`) | seeds survive config changes of other bins; the session key is already in the shared contract |
 | A/B order | balanced within each profile x kind x bin group, shuffled | counterbalanced per bin, not only overall |
-| Trial runner | FastAPI page on the station (same stack as the rater client); listener-paced Play; buttons open at the end of B; RT from the end of B | the issue's proposal (500 ms gap, self-paced, no replay, no feedback); every answer follows both complete motifs |
+| Trial runner | FastAPI page on the station (same stack as the rater client); listener-paced Play; play reported only after B has ended at the speaker; buttons open at the end of B; RT from the end of B | the issue's proposal (500 ms gap, self-paced, no replay, no feedback); every answer follows both complete motifs, because a pair interrupted during playback has no play report and is skip-only |
 | No replay | single-use audio URLs, one play report per trial, refusals logged; each audio delivery logged (and synced) before the bytes leave the server; a trial whose audio was delivered but whose play was not reported is skip-only after a reload or restart | play log proves "played exactly once"; the no-replay rule survives a server restart |
 | Delivery log | timing event `asset_ready` (`component = "threshold"`) | the shared `PlayEvent` result is only `played` or `refused`, and the `ThresholdTrial` schema is shared, so the "delivered, not reported" mark is on the skip's `operator_action` event and in `check_plays` (`n_unreported`) and the summary |
 | Output latency | onsets, the opening of the answer buttons and the RT zero point are times at the speaker; the latency is kept as `onset_ms - scheduled_ms` | stations differ in output latency; RT must not start before motif B ends at the speaker |

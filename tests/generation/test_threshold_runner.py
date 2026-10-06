@@ -9,6 +9,9 @@ from pathlib import Path
 
 import httpx
 import pytest
+from av_sound.recipe import Recipe
+from av_sound.renderer import render
+from av_sound.wav import HEADER_SIZE, wav_bytes
 
 from av_generation import threshold as th
 from av_generation import threshold_runner as tr
@@ -639,13 +642,28 @@ def test_command_line_session_export_and_checks(tmp_path, capsys, serve_app):
     assert (session.station, session.gain_db) == ("S3", -10.5)
     assert main(base) == 0  # an existing session is reused
     capsys.readouterr()
-    other = [("L09" if a == "L01" else a) for a in base]
-    assert main(other) == 2
+    # reopening with another value of any stored field is refused (exit 2), names the
+    # field and leaves the session document as it was
+    changed = {
+        "listener 'L01' (given 'L09')": [("L09" if a == "L01" else a) for a in base],
+        "station 'S3' (given 'S4')": [("S4" if a == "S3" else a) for a in base],
+        "tryout False (given True)": [*base, "--tryout"],
+        "gain_db -10.5 (given -9.0)": [("-9" if a == "-10.5" else a) for a in base],
+    }
+    for detail, argv in changed.items():
+        assert main(argv) == 2, detail
+        err = capsys.readouterr().err
+        assert f"exists with another {detail};" in err, err
+        assert ThresholdSession.read(out["session"]) == session
+    # a session document that names another set is refused before the plan is checked
+    doc = json.loads(Path(out["session"]).read_text(encoding="utf-8"))
+    doc["set_sha256"] = "0" * 64
+    Path(out["session"]).write_text(json.dumps(doc), encoding="utf-8")
+    assert main(base) == 2
+    assert f"set_sha256 '{'0' * 64}' (given '" in capsys.readouterr().err
+    session.write(out["session"], exclusive=False)
+    assert main(base) == 0
     capsys.readouterr()
-    louder = [("-9" if a == "-10.5" else a) for a in base]
-    assert main(louder) == 2
-    assert "gain_db -10.5 (given -9.0)" in capsys.readouterr().err
-    assert ThresholdSession.read(out["session"]).gain_db == -10.5
     run_dir = tmp_path / "runs" / "DEMO-cli-run"
     stimuli = th.ThresholdStimulusSet.read(stimuli_path)
     runner = _runner(run_layout(tmp_path / "runs", "DEMO-cli-run"), stimuli, session)
@@ -703,18 +721,26 @@ def test_demo_command_through_the_real_server(tmp_path, capsys):
 # Browser: the real page in Chromium
 
 
+def _duration_ms(recipe, profile):
+    """Length of a motif's WAV in ms (48 kHz, 16-bit mono)."""
+    data = wav_bytes(render(Recipe.from_dict(recipe), profile))
+    return (len(data) - HEADER_SIZE) * 1000 / (2 * tr.SAMPLE_RATE)
+
+
 @pytest.mark.browser
 def test_listener_page_runs_a_session(tmp_path, serve_app, browser_page, tiny_set):
-    small = dataclasses.replace(TINY, bin_centers=("0.175",), pairs_per_bin=1, same_pairs=2)
+    small = dataclasses.replace(TINY, bin_centers=("0.175",), pairs_per_bin=1, same_pairs=3)
     stimuli = th.generate_stimuli("DEMO-T-page", small)
     layout = _open(tmp_path, stimuli, clock=SystemClock())
     session = _session(stimuli)
     runner = tr.ThresholdRunner(layout, stimuli, session, clock=SystemClock(), fsync=False)
     base = serve_app(tr.create_threshold_app(runner))
     page = browser_page
+    reports = []
+    page.on("request", lambda r: reports.append(r.url) if r.url.endswith("/played") else None)
     page.goto(base + "/threshold/")
     page.wait_for_selector("body[data-state=ready]")
-    assert page.text_content("#progress") == "Trial 1 of 3"
+    assert page.text_content("#progress") == "Trial 1 of 4"
 
     def play_and_answer(answer):
         page.click("#play")
@@ -723,20 +749,37 @@ def test_listener_page_runs_a_session(tmp_path, serve_app, browser_page, tiny_se
         page.click(answer)
         page.wait_for_selector("body[data-state=ready], body[data-state=done]")
 
+    def interrupted_after_reload():
+        page.reload()
+        page.wait_for_selector("body[data-state=error], body[data-state=ready]")
+        assert page.get_attribute("body", "data-state") == "error"  # not resumed to answer
+        assert page.is_hidden("#play") and page.is_hidden("#answer") and page.is_visible("#skip")
+        assert "cannot be played again" in page.text_content("#status")
+        page.click("#skip")
+        page.wait_for_selector("body[data-state=ready]")
+
     play_and_answer("#same")
-    # trial 2: the audio plays but its play report never reaches the server
+    # trial 2: the page reloads while the pair is playing (both motifs delivered, motif B
+    # not yet ended). The play was not reported, so the pair is skip-only, never answered.
+    n_reports = len(reports)
+    page.click("#play")
+    for _ in range(2000):
+        if len(th.deliveries(tr.read_run_timing(layout), session.session_id).get(2, [])) == 2:
+            break
+        page.wait_for_timeout(5)
+    else:
+        pytest.fail("the page did not fetch the audio of trial 2")
+    assert page.get_attribute("body", "data-state") == "listening"
+    interrupted_after_reload()
+    assert len(reports) == n_reports  # no play report during playback
+    # trial 3: the audio plays to the end but its play report never reaches the server
     page.route("**/played", lambda route: route.abort())
     page.click("#play")
     page.wait_for_selector("body[data-state=error]", timeout=15_000)
-    assert page.is_visible("#skip")
+    assert page.is_visible("#skip") and page.is_hidden("#answer")
     page.unroute("**/played")
     # after a reload the pair is not played again: only the operator skip remains
-    page.reload()
-    page.wait_for_selector("body[data-state=error]")
-    assert page.is_hidden("#play") and page.is_visible("#skip")
-    assert "cannot be played again" in page.text_content("#status")
-    page.click("#skip")
-    page.wait_for_selector("body[data-state=ready]")
+    interrupted_after_reload()
     play_and_answer("#different")
     page.wait_for_selector("body[data-state=done]")
     assert "complete" in page.text_content("#status")
@@ -744,11 +787,19 @@ def test_listener_page_runs_a_session(tmp_path, serve_app, browser_page, tiny_se
     timing = tr.read_run_timing(layout)
     check = th.check_plays(session, stimuli, plays, trials, timing=timing)
     assert check.ok, check.problems
-    assert (check.n_played, check.n_answered, check.n_unreported) == (2, 2, 1)
-    assert [t.response for t in trials] == ["same", None, "different"]
+    assert (check.n_played, check.n_answered, check.n_unreported) == (2, 2, 2)
+    assert [t.response for t in trials] == ["same", None, None, "different"]
     played = [t for t in trials if t.response is not None]
     assert all(t.rt_ms is not None and t.onset_second_ms > t.onset_first_ms for t in played)
     gap = played[0].onset_second_ms - played[0].onset_first_ms
     assert gap >= 500  # first motif + 500 ms gap (Web Audio schedule)
     # the output latency the page added is kept: onset (at the speaker) - scheduled
     assert all(p.scheduled_ms is not None and p.scheduled_ms <= p.onset_ms for p in plays)
+    # the play report reached the server only after motif B had ended at the speaker
+    shown = {p.trial_index: p for p in th.session_presentations(session, stimuli)}
+    for event in plays:
+        if event.context != "threshold_second":
+            continue
+        trial = shown[int(event.trial_id.rsplit(".t", 1)[1])]
+        end_b = event.onset_ms + _duration_ms(trial.recipe_second, trial.pair.profile)
+        assert event.t_ms >= end_b - 2, (event.t_ms, end_b)
