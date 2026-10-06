@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import sys
@@ -13,6 +14,18 @@ sys.path.insert(0,str(ROOT/'spikes/O5.1.2'))
 from evidence import verify_loopback_only, require_revision
 from isaac.workcell.layout import canonical_bytes, digest, preconditions
 from isaac.view_capture.options import add_arguments as add_view_arguments, profile_options as view_options
+
+
+def validate_cache_profile(args):
+    """The opt-in measures only the existing bounded joined service."""
+    if not args.e2e_handle_cache:
+        return
+    if (not args.reset_check or not args.skip_reach
+            or not math.isfinite(args.e2e_seconds) or not 5 <= args.e2e_seconds <= 3600
+            or any((args.publisher_seconds, args.command_check, args.published_command_check,
+                    args.disconnect_check, args.demo_check, args.demo_preflight, args.grip_check,
+                    args.protected_stream_seconds, args.same_iteration_check))):
+        raise ValueError('Experimental handle cache requires only a bounded E2E service, reset check and --skip-reach')
 
 
 def main():
@@ -41,9 +54,12 @@ def main():
     parser.add_argument('--e2e-public-socket',type=Path)
     parser.add_argument('--e2e-private-socket',type=Path)
     parser.add_argument('--e2e-private-timing-seconds',type=float,default=0.)
+    parser.add_argument('--e2e-handle-cache',action='store_true',
+                        help='Experimental guarded USD handle cache for the bounded joined service only')
     parser.add_argument('--same-iteration-check',action='store_true')
     add_view_arguments(parser)
     early,_=parser.parse_known_args()
+    validate_cache_profile(early)
     observation_options=view_options(early)
     verify_loopback_only()
     pins=json.loads((ROOT/'spikes/O5.1.2/pins.json').read_text())
@@ -233,6 +249,10 @@ def main():
             event_log=DurableResetLog(args.output/'e2e-reset-events.jsonl',session_id=uuid.uuid4().hex,
                 apparatus_version='joined-e2e-development',protocol_version='SIMULATION_TEST')
             try:
+                if args.e2e_handle_cache:
+                    accessors.enable_handle_cache()
+                    if not accessors.handle_cache_enabled:
+                        raise RuntimeError('EXPERIMENTAL_HANDLE_CACHE_NOT_ENABLED')
                 manager=ResetManager(adapter,snapshot,reset['reset_snapshot_sha256'],event_log)
                 e2e=run_joined_service(manager,layout,args.output/'joined-e2e',seconds=args.e2e_seconds,
                     station_id=args.e2e_station_id,host_uid=args.e2e_host_uid,
@@ -276,6 +296,7 @@ def main():
             reset_summary=reset,publisher_summary=publisher,command_summary=commands,published_command_summary=published_commands,disconnect_summary=disconnect,
             demo_summary=demos,grip_summary=grip,protected_stream_summary=protected,joined_e2e_summary=e2e,
             same_iteration_summary=same_iteration,
+            e2e_handle_cache_enabled=accessors.handle_cache_enabled,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))

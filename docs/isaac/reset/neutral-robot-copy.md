@@ -59,3 +59,39 @@ fresh private output path; this command does not launch a simulator:
 python -m isaac.reset.neutral_copy_benchmark --snapshot <private-neutral.json> --sha256 <independent-raw-pin> --out <fresh-private-report.json>
 python -m pytest tests/isaac/test_neutral_robot_hold.py tests/isaac/test_reset.py tests/isaac/test_command_lock.py tests/isaac/test_same_iteration.py tests/isaac/test_e2e_service.py
 ```
+
+## Actual joined-source comparison
+
+A separate actual G1 screen compared baseline `a90f651` with candidate
+`8c30ae7` in four fresh processes, A/B/B/A, requesting 40 seconds each. Only the
+two exercised runtime files for the robot-copy change differed. The image,
+scene, snapshot, camera setup, complete hold/readback, neutral checks, physics,
+durable telemetry and GC policy were retained. The handle cache, same-iteration
+experiment and timing observer were off. No native player, public receiver or
+private control client ran.
+
+| Phase | Full-service physics steps/s | Maximum publication gap (ms) | Gaps >250 ms |
+|---|---:|---:|---:|
+| A1, full copy | 15.775 | 379.705 | 1 |
+| B1, robot only | 16.816 | 451.626 | 1 |
+| B2, robot only | 16.848 | 432.386 | 1 |
+| A2, full copy | 15.487 | 400.015 | 1 |
+
+The copy change improved the observed total rate modestly; all four complete
+timing screens still failed. Every process exited 0 and retained its initial
+and final 43-joint/60-object projection; those projections agreed exactly
+across the four runs. This is not a full-state or client-delivery equality claim.
+
+The predeclared secondary window starts 10 seconds after the first retained
+publication and ends at the last actual publication, rather than claiming an
+exact 30-second exposure. Its measured rates were 15.932, 17.016, 17.034 and
+15.502 steps/s, with no >250 ms gap in those shorter windows. Every full-run
+large gap occurred before that window and remains a failure. No GC observer
+was enabled, so this screen cannot assign those stalls to GC. Four short,
+ordered processes do not establish long-run reliability or a completed visit.
+
+The [source-screen result](neutral-robot-copy-source-results.json) retains both
+complete and post-warm-up measurements, source/image/archive pins, all raw
+artifact hashes and cleanup. Task-owned containers were removed; unrelated
+workloads were preserved. The required 60 physics steps/s and 30 public frames/s
+remain unmet, and no longer qualification run is justified by this change alone.
