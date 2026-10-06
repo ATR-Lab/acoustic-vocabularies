@@ -113,6 +113,11 @@ class ResetManager:
     def neutral_state(self):
         return deepcopy(self._snapshot["state"])
 
+    @property
+    def neutral_robot_state(self):
+        """Detached hold target; leave object, frame and environment data uncopied."""
+        return deepcopy(self._snapshot["state"]["robot"])
+
     def verify_state(self, state):
         self._check_thread()
         failures = []

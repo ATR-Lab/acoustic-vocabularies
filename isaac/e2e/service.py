@@ -16,24 +16,32 @@ import time
 import uuid
 
 
-def advance_once(adapter, dispatcher, handoff, publisher, sim_step, trace=None):
+def advance_once(adapter, dispatcher, handoff, publisher, sim_step, trace=None, timing=None):
     """Service commands at safe boundaries and retain all actual-state checks."""
+    if timing is not None: timing.record('drain_begin', a=sim_step, b=0)
     handoff.drain()
+    if timing is not None: timing.record('drain_end', a=sim_step, b=0)
     if dispatcher.fault:
         raise RuntimeError('PRIVATE_DISPATCHER_FAULT')
     if dispatcher.stopped:
         return sim_step, None, True
     adapter.robot.write_data_to_sim()
+    if timing is not None: timing.record('physics_begin', a=sim_step)
     if trace is None:
         adapter.sim.step(render=False)
     else:
         with trace.measure():
             adapter.sim.step(render=False)
     adapter.robot.update(adapter.sim.get_physics_dt())
+    if timing is not None: timing.record('physics_end', a=sim_step)
     sim_step += 1
+    if timing is not None: timing.record('hold_begin', a=sim_step)
     if not dispatcher.after_physics_step():
         raise RuntimeError('NEUTRAL_HOLD_FAULT')
+    if timing is not None: timing.record('hold_end', a=sim_step)
+    if timing is not None: timing.record('drain_begin', a=sim_step, b=1)
     handoff.drain()
+    if timing is not None: timing.record('drain_end', a=sim_step, b=1)
     if dispatcher.fault:
         raise RuntimeError('PRIVATE_DISPATCHER_FAULT')
     if dispatcher.stopped:
@@ -46,7 +54,8 @@ def advance_once(adapter, dispatcher, handoff, publisher, sim_step, trace=None):
 
 
 def run_joined_service(reset_manager, layout, output, *, seconds, station_id,
-                       host_uid, public_socket, private_socket, control_session_id=None, joint_csv=None):
+                       host_uid, public_socket, private_socket, control_session_id=None, joint_csv=None,
+                       private_timing_seconds=0):
     """Bounded service; fresh output and explicitly owned private Unix paths.
 
 Both sockets are permission0600, owned by the explicitly supplied host relay UID.
@@ -66,6 +75,9 @@ loopback-only operator actions; this function never creates a host TCP listener.
 
     if type(seconds) not in (int, float) or not math.isfinite(seconds) or not 5 <= seconds <= 3600:
         raise ValueError('Explicit bounded service duration5..3600 seconds required')
+    if type(private_timing_seconds) not in (int, float) or not math.isfinite(private_timing_seconds) or not (
+            private_timing_seconds == 0 or 1 <= private_timing_seconds <= min(900, seconds)):
+        raise ValueError('Private timing is disabled0 or explicitly bounded1..900s within the service lease')
     if type(host_uid) is not int or host_uid < 0:
         raise ValueError('Explicit host relay UID required')
     if not isinstance(control_session_id,str) or not re.fullmatch(r'[0-9a-f]{32}',control_session_id):
@@ -87,12 +99,15 @@ loopback-only operator actions; this function never creates a host TCP listener.
         reset_manager.reset_snapshot_sha256, station_id,
         joint_csv or Path(__file__).resolve().parents[2]/'docs/spikes/isaac/joint_inventory.csv')
     output=Path(output); output.mkdir(parents=True, exist_ok=False)
-    public=publisher=command_log=dispatcher=handoff=private=trace=None
+    public=publisher=command_log=dispatcher=handoff=private=trace=timing=None
     started=ended=time.monotonic_ns(); steps=0; first=last=None
     failure=None; end_reason='duration'; ready=False; cleanup_errors=[]
     def save(name, value):
         durable(output/name,(json.dumps(value,indent=2,allow_nan=False)+'\n').encode())
     try:
+        if private_timing_seconds:
+            from isaac.e2e.private_timing import PrivateTiming
+            timing=PrivateTiming(output/'private-timing.json',private_timing_seconds)
         result=reset_manager.reset()
         save('initial-reset.json',result)
         if result.get('reset_ok') is not True: raise RuntimeError('INITIAL_RESET_FAILED')
@@ -104,20 +119,20 @@ loopback-only operator actions; this function never creates a host TCP listener.
                 raise RuntimeError('CANONICAL_ORDER_CHANGED')
             return state['robot']['joint_positions_rad'],state['objects'],state
         publisher=StatePublisher(registry,sample,public,output/'publish.csv',rate_hz=30,
-            neutral_check=reset_manager.verify_state)
+            neutral_check=reset_manager.verify_state,timing=timing)
         public.health_provider=publisher.health
         command_log=DurableCommandLog(output/'commands.jsonl',session_id=uuid.uuid4().hex,
             apparatus_version='joined-e2e-development',protocol_version='SIMULATION_TEST')
         dispatcher=CommandDispatcher(reset_manager,command_log,station_id=station_id,
             allowed_client=f'uid:{host_uid}',hold_robot=make_robot_hold(adapter),publisher=publisher)
         dispatcher.control_session_id=control_session_id
-        handoff=CommandQueue(dispatcher)
-        private=PrivateCommandTransport(handoff,socket_path=private_socket,allowed_uid=host_uid)
+        handoff=CommandQueue(dispatcher,timing=timing)
+        private=PrivateCommandTransport(handoff,socket_path=private_socket,allowed_uid=host_uid,timing=timing)
         os.chown(private_socket,host_uid,-1)
         trace=StepTrace(output/'physics-steps.jsonl')
         started=time.monotonic_ns(); publisher.epoch_ns=started
         while time.monotonic_ns()-started < seconds*1e9:
-            steps,frame,stopped=advance_once(adapter,dispatcher,handoff,publisher,steps,trace)
+            steps,frame,stopped=advance_once(adapter,dispatcher,handoff,publisher,steps,trace,timing)
             if frame is not None:
                 if first is None: first=frame; save('sample-first.json',frame)
                 last=frame
@@ -131,6 +146,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
                         public_socket=str(public_socket),private_socket=str(private_socket),
                         source_pid=os.getpid(),source_ready_host_ns=str(time.monotonic_ns()),health=health))
                     ready=True
+                    if timing is not None: timing.start()
             if stopped: end_reason='private_stop'; break
             deadline=started+steps*1_000_000_000//60
             remaining=(deadline-time.monotonic_ns())/1e9
@@ -143,7 +159,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
         # Each resource is finalized independently, even after partial startup.
         for name,resource in [('private',private),('handoff',handoff),
                               ('publisher',publisher),('public',public if publisher is None else None),
-                              ('trace',trace),('command_log',command_log)]:
+                              ('trace',trace),('command_log',command_log),('private_timing',timing)]:
             if resource is not None:
                 try: resource.close()
                 except Exception as error: cleanup_errors.append(name+': '+type(error).__name__)
