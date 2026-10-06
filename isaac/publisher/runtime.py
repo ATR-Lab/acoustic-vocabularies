@@ -60,12 +60,14 @@ class StatePublisher:
     A missed deadline is logged and skipped; no catch-up/fabricated frames.
     """
     def __init__(self, registry, sample, transport, log_path, *, rate_hz=30,
-                 neutral_check=None, source_kind="live", clock_ns=time.monotonic_ns, timing=None):
+                 neutral_check=None, source_kind="live", clock_ns=time.monotonic_ns, timing=None,
+                 observation=None):
         if type(rate_hz) is not int or rate_hz not in (30, 60):
             raise ValueError("Engineering rates are 30 or 60 Hz; final selection remains provisional")
         self.encoder = StateEncoder(registry, source_kind, clock_ns)
         self.sample, self.transport, self.clock_ns = sample, transport, clock_ns
         self.timing = timing
+        self.observation = observation
         self.rate_hz, self.neutral_check = rate_hz, neutral_check
         self.protected = False
         self.fault = None
@@ -101,7 +103,9 @@ class StatePublisher:
                 raise RuntimeError("SIMULATION_NOT_PROGRESSING")
             if self.timing is not None: self.timing.record('sample_begin', a=sim_step)
             positions, objects, complete = self.sample()
+            observed_ns = self.clock_ns() if self.observation is not None else None
             if self.timing is not None: self.timing.record('sample_end', a=sim_step)
+            valid = False
             if self.protected:
                 if self.timing is not None: self.timing.record('neutral_begin', a=sim_step)
                 checked = self.neutral_check(complete)
@@ -116,6 +120,14 @@ class StatePublisher:
             encoded_ns = self.clock_ns()
             self.transport.submit(payload)
             submitted_ns = self.clock_ns()
+            if self.observation is not None:
+                try:
+                    self.observation.after_publish(frame,payload,complete,observed_ns,
+                        protected=self.protected,neutral_valid=valid)
+                except Exception:
+                    # Capture failure is not source/exposure authority and does
+                    # not weaken or replace the normal publisher checks.
+                    self.observation.fail('OBS_CALLBACK_FAILED')
             status = self.transport.metrics()
             self.log.offer(dict(seq=frame["seq"], host_monotonic_ns=frame["host_monotonic_ns"],
                 sim_step=sim_step, sim_time=sim_time, serialize_ms=(encoded_ns-now)/1e6,
