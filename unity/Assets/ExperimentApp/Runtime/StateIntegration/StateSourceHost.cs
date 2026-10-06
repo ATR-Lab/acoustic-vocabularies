@@ -104,7 +104,7 @@ namespace AcousticVocab.StateIntegration
             refreshing=true;
             try
             {
-                double now=LiveSocketClient.Now; socket?.Pump(now); var frame=source.Render(now);
+                double now=LiveSocketClient.Now;if(socket!=null)now=socket.Pump(now);var frame=source.Render(now);
                 if(!foundation.Ready || (simulation==null?!source.ResetConfirmed:!LocalNeutral(now,frame))) confirmedAtBoundary=false;
                 if(frame!=null) renderer.Apply(frame);
                 workcell.gameObject.SetActive(foundation.Ready && frame!=null);
@@ -133,7 +133,7 @@ namespace AcousticVocab.StateIntegration
             if(!Initialized || !foundation.Ready) return false;
             try
             {
-                double now=LiveSocketClient.Now; socket?.Pump(now);
+                double now=LiveSocketClient.Now;if(socket!=null)now=socket.Pump(now);
                 var frame=source.Render(now);bool valid=simulation!=null?LocalNeutral(now,frame):source.ConfirmReset(snapshot.Neutral,now);
                 if(frame!=null) renderer.Apply(frame);
                 OnEvent(new SourceEvent(simulation!=null?(valid?"SIMULATION_LOCAL_RESET_CONFIRMED":"SIMULATION_LOCAL_RESET_REFUSED"):(valid?"STATE_RESET_CONFIRMED":"STATE_RESET_REFUSED"),now,now));
