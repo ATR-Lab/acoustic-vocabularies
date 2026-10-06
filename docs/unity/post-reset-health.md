@@ -44,7 +44,7 @@ refusal and prevents further admission from that factory lease; normal cleanup
 still runs. There is no successful-path diagnostic write or cached grant.
 
 Exact software test and native build evidence is recorded in the adjacent
-validation record. A fresh affected-segment native run remains necessary;
+validation record. Successful affected-segment native completion remains necessary;
 software tests do not establish acoustic onset, physical legibility, timing
 qualification or a complete visit.
 
@@ -68,3 +68,29 @@ replace that exception; the existing staged failure and cleanup still run.
 There are no new successful-path writes or health reads. This coverage is
 limited to `Pump`; exceptions in separate `Ready`, explicit-resume or commit
 calls outside it are not claimed to have this snapshot.
+
+## Build 011 cancellation and refusal
+
+The native B011 active V1 run passed the post-reset probe gate and prepared its
+menu view. The normal console accepted Start and then a deliberate Pause before
+the scheduled cue. The frame record reports `cancelled_before_window=true` with
+zero frames; it is not a measured frame freeze. The menu ledger remained
+header-only, with no `menu_interrupted` entry, and the owner began a fresh lease
+for the same block. This verifies cancellation without poisoning the shared
+ledger, but does not establish successful resumed menu presentation.
+
+That fresh lease's reset exchange was sent at local monotonic 62061.5561 ms and
+fully received at 62598.4520 ms: 536.8959 ms elapsed. The unchanged 250 ms health
+check rejected it. The new failure-only snapshot retained the original
+`CONTROL_STALE` at phase `control_pump` before cancellation, followed by the
+coordinator's `SESSION_PREFLIGHT_FAILED`. The full exchange includes server
+work and transport; it is not a measurement of network latency alone. The
+snapshot's 774.7465 ms effective age describes the previously accepted probe,
+not the rejected reset payload. No worker timeout or queue overflow is inferred.
+
+The run closed with exit code 0, successful cleanup/export and `complete=false`.
+Independent reconciliation reports intact evidence and an incomplete run. No
+Resume followed the Pause, and there was no audio request, completed menu or
+completed visit. The exact closed journal, result, observer and manifest hashes
+are retained in the validation record. Issues #148 and #81 remain open; no
+timing, acoustic or participant qualification is established.
