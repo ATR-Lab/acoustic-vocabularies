@@ -109,6 +109,17 @@ class LessonExportTests(unittest.TestCase):
         self.assertTrue(all(r["lesson_status"]=="software_ended_incomplete" for r in result))
         self.assertEqual(next(r for r in result if r["presentation_index"]==3)["interval_status"],"incomplete")
 
+    def test_real_post_end_cleanup_pair_preserves_rows_but_marks_interruption(self):
+        rows,audio=fixture()
+        for kind in ("display_request","lesson_interrupted"):
+            row=copy.deepcopy(rows[-1]);row["sequence"]+=1;row["sha256"]=f'{row["sequence"]:064x}'
+            row["payload"].update(kind=kind,observed_mono_ms=20800,expected_mono_ms=20750 if kind=="lesson_interrupted" else None)
+            row["host_mono_ms"]=20800;rows.append(row)
+        result=lessons.derive(rows,IDENTITY,audio)
+        self.assertEqual(len(result),6);self.assertTrue(all(r["lesson_status"]=="interrupted" for r in result))
+        rows.append(copy.deepcopy(rows[-1]))
+        with self.assertRaises(EvidenceError): lessons.derive(rows,IDENTITY,audio)
+
     def test_actual_schedule_and_side_journal_are_bound(self):
         rows,audio=fixture();joined=[dict(kind="lesson",payload={k:r["payload"][k] for k in lessons.EVENT_FIELDS}) for r in rows if r["event_type"]=="lesson"]
         items={"DEMO-lesson":dict(block="atomic_lessons",trial_type="atomic_lesson")}

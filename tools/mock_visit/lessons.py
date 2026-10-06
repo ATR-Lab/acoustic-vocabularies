@@ -67,7 +67,10 @@ def groups(records):
             require(all(first["payload"][k] == p[k] for k in BINDING_FIELDS + ["attempt_id", "opportunity_id", "meaning_display_id", "pcm_sha256", "action_pcm_sha256", "referent_pcm_sha256"]), "MOCK_LESSON_CHANGED")
             require(row["clock_epoch"] == first["clock_epoch"] and p["observed_mono_ms"] >= last["payload"]["observed_mono_ms"], "MOCK_LESSON_CLOCK")
         kind, index, feedback = p["kind"], p["presentation_index"], p["feedback_content_id"]
-        require(not trace["ended"] or kind == "highlight" and p["highlight"] == "none", "MOCK_LESSON_AFTER_END")
+        cleanup_request = trace["ended"] and ("lesson_end", None) in once and ("cleanup_request", None) not in once and ("lesson_interrupted", None) not in once and kind == "display_request" and feedback is None
+        cleanup_end = trace["ended"] and ("cleanup_request", None) in once and ("lesson_interrupted", None) not in once and kind == "lesson_interrupted"
+        require(not trace["ended"] or cleanup_request or cleanup_end or kind == "highlight" and p["highlight"] == "none", "MOCK_LESSON_AFTER_END")
+        if cleanup_request: once.add(("cleanup_request", None))
         if kind == "play_request":
             trace["plays"] += 1
             require(index == trace["plays"], "MOCK_LESSON_PLAY_ORDER")
@@ -91,8 +94,8 @@ def groups(records):
             require(trace["retrieval"] and trace["feedback"] is None, "MOCK_LESSON_RETRIEVAL_ORDER")
             trace["feedback"] = feedback
         if kind in {"lesson_end", "lesson_interrupted"}:
-            require(not trace["ended"] and trace["display"] is None, "MOCK_LESSON_END_ORDER")
-            trace["ended"] = True
+            require((not trace["ended"] or cleanup_end) and trace["display"] is None and (kind, None) not in once, "MOCK_LESSON_END_ORDER")
+            once.add((kind, None)); trace["ended"] = True
         events.append(row)
     return [t["events"] for t in traces.values()]
 
@@ -178,6 +181,7 @@ def reconcile(records, joined, items, schedule_hash, package_hash):
     require(len(actual) <= len(expected) and actual == expected[:len(actual)], "MOCK_LESSON_SUPPLEMENTAL_MISMATCH")
     incomplete = set()
     if len(actual) != len(expected): incomplete.add("LESSON_SUPPLEMENTAL_WRITE_INCOMPLETE")
+    if any(r["payload"]["kind"] == "lesson_interrupted" for r in typed): incomplete.add("LESSON_TYPED_INTERRUPTED")
     if any(not any(r["payload"]["kind"] == "lesson_end" for r in rows)
            or any(sum(r["payload"]["kind"] == k for r in rows) != n for k,n in COVERAGE.items()) for rows in traces): incomplete.add("LESSON_TYPED_INTERVALS_INCOMPLETE")
     return incomplete

@@ -106,6 +106,13 @@ namespace AcousticVocab.DataLogging.Tests
             }
             Assert.Fail("Expected actual timeline feedback end");
         }
+        [Test]public void ActualPostEndCleanupIsRetainedWithoutExtraExposureRows()
+        {
+            using var r=new Run();r.Complete();r.Timeline.Interrupt(r.Now);r.Data.Dispose();
+            var snapshot=DataJournal.Verify(r.Raw,SyntheticData.Identity);var rows=LessonExport.Derive(snapshot,SyntheticData.Identity);
+            Assert.That(rows.Count,Is.EqualTo(6));Assert.That(rows.All(x=>x["lesson_status"]=="interrupted"),Is.True);
+            Assert.That(DataDeriver.Derive(snapshot,SyntheticData.Identity).Exposures.Count,Is.EqualTo(3));
+        }
         [TestCase("attempt_id")][TestCase("audio_request_id")][TestCase("presentation_index")][TestCase("pcm_sha256")]
         public void RecoveredTamperedLessonCannotReexport(string field)
         {

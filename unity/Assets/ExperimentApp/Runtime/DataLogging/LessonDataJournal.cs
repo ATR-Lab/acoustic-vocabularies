@@ -107,7 +107,10 @@ namespace AcousticVocab.DataLogging
             double now=(double)p["observed_mono_ms"];DataJson.Require(now>=last,"DATA_LESSON_CLOCK");last=now;
             if(first==null)first=(JObject)p.DeepClone();else foreach(string k in LessonRecordCodec.BindingFields.Concat(new[]{"attempt_id","opportunity_id","meaning_display_id","pcm_sha256","action_pcm_sha256","referent_pcm_sha256"}))DataJson.Require(JToken.DeepEquals(first[k],p[k]),"DATA_LESSON_CHANGED");
             string kind=(string)p["kind"],index=p["presentation_index"].ToString(),f=(string)p["feedback_content_id"];
-            DataJson.Require(!ended||kind=="highlight"&&(string)p["highlight"]=="none","DATA_LESSON_AFTER_END");
+            bool cleanupRequest=ended&&once.Contains("lesson_end")&&!once.Contains("cleanup_request")&&!once.Contains("lesson_interrupted")&&kind=="display_request"&&f==null;
+            bool cleanupEnd=ended&&once.Contains("cleanup_request")&&!once.Contains("lesson_interrupted")&&kind=="lesson_interrupted";
+            DataJson.Require(!ended||cleanupRequest||cleanupEnd||kind=="highlight"&&(string)p["highlight"]=="none","DATA_LESSON_AFTER_END");
+            if(cleanupRequest)once.Add("cleanup_request");
             if(kind=="play_request"){DataJson.Require((int)p["presentation_index"]==++plays,"DATA_LESSON_PLAY_ORDER");}
             if(new[]{"play_request","onset_authority","play_complete"}.Contains(kind))
             {DataJson.Require(once.Add(kind+index)&& (kind=="play_request"||once.Contains("play_request"+index))&&(kind!="play_complete"||once.Contains("onset_authority"+index)),"DATA_LESSON_DUPLICATE_OR_ORDER");}
@@ -115,7 +118,7 @@ namespace AcousticVocab.DataLogging
             if(kind=="display_end"){DataJson.Require(openDisplay==(f==null?"definition":"feedback")&&(f==null||f==feedback),"DATA_LESSON_DISPLAY_ORDER");openDisplay=null;}
             if(kind=="retrieval_opportunity"){DataJson.Require(!retrieval&&openDisplay==null&&once.Contains("display:definition"),"DATA_LESSON_RETRIEVAL_ORDER");retrieval=true;}
             if(kind=="retrieval_result"){DataJson.Require(retrieval&&feedback==null,"DATA_LESSON_RETRIEVAL_ORDER");feedback=f;}
-            if(kind=="lesson_end"||kind=="lesson_interrupted"){DataJson.Require(!ended&&openDisplay==null,"DATA_LESSON_END_ORDER");ended=true;}
+            if(kind=="lesson_end"||kind=="lesson_interrupted"){DataJson.Require((!ended||cleanupEnd)&&openDisplay==null&&once.Add(kind),"DATA_LESSON_END_ORDER");ended=true;}
             Events.Add(((JObject)p.DeepClone(),envelope==null?null:(JObject)envelope.DeepClone()));
         }
     }
