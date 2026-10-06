@@ -39,5 +39,22 @@ unchanged. No keepalive, SSH route or retry settings change in this patch.
 The focused software suite exercises blocked send/receive, partial replies,
 explicit lifetime cancellation, full late replies, observer failure and a
 successful fragmented exchange with unchanged receipt stamps. Exact test/build
-pins are in the adjacent validation record. Native diagnostic capture remains
-separate from software tests and does not establish a completed visit.
+pins are in the adjacent validation record.
+
+Actual B013 active V1 subsequently recorded a safe unconsumed Start/Pause,
+fresh preparation and explicit Resume. It entered the instruction phase but
+refused the first scheduled play with `MENU_EXPOSURE_GATE`, before any audio
+request or callback. The new trace retained a pending health probe in `receive`
+with zero returned fragments/bytes: send-to-failure was 76.0829 ms, with both
+linked timeout and lifetime token flags set. The first failure record identifies
+the owner's `CONTROL_EXPLICIT_INTERRUPT` before that canceled receive. This is
+owner cancellation during cleanup, not evidence of a 200 ms transport timeout.
+The original exposure refusal remains primary; the trace does not identify its
+failed conjunct.
+
+The closed native process exited 0, cleanup/export succeeded and independently
+reconciled byte integrity passed. The visit is incomplete with zero audio;
+secondary `OPERATOR_ADAPTER_FAILED` and frame interruption records remain in the
+raw evidence. Matching source/foundation/panel logs were retained in the run
+manifest. This diagnostic capture does not establish a completed visit,
+readability, acoustic timing or participant qualification.
