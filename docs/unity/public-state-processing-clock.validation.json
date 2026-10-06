@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "scope": "public_state_processing_clock_software_correction",
+  "runtime_source_commit": "fd1c593cce3f2a148dc8e2dea45159e7729c0876",
+  "participant_admission": false,
+  "native_visit_complete": false,
+  "timing_qualification": false,
+  "queue_limit_ms": 250,
+  "maximum_processed_arrivals_per_pump": 8,
+  "original_receipt_timestamps_preserved": true,
+  "automatic_active_renderer_reconfirmation": false,
+  "baseline": {
+    "basis": "dd4537f with deterministic no-network test seam, before the processing-clock correction",
+    "passed": 0,
+    "failed": 2,
+    "skipped": 0,
+    "failures": ["arrival_during_parse_false_rejection", "parse_expiry_false_admission"],
+    "xml_sha256": "9fe3c17a4c5975ac314ae6b8d1d12fc1389b812d1c7efd4b19b03a38920b34ad"
+  },
+  "runs": [
+    {
+      "kind": "EditMode",
+      "source_commit": "fd1c593cce3f2a148dc8e2dea45159e7729c0876",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "new_queue_cases": 14,
+      "existing_source_cases": 38,
+      "xml_sha256": "f17864c7c83631ff5cd2e7a5e19aa2c30873ca0a59c7564ab7b1462ede50e51d"
+    },
+    {
+      "kind": "PlayMode",
+      "scope": "existing_actual_component_disable_lifecycle",
+      "source_commit": "fd1c593cce3f2a148dc8e2dea45159e7729c0876",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "2bdd115e355f4812b90bf836caabafc7ecef505c43e8af66180efc82b703cf82"
+    }
+  ],
+  "native_build": {
+    "build_id": "simulation-native-014",
+    "source_commit": "8e1a9d9def9609c76feadd8ec53f41398da49437",
+    "dirty_source": false,
+    "target": "StandaloneWindows64",
+    "result": "Succeeded",
+    "errors": 0,
+    "duration_seconds": 20.246709499999998,
+    "total_bytes": 158718503,
+    "files": 205,
+    "manifest_sha256": "e64fdcd274a9de80e49f089c121bf866149cac38ee1a472a6009bfda47c945dd",
+    "inventory_independently_rehashed": true
+  },
+  "native_verification": "pending_actual_build014_run"
+}
