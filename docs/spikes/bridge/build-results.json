@@ -1,0 +1,23 @@
+{
+  "unity": "6000.6.0f1",
+  "windows": {
+    "target": "x64 Mono",
+    "exit_code": 0,
+    "bytes": 224450064,
+    "file_count": 317,
+    "manifest_sha256": "815f3185bb35c653f16a9f438079a0c7ce0ac3c19ee1a14f22ffd2eb6ed6e30f",
+    "exe_sha256": "718444f6a718fa668da96eb0a58445b009673310e6129152a63dbf7a92b8de00"
+  },
+  "android": {
+    "target": "ARM64 IL2CPP",
+    "exit_code": 0,
+    "apk_bytes": 71604827,
+    "apk_sha256": "031061641ddb5f53fd366b495a6ba6bb0d4167e03edfed2503fcaee853d64980",
+    "zip_crc_valid": true,
+    "il2cpp_libraries": [
+      "lib/arm64-v8a/libil2cpp.so"
+    ]
+  },
+  "source_manifest_sha256": "0fdaf6309e2d6931b98705756f371bc795b08b632af2dcab59ccacf9b55d2835",
+  "device_acceptance": false
+}

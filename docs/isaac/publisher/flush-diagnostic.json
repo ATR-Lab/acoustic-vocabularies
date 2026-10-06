@@ -1,0 +1,1384 @@
+{
+  "schema_version": 1,
+  "source_kind": "actual_isaac_sim_5.1",
+  "qualification": false,
+  "production_change": false,
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "source_revisions": {
+    "reader": "48a5582",
+    "reset_comparator": "6472bbe",
+    "publisher_core": "aef994a",
+    "runner": "ignored diagnostic copy; hashes below"
+  },
+  "scope": "Closed protected loop, no command listener or external writer; unchanged generic articulation, hold, reset and full neutral verification",
+  "equivalence": {
+    "pairs": 12,
+    "buffers_per_pair": 36,
+    "all_buffers_bitwise_equal": true,
+    "full_state_hashes_equal": true,
+    "before_after_neutral_verification_passed": true,
+    "actuator_types": {
+      "legs": "isaaclab.actuators.actuator_pd.ImplicitActuator",
+      "waist": "isaaclab.actuators.actuator_pd.ImplicitActuator",
+      "feet": "isaaclab.actuators.actuator_pd.ImplicitActuator",
+      "arms": "isaaclab.actuators.actuator_pd.ImplicitActuator",
+      "hands": "isaaclab.actuators.actuator_pd.ImplicitActuator"
+    },
+    "wrenches_inactive": true
+  },
+  "guard_tests": {
+    "synthetic": true,
+    "passed": 7,
+    "covered": [
+      "same-value target write epoch invalidation",
+      "direct buffer mutation",
+      "active wrench",
+      "actuator replacement",
+      "parameter change",
+      "registry change",
+      "read-only unchanged state"
+    ]
+  },
+  "phases": [
+    {
+      "name": "protected-baseline-none",
+      "source_kind": "live",
+      "qualification": false,
+      "protected": true,
+      "client": "none",
+      "cprofile_enabled": false,
+      "unpaced": true,
+      "closed_loop_only": true,
+      "flush_consolidated": false,
+      "skipped_flushes": 0,
+      "elapsed_s": 12.026411676,
+      "steps": 512,
+      "loops": 256,
+      "steps_per_second": 42.57296472078626,
+      "published": 256,
+      "missed_deadlines": 105,
+      "error": null,
+      "timers": {
+        "write_targets": {
+          "calls": 1024,
+          "total_ms": 1861.8949759999998,
+          "median_ms": 1.7809985,
+          "p95_ms": 2.115235,
+          "max_ms": 5.076057
+        },
+        "physics_step": {
+          "calls": 512,
+          "total_ms": 2822.798652999996,
+          "median_ms": 5.426803,
+          "p95_ms": 6.11001,
+          "max_ms": 6.485269
+        },
+        "write_root": {
+          "calls": 512,
+          "total_ms": 277.628496,
+          "median_ms": 0.5213185,
+          "p95_ms": 0.578711,
+          "max_ms": 1.329229
+        },
+        "write_joints": {
+          "calls": 512,
+          "total_ms": 140.51642700000002,
+          "median_ms": 0.25948550000000004,
+          "p95_ms": 0.284466,
+          "max_ms": 2.157813
+        },
+        "kinematic_forward": {
+          "calls": 512,
+          "total_ms": 172.65289999999973,
+          "median_ms": 0.3223735,
+          "p95_ms": 0.36238,
+          "max_ms": 0.856793
+        },
+        "flush_guard_snapshot": {
+          "calls": 512,
+          "total_ms": 328.74992499999973,
+          "median_ms": 0.633111,
+          "p95_ms": 0.683006,
+          "max_ms": 1.682885
+        },
+        "flush_guard_check": {
+          "calls": 511,
+          "total_ms": 775.3331399999995,
+          "median_ms": 1.561948,
+          "p95_ms": 2.089337,
+          "max_ms": 4.058787
+        },
+        "objects_full_read": {
+          "calls": 256,
+          "total_ms": 3071.188645,
+          "median_ms": 11.9666525,
+          "p95_ms": 12.443575,
+          "max_ms": 15.588843
+        },
+        "environment_read": {
+          "calls": 256,
+          "total_ms": 128.68110299999998,
+          "median_ms": 0.49283699999999997,
+          "p95_ms": 0.546554,
+          "max_ms": 0.706377
+        },
+        "full_read": {
+          "calls": 256,
+          "total_ms": 3303.295594000001,
+          "median_ms": 12.8554175,
+          "p95_ms": 13.432651,
+          "max_ms": 16.508662
+        },
+        "neutral_verify": {
+          "calls": 256,
+          "total_ms": 1162.5289029999983,
+          "median_ms": 4.507173,
+          "p95_ms": 4.782619,
+          "max_ms": 6.637511
+        },
+        "encode_build": {
+          "calls": 256,
+          "total_ms": 731.2679250000001,
+          "median_ms": 2.830716,
+          "p95_ms": 3.047371,
+          "max_ms": 4.868842
+        }
+      },
+      "timer_semantics": "Inclusive nested durations; do not sum parent and child entries",
+      "gc_events": [
+        {
+          "generation": 0,
+          "ended_ns": 1149394490575542,
+          "elapsed_ms": 0.200677,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149395293772873,
+          "elapsed_ms": 1.057461,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149396098566869,
+          "elapsed_ms": 0.060036,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149396893086984,
+          "elapsed_ms": 0.064452,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149397690574268,
+          "elapsed_ms": 0.059142,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149398484911673,
+          "elapsed_ms": 0.061436,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149399279293629,
+          "elapsed_ms": 0.060608,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149400119768914,
+          "elapsed_ms": 0.05644,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149400912444366,
+          "elapsed_ms": 0.059675,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149401705662818,
+          "elapsed_ms": 0.060447,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149402506254253,
+          "elapsed_ms": 0.063744,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149403318665617,
+          "elapsed_ms": 0.06246,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149404119065246,
+          "elapsed_ms": 0.061572,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149404923354167,
+          "elapsed_ms": 0.065944,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149405771180591,
+          "elapsed_ms": 0.062133,
+          "collected": 0,
+          "uncollectable": 0
+        }
+      ],
+      "gc_enabled": true,
+      "gc_thresholds": [
+        700,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "protected-consolidated-none",
+      "source_kind": "live",
+      "qualification": false,
+      "protected": true,
+      "client": "none",
+      "cprofile_enabled": false,
+      "unpaced": true,
+      "closed_loop_only": true,
+      "flush_consolidated": true,
+      "skipped_flushes": 535,
+      "elapsed_s": 12.028863078,
+      "steps": 536,
+      "loops": 268,
+      "steps_per_second": 44.55948966451441,
+      "published": 268,
+      "missed_deadlines": 93,
+      "error": null,
+      "timers": {
+        "write_targets": {
+          "calls": 537,
+          "total_ms": 985.1936189999996,
+          "median_ms": 1.806059,
+          "p95_ms": 2.136366,
+          "max_ms": 3.707879
+        },
+        "physics_step": {
+          "calls": 536,
+          "total_ms": 2872.6246830000023,
+          "median_ms": 5.283597,
+          "p95_ms": 5.969783,
+          "max_ms": 7.722557
+        },
+        "write_root": {
+          "calls": 536,
+          "total_ms": 295.28495599999997,
+          "median_ms": 0.5215545,
+          "p95_ms": 0.569169,
+          "max_ms": 2.386807
+        },
+        "write_joints": {
+          "calls": 536,
+          "total_ms": 145.09829299999987,
+          "median_ms": 0.2592895,
+          "p95_ms": 0.280684,
+          "max_ms": 1.032521
+        },
+        "kinematic_forward": {
+          "calls": 536,
+          "total_ms": 180.25586000000004,
+          "median_ms": 0.323399,
+          "p95_ms": 0.359191,
+          "max_ms": 1.026173
+        },
+        "flush_guard_snapshot": {
+          "calls": 536,
+          "total_ms": 347.8929560000001,
+          "median_ms": 0.641324,
+          "p95_ms": 0.685048,
+          "max_ms": 1.464766
+        },
+        "flush_guard_check": {
+          "calls": 535,
+          "total_ms": 836.3888739999998,
+          "median_ms": 1.586529,
+          "p95_ms": 2.178579,
+          "max_ms": 3.621266
+        },
+        "objects_full_read": {
+          "calls": 268,
+          "total_ms": 3266.1328840000024,
+          "median_ms": 12.183330999999999,
+          "p95_ms": 12.555575,
+          "max_ms": 15.825756
+        },
+        "environment_read": {
+          "calls": 268,
+          "total_ms": 139.76000999999997,
+          "median_ms": 0.5147085,
+          "p95_ms": 0.542832,
+          "max_ms": 2.406088
+        },
+        "full_read": {
+          "calls": 268,
+          "total_ms": 3514.153661,
+          "median_ms": 13.089518,
+          "p95_ms": 13.518367,
+          "max_ms": 16.850753
+        },
+        "neutral_verify": {
+          "calls": 268,
+          "total_ms": 1242.352329000001,
+          "median_ms": 4.638147,
+          "p95_ms": 4.801416,
+          "max_ms": 6.692847
+        },
+        "encode_build": {
+          "calls": 268,
+          "total_ms": 1136.7320290000005,
+          "median_ms": 2.914956,
+          "p95_ms": 3.062509,
+          "max_ms": 356.131022
+        }
+      },
+      "timer_semantics": "Inclusive nested durations; do not sum parent and child entries",
+      "gc_events": [
+        {
+          "generation": 0,
+          "ended_ns": 1149406574213731,
+          "elapsed_ms": 0.109227,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149407310233291,
+          "elapsed_ms": 0.061064,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149408059433686,
+          "elapsed_ms": 0.062673,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149408801143906,
+          "elapsed_ms": 0.070274,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149409544963063,
+          "elapsed_ms": 0.064991,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149410288271613,
+          "elapsed_ms": 0.060769,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149411032252845,
+          "elapsed_ms": 0.061475,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149411811350678,
+          "elapsed_ms": 0.061637,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149412551596067,
+          "elapsed_ms": 0.063773,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149413291535697,
+          "elapsed_ms": 0.201268,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 2,
+          "ended_ns": 1149414382604729,
+          "elapsed_ms": 352.971447,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149415035903395,
+          "elapsed_ms": 0.068262,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149415774713683,
+          "elapsed_ms": 0.064596,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149416515502398,
+          "elapsed_ms": 0.067005,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149417300763731,
+          "elapsed_ms": 0.061336,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149418044181642,
+          "elapsed_ms": 0.066315,
+          "collected": 0,
+          "uncollectable": 0
+        }
+      ],
+      "gc_enabled": true,
+      "gc_thresholds": [
+        700,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "protected-baseline-process",
+      "source_kind": "live",
+      "qualification": false,
+      "protected": true,
+      "client": "process",
+      "cprofile_enabled": false,
+      "unpaced": true,
+      "closed_loop_only": true,
+      "flush_consolidated": false,
+      "skipped_flushes": 0,
+      "elapsed_s": 12.029609342,
+      "steps": 498,
+      "loops": 249,
+      "steps_per_second": 41.39785306753812,
+      "published": 249,
+      "missed_deadlines": 112,
+      "error": null,
+      "timers": {
+        "write_targets": {
+          "calls": 996,
+          "total_ms": 1850.3021079999994,
+          "median_ms": 1.826086,
+          "p95_ms": 2.138395,
+          "max_ms": 4.070517
+        },
+        "physics_step": {
+          "calls": 498,
+          "total_ms": 2662.8438080000024,
+          "median_ms": 5.250935,
+          "p95_ms": 5.971868,
+          "max_ms": 7.117638
+        },
+        "write_root": {
+          "calls": 498,
+          "total_ms": 278.05129800000003,
+          "median_ms": 0.5240955,
+          "p95_ms": 0.943925,
+          "max_ms": 1.352013
+        },
+        "write_joints": {
+          "calls": 498,
+          "total_ms": 135.0610540000001,
+          "median_ms": 0.25971350000000004,
+          "p95_ms": 0.278442,
+          "max_ms": 1.038178
+        },
+        "kinematic_forward": {
+          "calls": 498,
+          "total_ms": 169.87369099999992,
+          "median_ms": 0.3306175,
+          "p95_ms": 0.363412,
+          "max_ms": 0.973851
+        },
+        "flush_guard_snapshot": {
+          "calls": 498,
+          "total_ms": 325.66704100000015,
+          "median_ms": 0.645914,
+          "p95_ms": 0.683016,
+          "max_ms": 1.471906
+        },
+        "flush_guard_check": {
+          "calls": 497,
+          "total_ms": 943.6665499999986,
+          "median_ms": 1.910135,
+          "p95_ms": 2.883851,
+          "max_ms": 4.732469
+        },
+        "objects_full_read": {
+          "calls": 249,
+          "total_ms": 3073.5491980000006,
+          "median_ms": 12.286952,
+          "p95_ms": 12.738297,
+          "max_ms": 17.685059
+        },
+        "environment_read": {
+          "calls": 249,
+          "total_ms": 130.8642129999999,
+          "median_ms": 0.526096,
+          "p95_ms": 0.553559,
+          "max_ms": 0.61438
+        },
+        "full_read": {
+          "calls": 249,
+          "total_ms": 3313.260452,
+          "median_ms": 13.224481,
+          "p95_ms": 13.855852,
+          "max_ms": 18.751099
+        },
+        "neutral_verify": {
+          "calls": 249,
+          "total_ms": 1172.019901,
+          "median_ms": 4.668672,
+          "p95_ms": 4.824655,
+          "max_ms": 11.846183
+        },
+        "encode_build": {
+          "calls": 249,
+          "total_ms": 733.4243909999997,
+          "median_ms": 2.949795,
+          "p95_ms": 3.072727,
+          "max_ms": 6.322277
+        }
+      },
+      "timer_semantics": "Inclusive nested durations; do not sum parent and child entries",
+      "gc_events": [
+        {
+          "generation": 0,
+          "ended_ns": 1149418824461698,
+          "elapsed_ms": 0.170337,
+          "collected": 33,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149418888294753,
+          "elapsed_ms": 0.082061,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149419703485749,
+          "elapsed_ms": 0.07053,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149420530481372,
+          "elapsed_ms": 0.072191,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149421350479010,
+          "elapsed_ms": 0.069931,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149422171661726,
+          "elapsed_ms": 0.297641,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149422994337652,
+          "elapsed_ms": 0.067025,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149423815327081,
+          "elapsed_ms": 0.065444,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149424685593108,
+          "elapsed_ms": 0.065681,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149425504049871,
+          "elapsed_ms": 0.07269,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149426324714824,
+          "elapsed_ms": 0.072646,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149427151990966,
+          "elapsed_ms": 0.070229,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149427974552343,
+          "elapsed_ms": 0.067556,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149428792511369,
+          "elapsed_ms": 0.071621,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149429520703923,
+          "elapsed_ms": 0.070507,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149430385324639,
+          "elapsed_ms": 0.063373,
+          "collected": 0,
+          "uncollectable": 0
+        }
+      ],
+      "gc_enabled": true,
+      "gc_thresholds": [
+        700,
+        10,
+        10
+      ],
+      "client_result": {
+        "count": 249,
+        "gaps": 0,
+        "error": null
+      }
+    },
+    {
+      "name": "protected-consolidated-process",
+      "source_kind": "live",
+      "qualification": false,
+      "protected": true,
+      "client": "process",
+      "cprofile_enabled": false,
+      "unpaced": true,
+      "closed_loop_only": true,
+      "flush_consolidated": true,
+      "skipped_flushes": 539,
+      "elapsed_s": 12.037625546,
+      "steps": 540,
+      "loops": 270,
+      "steps_per_second": 44.8593452202405,
+      "published": 270,
+      "missed_deadlines": 91,
+      "error": null,
+      "timers": {
+        "write_targets": {
+          "calls": 541,
+          "total_ms": 1016.4161149999996,
+          "median_ms": 1.828175,
+          "p95_ms": 2.180489,
+          "max_ms": 6.813141
+        },
+        "physics_step": {
+          "calls": 540,
+          "total_ms": 2903.576577000001,
+          "median_ms": 5.3007805,
+          "p95_ms": 6.006717,
+          "max_ms": 7.016613
+        },
+        "write_root": {
+          "calls": 540,
+          "total_ms": 298.0942430000002,
+          "median_ms": 0.5265985,
+          "p95_ms": 0.597018,
+          "max_ms": 1.621562
+        },
+        "write_joints": {
+          "calls": 540,
+          "total_ms": 148.79275300000015,
+          "median_ms": 0.260711,
+          "p95_ms": 0.301156,
+          "max_ms": 1.059169
+        },
+        "kinematic_forward": {
+          "calls": 540,
+          "total_ms": 185.7432919999999,
+          "median_ms": 0.330406,
+          "p95_ms": 0.365368,
+          "max_ms": 2.090444
+        },
+        "flush_guard_snapshot": {
+          "calls": 540,
+          "total_ms": 357.3043670000001,
+          "median_ms": 0.652209,
+          "p95_ms": 0.698537,
+          "max_ms": 2.4986
+        },
+        "flush_guard_check": {
+          "calls": 539,
+          "total_ms": 981.9761009999997,
+          "median_ms": 1.86688,
+          "p95_ms": 2.677635,
+          "max_ms": 3.97121
+        },
+        "objects_full_read": {
+          "calls": 270,
+          "total_ms": 3345.681224000002,
+          "median_ms": 12.281619,
+          "p95_ms": 13.235463,
+          "max_ms": 14.662604
+        },
+        "environment_read": {
+          "calls": 270,
+          "total_ms": 141.83249299999994,
+          "median_ms": 0.5228275,
+          "p95_ms": 0.569894,
+          "max_ms": 0.753143
+        },
+        "full_read": {
+          "calls": 270,
+          "total_ms": 3605.4234959999967,
+          "median_ms": 13.216452,
+          "p95_ms": 14.276016,
+          "max_ms": 15.748728
+        },
+        "neutral_verify": {
+          "calls": 270,
+          "total_ms": 1262.2686830000007,
+          "median_ms": 4.657946,
+          "p95_ms": 4.944105,
+          "max_ms": 6.715115
+        },
+        "encode_build": {
+          "calls": 270,
+          "total_ms": 793.5920139999994,
+          "median_ms": 2.9297515,
+          "p95_ms": 3.120577,
+          "max_ms": 4.860001
+        }
+      },
+      "timer_semantics": "Inclusive nested durations; do not sum parent and child entries",
+      "gc_events": [
+        {
+          "generation": 1,
+          "ended_ns": 1149431111886834,
+          "elapsed_ms": 0.190322,
+          "collected": 33,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149431880599018,
+          "elapsed_ms": 0.069584,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149432638802846,
+          "elapsed_ms": 0.066363,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149433395124615,
+          "elapsed_ms": 0.068151,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149434146848960,
+          "elapsed_ms": 0.063748,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149434904639749,
+          "elapsed_ms": 0.073523,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149435657411129,
+          "elapsed_ms": 0.061531,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149436458136190,
+          "elapsed_ms": 0.062213,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149437208240343,
+          "elapsed_ms": 0.06676,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149437959871282,
+          "elapsed_ms": 0.081021,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149438712088357,
+          "elapsed_ms": 0.061679,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149439466647549,
+          "elapsed_ms": 0.063062,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149440218822376,
+          "elapsed_ms": 0.082731,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149440979651933,
+          "elapsed_ms": 0.065372,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149441633327045,
+          "elapsed_ms": 0.071131,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149442391004607,
+          "elapsed_ms": 0.071455,
+          "collected": 0,
+          "uncollectable": 0
+        }
+      ],
+      "gc_enabled": true,
+      "gc_thresholds": [
+        700,
+        10,
+        10
+      ],
+      "client_result": {
+        "count": 270,
+        "gaps": 0,
+        "error": null
+      }
+    },
+    {
+      "name": "profile-baseline",
+      "source_kind": "live",
+      "qualification": false,
+      "protected": true,
+      "client": "none",
+      "cprofile_enabled": true,
+      "unpaced": true,
+      "closed_loop_only": true,
+      "flush_consolidated": false,
+      "skipped_flushes": 0,
+      "elapsed_s": 5.032115774,
+      "steps": 192,
+      "loops": 96,
+      "steps_per_second": 38.1549250102766,
+      "published": 96,
+      "missed_deadlines": 55,
+      "error": null,
+      "timers": {
+        "write_targets": {
+          "calls": 384,
+          "total_ms": 734.3844429999997,
+          "median_ms": 1.876262,
+          "p95_ms": 2.24263,
+          "max_ms": 5.279077
+        },
+        "physics_step": {
+          "calls": 192,
+          "total_ms": 1052.6398860000002,
+          "median_ms": 5.426587,
+          "p95_ms": 6.096552,
+          "max_ms": 6.451281
+        },
+        "write_root": {
+          "calls": 192,
+          "total_ms": 113.40247200000003,
+          "median_ms": 0.546095,
+          "p95_ms": 0.988828,
+          "max_ms": 2.26914
+        },
+        "write_joints": {
+          "calls": 192,
+          "total_ms": 56.81713199999998,
+          "median_ms": 0.27342500000000003,
+          "p95_ms": 0.304136,
+          "max_ms": 0.982634
+        },
+        "kinematic_forward": {
+          "calls": 192,
+          "total_ms": 66.98132699999998,
+          "median_ms": 0.33626900000000004,
+          "p95_ms": 0.378412,
+          "max_ms": 0.846571
+        },
+        "flush_guard_snapshot": {
+          "calls": 192,
+          "total_ms": 130.75182199999995,
+          "median_ms": 0.6705515,
+          "p95_ms": 0.6981,
+          "max_ms": 2.551112
+        },
+        "flush_guard_check": {
+          "calls": 191,
+          "total_ms": 305.62696900000014,
+          "median_ms": 1.676816,
+          "p95_ms": 2.147406,
+          "max_ms": 2.602052
+        },
+        "objects_full_read": {
+          "calls": 96,
+          "total_ms": 1260.590734,
+          "median_ms": 13.0031575,
+          "p95_ms": 13.767968,
+          "max_ms": 19.846095
+        },
+        "environment_read": {
+          "calls": 96,
+          "total_ms": 51.23234299999998,
+          "median_ms": 0.530262,
+          "p95_ms": 0.569009,
+          "max_ms": 0.696782
+        },
+        "full_read": {
+          "calls": 96,
+          "total_ms": 1353.9016000000004,
+          "median_ms": 13.929413,
+          "p95_ms": 14.721886,
+          "max_ms": 20.969402
+        },
+        "neutral_verify": {
+          "calls": 96,
+          "total_ms": 643.945233,
+          "median_ms": 6.7252715,
+          "p95_ms": 6.909805,
+          "max_ms": 7.442466
+        },
+        "encode_build": {
+          "calls": 96,
+          "total_ms": 397.8444399999999,
+          "median_ms": 4.136251,
+          "p95_ms": 4.29061,
+          "max_ms": 4.699444
+        }
+      },
+      "timer_semantics": "Inclusive nested durations; do not sum parent and child entries",
+      "gc_events": [
+        {
+          "generation": 0,
+          "ended_ns": 1149443245143794,
+          "elapsed_ms": 0.112025,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149444143960412,
+          "elapsed_ms": 0.065983,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149445037148921,
+          "elapsed_ms": 0.066452,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149445933471010,
+          "elapsed_ms": 0.06389,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149446818781507,
+          "elapsed_ms": 0.061684,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149447705373699,
+          "elapsed_ms": 0.065736,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149448237829456,
+          "elapsed_ms": 0.092986,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149448238400038,
+          "elapsed_ms": 0.247356,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149448239642064,
+          "elapsed_ms": 0.153428,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149448241121634,
+          "elapsed_ms": 0.136663,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149448241813380,
+          "elapsed_ms": 0.062066,
+          "collected": 0,
+          "uncollectable": 0
+        }
+      ],
+      "gc_enabled": true,
+      "gc_thresholds": [
+        700,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "profile-consolidated",
+      "source_kind": "live",
+      "qualification": false,
+      "protected": true,
+      "client": "none",
+      "cprofile_enabled": true,
+      "unpaced": true,
+      "closed_loop_only": true,
+      "flush_consolidated": true,
+      "skipped_flushes": 207,
+      "elapsed_s": 5.024339381,
+      "steps": 208,
+      "loops": 104,
+      "steps_per_second": 41.398477337452775,
+      "published": 104,
+      "missed_deadlines": 46,
+      "error": null,
+      "timers": {
+        "write_targets": {
+          "calls": 209,
+          "total_ms": 397.88772700000004,
+          "median_ms": 1.877567,
+          "p95_ms": 2.184001,
+          "max_ms": 2.589816
+        },
+        "physics_step": {
+          "calls": 208,
+          "total_ms": 1129.8136000000002,
+          "median_ms": 5.3373725,
+          "p95_ms": 6.016296,
+          "max_ms": 6.563824
+        },
+        "write_root": {
+          "calls": 208,
+          "total_ms": 119.60009400000003,
+          "median_ms": 0.548279,
+          "p95_ms": 0.596068,
+          "max_ms": 1.35854
+        },
+        "write_joints": {
+          "calls": 208,
+          "total_ms": 58.81114199999998,
+          "median_ms": 0.272644,
+          "p95_ms": 0.293553,
+          "max_ms": 0.995487
+        },
+        "kinematic_forward": {
+          "calls": 208,
+          "total_ms": 71.24670899999997,
+          "median_ms": 0.331003,
+          "p95_ms": 0.36043,
+          "max_ms": 0.822385
+        },
+        "flush_guard_snapshot": {
+          "calls": 208,
+          "total_ms": 145.85872200000003,
+          "median_ms": 0.6708505,
+          "p95_ms": 0.714353,
+          "max_ms": 2.608673
+        },
+        "flush_guard_check": {
+          "calls": 207,
+          "total_ms": 328.3153430000001,
+          "median_ms": 1.661026,
+          "p95_ms": 2.140244,
+          "max_ms": 2.635799
+        },
+        "objects_full_read": {
+          "calls": 104,
+          "total_ms": 1347.5225529999993,
+          "median_ms": 12.962454000000001,
+          "p95_ms": 13.258017,
+          "max_ms": 15.273686
+        },
+        "environment_read": {
+          "calls": 104,
+          "total_ms": 55.24607499999999,
+          "median_ms": 0.5285715,
+          "p95_ms": 0.559567,
+          "max_ms": 0.625043
+        },
+        "full_read": {
+          "calls": 104,
+          "total_ms": 1447.6953409999996,
+          "median_ms": 13.898175,
+          "p95_ms": 14.40308,
+          "max_ms": 16.302307
+        },
+        "neutral_verify": {
+          "calls": 104,
+          "total_ms": 699.8093719999998,
+          "median_ms": 6.734985,
+          "p95_ms": 6.95873,
+          "max_ms": 7.150441
+        },
+        "encode_build": {
+          "calls": 104,
+          "total_ms": 430.82047,
+          "median_ms": 4.158317500000001,
+          "p95_ms": 4.298186,
+          "max_ms": 4.64662
+        }
+      },
+      "timer_semantics": "Inclusive nested durations; do not sum parent and child entries",
+      "gc_events": [
+        {
+          "generation": 0,
+          "ended_ns": 1149448333148767,
+          "elapsed_ms": 0.113669,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149449167548530,
+          "elapsed_ms": 0.065329,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149449989026303,
+          "elapsed_ms": 0.074077,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149450807897519,
+          "elapsed_ms": 0.066958,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149451625269144,
+          "elapsed_ms": 0.066447,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149452445569716,
+          "elapsed_ms": 0.067018,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149453269720693,
+          "elapsed_ms": 0.063653,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 1,
+          "ended_ns": 1149453321230143,
+          "elapsed_ms": 0.200765,
+          "collected": 0,
+          "uncollectable": 0
+        },
+        {
+          "generation": 0,
+          "ended_ns": 1149453322690217,
+          "elapsed_ms": 0.199852,
+          "collected": 0,
+          "uncollectable": 0
+        }
+      ],
+      "gc_enabled": true,
+      "gc_thresholds": [
+        700,
+        10,
+        10
+      ]
+    }
+  ],
+  "comparison": [
+    {
+      "baseline": "protected-baseline-none",
+      "consolidated": "protected-consolidated-none",
+      "baseline_steps_s": 42.57296472078626,
+      "consolidated_steps_s": 44.55948966451441,
+      "change_percent": 4.666165386311993,
+      "baseline_flushes": 1024,
+      "consolidated_flushes": 537,
+      "skipped_flushes": 535,
+      "baseline_guard_check_median_ms": 1.561948,
+      "consolidated_guard_check_median_ms": 1.586529,
+      "baseline_guard_capture_median_ms": 0.633111,
+      "consolidated_guard_capture_median_ms": 0.641324
+    },
+    {
+      "baseline": "protected-baseline-process",
+      "consolidated": "protected-consolidated-process",
+      "baseline_steps_s": 41.39785306753812,
+      "consolidated_steps_s": 44.8593452202405,
+      "change_percent": 8.361525770563905,
+      "baseline_flushes": 996,
+      "consolidated_flushes": 541,
+      "skipped_flushes": 539,
+      "baseline_guard_check_median_ms": 1.910135,
+      "consolidated_guard_check_median_ms": 1.86688,
+      "baseline_guard_capture_median_ms": 0.645914,
+      "consolidated_guard_capture_median_ms": 0.652209
+    },
+    {
+      "baseline": "profile-baseline",
+      "consolidated": "profile-consolidated",
+      "baseline_steps_s": 38.1549250102766,
+      "consolidated_steps_s": 41.398477337452775,
+      "change_percent": 8.501005640300852,
+      "baseline_flushes": 384,
+      "consolidated_flushes": 209,
+      "skipped_flushes": 207,
+      "baseline_guard_check_median_ms": 1.676816,
+      "consolidated_guard_check_median_ms": 1.661026,
+      "baseline_guard_capture_median_ms": 0.6705515,
+      "consolidated_guard_capture_median_ms": 0.6708505
+    }
+  ],
+  "default_gc_unchanged": true,
+  "final_reset_ok": true,
+  "raw_evidence_sha256": {
+    "results\\workcell-profile-flush\\profile-check\\summary.json": "eb6f21e2deed267cc0c2e74cf9b1eb5257fb15b2e6311fa5a27baf546f3f8bcc",
+    "results\\workcell-profile-flush\\profile-check\\flush-equivalence.json": "e23053e66cbd92212b0b397afa5d559fff088a37bea764eb3a636ba728fcf475",
+    "results\\workcell-profile-flush\\summary.json": "c53e80670941eacbc37534b12f5c89a72705968fa1bf66bf1fbe1e968b33ba9d",
+    "results\\workcell-profile-flush\\profile-check\\reset-events.jsonl": "d3a55faeca32720c3380cdbfe85d54e9e9bb7f59f3216dd9ae1e859cbfc74597",
+    "flush_diagnostic.py": "2eda865205be44e884a191d513c2fe4a008d7452a53005377773993f5d2848fb",
+    "profile_workcell_flush.py": "57e9ada826eff8aeee8bcb3f9789f726bc66b715ef1fb0e1cc80d0c0a2216e67",
+    "flush-container-state.json": "f1a4527acdc9e246a69f5befc02a28922cfeb4da4509850ec4f66c4b1fd6bcdb"
+  },
+  "limitations": [
+    "Experimental handle cache enabled only in this isolated diagnostic; production default remains off",
+    "Guard instrumentation is present in both sides and materially costs time; do not compare these rates as equivalent to prior unguarded profiles",
+    "Sequential short phases do not establish an hour, causal confidence interval, deployment or G2 qualification",
+    "Both guarded configurations remain below60 physics steps/s required by current two-step30Hz protected runner",
+    "Before measurement the redundant-flush cost upper-bound was about8.6 percent of profiled time; this alone could not close the60Hz gap",
+    "No GC setting, neutral tolerance, actuator algorithm or generic runtime flush changed",
+    "Generic flush is not idempotent for active wrenches or explicit/history-based actuator models"
+  ]
+}

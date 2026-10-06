@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/apparatus/g4-manifest-handoff.schema.json",
+  "title": "g4-manifest-handoff.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_type",
+    "freeze_reference",
+    "fields"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "record_type": {
+      "const": "g4-generation-freeze-handoff"
+    },
+    "freeze_reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\x00-\\x1f]+$"
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id_provisional",
+        "model_revision",
+        "runtime_precision",
+        "prompt_hash",
+        "fallback_bank_hash",
+        "renderer_recipe_schema_hash"
+      ],
+      "properties": {
+        "model_id_provisional": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\x00-\\x1f]+$"
+        },
+        "model_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\x00-\\x1f]+$"
+        },
+        "runtime_precision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\x00-\\x1f]+$"
+        },
+        "prompt_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "fallback_bank_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "renderer_recipe_schema_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
+}

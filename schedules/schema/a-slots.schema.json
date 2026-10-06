@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/a-slots.schema.json",
+  "title": "Study A learner-facing slot list (<set>-slots.json)",
+  "description": "Study A recruitment waves and learner slots in reveal order, each mapped to an anonymous book ID. Contains no method labels or designer IDs. Written by av_schedules (allocate); read through the reveal-next API by the operator console. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "audience",
+    "generator",
+    "demo",
+    "seed_label",
+    "allocation_seed",
+    "study",
+    "set",
+    "design_table_sha256",
+    "counts",
+    "waves",
+    "slots",
+    "list_sha256"
+  ],
+  "properties": {
+    "format": {"const": "av-schedules/a-slots"},
+    "format_version": {"const": 1},
+    "audience": {"const": "learner-facing"},
+    "generator": {"$ref": "#/$defs/generator"},
+    "demo": {"type": "boolean", "description": "True for lists from a public DEMO- seed; never use them with participants."},
+    "seed_label": {"$ref": "#/$defs/seed_label"},
+    "allocation_seed": {"$ref": "#/$defs/fingerprint"},
+    "study": {"const": "A"},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "design_table_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the batch table (<set>-batch-table.csv) the list was built from."},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["batches", "waves", "slots", "slots_per_batch"],
+      "properties": {
+        "batches": {"type": "integer", "minimum": 1},
+        "waves": {"type": "integer", "minimum": 1},
+        "slots": {"type": "integer", "minimum": 1},
+        "slots_per_batch": {"enum": [6, 12]}
+      }
+    },
+    "waves": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wave", "units"],
+        "properties": {
+          "wave": {"type": "integer", "minimum": 1},
+          "units": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"$ref": "#/$defs/unit_id"}}
+        }
+      }
+    },
+    "slots": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/slot"}},
+    "list_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the canonical JSON of this document without list_sha256 (sorted keys, separators ',' and ':', UTF-8)."}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "SHA-256 fingerprint of the master seed (apparatus manifest allocation_seed); never the seed."},
+    "seed_label": {"type": "string", "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$"},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "av-schedules"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "unit_id": {"type": "string", "pattern": "^A-[PC][0-9]{2}$"},
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_id", "unit_id", "slot", "order", "wave", "wave_position", "profile", "book_id"],
+      "properties": {
+        "slot_id": {"type": "string", "pattern": "^A-[PC][0-9]{2}-L(0[1-9]|1[0-2])$"},
+        "unit_id": {"$ref": "#/$defs/unit_id"},
+        "slot": {"type": "string", "pattern": "^L(0[1-9]|1[0-2])$"},
+        "order": {"type": "integer", "minimum": 1, "description": "1-based reveal order within the set."},
+        "wave": {"type": "integer", "minimum": 1},
+        "wave_position": {"type": "integer", "minimum": 1, "maximum": 3},
+        "profile": {"enum": ["P1", "P2", "P3"]},
+        "book_id": {"$ref": "#/$defs/book_id"}
+      }
+    },
+    "book_id": {
+      "type": "string",
+      "pattern": "^BK-[PC]-[BCFGHJKMNPQRTVWXY4-9]{6}$",
+      "description": "Anonymous book ID: set code and 6 random characters without the letters A or D."
+    }
+  }
+}
