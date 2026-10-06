@@ -90,6 +90,8 @@ namespace AcousticVocab.DataLogging
         {
             switch(kind)
             {
+                case "lesson":
+                    LessonRecordCodec.Validate(p,c);break;
                 case "grammar_stage":
                     DataJson.Require(c.OpportunityId==null&&c.AttemptId==null&&c.AudioRequestId==null,"DATA_GRAMMAR_CONTEXT");
                     GrammarStageCodec.Validate(p);break;

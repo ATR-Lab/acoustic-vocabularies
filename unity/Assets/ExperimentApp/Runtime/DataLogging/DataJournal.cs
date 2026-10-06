@@ -55,6 +55,7 @@ namespace AcousticVocab.DataLogging
                 var p=draft.Payload;DataEventSchema.Validate(draft.Kind,draft.Context,p);
                 if(draft.Kind=="session")CheckClock(clocks,"session:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
                 if(draft.Kind=="assessment_stage")CheckClock(clocks,"assessment:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
+                if(draft.Kind=="lesson"){DataJson.Require((double)p["observed_mono_ms"]<=now,"DATA_LESSON_FUTURE_EVENT");CheckClock(clocks,"lesson:"+clockEpoch,(double)p["observed_mono_ms"]);}
                 if(draft.Kind=="grammar_stage")CheckClock(clocks,"grammar:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
                 var row=new JObject{["schema_version"]=DataEventSchema.Version,["sequence"]=sequence,["event_id"]=Guid.NewGuid().ToString("N"),["clock_epoch"]=clockEpoch,["host_mono_ms"]=now,["identity"]=identity.ToJson(),
                     ["event_type"]=draft.Kind,["opportunity_id"]=draft.Context.OpportunityId,["attempt_id"]=draft.Context.AttemptId,["audio_request_id"]=draft.Context.AudioRequestId,["previous_sha256"]=previous,["payload"]=p};
@@ -96,6 +97,7 @@ namespace AcousticVocab.DataLogging
                     CheckClock(clocks,epoch,DataJson.Number(row["host_mono_ms"]));
                     if(kind=="session")CheckClock(clocks,"session:"+(string)payload["clock_epoch"],(double)payload["host_mono_ms"]);
                     if(kind=="assessment_stage")CheckClock(clocks,"assessment:"+(string)payload["clock_epoch"],(double)payload["host_mono_ms"]);
+                    if(kind=="lesson"){DataJson.Require((double)payload["observed_mono_ms"]<=DataJson.Number(row["host_mono_ms"]),"DATA_LESSON_FUTURE_EVENT");CheckClock(clocks,"lesson:"+epoch,(double)payload["observed_mono_ms"]);}
                     if(kind=="grammar_stage")CheckClock(clocks,"grammar:"+(string)payload["clock_epoch"],(double)payload["host_mono_ms"]);
                     records.Add(new DataRecord(row));previous=hash;sequence++;
                 }
