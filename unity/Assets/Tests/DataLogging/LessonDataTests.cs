@@ -38,7 +38,7 @@ namespace AcousticVocab.DataLogging.Tests
                 p["simulation_test"]=true;p["software_output_estimate_mono_ms"]=expected;p["software_output_uncertainty_ms"]=1;
                 Data.Append(new EventDraft(code=="AUDIO_REQUESTED"?"audio_request":"audio_observation",context,p));
             }
-            internal void Complete()
+            internal void Complete(bool skipThirdCompletion=false)
             {
                 Timeline.Start(0);double[] offsets=atomic?new[]{0d,6000,14000}:new[]{0d,8000,18000};
                 for(Now=50;Now<=Context.EndMonoMs;Now+=50)
@@ -48,7 +48,7 @@ namespace AcousticVocab.DataLogging.Tests
                     {
                         double expected=750+offsets[i];string id=Context.AudioRequestIds[i];
                         if(Now==expected){Audio(id,"SIMULATION_DELIVERY_OBSERVED",expected,true);Timeline.Onset(id,expected,1,Now);}
-                        if(Now==expected+1200){Audio(id,"AUDIO_PLAYBACK_COMPLETED",expected,true);Timeline.Completed(id,Now);}
+                        if(Now==expected+1200&&!(skipThirdCompletion&&i==2)){Audio(id,"AUDIO_PLAYBACK_COMPLETED",expected,true);Timeline.Completed(id,Now);}
                     }
                     if(Now==750+offsets[1]+100)Timeline.Response("DEMO-feedback",Now);
                 }
@@ -88,6 +88,23 @@ namespace AcousticVocab.DataLogging.Tests
         {
             using var r=new Run(bind:false);Assert.Throws<DataFault>(()=>r.Timeline.Start(0));
             var fresh=new LessonDataJournal(r.Data,r.Schedule);var protectedItem=new SlotItem("DEMO-lesson","atomic_lesson","K-a1",null,null,"protected",false,20,3,1);Assert.Throws<DataFault>(()=>fresh.Bind(new SlotContext(protectedItem,750,null)));
+        }
+        [Test]public void TimelineEndBeforeItsCompletionGuardRemainsIncomplete()
+        {
+            using var r=new Run();Assert.That(Assert.Throws<SessionFault>(()=>r.Complete(true)).Code,Is.EqualTo("LESSON_PLAY_INCOMPLETE"));r.Data.Dispose();
+            var rows=LessonExport.Derive(DataJournal.Verify(r.Raw,SyntheticData.Identity),SyntheticData.Identity);
+            Assert.That(rows.All(x=>x["lesson_status"]=="software_ended_incomplete"),Is.True);Assert.That(rows.Single(x=>x["presentation_index"]=="3")["observed_end_mono_ms"],Is.Empty);
+        }
+        [Test]public void WrongFeedbackEndCannotSilentlyBecomeAnOpenInterval()
+        {
+            using var r=new Run();r.Complete();var trace=new LessonTrace();
+            foreach(var row in r.Data.Records.Where(x=>x.Kind=="lesson"))
+            {
+                var p=row.Payload;
+                if((string)p["kind"]=="display_end"&&p["feedback_content_id"].Type!=JTokenType.Null){p["feedback_content_id"]="wrong-feedback";Assert.Throws<DataFault>(()=>trace.Accept(p,row.ToJson()));return;}
+                trace.Accept(p,row.ToJson());
+            }
+            Assert.Fail("Expected actual timeline feedback end");
         }
         [TestCase("attempt_id")][TestCase("audio_request_id")][TestCase("presentation_index")][TestCase("pcm_sha256")]
         public void RecoveredTamperedLessonCannotReexport(string field)

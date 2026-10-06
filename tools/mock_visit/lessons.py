@@ -11,6 +11,7 @@ TABLE, CONTRACT = "lesson-exposures.csv", "lesson-header-contract.json"
 EVENT_FIELDS = "kind attempt_id opportunity_id audio_request_id presentation_index observed_mono_ms expected_mono_ms meaning_display_id feedback_content_id highlight pcm_sha256 action_pcm_sha256 referent_pcm_sha256".split()
 BINDING_FIELDS = "schema_version schedule_sha256 package_sha256 session_clock_epoch lesson_type slot_start_mono_ms audio_request_ids".split()
 COLUMNS = "schema_version session_id coded_id visit_id station_id schedule_sha256 package_sha256 clock_epoch session_clock_epoch opportunity_id attempt_id context_audio_request_ids lesson_type row_kind presentation_index audio_request_id meaning_display_id feedback_content_id pcm_sha256 action_pcm_sha256 referent_pcm_sha256 start_event_sha256 end_event_sha256 observed_start_mono_ms observed_end_mono_ms expected_start_mono_ms display_start_mono_ms display_end_mono_ms retrieval_opportunity interval_status lesson_status audio_ledger_status audible_status exposure_consumed audio_onset_estimate_mono_ms onset_uncertainty_ms evidence_level".split()
+COVERAGE = {"play_request":3, "onset_authority":3, "play_complete":3, "display_start":2, "display_end":2, "retrieval_opportunity":1, "retrieval_result":1}
 KINDS = set("play_request onset_authority play_complete display_request display_start display_end retrieval_opportunity retrieval_result highlight_request highlight lesson_end lesson_interrupted".split())
 PLAY = {"play_request", "onset_authority", "play_complete"}
 
@@ -80,7 +81,8 @@ def groups(records):
                     and (feedback is None or trace["retrieval"] and feedback == trace["feedback"]), "MOCK_LESSON_DISPLAY_ORDER")
             trace["display"] = key; once.add(("display", key))
         if kind == "display_end":
-            require(trace["display"] == ("definition" if feedback is None else "feedback"), "MOCK_LESSON_DISPLAY_ORDER")
+            require(trace["display"] == ("definition" if feedback is None else "feedback")
+                    and (feedback is None or feedback == trace["feedback"]), "MOCK_LESSON_DISPLAY_ORDER")
             trace["display"] = None
         if kind == "retrieval_opportunity":
             require(not trace["retrieval"] and trace["display"] is None and ("display", "definition") in once, "MOCK_LESSON_RETRIEVAL_ORDER")
@@ -100,7 +102,8 @@ def derive(records, identity, exposures):
     requests = {r["audio_request_id"]: r for r in records if r["event_type"] == "audio_request"}
     result = []
     for events in groups(records):
-        status = "interrupted" if any(r["payload"]["kind"] == "lesson_interrupted" for r in events) else "software_ended" if any(r["payload"]["kind"] == "lesson_end" for r in events) else "incomplete"
+        coverage = all(sum(r["payload"]["kind"] == k for r in events) == n for k,n in COVERAGE.items())
+        status = "interrupted" if any(r["payload"]["kind"] == "lesson_interrupted" for r in events) else ("software_ended" if coverage else "software_ended_incomplete") if any(r["payload"]["kind"] == "lesson_end" for r in events) else "incomplete"
         for start in events:
             p = start["payload"]
             if p["kind"] not in {"play_request", "display_start", "retrieval_opportunity"}: continue
@@ -175,5 +178,6 @@ def reconcile(records, joined, items, schedule_hash, package_hash):
     require(len(actual) <= len(expected) and actual == expected[:len(actual)], "MOCK_LESSON_SUPPLEMENTAL_MISMATCH")
     incomplete = set()
     if len(actual) != len(expected): incomplete.add("LESSON_SUPPLEMENTAL_WRITE_INCOMPLETE")
-    if any(not any(r["payload"]["kind"] == "lesson_end" for r in rows) for rows in traces): incomplete.add("LESSON_TYPED_INTERVALS_INCOMPLETE")
+    if any(not any(r["payload"]["kind"] == "lesson_end" for r in rows)
+           or any(sum(r["payload"]["kind"] == k for r in rows) != n for k,n in COVERAGE.items()) for rows in traces): incomplete.add("LESSON_TYPED_INTERVALS_INCOMPLETE")
     return incomplete

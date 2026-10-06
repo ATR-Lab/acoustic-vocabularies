@@ -112,7 +112,7 @@ namespace AcousticVocab.DataLogging
             if(new[]{"play_request","onset_authority","play_complete"}.Contains(kind))
             {DataJson.Require(once.Add(kind+index)&& (kind=="play_request"||once.Contains("play_request"+index))&&(kind!="play_complete"||once.Contains("onset_authority"+index)),"DATA_LESSON_DUPLICATE_OR_ORDER");}
             if(kind=="display_start"){string key=f==null?"definition":"feedback";DataJson.Require(openDisplay==null&&once.Add("display:"+key)&&(f==null||retrieval&&f==feedback),"DATA_LESSON_DISPLAY_ORDER");openDisplay=key;}
-            if(kind=="display_end"){DataJson.Require(openDisplay==(f==null?"definition":"feedback"),"DATA_LESSON_DISPLAY_ORDER");openDisplay=null;}
+            if(kind=="display_end"){DataJson.Require(openDisplay==(f==null?"definition":"feedback")&&(f==null||f==feedback),"DATA_LESSON_DISPLAY_ORDER");openDisplay=null;}
             if(kind=="retrieval_opportunity"){DataJson.Require(!retrieval&&openDisplay==null&&once.Contains("display:definition"),"DATA_LESSON_RETRIEVAL_ORDER");retrieval=true;}
             if(kind=="retrieval_result"){DataJson.Require(retrieval&&feedback==null,"DATA_LESSON_RETRIEVAL_ORDER");feedback=f;}
             if(kind=="lesson_end"||kind=="lesson_interrupted"){DataJson.Require(!ended&&openDisplay==null,"DATA_LESSON_END_ORDER");ended=true;}

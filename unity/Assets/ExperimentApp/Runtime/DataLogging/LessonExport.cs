@@ -30,7 +30,9 @@ namespace AcousticVocab.DataLogging
             var rows=new List<IReadOnlyDictionary<string,string>>();
             foreach(var trace in traces.Values)
             {
-                var events=trace.Events;string status=events.Any(x=>(string)x.Payload["kind"]=="lesson_interrupted")?"interrupted":events.Any(x=>(string)x.Payload["kind"]=="lesson_end")?"software_ended":"incomplete";
+                var events=trace.Events;
+                bool coverage=new[]{("play_request",3),("onset_authority",3),("play_complete",3),("display_start",2),("display_end",2),("retrieval_opportunity",1),("retrieval_result",1)}.All(expected=>events.Count(x=>(string)x.Payload["kind"]==expected.Item1)==expected.Item2);
+                string status=events.Any(x=>(string)x.Payload["kind"]=="lesson_interrupted")?"interrupted":events.Any(x=>(string)x.Payload["kind"]=="lesson_end")?(coverage?"software_ended":"software_ended_incomplete"):"incomplete";
                 foreach(var start in events.Where(x=>new[]{"play_request","display_start","retrieval_opportunity"}.Contains((string)x.Payload["kind"])))
                 {
                     var p=start.Payload;string kind=(string)p["kind"],rowKind=kind=="play_request"?"play":kind=="display_start"?"display":"retrieval";

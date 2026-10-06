@@ -101,6 +101,14 @@ class LessonExportTests(unittest.TestCase):
         rows,audio=fixture();rows[-2]["clock_epoch"]="b"*32
         with self.assertRaisesRegex(EvidenceError,"CLOCK"): lessons.derive(rows,IDENTITY,audio)
 
+    def test_mismatched_feedback_end_rejected_and_early_software_end_incomplete(self):
+        rows,audio=fixture();rows[-2]["payload"]["feedback_content_id"]="wrong-feedback"
+        with self.assertRaisesRegex(EvidenceError,"DISPLAY_ORDER"): lessons.derive(rows,IDENTITY,audio)
+        rows,audio=fixture();rows=[r for r in rows if not(r["event_type"]=="lesson" and r["payload"]["kind"]=="play_complete" and r["payload"]["presentation_index"]==3)]
+        result=lessons.derive(rows,IDENTITY,audio)
+        self.assertTrue(all(r["lesson_status"]=="software_ended_incomplete" for r in result))
+        self.assertEqual(next(r for r in result if r["presentation_index"]==3)["interval_status"],"incomplete")
+
     def test_actual_schedule_and_side_journal_are_bound(self):
         rows,audio=fixture();joined=[dict(kind="lesson",payload={k:r["payload"][k] for k in lessons.EVENT_FIELDS}) for r in rows if r["event_type"]=="lesson"]
         items={"DEMO-lesson":dict(block="atomic_lessons",trial_type="atomic_lesson")}
