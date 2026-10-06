@@ -5,6 +5,7 @@ import gc
 import json
 import threading
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -15,7 +16,7 @@ from isaac.e2e.private_timing import PrivateTiming
 from isaac.e2e.service import advance_once, run_joined_service
 from test_e2e_service import fixture
 from test_health_probe import status
-from test_publisher_schema import registry, state
+from isaac.publisher.protocol import PublicRegistry
 from isaac.publisher.runtime import StatePublisher
 
 
@@ -153,9 +154,15 @@ def test_full_publisher_comparison_and_exact_bytes_survive_observer(tmp_path):
         def metrics(self):return {'connected_clients':1,'queue_overwrites':0}
         def close(self):pass
     def check(complete):checks.append(complete);return True
+    frame=json.loads((Path(__file__).parents[1]/'fixtures/publisher-state.json').read_text())
+    registry=PublicRegistry(frame['station_id'],frame['scene_sha256'],frame['reset_snapshot_sha256'],
+        tuple(frame['joint_names']),(("synthetic_card",("card_face",)),))
+    def state():
+        obj=deepcopy(frame['objects'][0]);obj.pop('id')
+        return [0.]*43,{'synthetic_card':obj},{'synthetic_neutral':True}
     try:
         for index,timing in enumerate((None,trace)):
-            publisher=StatePublisher(registry(),state,Transport(),tmp_path/f'{index}.csv',
+            publisher=StatePublisher(registry,state,Transport(),tmp_path/f'{index}.csv',
                 neutral_check=check,source_kind='synthetic',clock_ns=lambda:1_000_000_000,timing=timing)
             publisher.encoder.session_id='a'*32
             publisher.require_neutral(True)
