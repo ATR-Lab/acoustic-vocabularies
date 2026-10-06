@@ -2,14 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/audit-summary.schema.json",
   "title": "Generation audit summary",
-  "description": "summary.json of a generation audit (#24): one entry per book with the columns of books.csv (av_generation.audit.BOOK_COLUMNS) and the batch timing. masked true: no column that names or reveals a method by construction may appear (av_generation.audit.METHOD_COLUMNS: method, designer, per-method effort, every outcome count, startup and operator time); masked false: they are required. sources maps each log file read to its SHA-256.",
+  "description": "summary.json of a generation audit (#24): one entry per book with the columns of books.csv (av_generation.audit.BOOK_COLUMNS), the batch timing, the audit checks and the sources read. masked true: no column that names or reveals a method by construction may appear (av_generation.audit.METHOD_COLUMNS: method, designer, per-method effort, every outcome count, startup and operator time) and machines is null; masked false: they are required. sources maps each file read (run manifest, batch config, logs, machine specifications) to its SHA-256. Times are run-clock milliseconds; wall times are sums of paired start/end timing events. Definitions: generation/docs/audit.md.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "batch_id",
     "books",
+    "checks",
     "format",
     "format_version",
+    "machines",
     "masked",
     "run_id",
     "sources",
@@ -361,7 +363,9 @@
         "atoms",
         "batch_wall_ms",
         "max_appointment_ms",
-        "max_atom_ms"
+        "max_atom_ms",
+        "operator_ms",
+        "startup_ms"
       ],
       "properties": {
         "batch_wall_ms": {
@@ -391,11 +395,19 @@
                 "maximum": 4
               },
               "wall_ms": {
-                "type": "integer",
-                "minimum": 0
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
-          }
+          },
+          "maxItems": 4
         },
         "atoms": {
           "type": "array",
@@ -403,24 +415,68 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "appointment",
               "atom_id",
               "max_round_ms",
+              "position",
+              "rounds_ms",
               "wall_ms"
             ],
             "properties": {
               "atom_id": {
                 "$ref": "common.schema.json#/$defs/atom_id"
               },
-              "wall_ms": {
+              "position": {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 1,
+                "maximum": 16
+              },
+              "appointment": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4
+              },
+              "wall_ms": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "rounds_ms": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
               },
               "max_round_ms": {
-                "type": "integer",
-                "minimum": 0
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
-          }
+          },
+          "maxItems": 16
         },
         "max_atom_ms": {
           "oneOf": [
@@ -443,8 +499,79 @@
               "type": "null"
             }
           ]
+        },
+        "startup_ms": {
+          "description": "Every paired startup interval of the batch (all components).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "operator_ms": {
+          "description": "Sum of duration_ms of every operator_action event of the batch.",
+          "type": "integer",
+          "minimum": 0
         }
       }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "fallback_scans",
+        "ok",
+        "problems",
+        "slot_refusals"
+      ],
+      "properties": {
+        "complete": {
+          "description": "The run manifest is closed and no batch_incomplete event was logged.",
+          "type": "boolean"
+        },
+        "ok": {
+          "description": "No problem found (problems is empty).",
+          "type": "boolean"
+        },
+        "problems": {
+          "description": "Sorted, method-neutral descriptions of every count or link that failed a check.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "slot_refusals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fallback_scans": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "machines": {
+      "description": "Machine specifications by role (e.g. llm_host, a1_station), copied from the apparatus manifest; unmasked only.",
+      "oneOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9_]{1,64}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z0-9_]{1,64}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "allOf": [
@@ -585,6 +712,9 @@
                 ]
               }
             }
+          },
+          "machines": {
+            "type": "null"
           }
         }
       },

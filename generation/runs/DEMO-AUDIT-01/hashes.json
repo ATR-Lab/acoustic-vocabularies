@@ -1,0 +1,34 @@
+{
+  "audit": {
+    "masked/book-DEMO-BK-7QX4-atoms.csv": "8602bf91bd2109cb6e2057ddf7a728228d54588dc6981a025b8cc4752a452323",
+    "masked/book-DEMO-BK-7QX4-slots.csv": "82840de641dce52631873ebd74adb389d58649e1f0f49baf44e3c1a2c9544a13",
+    "masked/book-DEMO-BK-H9TC-atoms.csv": "eaf5d81d5aea5fcabcf9d4a0d52f9497023b3e25be600e781c7ca59e34facb2c",
+    "masked/book-DEMO-BK-H9TC-slots.csv": "63d4969eee6e1e28238c0e3e5cdac767bb5e46eb76f2a1e9fe7aed85d3d46992",
+    "masked/book-DEMO-BK-M2RW-atoms.csv": "00a95b96749109f75d4edab54cd95e58222c46d091c6ab50ec6a798169c2f9c9",
+    "masked/book-DEMO-BK-M2RW-slots.csv": "715fa4e4f3fe7a1df70792e45cb8b2bfa0cc2905eed034314b54269bf8b2acc7",
+    "masked/books.csv": "34efb8b1679cebb777b4b03bab4c764310efdc9b6f846e3b13e62a5f69fc798a",
+    "masked/summary.json": "175e3191692082f13098b4e10983ac7893c949268a1233e9db760b12760ccb89",
+    "masked/summary.md": "e08c7e8aeae7e2b60620dcd11c17a6832a8e99be22f7051495404e3f2adc63b1",
+    "tally.csv": "bcc5061d0915f722e7c3dcb2f3fc0b2a95e7e8a1e6510fabe0145ffe8a320f1f",
+    "unmasked/book-DEMO-BK-7QX4-atoms.csv": "15cda0b1b1e028e0191c182cc2c1e518748887eaca34129e399eada1b9622a5c",
+    "unmasked/book-DEMO-BK-7QX4-slots.csv": "c6b09809f4f01d87ce90de3007f2214f2c7c5cd959ad63a5671a73b3e1848a63",
+    "unmasked/book-DEMO-BK-H9TC-atoms.csv": "5d5b449820c34a73d0bc1ad11d21f3f8a0267772a242e58f7b94450135e8a83a",
+    "unmasked/book-DEMO-BK-H9TC-slots.csv": "535326eef752d18a73e206b6e0dd69e99b63d3a511cc1c3da4d82f8106d0ac92",
+    "unmasked/book-DEMO-BK-M2RW-atoms.csv": "cab24ace28d7b676a81947c53635b26b9314587907e53de886b64f2a423bfb29",
+    "unmasked/book-DEMO-BK-M2RW-slots.csv": "62f9f0b5eb5d2f0a1a4a814e9f99964a28af9d240df9ab5627d467ab6940394d",
+    "unmasked/books.csv": "3676f4fac034761393b0d7dd2418f4cfdb9ea3cdc4d407ec898614f3aa4dd28a",
+    "unmasked/summary.json": "b311a31aa0b3b84796ac0c65f0d0dfcf1418b72f4055b7f9008fed4f5aed59be",
+    "unmasked/summary.md": "8dd5a93684b69b41cbc5dbbf3fadf74de0ea8904ba70a1f8aaff5ad440a4de0c"
+  },
+  "description": "Synthetic DEMO batch audit (#24): av_generation._audit_synth.SynthSpec() defaults, a log fixture (no component ran). Rebuild with `uv run --project generation python -m av_generation._audit_synth generation/runs/DEMO-AUDIT-01`.",
+  "run": {
+    "config.json": "4744be455137c8ab7424eb956cfcd2b2839f6371e5b9100b16765c971bb65bc7",
+    "logs/commits.jsonl": "de856f2dc85aae900f9bbd209be268820dbb190faec6d0b5877d291e1a58591e",
+    "logs/decisions.jsonl": "531832d552dc32f99c0bfb76289157ed25c0352cc91229281a727fb86a35f830",
+    "logs/fallback-scans.jsonl": "ed9a11e77c41807ca5af4e07aa708b4b339b26851978eafc2d9b87b503fc8a02",
+    "logs/ratings.jsonl": "fec004bfc8ecc4aa0333a94b830898a60e02cde5e2339728a2dc4e2688eefe1d",
+    "logs/slots.jsonl": "798aed0168318a4336a826536d662c16d670dffa5b774d43ebd3e749527e7c55",
+    "logs/timing.jsonl": "8c4ec1fb19e26b0d569db67c52268708a5b5f446aa32e0d48259b4c175bcfebc",
+    "run-manifest.json": "d9ee35c2dde42d717d7387125e521a9dd43a53b1e960ec5df62150092cfd86ef"
+  }
+}

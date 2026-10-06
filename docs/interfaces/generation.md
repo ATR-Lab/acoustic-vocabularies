@@ -122,19 +122,37 @@ slots bots rate unacceptable, invalid and timed-out designer slots),
 
 ## Generation audit reports (#24)
 
-*Pending (#24).* Contract with #34 fixed by the skeleton: per run
-`audit/unmasked/books.csv` with `audit.BOOK_COLUMNS` (one row per book; booleans
-`0`/`1`), the masked copy with `audit.MASKED_BOOK_COLUMNS`, and `summary.json`
-(`audit-summary.schema.json`); per set `build_set_audit(run_dirs, out_dir, *, study,
-set_name, masked)` writing `{study}-{set}-audit.csv` (masked; the analysis pipeline
-reads it at `inputs/generation/{study}-{set}-audit.csv`) or
-`{study}-{set}-audit-unmasked.csv` (restricted; proposed analysis path
-`keys/generation/{study}-{set}-audit-unmasked.csv`), one complete run per batch,
-incomplete runs excluded and listed. The masked tables hold no outcome counts, no
-startup or operator time and no per-method effort (`audit.METHOD_COLUMNS`); #34 reads
-`failed_generation`, `nonfallback`, `atoms_bank_fallback`, `atoms_book_fallback`,
-`slots_valid` and `slots_invalid` blinded, and the outcome counts (with
-`n_llm_server_error`) and effort columns from the unmasked table after unmasking.
+Module `av_generation.audit`; guide [`generation/docs/audit.md`](../../generation/docs/audit.md).
+
+- `build_audit(run_dir, out_dir, *, machines=None) -> AuditResult(files, ok, problems)`:
+  reads only the run manifest, `config.json` and the slot, refusal, rating, decision,
+  commit, fallback-scan and timing logs (`read_run_logs`), and writes `unmasked/` and
+  `masked/` together: `books.csv` (`BOOK_COLUMNS` / `MASKED_BOOK_COLUMNS`, one row per
+  book, sorted by book ID), `book-<book_id>-atoms.csv` (`ATOM_COLUMNS`),
+  `book-<book_id>-slots.csv` (`SLOT_COLUMNS`, the trace table: every count is a sum over
+  slot rows), `summary.json` (`audit-summary.schema.json`: books, timing, `checks`,
+  `machines`, `sources`) and `summary.md`. Same logs, same bytes. Masked texts pass
+  `masking.masking_findings` or nothing is written (`AuditError` `E_MASKING`);
+  restricted runs' reports are refused inside git work trees (`E_POLICY`).
+- `build_set_audit(run_dirs, out_dir, *, study, set_name, masked) ->
+  SetAuditResult(path, sha256, runs, excluded_runs, summary_path, summary_sha256)`:
+  `{study}-{set}-audit.csv` (masked; read by #34 at
+  `inputs/generation/{study}-{set}-audit.csv`) or `{study}-{set}-audit-unmasked.csv`
+  (restricted; proposed `keys/generation/{study}-{set}-audit-unmasked.csv`), one row per
+  book sorted by batch then book, plus the cross-batch Markdown summary
+  (`SET_SUMMARY_NAME` / `SET_SUMMARY_UNMASKED_NAME`, per method when unmasked) for the
+  pilot review (O6.2.1). Complete runs only (closed manifest, no `batch_incomplete`),
+  exactly one per batch, else `AuditError` `E_SET`.
+- `tally_sheet(run_dir, path) -> bool`: independent raw-JSONL counts next to the audit's
+  counts with an empty `hand_count` column (hand-tally check).
+- Command line: `python -m av_generation.audit {batch,set,tally}`.
+- #34 reads blinded: `failed_generation`, `nonfallback`, `atoms_*`, `slots_valid`,
+  `slots_invalid`, `wall_ms`, `rater_ms`, diversity, `total_ms_*` and the message
+  durations; after unmasking, the outcome counts (with `n_llm_server_error`) and the
+  effort columns (`startup_ms`, `operator_ms`, `design_active_ms`,
+  `familiarization_ms`, `model_runtime_ms`, `tokens_in`, `tokens_out`).
+- DEMO summary: `generation/runs/DEMO-AUDIT-01/` (synthetic logs from
+  `av_generation._audit_synth`, rebuilt and compared in CI).
 
 ## G4 freeze (#25)
 
