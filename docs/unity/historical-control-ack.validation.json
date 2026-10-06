@@ -41,5 +41,18 @@
   ],
   "regression_evidence_note": "The slow completion regression uses measured B011 RTT and source ages with controlled synthetic host sample anchors. It is not an actual backend transaction replay.",
   "affected_segment_native_validation": "pending; prior B011 remains faulted, incomplete and zero audio",
-  "count_note": "The 100-case focused suite is included in the 294-case consumer run; counts are not additive."
+  "count_note": "The 100-case focused suite is included in the 294-case consumer run; counts are not additive.",
+  "native_build": {
+    "build_id": "simulation-native-012",
+    "source_commit": "73953646b5def8952397566a391d28851c7f4543",
+    "dirty_source": false,
+    "target": "StandaloneWindows64",
+    "result": "Succeeded",
+    "errors": 0,
+    "duration_seconds": 16.943312799999998,
+    "total_bytes": 158713895,
+    "files": 205,
+    "manifest_sha256": "b64fbb8d1215cc6eb852d09603d35b333ae0480c9dc59f16d00139fe0bbec8ed",
+    "inventory_independently_rehashed": true
+  }
 }
