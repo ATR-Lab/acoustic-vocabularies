@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "scope": "software_failure_only_private_exchange_diagnostics",
+  "runtime_source_commit": "19fba45479a71ad9670f3d175e0ca4ab0cf50f66",
+  "participant_admission": false,
+  "native_visit_complete": false,
+  "timing_qualification": false,
+  "command_deadline_ms": 3000,
+  "probe_deadline_ms": 200,
+  "queue_limit_ms": 250,
+  "exposure_freshness_limit_ms": 250,
+  "successful_probe_durable_writes_added": false,
+  "payload_text_captured": false,
+  "native_diagnostic_capture": "pending",
+  "runs": [
+    {
+      "kind": "EditMode",
+      "scope": "private_transport_queue_health_and_failure_trace",
+      "source_commit": "19fba45479a71ad9670f3d175e0ca4ab0cf50f66",
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "4456d726263464e6d340da4fe12c2b9eede2a7ca64093c99f25e23e2b46f7ed6",
+      "note": "Includes seven new failure-trace cases and the prior100controlcases; counts are not additive."
+    }
+  ]
+}
