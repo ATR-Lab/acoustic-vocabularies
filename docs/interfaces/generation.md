@@ -84,23 +84,33 @@ operator guide: [`generation/docs/a1-operating-guide.md`](../../generation/docs/
   refusals=None, station=None, run_id=None, token_factory=None, audio_ttl_ms=60000,
   poll_interval_s=0.01)`: the A1 `RoundProposer`. `propose_round(request) ->
   RoundResult` opens the round's window for the designer's book and blocks until its
-  three slots have closed (submit, 40-s server timer, or the window's end for unopened
-  slots). It raises `ValueError` for a request of another method, another book, a
-  practice/study mismatch, or feedback naming another book.
+  three slots have closed. The slots run back to back (Study A protocol §3.3): slot 1
+  opens with the window, each next slot when the previous one closes (submit or 40-s
+  server timer), each with up to 40 s (cut only by `window_end_ms`). It raises
+  `ValueError` for a request of another method, another book, a practice/study
+  mismatch, or feedback naming another book.
+- Study mode for the batch runner (#20): `study_service(layout, ledger, config, *,
+  clock, meanings, station=None)` builds the service on the run's shared slot ledger and
+  the run's `play`, `timing` and `slot_refusal` logs (designer from the A1 book of
+  `config`); `serve_a1(service, *, host="127.0.0.1", port=DEFAULT_PORT)` is a context
+  manager that serves the app (port 8741) and yields the page URL. Pending: #20 calls
+  them for a study batch.
 - `create_a1_app(service)`: FastAPI app serving `a1.ROUTES` (`GET /a1/`,
   `GET /a1/api/state`, `POST /a1/api/slots/open`,
   `POST /a1/api/slots/{slot_id}/submit` with `{"recipe": ...}`,
   `GET /a1/api/audio/{token}`, `GET /a1/api/feedback`, `GET /a1/api/book`,
-  `POST /a1/api/activity`). Errors: `{"error": {"code", "message"}}` with `E_NO_WINDOW`,
-  `E_SLOT_OPEN`, `E_SLOT_CAP`, `E_SLOT_REUSED`, `E_UNKNOWN_SLOT`, `E_SLOT_CLOSED`,
+  `POST /a1/api/activity`). `POST /a1/api/slots/open` returns the open slot (slots open
+  by themselves). Errors: `{"error": {"code", "message"}}` with `E_NO_WINDOW`,
+  `E_SLOT_OPEN` (familiarization during a slot), `E_SLOT_CAP`, `E_UNKNOWN_SLOT`, `E_SLOT_CLOSED`,
   `E_UNKNOWN_TOKEN`, `E_TOKEN_USED`, `E_TOKEN_EXPIRED`, `E_BAD_REQUEST`, `E_TOO_LARGE`,
   `E_BAD_ACTIVITY`. The same operations are methods of the service (`state()`,
   `open_slot()`, `submit(slot_id, recipe)`, `audio(token)`, `feedback()`, `book()`,
   `activity(kind)`), which the dry-run bot designer (#22) may call in-process.
 - Logs: one `slot` record per slot through `SlotLedger.reserve`/`consume` (#17;
   `designer_id`, `practice`, `latency_ms`, `design_ms`, `raw_output`; no seed);
-  `slot_refusal` for edits of closed slots (`slot_closed`) and requests after the
-  atom's 12 slots (`slot_cap`); `play` (`a1_preview` / `a1_practice`, `audio_kind atom`,
+  `slot_refusal` for edits of closed slots and submits at or after the deadline
+  (`slot_closed`) and requests after the atom's 12 slots (`slot_cap`), plus the
+  ledger's own refusals when a slot opens; `play` (`a1_preview` / `a1_practice`, `audio_kind atom`,
   `asset_id` = WAV file SHA-256, `pcm_sha256`, `slot_id`, `token_id`; one `played` per
   valid slot at most, then `refused` with `E_TOKEN_USED` / `E_TOKEN_EXPIRED`); `timing`
   (`familiarization_*`, `design_active_*`, component `a1`). Every `played` event joins a

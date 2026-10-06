@@ -8,8 +8,8 @@
 Creates the practice run (`_a1_practice.open_practice_session`), runs the practice
 rounds in a background thread and serves the A1 app until interrupted (Ctrl-C). The
 kiosk browser opens `http://<host>:<port>/a1/` (generation/docs/a1-interface.md). Study
-sessions are not started here: the round orchestrator (#20) owns the batch run and
-serves `create_a1_app(service)` for its A1 service.
+sessions are not started here: the batch runner (#20) owns the batch run and serves its
+A1 service with `a1.study_service(...)` and `a1.serve_a1(...)`.
 """
 
 from __future__ import annotations
@@ -28,13 +28,11 @@ from av_generation._a1_practice import (
     open_practice_session,
     practice_atoms,
 )
-from av_generation.a1 import create_a1_app
+from av_generation.a1 import DEFAULT_PORT, create_a1_app
 from av_generation.clock import SystemClock
 from av_generation.constants import ROUNDS_PER_ATOM
 from av_generation.ids import RunKind
 from av_generation.meanings import load_meanings
-
-DEFAULT_PORT = 8741
 
 Serve = Callable[[Any, str, int, PracticeSession], None]
 

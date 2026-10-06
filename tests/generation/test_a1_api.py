@@ -9,6 +9,7 @@ ledger automatically once it is implemented.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import shutil
@@ -22,6 +23,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from av_sound.recipe import Profile, Recipe
 from av_sound.wav import pcm_from_wav
@@ -39,17 +41,27 @@ from av_generation._a1_practice import (
 )
 from av_generation._paths import examples_path
 from av_generation.a1 import (
+    DEFAULT_PORT,
     ROUTES,
     A1Error,
     A1SlotService,
     create_a1_app,
     is_practice_batch,
     recipe_text,
+    serve_a1,
+    study_service,
 )
 from av_generation.clock import ManualClock, ScaledClock
 from av_generation.config import BatchConfig
 from av_generation.constants import SLOT_CAP_MS
-from av_generation.ids import Method, RunKind, Study, proposal_slot_id
+from av_generation.ids import (
+    Method,
+    RunKind,
+    Study,
+    parse_proposal_slot_id,
+    proposal_slot_id,
+    slot_index,
+)
 from av_generation.ledger import (
     SlotCapExceeded,
     SlotLedger,
@@ -111,7 +123,11 @@ OUT_OF_DOMAIN = {**VALID[0], "total_ms": 500}
 
 
 class StandInLedger:
-    """Stand-in for `SlotLedger` (#17) following its documented contract."""
+    """Stand-in for `SlotLedger` (#17) following its published behaviour: the cap is
+    checked first (`slot_cap`), an open slot ID is refused as `slot_reused` and a
+    consumed one as `slot_closed`; `slot_index` comes from the slot ID
+    (`ids.slot_index(round, slot)`); `consume` needs an open ticket with the same cap
+    key, slot index, run, study, method and open time."""
 
     def __init__(self, path, *, run_id, clock, refusals=None, timing=None, cap=12):
         self.path = Path(path)
@@ -121,12 +137,14 @@ class StandInLedger:
         self._cap = cap
         self._writer = RecordWriter(self.path)
         self._records: list[SlotRecord] = []
+        self._closed: set[str] = set()
         self._open: dict[str, SlotTicket] = {}
         self._used: Counter[str] = Counter()
         self._lock = threading.Lock()
         if self.path.exists():
             for rec in read_records(self.path, SlotRecord):
                 self._records.append(rec)
+                self._closed.add(rec.slot_id)
                 self._used[rec.cap_key] += 1
 
     def _refuse(self, cap_key, slot_id, reason, study, method):
@@ -145,17 +163,22 @@ class StandInLedger:
             )
 
     def reserve(self, cap_key, slot_id, *, study, method):
+        name = parse_proposal_slot_id(slot_id)
+        assert cap_key == f"A|{name.book_id}|{name.atom_id}", (cap_key, slot_id)
         with self._lock:
             if self._used[cap_key] >= self._cap:
                 self._refuse(cap_key, slot_id, "slot_cap", study, method)
                 raise SlotCapExceeded(f"{cap_key}: cap {self._cap}")
-            if slot_id in self._open or any(r.slot_id == slot_id for r in self._records):
+            if slot_id in self._open:
                 self._refuse(cap_key, slot_id, "slot_reused", study, method)
-                raise SlotReused(slot_id)
+                raise SlotReused(f"{slot_id} is already reserved")
+            if slot_id in self._closed:
+                self._refuse(cap_key, slot_id, "slot_closed", study, method)
+                raise SlotReused(f"{slot_id} was consumed; a slot never reopens")
             self._used[cap_key] += 1
             ticket = SlotTicket(
-                cap_key, slot_id, self._used[cap_key], Study(study), Method(method),
-                self._clock.now_ms(),
+                cap_key, slot_id, slot_index(name.round, name.slot), Study(study),
+                Method(method), self._clock.now_ms(),
             )  # fmt: skip
             self._open[slot_id] = ticket
             return ticket
@@ -163,14 +186,25 @@ class StandInLedger:
     def consume(self, record):
         with self._lock:
             ticket = self._open.get(record.slot_id)
-            if (
-                ticket is None
-                or ticket.cap_key != record.cap_key
-                or ticket.slot_index != record.slot_index
-            ):
+            if ticket is None:
+                if record.slot_id in self._closed:
+                    self._refuse(
+                        record.cap_key, record.slot_id, "slot_closed", record.study, record.method
+                    )
                 raise SlotNotReserved(record.slot_id)
+            expected = (
+                ticket.cap_key, ticket.slot_index, self.run_id, ticket.study, ticket.method,
+                ticket.t_open_ms,
+            )  # fmt: skip
+            actual = (
+                record.cap_key, record.slot_index, record.run_id, record.study, record.method,
+                record.t_open_ms,
+            )  # fmt: skip
+            if actual != expected or record.t_ms < record.t_open_ms:
+                raise SlotNotReserved(f"{record.slot_id}: {actual} != {expected}")
             del self._open[record.slot_id]
             self._writer.append(record)
+            self._closed.add(record.slot_id)
             self._records.append(record)
             return record
 
@@ -469,11 +503,12 @@ def test_one_round_open_submit_play(tmp_path):
     start_rounds(rig, [atom], rounds=1)
     window = wait_window(rig, atom, 1)
     assert window["meaning"] == MEANINGS.text(CONFIG.labels[atom])
-    assert [s["state"] for s in window["slots"]] == ["unopened"] * 3
+    # Slot 1 opened with the window; the open route returns the open slot.
+    assert [s["state"] for s in window["slots"]] == ["open", "unopened", "unopened"]
     opened = open_slot(rig)
     assert opened["slot_id"] == proposal_slot_id(BOOK, atom, 1, 1)
     assert opened["deadline_ms"] - opened["t_open_ms"] == SLOT_CAP_MS
-    assert api(rig, "POST", "/a1/api/slots/open", expect=409)["error"]["code"] == "E_SLOT_OPEN"
+    assert open_slot(rig) == opened
     rig.clock.advance(7_000)
     result = submit(rig, opened["slot_id"], VALID[0])
     assert result["valid"] and result["outcome"] == "valid" and result["audio"]
@@ -492,8 +527,10 @@ def test_one_round_open_submit_play(tmp_path):
     assert (play.result, play.context, play.audio_kind) == ("played", "a1_preview", "atom")
     assert play.slot_id == rec.slot_id and play.asset_id == rec.file_sha256
     assert play.pcm_sha256 == rec.pcm_sha256 and play.actor_id == "D1"
-    # Slots 2 and 3: an invalid recipe (no audio) and a timeout.
+    # Slots 2 and 3: an invalid recipe (no audio) and a timeout. Slot 2 opened when slot 1
+    # closed.
     second = open_slot(rig)
+    assert second["slot"] == 2 and second["t_open_ms"] == rec.t_ms
     bad = submit(rig, second["slot_id"], SHORT_EVENT)
     assert bad["outcome"] == "event_too_short" and bad["audio"] is None
     assert bad["validator_codes"] == ["E_EVENT_SHORT"] and bad["validator_messages"]
@@ -540,6 +577,87 @@ def test_slot_times_out_at_40_s_server_time(tmp_path):
     assert late["error"]["code"] == "E_SLOT_CLOSED"
     rig.clock.advance(120_000)
     finish(rig)
+
+
+def test_a_late_submit_is_refused_before_the_window_loop_runs(tmp_path):
+    # A 60-s poll interval keeps the window loop asleep: only the submit's own deadline
+    # check can close the slot (a1-interface.md §10: a submit at or after the deadline
+    # is refused, and the record's t_ms is the deadline).
+    rig = make_rig(tmp_path, poll_interval_s=60.0)
+    atom = ATOMS[0]
+    start_rounds(rig, [atom], rounds=1)
+    first = wait_window(rig, atom, 1)["slots"][0]
+    assert first["state"] == "open"
+    rig.clock.advance(SLOT_CAP_MS)  # exactly the deadline; nothing has run since
+    assert not (rig.logs / "slots.jsonl").exists() or rig.slots() == []
+    late = submit(rig, first["slot_id"], VALID[0], expect=409)
+    assert late["error"]["code"] == "E_SLOT_CLOSED"
+    (rec,) = rig.slots()
+    assert rec.slot_id == first["slot_id"] and rec.outcome is SlotOutcome.TIMEOUT
+    assert rec.t_ms == first["deadline_ms"] == rec.t_open_ms + SLOT_CAP_MS
+    assert rec.recipe is None and rec.raw_output is None
+    (refusal,) = rig.refusals()
+    assert (refusal.reason, refusal.requested) == ("slot_closed", first["slot_id"])
+    # Slot 2 opened at slot 1's deadline; 1 ms before its own deadline a submit is taken.
+    second = open_slot(rig)
+    assert second["slot"] == 2 and second["t_open_ms"] == rec.t_ms
+    rig.clock.advance(SLOT_CAP_MS - 1)
+    assert submit(rig, second["slot_id"], VALID[0])["outcome"] == "valid"
+    rig.clock.advance(120_000)
+    rig.service.tick()  # wakes the sleeping window loop
+    finish(rig)
+    assert [r.outcome for r in rig.slots()] == [
+        SlotOutcome.TIMEOUT,
+        SlotOutcome.VALID,
+        SlotOutcome.TIMEOUT,
+    ]
+
+
+def test_slots_open_back_to_back_with_40_s_each(tmp_path):
+    # Study A protocol §3.3: each slot has up to 40 s of proposal time. Slots open by
+    # themselves (slot 1 with the window, each next one when the previous one closes),
+    # so no proposal time falls outside a slot and no slot loses time to a slow start.
+    rig = make_rig(tmp_path)
+    atom = ATOMS[0]
+    start_rounds(rig, [atom], rounds=2)
+    window = wait_window(rig, atom, 1)
+    start = window["window_end_ms"] - 120_000
+    slots = window["slots"]
+    assert slots[0]["t_open_ms"] == start
+    assert slots[0]["deadline_ms"] == start + SLOT_CAP_MS
+    # Round 1: slots 1 and 2 time out; slot 3 still gets its full 40 s.
+    advance_to_close(rig, slots[0]["slot_id"], SLOT_CAP_MS)
+    advance_to_close(rig, slots[1]["slot_id"], SLOT_CAP_MS)
+    third = open_slot(rig)
+    assert third["slot"] == 3
+    assert third["deadline_ms"] - third["t_open_ms"] == SLOT_CAP_MS
+    assert third["deadline_ms"] == window["window_end_ms"]
+    advance_to_close(rig, third["slot_id"], SLOT_CAP_MS)
+    # Round 2: reading and planning for 75 s before the first submit. The first 40 s are
+    # slot 1's proposal time (it times out); the submit falls in slot 2.
+    window = wait_window(rig, atom, 2)
+    first = window["slots"][0]
+    assert first["state"] == "open" and first["t_open_ms"] == rig.clock.now_ms()
+    rig.clock.advance(SLOT_CAP_MS)
+    rig.service.tick()
+    second = open_slot(rig)
+    assert second["slot"] == 2 and second["t_open_ms"] == first["deadline_ms"]
+    rig.clock.advance(35_000)
+    assert submit(rig, second["slot_id"], VALID[0])["outcome"] == "valid"
+    third = open_slot(rig)
+    assert third["slot"] == 3 and third["t_open_ms"] == rig.clock.now_ms()
+    submit(rig, third["slot_id"], VALID[1])
+    finish(rig)
+    records = rig.slots()
+    assert [r.outcome.value for r in records] == ["timeout"] * 4 + ["valid", "valid"]
+    for rec in records:
+        assert rec.t_ms - rec.t_open_ms <= SLOT_CAP_MS
+    for first_slot in (0, 3):  # back to back within each round
+        batch = records[first_slot : first_slot + 3]
+        for prev, rec in zip(batch[:-1], batch[1:], strict=True):
+            assert rec.t_open_ms == prev.t_ms
+    assert records[3].design_ms == SLOT_CAP_MS  # slot 1's 40 s of planning are design time
+    assert records[4].latency_ms == records[4].design_ms == 35_000
 
 
 def test_slot_auto_closes_in_real_time_within_tolerance(tmp_path):
@@ -660,22 +778,32 @@ def test_resumed_atom_at_its_cap_refuses_every_slot(tmp_path):
         for _ in range(3):
             submit(rig, open_slot(rig)["slot_id"], SHORT_EVENT)
     finish(rig)
-    # A resumed batch (new service, ledger reopened from the log) replays round 4.
+    # A resumed batch (new service, ledger reopened from the log) replays round 4: the
+    # ledger refuses each slot as it would open (cap first), so the window closes at once.
     resumed = make_rig(tmp_path)
-    assert resumed.ledger.used(f"A|{BOOK}|{atom}") == 12
+    cap = f"A|{BOOK}|{atom}"
+    assert resumed.ledger.used(cap) == 12
     holder: list[RoundResult] = []
     request = build_request(resumed, atom, 4)
-    thread = threading.Thread(target=lambda: holder.append(resumed.service.propose_round(request)))
+    thread = threading.Thread(  # daemon: a failed assertion cannot leave the window open
+        target=lambda: holder.append(resumed.service.propose_round(request)), daemon=True
+    )
     thread.start()
-    wait_for(lambda: (resumed.service.state()["window"] or {}).get("round") == 4)
-    error = api(resumed, "POST", "/a1/api/slots/open", expect=409)["error"]["code"]
-    assert error in ("E_SLOT_CAP", "E_SLOT_REUSED")
-    resumed.clock.advance(120_000)
-    thread.join(timeout=10)
-    assert holder and holder[0].records == ()
+    try:
+        wait_for(lambda: (resumed.service.state()["window"] or {}).get("round") == 4)
+        thread.join(timeout=10)
+        assert holder and holder[0].records == ()
+        window = resumed.service.state()["window"]
+        assert not window["open"] and [s["state"] for s in window["slots"]] == ["refused"] * 3
+        error = api(resumed, "POST", "/a1/api/slots/open", expect=409)["error"]["code"]
+        assert error == "E_SLOT_CAP"
+    finally:
+        resumed.clock.advance(120_000)
+        resumed.service.tick()
+        thread.join(timeout=10)
     assert len(resumed.slots()) == 12
-    assert {r.reason for r in resumed.refusals()} <= {"slot_cap", "slot_reused"}
-    assert len(resumed.refusals()) == 3
+    refusals = resumed.refusals()
+    assert [(r.reason, r.used, r.cap_key) for r in refusals] == [("slot_cap", 12, cap)] * 4
 
 
 def test_feedback_payload_holds_no_other_method_fields(tmp_path):
@@ -819,20 +947,28 @@ def test_out_of_domain_and_malformed_submissions(tmp_path):
     assert all(r.file_sha256 is None for r in records if r.recipe is None)
 
 
-def test_window_end_closes_unopened_slots_and_truncates_an_open_one(tmp_path):
+def test_window_end_truncates_the_open_slot_and_closes_the_rest(tmp_path):
+    # A window shorter than 3 x 40 s (the orchestrator's window bounds every method).
     rig = make_rig(tmp_path, timed=True)
     atom = ATOMS[0]
     start_rounds(rig, [atom], rounds=1, window_ms=60_000)
     wait_window(rig, atom, 1)
     rig.clock.advance(30_000)
+    submit(rig, open_slot(rig)["slot_id"], SHORT_EVENT)
     opened = open_slot(rig)
+    assert opened["slot"] == 2
     assert opened["deadline_ms"] - opened["t_open_ms"] == 30_000  # the window ends first
     rig.clock.advance(30_000)
     finish(rig)
     records = rig.rounds[0].records
-    assert [r.outcome for r in records] == [SlotOutcome.TIMEOUT] * 3
-    assert records[0].t_ms - records[0].t_open_ms == 30_000
-    assert all(r.design_ms == 0 for r in records[1:])
+    assert [r.outcome for r in records] == [
+        SlotOutcome.EVENT_TOO_SHORT,
+        SlotOutcome.TIMEOUT,
+        SlotOutcome.TIMEOUT,
+    ]
+    assert records[1].t_ms - records[1].t_open_ms == 30_000
+    assert records[2].t_open_ms == records[2].t_ms == records[1].t_ms  # opened at the end
+    assert records[2].design_ms == 0
     assert [r.slot_index for r in records] == [1, 2, 3]
 
 
@@ -851,8 +987,8 @@ def test_design_time_and_familiarization_are_logged(tmp_path):
     rig.clock.advance(10_000)
     assert rig.service.familiarization_ms == 100_000
     start_rounds(rig, [atom], rounds=1)
-    wait_window(rig, atom, 1)
-    opened = open_slot(rig)  # ends the running familiarization
+    wait_window(rig, atom, 1)  # slot 1 opened with the window: familiarization ended
+    opened = open_slot(rig)
     rig.clock.advance(4_000)
     api(rig, "POST", "/a1/api/activity", {"kind": "idle"})
     rig.clock.advance(10_000)
@@ -871,19 +1007,20 @@ def test_design_time_and_familiarization_are_logged(tmp_path):
     )
     rig.clock.advance(40_000)
     wait_for(lambda: len(rig.ledger.records()) == 2)
+    api(rig, "POST", "/a1/api/activity", {"kind": "idle"})  # slot 3: the page went idle
     rig.clock.advance(120_000)
     finish(rig)
     first_rec, second_rec, third_rec = rig.slots()
     assert first_rec.latency_ms == 17_000 and first_rec.design_ms == 7_000
     assert second_rec.slot_id == second["slot_id"] and second_rec.design_ms == 40_000
-    assert third_rec.design_ms == 0
+    assert third_rec.t_open_ms == second_rec.t_ms and third_rec.design_ms == 0
     events = rig.timing()
     assert all(e.run_id == RUN and e.component == "a1" and e.actor_id == "D1" for e in events)
     fam_ends = [e for e in events if e.event == "familiarization_end"]
     assert [e.duration_ms for e in fam_ends] == [90_000, 10_000]
     assert fam_ends[1].detail == "slot opened"
     active_ends = [e for e in events if e.event == "design_active_end"]
-    assert [e.duration_ms for e in active_ends] == [4_000, 3_000, 40_000]
+    assert [e.duration_ms for e in active_ends] == [4_000, 3_000, 40_000, 0]
     assert all(e.book_id == BOOK and e.detail.startswith("slot ") for e in active_ends)
     assert rig.service.familiarization_ms == 100_000
     assert rig.service.run_id == RUN and not rig.service.practice
@@ -915,17 +1052,18 @@ def test_a_used_slot_id_is_never_reopened(tmp_path):
         )  # fmt: skip
     )
     start_rounds(rig, [atom], rounds=1)
-    wait_window(rig, atom, 1)
-    refused = api(rig, "POST", "/a1/api/slots/open", expect=409)["error"]["code"]
-    assert refused in ("E_SLOT_REUSED", "E_SLOT_CAP")
-    assert rig.service.state()["window"]["slots"][0]["state"] == "refused"
+    window = wait_window(rig, atom, 1)
+    # The ledger refused slot 1 as it opened (logged `slot_closed`, as #17 does for a
+    # consumed slot ID); slot 2 opened in its place.
+    assert [s["state"] for s in window["slots"]] == ["refused", "open", "unopened"]
     second = open_slot(rig)
     assert second["slot"] == 2
     submit(rig, second["slot_id"], VALID[0])
     submit(rig, open_slot(rig)["slot_id"], VALID[0])
     finish(rig)
-    assert [r.slot for r in rig.rounds[0].records] == [2, 3]
-    assert [r.reason for r in rig.refusals()] == ["slot_reused"]
+    assert [(r.slot, r.slot_index) for r in rig.rounds[0].records] == [(2, 2), (3, 3)]
+    (refusal,) = rig.refusals()
+    assert (refusal.reason, refusal.requested) == ("slot_closed", first_id)
 
 
 def test_practice_mode_is_labelled_and_stored_apart(tmp_path):
@@ -941,35 +1079,46 @@ def test_practice_mode_is_labelled_and_stored_apart(tmp_path):
     assert manifest.meanings_sha256 == meanings.sha256()
     client = TestClient(create_a1_app(session.service))
     results: list[Any] = []
-    thread = threading.Thread(
-        target=lambda: results.append(session.run(("K-a1", "K-r1"), rounds=2, between_rounds_s=0.0))
+    stop = threading.Event()
+    thread = threading.Thread(  # daemon: a failed assertion cannot leave a window open
+        target=lambda: results.append(
+            session.run(("K-a1", "K-r1"), rounds=2, between_rounds_s=0.0, stop=stop)
+        ),
+        daemon=True,
     )
     thread.start()
-    rig_like = Rig(
-        tmp_path, clock, session.ledger, session.service, client, session.layout.logs_dir
-    )
-    window = wait_window(rig_like, "K-a1", 1)
-    assert window["label"] is None
-    assert window["meaning"] == meanings.text(PRACTICE_LABELS["K-a1"])
-    state = client.get("/a1/api/state").json()
-    assert state["mode"] == "practice"
-    opened = client.post("/a1/api/slots/open").json()
-    res = client.post(f"/a1/api/slots/{opened['slot_id']}/submit", json={"recipe": VALID[0]}).json()
-    assert client.get(res["audio"]["url"]).status_code == 200
-    clock.advance(120_000)
-    wait_window(rig_like, "K-a1", 2)
-    fb = client.get("/a1/api/feedback").json()
-    assert fb["practice"] and not fb["ratings_shown"]
-    assert fb["candidates"][0]["ratings"] == [] and fb["candidates"][0]["eligible"] is None
-    clock.advance(120_000)
-    wait_window(rig_like, "K-r1", 1)
-    book = client.get("/a1/api/book").json()
-    assert [a["atom_id"] for a in book["committed"]] == ["K-a1"]  # practice reference
-    assert book["committed"][0]["label"] is None
-    clock.advance(120_000)
-    wait_window(rig_like, "K-r1", 2)
-    clock.advance(120_000)
-    thread.join(timeout=10)
+    try:
+        rig_like = Rig(
+            tmp_path, clock, session.ledger, session.service, client, session.layout.logs_dir
+        )
+        window = wait_window(rig_like, "K-a1", 1)
+        assert window["label"] is None
+        assert window["meaning"] == meanings.text(PRACTICE_LABELS["K-a1"])
+        state = client.get("/a1/api/state").json()
+        assert state["mode"] == "practice"
+        opened = client.post("/a1/api/slots/open").json()
+        res = client.post(
+            f"/a1/api/slots/{opened['slot_id']}/submit", json={"recipe": VALID[0]}
+        ).json()
+        assert client.get(res["audio"]["url"]).status_code == 200
+        clock.advance(120_000)
+        wait_window(rig_like, "K-a1", 2)
+        fb = client.get("/a1/api/feedback").json()
+        assert fb["practice"] and not fb["ratings_shown"]
+        assert fb["candidates"][0]["ratings"] == [] and fb["candidates"][0]["eligible"] is None
+        clock.advance(120_000)
+        wait_window(rig_like, "K-r1", 1)
+        book = client.get("/a1/api/book").json()
+        assert [a["atom_id"] for a in book["committed"]] == ["K-a1"]  # practice reference
+        assert book["committed"][0]["label"] is None
+        clock.advance(120_000)
+        wait_window(rig_like, "K-r1", 2)
+        clock.advance(120_000)
+    finally:
+        stop.set()
+        clock.advance(1_000_000)
+        session.service.tick()
+        thread.join(timeout=10)
     assert results and len(results[0]) == 4
     slots = read_records(session.layout.log("slot"), SlotRecord)
     assert len(slots) == 12 and all(r.practice for r in slots)
@@ -1054,6 +1203,56 @@ def test_service_guards(tmp_path):
         rig.service.propose_round(other_run)
     with pytest.raises(ValueError, match="book"):
         rig.service.propose_round(build_request(rig, atom, 1, book_id=OTHER_BOOKS[0]))
+
+
+def test_study_service_serves_the_runs_shared_logs(tmp_path):
+    # Study mode as the batch runner (#20) wires it: the run's shared slot ledger and the
+    # run's play, timing and refusal logs, served over HTTP to the designer's kiosk.
+    clock = ManualClock()
+    layout = create_run_dir(tmp_path / "runs", "DEMO-A1-STUDY-01", RunKind.DEMO)
+    ledger = make_ledger(
+        layout.log("slot"),
+        run_id=layout.run_id,
+        clock=clock,
+        refusals=RecordWriter(layout.log("slot_refusal")),
+        timing=RecordWriter(layout.log("timing")),
+    )
+    service = study_service(layout, ledger, CONFIG, clock=clock, meanings=MEANINGS, station="S9")
+    assert service.designer_id == CONFIG.book_of(Method.A1).designer_id == "D1"
+    assert service.run_id == layout.run_id and not service.practice
+    assert DEFAULT_PORT == 8741
+    rig = Rig(
+        tmp_path, clock, ledger, service, TestClient(create_a1_app(service)), layout.logs_dir,
+        run_id=layout.run_id,
+    )  # fmt: skip
+    atom = ATOMS[0]
+    with serve_a1(service, port=0) as url, httpx.Client(timeout=10) as http:
+        assert url.startswith("http://127.0.0.1:") and url.endswith("/a1/")
+        assert "A1 designer interface" in http.get(url).text
+        start_rounds(rig, [atom], rounds=1)
+        wait_window(rig, atom, 1)
+        state = http.get(url + "api/state").json()
+        assert state["mode"] == "study" and state["window"]["slots"][0]["state"] == "open"
+        slot_id = http.post(url + "api/slots/open").json()["slot_id"]
+        result = http.post(url + f"api/slots/{slot_id}/submit", json={"recipe": VALID[0]}).json()
+        assert http.get(url.removesuffix("/a1/") + result["audio"]["url"]).status_code == 200
+        edit = http.post(url + f"api/slots/{slot_id}/submit", json={"recipe": VALID[1]})
+        assert edit.status_code == 409
+        clock.advance(120_000)
+        finish(rig)
+    (play,) = read_records(layout.log("play"), PlayEvent)
+    assert (play.slot_id, play.station, play.context) == (slot_id, "S9", "a1_preview")
+    assert [r.reason for r in read_records(layout.log("slot_refusal"), SlotRefusal)] == [
+        "slot_closed"
+    ]
+    assert len(read_records(layout.log("slot"), SlotRecord)) == 3
+    assert {e.run_id for e in read_records(layout.log("timing"), TimingEvent)} == {layout.run_id}
+    practice = dataclasses.replace(CONFIG, batch_id="DEMO-PRACTICE")
+    with pytest.raises(ValueError, match="practice"):
+        study_service(layout, ledger, practice, clock=clock, meanings=MEANINGS)
+    other = create_run_dir(tmp_path / "runs", "DEMO-A1-STUDY-02", RunKind.DEMO)
+    with pytest.raises(ValueError, match="run"):
+        study_service(other, ledger, CONFIG, clock=clock, meanings=MEANINGS)
 
 
 # ---------------------------------------------------------------------------
@@ -1228,6 +1427,7 @@ def wait_js(page, function: str, timeout: float = 10.0) -> None:
 FIELDSETS_DISABLED = (
     "() => [...document.querySelectorAll('#recipe-form fieldset')].every((f) => f.disabled)"
 )
+FORM_OPEN = "#recipe-form fieldset:not([disabled])"
 
 
 def _serve_round(serve_app, rig: Rig, atom: str, rounds: int = 1) -> str:
@@ -1237,12 +1437,17 @@ def _serve_round(serve_app, rig: Rig, atom: str, rounds: int = 1) -> str:
     return base
 
 
+def _wait_slot_open(page, slot: int) -> None:
+    page.wait_for_selector(f".slot[data-slot='{slot}'][data-state='open']")
+    page.wait_for_selector(FORM_OPEN)
+
+
 @pytest.mark.browser
 def test_browser_full_round(serve_app, chromium, tmp_path):
-    """One full round in the kiosk page: open, set controls, submit and play, timeout."""
+    """One full round in the kiosk page: set controls, submit and play, invalid, timeout."""
     rig = make_rig(tmp_path, clock=ManualClock())
     atom = ATOMS[0]
-    base = _serve_round(serve_app, rig, atom, rounds=2)
+    base = serve_app(create_a1_app(rig.service))
     video_dir = None
     if os.environ.get("CI"):
         video_dir = REPO / "generation" / "out" / "ci" / "a1-browser"
@@ -1258,13 +1463,15 @@ def test_browser_full_round(serve_app, chromium, tmp_path):
     try:
         page.goto(base + "/a1/")
         page.wait_for_selector("#recipe-form fieldset")
-        assert page.text_content("#meaning") == MEANINGS.text(CONFIG.labels[atom])
+        # Before the round: the form is locked and there is no way to start a slot.
         assert page.is_disabled("#submit") and page.is_disabled("input[name='total_ms-0']")
         assert page.evaluate(FIELDSETS_DISABLED)
-        assert page.locator("audio, video").count() == 0
-        # Slot 1: set every control to VALID[1], submit and play once.
-        page.click("#open-slot")
-        page.wait_for_selector("#recipe-form fieldset:not([disabled])")
+        assert page.locator("audio, video, #open-slot").count() == 0
+        start_rounds(rig, [atom], rounds=2)
+        wait_window(rig, atom, 1)
+        # Slot 1 opens with the round: set every control to VALID[1], submit and play once.
+        _wait_slot_open(page, 1)
+        assert page.text_content("#meaning") == MEANINGS.text(CONFIG.labels[atom])
         target = VALID[1]
         page.check(f"input[name='total_ms-0'][value='{target['total_ms']}']")
         for i, p in enumerate(target["pitches"]):
@@ -1281,9 +1488,9 @@ def test_browser_full_round(serve_app, chromium, tmp_path):
         assert rec.recipe == Recipe.from_dict(target).to_dict()
         (play,) = rig.plays()
         assert play.result == "played" and play.slot_id == rec.slot_id
-        # Slot 2: an inadmissible recipe; its reason is shown, nothing plays.
-        page.click("#open-slot")
-        page.wait_for_selector("#recipe-form fieldset:not([disabled])")
+        # Slot 2 opened when slot 1 closed: an inadmissible recipe; its reason is shown,
+        # nothing plays.
+        _wait_slot_open(page, 2)
         for field_name in ("total_ms", "gaps_ms"):
             for i, v in enumerate(SHORT_EVENT[field_name] if field_name != "total_ms" else [450]):
                 page.check(f"input[name='{field_name}-{i}'][value='{v}']")
@@ -1293,8 +1500,7 @@ def test_browser_full_round(serve_app, chromium, tmp_path):
         page.wait_for_selector(".slot[data-slot='2'][data-state='closed']")
         assert "event_too_short" in page.text_content("#status")
         # Slot 3: opened, then the server timer closes it.
-        page.click("#open-slot")
-        page.wait_for_selector("#recipe-form fieldset:not([disabled])")
+        _wait_slot_open(page, 3)
         wait_js(page, "() => !!document.querySelector('#countdown-value').textContent.match(/s$/)")
         rig.clock.advance(SLOT_CAP_MS)
         wait_for(lambda: len(rig.slots()) == 3)
@@ -1325,9 +1531,7 @@ def test_browser_controls_only_allow_domain_values(serve_app, browser_page, tmp_
     base = _serve_round(serve_app, rig, atom)
     page = browser_page
     page.goto(base + "/a1/")
-    page.wait_for_selector("#recipe-form fieldset")
-    page.click("#open-slot")
-    page.wait_for_selector("#recipe-form fieldset:not([disabled])")
+    _wait_slot_open(page, 1)
     radios = page.evaluate(
         """() => {
             const out = {};
@@ -1365,6 +1569,39 @@ def test_browser_controls_only_allow_domain_values(serve_app, browser_page, tmp_
     assert rec.outcome is not SlotOutcome.OUT_OF_DOMAIN
     rig.clock.advance(120_000)
     finish(rig)
+
+
+@pytest.mark.browser
+def test_browser_reload_keeps_design_time(serve_app, browser_page, tmp_path):
+    """A page reload during an open slot must not stop the design-time log: the page
+    re-reports its activity whenever the server's view differs from its own."""
+    rig = make_rig(tmp_path)
+    atom = ATOMS[0]
+    base = _serve_round(serve_app, rig, atom)
+    page = browser_page
+    try:
+        page.goto(base + "/a1/")
+        _wait_slot_open(page, 1)
+        rig.clock.advance(5_000)
+        page.reload()  # the unload reports `idle` (visibilitychange)
+        _wait_slot_open(page, 1)
+        page.click("#meaning")
+        page.keyboard.press("Tab")
+        wait_for(lambda: rig.service.state()["active"])
+        # A late or lost report leaves the server idle: the page brings it back.
+        rig.service.activity("idle")
+        assert not rig.service.state()["active"]
+        wait_for(lambda: rig.service.state()["active"])
+        rig.clock.advance(10_000)
+        page.click("#submit")
+        page.wait_for_selector(".slot[data-slot='1'][data-state='closed']")
+    finally:
+        rig.clock.advance(120_000)
+        rig.service.tick()
+    finish(rig)
+    rec = rig.slots()[0]
+    assert rec.latency_ms == 15_000
+    assert 10_000 <= rec.design_ms <= 15_000
 
 
 @pytest.mark.browser

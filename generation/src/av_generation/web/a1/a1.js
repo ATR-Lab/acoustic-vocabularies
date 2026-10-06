@@ -1,10 +1,11 @@
 // A1 designer screen (#19). Plain JavaScript, no dependencies, same-origin only.
 //
-// The server owns every rule: slots, the 40-s timer, validation, the ledger and the
-// single-use audio tokens. This page only offers constrained controls (radio groups and
-// range inputs built from the server's domain), shows the countdowns, plays each served
-// waveform exactly once through Web Audio (no media element, nothing to replay) and
-// reports focus/idle changes for the design-time log.
+// The server owns every rule: slots (they open by themselves, back to back), the 40-s
+// timer, validation, the ledger and the single-use audio tokens. This page only offers
+// constrained controls (radio groups and range inputs built from the server's domain),
+// shows the countdowns, plays each served waveform exactly once through Web Audio (no
+// media element, nothing to replay) and reports focus/idle changes for the design-time
+// log, re-reporting whenever the server's view differs (e.g. after a page reload).
 "use strict";
 
 (function () {
@@ -36,7 +37,10 @@
   let audioCtx = null;
   let lastKey = "";
   let lastWindowKey = "";
-  let active = true;
+  let lastOpenId = "";
+  // Active = focused, visible and input in the last IDLE_MS. The server keeps the last
+  // report across page loads, so `refresh` re-reports this page's view when they differ.
+  let active = document.visibilityState === "visible" && document.hasFocus();
   let lastInput = performance.now();
 
   // ------------------------------------------------------------------ HTTP
@@ -255,19 +259,6 @@
 
   // ------------------------------------------------------------------ actions
 
-  async function openSlot() {
-    $("open-slot").disabled = true;
-    try {
-      const slot = await call("POST", "/slots/open");
-      active = true;
-      lastInput = performance.now();
-      setStatus(`Slot ${slot.slot} is open. Set the recipe, then Submit and play.`);
-    } catch (err) {
-      setStatus(`${err.code}: ${err.message}`, "bad");
-    }
-    await refresh(true);
-  }
-
   async function submit() {
     if (submitting || !state || !state.window) return;
     const open = state.window.slots.find((s) => s.state === "open");
@@ -283,7 +274,7 @@
         setStatus(`Slot ${res.slot}: valid. Playing once...`, "ok");
         try {
           await playOnce(res.audio);
-          setStatus(`Slot ${res.slot}: valid, played once. The slot is closed.`, "ok");
+          setStatus(`Slot ${res.slot}: valid, played once.`, "ok");
         } catch (err) {
           debug.playErrors.push(String(err.code || err.message));
           setStatus(`Slot ${res.slot}: valid, but playback failed (${err.code || err.message}).`, "bad");
@@ -542,8 +533,6 @@
   function renderControls() {
     const w = state.window;
     const open = w ? w.slots.find((s) => s.state === "open") : null;
-    const canOpen = !!(w && w.open && !open && w.slots.some((s) => s.state === "unopened"));
-    $("open-slot").disabled = !canOpen;
     $("submit").disabled = !open || submitting;
     setFormEnabled(!!open && !submitting);
     for (const b of document.querySelectorAll(".use-recipe")) b.disabled = !open;
@@ -551,11 +540,16 @@
     $("fam-toggle").textContent = fam.running ? "End familiarization" : "Start familiarization";
     $("fam-toggle").disabled = !!open;
     const windowKey = w ? `${w.atom_id}|${w.round}` : "none";
+    const openId = open ? open.slot_id : "";
     if (windowKey !== lastWindowKey) {
       lastWindowKey = windowKey;
       if (!w) setStatus("Waiting for the round to start.");
-      else if (w.open) setStatus(`Round ${w.round} of atom ${w.atom_id}: open a slot when ready.`);
+      else if (open) setStatus(`Round ${w.round} of atom ${w.atom_id}: slot ${open.slot} is open (40 s per slot).`);
+    } else if (open && openId !== lastOpenId && !submitting) {
+      const prev = w.slots.find((s) => s.slot === open.slot - 1);
+      if (prev && prev.outcome === "timeout") setStatus(`Slot ${prev.slot} timed out. Slot ${open.slot} is open.`, "bad");
     }
+    lastOpenId = openId;
   }
 
   async function refresh(force) {
@@ -568,6 +562,7 @@
     }
     state = next;
     stateAt = performance.now();
+    if (state.active !== active) report(active ? "active" : "idle");
     if (!formBuilt) buildForm(state.domain);
     const w = state.window;
     const key = w ? [w.atom_id, w.round, w.open, w.slots.map((s) => s.state + s.outcome).join()].join("|") : "none";
@@ -587,7 +582,6 @@
   // ------------------------------------------------------------------ start
 
   function start() {
-    $("open-slot").addEventListener("click", openSlot);
     $("submit").addEventListener("click", submit);
     $("fam-toggle").addEventListener("click", toggleFamiliarization);
     for (const ev of ["pointerdown", "keydown", "input", "wheel"]) {

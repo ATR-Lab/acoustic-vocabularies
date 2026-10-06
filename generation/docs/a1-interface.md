@@ -12,7 +12,7 @@ Cross-team summary: [`docs/interfaces/generation.md`](../../docs/interfaces/gene
 
 | Path | Contents |
 | --- | --- |
-| `src/av_generation/a1.py` | `A1SlotService` (the A1 `RoundProposer` and the API state), `create_a1_app`, `ROUTES`, `A1Error`, `is_practice_batch`, `recipe_text` |
+| `src/av_generation/a1.py` | `A1SlotService` (the A1 `RoundProposer` and the API state), `create_a1_app`, `ROUTES`, `A1Error`, `is_practice_batch`, `recipe_text`, and for study mode `study_service`, `serve_a1`, `DEFAULT_PORT` |
 | `src/av_generation/_a1_app.py` | The FastAPI app (`build_app`): routes, strict JSON bodies, security headers |
 | `src/av_generation/web/a1/` | `index.html`, `a1.css`, `a1.js`: the designer screen (plain HTML/CSS/JS, no third-party code) |
 | `src/av_generation/_a1_practice.py` | Practice mode: `open_practice_session`, `PracticeSession.run`, practice IDs and labels |
@@ -30,12 +30,18 @@ from `create_a1_app(service)`:
 
 1. The window opens: the page shows the atom's meaning (shared `MeaningSet`), the round,
    the profile, the slots used for the atom and the window's time left.
-2. **Open next slot** (`POST /a1/api/slots/open`) reserves the slot in the ledger
+2. The slots run back to back (Study A protocol §3.3: each slot has up to 40 s of
+   proposal time). Slot 1 opens when the window opens; each next slot opens when the
+   previous one closes (submit or timeout). Opening reserves the slot in the ledger
    (`SlotLedger.reserve`, #17) before anything is designed or heard, and starts the
-   server timer: the slot's deadline is 40 s after opening (`SLOT_CAP_MS`), or the
-   window's end if that comes first. Slots open in order, one at a time.
-3. The form unlocks. The designer sets the recipe with radio groups and range inputs that
-   only hold domain values; the schematic shows the entered timing and pitch contour.
+   server timer: the deadline is 40 s after opening (`SLOT_CAP_MS`), or the window's end
+   if that comes first. A slot the ledger refuses (a resumed atom at its cap, a slot ID
+   already used) shows as `refused` (the ledger logs it) and the next slot opens in its
+   place. So all of the designer's proposal time, including reading the feedback at the
+   start of the round, falls inside a slot and its design-time log.
+3. The form is unlocked while a slot is open. The designer sets the recipe with radio
+   groups and range inputs that only hold domain values; the schematic shows the entered
+   timing and pitch contour.
 4. **Submit and play** (`POST /a1/api/slots/{slot_id}/submit`) validates and renders the
    recipe (`av_sound.validate` against the book's committed references and the book's
    threshold), maps the result to a slot outcome (`outcomes`), and consumes the slot with
@@ -43,7 +49,9 @@ from `create_a1_app(service)`:
    audio token; the page fetches it at once and plays the waveform once through Web
    Audio. An invalid recipe shows its outcome and validator messages; nothing plays.
 5. No submission by the deadline: the slot closes as `timeout`, with `t_ms` equal to the
-   deadline. Slots never opened close as `timeout` at the window's end.
+   deadline, and the next slot opens. A submit at or after the deadline is refused
+   (`E_SLOT_CLOSED`), also when the timer loop has not run yet. A slot that would open
+   at or after the window's end closes as `timeout` at once.
 6. When all three slots are closed the window closes and `propose_round` returns. The
    next round's request brings the feedback for the rounds closed so far.
 
@@ -51,7 +59,8 @@ Rules and where they are enforced:
 
 | Rule | Enforcement | Test |
 | --- | --- | --- |
-| A slot closes on submit or at its deadline and never reopens | server timer (checked before every API call and every 10 ms while a window is open); a closed slot only answers `E_SLOT_CLOSED` | `test_slot_times_out_at_40_s_server_time`, `test_slot_auto_closes_in_real_time_within_tolerance` |
+| Each slot has up to 40 s of proposal time; slots open back to back | slot 1 opens with the window, each next slot when the previous one closes; deadline 40 s after opening (or the window's end) | `test_slots_open_back_to_back_with_40_s_each`, `test_window_end_truncates_the_open_slot_and_closes_the_rest` |
+| A slot closes on submit or at its deadline and never reopens | server timer (checked before every API call and every 10 ms while a window is open); a closed slot only answers `E_SLOT_CLOSED` | `test_slot_times_out_at_40_s_server_time`, `test_slot_auto_closes_in_real_time_within_tolerance`, `test_a_late_submit_is_refused_before_the_window_loop_runs`, `test_a_used_slot_id_is_never_reopened` |
 | One submitted recipe per slot; no edit after submit | second submit refused and logged (`slot_refusal`, `slot_closed`); no PUT/PATCH/DELETE route | `test_submitted_recipe_cannot_be_edited` |
 | At most one audition per slot; a preview is a submitted slot | tokens only for consumed valid slots; first request serves and logs `played`, later ones are refused and logged | `test_second_audio_request_is_refused_and_logged`, `test_48_slot_session_has_no_play_without_a_consumed_slot`, `test_every_play_joins_one_consumed_valid_slot` |
 | 12 slots per atom | ledger cap; a request after the atom's 12 slots is refused and logged (`slot_cap`) | `test_13th_slot_request_for_an_atom_is_refused`, `test_resumed_atom_at_its_cap_refuses_every_slot` |
@@ -71,8 +80,8 @@ response carries `Cache-Control: no-store`, a same-origin Content-Security-Polic
 | Route | Request | Response (200) | Errors |
 | --- | --- | --- | --- |
 | `GET /a1/` | - | the page (`/a1/static/a1.js`, `/a1/static/a1.css`) | - |
-| `GET /a1/api/state` | - | `mode` (`study`/`practice`), `server_ms`, `slot_cap_ms`, `slots_per_round`, `domain` (allowed values per field), `active`, `familiarization` (`running`, `total_ms`), `window` (below) or `null` | - |
-| `POST /a1/api/slots/open` | none | the slot view (below) | `409 E_NO_WINDOW`, `E_SLOT_OPEN`, `E_SLOT_CAP` (logged), `E_SLOT_REUSED` (logged by the ledger) |
+| `GET /a1/api/state` | - | `mode` (`study`/`practice`), `server_ms`, `slot_cap_ms`, `slots_per_round`, `domain` (allowed values per field), `active` (the last activity report), `familiarization` (`running`, `total_ms`), `window` (below) or `null` | - |
+| `POST /a1/api/slots/open` | none | the open slot's view (below); slots open by themselves, so this only reports the open slot | `409 E_NO_WINDOW`; `409 E_SLOT_CAP` (logged as a 13th slot request) once the atom's 12 slots are used |
 | `POST /a1/api/slots/{slot_id}/submit` | `{"recipe": <JSON value>}` (an object, or JSON text) | `slot_id`, `slot`, `round`, `outcome`, `valid`, `validator_codes`, `validator_messages`, `recipe`, `t_open_ms`, `t_ms`, `audio` (`{token, url, expires_ms}` or `null`) | `404 E_UNKNOWN_SLOT`, `409 E_SLOT_CLOSED` (logged), `400`, `413` |
 | `GET /a1/api/audio/{token}` | - | `audio/wav` (canonical 48-kHz WAV), once | `404 E_UNKNOWN_TOKEN`, `410 E_TOKEN_USED` (logged), `410 E_TOKEN_EXPIRED` (logged) |
 | `GET /a1/api/feedback` | - | `available`, `practice`, `ratings_shown`, `atom_id`, `round`, `rounds_closed`, `candidates` (below), `incumbent_slot_id`, `incumbent_score` (`p/q`), `current_round` (this round's closed slots: `slot_id`, `round`, `slot`, `slot_index`, `recipe`, `outcome`, `validator_codes`) | - |
@@ -115,11 +124,15 @@ and no slot has two `played` events.
 
 - Active design time of a slot (`design_ms`) is the part of the slot's open interval in
   which the page was active: focused, visible, and with input in the last 15 s. The page
-  reports changes with `POST /a1/api/activity` (`active` / `idle`); opening a slot counts
-  as activity. Each active interval inside a slot is logged as `design_active_start` /
+  reports changes with `POST /a1/api/activity` (`active` / `idle`). The server keeps the
+  last report (`state.active`) across page loads, and the page re-reports its own view
+  whenever the two differ (for example after a reload, whose unload reports `idle`, or a
+  lost request). A slot that opens while the last report is `active` starts counting at
+  once. Each active interval inside a slot is logged as `design_active_start` /
   `design_active_end`.
 - Familiarization time: the designer starts and ends it on the page (or the operator
-  asks them to); opening a slot ends a running interval. Each interval is logged with its
+  asks them to) while no slot is open; the start of a round (its first slot) ends a
+  running interval. Each interval is logged with its
   `duration_ms`; `A1SlotService.familiarization_ms` is the total. Events before the
   first round are buffered until the run ID is known.
 
@@ -147,15 +160,22 @@ Practice meanings are a `MeaningSet` with non-study texts: the synthetic
 
 ## 7. Serving the app
 
-Study mode is started by the orchestrator (#20), which owns the batch run:
+Study mode is served by the batch runner (#20), which owns the batch run. It builds the
+A1 service on the run's shared slot ledger and logs and serves it while the batch runs:
 
 ```python
-service = A1SlotService(
-    ledger, plays, timing, clock=clock, designer_id="D1", meanings=meanings, station="S9"
-)
-with serve_in_thread(create_a1_app(service), host="<lab interface>", port=8741):
+service = study_service(layout, ledger, config, clock=clock, meanings=meanings, station="S9")
+with serve_a1(service, host="<lab interface>") as url:  # port 8741 (DEFAULT_PORT)
+    print(f"A1 designer page: {url}")
     orchestrator.run_appointment(...)  # calls service.propose_round(request)
 ```
+
+`study_service` writes `play`, `timing` and `slot_refusal` records to the run's logs
+(`layout.log(...)`), takes the designer from the A1 book of `config` and refuses a
+practice batch or a ledger of another run (`test_study_service_serves_the_runs_shared_logs`).
+**Pending (#20):** no batch runner calls these yet (the orchestrator branch takes its
+proposers from the caller and has no study-batch command); until one does, a study
+session cannot be served.
 
 Practice mode (training, O1.2.4) from the repository root:
 
@@ -240,12 +260,13 @@ the designer present.
 
 | Decision | Rationale |
 | --- | --- |
-| The slot deadline is 40 s after opening or the window's end, whichever is first; unopened slots time out at the window's end | the window (`RoundRequest.window_end_ms`, 3 x 40 s) bounds every method's proposal time; the designer opens slots when ready |
-| The timeout record's `t_ms` is the deadline; a submit at or after the deadline is refused | timeouts are exact in server time whatever the polling delay |
+| Slots open back to back: slot 1 with the window, each next slot when the previous one closes; the deadline is 40 s after opening or the window's end, whichever is first | Study A protocol §3.3 gives each slot up to 40 s of proposal time (hence 120 s per round). With manually opened slots, time spent composing before opening a slot had no 40-s limit and no design-time log, and a slow start shortened slot 3; back-to-back slots bound every slot by 40 s and put all proposal time inside a logged slot. Only a window shorter than 3 x 40 s (the orchestrator's bound) can cut a slot short |
+| The timeout record's `t_ms` is the deadline; a submit at or after the deadline is refused | timeouts are exact in server time whatever the polling delay; the next slot opens when the timeout is processed (at most one 10-ms timer check later) |
 | A play is logged when the server hands out the WAV (`result played`) | the server cannot observe the headphones; serving is the last point it controls, so no audition can go unlogged |
 | Audio tokens expire 60 s after the submit | the page plays at once; an unused token cannot be kept for later |
 | A transport-level malformed body consumes nothing; any `recipe` value consumes the slot | a broken request is not a submitted recipe; everything that reaches the validator is |
 | No admissibility hints before submit; the schematic shows only the entered parameters | validation feedback is the slot's technical status, as for the other methods |
 | A submit to a closed slot and a request after 12 slots are logged as `slot_refusal` | refused edits and over-budget requests stay visible in the audit |
 | Optional constructor keywords (`refusals`, `station`, `run_id`, `token_factory`, `audio_ttl_ms`, `poll_interval_s`) | backwards compatible with the skeleton signature used by #20 and #22 |
+| `POST /a1/api/slots/open` stays in `ROUTES` and returns the open slot | the route contract is fixed for the dry-run bot designer (#22); it is also where a request after the atom's 12 slots is refused and logged |
 | Practice batches carry a `PRACTICE` token and practice runs have their own directory | practice data can never be mistaken for, or written into, a study book |

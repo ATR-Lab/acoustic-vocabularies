@@ -6,10 +6,15 @@ closed. The designer works in a kiosk browser on the app from `create_a1_app(ser
 
 Slot rules (Study A protocol §3.3, §3.4):
 
-- Opening a slot calls `SlotLedger.reserve` (#17) before anything is designed or heard,
-  so a 13th slot request for an atom is refused and logged (`SlotRefusal`). The slot
-  gets a server-side 40-s timer (`SLOT_CAP_MS`), cut short only by the end of the
-  round's window (`RoundRequest.window_end_ms`). Slots never reopen.
+- The round's three slots run back to back, each with up to 40 s of proposal time: slot
+  1 opens when the window opens and each next slot when the previous one closes, so all
+  of the designer's proposal time falls inside a slot. Opening a slot calls
+  `SlotLedger.reserve` (#17) before anything is designed or heard; a slot the ledger
+  refuses (a resumed atom at its cap, a slot ID already used) is skipped and logged by
+  the ledger. Each open slot has a server-side 40-s timer (`SLOT_CAP_MS`), cut short
+  only by the end of the round's window (`RoundRequest.window_end_ms`). Slots never
+  reopen. `POST /a1/api/slots/open` returns the open slot; after the atom's 12 slots it
+  is refused and logged as a 13th slot request (`SlotRefusal`, reason `slot_cap`).
 - Submit validates and renders the recipe (`av_sound.validate`) and consumes the slot
   with exactly one `SlotRecord` (`SlotLedger.consume`), whatever the outcome. A valid
   recipe gets one single-use audio token: the first request for it serves the WAV and
@@ -17,7 +22,8 @@ Slot rules (Study A protocol §3.3, §3.4):
   waveform hashes; any later request is refused and logged (`E_TOKEN_USED`). A preview
   is therefore a submitted slot, and no sound is served outside a logged slot.
 - An open slot without a submission closes as `timeout` at its deadline (the record's
-  `t_ms` is the deadline). Slots never opened close as `timeout` when the window ends.
+  `t_ms` is the deadline); a submit at or after the deadline is refused. A slot that
+  would open after the window's end closes as `timeout` at once.
 - A second submission for a closed slot (an edit) is refused and logged
   (`SlotRefusal`, reason `slot_closed`).
 - The designer sees only their own book: the atom's meaning (`meanings`), the round's
@@ -31,6 +37,10 @@ Slot rules (Study A protocol §3.3, §3.4):
 Practice mode (`practice=True`, see `_a1_practice`) uses non-study meanings, writes
 `practice=True` records to a separate practice run and never reaches a book.
 
+Study mode: the batch runner (#20) builds the service on the run's shared slot ledger
+and logs with `study_service(layout, ledger, config, ...)` and serves it to the
+designer's kiosk with `serve_a1(service, host=<lab interface>)` while the batch runs.
+
 Web stack: FastAPI + plain HTML/CSS/JS from `av_generation/web/a1/` (no npm build, no
 CDN, no third-party JS). Request and response bodies: `generation/docs/a1-interface.md`.
 
@@ -43,7 +53,8 @@ import json
 import re
 import secrets
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
@@ -54,6 +65,7 @@ from av_sound.validate import validate
 from av_sound.wav import file_sha256, wav_bytes
 
 from av_generation.clock import Clock, utc_text
+from av_generation.config import BatchConfig
 from av_generation.constants import SLOT_CAP_MS, SLOTS_PER_ATOM, SLOTS_PER_ROUND
 from av_generation.domain import FIELD_VALUES
 from av_generation.ids import (
@@ -75,7 +87,7 @@ from av_generation.records import (
     TimingEvent,
     cap_key,
 )
-from av_generation.rundir import LOG_FILES
+from av_generation.rundir import LOG_FILES, RunLayout
 
 ROUTES: Final[dict[str, str]] = {
     "page": "GET /a1/",
@@ -91,6 +103,8 @@ ROUTES: Final[dict[str, str]] = {
 
 API_VERSION: Final = 1
 """Version of the JSON bodies served by the A1 app."""
+DEFAULT_PORT: Final = 8741
+"""Port of the A1 app (kiosk policy, operating guide, `serve_a1`, the practice CLI)."""
 AUDIO_TTL_MS: Final = 60_000
 """A valid slot's audio token expires this long (run clock) after the submit."""
 POLL_INTERVAL_S: Final = 0.01
@@ -354,38 +368,34 @@ class A1SlotService:
             }
 
     def open_slot(self) -> dict[str, Any]:
-        """`POST /a1/api/slots/open`: reserve the next slot and start its 40-s timer."""
+        """`POST /a1/api/slots/open`: the round's open slot.
+
+        Slots open by themselves (slot 1 with the window, each next slot when the
+        previous one closes), so this returns the open slot's view. With no window open
+        it raises `E_NO_WINDOW`, or, once the atom's 12 slots are used, `E_SLOT_CAP`
+        (logged as a 13th slot request).
+        """
         with self._cond:
             now = self._clock.now_ms()
             self._expire_locked(now)
             w = self._window
-            if w is None or not w.is_open:
+            slot = self._open_slot()
+            if w is None or not w.is_open or slot is None:
                 self._refuse_closed_atom(w, now)
                 raise A1Error("E_NO_WINDOW", 409, "no proposal window is open; wait for the round")
-            if any(s.state == "open" for s in w.slots):
-                raise A1Error("E_SLOT_OPEN", 409, "a slot is already open; submit it first")
-            nxt = next((s for s in w.slots if s.state == "unopened"), None)
-            if nxt is None:  # pragma: no cover - a full window closes in the same step
-                raise A1Error("E_NO_WINDOW", 409, "this round's slots are used")
-            ticket = self._reserve(nxt)
-            self._end_familiarization(ticket.t_open_ms, "slot opened")
-            nxt.state = "open"
-            nxt.ticket = ticket
-            nxt.deadline_ms = min(ticket.t_open_ms + SLOT_CAP_MS, w.request.window_end_ms)
-            self._active = True
-            self._start_active(nxt, ticket.t_open_ms)
-            self._slots[nxt.slot_id] = nxt
-            self._cond.notify_all()
-            return self._slot_view(nxt, now)
+            return self._slot_view(slot, now)
 
     def submit(self, slot_id: str, recipe: object) -> dict[str, Any]:
         """`POST /a1/api/slots/{slot_id}/submit`: validate, render, consume, hand out audio.
 
         `recipe` is the submitted JSON value (an object, or JSON text). Any value consumes
-        the slot; a refused edit of a closed slot raises `E_SLOT_CLOSED` (logged).
+        the slot, and the next slot of the round opens at once. A submit at or after the
+        slot's deadline, or to a closed slot (an edit), raises `E_SLOT_CLOSED` (logged).
         """
         with self._cond:
             now = self._clock.now_ms()
+            # Deadline first: a late submit finds its slot closed as `timeout`, even when
+            # the window loop has not run since the deadline passed.
             self._expire_locked(now)
             slot = self._slots.get(slot_id)
             if slot is None:
@@ -452,6 +462,7 @@ class A1SlotService:
                 file_sha256=fsha,
             )
             self._close(slot, record)
+            self._expire_locked(now)  # opens the round's next slot
             audio: dict[str, Any] | None = None
             if outcome_code is SlotOutcome.VALID and wav is not None:
                 assert pcm is not None and fsha is not None
@@ -609,42 +620,47 @@ class A1SlotService:
         return self._meanings.text(request.semantic_label)
 
     def _expire_locked(self, now: int) -> None:
+        """Advance the window to `now`: close an overdue slot as `timeout` at its deadline,
+        then open the next slot (slots run back to back), until a slot is open and not
+        overdue or the window is done. Also drops the audio of expired tokens."""
         w = self._window
-        if w is not None and w.is_open:
-            for slot in w.slots:
-                if (
-                    slot.state == "open"
-                    and slot.deadline_ms is not None
-                    and now >= slot.deadline_ms
-                ):
-                    self._timeout(slot, slot.deadline_ms)
-            if now >= w.request.window_end_ms:
-                for slot in w.slots:
-                    if slot.state == "unopened":
-                        try:
-                            ticket = self._reserve(slot)
-                        except A1Error:
-                            continue
-                        slot.ticket = ticket
-                        slot.state = "open"
-                        self._slots[slot.slot_id] = slot
-                        self._timeout(slot, ticket.t_open_ms)
+        while w is not None and w.is_open:
+            slot = self._open_slot()
+            if slot is not None:
+                assert slot.deadline_ms is not None
+                if now < slot.deadline_ms:
+                    break
+                self._timeout(slot, slot.deadline_ms)
+                continue
+            nxt = next((s for s in w.slots if s.state == "unopened"), None)
+            if nxt is None:  # pragma: no cover - a window without such slots is done
+                break
+            self._open(nxt)
         for entry in self._tokens.values():
             if entry.wav is not None and now >= entry.expires_ms:
                 entry.wav = None
 
-    def _reserve(self, slot: _Slot) -> SlotTicket:
+    def _open(self, slot: _Slot) -> None:
+        """Reserve `slot` and start its timer (a refused slot is skipped; the ledger logs
+        it). A slot opened at or after the window's end closes as `timeout` at once."""
         w = slot.window
         try:
-            return self._ledger.reserve(w.cap_key, slot.slot_id, study=Study.A, method=Method.A1)
-        except SlotCapExceeded as err:
+            ticket = self._ledger.reserve(w.cap_key, slot.slot_id, study=Study.A, method=Method.A1)
+        except (SlotCapExceeded, SlotReused):
             slot.state = "refused"
             self._close_window_if_done(w, self._clock.now_ms())
-            raise A1Error("E_SLOT_CAP", 409, f"the atom's {SLOTS_PER_ATOM} slots are used") from err
-        except SlotReused as err:
-            slot.state = "refused"
-            self._close_window_if_done(w, self._clock.now_ms())
-            raise A1Error("E_SLOT_REUSED", 409, f"slot {slot.slot_id} was already used") from err
+            return
+        slot.ticket = ticket
+        slot.state = "open"
+        self._slots[slot.slot_id] = slot
+        end = w.request.window_end_ms
+        slot.deadline_ms = min(ticket.t_open_ms + SLOT_CAP_MS, max(end, ticket.t_open_ms))
+        if ticket.t_open_ms >= end:
+            self._timeout(slot, ticket.t_open_ms)
+            return
+        self._end_familiarization(ticket.t_open_ms, "slot opened")
+        self._start_active(slot, ticket.t_open_ms)
+        self._cond.notify_all()
 
     def _refuse_closed_atom(self, w: _Window | None, now: int) -> None:
         """A request after the atom's 12 slots: refused and logged as a 13th slot."""
@@ -876,3 +892,59 @@ def create_a1_app(service: A1SlotService) -> Any:  # noqa: ANN401 - FastAPI app
     from av_generation._a1_app import build_app
 
     return build_app(service)
+
+
+def study_service(
+    layout: RunLayout,
+    ledger: SlotLedger,
+    config: BatchConfig,
+    *,
+    clock: Clock,
+    meanings: MeaningSet,
+    station: str | None = None,
+    poll_interval_s: float = POLL_INTERVAL_S,
+) -> A1SlotService:
+    """The study-mode A1 service of a batch run (for the batch runner, #20).
+
+    It shares the run's slot ledger (`ledger`, the one the other proposers use) and
+    writes to the run's own logs: `play`, `timing` and `slot_refusal`
+    (`layout.log(...)`). The designer is the A1 book's `designer_id` in `config`, and the
+    run ID is the layout's. Raises `ValueError` for a practice batch config or a ledger
+    of another run.
+    """
+    if is_practice_batch(config.batch_id):
+        raise ValueError(f"batch {config.batch_id!r} is a practice batch; use practice mode")
+    ledger_run = getattr(ledger, "run_id", None)
+    if isinstance(ledger_run, str) and ledger_run != layout.run_id:
+        raise ValueError(f"the ledger belongs to run {ledger_run!r}, not {layout.run_id!r}")
+    designer_id = config.book_of(Method.A1).designer_id
+    if designer_id is None:  # pragma: no cover - BatchConfig requires it for A1 books
+        raise ValueError("the batch config names no A1 designer")
+    return A1SlotService(
+        ledger,
+        RecordWriter(layout.log("play")),
+        RecordWriter(layout.log("timing")),
+        clock=clock,
+        designer_id=designer_id,
+        meanings=meanings,
+        refusals=RecordWriter(layout.log("slot_refusal")),
+        station=station,
+        run_id=layout.run_id,
+        poll_interval_s=poll_interval_s,
+    )
+
+
+@contextmanager
+def serve_a1(
+    service: A1SlotService, *, host: str = "127.0.0.1", port: int = DEFAULT_PORT
+) -> Iterator[str]:
+    """Serve `create_a1_app(service)` in a background thread; yields the page URL
+    (`http://<host>:<port>/a1/`) and stops the server on exit.
+
+    The batch runner (#20) wraps the batch in it with `host` set to the lab interface
+    that the designer's kiosk reaches (`port=0` picks a free port, for tests).
+    """
+    from av_generation.webserve import serve_in_thread
+
+    with serve_in_thread(create_a1_app(service), host=host, port=port) as base:
+        yield f"{base}/a1/"
