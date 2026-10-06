@@ -28,11 +28,13 @@ namespace AcousticVocab.StateIntegration
     public sealed class PrivateModeResetClient : IDisposable
     {
         sealed class Arrival { internal string Id,Raw;internal double Sent,Received;internal bool Health; }
+        readonly struct ResetReceipt
+        {internal readonly double Received,Sample;internal ResetReceipt(double received,double sample){Received=received;Sample=sample;}}
         readonly string session,mode;
         readonly ConcurrentQueue<string> outgoing=new ConcurrentQueue<string>();
         readonly ConcurrentQueue<Arrival> incoming=new ConcurrentQueue<Arrival>();
         readonly Dictionary<string,string> pending=new Dictionary<string,string>(StringComparer.Ordinal);
-        readonly HashSet<string> resets=new HashSet<string>(StringComparer.Ordinal);
+        readonly Dictionary<string,ResetReceipt> resets=new Dictionary<string,ResetReceipt>(StringComparer.Ordinal);
         readonly CancellationTokenSource lifetime=new CancellationTokenSource();
         readonly Action<JObject> persist;
         readonly Func<double> now;
@@ -44,6 +46,7 @@ namespace AcousticVocab.StateIntegration
         readonly object diagnosticLock=new object();
         string workerPhase="not_started",firstFailureCode,firstFailurePhase;
         double phaseStarted,lastSent=-1,lastReceived=-1,firstFailureAt;
+        double probeSent=-1,probeSample=-1;bool latestObservationWasProbe;
         readonly ControlHealthGate healthGate;
         public PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink)
             :this(endpoint,independentlyPinnedControlSessionId,requiredMode,durableControlSink,()=>NowMs,true){}
@@ -62,11 +65,20 @@ namespace AcousticVocab.StateIntegration
         // Drain that bounded batch before testing freshness; never wait for the
         // network, invent a receive time, or extend the 250 ms bound.
         public bool NeutralHoldHealthy {get{if(failed||disposed)return false;Pump();return ModeAcknowledged&&healthGate.Fresh;}}
-        public bool ResetAcknowledged(string exactRequestId) => exactRequestId!=null&&NeutralHoldHealthy&&resets.Contains(exactRequestId);
+        // A reset command may finish while the last published frame is already
+        // old. Keep its exact durable ACK, but require an actual progressing
+        // probe sent after that ACK's full receipt before admitting exposure.
+        // Its original RTT, source ages and receipt age still obey the same gate.
+        public bool ResetAcknowledged(string exactRequestId) => exactRequestId!=null&&NeutralHoldHealthy&&PostResetProbeObserved(exactRequestId);
+        bool PostResetProbeObserved(string id)=>id!=null&&resets.TryGetValue(id,out var receipt)&&latestObservationWasProbe&&probeSent>=receipt.Received&&probeSample>receipt.Sample;
         public JObject ReadinessDiagnostic(string exactRequestId)
         {
             var value=healthGate.Diagnostic();value["failed"]=failed;value["disposed"]=disposed;value["mode_acknowledged"]=modeAcknowledged;
-            value["exact_reset_recorded"]=exactRequestId==null?JValue.CreateNull():new JValue(resets.Contains(exactRequestId));value["queued_arrivals"]=Volatile.Read(ref queued);
+            value["exact_reset_recorded"]=exactRequestId==null?JValue.CreateNull():new JValue(resets.ContainsKey(exactRequestId));value["queued_arrivals"]=Volatile.Read(ref queued);
+            value["post_reset_probe_observed"]=exactRequestId==null?JValue.CreateNull():new JValue(PostResetProbeObserved(exactRequestId));
+            value["latest_observation_was_probe"]=latestObservationWasProbe;
+            value["last_probe_sent_local_mono_ms"]=probeSent<0?JValue.CreateNull():new JValue(probeSent);
+            value["last_probe_health_sample_host_mono_ms"]=probeSample<0?JValue.CreateNull():new JValue(probeSample);
             lock(diagnosticLock)
             {
                 value["worker_phase"]=workerPhase;value["phase_started_local_mono_ms"]=phaseStarted;
@@ -114,16 +126,21 @@ namespace AcousticVocab.StateIntegration
                 {
                     double readAt=now();Require(readAt>=item.Received&&readAt-item.Received<=250,"CONTROL_QUEUED");
                     var value=StationConfig.ParseStrict(item.Raw);
-                    if(item.Health){healthGate.Observe(PrivateHealthProbe.Payload(value,session,item.Id),item.Sent,item.Received);continue;}
+                    if(item.Health)
+                    {
+                        var health=PrivateHealthProbe.Payload(value,session,item.Id);healthGate.Observe(health,item.Sent,item.Received);
+                        probeSent=item.Sent;probeSample=Number(health["health_sample_host_mono_ms"]);latestObservationWasProbe=true;continue;
+                    }
                     Keys(value,"version","kind","request_id","accepted","reason","mode","host_mono_ms","sim_time","reset_ok","duplicate","health");
                     pending.TryGetValue(item.Id,out var command);Require(value["version"].Type==JTokenType.Integer&&(int)value["version"]==1&&(string)value["kind"]=="private_reply"&&(string)value["request_id"]==item.Id&&command!=null,"CONTROL_REPLY");
                     Number(value["host_mono_ms"]);Number(value["sim_time"]);Bool(value["duplicate"]);
                     Require(Bool(value["accepted"])&&(string)value["mode"]==mode,"CONTROL_REJECTED");
                     healthGate.Observe((JObject)value["health"],item.Sent,item.Received);
+                    latestObservationWasProbe=false;
                     if(command=="set_mode")Require((string)value["reason"]=="MODE_CHANGED"&&(mode=="teaching"?value["reset_ok"].Type==JTokenType.Null:Bool(value["reset_ok"])),"CONTROL_REPLY");
                     else Require((string)value["reason"]=="RESET_COMPLETE"&&Bool(value["reset_ok"]),"CONTROL_RESET");
                     persist(new JObject{["kind"]="control_reply",["local_mono_ms"]=item.Received,["reply"]=value.DeepClone()});
-                    pending.Remove(item.Id);if(command=="set_mode")modeAcknowledged=true;else resets.Add(item.Id);
+                    pending.Remove(item.Id);if(command=="set_mode")modeAcknowledged=true;else resets.Add(item.Id,new ResetReceipt(item.Received,Number(value["health"]["health_sample_host_mono_ms"])));
                     Require(resets.Count<=512,"CONTROL_CAPACITY");
                 }
                 catch(Exception error){RecordFailure(FailureCode(error),"pump");Interrupt();throw;}

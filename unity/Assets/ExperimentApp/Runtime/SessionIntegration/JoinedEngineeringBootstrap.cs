@@ -245,6 +245,17 @@ namespace AcousticVocab.SessionIntegration
                     ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
                 ["control_health"]=activePreflight?.Diagnostic()});
         }
+        void RecordContentGateRefusal(ContentCueGateRefusal refusal)
+        {
+            var r=refusal.Readiness;
+            audit.Write("module",new JObject{["kind"]="content_cue_gate_refused",["code"]=refusal.Code,
+                ["attempt_id"]=refusal.Context.Item.TrialId,["opportunity_id"]=refusal.Context.OpportunityId,
+                ["checked_mono_ms"]=refusal.CheckedMonoMs,["scheduled_onset_mono_ms"]=refusal.Context.OnsetMonoMs,
+                ["remaining_lead_ms"]=refusal.Context.OnsetMonoMs-refusal.CheckedMonoMs,
+                ["readiness"]=new JObject{["hash_verified"]=r.HashVerified,["audio_preloaded"]=r.AudioPreloaded,["reset_acknowledged"]=r.ResetAcknowledged,
+                    ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
+                ["control_health"]=activePreflight?.Diagnostic()});
+        }
         void Fail(string code)
         {
             if(failed||closed)return;failed=true;string reported=new SessionFault(code).Code;Report(owner?.Engine.PrimaryFaultCode??reported);
@@ -311,13 +322,34 @@ namespace AcousticVocab.SessionIntegration
             }
             public void Pump()
             {
-                if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
-                if(control==null){if(!SealBeforePostMenu())return;StartControl();}
-                control.Pump();if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
-                if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
-                if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
-                if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
-                if(Ready)wasReady=true;
+                string phase="timeout";
+                try
+                {
+                    if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
+                    phase="control_start";if(control==null){if(!SealBeforePostMenu())return;StartControl();}
+                    phase="control_pump";control.Pump();
+                    phase="request_reset";if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
+                    phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
+                    phase="finish_grammar";if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
+                    phase="prepare_factory";if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
+                    phase="ready_check";if(Ready)wasReady=true;
+                }
+                catch(Exception error)
+                {
+                    // StagedModuleCoordinator cancels this candidate before its
+                    // outer fault is reported. Observe the original failure and
+                    // non-pumping control snapshot while resources still exist.
+                    // Evidence failure must never mask or replace that exception.
+                    try
+                    {
+                        string code=error is ControlFault controlError?controlError.Code:error is SessionFault sessionError?sessionError.Code:
+                            error is AudioFault audioError?audioError.Code:error is IOException?"PREFLIGHT_IO_FAILED":"PREFLIGHT_UNEXPECTED_EXCEPTION";
+                        host.audit.Write("module",new JObject{["kind"]="preflight_failure",["code"]=code,["phase"]=phase,["block"]=block,["module"]=kind.ToString(),
+                            ["observed_mono_ms"]=host.clock.NowMs,["control_health"]=control?.ReadinessDiagnostic(reset)});
+                    }
+                    catch{}
+                    throw;
+                }
             }
             bool ControlReady=>ControlReadinessFailure()==null;
             string ControlReadinessFailure()
@@ -389,7 +421,7 @@ namespace AcousticVocab.SessionIntegration
                 if(kind==JoinedModuleKind.Teaching)
                 {
                     EnsureTeachingView();var view=teachingView;
-                    result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,host.audit.Lesson,shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,host.audit.Lesson,shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio,host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 else if(kind==JoinedModuleKind.Assessment)
                 {
@@ -402,7 +434,7 @@ namespace AcousticVocab.SessionIntegration
                 else
                 {
                     var view=go.AddComponent<MenuSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.presentationParent=host.foundation.presentationRoot.transform;view.font=host.font;view.Faulted+=host.Fail;scope.RegisterCleanup(view.Uninstall);
-                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay,engineeringPreview:true,bindAudio:shared.BindAudio);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay,engineeringPreview:true,bindAudio:shared.BindAudio,cueRefused:host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 host.audit.Write("module",new JObject{["kind"]="prepared_view",["block"]=block,["module"]=kind.ToString()});return result;
             }
