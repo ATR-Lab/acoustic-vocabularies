@@ -231,6 +231,13 @@ to the server clock (offset and ppm). Onset detection: first sample above the la
 `logged-onsets.csv` / `-summary.json` give the same table from the stations' `played`
 reports (criterion: every onset within 50 ms of its scheduled time).
 
+Software check committed with this component: `generation/runs/DEMO-panel-onsets-01/`
+holds `logged-onsets.csv` and its summary for the 36-slot DEMO session played by three
+headless Chrome stations on one computer (`--rounds 4 --atom-index 5`). These are the
+stations' own onset estimates (section 4), not an acoustic measurement: every one of the
+72 sounds was within 5 ms of its scheduled time and the station-to-station skew was at
+most 6 ms. The loopback capture of real stations is still to be done.
+
 **Screen recording of one round**: run the DEMO session with `--rounds 1
 --placeholder 1:5`, record the three station screens (one recorder per station or one
 capture of three windows) from Start to the end screen, and keep the recording with the
