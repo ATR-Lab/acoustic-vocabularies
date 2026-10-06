@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sound rating</title>
+  <link rel="stylesheet" href="/panel/static/station.css">
+  <script src="/panel/static/station.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <span id="station-label" class="station-label">Sound rating</span>
+    <span id="connection" class="connection" data-state="offline" aria-live="polite">Not connected</span>
+  </header>
+
+  <main>
+    <section id="screen-start" class="screen">
+      <h1>Sound rating</h1>
+      <p>Put on the headphones. Press Start when the session operator asks you to.</p>
+      <div id="setup" class="setup" hidden>
+        <label>Station <input id="setup-station" autocomplete="off" placeholder="S1"></label>
+        <label>Rater code <input id="setup-rater" autocomplete="off" placeholder="R01"></label>
+      </div>
+      <p id="start-message" class="status" role="status"></p>
+      <button type="button" id="start-button" class="primary">Start</button>
+    </section>
+
+    <section id="screen-wait" class="screen" hidden>
+      <p class="big">Please wait. The next sound starts soon.</p>
+    </section>
+
+    <section id="screen-slot" class="screen" hidden>
+      <div class="cards">
+        <div class="card">
+          <p class="label">Meaning of this sound</p>
+          <p id="meaning" class="meaning"></p>
+        </div>
+        <div class="card" id="reference-card">
+          <p class="label">Comparison sound</p>
+          <p id="reference-meaning" class="meaning muted">The comparison sound follows.</p>
+        </div>
+      </div>
+      <p id="slot-status" class="status" role="status" aria-live="polite"></p>
+      <form id="rating-form" novalidate>
+        <fieldset id="q-association" class="question">
+          <legend>How easy is it to link this sound to its meaning?</legend>
+          <div class="scale" data-name="association">
+            <button type="button" data-value="1">1</button>
+            <button type="button" data-value="2">2</button>
+            <button type="button" data-value="3">3</button>
+            <button type="button" data-value="4">4</button>
+            <button type="button" data-value="5">5</button>
+            <button type="button" data-value="6">6</button>
+            <button type="button" data-value="7">7</button>
+          </div>
+          <div class="anchors"><span>1 very hard</span><span>7 very easy</span></div>
+        </fieldset>
+        <fieldset id="q-distinguishability" class="question">
+          <legend>How easy is it to tell this sound apart from the comparison sound?</legend>
+          <div class="scale" data-name="distinguishability">
+            <button type="button" data-value="1">1</button>
+            <button type="button" data-value="2">2</button>
+            <button type="button" data-value="3">3</button>
+            <button type="button" data-value="4">4</button>
+            <button type="button" data-value="5">5</button>
+            <button type="button" data-value="6">6</button>
+            <button type="button" data-value="7">7</button>
+          </div>
+          <div class="anchors"><span>1 very hard</span><span>7 very easy</span></div>
+        </fieldset>
+        <fieldset id="q-comfort" class="question">
+          <legend>Is this sound comfortable to hear?</legend>
+          <div class="scale choice" data-name="comfort">
+            <button type="button" data-value="acceptable">Acceptable</button>
+            <button type="button" data-value="unacceptable">Unacceptable</button>
+          </div>
+        </fieldset>
+        <button type="submit" id="submit-rating" class="primary" disabled>Submit</button>
+      </form>
+      <div class="progress" aria-hidden="true"><div id="slot-progress"></div></div>
+    </section>
+
+    <section id="screen-placeholder" class="screen" hidden>
+      <p class="big">No sound in this slot. Please wait.</p>
+      <div class="progress" aria-hidden="true"><div id="placeholder-progress"></div></div>
+    </section>
+
+    <section id="screen-rejoin" class="screen" hidden>
+      <p class="big">Connected again. Please wait for the next sound.</p>
+    </section>
+
+    <section id="screen-pause" class="screen" hidden>
+      <p class="big">Short pause. Please wait.</p>
+    </section>
+
+    <section id="screen-end" class="screen" hidden>
+      <p class="big">The session has finished. Thank you.</p>
+    </section>
+
+    <section id="screen-withdrawn" class="screen" hidden>
+      <p class="big">You have stopped taking part. Please tell the session operator.</p>
+    </section>
+
+    <section id="screen-error" class="screen" hidden>
+      <p id="error-text" class="big">This station cannot continue. Please tell the session operator.</p>
+    </section>
+  </main>
+
+  <footer class="bar">
+    <button type="button" id="withdraw-button" class="quiet" hidden>Stop taking part</button>
+  </footer>
+
+  <div id="withdraw-dialog" class="dialog" role="dialog" aria-modal="true" aria-labelledby="withdraw-title" hidden>
+    <div class="dialog-box">
+      <h2 id="withdraw-title">Stop taking part?</h2>
+      <p>This ends your part in the session. Choose a reason:</p>
+      <div class="reasons">
+        <button type="button" data-reason="rater_request">I want to stop</button>
+        <button type="button" data-reason="discomfort">Discomfort</button>
+        <button type="button" data-reason="technical">Technical problem</button>
+        <button type="button" data-reason="other">Other reason</button>
+      </div>
+      <button type="button" id="withdraw-cancel" class="primary">Go back</button>
+    </div>
+  </div>
+</body>
+</html>
