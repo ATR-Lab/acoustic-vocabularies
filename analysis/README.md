@@ -41,7 +41,7 @@ uv run --project analysis av-analysis refresh --root <dir>
 | `windows` | `WINDOWS`, `window()`, `classify()`, `yoked_gap_ok()` | skeleton |
 | `derived` | `TRIALS`, `ENDPOINTS`, `VISIT_STATUS`, `DISCREPANCIES`, `EXPOSURE_CUMULATIVE`, `ENROLLMENT`, `table_bytes()`, `parse_table()`, `row_schema()` | skeleton |
 | `schemas` | `schema_documents()` (core plus modules' `SCHEMAS`), `check_schema_files()`, `validator(name)` | skeleton |
-| `paths` | `DataRoot`, `INPUT_PATHS`, `write_output()`, `write_synthetic_input()`, `check_watermark()`, `visit_id()`, `WatermarkError` | skeleton |
+| `paths` | `DataRoot`, `INPUT_PATHS`, `write_output()`, `write_synthetic_input()`, `remove_synthetic_input()`, `check_watermark()`, `visit_id()`, `WatermarkError` | skeleton |
 | `masking` | `forbidden_reason(field, policy)`, `forbidden_columns()`, `forbidden_keys()` | skeleton |
 | `fileio`, `seeds` | canonical bytes and hashes; `rng(*labels)` | skeleton |
 | `cli` | `av-analysis` commands; `refresh` runs `REFRESH_STEPS` (reconcile, derive, dashboard) | skeleton |

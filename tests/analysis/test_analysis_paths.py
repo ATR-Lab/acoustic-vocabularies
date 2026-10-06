@@ -22,6 +22,7 @@ from av_analysis.paths import (
     check_watermark,
     committable,
     parse_visit_id,
+    remove_synthetic_input,
     visit_id,
     write_output,
     write_synthetic_input,
@@ -229,7 +230,14 @@ def test_write_synthetic_input_is_the_only_writer_of_read_only_areas(tmp_path):
     for area, rel, data, message in refusals:
         with pytest.raises(WatermarkError, match=message):
             write_synthetic_input(root, area, rel, data)
+    assert remove_synthetic_input(root, "raw", "A-C01-L01-D0/trial-log.csv")
+    assert not (root.path / "raw" / "A-C01-L01-D0" / "trial-log.csv").exists()
+    assert not remove_synthetic_input(root, "raw", "A-C01-L01-D0/trial-log.csv")
+    with pytest.raises(WatermarkError, match="invalid raw path"):
+        remove_synthetic_input(root, "raw", "A-C01-L01-D0")
     real = DataRoot.create(tmp_path / "real", "REAL", label="real-1")
     with pytest.raises(WatermarkError, match="holds REAL data"):
         write_synthetic_input(real, "inputs", "x.json", json_bytes({"demo": True}))
+    with pytest.raises(WatermarkError, match="holds REAL data"):
+        remove_synthetic_input(real, "inputs", "x.json")
     assert not (real.path / "inputs").exists()

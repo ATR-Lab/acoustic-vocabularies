@@ -467,8 +467,8 @@ ENDPOINTS: Final = TableSpec(
         ),
         _i(
             "fault_n",
-            "Accounted opportunities with a technical fault (including lost_n); they score 0 "
-            "in the operational score.",
+            "Accounted opportunities with a technical fault (fault_codes or fault_types not "
+            "empty), including lost_n.",
         ),
         _i("lost_n", "Accounted opportunities with row_source deviation."),
         _i("valid_delivery_n", "Accounted opportunities with valid delivery."),

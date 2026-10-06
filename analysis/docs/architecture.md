@@ -120,8 +120,9 @@ its data kind: `SYNTHETIC` (label `DEMO-...`) or `REAL`. Layout, reference input
   whose kind equals the writer's (`paths.write_output`). Paths cannot leave their area.
 - `raw/`, `inputs/` and `keys/` are read-only for every command. Real exports and frozen
   inputs are copied in by the import step. The only code that writes these areas is
-  `paths.write_synthetic_input`, used only by the synthetic generators (#33
-  `synth-logs` and fault injection, #34 `simulate`): it accepts SYNTHETIC roots only,
+  `paths.write_synthetic_input` (and `paths.remove_synthetic_input` for fault
+  injection), used only by the synthetic generators (#33 `synth-logs` and fault
+  injection, #34 `simulate`): it accepts SYNTHETIC roots only,
   keeps `raw/` paths to `deviations-log.csv` and `<visit_id>/<file>`, and refuses JSON
   marked as real (`data_kind` other than `SYNTHETIC`, `demo` not `true`), exit manifests
   without `data_kind` `SYNTHETIC`, and CSVs whose `data_kind` column holds another value.

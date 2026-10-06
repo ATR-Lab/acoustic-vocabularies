@@ -36,7 +36,8 @@ Read-only areas (``raw/``, ``inputs/``, ``keys/``) are filled by copying exports
 frozen inputs into a root; no analysis command writes them. The one exception is
 :func:`write_synthetic_input`, the only sanctioned writer of those areas, used by the
 synthetic generators (#33 ``synth-logs`` and fault injection, #34 ``simulate``): it
-accepts SYNTHETIC roots only and refuses content marked as real.
+accepts SYNTHETIC roots only and refuses content marked as real
+(:func:`remove_synthetic_input` deletes a file under the same rules, for fault injection).
 """
 
 from __future__ import annotations
@@ -408,6 +409,24 @@ def write_synthetic_input(root: DataRoot, area: Area, relpath: str, data: bytes)
     ``data_kind`` ``SYNTHETIC``, or a CSV whose ``data_kind`` column holds another value.
     Existing files are replaced (fault injection rewrites raw files).
     """
+    path = _synthetic_input_path(root, area, relpath)
+    _refuse_real_content(data, f"{area}/{relpath}")
+    write_bytes(path, data)
+    return path
+
+
+def remove_synthetic_input(root: DataRoot, area: Area, relpath: str) -> bool:
+    """Delete one file of a read-only area of a SYNTHETIC root (fault injection, e.g. a
+    missing raw file); same root and path rules as :func:`write_synthetic_input`.
+    Returns False when the file did not exist."""
+    path = _synthetic_input_path(root, area, relpath)
+    if not path.is_file():
+        return False
+    path.unlink()
+    return True
+
+
+def _synthetic_input_path(root: DataRoot, area: Area, relpath: str) -> Path:
     if not root.synthetic:
         raise WatermarkError(f"{root.path} holds REAL data; synthetic inputs are refused")
     path = root.input_path(area, relpath)
@@ -419,6 +438,4 @@ def write_synthetic_input(root: DataRoot, area: Area, relpath: str, data: bytes)
             raise WatermarkError(f"invalid raw path {relpath!r}") from None
         if not rest or "/" in rest:
             raise WatermarkError(f"invalid raw path {relpath!r}")
-    _refuse_real_content(data, f"{area}/{relpath}")
-    write_bytes(path, data)
     return path

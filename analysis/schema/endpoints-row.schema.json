@@ -53,7 +53,7 @@
       ]
     },
     "fault_n": {
-      "description": "Accounted opportunities with a technical fault (including lost_n); they score 0 in the operational score.",
+      "description": "Accounted opportunities with a technical fault (fault_codes or fault_types not empty), including lost_n.",
       "minimum": 0,
       "type": "integer"
     },
