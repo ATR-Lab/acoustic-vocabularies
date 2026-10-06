@@ -1,0 +1,17 @@
+{
+  "name": "AcousticVocab.SelectionMenus",
+  "references": [
+    "AcousticVocab.Foundation",
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.StateIntegration",
+    "Unity.ugui",
+    "AcousticVocab.ResponsePanel",
+    "Unity.XR.Hands"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ]
+}

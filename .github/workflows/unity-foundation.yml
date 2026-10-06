@@ -1,0 +1,80 @@
+name: Unity foundation
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  configuration:
+    name: Unity CI configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an explicitly provisioned licensed runner
+        env:
+          RUNNER_READY: ${{ vars.UNITY_FOUNDATION_RUNNER_READY }}
+          EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
+          G1_DESCRIPTION: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          TRUSTED_SOURCE: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          if [ "$TRUSTED_SOURCE" != "true" ]; then
+            echo '::error::Fork code must be reviewed before execution on the licensed Unity runner.'
+            exit 1
+          fi
+          if [ "$RUNNER_READY" != "true" ] || [ -z "$EDITOR_PATH" ] || [ -z "$UNITY_LICENSE" ] || [ -z "$G1_DESCRIPTION" ]; then
+            echo '::error::Unity CI is not configured. Provision an isolated Windows runner labelled unity-6000.6.0f1, set UNITY_FOUNDATION_RUNNER_READY=true, UNITY_EDITOR_PATH and UNITY_G1_DESCRIPTION_PATH for the verified local asset cache, and store the license only in secret UNITY_LICENSE. Local results do not qualify this gate.'
+            exit 1
+          fi
+  quest-and-tests:
+    name: Quest build and edit-mode tests
+    needs: configuration
+    runs-on: [self-hosted, Windows, X64, unity-6000.6.0f1]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+      - name: Prepare sealed DEMO integrity inputs
+        shell: pwsh
+        run: |
+          uv sync --project sound --locked
+          if ($LASTEXITCODE -ne 0) { throw 'Locked sound environment failed' }
+          uv run --project sound python tools/prepare_integrity_fixtures.py --out .local/integrity-ci/fixtures
+          if ($LASTEXITCODE -ne 0) { throw 'Integrity fixture generation failed' }
+          $fixture = Join-Path (Get-Location) '.local/integrity-ci/fixtures/fixtures.local.json'
+          $pin = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash.ToLowerInvariant()
+          "AV_INTEGRITY_FIXTURES=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "AV_INTEGRITY_FIXTURES_SHA256=$pin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "AV_INTEGRITY_RESULTS=$(Join-Path (Get-Location) '.local/integrity-ci/exports')" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Activate using CI secret
+        shell: pwsh
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
+        run: |
+          $licenseFile = Join-Path $env:RUNNER_TEMP ('unity-' + [guid]::NewGuid().ToString('N') + '.ulf')
+          try {
+            [IO.File]::WriteAllText($licenseFile, $env:UNITY_LICENSE)
+            $process = Start-Process -FilePath $env:UNITY_EDITOR_PATH -ArgumentList @('-batchmode','-nographics','-quit','-manualLicenseFile',('"'+$licenseFile+'"'),'-logFile',('"'+(Join-Path $env:RUNNER_TEMP 'unity-license.log')+'"')) -WindowStyle Hidden -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw 'Unity license activation failed; private licensing log stays on the isolated runner.' }
+          } finally {
+            Remove-Item -LiteralPath $licenseFile -Force -ErrorAction SilentlyContinue
+          }
+      - name: Configure, test, and build the participant Quest player
+        shell: pwsh
+        env:
+          UNITY_EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
+          G1_DESCRIPTION_JSON: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
+        run: |
+          $base = 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Configure -ProtocolVersion engineering-pending-review -BuildId "$base-configure"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Test -ProtocolVersion engineering-pending-review -BuildId "$base-tests"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target TestPlayMode -ProtocolVersion engineering-pending-review -BuildId "$base-playmode"
+          ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene StateSources -G1Description $env:G1_DESCRIPTION_JSON -Target Android -ProtocolVersion engineering-pending-review -BuildId "$base-android"
+          uv run --project sound python tools/run_integrity.py --fixtures $env:AV_INTEGRITY_FIXTURES --fixtures-sha256 $env:AV_INTEGRITY_FIXTURES_SHA256 --existing-exports $env:AV_INTEGRITY_RESULTS --out .local/integrity-ci/report
+          if ($LASTEXITCODE -ne 0) { throw 'Native export integrity verification failed' }
+      # Raw Unity logs can contain runner paths/account details; publish sanitized derivatives after review.

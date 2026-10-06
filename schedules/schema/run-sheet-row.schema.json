@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/run-sheet-row.schema.json",
+  "title": "Visit run-sheet row (<unit>/run-sheets/<person>/<visit>.csv, restricted)",
+  "description": "One row of a generated run sheet, read as an object of strings (e.g. csv.DictReader). The header is exactly the methodology visit-run-sheet-template.csv: participant_id, visit, block, expected_count, actual_count, start_time, end_time, comfort_check, phone_locked, hash_check, deviations, operator_signoff. One row per schedule block, in block order. The generator fills participant_id (person slot ID until the console binds the coded participant ID), visit, block, expected_count and, when a package-hash mapping is given, hash_check; every other column is empty until the operator or console fills it. Rows never hold method labels, roles or intended answers. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "participant_id",
+    "visit",
+    "block",
+    "expected_count",
+    "actual_count",
+    "start_time",
+    "end_time",
+    "comfort_check",
+    "phone_locked",
+    "hash_check",
+    "deviations",
+    "operator_signoff"
+  ],
+  "properties": {
+    "participant_id": {"type": "string", "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}|B-[PCS][0-9]{2}-M[12])$", "description": "Person slot ID as generated; the console may substitute the coded participant ID bound by the reveal API."},
+    "visit": {"enum": ["D0", "D7", "V1", "V2", "V3", "W1", "W4"]},
+    "block": {"enum": ["profile_menu", "atom_menus", "atomic_lessons", "message_lessons", "pre_old", "trained", "novel", "atomic", "validity"]},
+    "expected_count": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+    "actual_count": {"type": "string", "description": "Operator or console: items actually run."},
+    "start_time": {"type": "string"},
+    "end_time": {"type": "string"},
+    "comfort_check": {"type": "string"},
+    "phone_locked": {"type": "string"},
+    "hash_check": {"type": "string", "pattern": "^((sha256|DEMO-placeholder):[0-9a-f]{64})?$", "description": "Expected package hash as generated (empty without a mapping); the console records the check result in its own log."},
+    "deviations": {"type": "string"},
+    "operator_signoff": {"type": "string"}
+  }
+}

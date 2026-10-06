@@ -1,0 +1,630 @@
+{
+  "approach_offset_m": [
+    0.0,
+    0.0,
+    0.06
+  ],
+  "collision_checked": false,
+  "grasp_validated": false,
+  "kind": "loaded_43_joint_articulation_position_only_IK",
+  "orientation_constrained": false,
+  "physics_integrated": false,
+  "results": [
+    {
+      "anchor_id": "container_E/home",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.4867490530014038,
+        0.17570814490318298,
+        -0.5095254778862,
+        -0.8530726432800293,
+        0.006552135106176138,
+        0.0718417689204216,
+        -0.39173710346221924
+      ],
+      "measured_palm_position_m": [
+        0.11572770774364471,
+        0.0757124125957489,
+        0.9348873496055603
+      ],
+      "position_error_m": 0.0010245846351608634,
+      "target_palm_position_m": [
+        0.115,
+        0.075,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_E/tag_free",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.2064022272825241,
+        0.06448490172624588,
+        -0.3835754692554474,
+        -0.5701819658279419,
+        -0.015526030212640762,
+        0.3028491139411926,
+        -0.2509504556655884
+      ],
+      "measured_palm_position_m": [
+        0.18034380674362183,
+        0.07573579996824265,
+        0.9011282920837402
+      ],
+      "position_error_m": 0.0013902130303904414,
+      "target_palm_position_m": [
+        0.18,
+        0.075,
+        0.8999999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_F/home",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.3402586281299591,
+        0.031449973583221436,
+        0.5482488870620728,
+        -0.6859953999519348,
+        0.027935702353715897,
+        0.16719359159469604,
+        0.3960035443305969
+      ],
+      "measured_palm_position_m": [
+        0.11584080755710602,
+        0.28435298800468445,
+        0.9350266456604004
+      ],
+      "position_error_m": 0.0010612651240080595,
+      "target_palm_position_m": [
+        0.115,
+        0.285,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_F/tag_free",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.12357993423938751,
+        0.15067268908023834,
+        0.44291436672210693,
+        -0.43567073345184326,
+        -0.002211177023127675,
+        0.4287908673286438,
+        0.26951465010643005
+      ],
+      "measured_palm_position_m": [
+        0.17986741662025452,
+        0.28497958183288574,
+        0.9017102718353271
+      ],
+      "position_error_m": 0.0017155490349978209,
+      "target_palm_position_m": [
+        0.18,
+        0.285,
+        0.8999999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_G/home",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.4229637086391449,
+        -0.193964421749115,
+        -0.023545891046524048,
+        -0.08748827874660492,
+        0.07356180250644684,
+        0.511651337146759,
+        -0.006852828897535801
+      ],
+      "measured_palm_position_m": [
+        0.3000105619430542,
+        0.07533682137727737,
+        0.9342619180679321
+      ],
+      "position_error_m": 0.0008113731164485216,
+      "target_palm_position_m": [
+        0.3,
+        0.075,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_G/tag_free",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.855546236038208,
+        -0.06492799520492554,
+        0.06790939718484879,
+        0.6582080721855164,
+        0.03799458220601082,
+        0.625607967376709,
+        -0.026951633393764496
+      ],
+      "measured_palm_position_m": [
+        0.36550259590148926,
+        0.0748889222741127,
+        0.9012011885643005
+      ],
+      "position_error_m": 0.0013068447588011622,
+      "target_palm_position_m": [
+        0.365,
+        0.075,
+        0.8999999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_H/home",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.4288751780986786,
+        0.4997238516807556,
+        0.2218482345342636,
+        0.09125611186027527,
+        -0.12487506121397018,
+        0.6674215197563171,
+        0.029139842838048935
+      ],
+      "measured_palm_position_m": [
+        0.30058753490448,
+        0.2840772569179535,
+        0.9374868869781494
+      ],
+      "position_error_m": 0.0027168411761522293,
+      "target_palm_position_m": [
+        0.3,
+        0.285,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "container_H/tag_free",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.9506018161773682,
+        0.47561341524124146,
+        0.1844039261341095,
+        1.2024749517440796,
+        -0.029451698064804077,
+        0.29561683535575867,
+        0.011036425828933716
+      ],
+      "measured_palm_position_m": [
+        0.3648263216018677,
+        0.2845785617828369,
+        0.9009601473808289
+      ],
+      "position_error_m": 0.001062875147908926,
+      "target_palm_position_m": [
+        0.365,
+        0.285,
+        0.8999999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "quarantine_E",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.6319518089294434,
+        -0.004959644749760628,
+        0.014234140515327454,
+        -0.9104087948799133,
+        -0.0005885236896574497,
+        0.04633130878210068,
+        0.008288010954856873
+      ],
+      "measured_palm_position_m": [
+        0.11457938700914383,
+        0.17949014902114868,
+        0.9366701245307922
+      ],
+      "position_error_m": 0.0017961569828912616,
+      "target_palm_position_m": [
+        0.115,
+        0.18,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "quarantine_F",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.14789658784866333,
+        0.41140806674957275,
+        0.7829957008361816,
+        -0.24283026158809662,
+        0.10758684575557709,
+        0.4539909362792969,
+        0.5284626483917236
+      ],
+      "measured_palm_position_m": [
+        0.11719058454036713,
+        0.38891494274139404,
+        0.9362183809280396
+      ],
+      "position_error_m": 0.0027313760947436094,
+      "target_palm_position_m": [
+        0.115,
+        0.38999999999999996,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "quarantine_G",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.36416763067245483,
+        0.28103840351104736,
+        0.002178638242185116,
+        -0.12170218676328659,
+        -0.05324113741517067,
+        0.5309820175170898,
+        -0.011527545750141144
+      ],
+      "measured_palm_position_m": [
+        0.2992759943008423,
+        0.18062536418437958,
+        0.9323360919952393
+      ],
+      "position_error_m": 0.00283049326390028,
+      "target_palm_position_m": [
+        0.3,
+        0.18,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "quarantine_H",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.7512521147727966,
+        0.7030637264251709,
+        0.47353190183639526,
+        0.865575909614563,
+        -0.05115319788455963,
+        0.5625896453857422,
+        0.02855502814054489
+      ],
+      "measured_palm_position_m": [
+        0.30061158537864685,
+        0.3898049592971802,
+        0.9365797638893127
+      ],
+      "position_error_m": 0.0017051991308107972,
+      "target_palm_position_m": [
+        0.3,
+        0.38999999999999996,
+        0.935
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "return_cup",
+      "hand": "left",
+      "joint_names": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint",
+        "left_wrist_pitch_joint",
+        "left_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.3877561688423157,
+        0.3724147081375122,
+        0.8853151798248291,
+        -0.21439771354198456,
+        0.03414546325802803,
+        0.508235514163971,
+        0.5487236976623535
+      ],
+      "measured_palm_position_m": [
+        0.04625518247485161,
+        0.4046768546104431,
+        0.906336784362793
+      ],
+      "position_error_m": 0.0018619804177433252,
+      "target_palm_position_m": [
+        0.045,
+        0.405,
+        0.905
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "supply_cup",
+      "hand": "right",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint",
+        "right_wrist_pitch_joint",
+        "right_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.38772812485694885,
+        -0.3724546432495117,
+        -0.8853359818458557,
+        -0.2143455594778061,
+        -0.034146446734666824,
+        0.5082758665084839,
+        -0.5487089157104492
+      ],
+      "measured_palm_position_m": [
+        0.04625527560710907,
+        -0.4046766757965088,
+        0.9063372611999512
+      ],
+      "position_error_m": 0.0018624166259542108,
+      "target_palm_position_m": [
+        0.045,
+        -0.405,
+        0.905
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "tray_A",
+      "hand": "right",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint",
+        "right_wrist_pitch_joint",
+        "right_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.32966238260269165,
+        -0.0776631236076355,
+        0.2909480929374695,
+        -0.7438703775405884,
+        0.006756851449608803,
+        0.14795896410942078,
+        0.20544305443763733
+      ],
+      "measured_palm_position_m": [
+        0.16045339405536652,
+        -0.10675477236509323,
+        0.9307441711425781
+      ],
+      "position_error_m": 0.0019592312164604664,
+      "target_palm_position_m": [
+        0.16,
+        -0.105,
+        0.9299999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "tray_B",
+      "hand": "right",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint",
+        "right_wrist_pitch_joint",
+        "right_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        0.15910716354846954,
+        -0.15811076760292053,
+        -0.5075619220733643,
+        -0.5269307494163513,
+        -0.041086990386247635,
+        0.311923623085022,
+        -0.3535044491291046
+      ],
+      "measured_palm_position_m": [
+        0.16053159534931183,
+        -0.2944673001766205,
+        0.9301462769508362
+      ],
+      "position_error_m": 0.0007666468736715615,
+      "target_palm_position_m": [
+        0.16,
+        -0.295,
+        0.9299999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "tray_C",
+      "hand": "right",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint",
+        "right_wrist_pitch_joint",
+        "right_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.6521406173706055,
+        0.00025670556351542473,
+        -0.02604646235704422,
+        0.23171111941337585,
+        -0.01751868799328804,
+        0.5946686863899231,
+        0.01384915504604578
+      ],
+      "measured_palm_position_m": [
+        0.34451019763946533,
+        -0.1058250442147255,
+        0.9287009239196777
+      ],
+      "position_error_m": 0.0016150001902133226,
+      "target_palm_position_m": [
+        0.345,
+        -0.105,
+        0.9299999999999999
+      ],
+      "within_3mm": true
+    },
+    {
+      "anchor_id": "tray_D",
+      "hand": "right",
+      "joint_names": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint",
+        "right_wrist_pitch_joint",
+        "right_wrist_yaw_joint"
+      ],
+      "joint_positions_rad": [
+        -0.7564684152603149,
+        -0.5320972204208374,
+        -0.14974689483642578,
+        0.6404072642326355,
+        0.08283185958862305,
+        0.6668479442596436,
+        -0.040465570986270905
+      ],
+      "measured_palm_position_m": [
+        0.345464289188385,
+        -0.2947126626968384,
+        0.9307737946510315
+      ],
+      "position_error_m": 0.000947031076066196,
+      "target_palm_position_m": [
+        0.345,
+        -0.295,
+        0.9299999999999999
+      ],
+      "within_3mm": true
+    }
+  ],
+  "targets": 18,
+  "targets_within_threshold": 18,
+  "threshold_m": 0.003,
+  "torso_and_legs_at_default": true
+}

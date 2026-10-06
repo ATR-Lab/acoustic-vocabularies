@@ -1,0 +1,11 @@
+{
+  "name": "AcousticVocab.Workcell.Editor",
+  "references": [
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.Workcell"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

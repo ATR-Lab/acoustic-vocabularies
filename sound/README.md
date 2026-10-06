@@ -26,14 +26,19 @@ Nothing needs the network at runtime.
 | --- | --- |
 | `src/av_sound/` | The package |
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
+| `schema/store-record.schema.json` | One line of a vocabulary-store log ([`docs/store.md`](docs/store.md)) |
 | `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
+| `schema/package.schema.json` | Learner and dyad package format: `manifest.json`, `answers.json`, `audio.json`, `allocation.json` ([`package-format.md`](../docs/interfaces/package-format.md)) |
+| `schema/provisional-bank.schema.json` | PROVISIONAL Study B bank input of the dyad package builder (until #26) |
+| `examples/package-demo/` | JSON files of the sealed synthetic package `DEMO-BOOK-P1` (no WAVs) |
 | `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
-| `reserved/registry.json` | Reserved-signal registry (empty until #14) |
+| `reserved/registry.json` | Reserved-signal registry: the seven nonlexical assets (#14, [`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `docs/` | Renderer spec and component docs |
 | `testvectors/renderer/vectors.json` | Reference hashes for synthetic recipes |
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark |
+| `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, example package (`build_example_package.py`) |
 
 ## API
 
@@ -60,11 +65,24 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `load_reserved_registry()`, `ReservedRegistry`, `ReservedEntry` | Reserved signals (`E_RESERVED`) |
 | `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
 | `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
+| `nonlexical_assets()`, `nonlexical_asset(id)`, `calibration_example(profile)` -> `NonlexicalAsset` | Calibration examples (96,000 samples per profile), READY cue and grammar clicks; `.pcm`, `.pcm_sha256`, `.file_sha256`, `.segments`, levels ([`docs/nonlexical.md`](docs/nonlexical.md)) |
+| `build_reserved_registry()`, `CALIBRATION_SAMPLES` | The registry `reserved/registry.json` must equal; 96,000 |
+| `AtomAudio(atom_id, profile, pcm)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` also works |
 | `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
 | `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
 | `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |
 | `GAP_SAMPLES`, `MIN_MESSAGE_SAMPLES`, `MAX_MESSAGE_SAMPLES` | 9,600; 52,800; 96,000 |
+| `VocabularyStore(root, *, clock=None, reserved=None)` | Append-only store: `create_book`, `commit`, `get`, `list`, `verify`, `snapshot_hashes`, `snapshot`, `freeze`; no update or delete ([`docs/store.md`](docs/store.md)) |
+| `StoreEntry`, `BookInfo`, `VerifyReport`, `VerifyIssue` | A committed atom (an `AtomAudioLike`; `.reference()`), book facts, `verify` result |
+| `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError` | Store errors (`.code`); overwrite and frozen attempts are logged |
+| `persistence_violations(before, after)`, `snapshot_digest(snapshot)` | Growth check (old entries unchanged) and one publishable hash per book |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
+| `build_package(store, book_id, out_dir, *, expected_head=None) -> PackageResult` | Study A package of a frozen store book: 16 atom WAVs, 18 trained-message WAVs, `answers.json`, `audio.json`, `manifest.json`; held-out messages as hashes only ([`package-format.md`](../docs/interfaces/package-format.md)) |
+| `build_dyad_package(bank, out_dir) -> PackageResult` | Study B package of a dyad bank (PROVISIONAL input `av_sound.dyad_bank.DyadBank`): 192 option WAVs, hashes of all 1,536 option combinations |
+| `seal(package_dir, *, permutation=None, schedules=None, allocation_extras=None) -> str` | Adds `permutation.json` (#29), `schedules/` (#30) and `allocation.json`, checks them, returns the new package hash |
+| `load_package(package_dir, *, expected_package_sha256=None) -> LoadedPackage` | Verifies a package as the app will; raises `PackageIntegrityError` (`E_HASH_MISMATCH`, `E_FILE_MISSING`, `E_FILE_EXTRA`, ...) |
+| `scan_package(package_dir, *, forbidden_strings=()) -> LeakReport` | Leak scan: held-out audio, unlisted message audio, method labels, designer IDs, method words, `source` keys |
+| `PackageError`, `PackageResult`, `LeakReport`, `DyadBank` | Package errors (`.code`, `.problems`), build result, scan report, provisional bank |
 
 ```python
 from av_sound import Profile, Recipe, render, write_wav
@@ -101,7 +119,8 @@ assert result.codes == ("E_EVENT_SHORT",)  # first event 1,760 samples (36.7 ms)
 `RENDERER_VERSION` is `0.1.0` until the G4 freeze, when it becomes `1.0.0`. Any
 change to rendered bytes bumps it in the same pull request and regenerates
 `testvectors/` with `uv run --project sound python sound/tools/make_testvectors.py` and
-`uv run --project sound python sound/tools/make_composition_vectors.py`.
+`uv run --project sound python sound/tools/make_composition_vectors.py`, and rewrites the
+reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`.
 A code change that leaves the bytes unchanged still changes `renderer_hash`: regenerate
 the vectors to update the pins and say why in the pull request.
 CI renders the vectors on Linux, macOS and Windows and fails on any hash change.

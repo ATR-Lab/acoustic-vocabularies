@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "qualification": "engineering_software_validation_not_joined_scene_or_hardware",
+  "runtime_commit": "f86c0ae000c53f1e0c0b262261d91bb18d1391aa",
+  "build_commit": "ac14ac1cc750fa511a423852511da698d0dd7212",
+  "unity_editor": "6000.6.0f1",
+  "python_tests": {
+    "passed": 78,
+    "console_passed": 37
+  },
+  "schemas": 22,
+  "registered_examples": 2,
+  "repository_guard": "pass_including_evidence_commit_84bf77c",
+  "unity_tests": {
+    "edit": {
+      "passed": 177,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "1d5ba969a9b7d47e174acde4720f39c3dd7b9260611e86d706422cabeadcb86a"
+    },
+    "play": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "235b92081a09315091ffe302800cac6ca0cc2fa68fe2899144c42500c8221df9"
+    }
+  },
+  "interop": {
+    "implementation": "actual_Unity_compiled_engine_adapter_DLLs_and_actual_Python_Mailbox",
+    "clock": "synthetic_5x_virtual",
+    "health": "synthetic_not_device",
+    "consecutive_successes": [
+      {
+        "result_sha256": "d191bf6e750a1de9fdb4bbbffc145187938507cc4c9d5c0235c3278196d12f5b",
+        "qualification": "synthetic_actual_dll_interop_no_device_or_joined_scene",
+        "commands": [
+          "load",
+          "start",
+          "pause",
+          "resume",
+          "stop"
+        ],
+        "durable_python_receipts": 5,
+        "durable_csharp_records": 10,
+        "paused_completed_counts": [
+          1
+        ],
+        "final_state": "stopped",
+        "child_exit": 0,
+        "csharp_journal_sha256": "dfdbdb09a225d0e7d9b083c92b9b1e818adaf4b2981bb905826975d4df6ddb81",
+        "audio_device_used": false,
+        "participant_scene_used": false
+      },
+      {
+        "result_sha256": "f13d1276848e618161544b133a4e6df570c264ae8a23846cfc0f61d29e64c8b9",
+        "qualification": "synthetic_actual_dll_interop_no_device_or_joined_scene",
+        "commands": [
+          "load",
+          "start",
+          "pause",
+          "resume",
+          "stop"
+        ],
+        "durable_python_receipts": 5,
+        "durable_csharp_records": 10,
+        "paused_completed_counts": [
+          1
+        ],
+        "final_state": "stopped",
+        "child_exit": 0,
+        "csharp_journal_sha256": "f25bed46435e414d2909e7b314262edfa4a9e632d6f31f5103b9472807d32491",
+        "audio_device_used": false,
+        "participant_scene_used": false
+      },
+      {
+        "result_sha256": "6cd51bdd413fc58e0581355b2f1c2681d1bf49159fe8c4e0c0c79877218e5393",
+        "qualification": "synthetic_actual_dll_interop_no_device_or_joined_scene",
+        "commands": [
+          "load",
+          "start",
+          "pause",
+          "resume",
+          "stop"
+        ],
+        "durable_python_receipts": 5,
+        "durable_csharp_records": 10,
+        "paused_completed_counts": [
+          1
+        ],
+        "final_state": "stopped",
+        "child_exit": 0,
+        "csharp_journal_sha256": "d53bf93990144a18d8b5cf2e429c4e41a8c777f9df56f6f3f834c0a11353d5f3",
+        "audio_device_used": false,
+        "participant_scene_used": false
+      }
+    ],
+    "prior_failed_runs_retained": true,
+    "prior_failure": "Windows publication/read contention; stale state correctly blocked continuation. One probe invocation also used an incorrect DLL path. No failed run is promoted."
+  },
+  "builds": {
+    "windows": {
+      "result": "Succeeded",
+      "errors": 0,
+      "manifest_sha256": "21bba49267d1da9ff7d43933e787e9c34fee8dbb8b11214852915271a175228f",
+      "build_id": "operator-link-002",
+      "scope": "Foundation scene with preserved library; participant content integration absent"
+    },
+    "android": {
+      "result": "Succeeded",
+      "errors": 0,
+      "manifest_sha256": "652ba5d165303d7fde5ef254c8715d6b7c91da2fe18a3509043382fd535b0dcf",
+      "build_id": "operator-quest-002",
+      "scope": "Foundation scene with preserved library; participant content integration absent",
+      "apk": {
+        "path": "experiment.apk",
+        "bytes": 37374778,
+        "sha256": "eefe88056b0ad56c791a881ce0aa488b879a7cb525b7e778424a750479ed0604"
+      },
+      "crc_pass": true,
+      "arm64_il2cpp": true,
+      "internet_permission": true,
+      "authorized_devices": 0
+    }
+  },
+  "pending": [
+    "Joined trusted runtime host and participant neutral pause view",
+    "Full protocol paired operator/headset captures",
+    "Real device health authorities and fault delay measurements",
+    "External deviation template header and actual block boundary timestamps",
+    "Operator display mirroring/casting/notification settings",
+    "Android remote console transport (current mailbox is same-PC Windows only)"
+  ]
+}
