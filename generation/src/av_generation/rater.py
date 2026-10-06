@@ -1,16 +1,21 @@
-"""Rater stations: browser client and bot rater (#21). INTERFACE ONLY in the skeleton.
+"""Bot rater for synthetic panels (#21 implements; #22 uses). INTERFACE ONLY.
 
-The station page (`av_generation/web/rater/`, plain HTML/JS) speaks
-`av_generation.rater_protocol`: it preloads and hash-checks every asset, syncs to the
-server clock, plays the candidate at 0 s and the reference at 2 s exactly once, unlocks
-the controls after the reference (or at 2 s), locks them at 20 s and sends one `rating`.
-There is no replay, seek or volume control. `BotRater` (#22) speaks the same protocol
-over a WebSocket with seeded synthetic ratings.
+The human station is the static page of `av_generation.panel` (#21). `BotRater` is a
+station driven by code that speaks exactly `av_generation.rater_protocol` over a
+WebSocket: `hello` with `kind="bot"`, clock sync, preload with hash check, `played` at
+the scheduled onsets (no audio output), and one `rating` per rateable slot drawn from
+`seeds.rng_for(seeds.bot_seed_key(run_id, rater_id, "rating", rating_slot_id))`.
+
+It sees only what a station sees: rating-slot IDs, positions, meanings and asset IDs,
+never a book ID or method. Fallback injection (#22) is therefore keyed by rating-slot
+ID: the driver computes the IDs from the restricted batch config
+(`BatchConfig.rating_slot_ids(book_id, atom_id)`) and passes them in
+`BotRatingPolicy.force_unacceptable_slots`.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,9 +24,10 @@ class BotRatingPolicy:
     association and distinguishability uniform on 1..7)."""
 
     p_comfort_acceptable: float = 0.9
-    force_unacceptable_atoms: tuple[str, ...] = ()
-    """Atom IDs (with book IDs, as `book.atom`) rated unacceptable by every bot (fallback
-    injection)."""
+    force_unacceptable_slots: frozenset[str] = field(default_factory=frozenset)
+    """Rating-slot IDs every bot rates comfort `unacceptable` (zero-eligible injection)."""
+    p_missing: float = 0.0
+    """Probability of submitting no rating in a slot (missing-rating fixtures)."""
 
 
 class BotRater:

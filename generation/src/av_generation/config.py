@@ -2,9 +2,15 @@
 
 One file per batch run: the profile, the stored atom order and label permutation (from the
 schedules batch table / `permutation.json`, #29), the three anonymous books and their
-methods (from the restricted book key, #31), the panel's presentation order, the seed
-namespace, the separation threshold and the fallback set the run uses. The orchestrator
-(#20) reads it; the run manifest records its SHA-256 (`config_sha256`).
+methods (from the restricted book key, #31), the panel (raters, presentation order and
+the per-panel book aliases shown on the operator console), the seed namespace, the
+separation threshold and the fallback set the run uses. The orchestrator (#20) reads it;
+the run manifest records its SHA-256 (`config_sha256`).
+
+`rating_positions(book_id)` and `rating_slot_ids(book_id, atom_id)` give the rating
+slots of one book's candidates: the #22 driver uses them to tell bot raters which
+rating slots to rate unacceptable (fallback injection) without any book ID reaching a
+station.
 
 The file holds the method map, so it is restricted: only `DEMO-` configs enter git.
 """
@@ -19,8 +25,15 @@ from av_sound.grammar import ATOM_IDS, parse_atom_id
 from av_sound.recipe import Profile
 from av_sound.store import SEMANTIC_LABELS
 
-from av_generation.constants import PANEL_ORDERS
-from av_generation.ids import STUDY_A_METHODS, Method, is_demo
+from av_generation.constants import PANEL_ORDERS, RATERS_PER_PANEL, ROUNDS_PER_ATOM, SLOTS_PER_ROUND
+from av_generation.ids import (
+    PANEL_ALIAS_RE,
+    STUDY_A_METHODS,
+    Method,
+    check_atom,
+    is_demo,
+    rating_slot_id,
+)
 from av_generation.records import Document, RecordError
 
 
@@ -35,14 +48,32 @@ class BookAssignment:
 
 
 @dataclass(frozen=True, slots=True)
+class RaterSeat:
+    """One rater of the panel: the coded rater ID, the station and whether a bot sits
+    there (synthetic runs). The panel session host (#20) accepts `hello` only from these
+    seats and writes 9 rating records per seat per round (`panel_session`)."""
+
+    rater_id: str
+    station: str
+    kind: Literal["human", "bot"]
+
+
+@dataclass(frozen=True, slots=True)
 class PanelAssignment:
-    """The batch's rating panel and its presentation order of the three books."""
+    """The batch's rating panel, its presentation order of the three books and the
+    per-panel aliases of the books (Study A protocol §3.1: book IDs rotate between panels)."""
 
     panel_id: str
     order_index: int
     """1..6: index into `constants.PANEL_ORDERS` (method permutations)."""
     order: tuple[str, str, str]
     """Book IDs in rating order (blocks of three candidates follow this order)."""
+    aliases: Mapping[str, str]
+    """Book ID -> panel alias (`ids.PANEL_ALIAS_RE`), drawn per panel with
+    `seeds.panel_seed_key(set_ns, "aliases", panel_id)` (#20). The operator console shows
+    aliases only."""
+    raters: tuple[RaterSeat, ...]
+    """The three seats, in station order."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +139,22 @@ class BatchConfig(Document):
         by_id = {b.book_id: b.method for b in self.books}
         if len(by_id) != len(self.books):
             problems.append("book IDs must be distinct")
+        if set(self.panel.aliases) != set(by_id):
+            problems.append("panel.aliases must name the three book IDs")
+        aliases = list(self.panel.aliases.values())
+        if len(set(aliases)) != len(aliases) or not all(
+            PANEL_ALIAS_RE.fullmatch(a) for a in aliases
+        ):
+            problems.append("panel aliases must be distinct PB-XXXX aliases")
+        seats = self.panel.raters
+        if (
+            len(seats) != RATERS_PER_PANEL
+            or len({s.rater_id for s in seats}) != len(seats)
+            or len({s.station for s in seats}) != len(seats)
+        ):
+            problems.append(f"panel.raters must be {RATERS_PER_PANEL} distinct raters and stations")
+        if self.set != "demo" and any(s.kind == "bot" for s in seats):
+            problems.append("bot raters sit only in demo (synthetic) batches")
         if sorted(self.panel.order) != sorted(by_id):
             problems.append("panel.order must list the three book IDs")
         elif (
@@ -122,6 +169,25 @@ class BatchConfig(Document):
         if problems:
             raise RecordError("inconsistent batch config", tuple(problems))
         return self
+
+    def rating_positions(self, book_id: str) -> tuple[int, ...]:
+        """Play positions 1..9 of a book's three candidates in every round (its block of
+        `panel.order`, slot order within the block)."""
+        try:
+            block = self.panel.order.index(book_id)
+        except ValueError:
+            raise KeyError(book_id) from None
+        return tuple(block * SLOTS_PER_ROUND + slot for slot in range(1, SLOTS_PER_ROUND + 1))
+
+    def rating_slot_ids(self, book_id: str, atom_id: str) -> tuple[str, ...]:
+        """The 12 rating-slot IDs of one book's candidates for one atom (rounds 1..4)."""
+        check_atom(atom_id)
+        positions = self.rating_positions(book_id)
+        return tuple(
+            rating_slot_id(self.batch_id, atom_id, round_, position)
+            for round_ in range(1, ROUNDS_PER_ATOM + 1)
+            for position in positions
+        )
 
     def method_of(self, book_id: str) -> Method:
         """The method of a book (restricted information)."""

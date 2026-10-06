@@ -3,10 +3,13 @@
 import pytest
 
 from av_generation.ids import (
+    PANEL_ALIAS_ALPHABET,
     IdError,
+    bank_set,
     bank_slot_id,
     check_book,
     check_id,
+    check_panel_alias,
     is_demo,
     parse_bank_slot_id,
     parse_proposal_slot_id,
@@ -61,3 +64,19 @@ def test_rejections(call):
 
 def test_demo():
     assert is_demo("DEMO-A-P01") and not is_demo("A-P01")
+
+
+def test_panel_aliases_and_bank_sets():
+    assert check_panel_alias("PB-K7MW") == "PB-K7MW"
+    for bad in ("PB-A1XX", "PB-D2XX", "PB-K7M", "BK-K7MW"):
+        with pytest.raises(IdError):
+            check_panel_alias(bad)
+    assert not set("AD0123") & set(PANEL_ALIAS_ALPHABET)
+    assert [bank_set(b) for b in ("bank-P001", "bank-C072", "DEMO-bank-01")] == [
+        "pilot",
+        "confirmatory",
+        "demo",
+    ]
+    for bad in ("PILOT-B-01", "B-001", "bank-C01", None):
+        with pytest.raises(IdError):
+            bank_set(bad)

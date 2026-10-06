@@ -4,13 +4,15 @@
 <runs_root>/<run_id>/
   run-manifest.json        RunManifest (records the method map: restricted)
   config.json              BatchConfig (A) or the bank-run config (B; #26)
+  generation-config.json   GenerationConfig the run uses (genconfig; its hash is the config hash)
+  dry-run-plan.json        DryRunPlan of a synthetic dry run (#22)
   logs/<name>.jsonl        one append-only JSONL file per record type (LOG_FILES)
   store/                   VocabularyStore root of the run's books (A)
   audio/                   rendered WAV cache, named <file_sha256>.wav (never in git)
   audit/unmasked/          #24 outputs with method labels (restricted)
   audit/masked/            #24 outputs with anonymous book IDs only
-  threshold/               #23 stimulus set and exports
-  banks/<bank_id>/         #26 bank outputs (manifest, attempts)
+  threshold/               #23 stimulus set, sessions/<session_id>.json and exports
+  banks/<bank_id>/         #26 bank outputs (manifest, generation config, amendments, attempts)
 ```
 
 Policy: only `demo` and `synthetic` runs (IDs starting `DEMO-`) may live inside a git
@@ -40,6 +42,8 @@ from av_generation.ids import (
 
 MANIFEST_NAME: Final = "run-manifest.json"
 CONFIG_NAME: Final = "config.json"
+GENERATION_CONFIG_NAME: Final = "generation-config.json"
+DRY_RUN_PLAN_NAME: Final = "dry-run-plan.json"
 
 LOG_FILES: Final[Mapping[str, str]] = MappingProxyType(
     {
@@ -114,6 +118,14 @@ class RunLayout:
         return self.root / CONFIG_NAME
 
     @property
+    def generation_config(self) -> Path:
+        return self.root / GENERATION_CONFIG_NAME
+
+    @property
+    def dry_run_plan(self) -> Path:
+        return self.root / DRY_RUN_PLAN_NAME
+
+    @property
     def logs_dir(self) -> Path:
         return self.root / "logs"
 
@@ -147,6 +159,9 @@ class RunLayout:
     @property
     def threshold_dir(self) -> Path:
         return self.root / "threshold"
+
+    def threshold_session(self, session_id: str) -> Path:
+        return self.threshold_dir / "sessions" / f"{session_id}.json"
 
     def bank_dir(self, bank_id: str) -> Path:
         return self.root / "banks" / bank_id

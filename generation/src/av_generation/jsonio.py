@@ -6,6 +6,15 @@
 - Documents (manifests, configs) = `document_text(obj)`: `indent=2`, sorted keys,
   `ensure_ascii=False`, trailing `\\n`, written UTF-8 with `newline="\\n"`.
 - Reading is strict (`av_sound.recipe.strict_json_loads`: UTF-8, unique keys, no NaN).
+- Shared hash definitions (one definition for every module and the G4 freeze, #25):
+  `canonical_sha256(value)`, `messages_sha256(messages)` (prompts, #16/#17),
+  `schema_sha256(schema)` (decoding schema, #16/#17) and `file_set_sha256(files)`
+  (prompt sets, meaning sets and other multi-file inputs).
+- Appenders of one file share one lock per resolved path (several writers of
+  `plays.jsonl` or `timing.jsonl` in one process are serialized); one process writes a
+  run. `repair_torn_tail(path)` cuts a torn last line after a crash; the ledger (#17) and
+  the orchestrator (#20) call it when they reopen a log and log a `log_repaired` timing
+  event with the returned `TornTail`.
 
 The codec maps frozen dataclasses to JSON objects field by field: tuples to lists,
 `StrEnum` to their values, nested dataclasses to objects, `Mapping` fields to objects.
@@ -22,7 +31,7 @@ import os
 import threading
 import types
 import typing
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal, Union, get_args, get_origin, get_type_hints
@@ -49,6 +58,37 @@ def canonical_line(obj: object) -> bytes:
 def canonical_sha256(obj: object) -> str:
     """SHA-256 of the canonical line without its newline (the hash of a JSON value)."""
     return hashlib.sha256(canonical_line(obj)[:-1]).hexdigest()
+
+
+def messages_sha256(messages: Iterable[Mapping[str, Any]]) -> str:
+    """The prompt hash: `canonical_sha256` of the chat messages as sent.
+
+    `messages` is the list of `{"role", "content"}` objects of one model call (#16
+    `LlmRequest.prompt_sha256`, #17 `BuiltPrompt.prompt_sha256`, the slot record). Only
+    `role` and `content` count, in message order; the text is hashed exactly (ASCII
+    escaping by the canonical line), with no normalization.
+    """
+    return canonical_sha256([{"role": m["role"], "content": m["content"]} for m in messages])
+
+
+def schema_sha256(schema: Mapping[str, Any]) -> str:
+    """The decoding-schema hash: `canonical_sha256` of the exact JSON Schema object sent in
+    `response_format.json_schema.schema` (with its `$id`, if it has one). Freeze item
+    `schema.decoding_sha256` and every `schema_sha256` field use this definition."""
+    return canonical_sha256(dict(schema))
+
+
+def file_set_sha256(files: Mapping[str, str]) -> str:
+    """Hash of a set of files: `canonical_sha256` of `{relative POSIX path: file SHA-256}`.
+
+    Used for prompt sets (freeze items `prompts.a3_sha256`, `prompts.b_sha256`), meaning
+    sets and other directory inputs, so a set hash never depends on listing order or the
+    platform's path separator.
+    """
+    for name, digest in files.items():
+        if "\\" in name or name.startswith("/") or len(digest) != 64:
+            raise CodecError(f"file_set_sha256: bad entry {name!r}")
+    return canonical_sha256(dict(sorted(files.items())))
 
 
 def document_text(obj: object) -> str:
@@ -81,14 +121,32 @@ def file_sha256(path: str | os.PathLike[str]) -> str:
     return digest.hexdigest()
 
 
+_PATH_LOCKS: dict[str, threading.Lock] = {}
+_PATH_LOCKS_GUARD = threading.Lock()
+
+
+def path_lock(path: str | os.PathLike[str]) -> threading.Lock:
+    """The process-wide lock of a file (keyed by its resolved, case-normalized path)."""
+    key = os.path.normcase(str(Path(path).resolve()))
+    with _PATH_LOCKS_GUARD:
+        lock = _PATH_LOCKS.get(key)
+        if lock is None:
+            lock = _PATH_LOCKS[key] = threading.Lock()
+        return lock
+
+
 class JsonlAppender:
-    """Thread-safe append-only writer of canonical lines (flushed and fsynced per line)."""
+    """Thread-safe append-only writer of canonical lines (flushed and fsynced per line).
+
+    Every appender of the same file in this process shares one lock (`path_lock`), so
+    lines from several writers never interleave, also on Windows.
+    """
 
     def __init__(self, path: str | os.PathLike[str], *, fsync: bool = True) -> None:
         self.path = Path(path)
         self._fsync = fsync
-        self._lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = path_lock(self.path)
 
     def append_obj(self, obj: object) -> bytes:
         """Append one JSON value; returns the line written."""
@@ -101,8 +159,44 @@ class JsonlAppender:
         return line
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class TornTail:
+    """What `repair_torn_tail` cut from a log: the bytes after the last newline."""
+
+    name: str
+    """File name of the repaired log, e.g. `slots.jsonl`."""
+    offset: int
+    """File size after the repair (the cut starts here)."""
+    n_bytes: int
+    sha256: str
+    """SHA-256 of the removed bytes (logged in the `log_repaired` timing event)."""
+
+
+def repair_torn_tail(path: str | os.PathLike[str]) -> TornTail | None:
+    """Cut an unterminated last line (a write torn by a crash); `None` if the file is clean.
+
+    Only bytes after the last `\\n` are removed, so every complete record stays. The
+    caller logs the returned `TornTail` (timing event `log_repaired`): a repair is a
+    deviation, never silent. Missing or empty files are clean.
+    """
+    target = Path(path)
+    if not target.exists():
+        return None
+    with path_lock(target), open(target, "r+b") as handle:
+        data = handle.read()
+        if not data or data.endswith(b"\n"):
+            return None
+        cut = data.rfind(b"\n") + 1
+        removed = data[cut:]
+        handle.truncate(cut)
+        handle.flush()
+        os.fsync(handle.fileno())
+    return TornTail(target.name, cut, len(removed), hashlib.sha256(removed).hexdigest())
+
+
 def iter_jsonl(path: str | os.PathLike[str]) -> Iterator[Any]:
-    """Decode each line of a JSONL file strictly. A torn last line raises `CodecError`."""
+    """Decode each line of a JSONL file strictly. A torn last line raises `CodecError`
+    (call `repair_torn_tail` first when reopening a log after a crash)."""
     with open(path, "rb") as handle:
         for number, raw in enumerate(handle, start=1):
             if not raw.endswith(b"\n"):

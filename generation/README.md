@@ -20,7 +20,7 @@ uv sync --project generation --locked
 uv run --project generation ruff check --config generation/pyproject.toml generation tests/generation
 uv run --project generation ruff format --config generation/pyproject.toml --check generation tests/generation
 (cd generation && uv run mypy)
-uv run --project generation pytest --import-mode=importlib -p no:cacheprovider -m "not browser" tests/generation
+uv run --project generation pytest --import-mode=importlib -p no:cacheprovider --timeout=300 -m "not browser" tests/generation
 ```
 
 Browser tests (`-m browser`) need Playwright Chromium
@@ -34,8 +34,9 @@ runtime; the tests refuse any non-loopback connection.
 | Path | Contents |
 | --- | --- |
 | `src/av_generation/` | The package (module map in `docs/architecture.md`) |
-| `schema/` | JSON Schemas of every log record, run document, the rater protocol, audit summary, freeze manifest and bank manifest |
+| `schema/` | JSON Schemas of every log record and run document, the generation config, meaning sets, the rater protocol, the dry-run plan, audit summary, freeze manifest, bank manifest and bank amendments |
 | `examples/demo-batch-config.json` | Synthetic batch configuration (`DEMO-A-P01`) |
+| `examples/demo-meanings/` | Synthetic meaning set (`DEMO-meanings-01`; placeholder texts, not study texts) |
 | `docs/` | Architecture and component docs |
 | `../tests/generation/` | Test suite (shared fixtures in `conftest.py`) |
 
@@ -50,13 +51,17 @@ Stable shared contracts (implemented):
 | --- | --- |
 | `seeds` | Seed keys (`A1`/`A2`/`A3`/`B`/`PANEL`/`BOT`/`THRESHOLD`), `derive_seed`, `wire_seed`, `rng_for` |
 | `outcomes` | The 14 slot outcome codes and their mapping from model statuses and validator codes |
+| `jsonio` | Canonical JSON/JSONL, shared hash definitions (prompt, schema, file set), torn-tail repair |
 | `records` | Log records and run documents with schemas; `RecordWriter`, `read_records` |
 | `domain` | The 12 recipe coordinates in protocol order |
-| `ids`, `config`, `proposers` | IDs, the batch configuration, round request/result types |
-| `rater_protocol` | Rater panel WebSocket protocol |
+| `ids`, `config`, `proposers` | IDs and panel aliases, the batch configuration, round request/result types |
+| `meanings`, `genconfig` | The shared meaning texts; the generation config and its frozen hash |
+| `panel_session`, `rater_protocol` | Orchestrator <-> panel server contract; rater WebSocket protocol |
 | `rundir`, `masking` | Run directories (public vs restricted) and masking checks |
+| `bank_manifest` | Bank manifest, bank hash, amendment log and effective menu |
 | `clock`, `netguard`, `webserve`, `llm_fake` | Clocks, outbound-network guard, uvicorn helper, scripted model client |
 
 Interfaces filled by their issues: `llm` (#16), `ledger`, `prompts`, `parser`, `a3` (#17),
-`a2` (#18), `a1` (#19), `orchestrator`, `selector` (#20), `rater` (#21), `dryrun` (#22),
-`threshold` (#23), `audit` (#24), `freeze` (#25), `bank_manifest` (#26).
+`a2` (#18), `a1` (#19), `orchestrator`, `selector` (#20), `panel`, `rater` (#21),
+`dryrun` (#22), `threshold` (#23), `audit` (#24), `freeze` (#25); the bank builder (#26)
+goes in `banks/`.

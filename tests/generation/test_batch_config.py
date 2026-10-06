@@ -33,6 +33,23 @@ def test_demo_example_is_consistent_and_points_at_the_demo_fallback_set():
         config.method_of("nope")
 
 
+def test_rating_slots_of_a_book_follow_the_panel_order():
+    config = demo()
+    assert [config.rating_positions(b) for b in config.panel.order] == [
+        (1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 9),
+    ]
+    book = config.panel.order[1]
+    slots = config.rating_slot_ids(book, "Q-r1")
+    assert slots[0] == "DEMO-A-P01.Q-r1.r1p4" and slots[-1] == "DEMO-A-P01.Q-r1.r4p6"
+    assert len(set(slots)) == 12 and not any(book in s for s in slots)
+    with pytest.raises(KeyError):
+        config.rating_positions("DEMO-BK-NOPE")
+    assert {s.kind for s in config.panel.raters} == {"bot"}
+    assert set(config.panel.aliases) == set(config.panel.order)
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -47,6 +64,25 @@ def test_demo_example_is_consistent_and_points_at_the_demo_fallback_set():
         ),
         lambda c: dataclasses.replace(c, panel=dataclasses.replace(c.panel, order_index=1)),
         lambda c: dataclasses.replace(c, set="pilot"),
+        lambda c: dataclasses.replace(
+            c,
+            panel=dataclasses.replace(
+                c.panel, aliases={**c.panel.aliases, c.books[0].book_id: "PB-AAAA"}
+            ),
+        ),
+        lambda c: dataclasses.replace(
+            c,
+            panel=dataclasses.replace(c.panel, aliases={b: "PB-K7MW" for b in c.panel.aliases}),
+        ),
+        lambda c: dataclasses.replace(
+            c, panel=dataclasses.replace(c.panel, raters=c.panel.raters[:2])
+        ),
+        lambda c: dataclasses.replace(
+            c,
+            panel=dataclasses.replace(
+                c.panel, raters=(c.panel.raters[0], c.panel.raters[0], c.panel.raters[2])
+            ),
+        ),
     ],
 )
 def test_inconsistent_configs_are_refused(change):

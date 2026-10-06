@@ -3,8 +3,9 @@
 `ScriptedLlmClient(script)` returns the scripted outcomes in order. A script entry is a
 `RawOutcome` (its `seed` is replaced by the key's seed), a string (an `ok` outcome with
 that text), or a callable `(messages, schema, seed_key) -> RawOutcome | str`. It counts
-calls, keeps every request and counts tokens as whitespace-separated words unless a
-`token_counter` is given. It is not the #16 mock server (which tests the HTTP client).
+calls, keeps every request (with its `slot_id`) and counts tokens as whitespace-separated
+words unless a `token_counter` is given (which may raise `llm.TokenCountError` to script
+a failed count). It is not the #16 mock server (which tests the HTTP client).
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ class FakeCall:
     schema: Mapping[str, Any]
     seed_key: str
     seed: int
+    slot_id: str | None = None
 
 
 class ScriptExhausted(RuntimeError):
@@ -57,14 +59,19 @@ class ScriptedLlmClient:
         return len(self.calls)
 
     def propose(
-        self, messages: Sequence[ChatMessage], schema: Mapping[str, Any], seed_key: str
+        self,
+        messages: Sequence[ChatMessage],
+        schema: Mapping[str, Any],
+        seed_key: str,
+        *,
+        slot_id: str | None = None,
     ) -> RawOutcome:
         seed = seed_from_key(seed_key)
         with self._lock:
             index = len(self.calls)
             if index >= len(self._script):
                 raise ScriptExhausted(f"script has {len(self._script)} entries")
-            self.calls.append(FakeCall(tuple(messages), schema, seed_key, seed))
+            self.calls.append(FakeCall(tuple(messages), schema, seed_key, seed, slot_id))
             entry = self._script[index]
         result = entry(messages, schema, seed_key) if callable(entry) else entry
         if isinstance(result, str):

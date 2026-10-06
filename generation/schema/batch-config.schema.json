@@ -158,9 +158,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "aliases",
         "order",
         "order_index",
-        "panel_id"
+        "panel_id",
+        "raters"
       ],
       "properties": {
         "panel_id": {
@@ -178,6 +180,47 @@
           "uniqueItems": true,
           "items": {
             "$ref": "common.schema.json#/$defs/book_id"
+          }
+        },
+        "aliases": {
+          "description": "Book ID -> panel alias (the only book names the operator console shows).",
+          "type": "object",
+          "minProperties": 3,
+          "maxProperties": 3,
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/panel_alias"
+          }
+        },
+        "raters": {
+          "description": "The panel's three seats in station order; rating records are written per seat.",
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "rater_id",
+              "station"
+            ],
+            "properties": {
+              "rater_id": {
+                "$ref": "common.schema.json#/$defs/coded_id"
+              },
+              "station": {
+                "$ref": "common.schema.json#/$defs/station"
+              },
+              "kind": {
+                "enum": [
+                  "human",
+                  "bot"
+                ]
+              }
+            }
           }
         }
       }

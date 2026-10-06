@@ -8,11 +8,17 @@ proposer only ever receives its own book's state and history (masking rule; see
 
 These types carry data only. They are built by the orchestrator / bank builder and are
 read-only for proposers.
+
+Masking by construction: A2 receives `book.without_labels()` and `semantic_label=None`,
+so no meaning or semantic label reaches it (Study A protocol §3.5). After a whole-book
+substitution (architecture §3.2) `book` is the method's continued book: the atoms it
+committed before the substitution plus the incumbents archived since (`commit_index`
+continues), never the fallback book.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fractions import Fraction
 from typing import Protocol, runtime_checkable
 
@@ -30,7 +36,8 @@ class CommittedAtom:
     """An atom already committed to this book (in commit order)."""
 
     atom_id: str
-    semantic_label: str
+    semantic_label: str | None
+    """The atom's label; `None` in the label-free state given to A2."""
     recipe: Recipe
     pcm_sha256: str
     commit_index: int
@@ -55,6 +62,12 @@ class BookState:
         """`av_sound.validate.Reference`s in commit order (for `validate(..., committed=)`)."""
         return tuple(
             Reference(a.atom_id, a.recipe, a.pcm_sha256, self.profile) for a in self.committed
+        )
+
+    def without_labels(self) -> BookState:
+        """The same state with every `semantic_label` removed (what A2 receives)."""
+        return replace(
+            self, committed=tuple(replace(a, semantic_label=None) for a in self.committed)
         )
 
 
@@ -118,6 +131,7 @@ class RoundRequest:
     profile: Profile
     seed_namespace: str
     book: BookState
+    """This book's state; label-free (`BookState.without_labels()`) for A2."""
     feedback: AtomFeedback
     window_end_ms: int
     """Run-clock deadline of the window (3 x 40 s after it opened)."""

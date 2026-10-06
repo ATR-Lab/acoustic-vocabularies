@@ -58,13 +58,35 @@
     "Q-r4": "E"
   },
   "panel": {
+    "aliases": {
+      "DEMO-BK-7QX4": "PB-K7MW",
+      "DEMO-BK-H9TC": "PB-QF45",
+      "DEMO-BK-M2RW": "PB-9HTC"
+    },
     "order": [
       "DEMO-BK-M2RW",
       "DEMO-BK-H9TC",
       "DEMO-BK-7QX4"
     ],
     "order_index": 4,
-    "panel_id": "DEMO-PANEL-01"
+    "panel_id": "DEMO-PANEL-01",
+    "raters": [
+      {
+        "kind": "bot",
+        "rater_id": "R01",
+        "station": "S1"
+      },
+      {
+        "kind": "bot",
+        "rater_id": "R02",
+        "station": "S2"
+      },
+      {
+        "kind": "bot",
+        "rater_id": "R03",
+        "station": "S3"
+      }
+    ]
   },
   "profile": "P1",
   "seed_namespace": "DEMO-A-P01",

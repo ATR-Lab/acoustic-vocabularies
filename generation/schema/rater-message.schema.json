@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/rater-message.schema.json",
   "title": "Rater panel protocol message",
-  "description": "One WebSocket text frame between the panel server (#20) and a rater station (#21), protocol version 1 (av_generation.rater_protocol). Messages carry no method label, book ID, proposal-slot ID or seed. Ratings are integers 1-7 and a binary comfort choice; no free text.",
+  "description": "One WebSocket text frame between the panel server (#21; session host #20) and a rater station (#21), protocol version 1 (av_generation.rater_protocol). Messages carry no method label, book ID, proposal-slot ID or seed. Ratings are integers 1-7 and a binary comfort choice; no free text.",
   "oneOf": [
     {
       "$ref": "#/$defs/hello"
@@ -57,6 +57,7 @@
       "additionalProperties": false,
       "required": [
         "client_ms",
+        "kind",
         "protocol_version",
         "rater_id",
         "resume_rating_slot_id",
@@ -88,6 +89,12 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "human",
+            "bot"
           ]
         }
       }
@@ -495,6 +502,7 @@
             {
               "enum": [
                 "E_PROTOCOL",
+                "E_UNKNOWN_RATER",
                 "E_UNKNOWN_SLOT",
                 "E_SLOT_CLOSED",
                 "E_LOCKED",
@@ -582,6 +590,7 @@
         "code": {
           "enum": [
             "E_PROTOCOL",
+            "E_UNKNOWN_RATER",
             "E_UNKNOWN_SLOT",
             "E_SLOT_CLOSED",
             "E_LOCKED",

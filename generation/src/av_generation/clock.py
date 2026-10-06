@@ -6,7 +6,8 @@ system clock. Times in records are integer milliseconds since the clock started
 (`now_ms()`, monotonic). Wall-clock UTC appears only in run manifests and timing events
 (`utc_now()`), never in a decision.
 
-- `SystemClock`: real monotonic time.
+- `SystemClock`: real monotonic time from `time.perf_counter_ns()` (QueryPerformanceCounter
+  on Windows, where `time.monotonic_ns()` ticks only every ~15.6 ms under Python 3.11).
 - `ScaledClock(speed)`: virtual time runs `speed` times faster than real time; a 40-s
   slot cap takes 0.4 s at `speed=100`. Use it for accelerated runs of real components.
 - `ManualClock`: time moves only when a test calls `advance()`; `sleep()` blocks until
@@ -55,11 +56,11 @@ class SystemClock:
     """Real time. `now_ms()` counts from construction."""
 
     def __init__(self) -> None:
-        self._start_ns = time.monotonic_ns()
+        self._start_ns = time.perf_counter_ns()
         self._start_utc = datetime.now(UTC)
 
     def now_ms(self) -> int:
-        return (time.monotonic_ns() - self._start_ns) // 1_000_000
+        return (time.perf_counter_ns() - self._start_ns) // 1_000_000
 
     def sleep(self, seconds: float) -> None:
         time.sleep(max(0.0, seconds))
@@ -78,11 +79,11 @@ class ScaledClock:
         if not speed > 0:
             raise ValueError("speed must be positive")
         self.speed = float(speed)
-        self._start_ns = time.monotonic_ns()
+        self._start_ns = time.perf_counter_ns()
         self._start_utc = start_utc if start_utc is not None else datetime.now(UTC)
 
     def now_ms(self) -> int:
-        return int((time.monotonic_ns() - self._start_ns) * self.speed) // 1_000_000
+        return int((time.perf_counter_ns() - self._start_ns) * self.speed) // 1_000_000
 
     def sleep(self, seconds: float) -> None:
         time.sleep(max(0.0, seconds) / self.speed)

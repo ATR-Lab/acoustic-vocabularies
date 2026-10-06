@@ -8,8 +8,10 @@
   Pitch: step from `constants.A2_PITCH_STEPS`, reflect at -6/+6, inward one-semitone
   correction when reflection returns the original value (logged as `A2Mutation`).
   Other coordinates: one index up/down with equal probability, reflecting at the ends.
-- Every proposal is validated and charged to the ledger (no rejection sampling); the
-  slot record carries `records.A2Detail`. A2 never receives meaning text.
+- Every proposal is reserved (`SlotLedger.reserve`), validated and charged to the ledger
+  (no rejection sampling); the slot record carries `records.A2Detail`. A2 never receives
+  meaning text or labels: `request.book` is `BookState.without_labels()` and
+  `request.semantic_label` is `None`.
 """
 
 from __future__ import annotations

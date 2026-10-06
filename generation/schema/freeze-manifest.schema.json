@@ -93,7 +93,10 @@
               "a2",
               "selector",
               "fallback",
-              "pilot"
+              "pilot",
+              "config",
+              "llm",
+              "meanings"
             ]
           },
           "value": {

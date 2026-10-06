@@ -7,15 +7,26 @@ launcher, the LLM manifest and the mock server). Consumers: #17 (A3 slots, B pro
 
 Contract (#16 -> #17):
 
-- `propose(messages, schema, seed_key) -> RawOutcome` makes at most one model call with
-  the frozen decoding values (`constants.FROZEN_DECODING`), `response_format`
-  `{"type": "json_schema", ...}` carrying `schema`, and `seed = seeds.seed_from_key(seed_key)`
-  (sent as `seeds.wire_seed(seed)`). It never retries and never raises for a model or
-  network failure: the outcome is `timeout` (request cancelled at the 40-s cap,
-  returned within 40.5 s), `overflow_output` (stopped at 512 tokens), `server_error` or
-  `ok` with the raw text. It appends one `records.LlmRequest` per call when given a writer.
-- `count_prompt_tokens(messages)` counts prompt tokens with the pinned tokenizer and chat
-  template, without a generation call (#17 uses it for `overflow_input` before sending).
+- `propose(messages, schema, seed_key, *, slot_id=None) -> RawOutcome` makes at most one
+  model call with the frozen decoding values (`constants.FROZEN_DECODING`),
+  `response_format` `{"type": "json_schema", ...}` carrying `schema`, and
+  `seed = seeds.seed_from_key(seed_key)` (sent as `seeds.wire_seed(seed)`). It never
+  retries and never raises for a model or network failure: the outcome is `timeout`
+  (request cancelled at the 40-s cap, returned within 40.5 s), `overflow_output`
+  (stopped at 512 tokens), `server_error` or `ok` with the raw text. It appends one
+  `records.LlmRequest` per call when given a writer, with `slot_id`,
+  `prompt_sha256 = jsonio.messages_sha256(messages)` and
+  `schema_sha256 = jsonio.schema_sha256(schema)` (the same definitions #17 uses for the
+  slot record, so slot and request join on `slot_id` and on the hashes).
+- `count_prompt_tokens(messages)` returns the prompt tokens the pinned server will see:
+  `POST /tokenize` on the same server with `{"model", "messages",
+  "add_generation_prompt": true}` (vLLM's tokenizer and chat template, including any
+  default system message the template inserts). No tokenizer files or template engine
+  are needed in the client; the LLM manifest (#16) pins the template's SHA-256 and the
+  mock server implements `/tokenize`. If counting fails it raises `TokenCountError`; A3
+  and B then consume the slot as `invalid_json` with `llm_status="server_error"` and no
+  generation call. #17 calls it after `SlotLedger.reserve` and compares with
+  `constants.MAX_INPUT_TOKENS` (`overflow_input` above it, no call).
 """
 
 from __future__ import annotations
@@ -52,18 +63,28 @@ class RawOutcome:
     finish_reason: str | None = None
 
 
+class TokenCountError(RuntimeError):
+    """`count_prompt_tokens` could not get a count from the server."""
+
+
 @runtime_checkable
 class LlmClient(Protocol):
     """What #17 and #26 call. Implementations: `OpenAICompatibleClient` (#16), fakes."""
 
     def propose(
-        self, messages: Sequence[ChatMessage], schema: Mapping[str, Any], seed_key: str
+        self,
+        messages: Sequence[ChatMessage],
+        schema: Mapping[str, Any],
+        seed_key: str,
+        *,
+        slot_id: str | None = None,
     ) -> RawOutcome:
         """One schema-constrained proposal; see the module docstring."""
         ...
 
     def count_prompt_tokens(self, messages: Sequence[ChatMessage]) -> int:
-        """Prompt tokens of `messages` under the pinned tokenizer and chat template."""
+        """Prompt tokens of `messages` under the server's tokenizer and chat template
+        (raises `TokenCountError`)."""
         ...
 
 
@@ -86,7 +107,12 @@ class OpenAICompatibleClient:
         raise NotImplementedError("#16: OpenAI-compatible client")
 
     def propose(
-        self, messages: Sequence[ChatMessage], schema: Mapping[str, Any], seed_key: str
+        self,
+        messages: Sequence[ChatMessage],
+        schema: Mapping[str, Any],
+        seed_key: str,
+        *,
+        slot_id: str | None = None,
     ) -> RawOutcome:
         raise NotImplementedError("#16: OpenAI-compatible client")
 

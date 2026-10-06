@@ -226,7 +226,24 @@ def samples() -> dict[str, rec._Tagged]:
             incumbent_changed=True,
             final=True,
             action="commit",
+            book_substituted=False,
             t_ms=99,
+        ),
+        "decision_archive": rec.DecisionRecord(
+            run_id="DEMO-run-01",
+            batch_id="DEMO-A-P01",
+            book_id=BOOK,
+            atom_id="K-a2",
+            round=4,
+            first_atom=False,
+            candidates=(),
+            incumbent_slot_id=None,
+            incumbent_score=None,
+            incumbent_changed=False,
+            final=True,
+            action="archive_none",
+            book_substituted=True,
+            t_ms=120,
         ),
         "commit": rec.CommitRecord(
             run_id="DEMO-run-01",
@@ -287,6 +304,21 @@ def samples() -> dict[str, rec._Tagged]:
             component="llm",
             duration_ms=95_000,
         ),
+        "session": rec.ThresholdSession(
+            session_id="DEMO-S-01",
+            set_id="DEMO-T1",
+            set_sha256=H,
+            listener_id="L01",
+            station="S1",
+            gain_db=-12.0,
+            order_seed_key="THRESHOLD|DEMO-T1|order|DEMO-S-01",
+            order_seed=7,
+            ab_order_rule="balanced_per_bin",
+            plan=(rec.ThresholdPlannedTrial(1, "P1-0.100-01", "BA"),),
+            tryout=True,
+            demo=True,
+            created_utc="2026-11-05T09:30:00.000Z",
+        ),
         "trial": rec.ThresholdTrial(
             run_id="DEMO-T-run",
             session_id="DEMO-S-01",
@@ -315,9 +347,12 @@ def samples() -> dict[str, rec._Tagged]:
             created_utc="2026-11-05T09:30:00.000Z",
             code=rec.RunCode("0.1.0", "0.1.0", renderer_hash(), "0.1.0", validator_code_hash()),
             threshold="0.10",
+            freeze_manifest_sha256=H,
             clock_speed=100.0,
             config_sha256=H,
             seed_namespace="DEMO-A-P01",
+            generation_config_sha256=H,
+            meanings_sha256=H,
             books=(rec.RunBook(BOOK, Method.A3), rec.RunBook("DEMO-BK-7QX4", Method.A1, "D1")),
             files={"logs/slots.jsonl": H},
         ),
@@ -395,6 +430,8 @@ def test_nested_schemas_match_nested_dataclasses():
     manifest = load_schema("run-manifest.schema.json")["properties"]
     assert set(manifest["code"]["properties"]) == _field_names(rec.RunCode)
     assert set(manifest["books"]["items"]["properties"]) == _field_names(rec.RunBook)
+    session = load_schema("threshold-session.schema.json")["properties"]
+    assert set(session["plan"]["items"]["properties"]) == _field_names(rec.ThresholdPlannedTrial)
 
 
 def test_enumerations_match_python_constants():
@@ -402,6 +439,8 @@ def test_enumerations_match_python_constants():
     assert tuple(play["context"]["enum"]) == rec.PLAY_CONTEXTS
     timing = load_schema("timing-event.schema.json")["properties"]
     assert tuple(timing["event"]["enum"]) == rec.TIMING_EVENTS
+    decision = load_schema("decision-record.schema.json")["properties"]
+    assert tuple(decision["action"]["enum"]) == rec.DECISION_ACTIONS
     common = load_schema("common.schema.json")["$defs"]
     assert tuple(common["outcome"]["enum"]) == tuple(o.value for o in SlotOutcome)
     assert tuple(common["llm_status"]["enum"]) == tuple(s.value for s in LlmStatus)
@@ -423,6 +462,11 @@ def test_enumerations_match_python_constants():
         ("rating", {"distinguishability": 5}),
         ("rating_placeholder", {"association": 3}),
         ("commit", {"source": "fallback_book"}),
+        ("decision", {"action": "archive"}),
+        ("decision", {"final": False}),
+        ("decision_archive", {"book_substituted": False}),
+        ("decision_archive", {"action": "fallback_scan"}),
+        ("session", {"ab_order_rule": "random"}),
         ("play", {"audio_kind": "song"}),
         ("play_refused", {"reason": None}),
         ("timing", {"event": "lunch"}),
@@ -507,3 +551,20 @@ def test_codec_type_errors():
         from_json_value(rec.A2Mutation, {"coordinate": "pitch_1"})
     assert from_json_value(int | float, 0.6) == 0.6
     assert from_json_value(int | float, 5) == 5
+
+
+def test_confirmatory_manifests_need_the_config_and_freeze_hashes():
+    base = dataclasses.replace(
+        samples()["manifest"], run_id="run-01", kind=RunKind.CONFIRMATORY, purpose="batch"
+    )
+    assert base.schema_errors() == ()
+    for field in ("generation_config_sha256", "meanings_sha256"):
+        assert dataclasses.replace(base, **{field: None}).schema_errors()
+    assert dataclasses.replace(base, freeze_manifest_sha256=None).schema_errors() != ()
+    pilot = dataclasses.replace(base, kind=RunKind.PILOT, freeze_manifest_sha256=None)
+    assert pilot.schema_errors() == ()
+    assert dataclasses.replace(pilot, generation_config_sha256=None).schema_errors()
+    practice = dataclasses.replace(
+        base, kind=RunKind.PRACTICE, purpose="practice", generation_config_sha256=None
+    )
+    assert dataclasses.replace(practice, freeze_manifest_sha256=None).schema_errors() == ()

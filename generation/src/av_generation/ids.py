@@ -7,13 +7,20 @@ names on every platform):
 | --- | --- | --- |
 | batch | schedules unit ID or `DEMO-...` | `A-P01`, `DEMO-A-01` |
 | book | anonymous book ID (schedules book key; store rules) | `BK-C-7QX4MN` |
-| bank | schedules bank ID or `DEMO-...` | `bank-C001` |
+| bank | `bank-<P|C><seq:03>` by dyad-slot sequence (schedules #31) or `DEMO-...` | `bank-C001` |
+| panel alias | `PB-` + 4 characters of `PANEL_ALIAS_ALPHABET`, per panel | `PB-7QX4` |
 | proposal slot (A) | `<book>.<atom>.r<round>s<slot>` | `BK-C-7QX4MN.K-a1.r2s3` |
 | proposal slot (B) | `<bank>.t<attempt>.<profile>.<atom>.s<slot:02>` | `bank-C001.t1.P2.Q-r4.s07` |
 | rating slot | `<batch>.<atom>.r<round>p<position>` | `A-P01.K-a1.r2p5` |
 
 A proposal-slot ID names the anonymous book, never the method. A rating-slot ID names
-neither the book nor the method: it is what the rater stations see.
+neither the book nor the method: it is what the rater stations see. Panel aliases are
+the only book names the panel operator console shows (Study A protocol §3.1: book IDs
+rotate between panels); they never reach the stations.
+
+Uniqueness: proposal-slot and rating-slot IDs are unique within a run. A rebuilt batch
+(new run, new seed namespace) reuses them, so the global key of a slot is
+`(run_id, slot_id)`.
 """
 
 from __future__ import annotations
@@ -37,6 +44,14 @@ from av_generation.constants import (
 ID_RE: Final = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]")
 """Batch, bank and run-unit IDs: 3-64 ASCII letters, digits and inner hyphens."""
 DEMO_PREFIX: Final = "DEMO-"
+PILOT_BANK_RE: Final = re.compile(r"bank-P[0-9]{3}")
+CONFIRMATORY_BANK_RE: Final = re.compile(r"bank-C[0-9]{3}")
+"""Bank IDs (schedules allocation, #31): `bank-P001`.. pilot, `bank-C001`.. confirmatory
+(main slots, then spares). They follow the dyad-slot sequence and carry no allocation."""
+PANEL_ALIAS_ALPHABET: Final = "BCFGHJKMNPQRTVWXY456789"
+"""Alias characters: no `A` or `D`, no 0/1/2/3, so an alias never contains a method
+label (`A1`..`A3`) or a designer ID (`D1`..`D3`)."""
+PANEL_ALIAS_RE: Final = re.compile(rf"PB-[{PANEL_ALIAS_ALPHABET}]{{4}}")
 
 
 class Study(StrEnum):
@@ -197,6 +212,25 @@ def parse_rating_slot_id(value: str) -> RatingSlot:
     if rating_slot_id(*parsed) != value:
         raise IdError(f"not a canonical rating-slot ID: {value!r}")
     return parsed
+
+
+def check_panel_alias(alias: str) -> str:
+    """Return `alias` if it is a panel alias (`PB-` + 4 alias characters)."""
+    if not isinstance(alias, str) or not PANEL_ALIAS_RE.fullmatch(alias):
+        raise IdError(f"panel alias {alias!r} must be PB- and 4 of {PANEL_ALIAS_ALPHABET}")
+    return alias
+
+
+def bank_set(bank_id: str) -> str:
+    """`pilot`, `confirmatory` or `demo` from a bank ID; anything else raises `IdError`.
+    Confirmatory tooling refuses every bank whose set is not `confirmatory` (#27, #28)."""
+    if isinstance(bank_id, str) and PILOT_BANK_RE.fullmatch(bank_id):
+        return "pilot"
+    if isinstance(bank_id, str) and CONFIRMATORY_BANK_RE.fullmatch(bank_id):
+        return "confirmatory"
+    if isinstance(bank_id, str) and bank_id.startswith(DEMO_PREFIX) and ID_RE.fullmatch(bank_id):
+        return "demo"
+    raise IdError(f"not a bank ID: {bank_id!r} (bank-P001, bank-C001 or DEMO-...)")
 
 
 def is_demo(identifier: str) -> bool:

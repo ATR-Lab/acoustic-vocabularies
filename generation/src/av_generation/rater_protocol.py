@@ -1,4 +1,4 @@
-"""Rater panel protocol between the panel server (#20) and the rater stations (#21).
+"""Rater panel protocol between the panel server (#21) and the rater stations (#21, #22).
 
 Transport: one WebSocket per station at `WS_PATH`; JSON text frames, one message per
 frame, each validated against `generation/schema/rater-message.schema.json` (a `oneOf`
@@ -13,7 +13,10 @@ Server -> station: `welcome`, `sync_reply`, `preload`, `slot`, `rating_ack`, `pa
 Masking: no message carries a method label, a book ID, a proposal-slot ID or a seed. A
 slot is named by its rating-slot ID (`<batch>.<atom>.r<round>p<position>`). Ratings are
 integers 1..7 and a binary comfort choice; the schema refuses any other field, so free
-text cannot be submitted. Bot raters (#22) speak exactly this protocol.
+text cannot be submitted. Bot raters (#22) speak exactly this protocol; `hello` carries
+the station's `kind` (`human` or `bot`), which must match its seat in the batch config
+(`E_UNKNOWN_RATER` otherwise). The server side is `av_generation.panel` (#21) over the
+session host contract `av_generation.panel_session` (#20).
 
 Times: `*_server_ms` are server run-clock milliseconds (`av_generation.clock`); stations
 estimate the offset with `sync_request`/`sync_reply` and schedule audio on it.
@@ -57,6 +60,7 @@ MESSAGE_TYPES: Final[tuple[str, ...]] = STATION_MESSAGES + SERVER_MESSAGES
 
 RATING_ERROR_CODES: Final[tuple[str, ...]] = (
     "E_PROTOCOL",
+    "E_UNKNOWN_RATER",
     "E_UNKNOWN_SLOT",
     "E_SLOT_CLOSED",
     "E_LOCKED",

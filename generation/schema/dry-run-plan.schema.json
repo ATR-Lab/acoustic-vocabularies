@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/dry-run-plan.schema.json",
+  "title": "Synthetic dry-run plan",
+  "description": "dry-run-plan.json of a synthetic dry run (#22): the cases injected before the run, which the log-completeness check compares with the logs. zero_eligible atoms are forced by bot raters rating the book's rating slots unacceptable (force_unacceptable_slots, from BatchConfig.rating_slot_ids); expect bank means a fallback_bank commit, book a failed scan and whole-book substitution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "batch_id",
+    "clock",
+    "clock_speed",
+    "designer_invalid_slots",
+    "designer_timeout_slots",
+    "force_unacceptable_slots",
+    "format",
+    "format_version",
+    "run_id",
+    "zero_eligible"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/dry-run-plan"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id",
+      "pattern": "^DEMO-"
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id",
+      "pattern": "^DEMO-"
+    },
+    "clock": {
+      "enum": [
+        "real",
+        "scaled"
+      ]
+    },
+    "clock_speed": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "zero_eligible": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "atom_id",
+          "book_id",
+          "expect"
+        ],
+        "properties": {
+          "book_id": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          },
+          "atom_id": {
+            "$ref": "common.schema.json#/$defs/atom_id"
+          },
+          "expect": {
+            "enum": [
+              "bank",
+              "book"
+            ]
+          }
+        }
+      }
+    },
+    "force_unacceptable_slots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/rating_slot_id"
+      }
+    },
+    "designer_invalid_slots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/proposal_slot_id"
+      }
+    },
+    "designer_timeout_slots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/proposal_slot_id"
+      }
+    }
+  }
+}

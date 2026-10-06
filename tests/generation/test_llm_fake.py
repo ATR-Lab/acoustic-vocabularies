@@ -2,7 +2,7 @@
 
 import pytest
 
-from av_generation.llm import LlmClient, OpenAICompatibleClient, RawOutcome
+from av_generation.llm import LlmClient, RawOutcome, TokenCountError
 from av_generation.llm_fake import (
     ScriptedLlmClient,
     ScriptExhausted,
@@ -46,6 +46,14 @@ def test_script_order_seeds_and_counts():
         ScriptedLlmClient([lambda m, s, k: 5]).propose(MESSAGES, {}, key)
 
 
-def test_real_client_is_pending_issue_16():
-    with pytest.raises(NotImplementedError):
-        OpenAICompatibleClient("http://127.0.0.1:1", "m", run_id="DEMO-x", clock=None)
+def test_slot_id_and_failed_token_counts_are_scriptable():
+    key = a3_seed_key("DEMO-A-P01", "K-a1", 1, 1)
+    client = ScriptedLlmClient(['{"x": 1}'])
+    client.propose(MESSAGES, {}, key, slot_id="DEMO-BK-H9TC.K-a1.r1s1")
+    assert client.calls[0].slot_id == "DEMO-BK-H9TC.K-a1.r1s1"
+
+    def refuse(messages):
+        raise TokenCountError("server down")
+
+    with pytest.raises(TokenCountError):
+        ScriptedLlmClient([], token_counter=refuse).count_prompt_tokens(MESSAGES)

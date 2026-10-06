@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/audit-summary.schema.json",
   "title": "Generation audit summary",
-  "description": "summary.json of a generation audit (#24): one entry per book with the columns of books.csv (av_generation.audit.BOOK_COLUMNS) and the batch timing. masked true: no method-revealing field may appear (av_generation.audit.METHOD_COLUMNS); masked false: they are required. sources maps each log file read to its SHA-256.",
+  "description": "summary.json of a generation audit (#24): one entry per book with the columns of books.csv (av_generation.audit.BOOK_COLUMNS) and the batch timing. masked true: no column that names or reveals a method by construction may appear (av_generation.audit.METHOD_COLUMNS: method, designer, per-method effort, every outcome count, startup and operator time); masked false: they are required. sources maps each log file read to its SHA-256.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -58,28 +58,12 @@
           "message_duration_violations",
           "message_ms_max",
           "message_ms_min",
-          "n_clipping",
-          "n_duplicate",
-          "n_event_too_short",
-          "n_incompatible",
-          "n_invalid_json",
-          "n_out_of_domain",
-          "n_overflow_input",
-          "n_overflow_output",
-          "n_render_fail",
-          "n_reserved_collision",
-          "n_schema_violation",
-          "n_separation_fail",
-          "n_timeout",
-          "n_valid",
           "nonfallback",
-          "operator_ms",
           "profile",
           "rater_ms",
           "slots_invalid",
           "slots_total",
           "slots_valid",
-          "startup_ms",
           "total_ms_450",
           "total_ms_600",
           "total_ms_750",
@@ -361,6 +345,10 @@
           "message_duration_violations": {
             "type": "integer",
             "minimum": 0
+          },
+          "n_llm_server_error": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }
@@ -476,7 +464,7 @@
                 "anyOf": [
                   {
                     "required": [
-                      "method"
+                      "design_active_ms"
                     ]
                   },
                   {
@@ -486,17 +474,102 @@
                   },
                   {
                     "required": [
-                      "design_active_ms"
-                    ]
-                  },
-                  {
-                    "required": [
                       "familiarization_ms"
                     ]
                   },
                   {
                     "required": [
+                      "method"
+                    ]
+                  },
+                  {
+                    "required": [
                       "model_runtime_ms"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_clipping"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_duplicate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_event_too_short"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_incompatible"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_invalid_json"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_llm_server_error"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_out_of_domain"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_overflow_input"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_overflow_output"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_render_fail"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_reserved_collision"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_schema_violation"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_separation_fail"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_timeout"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "n_valid"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "operator_ms"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "startup_ms"
                     ]
                   },
                   {
@@ -520,11 +593,28 @@
           "books": {
             "items": {
               "required": [
-                "method",
-                "designer_id",
                 "design_active_ms",
+                "designer_id",
                 "familiarization_ms",
+                "method",
                 "model_runtime_ms",
+                "n_clipping",
+                "n_duplicate",
+                "n_event_too_short",
+                "n_incompatible",
+                "n_invalid_json",
+                "n_llm_server_error",
+                "n_out_of_domain",
+                "n_overflow_input",
+                "n_overflow_output",
+                "n_render_fail",
+                "n_reserved_collision",
+                "n_schema_violation",
+                "n_separation_fail",
+                "n_timeout",
+                "n_valid",
+                "operator_ms",
+                "startup_ms",
                 "tokens_in",
                 "tokens_out"
               ]

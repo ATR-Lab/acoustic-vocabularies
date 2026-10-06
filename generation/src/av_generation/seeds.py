@@ -7,14 +7,18 @@ A seed key is a `|`-joined ASCII string whose first part names the seed namespac
 | `A1` | `A1|<batch_ns>|<atom>|<round>|<slot>` | scripted bot designer (#22) |
 | `A2` | `A2|<batch_ns>|<atom>|<round>|<slot>` | A2 mutation search (#18) |
 | `A3` | `A3|<batch_ns>|<atom>|<round>|<slot>` | A3 model call (#16, #17) |
-| `B` | `B|<bank>|<attempt>|<profile>|<atom>|<slot>` | Study B bank builder (#26) |
-| `PANEL` | `PANEL|<set_ns>|<purpose>` | panel order schedule and book-ID rotation (#20) |
+| `B` | `B|<bank_ns>|<attempt>|<profile>|<atom>|<slot>` | Study B bank builder (#26) |
+| `PANEL` | `PANEL|<set_ns>|<purpose>|...` | panel order schedule and panel aliases (#20) |
 | `BOT` | `BOT|<run>|<actor>|<purpose>|...` | bot raters and bot designer (#22) |
 | `THRESHOLD` | `THRESHOLD|<set>|<purpose>|...` | listening-tool stimuli and trial order (#23) |
 
 `<batch_ns>` is the batch's seed namespace from the batch config (the batch ID, or a new
-namespace when a batch is rebuilt). Rounds, slots and attempts are decimal integers
-without leading zeros: `A3|A-P01|K-a1|2|3`. Every part matches `[A-Za-z0-9._-]+`.
+namespace when a batch is rebuilt). `<bank_ns>` is the bank's seed namespace, recorded in
+the bank manifest (`seed_namespace`): the bank ID for the first build of a bank, and a
+new namespace (e.g. `bank-C001-v2`) whenever the bank is rebuilt under a new
+`bank_version`, so a rebuild never repeats the seeds of an earlier build. Rounds, slots
+and attempts are decimal integers without leading zeros: `A3|A-P01|K-a1|2|3`. Every part
+matches `[A-Za-z0-9._-]+`.
 
 `derive_seed(*parts)` is the first 8 bytes of SHA-256 of the UTF-8 key, read as an
 unsigned big-endian integer (0 .. 2**64 - 1): identical on every machine. The stored
@@ -155,20 +159,26 @@ def a3_seed_key(batch_ns: str, atom_id: str, round_: int, slot: int) -> str:
     return _study_a_key(SeedNamespace.A3, batch_ns, atom_id, round_, slot)
 
 
-def b_seed_key(bank_id: str, attempt: int, profile: str, atom_id: str, slot: int) -> str:
-    """`B|bank|attempt|profile|atom|slot` (#26: slot 1..12 within the cell)."""
+def b_seed_key(bank_ns: str, attempt: int, profile: str, atom_id: str, slot: int) -> str:
+    """`B|bank_ns|attempt|profile|atom|slot` (#26: slot 1..12 within the cell).
+
+    `bank_ns` is the bank manifest's `seed_namespace` (the bank ID on a first build; a new
+    namespace for every rebuild under a new bank version). It deviates from #16's proposed
+    `B|bank|...` only by naming the part a namespace.
+    """
     _check_int("attempt", attempt, 1, B_MAX_ATTEMPTS)
     if profile not in PROFILES:
         raise SeedKeyError(f"not a profile: {profile!r}")
     if atom_id not in ATOM_IDS:
         raise SeedKeyError(f"not an atom ID: {atom_id!r}")
     _check_int("slot", slot, 1, B_SLOTS_PER_CELL)
-    return join_key(SeedNamespace.B.value, bank_id, attempt, profile, atom_id, slot)
+    return join_key(SeedNamespace.B.value, bank_ns, attempt, profile, atom_id, slot)
 
 
-def panel_seed_key(set_ns: str, purpose: str) -> str:
-    """`PANEL|set_ns|purpose`, e.g. `PANEL|A-C|orders` (#20)."""
-    return join_key(SeedNamespace.PANEL.value, set_ns, purpose)
+def panel_seed_key(set_ns: str, purpose: str, *parts: str | int) -> str:
+    """`PANEL|set_ns|purpose|...`, e.g. `PANEL|A-C|orders` or
+    `PANEL|A-C|aliases|A-C07` (#20: order schedule, per-panel aliases)."""
+    return join_key(SeedNamespace.PANEL.value, set_ns, purpose, *parts)
 
 
 def bot_seed_key(run_id: str, actor: str, purpose: str, *parts: str | int) -> str:

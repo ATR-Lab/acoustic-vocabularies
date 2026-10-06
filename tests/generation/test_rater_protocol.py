@@ -1,4 +1,4 @@
-"""Rater panel protocol messages (#20 <-> #21): exact JSON Schema, no free text, masking."""
+"""Rater panel protocol messages (#21 server <-> stations): exact JSON Schema, no free text."""
 
 import json
 
@@ -24,6 +24,7 @@ EXAMPLES = {
         "protocol_version": 1,
         "station": "S1",
         "rater_id": "R1",
+        "kind": "bot",
         "client_ms": 12.5,
         "resume_rating_slot_id": None,
     },

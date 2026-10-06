@@ -16,6 +16,9 @@ from av_generation._schemas import (
     schema_validator,
 )
 from av_generation.config import BatchConfig
+from av_generation.dryrun import DryRunPlan
+from av_generation.genconfig import GenerationConfig
+from av_generation.meanings import MeaningSet
 from av_generation.records import DOCUMENT_TYPES, RECORD_TYPES
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,20 +26,25 @@ SCHEMA_DIR = ROOT / "generation" / "schema"
 
 EXPECTED = {
     "audit-summary.schema.json",
+    "bank-amendment.schema.json",
     "bank-manifest.schema.json",
     "batch-config.schema.json",
     "commit-record.schema.json",
     "common.schema.json",
     "decision-record.schema.json",
+    "dry-run-plan.schema.json",
     "fallback-scan-record.schema.json",
     "freeze-manifest.schema.json",
+    "generation-config.schema.json",
     "llm-request.schema.json",
+    "meanings.schema.json",
     "play-event.schema.json",
     "rater-message.schema.json",
     "rating-record.schema.json",
     "run-manifest.schema.json",
     "slot-record.schema.json",
     "slot-refusal.schema.json",
+    "threshold-session.schema.json",
     "threshold-stimuli.schema.json",
     "threshold-trial.schema.json",
     "timing-event.schema.json",
@@ -45,9 +53,10 @@ EXPECTED = {
 
 def test_schema_set():
     assert set(schema_files()) == EXPECTED
-    used = {c.SCHEMA for c in (*RECORD_TYPES.values(), *DOCUMENT_TYPES.values(), BatchConfig)}
-    used |= {rater_protocol.SCHEMA, bank_manifest.SCHEMA, "common.schema.json"}
-    used |= {"audit-summary.schema.json", "freeze-manifest.schema.json"}
+    documents = (*RECORD_TYPES.values(), *DOCUMENT_TYPES.values(), BatchConfig)
+    used = {c.SCHEMA for c in (*documents, GenerationConfig, MeaningSet, DryRunPlan)}
+    used |= {rater_protocol.SCHEMA, bank_manifest.SCHEMA, bank_manifest.AMENDMENT_SCHEMA}
+    used |= {"common.schema.json", "audit-summary.schema.json", "freeze-manifest.schema.json"}
     assert used == EXPECTED
 
 

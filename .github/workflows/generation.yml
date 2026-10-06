@@ -8,7 +8,9 @@ on:
       - "sound/**"
       - ".github/workflows/generation.yml"
   push:
-    branches: [main]
+    # o4.2.1-llm-server: runs the 3-OS matrix on the skeleton before the parallel issues
+    # build on it (no PR exists yet); remove it once #16 is merged.
+    branches: [main, o4.2.1-llm-server]
     paths:
       - "generation/**"
       - "tests/generation/**"
@@ -31,6 +33,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -55,7 +58,7 @@ jobs:
       - name: Tests (no browser)
         run: >
           uv run --project generation pytest --import-mode=importlib -p no:cacheprovider
-          -m "not browser" tests/generation
+          --timeout=300 -m "not browser" tests/generation
           --cov=av_generation --cov-config=generation/pyproject.toml --cov-report=term
           --cov-fail-under=85
       - name: Seed fingerprint
@@ -68,10 +71,19 @@ jobs:
           for key in keys:
               print(f"- `{key}` -> {seed_from_key(key)}")
           EOF
+      - name: Upload synthetic outputs (generation/out/ci)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generation-ci-${{ matrix.os }}
+          path: generation/out/ci/**
+          if-no-files-found: ignore
+          retention-days: 30
 
   browser:
     name: generation browser tests (ubuntu, Chromium)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with:
@@ -90,4 +102,12 @@ jobs:
           AV_GENERATION_BROWSER: "1"
         run: >
           uv run --project generation pytest --import-mode=importlib -p no:cacheprovider
-          -m browser tests/generation
+          --timeout=300 -m browser tests/generation
+      - name: Upload synthetic outputs (generation/out/ci)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generation-ci-browser
+          path: generation/out/ci/**
+          if-no-files-found: ignore
+          retention-days: 30

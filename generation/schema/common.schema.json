@@ -220,6 +220,21 @@
     "version": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "panel_alias": {
+      "description": "Per-panel book alias shown on the operator console (av_generation.ids.PANEL_ALIAS_RE).",
+      "type": "string",
+      "pattern": "^PB-[BCFGHJKMNPQRTVWXY456789]{4}$"
+    },
+    "meaning_text": {
+      "description": "A meaning text shown to raters, designers and the model: printable ASCII, 1-200 characters.",
+      "type": "string",
+      "pattern": "^[ -~]{1,200}$"
+    },
+    "seed_part": {
+      "description": "One part of a seed key (av_generation.seeds.PART_RE).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$"
     }
   }
 }

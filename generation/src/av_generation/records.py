@@ -19,6 +19,7 @@ canonical line of a record is unique.
 | `ThresholdTrial` | `threshold_trial` | `threshold-trial` | listening tool (#23) | #23 summary |
 | `RunManifest` | `av-generation/run-manifest` | `run-manifest` | run owner | everyone |
 | `ThresholdStimulusSet` | `av-generation/threshold-stimuli` | `threshold-stimuli` | #23 | #25 |
+| `ThresholdSession` | `av-generation/threshold-session` | `threshold-session` | #23 | #23, O6.2.2 |
 
 Rules: append records with `RecordWriter` (validates against the schema, then appends one
 canonical line); read them with `read_records`. Never rewrite a log line; corrections
@@ -305,6 +306,8 @@ class LlmRequest(Record):
     tokens_in: int | None = None
     tokens_out: int | None = None
     slot_id: str | None = None
+    """The slot the call belongs to (`LlmClient.propose(..., slot_id=)`); joins the slot
+    record. Benchmark calls (#16) have none."""
     response_format: Literal["json_schema"] = "json_schema"
 
 
@@ -372,9 +375,27 @@ class CandidateScore:
     flagged_missing: bool
 
 
+DECISION_ACTIONS: Final[tuple[str, ...]] = (
+    "continue",
+    "commit",
+    "fallback_scan",
+    "archive",
+    "archive_none",
+)
+"""`DecisionRecord.action`: rounds 1-3 `continue`; round 4 `commit` (incumbent committed),
+`fallback_scan` (no incumbent: bank scan), and, for a book already replaced by the
+fallback book (`book_substituted`), `archive` (incumbent archived as the method's continued
+book state, not committed) or `archive_none` (no incumbent; no scan)."""
+
+
 @dataclass(frozen=True, slots=True)
 class DecisionRecord(Record):
-    """Selector state after one round of one atom of one book (#20)."""
+    """Selector state after one round of one atom of one book (#20).
+
+    After a whole-book substitution (architecture §3.2) the method keeps proposing and
+    its candidates keep being rated for the remaining atoms, so `book_substituted` is
+    true and round 4 ends with `archive` or `archive_none` instead of a commit.
+    """
 
     TAG = "decision"
     VERSION = 1
@@ -391,13 +412,20 @@ class DecisionRecord(Record):
     incumbent_score: str | None
     incumbent_changed: bool
     final: bool
-    action: Literal["continue", "commit", "fallback_scan"]
+    action: Literal["continue", "commit", "fallback_scan", "archive", "archive_none"]
+    book_substituted: bool
+    """The book was replaced by the fallback book at an earlier atom of this batch."""
     t_ms: int
 
 
 @dataclass(frozen=True, slots=True)
 class CommitRecord(Record):
-    """One atom committed to the store for a book (#20)."""
+    """One atom committed to the store for a book (#20).
+
+    Exactly one commit per atom exists in each book's final store book (48 per batch).
+    A book substituted at atom k also has the k-1 earlier commits in its voided store book
+    (`store_book_id` differs from the final one); they stay in the log as history.
+    """
 
     TAG = "commit"
     VERSION = 1
@@ -517,6 +545,9 @@ TIMING_EVENTS: Final[tuple[str, ...]] = (
     "station_disconnect",
     "station_reconnect",
     "clock_sync",
+    "asset_ready",
+    "book_substituted",
+    "log_repaired",
     "familiarization_start",
     "familiarization_end",
     "design_active_start",
@@ -620,6 +651,45 @@ class ThresholdStimulusSet(Document):
 
 
 @dataclass(frozen=True, slots=True)
+class ThresholdPlannedTrial:
+    """One trial of a session's stored plan (order drawn before the session starts)."""
+
+    trial_index: int
+    pair_id: str
+    order: Literal["AB", "BA"]
+
+
+@dataclass(frozen=True, slots=True)
+class ThresholdSession(Document):
+    """One listener session of the listening tool (#23): stimulus set, seed, station and
+    gain, and the planned trial order. Written before the first trial; trials are logged
+    as `ThresholdTrial` records with the same `session_id`."""
+
+    TAG = "av-generation/threshold-session"
+    VERSION = 1
+    SCHEMA = "threshold-session.schema.json"
+
+    session_id: str
+    set_id: str
+    set_sha256: str
+    """`ThresholdStimulusSet.sha256()` of the set played (pins its config and pairs)."""
+    listener_id: str
+    station: str
+    gain_db: float
+    """The station's fixed output gain setting for the session."""
+    order_seed_key: str
+    """`seeds.threshold_seed_key(set_id, "order", session_id)`."""
+    order_seed: int
+    ab_order_rule: Literal["balanced_per_bin", "seeded_coin"]
+    """How A/B order was counterbalanced (#23 decides; recorded per session)."""
+    plan: tuple[ThresholdPlannedTrial, ...]
+    tryout: bool
+    """Internal tryout session (team members; not counted as listeners)."""
+    demo: bool
+    created_utc: str
+
+
+@dataclass(frozen=True, slots=True)
 class ThresholdTrial(Record):
     """One same/different trial of one listener session."""
 
@@ -696,6 +766,14 @@ class RunManifest(Document):
     bank_ids: tuple[str, ...] = ()
     llm_manifest_sha256: str | None = None
     llm_runtime: str | None = None
+    generation_config_sha256: str | None = None
+    """`genconfig.GenerationConfig.frozen_sha256()` of the run's `generation-config.json`;
+    required for pilot and confirmatory batch and bank runs."""
+    meanings_sha256: str | None = None
+    """`meanings.MeaningSet.sha256` of the meaning texts shown to designers, raters and
+    the model."""
+    freeze_manifest_sha256: str | None = None
+    """File SHA-256 of the G4 freeze manifest checked at start (confirmatory runs)."""
     closed_utc: str | None = None
     files: Mapping[str, str] | None = None
     """Relative path -> SHA-256 of every file, written when the run closes."""
@@ -722,7 +800,7 @@ RECORD_TYPES: Final[Mapping[str, type[Record]]] = {
 """`record` value -> record class."""
 
 DOCUMENT_TYPES: Final[Mapping[str, type[Document]]] = {
-    cls.TAG: cls for cls in (RunManifest, ThresholdStimulusSet)
+    cls.TAG: cls for cls in (RunManifest, ThresholdStimulusSet, ThresholdSession)
 }
 
 R = TypeVar("R", bound=Record)

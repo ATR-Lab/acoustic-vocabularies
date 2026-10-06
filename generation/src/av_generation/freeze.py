@@ -5,7 +5,16 @@ The manifest lists every frozen value with its SHA-256 (when it is a file or a d
 and its source, is readable without the code, and is committed and tagged
 (proposed `generation/FREEZE-v1.0.json`). Sign-off records roles and links only, never
 names. After G4 a CI freeze guard fails when any current value differs, and confirmatory
-runs (#28, O7.1.1) refuse to start when their config hash differs.
+runs (#28, O7.1.1) refuse to start when their config hash differs: the item
+`config.frozen_sha256` holds `genconfig.GenerationConfig.frozen_sha256()` of the frozen
+generation config, and `genconfig.check_run_config` compares it (shared, so #20 and #26
+need nothing from this module).
+
+Hash definitions are shared (`jsonio`): `prompts.*_sha256` are prompt-set hashes
+(`file_set_sha256`), `schema.decoding_sha256` is `schema_sha256(decoding schema)`,
+`meanings.sha256` is `MeaningSet.sha256()`. `seeds.namespaces` lists the seed key
+namespaces and the batch and bank namespaces in use (`BatchConfig.seed_namespace`, the
+bank manifests' `seed_namespace`).
 """
 
 from __future__ import annotations
@@ -17,6 +26,7 @@ from typing import Any, Final
 FREEZE_FORMAT: Final = "av-generation/freeze-manifest"
 
 REQUIRED_ITEM_KEYS: Final[tuple[str, ...]] = (
+    "config.frozen_sha256",
     "renderer.version",
     "renderer.hash",
     "renderer.recipe_schema_hash",
@@ -46,6 +56,8 @@ REQUIRED_ITEM_KEYS: Final[tuple[str, ...]] = (
     "schema.decoding_sha256",
     "prompts.a3_sha256",
     "prompts.b_sha256",
+    "meanings.sha256",
+    "llm.manifest_sha256",
     "seeds.function",
     "seeds.namespaces",
     "budget.study_a",

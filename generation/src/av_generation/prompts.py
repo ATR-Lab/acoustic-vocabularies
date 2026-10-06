@@ -2,10 +2,19 @@
 
 Prompts are built from a `PromptSet` loaded from a directory: the fixed instruction, the
 context templates and a hash file. Whether the protocol-quoted texts (the fixed A3
-instruction, the operational meanings) may be committed is decided in #17's public-data
-review; the code takes the directory as an argument so the real set can live in
-restricted storage with only its SHA-256 committed. The repository always carries a
-clearly labelled DEMO set for tests.
+instruction) may be committed is decided in #17's public-data review; the code takes the
+directory as an argument so the real set can live in restricted storage with only its
+SHA-256 committed. The repository always carries a clearly labelled DEMO set for tests.
+
+Meaning texts are not part of a prompt set: they come from the shared meaning set
+(`av_generation.meanings`), the same texts the A1 screen and the rater stations show.
+
+Hashes (shared definitions, `av_generation.jsonio`):
+
+- `PromptSet.set_sha256` = `jsonio.file_set_sha256(PromptSet.files)` over the set's
+  files (freeze items `prompts.a3_sha256` / `prompts.b_sha256`; `GenerationConfig.prompts`);
+- `BuiltPrompt.prompt_sha256` = `jsonio.messages_sha256(messages)`, the per-call hash in
+  the slot record and the `LlmRequest` (#16 computes it the same way).
 
 Determinism: the same state gives a byte-identical prompt and `prompt_sha256`. Context is
 serialized as canonical JSON (sorted keys; recipes via `Recipe.to_dict()`; fractions as
@@ -19,6 +28,7 @@ import os
 from dataclasses import dataclass
 
 from av_generation.llm import ChatMessage
+from av_generation.meanings import MeaningSet
 from av_generation.proposers import AtomFeedback, BCellState, BookState
 from av_generation.records import SlotRecord
 
@@ -31,10 +41,12 @@ class PromptSet:
     demo: bool
     a3_instruction: str
     b_instruction: str
-    meanings: dict[str, str]
-    """Semantic label -> operational meaning text."""
-    sha256: dict[str, str]
-    """File name -> SHA-256 of the files the set was loaded from."""
+    meanings: MeaningSet
+    """The shared meaning set the prompts quote (checked against the generation config)."""
+    files: dict[str, str]
+    """Relative POSIX path -> SHA-256 of every file the set was loaded from."""
+    set_sha256: str
+    """`jsonio.file_set_sha256(files)`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,12 +55,12 @@ class BuiltPrompt:
 
     messages: tuple[ChatMessage, ...]
     prompt_sha256: str
-    """SHA-256 of the canonical JSON of `messages`."""
+    """`jsonio.messages_sha256(messages)`."""
     context_json: str
     """The canonical context block embedded in the user message."""
 
 
-def load_prompt_set(path: str | os.PathLike[str]) -> PromptSet:
+def load_prompt_set(path: str | os.PathLike[str], *, meanings: MeaningSet) -> PromptSet:
     """Load and hash-check a prompt-set directory (#17)."""
     raise NotImplementedError("#17: prompt sets")
 
