@@ -82,6 +82,13 @@ namespace AcousticVocab.Tests
         {using var socket=new ScriptedSocket();for(int i=0;i<5;i++)socket.Parts.Enqueue(new byte[4096]);Assert.ThrowsAsync<ControlFault>(()=>Task.Run(()=>PrivateControlExchange.Run(socket,"{}",200,()=>0,CancellationToken.None)));}
         [Test]public void LateCompletedReplyCannotBypassDeadlineWhenCancellationDeliveryIsDelayed()
         {double clock=0;using var socket=new ScriptedSocket{OnReceive=()=>clock=200.001};socket.Parts.Enqueue(Encoding.UTF8.GetBytes("{}"));Assert.That(Assert.ThrowsAsync<ControlFault>(()=>Task.Run(()=>PrivateControlExchange.Run(socket,"{}",200,()=>clock,CancellationToken.None))).Code,Is.EqualTo("CONTROL_TRANSPORT_DEADLINE"));}
+        [TestCase(3000,true)][TestCase(3000.001,false)]
+        public async Task CommandExchangeStillEnforcesItsOriginalDeadline(double elapsed,bool permitted)
+        {
+            double clock=0;using var socket=new ScriptedSocket{OnReceive=()=>clock=elapsed};socket.Parts.Enqueue(Encoding.UTF8.GetBytes("{}"));
+            if(permitted){var reply=await PrivateControlExchange.Run(socket,"{}",ControlHealthGate.CommandDeadlineMs,()=>clock,CancellationToken.None);Assert.That(reply.Received-reply.Sent,Is.EqualTo(elapsed));}
+            else Assert.That(Assert.ThrowsAsync<ControlFault>(()=>Task.Run(()=>PrivateControlExchange.Run(socket,"{}",ControlHealthGate.CommandDeadlineMs,()=>clock,CancellationToken.None))).Code,Is.EqualTo("CONTROL_TRANSPORT_DEADLINE"));
+        }
         [Test]public void InvalidUtf8ReplyIsRefused()
         {using var socket=new ScriptedSocket();socket.Parts.Enqueue(new byte[]{0xff});Assert.ThrowsAsync<DecoderFallbackException>(()=>Task.Run(()=>PrivateControlExchange.Run(socket,"{}",200,()=>0,CancellationToken.None)));}
     }
