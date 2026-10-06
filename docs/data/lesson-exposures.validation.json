@@ -195,5 +195,6 @@
     "Old trial/audio headers and counts are unchanged; the optional lesson table remains provisional.",
     "Additional durable lesson writes require native timing measurement.",
     "The initial combined run and its failures/skip remain retained."
-  ]
+  ],
+  "source_files_sha256_basis": "Git blob bytes at source_commit; working-tree line endings may differ"
 }
