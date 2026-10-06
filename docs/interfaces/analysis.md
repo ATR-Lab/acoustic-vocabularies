@@ -197,34 +197,64 @@ type, timings.
 ## Analysis pipeline (#34)
 
 Producer: analysis pipeline on synthetic data (#34). Consumers: sample-size decisions
-(O6.4.1, O6.4.3), confirmatory analyses (O7.3.2, O8.3.2: frozen pipeline version and
-hash). Design: `analysis/docs/pipeline.md`.
+(O6.4.1, O6.4.3: the pipeline and the simulation harness), confirmatory analyses
+(O7.3.2, O8.3.2: the frozen pipeline version and its hash). Design, rules and decisions:
+[`analysis/docs/pipeline.md`](../../analysis/docs/pipeline.md).
 
-- `av-analysis run --study A|B --data DIR`: reads `derived/`, `reconciled/` and `keys/`;
-  writes `estimates/` in analysis plan section 9 order (`report.REPORT_SECTIONS`: flow,
-  fidelity, A primary, B primary, secondary outcomes, ownership and consultation,
-  sensitivities, deviations), every table stating independent units, trials and missing
-  denominators (`report.TableMeta`).
-- GLMM logs `estimates/glmm/<model_id>.json`
-  ([schema](../../analysis/schema/glmm-log.schema.json)): every ladder rung tried or
-  skipped in the order full, no_correlations, no_dyad_role_slope,
-  no_participant_teaching_slope, descriptive, with converged and singular flags, R and
-  lme4 versions.
-- R: `analysis/r/pins.dcf` (R 4.6.1, CRAN snapshot 2026-09-01, lme4 2.0-6),
-  `install.R`, `check_pins.R`; `rbridge.run_r` contract in `rbridge`.
-- `av-analysis simulate --scenario NAME --datasets N --seed DEMO-... --out DIR`:
-  synthetic derived tables and operating characteristics; `simulate.simulate_dataset`
-  returns a `SyntheticDataset` (tables plus the key and list files `unmask` reads,
-  written with `paths.write_synthetic_input`).
-- Interfaces fixed by the skeleton: `unmask.load_conditions(root, study, set) ->
-  Conditions` (books or dyads, person -> unit and condition, unit -> planned persons);
-  `missingness.all_assigned_bounds(study, scores, conditions, planned)` and
-  `tipping_grid(study, scores, conditions, planned, *, step=0.05)` over
-  `scoring.BatteryScore` values (with `operational_sum`, the known contribution of a
-  partial battery).
+- `av-analysis run --study A|B --data DIR [--set pilot|confirmatory] [--glmm
+  auto|require|skip]`: reads `derived/trials.csv`, `derived/endpoints.csv`, the
+  allocation lists and book key (`unmask`, the only reader of `keys/`), the reveal log
+  when present and, when present, `reconciled/visit-status.csv`,
+  `reconciled/discrepancies.csv` and `inputs/sound/golden-manifest.json`. Refuses (exit 2)
+  a held visit whose `reconciliation` is not `pass`, persons, units or books that differ
+  from the lists, rows that cannot be scored, inputs of the other data kind.
+- Writes into `estimates/` of the same root (watermarked, `paths.write_output`):
 
-**Pending (#34):** estimator output tables, report file layout, model specifications,
-R scripts, scenario list, operating-characteristics CSV columns.
+  | File | Content |
+  | --- | --- |
+  | `report-<study>.md` | section 9 report in `report.REPORT_SECTIONS` order: flow, fidelity, A primary or B primary, secondary, ownership and consultation (**Pending** source), sensitivities, deviations and bounded conclusions; every table followed by its `report.TableMeta` line (independent unit, contributing and planned units, trials, missing units) |
+  | `tables/<study>-<nn>-<id>.csv` | each table in full, first column `data_kind`; percentages and percentage points as named in the column |
+  | `tables/<study>-index.csv` | `data_kind`, `table`, `section`, `file`, `title`, `independent_unit`, `units`, `units_planned`, `trials`, `missing`, `note` |
+  | `glmm/<model_id>.json` | [GLMM log](../../analysis/schema/glmm-log.schema.json): every rung tried or skipped in ladder order with formula, converged and singular flags, R messages, reason; R and lme4 versions |
+  | `glmm/<model_id>-fixed.csv`, `-random.csv`, `-data.csv` | accepted rung's fixed effects (`term`, `estimate`, `se`, `z`, `p`, logit scale) and random-effect SDs and correlations; the model data sent to R |
+  | `runs/run-<study>-<set>.json` | inputs (path, bytes, SHA-256), seed labels, outputs |
+  | `manifest.json` | [outputs manifest](../../analysis/schema/outputs-manifest.schema.json) of the whole area |
+
+- Primary tables: `a-primary` (estimator, units planned and used, estimate, SD, SE, df,
+  t, p, confidence level, interval in percentage points; the stratified bootstrap row);
+  `b-primary` (C and S with 95% and 97.5% intervals and the Holm rank, threshold,
+  adjusted p and decision); `a-secondary` (A3-A1, A2-A1 with Holm); `sens-bounds`
+  (all-assigned bounds) and `sens-tipping-grid` (contrast, shifts, estimate,
+  `direction_changed`, `practical_changed`).
+- Supporting models (`glmm.model_specs`): `A-trained`, `A-designer` (random intercepts
+  for batch, book, learner, message) and `B-trained` (dyad role slope, participant
+  teaching-format slope, message intercept), fitted rung by rung with
+  `analysis/r/glmm.R` through `rbridge.run_r` (`lme4::glmer`, pinned in
+  `analysis/r/pins.dcf`: R 4.6.1, CRAN snapshot 2026-09-01, lme4 2.0-6). A rung is
+  accepted when converged and not singular; without a stable rung the log ends with
+  `descriptive`. `--glmm auto` requires R on REAL roots.
+- `av-analysis simulate --scenario NAME[,NAME...]|all --datasets N --seed DEMO-... --out
+  DIR [--write-dataset]`: scenarios `central-`, `pessimistic-`, `null-`,
+  `null-pessimistic-` and `pilot-` for A and B, plus `null-co-B`, `null-scaffold-B`
+  (`simulate.scenarios()`). Writes `estimates/simulation/operating-characteristics.csv`
+  ([row schema](../../analysis/schema/operating-characteristics-row.schema.json):
+  scenario, study, contrast, rule, true effect, datasets, rejections, rate, MCSE, Wilson
+  95% Monte Carlo interval, mean estimate, mean unit SD, mean units, unavailable, seed),
+  per-scenario `-operating-characteristics.csv`, `-datasets.csv` and `-scenario.json`.
+  `--write-dataset` writes dataset 0 of each scenario into the root: `derived/trials.csv`
+  and `derived/endpoints.csv` (merged with other studies' rows), `derived/manifest.json`,
+  and the key and lists through `paths.write_synthetic_input`.
+- Python interfaces: `simulate.simulate_dataset(scenario, seed, *, index=0) ->
+  SyntheticDataset`, `simulate.operating_characteristics(scenario, seed, datasets)`,
+  `pipeline.analyze(root, study, ...) -> report.StudyReport`,
+  `pipeline.run_analysis(root, study, ...) -> list[Path]`,
+  `unmask.load_conditions(root, study, set) -> Conditions` (with `person_book`,
+  `list_sha256` and `planned_source`), `missingness.all_assigned_bounds(...)` and
+  `tipping_grid(...)` over `scoring.BatteryScore`.
+
+**Pending (#34):** ratings and consultation export format (section 6 of the report),
+generation fallback flags for the non-fallback sensitivity (#24), a timing model with
+actual delay, real-data runs (out of scope).
 
 ## Integrity dashboard (#35)
 
