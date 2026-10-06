@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "scope": "software_historical_control_ack",
+  "runtime_source_commit": "3ff95c5ed971ecfc2d464f7e2945c54b8b08315c",
+  "participant_admission": false,
+  "native_visit_complete": false,
+  "timing_qualification": false,
+  "command_deadline_ms": 3000,
+  "probe_deadline_ms": 200,
+  "queue_limit_ms": 250,
+  "exposure_freshness_limit_ms": 250,
+  "unexpected_duplicate_reply": "terminal_refusal",
+  "runs": [
+    {
+      "kind": "EditMode",
+      "scope": "control_queue_history_health_and_transport",
+      "source_commit": "3ff95c5ed971ecfc2d464f7e2945c54b8b08315c",
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "3be6c53c9eeb25fd4b4f94a370f3547997160614bb1c86dce1270598fd7a2a62"
+    },
+    {
+      "kind": "EditMode",
+      "scope": "combined_engine_control_menu_teaching_staged_preflight_and_closure",
+      "source_commit": "3ff95c5ed971ecfc2d464f7e2945c54b8b08315c",
+      "passed": 294,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "40bbfb398a1403423875e689ee66a35a5362adb71870f5ffabbc288b30cd0d50"
+    }
+  ],
+  "regression_evidence_note": "The slow completion regression uses measured B011 RTT and source ages with controlled synthetic host sample anchors. It is not an actual backend transaction replay.",
+  "affected_segment_native_validation": "pending; prior B011 remains faulted, incomplete and zero audio",
+  "count_note": "The 100-case focused suite is included in the 294-case consumer run; counts are not additive."
+}
