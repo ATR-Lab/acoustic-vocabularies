@@ -142,7 +142,8 @@ has logged them. A bad candidate never raises: it is a slot outcome.
   no resampling (each recorded recipe equals the planned proposal of its seed key), the
   incumbent as parent, the uniform fallback without an eligible parent, corrections
   written to the slot record, request refusals before any reservation (one case per
-  check), and ledger refusals.
+  check), faulty incumbents refused by `propose_round` before any reservation (every
+  case of the parent rule), and ledger refusals.
 - Validation against the book: a slot that re-proposes a committed waveform is recorded
   as `duplicate` (`E_DUPLICATE`, `E_SEPARATION`) and still consumed, and a stricter book
   threshold (0.40) turns a valid proposal into `separation_fail`. Each record's codes and
@@ -189,12 +190,29 @@ budget (12 independent uniform samples per atom) on synthetic DEMO books:
   scope). The measure is the noise-free score of the committed candidates, compared per
   book (A2 minus uniform, paired t interval).
 
-Command (about 4 minutes; outputs go to the ignored `generation/out/`):
+Command (about 4 minutes). Each scenario's `summary.json` and `books.csv` go to the
+ignored `generation/out/` and are not committed. Only the grid summary is committed: copy
+it to `generation/runs/` after a deliberate change, then update the table below.
 
 ```bash
 uv run --project generation python -m av_generation._a2_credibility --grid \
   --out generation/out/ci/a2-credibility
+cp generation/out/ci/a2-credibility/grid.json \
+  generation/runs/DEMO-a2-credibility/grid.json
 ```
+
+The whole grid is too slow for every CI run, so the tests recompute part of the committed
+file exactly, every number and `books_sha256` included:
+
+- `ci_check`: the main scenario on its first two books per profile (the first 6 of its
+  120 books). It covers the book-level path: committed references and the separation
+  threshold.
+- The scenarios `atom1-int-noise1` and `atom1-real-noise0`.
+- `centrality_drift`.
+
+A test also checks that the table and figures below match the file, to three decimals.
+A change to the renderer, the validator, A2 or the synthetic panel that moves any of
+these numbers fails CI until the grid is run again and the file and table are updated.
 
 The recorded result is `generation/runs/DEMO-a2-credibility/grid.json`. The run used 40
 books per profile (120 books), 16 atoms, separation threshold 0.10, and A2 algorithm
@@ -207,12 +225,12 @@ committed references.
 | --- | --- | --- | --- | --- | --- | --- |
 | book-int-noise1 (main) | 4.152 | 4.359 | 3.995 -> 4.152 | 4.017 -> 4.359 | -0.207 [-0.231, -0.183] | 9 / 111 |
 | book-int-noise0 | 4.257 | 4.448 | 4.044 -> 4.257 | 4.052 -> 4.448 | -0.192 [-0.217, -0.166] | 10 / 110 |
-| book-real-noise1 | 4.167 | 4.365 | 3.997 -> 4.167 | 4.020 -> 4.365 | -0.198 [-0.220, -0.175] | 7 / 113 |
+| book-real-noise1 | 4.167 | 4.365 | 3.997 -> 4.167 | 4.019 -> 4.365 | -0.198 [-0.220, -0.175] | 7 / 113 |
 | book-real-noise0 | 4.431 | 4.514 | 4.046 -> 4.431 | 4.078 -> 4.514 | -0.083 [-0.106, -0.060] | 35 / 85 |
 | atom1-int-noise1 | 3.219 | 3.341 | 3.032 -> 3.219 | 3.032 -> 3.341 | -0.122 [-0.216, -0.028] | 42 / 59 |
 | atom1-int-noise0 | 3.297 | 3.410 | 3.062 -> 3.297 | 3.062 -> 3.410 | -0.113 [-0.199, -0.027] | 40 / 53 |
 | atom1-real-noise1 | 3.290 | 3.342 | 3.041 -> 3.290 | 3.041 -> 3.342 | -0.052 [-0.134, 0.030] | 52 / 55 |
-| atom1-real-noise0 | 3.545 | 3.456 | 3.085 -> 3.545 | 3.085 -> 3.456 | +0.089 [0.012, 0.167] | 74 / 45 |
+| atom1-real-noise0 | 3.545 | 3.456 | 3.085 -> 3.545 | 3.085 -> 3.456 | +0.089 [0.011, 0.167] | 74 / 45 |
 
 Scores are the mean noise-free score (1..7) of the committed candidates. "noise1" and
 "noise0" set the rater noise SD to 1 or 0. No atom needed a fallback in any scenario. In

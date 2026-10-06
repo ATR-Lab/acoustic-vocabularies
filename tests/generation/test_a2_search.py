@@ -497,14 +497,23 @@ def test_select_parent_takes_the_incumbent():
     assert select_parent(stub_feedback(BOOK, "K-a1", 1, [c])) is None
 
 
-@pytest.mark.parametrize(
-    "case", ["not-best", "tie-later", "missing", "unknown", "ineligible", "no-score", "score"]
+FAULTY_INCUMBENTS = (
+    "not-best",
+    "tie-later",
+    "missing",
+    "unknown",
+    "ineligible",
+    "no-score",
+    "score",
 )
-def test_select_parent_refuses_a_faulty_incumbent(case):
+
+
+def faulty_feedback(case):
+    """Round-1 feedback of `K-a1` whose incumbent breaks the parent rule (selector fault)."""
     a = candidate(f"{BOOK}.K-a1.r1s1", 1, 1, parent_recipe(), score=Fraction(5))
     b = candidate(f"{BOOK}.K-a1.r1s2", 1, 2, parent_recipe((1, 1, 1)), score=Fraction(6))
     c = candidate(f"{BOOK}.K-a1.r1s3", 1, 3, parent_recipe((2, 2, 2)), eligible=False)
-    fb = {
+    return {
         "not-best": AtomFeedback(BOOK, "K-a1", 1, (a, b), a.slot_id, a.score),
         "tie-later": AtomFeedback(
             BOOK, "K-a1", 1, (a, candidate(b.slot_id, 1, 2, b.recipe)), b.slot_id, Fraction(5)
@@ -517,8 +526,12 @@ def test_select_parent_refuses_a_faulty_incumbent(case):
         ),
         "score": AtomFeedback(BOOK, "K-a1", 1, (a, b), b.slot_id, Fraction(7)),
     }[case]
+
+
+@pytest.mark.parametrize("case", FAULTY_INCUMBENTS)
+def test_select_parent_refuses_a_faulty_incumbent(case):
     with pytest.raises(A2RequestError) as err:
-        select_parent(fb)
+        select_parent(faulty_feedback(case))
     assert err.value.code == "E_A2_PARENT"
 
 
@@ -792,6 +805,21 @@ def test_requests_a2_must_not_act_on_are_refused_before_any_reservation(change, 
     assert str(err.value).startswith(f"{code}: {reason}"), str(err.value)
 
 
+@pytest.mark.parametrize("case", FAULTY_INCUMBENTS)
+def test_a_faulty_incumbent_is_refused_before_any_reservation(case):
+    """`propose_round` applies the parent rule itself, before the first reservation."""
+    clock = ManualClock()
+    ledger = MemoryLedger(clock=clock)
+    request = request_for(book_state(), "K-a1", 2, faulty_feedback(case))
+    check_request(request)  # consistent and well formed: only the incumbent is wrong
+    with pytest.raises(A2RequestError) as err:
+        A2Proposer(ledger, clock=clock).propose_round(request)
+    assert err.value.code == "E_A2_PARENT" and ledger.events == []
+    with pytest.raises(A2RequestError) as direct:
+        select_parent(request.feedback)
+    assert str(err.value) == str(direct.value)
+
+
 def test_feedback_from_the_current_round_is_refused():
     book = book_state()
     late = candidate(f"{BOOK}.K-a1.r2s1", 2, 1, parent_recipe())
@@ -1000,6 +1028,8 @@ def test_credibility_cli(tmp_path, monkeypatch, capsys):
     grid = json.loads((tmp_path / "g" / "grid.json").read_text(encoding="utf-8"))
     assert list(grid["scenarios"]) == ["tiny"]
     assert grid["scenarios"]["tiny"]["config"]["panel"]["integer_ratings"] is False
+    # with two books per profile, the CI check is the first scenario itself
+    assert grid["ci_check"] == grid["scenarios"]["tiny"]
     assert set(grid["centrality_drift"]) == {
         "uniform",
         "after_1_mutations",
@@ -1028,15 +1058,108 @@ def test_file_hash_only_for_usable_waveforms():
     assert a2._file_sha256(ok) == file_sha256(ok.rendered)
 
 
+# The committed result: `--grid` output copied to generation/runs/ (see _a2_credibility).
+RECORDED_GRID = ROOT / "generation" / "runs" / "DEMO-a2-credibility" / "grid.json"
+CREDIBILITY_DOC = ROOT / "generation" / "docs" / "a2-search.md"
+MAIN_SCENARIO = "book-int-noise1"
+
+
+def recorded_grid():
+    return json.loads(RECORDED_GRID.read_text(encoding="utf-8"))
+
+
+def as_recorded(summary):
+    """A summary as `grid.json` stores it (JSON types)."""
+    return json.loads(document_text(summary))
+
+
 def test_recorded_credibility_result_matches_the_grid():
-    recorded = json.loads(
-        (ROOT / "generation" / "runs" / "DEMO-a2-credibility" / "grid.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    recorded = recorded_grid()
     configs = dict(cred.grid_configs(40))
+    assert set(recorded) == {"scenarios", "ci_check", "centrality_drift"}
     assert list(recorded["scenarios"]) == sorted(configs)
     for name, summary in recorded["scenarios"].items():
         assert summary["config"] == configs[name].describe()
         assert summary["a2_algorithm"] == a2.A2_ALGORITHM
         assert summary["paired_true_score_difference"]["books"] == 120
+        assert len(summary["books_sha256"]) == 64
+    assert recorded["ci_check"]["config"] == cred.ci_check_config().describe()
+    # the CI check runs the first books of the main scenario, not other books
+    main = configs[MAIN_SCENARIO]
+    assert cred.ci_check_config() == dataclasses.replace(main, books_per_profile=2)
+    assert set(cred.ci_check_config().book_ids()) < set(main.book_ids())
+
+
+@pytest.mark.parametrize("name", ["atom1-int-noise1", "atom1-real-noise0"])
+def test_recorded_first_atom_scenarios_reproduce(name):
+    """Every number of two whole recorded scenarios, books_sha256 included (about 2 s each):
+    protocol ratings, and the noise-free real-valued case, the only one A2 wins."""
+    summary, _ = cred.run(dict(cred.grid_configs(40))[name])
+    assert as_recorded(summary) == recorded_grid()["scenarios"][name]
+
+
+def test_recorded_book_level_check_reproduces():
+    """The main scenario's first two books per profile: committed references and the
+    separation threshold, which first-atom scenarios never reach."""
+    summary, books = cred.run(cred.ci_check_config())
+    assert as_recorded(summary) == recorded_grid()["ci_check"]
+    assert {len(b.atoms) for b in books} == {16}
+    assert summary["methods"]["A2"]["mean_true_distinguishability"] != 4.0
+
+
+def test_recorded_centrality_drift_reproduces():
+    assert cred.centrality_drift() == recorded_grid()["centrality_drift"]
+
+
+def documented_rows(scenarios):
+    """The table rows of a2-search.md, rendered from the recorded scenarios."""
+
+    def num(x):
+        return f"{x:.3f}"
+
+    rows = []
+    for name, _ in cred.grid_configs(40):
+        s = scenarios[name]
+        a2s, uni = s["methods"]["A2"], s["methods"]["uniform"]
+        diff = s["paired_true_score_difference"]
+        low, high = diff["ci95"]
+        label = f"{name} (main)" if name == MAIN_SCENARIO else name
+        rows.append(
+            f"| {label} | {num(a2s['mean_true_score'])} | {num(uni['mean_true_score'])} "
+            f"| {num(a2s['mean_true_score_by_round'][0])} -> "
+            f"{num(a2s['mean_true_score_by_round'][-1])} "
+            f"| {num(uni['mean_true_score_by_round'][0])} -> "
+            f"{num(uni['mean_true_score_by_round'][-1])} "
+            f"| {diff['mean']:+.3f} [{num(low)}, {num(high)}] "
+            f"| {diff['a2_better_books']} / {diff['a2_worse_books']} |"
+        )
+    return rows
+
+
+def test_documented_credibility_numbers_match_the_grid():
+    """The table and figures in a2-search.md are the recorded ones (3 decimals)."""
+    recorded = recorded_grid()
+    doc = CREDIBILITY_DOC.read_text(encoding="utf-8")
+    table = [line for line in doc.splitlines() if line.startswith(("| book-", "| atom1-"))]
+    expected = documented_rows(recorded["scenarios"])
+    assert table == expected, "\n".join(["expected rows:", *expected])
+    text = " ".join(doc.split())
+    main = recorded["scenarios"][MAIN_SCENARIO]["methods"]
+    assert (
+        f"{main['A2']['valid_slot_rate']:.1%} of A2 slots and "
+        f"{main['uniform']['valid_slot_rate']:.1%} of uniform slots were valid, and "
+        f"{main['A2']['eligible_slot_rate']:.1%} and "
+        f"{main['uniform']['eligible_slot_rate']:.1%} were eligible"
+    ) in text
+    drift = recorded["centrality_drift"]
+    assert (
+        f"is {drift['uniform']:.3f}, and it falls to {drift['after_1_mutations']:.3f}, "
+        f"{drift['after_3_mutations']:.3f} and {drift['after_9_mutations']:.3f} after 1, 3 "
+        "and 9 mutations"
+    ) in text
+    assert "No atom needed a fallback in any scenario" in text
+    assert all(
+        s["methods"][m]["fallback_rate"] == 0
+        for s in recorded["scenarios"].values()
+        for m in cred.METHODS
+    )

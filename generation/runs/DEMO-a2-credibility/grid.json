@@ -5,6 +5,72 @@
     "after_9_mutations": 0.2384,
     "uniform": 0.2859
   },
+  "ci_check": {
+    "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+    "books_sha256": "d13a59cd28e719064fbef94764e34b4cc69064a7798562cfc03b19d54aaca004",
+    "check": "A2 vs uniform sampling on synthetic scores (DEMO)",
+    "config": {
+      "atoms": 16,
+      "books_per_profile": 2,
+      "namespace": "DEMO-CRED",
+      "panel": {
+        "association_range": 0.5,
+        "distinguishability_range": 0.4,
+        "integer_ratings": true,
+        "noise_sd": 1.0,
+        "p_unacceptable": 0.1,
+        "p_unacceptable_high": 0.3,
+        "run_id": "DEMO-a2-credibility"
+      },
+      "threshold": "0.10"
+    },
+    "mean_fallback_difference_per_book": 0.0,
+    "methods": {
+      "A2": {
+        "atoms": 96,
+        "eligible_slot_rate": 0.8542,
+        "fallback_rate": 0.0,
+        "mean_panel_score": 4.5677,
+        "mean_true_association": 2.0866,
+        "mean_true_distinguishability": 6.2068,
+        "mean_true_score": 4.1467,
+        "mean_true_score_by_round": [
+          3.9433,
+          4.0284,
+          4.0818,
+          4.1467
+        ],
+        "valid_slot_rate": 0.9566
+      },
+      "uniform": {
+        "atoms": 96,
+        "eligible_slot_rate": 0.8108,
+        "fallback_rate": 0.0,
+        "mean_panel_score": 4.6684,
+        "mean_true_association": 2.4692,
+        "mean_true_distinguishability": 6.39,
+        "mean_true_score": 4.4296,
+        "mean_true_score_by_round": [
+          4.0461,
+          4.1918,
+          4.322,
+          4.4296
+        ],
+        "valid_slot_rate": 0.9141
+      }
+    },
+    "paired_true_score_difference": {
+      "a2_better_books": 0,
+      "a2_worse_books": 6,
+      "books": 6,
+      "ci95": [
+        -0.3596,
+        -0.2061
+      ],
+      "mean": -0.2829,
+      "sd": 0.0731
+    }
+  },
   "scenarios": {
     "atom1-int-noise0": {
       "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",

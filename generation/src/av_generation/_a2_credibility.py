@@ -31,10 +31,20 @@ nothing (the real fallback bank is out of scope here); later atoms are checked a
 atoms committed so far. The outcome measure is the noise-free score of each committed atom
 ("true" score), compared per book (A2 minus uniform, paired t interval).
 
-Run from the repository root; outputs go to an ignored directory, never into git:
+Run from the repository root. Each scenario's `summary.json` and `books.csv` go to the
+ignored `generation/out/` directory and are never committed. Only the grid summary
+(`grid.json`, DEMO data) is committed, as `generation/runs/DEMO-a2-credibility/grid.json`:
+copy it there after a deliberate change, and update the table in
+`generation/docs/a2-search.md`.
 
     uv run --project generation python -m av_generation._a2_credibility --grid \\
         --out generation/out/ci/a2-credibility
+    cp generation/out/ci/a2-credibility/grid.json \\
+        generation/runs/DEMO-a2-credibility/grid.json
+
+The whole grid takes minutes, so CI recomputes only part of the committed file exactly:
+the `ci_check` entry (`ci_check_config`), two first-atom scenarios and the centrality
+drift. It also checks the documented table against the file.
 """
 
 from __future__ import annotations
@@ -468,6 +478,20 @@ def grid_configs(books_per_profile: int) -> tuple[tuple[str, CredibilityConfig],
     )
 
 
+CI_CHECK_BOOKS_PER_PROFILE: Final = 2
+
+
+def ci_check_config() -> CredibilityConfig:
+    """The main scenario (first `GRID` row) on its first two books per profile.
+
+    Book IDs do not depend on the number of books, and books are simulated independently,
+    so these are the first books of the full main run. `--grid` records this run as
+    `ci_check` in `grid.json`; CI recomputes it in seconds, which covers the book-level
+    path (committed references, separation threshold) that first-atom scenarios skip.
+    """
+    return grid_configs(CI_CHECK_BOOKS_PER_PROFILE)[0][1]
+
+
 def write_outputs(out_dir: Path, summary: dict[str, Any], books: Sequence[BookOutcome]) -> None:
     """`summary.json` and `books.csv` (UTF-8, `\\n` line ends)."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -531,6 +555,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         rows.append(markdown_row(name, summary))
     text = MARKDOWN_HEADER + "\n".join(rows) + "\n"
     if args.grid:
+        index["ci_check"] = run(ci_check_config())[0]
         index["centrality_drift"] = drift = centrality_drift()
         text += f"\nMean |feature - 0.5| (uniform, then after unselected mutations): {drift}\n"
     (args.out / "grid.json").write_text(document_text(index), encoding="utf-8", newline="\n")
