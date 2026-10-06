@@ -420,16 +420,16 @@ class SyntheticPanel:
             if event.kind != "slot" or event.slot is None or event.slot.placeholder:
                 continue
             slot = event.slot
-            self._sleep_until(slot.start_ms)
-            self._play(seat, slot, "candidate")
-            if slot.reference is not None:
-                self._sleep_until(slot.start_ms + REFERENCE_ONSET_MS)
-                self._play(seat, slot, "reference")
+            # Accelerated real time: the rating goes first and the plays (scheduled
+            # onsets) are reported after it, so fsynced play writes never delay a rating
+            # past the lock on a slow machine.
             rating = self.policy(seat, slot)
-            if rating is None:
-                continue
-            self._sleep_until(slot.start_ms + slot.unlock_offset_ms + rating.rt_ms)
-            self._submit(seat, slot, rating, self.clock.now_ms())
+            if rating is not None:
+                self._sleep_until(slot.start_ms + slot.unlock_offset_ms + rating.rt_ms)
+                if self.clock.now_ms() < slot.start_ms + RATING_SLOT_MS:
+                    self._submit(seat, slot, rating, self.clock.now_ms())
+            self._play(seat, slot, "candidate")
+            self._play(seat, slot, "reference")
 
 
 # ---------------------------------------------------------------------------

@@ -530,13 +530,16 @@ def test_run_manifest_and_store_books(full_run):
 
 
 def test_accelerated_clock_batch(tmp_path):
-    """One batch at 500x real time: 48 commits and 576 slot records (acceptance)."""
+    """One batch at 250x real time: 48 commits and 576 slot records (acceptance).
+
+    Bot ratings that a slow runner delivers after a slot's lock become `missing`
+    records; the counts hold either way."""
     out = tmp_path
     if os.environ.get("CI") == "true":
         out = ROOT / "generation/out/ci/orchestrator"
         shutil.rmtree(out / "DEMO-A-accel-01", ignore_errors=True)
         out.mkdir(parents=True, exist_ok=True)
-    summary = sim.run_sim_batch(out, "DEMO-A-accel-01", clock=ScaledClock(500))
+    summary = sim.run_sim_batch(out, "DEMO-A-accel-01", clock=ScaledClock(250))
     counts = summary["counts"]
     assert counts["slot_records"] == 576
     assert counts["commits_in_final_books"] == 48

@@ -238,12 +238,14 @@ p = 0.9):
 # virtual clock driven by the panel (deterministic; pinned summary)
 uv run --project generation python -m av_generation._batch_sim --out /tmp/runs \
   --run-id DEMO-A-virtual-01 --clock manual --summary summary.json
-# accelerated real time (ScaledClock, 500x)
+# accelerated real time (ScaledClock, 250x as in the CI test)
 uv run --project generation python -m av_generation._batch_sim --out /tmp/runs \
-  --run-id DEMO-A-accel-01 --clock scaled --speed 500
+  --run-id DEMO-A-accel-01 --clock scaled --speed 250
 ```
 
 `generation/runs/DEMO-A-virtual-01/summary.json` holds the counts and the digests of
 every log (SHA-256 over sorted lines); `tests/generation/test_orchestrator.py` re-runs
-the batch on every CI OS and compares. CI writes the accelerated run's logs to
-`generation/out/ci/orchestrator/` (artifact `generation-ci-<os>`).
+the batch on every CI OS and compares. CI writes the accelerated run's logs and summary
+to `generation/out/ci/orchestrator/` (artifact `generation-ci-<os>`). In accelerated real
+time a 20-s slot lasts 80 ms, so a bot whose thread a busy runner wakes late misses the
+lock and its record is `missing`; the counts hold whatever the timing.
