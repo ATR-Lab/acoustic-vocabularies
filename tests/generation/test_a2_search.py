@@ -65,7 +65,7 @@ from av_generation.ledger import (
     SlotReused,
     SlotTicket,
 )
-from av_generation.outcomes import SlotOutcome
+from av_generation.outcomes import SlotOutcome, outcome_from_validation
 from av_generation.proposers import (
     AtomFeedback,
     BookState,
@@ -179,7 +179,9 @@ def synthetic_feedback(records, *, all_ineligible=False):
     return out
 
 
-def book_state(profile=Profile.P1, committed=(), *, batch=BATCH, book=BOOK, labels=False):
+def book_state(
+    profile=Profile.P1, committed=(), *, batch=BATCH, book=BOOK, labels=False, threshold="0.10"
+):
     recipes = synthetic_recipes(profile)
     atoms = tuple(
         CommittedAtom(
@@ -191,7 +193,7 @@ def book_state(profile=Profile.P1, committed=(), *, batch=BATCH, book=BOOK, labe
         )
         for i, atom in enumerate(committed)
     )
-    return BookState(batch, book, profile, "0.10", atoms)
+    return BookState(batch, book, profile, threshold, atoms)
 
 
 def request_for(book, atom, round_, feedback=None, *, method=Method.A2, label=None, ns=None):
@@ -564,6 +566,58 @@ def test_round_one_writes_three_uniform_records():
         record.check()
 
 
+def round_codes_match_the_validator(records, book):
+    """Each record carries the codes of `validate` against the book's references."""
+    for r in records:
+        expected = validate(
+            Recipe.from_dict(r.recipe), book.profile, book.references(), threshold=book.threshold
+        )
+        assert (r.validator_codes, r.validator_messages) == (expected.codes, expected.messages)
+        assert r.outcome is outcome_from_validation(expected)
+
+
+def test_validation_uses_the_books_committed_references():
+    """Slot 1 proposes the waveform of a committed atom: it fails and is still consumed."""
+    clock = ManualClock()
+    clash = plan_slot(a2_seed_key(BATCH, "K-a3", 1, 1), 1, None)[0]
+    assert validate(clash, Profile.P1).ok  # valid on its own
+    pcm = render(clash, Profile.P1).pcm_sha256
+    book = BookState(BATCH, BOOK, Profile.P1, "0.10", (CommittedAtom("K-a1", None, clash, pcm, 0),))
+    ledger = MemoryLedger(clock=clock)
+    result = A2Proposer(ledger, clock=clock).propose_round(request_for(book, "K-a3", 1))
+    first = result.records[0]
+    assert first.recipe == clash.to_dict()
+    assert first.outcome is SlotOutcome.DUPLICATE
+    assert first.validator_codes == ("E_DUPLICATE", "E_SEPARATION")
+    assert all("K-a1" in message for message in first.validator_messages)
+    assert first.pcm_sha256 == pcm  # the waveform is usable, only its relation fails
+    assert len(result.records) == 3 and result.records == ledger.records()
+    assert ledger.events == [
+        (kind, f"{BOOK}.K-a3.r1s{s}") for s in (1, 2, 3) for kind in ("reserve", "consume")
+    ]
+    round_codes_match_the_validator(result.records, book)
+
+
+def test_validation_uses_the_books_threshold():
+    """A stricter book threshold turns a valid proposal into a separation failure."""
+    clock = ManualClock()
+    committed = ("K-a1", "K-a2", "K-r1", "Q-a1", "Q-r2", "K-r4")
+    runs = {}
+    for threshold in ("0.10", "0.40"):
+        book = book_state(committed=committed, threshold=threshold)
+        ledger = MemoryLedger(clock=clock)
+        result = A2Proposer(ledger, clock=clock).propose_round(request_for(book, "K-a3", 1))
+        assert len(ledger.records()) == 3
+        round_codes_match_the_validator(result.records, book)
+        runs[threshold] = result.records
+    loose, strict = runs["0.10"], runs["0.40"]
+    assert [r.recipe for r in loose] == [r.recipe for r in strict]  # same proposals
+    changed = [(a.outcome, b.outcome) for a, b in zip(loose, strict, strict=True) if a != b]
+    assert changed and all(
+        pair == (SlotOutcome.VALID, SlotOutcome.SEPARATION_FAIL) for pair in changed
+    ), changed
+
+
 def run_atom(proposer, ledger, book, atom, *, ns=None, ineligible_rounds=()):
     """Four rounds of one atom with the stub selector; returns the records and feedback."""
     candidates = []
@@ -669,34 +723,73 @@ def test_reflection_corrections_are_written_to_the_slot_record():
 
 
 @pytest.mark.parametrize(
-    ("change", "code"),
+    ("change", "code", "reason"),
     [
-        ({"label": "ADD_ONE"}, "E_A2_LABEL"),
-        ({"labels": True}, "E_A2_LABEL"),
-        ({"method": Method.A3}, "E_A2_METHOD"),
-        ({"round": 0}, "E_A2_REQUEST"),
-        ({"round": 5}, "E_A2_REQUEST"),
-        ({"closed": 1}, "E_A2_REQUEST"),
-        ({"fb_atom": "K-a4"}, "E_A2_REQUEST"),
-        ({"atom": "K-a1"}, "E_A2_REQUEST"),
-        ({"profile": Profile.P2}, "E_A2_REQUEST"),
+        ({"label": "ADD_ONE"}, "E_A2_LABEL", "A2 never receives the atom's semantic label"),
+        ({"labels": True}, "E_A2_LABEL", "A2 receives the label-free book state"),
+        ({"method": Method.A3}, "E_A2_METHOD", "request for A3, not A2"),
+        ({"round": 0}, "E_A2_REQUEST", "round must be 1..4"),
+        ({"round": 5}, "E_A2_REQUEST", "round must be 1..4"),
+        ({"closed": 1}, "E_A2_REQUEST", "round 1 needs 0 closed rounds"),
+        ({"fb_atom": "K-a4"}, "E_A2_REQUEST", "feedback belongs to another atom"),
+        ({"fb_book": "DEMO-BK-OTHR"}, "E_A2_REQUEST", "feedback belongs to another book"),
+        ({"book_batch": "DEMO-A-OTHER"}, "E_A2_REQUEST", "book state belongs to another batch"),
+        ({"atom": "K-a1"}, "E_A2_REQUEST", "the atom is already committed"),
+        ({"profile": Profile.P2}, "E_A2_REQUEST", "book profile differs"),
+        ({"ns": "bad ns|x"}, "E_A2_REQUEST", "seed_key: seed-key part 'bad ns|x'"),
+        ({"ns": ""}, "E_A2_REQUEST", "seed_key: seed-key part ''"),
+        ({"threshold": "abc"}, "E_A2_REQUEST", "threshold: threshold 'abc'"),
+        ({"threshold": "-0.10"}, "E_A2_REQUEST", "threshold: threshold '-0.10'"),
+        ({"run_id": "bad run"}, "E_A2_REQUEST", "run_id: ID 'bad run'"),
+        ({"batch": "x"}, "E_A2_REQUEST", "batch_id: ID 'x'"),
+        ({"book": "DEMO-A2-H9TC"}, "E_A2_REQUEST", "book_id: book ID 'DEMO-A2-H9TC'"),
+        ({"atom": "K-a9"}, "E_A2_REQUEST", "seed_key: not an atom ID: 'K-a9'"),
+        ({"bad_profile": "P9"}, "E_A2_REQUEST", "profile: 'P9'"),
     ],
 )
-def test_requests_a2_must_not_act_on_are_refused_before_any_reservation(change, code):
+def test_requests_a2_must_not_act_on_are_refused_before_any_reservation(change, code, reason):
     clock = ManualClock()
     ledger = MemoryLedger(clock=clock)
-    book = book_state(committed=("K-a1",), labels=change.get("labels", False))
+    book = book_state(
+        committed=("K-a1",),
+        labels=change.get("labels", False),
+        threshold=change.get("threshold", "0.10"),
+        batch=change.get("batch", BATCH),
+        book=change.get("book", BOOK),
+    )
     atom = change.get("atom", "K-a3")
     round_ = change.get("round", 1)
-    fb = AtomFeedback(BOOK, change.get("fb_atom", atom), change.get("closed", 0), (), None, None)
+    fb = AtomFeedback(
+        change.get("fb_book", book.book_id),
+        change.get("fb_atom", atom),
+        change.get("closed", 0),
+        (),
+        None,
+        None,
+    )
     request = request_for(
         book, atom, round_, fb, method=change.get("method", Method.A2), label=change.get("label")
     )
     if "profile" in change:
         request = dataclasses.replace(request, profile=change["profile"])
+    if "bad_profile" in change:
+        bad = change["bad_profile"]
+        request = dataclasses.replace(
+            request, profile=bad, book=dataclasses.replace(book, profile=bad)
+        )
+    if "book_batch" in change:
+        request = dataclasses.replace(
+            request, book=dataclasses.replace(book, batch_id=change["book_batch"])
+        )
+    if "ns" in change:
+        request = dataclasses.replace(request, seed_namespace=change["ns"])
+    if "run_id" in change:
+        request = dataclasses.replace(request, run_id=change["run_id"])
     with pytest.raises(A2RequestError) as err:
         A2Proposer(ledger, clock=clock).propose_round(request)
     assert err.value.code == code and ledger.events == []
+    # the named check is the first (and only) problem, so each case pins its own check
+    assert str(err.value).startswith(f"{code}: {reason}"), str(err.value)
 
 
 def test_feedback_from_the_current_round_is_refused():

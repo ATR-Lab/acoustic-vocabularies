@@ -74,13 +74,15 @@ Study A protocol §3.5.
 
 - `A2Proposer(ledger, *, clock)` is a `RoundProposer`. `propose_round(request) ->
   RoundResult` fills slots 1..3. Each slot runs `SlotLedger.reserve`, the proposal,
-  `validate` against `request.book.references()`, then `consume`. Every outcome consumes
-  the slot, with no resampling. Ledger refusals propagate.
+  `validate` against `request.book.references()` at `request.book.threshold`, then
+  `consume`. Every outcome consumes the slot, with no resampling. Ledger refusals
+  propagate; nothing else can interrupt a round after a reservation.
 - Requests: `request.book` must be `BookState.without_labels()` and `semantic_label` must
   be `None`. Feedback must hold `round - 1` closed rounds of this book and atom, and its
   incumbent must follow the selector rule (highest score, then the lowest `slot_index`).
-  Otherwise `A2RequestError.code` is `E_A2_LABEL`, `E_A2_REQUEST`, `E_A2_PARENT` or
-  `E_A2_METHOD`, raised before any reservation.
+  IDs, profile, `seed_namespace` and `book.threshold` must be well formed. Otherwise
+  `A2RequestError.code` is `E_A2_LABEL`, `E_A2_REQUEST`, `E_A2_PARENT` or `E_A2_METHOD`,
+  raised before any reservation.
 - Proposals: uniform samples without an eligible parent. Otherwise child k (slot k)
   mutates exactly k coordinates of the incumbent. Each proposal is a pure function of
   `a2_seed_key(seed_namespace, atom, round, slot)` and the parent (`plan_slot`).

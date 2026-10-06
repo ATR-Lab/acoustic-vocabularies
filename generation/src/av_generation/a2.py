@@ -41,11 +41,14 @@ time is logged in `latency_ms`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from fractions import Fraction
+from functools import partial
 from typing import Final
 
 import numpy as np
-from av_sound.recipe import PITCHES, Recipe
+from av_sound.features import parse_threshold
+from av_sound.recipe import PITCHES, Profile, Recipe
 from av_sound.validate import ValidationResult, validate
 from av_sound.wav import file_sha256
 
@@ -65,7 +68,7 @@ from av_generation.domain import (
     replace_values,
     values_to_recipe,
 )
-from av_generation.ids import Method, Study, proposal_slot_id
+from av_generation.ids import Method, Study, check_book, check_id, proposal_slot_id
 from av_generation.ledger import SlotLedger
 from av_generation.outcomes import SlotOutcome, outcome_from_validation
 from av_generation.proposers import AtomFeedback, CandidateFeedback, RoundRequest, RoundResult
@@ -285,7 +288,13 @@ def plan_slot(
 
 
 def check_request(request: RoundRequest) -> None:
-    """Refuse a request A2 must not act on (`A2RequestError`); nothing is reserved."""
+    """Refuse a request A2 must not act on (`A2RequestError`); nothing is reserved.
+
+    Besides consistency, this checks every request value that `propose_round` turns into
+    a slot ID, a seed key, a validator argument or a record field (identifiers, profile,
+    seed namespace, separation threshold). After it passes, only the ledger's refusals
+    can interrupt a round, so a reserved slot is always consumed.
+    """
     if request.method is not Method.A2:
         raise A2RequestError("E_A2_METHOD", f"request for {request.method}, not A2")
     if request.semantic_label is not None:
@@ -322,8 +331,37 @@ def check_request(request: RoundRequest) -> None:
         )
         if bad
     ]
+    problems += _format_problems(request)
     if problems:
         raise A2RequestError("E_A2_REQUEST", "; ".join(problems))
+
+
+def _format_problems(request: RoundRequest) -> list[str]:
+    """Malformed request values that would otherwise raise only after a reservation."""
+    checks: tuple[tuple[str, Callable[[], object]], ...] = (
+        ("run_id", partial(check_id, request.run_id)),
+        ("batch_id", partial(check_id, request.batch_id)),
+        ("book_id", partial(check_book, request.book_id)),
+        ("profile", partial(Profile, request.profile)),
+        ("seed_key", partial(_round_seed_keys, request)),
+        ("threshold", partial(parse_threshold, request.book.threshold)),
+    )
+    problems = []
+    for name, check in checks:
+        try:
+            check()
+        except (TypeError, ValueError) as err:
+            problems.append(f"{name}: {err}")
+    return problems
+
+
+def _round_seed_keys(request: RoundRequest) -> tuple[str, ...]:
+    """The seed keys of the round's slots 1..3 (`SeedKeyError` for a malformed namespace
+    or atom ID)."""
+    return tuple(
+        a2_seed_key(request.seed_namespace, request.atom_id, request.round, slot)
+        for slot in range(1, SLOTS_PER_ROUND + 1)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -346,20 +384,25 @@ class A2Proposer:
     def propose_round(self, request: RoundRequest) -> RoundResult:
         """Fill the round's three slots in order and return their records.
 
-        Raises `A2RequestError` before any reservation for a request A2 must not act on,
-        and lets the ledger's refusals (`SlotCapExceeded`, `SlotReused`) propagate; a bad
-        candidate never raises (it is a slot outcome).
+        Raises `A2RequestError` before any reservation for a request A2 must not act on
+        (`check_request`), and lets the ledger's refusals (`SlotCapExceeded`,
+        `SlotReused`) propagate; a bad candidate never raises (it is a slot outcome).
+        Every slot that was reserved is consumed.
         """
         check_request(request)
         parent = select_parent(request.feedback)
         book = request.book
         references = book.references()
         key = cap_key(Study.A, request.atom_id, book_id=request.book_id)
+        # Everything that can fail on a malformed request is built before the first
+        # reservation; inside the loop only the ledger may refuse.
+        slots = tuple(
+            (slot, proposal_slot_id(request.book_id, request.atom_id, request.round, slot), seed)
+            for slot, seed in enumerate(_round_seed_keys(request), start=1)
+        )
         records: list[SlotRecord] = []
-        for slot in range(1, SLOTS_PER_ROUND + 1):
-            slot_id = proposal_slot_id(request.book_id, request.atom_id, request.round, slot)
+        for slot, slot_id, seed_key in slots:
             ticket = self._ledger.reserve(key, slot_id, study=Study.A, method=Method.A2)
-            seed_key = a2_seed_key(request.seed_namespace, request.atom_id, request.round, slot)
             recipe, detail = plan_slot(seed_key, slot, parent)
             result = validate(recipe, request.profile, references, threshold=book.threshold)
             t_ms = self._clock.now_ms()

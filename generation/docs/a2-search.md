@@ -112,12 +112,19 @@ slot ID. The module does not import the meaning or prompt modules (tested).
 ## Request checks
 
 `propose_round` raises `A2RequestError` before any reservation when the request is not for
-A2 (`E_A2_METHOD`), carries a label (`E_A2_LABEL`), or is inconsistent (`E_A2_REQUEST`).
-Inconsistent means one of these: a round outside 1..4, a book state or feedback of another
-book, batch, atom or profile, `rounds_closed != round - 1`, feedback that holds candidates
-of this or a later round, or an atom that is already committed. A faulty incumbent raises
-`E_A2_PARENT`. Ledger refusals (`SlotCapExceeded`, `SlotReused`) propagate after the
-ledger has logged them. A bad candidate never raises: it is a slot outcome.
+A2 (`E_A2_METHOD`), carries a label (`E_A2_LABEL`), or is inconsistent or malformed
+(`E_A2_REQUEST`). Inconsistent means one of these: a round outside 1..4, a book state or
+feedback of another book, batch, atom or profile, `rounds_closed != round - 1`, feedback
+that holds candidates of this or a later round, or an atom that is already committed.
+Malformed means a value that A2 would otherwise trip over only after reserving a slot: a
+run, batch or book ID that does not match its format, an unknown profile, a seed
+namespace or atom ID that does not give valid seed keys, or a book threshold that is not
+an exact non-negative decimal. A faulty incumbent raises `E_A2_PARENT`.
+
+The slot IDs and seed keys of all three slots are built before the first reservation.
+After these checks only the ledger can interrupt a round, so every reserved slot is
+consumed. Ledger refusals (`SlotCapExceeded`, `SlotReused`) propagate after the ledger
+has logged them. A bad candidate never raises: it is a slot outcome.
 
 ## Tests and the cross-platform fixture
 
@@ -134,8 +141,12 @@ ledger has logged them. A bad candidate never raises: it is a slot outcome.
 - The proposer: three records per round including invalid ones, reserve before consume,
   no resampling (each recorded recipe equals the planned proposal of its seed key), the
   incumbent as parent, the uniform fallback without an eligible parent, corrections
-  written to the slot record, request refusals before any reservation, and ledger
-  refusals.
+  written to the slot record, request refusals before any reservation (one case per
+  check), and ledger refusals.
+- Validation against the book: a slot that re-proposes a committed waveform is recorded
+  as `duplicate` (`E_DUPLICATE`, `E_SEPARATION`) and still consumed, and a stricter book
+  threshold (0.40) turns a valid proposal into `separation_fail`. Each record's codes and
+  messages equal `validate` against `BookState.references()` at `BookState.threshold`.
 - Hypothesis properties: children have exactly k changes, the mutation fields agree with
   the values, and the same seed gives the same child.
 
@@ -226,9 +237,10 @@ ahead only on isolated atoms with precise, real-valued feedback. Two likely cont
 
 **Status.** The protocol fixes the algorithm, and tuning it is out of scope for #18. This
 result goes to the protocol owner, who decides whether A2 counts as plainly ineffective
-and whether to revise it prospectively (versioned, before G4). Until that
-decision, A2 stays exactly as §3.5 specifies. The #22 dry run can repeat the check with
-its bot panel.
+and whether to revise it prospectively (versioned, before G4). The decision is tracked on
+#18, which stays open until it is recorded there, and it is a precondition of the G4
+freeze (#25, item "A2 rules frozen"). Until that decision, A2 stays exactly as §3.5
+specifies. The #22 dry run can repeat the check with its bot panel.
 
 ## Follow-ups for other issues
 
