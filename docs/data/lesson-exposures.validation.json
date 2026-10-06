@@ -1,0 +1,199 @@
+{
+  "version": 1,
+  "scope": "synthetic software contract validation",
+  "source_commit": "50bca914193f6f59977794447a9af270e7d2dcf2",
+  "unity_integration_commit": "e0e05b002e4e362fcd254df4fa41705322b0567d",
+  "source_files": [
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/DataLogging/AcousticVocab.DataLogging.asmdef",
+      "sha256": "f420007f40894c5dfa882e27781b8ad4f1c6b292275e496507f591d80a52e5b0"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/DataLogging/DataContracts.cs",
+      "sha256": "ab4105b21003aa2de3b7ff182f5d8781a68847cd3e147d07a5923097cd3d4a69"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/DataLogging/DataExport.cs",
+      "sha256": "81251da4e742c9860400a7ba1f18dafa30d1c8f5a5ab985904544c7b6ca6f38a"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/DataLogging/DataJournal.cs",
+      "sha256": "13e406db31cb12f4487bf850178fd1f2cbd0807aab0e19b6ad6de4a0616aa397"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/DataLogging/LessonDataJournal.cs",
+      "sha256": "9071df66481916012eb0ecb1b5293692b8ed75cd18ee0c8cdddba49c263ccc15"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/DataLogging/LessonExport.cs",
+      "sha256": "8e71b6b720752cece685b0abe4d986cab3e1a157fcd38cad0c4f613c3c65d587"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/SessionEngine/AssemblyInfo.cs",
+      "sha256": "7a9ab85a290220a583794c314478d909bbc2457ed1bd14d1f38b8601d8ab2927"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs",
+      "sha256": "e2f989cd847d17b909ff6e953715c10794f2a5f882ae27cfc1a7df40911a2026"
+    },
+    {
+      "path": "unity/Assets/ExperimentApp/Runtime/SessionIntegration/SessionIntegrationOwner.cs",
+      "sha256": "d27fa25406c92690d370bf63d469b629edaaf0c577d4fb1dbc60f87c4f4fa794"
+    },
+    {
+      "path": "unity/Assets/Tests/DataLogging/AcousticVocab.DataLogging.Tests.asmdef",
+      "sha256": "e28e30291e3f1a25243bfa14c909ce3712c0282ad3d1d0b2fb88ddcc2462cded"
+    },
+    {
+      "path": "unity/Assets/Tests/DataLogging/LessonDataTests.cs",
+      "sha256": "3b53841531720ece94315b2f1d748f2086adc8b87a78e1f7bbcdb7ad0d7b52ec"
+    }
+  ],
+  "python": {
+    "passed": 109,
+    "failed": 0,
+    "xml_sha256": "8391c84548490726a29fc61a0be48c0335534307cc73f1ca177928d28e63cc4f",
+    "schemas": 45,
+    "synthetic_examples": 14
+  },
+  "unity": {
+    "editor": "6000.6.0f1",
+    "new_lesson_cases": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "initial_combined_run": {
+      "passed": 250,
+      "failed": 5,
+      "skipped": 1,
+      "xml_sha256": "a0dcd7d651054b2ee3e17cc2d26590da20a0290c28a722c245414ea9ec2f108a",
+      "failure_classification": "Five existing selection tests were configured with mismatching retained package and store fixtures. All five passed with the matching pinned package; original failed output retained.",
+      "skip": "Windows symlink privilege unavailable"
+    },
+    "corrected_fixture_rerun": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "e8ed5314f4126600aba6fa986e1f6cc9b3c2489db9af2462bf7eeeab8ecf135c",
+      "source_changed": false,
+      "scope": "Only the five previously failed selection fixture cases; corrected package root matches the retained store configuration."
+    },
+    "unique_verified_cases": {
+      "passed": 255,
+      "skipped": 1,
+      "counting_rule": "Initial 250 passing cases plus the five distinct corrected-fixture cases; not the sum of all executions."
+    }
+  },
+  "cross_runtime_parity": {
+    "result": "passed",
+    "verifier": "tools.mock_visit.reconcile.export_bundle with lessons.verify_export",
+    "exports": [
+      {
+        "manifest_sha256": "469473f329ff54d68b103b3915323fdf3fb1e54e618aff628bb75f59b6f443d6",
+        "trial_rows": 1,
+        "exposure_rows": 3,
+        "lesson_rows": 6,
+        "row_kinds": {
+          "play": 3,
+          "display": 2,
+          "retrieval": 1
+        },
+        "acoustic_fields_blank": true,
+        "audio_uncertain_consumed": true,
+        "records": 30,
+        "files": [
+          {
+            "path": "raw/events-0000.local.jsonl",
+            "bytes": 45475,
+            "sha256": "f2c116b506b13038afb8a62a8c81349df6e7fcccf86e4ed5e9ec11f7bb69548e"
+          },
+          {
+            "path": "trial-log.csv",
+            "bytes": 772,
+            "sha256": "552f6c31a4504f4bb426473f96685311b9bc8bff7fce5eb02bfe824b6dee6ef9"
+          },
+          {
+            "path": "exposure-ledger.csv",
+            "bytes": 1328,
+            "sha256": "4e2a84c6470847f8bb12061547eefe39c4414a813b7e315e951ffb803f6994a7"
+          },
+          {
+            "path": "header-contract.json",
+            "bytes": 1113,
+            "sha256": "12063cf56e58d0e3c0cb31f783e0866f070b4f75a02046050109358cb5159b76"
+          },
+          {
+            "path": "lesson-exposures.csv",
+            "bytes": 5375,
+            "sha256": "c7874adf0668e221f1b586d198efdf0bcef5d14d8e2c20ebc751a4ee9b008b97"
+          },
+          {
+            "path": "lesson-header-contract.json",
+            "bytes": 967,
+            "sha256": "cec89547fada01837209af2e33aac24b2d909345394517d2967aa54136d0f875"
+          }
+        ]
+      },
+      {
+        "manifest_sha256": "84155fb3fc60cb95bf03939134d9ba299fe1158a8c354d14dbee72f8ebf74d0b",
+        "trial_rows": 1,
+        "exposure_rows": 3,
+        "lesson_rows": 6,
+        "row_kinds": {
+          "play": 3,
+          "display": 2,
+          "retrieval": 1
+        },
+        "acoustic_fields_blank": true,
+        "audio_uncertain_consumed": true,
+        "records": 30,
+        "files": [
+          {
+            "path": "raw/events-0000.local.jsonl",
+            "bytes": 49091,
+            "sha256": "1c7995cd8ff1678f86aee3243b89657f519076b2a9e998dc57c0c444166d6b40"
+          },
+          {
+            "path": "trial-log.csv",
+            "bytes": 772,
+            "sha256": "8579d10bc47cab3d7ccbac14074d80ab368fd26b478acc946b5964451e2cabe8"
+          },
+          {
+            "path": "exposure-ledger.csv",
+            "bytes": 1328,
+            "sha256": "1e03a67d9c7a2652d6402c41a8c69cc53057b165d1bd737b2a6f45eb041d9b2d"
+          },
+          {
+            "path": "header-contract.json",
+            "bytes": 1113,
+            "sha256": "12063cf56e58d0e3c0cb31f783e0866f070b4f75a02046050109358cb5159b76"
+          },
+          {
+            "path": "lesson-exposures.csv",
+            "bytes": 6149,
+            "sha256": "c8c6f4aea35a731a6724d296b6f64cb21d3149468de0af307b9b3a9f316c9cb3"
+          },
+          {
+            "path": "lesson-header-contract.json",
+            "bytes": 967,
+            "sha256": "cec89547fada01837209af2e33aac24b2d909345394517d2967aa54136d0f875"
+          }
+        ]
+      }
+    ]
+  },
+  "qualifications": {
+    "headers_qualified": false,
+    "acoustic_timing_qualified": false,
+    "headset_visibility_qualified": false,
+    "native_lesson_completed": false,
+    "participant_admission": false
+  },
+  "limitations": [
+    "Test timelines use synthetic clocks and software audio events; no new native player or acoustic measurement occurred.",
+    "Old trial/audio headers and counts are unchanged; the optional lesson table remains provisional.",
+    "Additional durable lesson writes require native timing measurement.",
+    "The initial combined run and its failures/skip remain retained."
+  ]
+}
