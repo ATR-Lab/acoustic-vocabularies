@@ -155,3 +155,46 @@ publication deadlines and frame intervals. The option itself and its 19
 configuration checks are not evidence of a throughput improvement or completed
 native visit. No new full-hour, route, headset or participant qualification is
 granted by this engineering option.
+
+### Actual current-service screen
+
+The comparison used the same committed source `96131c9` and approved Isaac
+image in four fresh OFF/ON/ON/OFF processes, requesting 40 seconds each. Camera
+setup, scene and snapshot matched. There was no receiver, private client,
+timing observer or same-iteration optimization. The state-reader, cache guard,
+geometry generator and tamper-test normalized hashes match the retained USD
+0.24.5 matrix above; no structural guard changed. Every process exited 0,
+reported the expected actual cache flag and retained matching first/last
+43-joint/60-object projections. This is endpoint projection evidence, not an
+assertion that every intermediate full state was compared.
+
+| Phase | Full-service physics steps/s | Maximum publication gap (ms) | Gaps >250 ms |
+|---|---:|---:|---:|
+| OFF 1 | 15.358 | 407.156 | 1 |
+| ON 1 | 17.767 | 845.715 | 2 |
+| ON 2 | 18.345 | 373.627 | 3 |
+| OFF 2 | 14.685 | 403.787 | 1 |
+
+All complete timing screens failed; missed publication deadlines numbered
+586, 489, 466 and 613. The observed improvement does not meet the required
+60 physics steps/s or 30 public frames/s. Host load varied across the ordered
+phases: one-minute load rose from 3.62 to 16.22 and ended at 13.35. Unrelated
+workloads were preserved, so these four short processes do not establish an
+isolated causal estimate or predict performance under a native receiver.
+
+The separate predeclared window begins 10 seconds after the first retained
+publication and ends at the last actual publication. Its rates were 15.147,
+19.973, 18.370 and 14.889 steps/s. In those windows, the median inclusive
+sample/comparison/serialization duration was 26.692 and 24.473 ms with the
+cache off, versus 18.465 and 19.062 ms with it on. This timer does not isolate
+JSON encoding. The second ON phase still had two >250 ms gaps after warm-up;
+excluding warm-up never changes the complete-run failures. GC policy was
+unchanged and no GC timing observer ran, so these stalls cannot be assigned
+to GC from this evidence.
+
+The [current-service result and artifact hashes](state-reader-joined-results.json)
+retain complete and secondary measurements, exact source/image pins and raw
+artifact hashes. Task containers and sockets were removed; unrelated GPU and
+ROS processes were preserved. The option remains experimental and off by
+default. No optimized hour, completed native visit, network, headset or
+participant qualification follows from this screen.
