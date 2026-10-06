@@ -45,6 +45,26 @@ multiple pending resets, probes arriving during persistence, expired queues,
 replay, unexpected duplicates, malformed payloads, host regression, sink
 failure and exact command/probe deadline boundaries.
 
-Exact test and build pins are in the adjacent validation record. Build012's
-native affected-segment and complete-visit results are not inferred from unit
-tests or compilation. Previous native failures remain unchanged.
+Exact test and build pins are in the adjacent validation record. Previous
+native failures remain unchanged.
+
+## Native build012 observations
+
+Both B active V1 and A D0 recorded exact durable reset completion, then stopped
+in preflight on a cancelled current-health exchange before Start or any audio.
+B's retained reset transaction was 164.5439 ms; it is not native proof of a
+greater-than-250 ms historical ACK. Its immediately following probe had no
+completed receipt. In A, a progressing post-reset probe was retained with a
+77.191 ms RTT before a later probe cancelled.
+
+The failure observations were 216.2631 ms (B) and 216.8653 ms (A) after their
+`health_exchange` phase starts. These are phase-to-failure intervals, not
+completed network RTTs. Both retained `CONTROL_OPERATION_CANCELLED` before
+candidate cleanup; the coordinator reported `SESSION_PREFLIGHT_FAILED`.
+Historical completion did not grant stale exposure. The existing diagnostic
+does not retain the failed probe ID, send/receive stage or cancellation token
+origin, so those causes remain under investigation without changing limits.
+
+Both processes exited 0 with successful cleanup/export, intact independently
+reconciled evidence, `complete=false` and zero requested audio. Neither menu
+nor lesson completion, full-visit acceptance or resolution of #148 is claimed.
