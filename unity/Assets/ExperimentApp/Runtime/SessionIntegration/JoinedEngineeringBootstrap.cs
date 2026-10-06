@@ -421,7 +421,7 @@ namespace AcousticVocab.SessionIntegration
                 if(kind==JoinedModuleKind.Teaching)
                 {
                     EnsureTeachingView();var view=teachingView;
-                    result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,host.audit.Lesson,shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio,host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Teaching,host.selections,new TeachingControl(control),host.assets.Route,host.assets.Gain,e=>{shared.DurableLessonSink(e);host.audit.Lesson(e);},shared.DurableAudioSink,host.owner.Engine.RecordResponse,host.Fail,true,shared.BindAudio,host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 else if(kind==JoinedModuleKind.Assessment)
                 {

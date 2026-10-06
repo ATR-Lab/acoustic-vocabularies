@@ -220,6 +220,10 @@ def validate_data_payload(row, schedule_hash):
             require(p["trial_id"] == row["attempt_id"] and p["opportunity_id"] == row["opportunity_id"] and row["audio_request_id"] is None, "MOCK_SESSION_CONTEXT")
             require(p["audible_status"] in {"NotRequested", "NoCue", "Uncertain"}, "MOCK_ACOUSTIC_AUTHORITY_FORBIDDEN")
             require(type(p["exposure_consumed"]) is bool and p["exposure_consumed"] == (p["audible_status"] == "Uncertain"), "MOCK_EXPOSURE_CONSUMPTION")
+    elif kind == "lesson":
+        from .lessons import validate
+        validate(row)
+        require(p["schedule_sha256"] == schedule_hash, "MOCK_SCHEDULE_BINDING")
     elif kind == "grammar_stage":
         exact(p, "version schedule_sha256 registry_sha256 review_sha256 clock_epoch host_mono_ms kind phase audio_request_id operator_command audio")
         require(type(p["version"]) is int and p["version"] == 1 and p["schedule_sha256"] == schedule_hash, "MOCK_GRAMMAR_VERSION")
