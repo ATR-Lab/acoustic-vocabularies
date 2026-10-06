@@ -1,0 +1,178 @@
+{
+  "scope": "Actual matched native preflight health failure with bounded source observer",
+  "participant": false,
+  "qualification": false,
+  "native_visit_completed": false,
+  "source_commit": "3d7dc252a25562b6514f448658ce19ff063039e5",
+  "source_archive_sha256": "223746e4405bd4868fa6b9c893a626498666e7a56fe654a80e8ae4e9229608fd",
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "raw_archive_sha256": "620a9460876e554665dbbe38e83703ebb1525e7be89188393775c485bfb64bf4",
+  "summary_sha256": "9aa73cea58f296b75551b23a321dec8168571f7d42c8f8edcc4c05bec1f7bec7",
+  "raw_artifacts_verified": {
+    "ready.json": "e17e644ea7e1de9cad34d2e3883d8981e9133679ca40e31b007548ba32379816",
+    "sample-first.json": "e1542e444afa4b22ce76b44ad0451872cf6145de7478d06c8ea7b95c8c4f2474",
+    "initial-reset.json": "4f49cc636bf4c30f3fac8ba0450069f8a2656e2a91fd58ef317d6895b77d542f",
+    "sample-last.json": "1668c0cfb80cc54818c75fd12319f999db904ee970182f2b02b87674ded0e216",
+    "commands.jsonl": "e4e0b29ec9ccaebae30f840103e6f8d752dbc1c63f8f85caa38f11bfbc8ef16e",
+    "private-timing.json": "1881915e6cb5beccb60d5e182579f803d1efb543dd20edc8d9384575ae182dd5",
+    "physics-steps.jsonl": "54379e2525c11842ad5be469e977df7ff07aa2cca704533f2a9de1d7fad54723",
+    "publish.csv": "709551be863354aa34cfcca0199b8b4ec8e154863172874fcd2020b57cb29800"
+  },
+  "trace": {
+    "requested_seconds": 180.0,
+    "events": 70876,
+    "dropped": 7,
+    "errors": 0,
+    "complete": false,
+    "gc_before": [
+      true,
+      [
+        700,
+        10,
+        10
+      ]
+    ],
+    "gc_after": [
+      true,
+      [
+        700,
+        10,
+        10
+      ]
+    ]
+  },
+  "observed_source_spans": {
+    "drain": {
+      "count": 4910,
+      "median_ms": 0.0577725,
+      "p95_ms": 0.084458,
+      "max_ms": 262.190718,
+      "max_span": {
+        "start": 1225108634593239,
+        "end": 1225108896783957,
+        "ms": 262.190718,
+        "a": 1629
+      }
+    },
+    "physics": {
+      "count": 2455,
+      "median_ms": 5.766838,
+      "p95_ms": 14.401432,
+      "max_ms": 324.730926,
+      "max_span": {
+        "start": 1225168476069926,
+        "end": 1225168800800852,
+        "ms": 324.730926,
+        "a": 2372
+      }
+    },
+    "hold": {
+      "count": 2455,
+      "median_ms": 30.415036,
+      "p95_ms": 51.245092,
+      "max_ms": 127.789967,
+      "max_span": {
+        "start": 1225174006465522,
+        "end": 1225174134255489,
+        "ms": 127.789967,
+        "a": 2421
+      }
+    },
+    "sample": {
+      "count": 2455,
+      "median_ms": 17.865929,
+      "p95_ms": 31.727937,
+      "max_ms": 54.539265,
+      "max_span": {
+        "start": 1225052318301247,
+        "end": 1225052372840512,
+        "ms": 54.539265,
+        "a": 849
+      }
+    },
+    "neutral": {
+      "count": 2454,
+      "median_ms": 4.7514755,
+      "p95_ms": 7.521648,
+      "max_ms": 14.974114,
+      "max_span": {
+        "start": 1225112543352829,
+        "end": 1225112558326943,
+        "ms": 14.974114,
+        "a": 1664
+      }
+    },
+    "gc": {
+      "count": 2456,
+      "median_ms": 0.072051,
+      "p95_ms": 0.113409,
+      "max_ms": 370.384553,
+      "max_span": {
+        "start": 1225000118415693,
+        "end": 1225000488800246,
+        "ms": 370.384553,
+        "a": 2
+      }
+    },
+    "encode": {
+      "count": 2454,
+      "median_ms": 1.4536815,
+      "p95_ms": 2.20529,
+      "max_ms": 371.933971,
+      "max_span": {
+        "start": 1225000118284575,
+        "end": 1225000490218546,
+        "ms": 371.933971,
+        "a": 32
+      }
+    },
+    "provider": {
+      "count": 285,
+      "median_ms": 0.03049,
+      "p95_ms": 0.08267,
+      "max_ms": 0.230132,
+      "max_span": {
+        "start": 1225123774493781,
+        "end": 1225123774723913,
+        "ms": 0.230132,
+        "a": 0
+      }
+    },
+    "loop_lag": {
+      "count": 6929,
+      "median_ms": 5.217214,
+      "max_ms": 355.827315
+    }
+  },
+  "censored_span_events": 1,
+  "matched_failed_probe": {
+    "request_id_sha256": "e8533af3b73e13c09e58b235b2cf4e9d8a57ad54d9a218fd8a5e433c817559ce",
+    "native_elapsed_to_cancellation_ms": 216.3951,
+    "native_received_bytes": 0,
+    "native_received_fragments": 0,
+    "timeout_cancelled": true,
+    "lifetime_cancelled": false,
+    "source_socket_callback_to_ingress_ms": 0.652366,
+    "source_ingress_to_send_complete_ms": 0.619387,
+    "source_socket_callback_to_send_complete_ms": 1.271753
+  },
+  "service": {
+    "elapsed_seconds": 199.717064714,
+    "physics_steps": 2750,
+    "frames": 2749,
+    "missed_deadlines": 3239,
+    "command_events": 3,
+    "end_reason": "private_stop",
+    "fault": null,
+    "cleanup_errors": []
+  },
+  "owned_resources_stopped": true,
+  "limitations": [
+    "Seven nonblocking observer drops mean incomplete coverage; unmatched spans remain censored",
+    "Server send completion is not proof of kernel, relay, SSH or native receipt",
+    "GC370.385ms coincides with an early371.934ms encoding span, not the matched failed native probe",
+    "Only short gen0/1 events are retained in the matched probe neighborhood; missing events prevent an absolute absence claim",
+    "Observer creates bounded primitive tuples and may influence allocation or GC",
+    "No clock mapping,200ms deadline widening,250ms age relaxation or timing/visit acceptance"
+  ]
+}
