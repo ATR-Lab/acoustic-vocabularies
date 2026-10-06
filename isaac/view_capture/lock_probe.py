@@ -11,6 +11,7 @@ import hashlib
 import math
 import os
 from pathlib import Path
+import re
 import stat
 import time
 import uuid
@@ -179,10 +180,21 @@ def verify_command_bindings(report, commands_raw):
 The full source/native verifier must still validate finalization and capture;
 this function verifies only exact test-lock command evidence.
 """
-    require(report.get('kind')=='view_lock_probe' and report.get('version')==1
-        and report.get('completed') is True and report.get('error') is None,'LOCK_RUN_INCOMPLETE')
-    rows=report['records'];require(len(rows)==64,'LOCK_PAIR_COUNT')
-    require(len(commands_raw)<=256*1024*1024,'LOCK_COMMAND_SIZE')
+    require(isinstance(report,dict) and set(report)=={'version','kind','ready_sha256','station_id',
+        'control_session_id','client','native_owner_release_declared','completed','error','records',
+        'qualification'},'LOCK_REPORT_SHAPE')
+    require(type(report['version']) is int and report['version']==1 and report['kind']=='view_lock_probe'
+        and report['completed'] is True and report['error'] is None
+        and report['native_owner_release_declared'] is True and report['qualification'] is False,
+        'LOCK_RUN_INCOMPLETE')
+    require(isinstance(report['ready_sha256'],str) and SHA.fullmatch(report['ready_sha256'])
+        and isinstance(report['control_session_id'],str) and GUID.fullmatch(report['control_session_id'])
+        and isinstance(report['station_id'],str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,95}',report['station_id'])
+        and isinstance(report['client'],str) and re.fullmatch(r'uid:(0|[1-9][0-9]*)',report['client']),
+        'LOCK_REPORT_IDENTITY')
+    rows=report['records'];require(isinstance(rows,list) and len(rows)==64,'LOCK_PAIR_COUNT')
+    require(isinstance(commands_raw,bytes) and 0<len(commands_raw)<=256*1024*1024
+        and commands_raw.endswith(b'\n'),'LOCK_COMMAND_SIZE_OR_TAIL')
     lines=commands_raw.splitlines();require(len(lines)<=4096,'LOCK_COMMAND_COUNT')
     events=[decode(line.decode('utf-8')) for line in lines]
     require(all(event.get('event_seq')==index and type(event.get('event_seq')) is int
@@ -191,7 +203,12 @@ this function verifies only exact test-lock command evidence.
     for index in range(0,len(rows),2):
         probe,row=rows[index:index+2]
         for value in (probe,row):
+            require(isinstance(value,dict) and set(value)=={'request_utf8','reply_utf8','sent_host_ns',
+                'received_host_ns','rtt_ms','error'},'LOCK_EXCHANGE_SHAPE')
             require(value['error'] is None and value['reply_utf8'] is not None,'LOCK_EXCHANGE_INCOMPLETE')
+            require(all(isinstance(value[key],str) and re.fullmatch(r'0|[1-9][0-9]{0,19}',value[key])
+                for key in ('sent_host_ns','received_host_ns')) and finite(value['rtt_ms']),
+                'LOCK_EXCHANGE_TYPES')
             require(int(value['received_host_ns'])>=int(value['sent_host_ns'])>=previous_received,'LOCK_EXCHANGE_CLOCK')
             require(value['rtt_ms']==(int(value['received_host_ns'])-int(value['sent_host_ns']))/1e6,'LOCK_EXCHANGE_CLOCK')
             require(value['rtt_ms']<=3000,'LOCK_EXCHANGE_DEADLINE')

@@ -14,7 +14,7 @@ from isaac.commands.dispatcher import CommandDispatcher
 from isaac.commands.event_log import DurableCommandLog
 from isaac.commands import health_probe
 from isaac.commands.protocol import LEGAL_PAIRS, decode
-from isaac.view_capture.lock_probe import exercise, run, save, verify_command_bindings
+from isaac.view_capture.lock_probe import exercise, run, save, sha, verify_command_bindings
 
 
 class Reset:
@@ -58,7 +58,8 @@ def completed(tmp_path):
     dispatcher,log=backend(tmp_path);rows=[];socket=Socket(dispatcher)
     asyncio.run(exercise(socket,dispatcher.control_session_id,rows));log.close()
     report=dict(version=1,kind='view_lock_probe',completed=True,error=None,records=rows,
-        control_session_id=dispatcher.control_session_id,station_id='fixture',client='uid:7')
+        control_session_id=dispatcher.control_session_id,station_id='fixture',client='uid:7',
+        ready_sha256='a'*64,native_owner_release_declared=True,qualification=False)
     return report,log.path.read_bytes()
 
 
@@ -113,21 +114,35 @@ def test_failed_durable_report_never_publishes_complete_name(tmp_path,monkeypatc
     assert not (tmp_path/'probe.json').exists()
 
 
+@pytest.mark.parametrize('change',['extra','bool_version','unreleased','qualification','record_extra',
+    'numeric_stamp','bool_rtt','tail'])
+def test_offline_binding_requires_actual_closed_driver_format(tmp_path,change):
+    report,commands=completed(tmp_path)
+    if change=='extra':report['extra']=True
+    elif change=='bool_version':report['version']=True
+    elif change=='unreleased':report['native_owner_release_declared']=False
+    elif change=='qualification':report['qualification']=True
+    elif change=='record_extra':report['records'][0]['extra']=True
+    elif change=='numeric_stamp':report['records'][0]['sent_host_ns']=1
+    elif change=='bool_rtt':report['records'][0]['rtt_ms']=False
+    else:commands=commands.rstrip(b'\n')
+    with pytest.raises(ValueError):verify_command_bindings(report,commands)
+
+
 @pytest.mark.skipif(not hasattr(os,'geteuid') or not importlib.util.find_spec('websockets'),
     reason='requires Linux and approved preinstalled websockets')
 def test_actual_unix_transport_has_32_logged_rejections_no_mode_or_reset(tmp_path):
-    from websockets.client import unix_connect
     from isaac.commands.queue import CommandQueue
     from isaac.commands.transport import PrivateCommandTransport
     client=f'uid:{os.geteuid()}';dispatcher,log=backend(tmp_path,client)
     queue=CommandQueue(dispatcher);path=tmp_path/'private.sock'
     transport=PrivateCommandTransport(queue,socket_path=path,allowed_uid=os.geteuid())
-    rows=[];failures=[]
-    async def work():
-        async with unix_connect(str(path),uri='ws://localhost/commands',compression=None) as ws:
-            await exercise(ws,dispatcher.control_session_id,rows)
+    ready=tmp_path/'ready.json'
+    ready.write_text(json.dumps(dict(scope='SIMULATION_TEST',participant=False,qualification=False,
+        control_session_id=dispatcher.control_session_id,station_id='fixture',private_socket=str(path))))
+    results=[];failures=[]
     def client_run():
-        try:asyncio.run(asyncio.wait_for(work(),10))
+        try:results.append(run(ready,sha(ready.read_bytes()),tmp_path/'probe',os.geteuid(),native_control_released=True))
         except Exception as error:failures.append(error)
     thread=threading.Thread(target=client_run);thread.start()
     try:
@@ -138,7 +153,7 @@ def test_actual_unix_transport_has_32_logged_rejections_no_mode_or_reset(tmp_pat
         assert not thread.is_alive() and not failures
     finally:
         transport.close();log.close()
-    report=dict(version=1,kind='view_lock_probe',completed=True,error=None,records=rows,
-        control_session_id=dispatcher.control_session_id,station_id='fixture',client=client)
+    report=results[0]
+    assert report==json.loads((tmp_path/'probe/probe.json').read_bytes())
     assert verify_command_bindings(report,log.path.read_bytes())['protected_rejections']==32
-    assert len(rows)==64 and not path.exists()
+    assert len(report['records'])==64 and not path.exists()
