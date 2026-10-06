@@ -11,6 +11,11 @@
 | `summary` | the same summary from an exported trials CSV (the O6.2.2 script) |
 | `demo` | a DEMO set, bot-listener sessions through the real server, export |
 
+Exit status: 0 on success, 1 when `check`, `export` or `demo` found a problem, 2 when an
+input is refused (for example real listener data written inside a git work tree, a
+trials CSV that does not belong to `--stimuli`, or a session reopened with another
+listener, station, gain or set).
+
 Operator guide: `generation/docs/threshold-tool.md`.
 """
 
@@ -31,7 +36,7 @@ from av_generation.clock import SystemClock, utc_text
 from av_generation.ids import RunKind
 from av_generation.jsonio import file_sha256
 from av_generation.records import ThresholdConfig, ThresholdSession, ThresholdStimulusSet
-from av_generation.rundir import run_layout
+from av_generation.rundir import RunPolicyError, run_layout
 from av_generation.webserve import serve_in_thread
 
 DEMO_SMALL_CONFIG = ThresholdConfig(
@@ -87,12 +92,28 @@ def _cmd_session(args: argparse.Namespace) -> int:
     path = layout.threshold_session(args.session_id)
     if path.exists():
         session = ThresholdSession.read(path)
-        if (session.listener_id, session.station, session.tryout) != (
-            args.listener,
-            args.station,
-            args.tryout,
-        ):
-            print(f"{path} exists for another listener/station/tryout flag", file=sys.stderr)
+        stored = {
+            "listener": session.listener_id,
+            "station": session.station,
+            "tryout": session.tryout,
+            "gain_db": session.gain_db,
+            "set_sha256": session.set_sha256,
+        }
+        given = {
+            "listener": args.listener,
+            "station": args.station,
+            "tryout": args.tryout,
+            "gain_db": float(args.gain_db),
+            "set_sha256": stimuli.sha256(),
+        }
+        differ = [k for k in stored if stored[k] != given[k]]
+        if differ:
+            detail = ", ".join(f"{k} {stored[k]!r} (given {given[k]!r})" for k in differ)
+            print(
+                f"{path} exists with another {detail}; "
+                "keep the session's values or use a new session ID",
+                file=sys.stderr,
+            )
             return 2
     else:
         session = th.plan_session(
@@ -134,6 +155,7 @@ def _export_report(result: tr.ExportResult) -> dict[str, object]:
                 "n_played": c.n_played,
                 "n_answered": c.n_answered,
                 "n_refused": c.n_refused,
+                "n_unreported": c.n_unreported,
                 "problems": list(c.problems),
             }
             for c in result.play_checks
@@ -154,8 +176,18 @@ def _cmd_export(args: argparse.Namespace) -> int:
 def _cmd_summary(args: argparse.Namespace) -> int:
     trials = th.read_trials_csv(args.trials)
     stimuli = ThresholdStimulusSet.read(args.stimuli) if args.stimuli else None
+    if stimuli is not None:
+        problems = th.check_trials_csv(args.trials, stimuli)
+        if problems:
+            print(
+                f"{args.trials} does not belong to stimulus set {stimuli.set_id}: "
+                + "; ".join(problems[:5]),
+                file=sys.stderr,
+            )
+            return 2
     default = (stimuli.config if stimuli else th.DEFAULT_CONFIG).threshold_default
     out = Path(args.out_dir)
+    th.check_output_dir(out, demo=th.is_demo_data(trials, stimuli))
     rows = th.summarize(trials)
     fits = th.fit_summary(trials, threshold_default=default)
     files = {
@@ -271,9 +303,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run one command; returns the exit status (1 when a check found problems)."""
+    """Run one command; returns the exit status (1 when a check found problems, 2 when
+    an input was refused)."""
     args = build_parser().parse_args(argv)
-    status: int = args.func(args)
+    try:
+        status: int = args.func(args)
+    except (th.ThresholdError, tr.RunnerError, RunPolicyError) as err:
+        print(f"refused ({err.code}): {err}", file=sys.stderr)
+        return 2
     return status
 
 

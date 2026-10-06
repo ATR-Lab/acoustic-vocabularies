@@ -10,14 +10,19 @@ work tree (`rundir.create_run_dir`).
 
 Trial flow (no replay, no feedback, self-paced): the listener presses Play; the server
 issues the current trial with two single-use audio tokens (`ROUTES["next"]`); the page
-fetches both WAVs once, schedules motif A, the gap (`config.gap_ms`) and motif B with
-the Web Audio clock and reports the onsets (`ROUTES["played"]`), which logs one
+fetches both WAVs once (each delivery is logged and synced to disk as a
+`threshold.DELIVERY_EVENT` timing event before the bytes leave the server), schedules
+motif A, the gap (`config.gap_ms`) and motif B with the Web Audio clock and reports the
+onsets at the speaker, output latency included (`ROUTES["played"]`), which logs one
 `threshold_first` and one `threshold_second` play event; the Same/Different buttons open
-when motif B ends and the answer is logged as a `threshold_trial` record (`rt_ms` from
-the end of motif B). A second fetch of a token or a second play report is refused and
-logged (`result="refused"`). The page never learns the pair, its kind, bin or distance,
-and the answer is never scored. The station plays at its fixed output gain (recorded in
-the session document); the page has no volume control.
+when motif B ends at the speaker and the answer is logged as a `threshold_trial` record
+(`rt_ms` from the end of motif B). A second fetch of a token or a second play report is
+refused and logged (`result="refused"`). A trial whose audio was delivered but whose
+play was never reported (a reload or a server restart in between) is never issued
+again: its phase is `skip` and only the operator skip closes it. The page never learns
+the pair, its kind, bin or distance, and the answer is never scored. The station plays
+at its fixed output gain (recorded in the session document); the page has no volume
+control.
 """
 
 from __future__ import annotations
@@ -45,7 +50,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from av_generation import __version__
 from av_generation import threshold as th
 from av_generation.clock import Clock, ManualClock, ScaledClock, utc_text
-from av_generation.ids import PUBLIC_RUN_KINDS, RunKind, Study
+from av_generation.ids import DEMO_PREFIX, PUBLIC_RUN_KINDS, RunKind, Study
 from av_generation.jsonio import repair_torn_tail
 from av_generation.records import (
     PlayEvent,
@@ -72,7 +77,7 @@ STIMULI_NAME: Final = "stimuli.json"
 """The run's stimulus set, under `RunLayout.threshold_dir`."""
 STATIC_DIR: Final = Path(__file__).resolve().parent / "web" / "threshold"
 """Static files of the listener page (plain HTML/CSS/JS, no third-party code)."""
-COMPONENT: Final = "threshold"
+COMPONENT: Final = th.TIMING_COMPONENT
 SAMPLE_RATE: Final = 48_000
 
 ROUTES: Final[dict[str, str]] = {
@@ -101,6 +106,7 @@ E_NOT_FETCHED: Final = "E_NOT_FETCHED"
 E_ALREADY_PLAYED: Final = "E_ALREADY_PLAYED"
 E_ASSET_HASH: Final = "E_ASSET_HASH"
 E_ONSETS: Final = "E_ONSETS"
+E_UNREPORTED: Final = "E_UNREPORTED"
 
 
 class RunnerError(Exception):
@@ -198,6 +204,12 @@ def read_run_records(layout: RunLayout) -> tuple[list[ThresholdTrial], list[Play
     return trials, plays
 
 
+def read_run_timing(layout: RunLayout) -> list[TimingEvent]:
+    """The run's timing events (session starts and ends, skips, audio deliveries)."""
+    path = layout.log("timing")
+    return read_records(path, TimingEvent) if path.exists() else []
+
+
 # ---------------------------------------------------------------------------
 # Session runner
 
@@ -206,12 +218,23 @@ def read_run_records(layout: RunLayout) -> tuple[list[ThresholdTrial], list[Play
 class _Trial:
     shown: th.Presentation
     tokens: dict[str, str] = field(default_factory=dict)
-    """`first`/`second` -> token (issued with the trial)."""
+    """`first`/`second` -> token (issued with the trial, or restored from the log)."""
     fetched: set[str] = field(default_factory=set)
+    """Sides whose audio was delivered (this server or, from the log, an earlier one)."""
     issued_ms: int | None = None
+    """Run-clock time of the `next` reply the page measures its onsets from; None for a
+    trial whose audio was delivered before a restart (its play can no longer be logged)."""
     onsets: tuple[int, int] | None = None
     played: bool = False
     record: ThresholdTrial | None = None
+
+    @property
+    def phase(self) -> Literal["listen", "respond", "skip"]:
+        """`respond` after both plays; `skip` when audio was delivered but no play was
+        reported (never issued again); `listen` otherwise."""
+        if self.played:
+            return "respond"
+        return "skip" if self.fetched else "listen"
 
 
 class ThresholdRunner:
@@ -222,7 +245,9 @@ class ThresholdRunner:
     document if it does not exist yet (exclusive; an existing one must be identical),
     repairs torn log tails (`log_repaired` timing events) and resumes from the logs: a
     trial with a record is done; a trial with both play events can still be answered
-    but never replayed.
+    but never replayed; a trial whose audio was delivered (`threshold.DELIVERY_EVENT`)
+    or that has only one play event (a crash between the two appends) but no complete
+    play pair is consumed: it is never issued again and only `skip` closes it.
     """
 
     def __init__(
@@ -296,10 +321,16 @@ class ThresholdRunner:
     def _resume(self) -> int:
         """Load this session's records; returns how many times the session started before."""
         trials, plays = read_run_records(self.layout)
+        timing = read_run_timing(self.layout)
         by_index = {t.shown.trial_index: t for t in self._trials}
         for record in trials:
             if record.session_id == self.session.session_id and record.trial_index in by_index:
                 by_index[record.trial_index].record = record
+        for index, sent in th.deliveries(timing, self.session.session_id).items():
+            if index in by_index:
+                for side, token in sent:
+                    by_index[index].tokens[side] = token
+                    by_index[index].fetched.add(side)
         prefix = f"{self.session.session_id}.t"
         onsets: dict[int, dict[str, int | None]] = {}
         for event in plays:
@@ -308,21 +339,23 @@ class ThresholdRunner:
             if event.result == "played" and name.startswith(prefix) and suffix.isdigit():
                 onsets.setdefault(int(suffix), {})[event.context] = event.onset_ms
         for index, seen in onsets.items():
+            trial = by_index.get(index)
+            if trial is None:
+                continue
+            # a play report needs both motifs delivered, so a trial with any play event
+            # is consumed; only a complete pair can still be answered
+            trial.fetched.update(th.SIDES)
             first, second = seen.get("threshold_first"), seen.get("threshold_second")
-            if index in by_index and len(seen) == 2:
-                by_index[index].played = True
+            if len(seen) == 2:
+                trial.played = True
                 if first is not None and second is not None:
-                    by_index[index].onsets = (first, second)
-        timing_log = self.layout.log("timing")
-        starts = 0
-        if timing_log.exists():
-            starts = sum(
-                1
-                for e in read_records(timing_log, TimingEvent)
-                if e.event == "session_start"
-                and (e.detail or "").startswith(self.session.session_id + " ")
-            )
-        return starts
+                    trial.onsets = (first, second)
+        return sum(
+            1
+            for e in timing
+            if e.event == "session_start"
+            and (e.detail or "").startswith(self.session.session_id + " ")
+        )
 
     def _audio(self, digest: str) -> bytes:
         recipe, profile = self._assets[digest]
@@ -353,6 +386,7 @@ class ThresholdRunner:
         *,
         result: Literal["played", "refused"],
         onset_ms: int | None = None,
+        scheduled_ms: int | None = None,
         reason: str | None = None,
     ) -> PlayEvent:
         shown = trial.shown
@@ -370,6 +404,7 @@ class ThresholdRunner:
             actor_id=self.session.listener_id,
             trial_id=th.trial_id(self.session.session_id, shown.trial_index),
             token_id=trial.tokens.get(which),
+            scheduled_ms=scheduled_ms,
             onset_ms=onset_ms,
         )
         self._plays.append(event)
@@ -428,7 +463,7 @@ class ThresholdRunner:
         """Progress and the phase of the current trial (no pair information)."""
         with self._lock:
             trial = self._current()
-            phase = None if trial is None else ("respond" if trial.played else "listen")
+            phase = None if trial is None else trial.phase
             return {
                 **self._progress(),
                 "trial_index": None if trial is None else trial.shown.trial_index,
@@ -436,19 +471,22 @@ class ThresholdRunner:
             }
 
     def next_trial(self) -> dict[str, Any]:
-        """Issue the current trial: two single-use audio URLs and the gap, or, when it has
-        already played, only the request for an answer."""
+        """Issue the current trial: two single-use audio URLs and the gap; when it has
+        already played, only the request for an answer (`respond`); when its audio was
+        delivered but no play was reported, nothing but `skip` (never issued again)."""
         with self._lock:
             trial = self._current()
             if trial is None:
                 raise RunnerError(E_DONE, "the session is complete")
             index = trial.shown.trial_index
             out: dict[str, Any] = {"trial_index": index, "n_trials": len(self._trials)}
-            if trial.played:
-                return {**out, "phase": "respond"}
+            if trial.phase != "listen":
+                return {**out, "phase": trial.phase}
             if not trial.tokens:
-                trial.tokens = {w: self._token(index, w) for w in ("first", "second")}
-                trial.issued_ms = self.clock.now_ms()
+                trial.tokens = {w: self._token(index, w) for w in th.SIDES}
+            # the page that fetches measures its onsets from the latest reply (a reload
+            # before any fetch asks again)
+            trial.issued_ms = self.clock.now_ms()
             return {
                 **out,
                 "phase": "listen",
@@ -458,7 +496,8 @@ class ThresholdRunner:
             }
 
     def audio(self, token: str) -> bytes:
-        """The WAV of a token, once. A second request is refused and logged."""
+        """The WAV of a token, once. The delivery is logged (and synced) before the bytes
+        are returned, so it survives a restart. A second request is refused and logged."""
         with self._lock:
             for trial in self._trials:
                 for which, issued in trial.tokens.items():
@@ -468,32 +507,60 @@ class ThresholdRunner:
                     if which in trial.fetched or trial.record is not None:
                         self._play_event(trial, side, result="refused", reason=E_TOKEN_USED)
                         raise RunnerError(E_TOKEN_USED, "audio tokens are single-use", 410)
-                    trial.fetched.add(which)
-                    digest = (
+                    data = self._audio(
                         trial.shown.file_sha256_first
                         if which == "first"
                         else trial.shown.file_sha256_second
                     )
-                    return self._audio(digest)
+                    name = th.trial_id(self.session.session_id, trial.shown.trial_index)
+                    self._time(th.DELIVERY_EVENT, detail=th.delivery_detail(name, which, token))
+                    trial.fetched.add(which)
+                    return data
         raise RunnerError(E_TOKEN_UNKNOWN, "unknown audio token", 404)
 
     def report_played(
-        self, trial_index: int, onset_first_ms: int, onset_second_ms: int
+        self,
+        trial_index: int,
+        onset_first_ms: int,
+        onset_second_ms: int,
+        output_latency_ms: int | None = None,
     ) -> dict[str, Any]:
         """Log the two plays of the current trial. Onsets are milliseconds since the page
-        received the trial; they are stored on the run clock (issue time + offset)."""
+        received the trial (the latest `next` reply), at the speaker; they are stored on
+        the run clock (issue time + offset). With `output_latency_ms` (the audio output
+        latency the page added), `scheduled_ms` is the onset minus that latency.
+
+        Refused: a second report (`E_ALREADY_PLAYED`, logged), a report before both
+        motifs were fetched (`E_NOT_FETCHED`) and a report for audio delivered before
+        the server restarted (`E_UNREPORTED`, logged; only `skip` closes that trial)."""
         with self._lock:
             trial = self._require_current(trial_index)
             if trial.played:
                 self._play_event(trial, "first", result="refused", reason=E_ALREADY_PLAYED)
                 raise RunnerError(E_ALREADY_PLAYED, "this trial has already played")
-            if trial.fetched != {"first", "second"} or trial.issued_ms is None:
+            if trial.fetched != set(th.SIDES):
                 raise RunnerError(E_NOT_FETCHED, "fetch both motifs before reporting a play")
+            if trial.issued_ms is None:
+                self._play_event(trial, "first", result="refused", reason=E_UNREPORTED)
+                raise RunnerError(
+                    E_UNREPORTED,
+                    "the audio of this trial was delivered before the server restarted; "
+                    "its play cannot be logged now: skip this trial",
+                )
             if not 0 <= onset_first_ms <= onset_second_ms:
                 raise RunnerError(E_ONSETS, "onsets must satisfy 0 <= first <= second", 422)
             trial.onsets = (trial.issued_ms + onset_first_ms, trial.issued_ms + onset_second_ms)
-            self._play_event(trial, "first", result="played", onset_ms=trial.onsets[0])
-            self._play_event(trial, "second", result="played", onset_ms=trial.onsets[1])
+            for side, onset in zip(th.SIDES, trial.onsets, strict=True):
+                scheduled = None
+                if output_latency_ms is not None:
+                    scheduled = max(trial.issued_ms, onset - output_latency_ms)
+                self._play_event(
+                    trial,
+                    "first" if side == "first" else "second",
+                    result="played",
+                    onset_ms=onset,
+                    scheduled_ms=scheduled,
+                )
             trial.played = True
             return {"ok": True}
 
@@ -509,11 +576,15 @@ class ThresholdRunner:
 
     def skip(self, trial_index: int) -> dict[str, Any]:
         """Close the current trial without an answer (operator action, e.g. audio failed);
-        it is never replayed. Logged as a `threshold_trial` with `response` null."""
+        it is never replayed. Logged as a `threshold_trial` with `response` null and an
+        `operator_action` timing event; a skip after the audio was delivered but before a
+        play was reported says so in its detail (`check_plays` counts it in
+        `n_unreported`: the listener may have heard the pair)."""
         with self._lock:
             trial = self._require_current(trial_index)
             name = th.trial_id(self.session.session_id, trial_index)
-            self._time("operator_action", detail=f"skip {name}")
+            note = " (audio delivered, play not reported)" if trial.phase == "skip" else ""
+            self._time("operator_action", detail=f"skip {name}{note}")
             return self._finish(trial, None, None)
 
 
@@ -522,11 +593,13 @@ class ThresholdRunner:
 
 
 class PlayedBody(BaseModel):
-    """Body of `ROUTES["played"]`: onsets in ms since the page received the trial."""
+    """Body of `ROUTES["played"]`: onsets at the speaker in ms since the page received
+    the trial, and the output latency the page added to the scheduled times."""
 
     model_config = ConfigDict(extra="forbid")
     onset_first_ms: int = Field(ge=0, le=3_600_000)
     onset_second_ms: int = Field(ge=0, le=3_600_000)
+    output_latency_ms: int | None = Field(default=None, ge=0, le=10_000)
 
 
 class ResponseBody(BaseModel):
@@ -583,7 +656,9 @@ def create_threshold_app(runner: ThresholdRunner) -> FastAPI:
 
     @app.post("/threshold/api/trials/{trial_index}/played")
     def played(trial_index: int, body: PlayedBody) -> dict[str, Any]:
-        return runner.report_played(trial_index, body.onset_first_ms, body.onset_second_ms)
+        return runner.report_played(
+            trial_index, body.onset_first_ms, body.onset_second_ms, body.output_latency_ms
+        )
 
     @app.post("/threshold/api/trials/{trial_index}/response")
     def response(trial_index: int, body: ResponseBody) -> dict[str, Any]:
@@ -627,8 +702,10 @@ def run_bot_session(
 ) -> int:
     """Drive a session through the HTTP API like the page does; returns trials answered.
 
-    Answers come from `rng_for(threshold_seed_key(set, "bot", session))`. `client` has
-    the server as `base_url` (an `httpx.Client` or FastAPI's `TestClient`).
+    Answers come from `rng_for(threshold_seed_key(set, "bot", session))`. A trial in the
+    `skip` phase (audio delivered before an interruption) is skipped, like the operator
+    does. `client` has the server as `base_url` (an `httpx.Client` or FastAPI's
+    `TestClient`).
     """
     bot = listener or BotListener()
     rng = rng_for(threshold_seed_key(stimuli.set_id, "bot", session.session_id))
@@ -640,6 +717,9 @@ def run_bot_session(
             break
         trial = client.post("/threshold/api/next").raise_for_status().json()
         index = int(trial["trial_index"])
+        if trial["phase"] == "skip":
+            client.post(f"/threshold/api/trials/{index}/skip").raise_for_status()
+            continue
         if trial["phase"] == "listen":
             first = client.get(trial["first"]).raise_for_status().content
             client.get(trial["second"]).raise_for_status()
@@ -693,19 +773,26 @@ def export_run(
 
     Writes `trials.csv` (`TRIAL_CSV_COLUMNS`), `summary.csv` (`SUMMARY_CSV_COLUMNS`),
     `fits.csv` (`FIT_COLUMNS`), `summary.json` (the evidence document) and, with
-    `plot=True`, `summary.png`. Play checks run per session (complete sessions must
-    show every pair played exactly once).
+    `plot=True`, `summary.png`. Play checks run per session with the audio deliveries
+    (complete sessions must show every pair played exactly once). A run that is not a
+    DEMO run (listener or tryout data) is refused inside a git work tree (`E_POLICY`,
+    `threshold.check_output_dir`) before anything is written.
     """
     stimuli, sessions = load_run(layout)
     all_trials, plays = read_run_records(layout)
     chosen = [s for s in sessions if s.tryout == tryout]
     ids = {s.session_id for s in chosen}
     trials = [t for t in all_trials if t.session_id in ids]
+    demo = layout.run_id.startswith(DEMO_PREFIX) and th.is_demo_data(all_trials, stimuli)
+    th.check_output_dir(out_dir, demo=demo)
+    timing = read_run_timing(layout)
     checks: list[th.PlayCheck] = []
     for session in chosen:
         own = [t for t in trials if t.session_id == session.session_id]
         complete = len(own) == len(session.plan)
-        checks.append(th.check_plays(session, stimuli, plays, own, complete=complete))
+        checks.append(
+            th.check_plays(session, stimuli, plays, own, timing=timing, complete=complete)
+        )
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     files = {"trials.csv": th.export_csv(trials, stimuli, out / "trials.csv")}

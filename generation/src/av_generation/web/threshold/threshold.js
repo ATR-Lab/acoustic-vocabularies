@@ -1,6 +1,8 @@
 // Separation-threshold listening page (#23). Plain JavaScript, no third-party code.
 // One trial: Play -> motif A, gap, motif B (Web Audio clock) -> Same / Different.
 // Each pair plays once (single-use audio URLs); answers are never scored on this page.
+// Onsets, the opening of the answer buttons and the RT zero point are times at the
+// speaker: the AudioContext output latency is added and reported to the server.
 "use strict";
 
 (() => {
@@ -72,6 +74,17 @@
     document.body.dataset.state = "answer";
   }
 
+  function interrupted(index) {
+    // The audio of this trial left the server before an interruption (reload or server
+    // restart) and its play was never logged: it is not played again.
+    trial = { index, endPerf: null };
+    $("play").hidden = true;
+    $("answer").hidden = true;
+    $("status").textContent = "This pair was interrupted and cannot be played again. Please call the operator.";
+    $("skip").hidden = false;
+    document.body.dataset.state = "error";
+  }
+
   function fail(err) {
     $("play").hidden = true;
     $("answer").hidden = true;
@@ -87,6 +100,28 @@
     source.start(when);
   }
 
+  // Maps AudioContext times to performance.now() times: `scheduled` without and `heard`
+  // with the output latency (getOutputTimestamp when the browser has it, otherwise
+  // outputLatency or baseLatency).
+  function clockMap() {
+    const ctxNow = ctx.currentTime;
+    const base = performance.now() - ctxNow * 1000;
+    let heard = null;
+    if (typeof ctx.getOutputTimestamp === "function") {
+      const ts = ctx.getOutputTimestamp();
+      if (ts && ts.contextTime > 0 && ts.performanceTime > 0) {
+        heard = ts.performanceTime - ts.contextTime * 1000;
+      }
+    }
+    if (heard === null || heard < base || heard - base > 1000) {
+      heard = base + 1000 * (ctx.outputLatency || ctx.baseLatency || 0);
+    }
+    return {
+      heard: (t) => heard + t * 1000,
+      latencyMs: Math.max(0, Math.round(heard - base)),
+    };
+  }
+
   async function startTrial() {
     $("play").disabled = true;
     $("play").hidden = true;
@@ -99,24 +134,27 @@
       openAnswer(null); // already played before a reload: answer without replay
       return;
     }
+    if (next.phase === "skip") {
+      interrupted(next.trial_index);
+      return;
+    }
     if (ctx === null) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
     await ctx.resume();
     const [first, second] = await Promise.all([fetchAudio(next.first), fetchAudio(next.second)]);
-    const ctxNow = ctx.currentTime;
-    const perfNow = performance.now();
-    const onsetFirst = ctxNow + LEAD_S;
+    const onsetFirst = ctx.currentTime + LEAD_S;
     const onsetSecond = onsetFirst + first.duration + next.gap_ms / 1000;
     const endSecond = onsetSecond + second.duration;
     play(first, onsetFirst);
     play(second, onsetSecond);
-    const toPerf = (t) => perfNow + (t - ctxNow) * 1000;
+    const clock = clockMap();
     await api("POST", `/threshold/api/trials/${trial.index}/played`, {
-      onset_first_ms: Math.max(0, Math.round(toPerf(onsetFirst) - received)),
-      onset_second_ms: Math.max(0, Math.round(toPerf(onsetSecond) - received)),
+      onset_first_ms: Math.max(0, Math.round(clock.heard(onsetFirst) - received)),
+      onset_second_ms: Math.max(0, Math.round(clock.heard(onsetSecond) - received)),
+      output_latency_ms: clock.latencyMs,
     });
-    const endPerf = toPerf(endSecond);
+    const endPerf = clock.heard(endSecond);
     setTimeout(() => openAnswer(endPerf), Math.max(0, endPerf - performance.now()));
   }
 
@@ -143,7 +181,10 @@
   async function load() {
     const state = await api("GET", "/threshold/api/state");
     if (state.status === "done") finish(state);
-    else ready(state);
+    else if (state.phase === "skip") {
+      setProgress(state);
+      interrupted(state.trial_index);
+    } else ready(state);
   }
 
   $("play").addEventListener("click", () => startTrial().catch(fail));

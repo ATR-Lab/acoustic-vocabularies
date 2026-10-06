@@ -45,7 +45,10 @@ $G summary --trials trials.csv --out-dir <dir> --label "<label>" [--stimuli stim
 $G demo --out-dir generation/out/threshold-demo [--sessions 2] [--small]
 ```
 
-`check` and `export` exit with status 1 when they find a problem.
+`check` and `export` exit with status 1 when they find a problem. Every command exits
+with status 2 when it refuses an input: real (non-DEMO) listener data written inside a
+git work tree (`E_POLICY`), a trials CSV that does not belong to `--stimuli`, or a
+session reopened with another listener, station, tryout flag, gain or stimulus set.
 
 ## 2. Stimulus set
 
@@ -148,13 +151,19 @@ pair exactly once, the A/B balance, and that the plan is the seeded plan.
 
 1. The listener presses **Play**. The page gets the current trial: two single-use audio
    URLs and the gap. The page never gets the pair ID, kind, profile, bin or distance.
-2. The page fetches both WAV files once and schedules motif A, the gap and motif B on the
-   Web Audio clock. It plays at the station's output gain: the page has no volume control
-   and no gain node. The page reports the two onsets. The server logs one
-   `threshold_first` and one `threshold_second` play event.
-3. When motif B ends, the **Same** and **Different** buttons open. There is no time
-   limit. The answer is logged as a `threshold_trial` record. `rt_ms` is the time from
-   the end of motif B to the click.
+2. The page fetches both WAV files once. Before the server returns the bytes of a motif
+   it logs the delivery and syncs it to disk: a timing event `asset_ready` with detail
+   `<trial_id> <first|second> <token>`. The page schedules motif A, the gap and motif B
+   on the Web Audio clock. It plays at the station's output gain: the page has no volume
+   control and no gain node. The page reports the two onsets at the speaker: the
+   scheduled times plus the audio output latency (from
+   `AudioContext.getOutputTimestamp()`, otherwise `outputLatency` or `baseLatency`),
+   and the latency it added. The server logs one `threshold_first` and one
+   `threshold_second` play event (`onset_ms` at the speaker, `scheduled_ms` = onset
+   minus that latency).
+3. When motif B ends at the speaker, the **Same** and **Different** buttons open. There
+   is no time limit. The answer is logged as a `threshold_trial` record. `rt_ms` is the
+   time from the end of motif B at the speaker to the click.
 4. There is no replay control and no feedback. A second fetch of an audio URL is refused
    (`E_TOKEN_USED`, HTTP 410). A second play report is refused (`E_ALREADY_PLAYED`). Both
    refusals are logged as play events with `result = "refused"`.
@@ -162,25 +171,41 @@ pair exactly once, the A/B balance, and that the plan is the seeded plan.
    between trials.
 
 Recovery: if the page reloads or the server restarts, the session resumes from the logs.
-A trial that has played can be answered but is not played again. A trial whose audio
-cannot play (for example, a reload after the audio was fetched) shows **Skip this trial
-(operator)**. A skipped trial is logged with `response` null and is never replayed. Torn
-log lines after a crash are cut and logged (`log_repaired`).
+
+- A trial that has played (both play events logged) can be answered but is not played
+  again.
+- A trial whose audio left the server but whose play was not logged is never issued
+  again. This happens when the page reloads after the audio was fetched, when the play
+  report fails, or when the server stops before the report arrives. A crash between
+  the two play-event appends has the same effect, and `check_plays` reports that half
+  pair as a problem. The trial's phase is `skip`. The page says that
+  the pair was interrupted and shows only **Skip this trial (operator)**. Its old audio
+  URLs are refused (`E_TOKEN_USED`) and a late play report is refused
+  (`E_UNREPORTED`). Both refusals are logged.
+- A skipped trial is logged with `response` null and is never replayed. A skip after
+  the audio was delivered is logged as the `operator_action` event `skip <trial_id>
+  (audio delivered, play not reported)`. `check_plays` counts it in `n_unreported`: the
+  listener may have heard the pair, so it is not counted as an unplayed trial.
+- A reload before any audio was fetched gets the same audio URLs again. The onsets are
+  then measured from that latest reply.
+- Torn log lines after a crash are cut and logged (`log_repaired`).
 
 ### 3.3 Routes
 
 | Route | Body | Reply |
 | --- | --- | --- |
 | `GET /threshold/` | | the listener page |
-| `GET /threshold/api/state` | | `n_trials`, `n_done`, `status` (`running`/`done`), `trial_index`, `phase` (`listen`/`respond`) |
-| `POST /threshold/api/next` | | `trial_index`, `n_trials`, `phase`; for `listen` also `gap_ms`, `first`, `second` (audio URLs) |
-| `GET /threshold/api/audio/{token}` | | `audio/wav`, once |
-| `POST /threshold/api/trials/{i}/played` | `onset_first_ms`, `onset_second_ms` (ms since the page got the trial) | `{"ok": true}` |
+| `GET /threshold/api/state` | | `n_trials`, `n_done`, `status` (`running`/`done`), `trial_index`, `phase` (`listen`/`respond`/`skip`) |
+| `POST /threshold/api/next` | | `trial_index`, `n_trials`, `phase`; for `listen` also `gap_ms`, `first`, `second` (audio URLs); `skip` gives nothing else |
+| `GET /threshold/api/audio/{token}` | | `audio/wav`, once (the delivery is logged first) |
+| `POST /threshold/api/trials/{i}/played` | `onset_first_ms`, `onset_second_ms` (ms at the speaker since the page got the trial), optional `output_latency_ms` (0 to 10000) | `{"ok": true}` |
 | `POST /threshold/api/trials/{i}/response` | `response` (`same`/`different`), `rt_ms` | `ok`, `n_trials`, `n_done`, `status` (no score) |
 | `POST /threshold/api/trials/{i}/skip` | | as `response` |
 
-Refusals reply `{"error": "<code>", "detail": "..."}` with HTTP 404, 409, 410 or 422.
-The onsets are stored on the run clock as issue time plus the page offsets.
+Refusals reply `{"error": "<code>", "detail": "..."}` with HTTP 404, 409, 410 or 422
+(`E_DONE`, `E_STATE`, `E_TOKEN_UNKNOWN`, `E_TOKEN_USED`, `E_NOT_FETCHED`,
+`E_ALREADY_PLAYED`, `E_UNREPORTED`, `E_ONSETS`). The onsets are stored on the run clock
+as the time of the latest `next` reply plus the page offsets.
 
 ## 4. Operator guide (O6.2.2)
 
@@ -195,6 +220,9 @@ Before the study:
    commit the set.
 2. Use one run per listening study (`--kind pilot`) in restricted storage. The first
    `session` command creates it; the later commands reopen it and check the set hash.
+   To resume an interrupted session, run the same `session` command again with the same
+   values. A different listener, station, tryout flag, `--gain-db` or set is refused
+   (exit status 2).
 
 Before each session:
 
@@ -210,7 +238,9 @@ Before each session:
 During the session:
 
 - Do not give feedback. Do not replay a pair. If the audio fails, press **Skip this
-  trial (operator)** and write a note.
+  trial (operator)** and write a note. If the page says that the pair was interrupted
+  (after a reload or a server restart), press **Skip this trial (operator)**. The pair
+  is not played again.
 - A session of 224 trials takes about 15 to 20 minutes (estimate: 4 to 5 s per trial). The listener can rest before any
   Play press.
 
@@ -218,7 +248,10 @@ After the session:
 
 1. Stop the server (Ctrl-C) after the page shows "The session is complete".
 2. Run `export`. Every session must show `"ok": true` in `play_checks` (each pair played
-   exactly once, no replay). Keep the export in restricted storage.
+   exactly once, no replay). `n_unreported` counts skipped trials whose audio was
+   delivered but whose play was not reported. Write them in the session notes. Keep the
+   export in restricted storage: `export` and `summary` refuse an output directory inside
+   a git work tree for non-DEMO data (`E_POLICY`, exit status 2).
 
 Internal tryout: two team members (not counted as listeners) run sessions with
 `--tryout`. Export them with `export --tryout`. The tryout label is on the plot and in
@@ -243,9 +276,15 @@ for booleans, and empty cells for null values.
 | `response`, `rt_ms` | `same`/`different`/empty (skipped), time from the end of motif B |
 | `tryout` | `1` for internal tryout sessions |
 | `run_id`, `sum_sq` | run, exact sum of squares (`p/q`) |
-| `onset_first_ms`, `onset_second_ms`, `t_ms` | onsets and answer time on the run clock (the clock restarts with each server start) |
+| `onset_first_ms`, `onset_second_ms`, `t_ms` | onsets at the speaker and answer time on the run clock (the clock restarts with each server start) |
+| `set_sha256` | hash of the stimulus set (`ThresholdStimulusSet.sha256()`) |
 
-`read_trials_csv` rebuilds the trial records exactly.
+`read_trials_csv` rebuilds the trial records exactly. `check_trials_csv` checks a CSV
+against a stimulus set: every row must name a pair of the set with its profile, kind,
+bin and distance, and carry the set's recipes, PCM hashes and sum of squares in play
+order and the set hash. Pair IDs repeat across sets, so `summary --stimuli` runs this
+check and refuses a CSV of another set (exit status 2) before it writes the set ID and
+hash into `summary.json`.
 
 ### 5.2 Summary CSV (`summary.csv`, `SUMMARY_CSV_COLUMNS`)
 
@@ -272,7 +311,8 @@ estimate), and `degenerate` with fewer than two distances or only one kind of an
 
 `summary.json` (`format = "av-generation/threshold-summary"`, version 1) is the evidence
 file for O6.2.2 and the G4 freeze (#25). It has the label, tryout flag, set ID, set hash,
-config, listeners, sessions (station, gain, counts, play-check result), the summary rows,
+config, listeners, sessions (station, gain, counts, play-check result, refused and
+unreported plays), the summary rows,
 the fits, the trials CSV hash, the code versions and `decision: null`. The tool never
 fills in a decision.
 
@@ -290,7 +330,9 @@ synthetic plots as artifacts.
 | Every pair valid (all rules but separation) and inside its bin | `check_stimuli`, `check` command, `tests/generation/test_threshold_tool.py` |
 | Coverage of every profile x bin with the configured counts | `check_stimuli` (pair-ID set), `coverage()` |
 | Same seed, identical set (hash) on Linux, macOS and Windows | `test_demo_set_regenerates_byte_identical` (CI matrix) |
-| Each pair played exactly once per session | `check_plays`, `export` play checks, `tests/generation/test_threshold_runner.py` |
+| Each pair played exactly once per session | `check_plays` (play events and, with `timing`, the audio deliveries), `export` play checks, `tests/generation/test_threshold_runner.py` |
+| A trials CSV belongs to the named set | `check_trials_csv`, `summary --stimuli` |
+| Real listener data never inside a git work tree | `check_output_dir` (`export_run`, `export_csv`, `export` and `summary` commands), `write_stimuli` for sets |
 | Summary reproduces hand-computed proportions | `tests/generation/fixtures/threshold/hand-summary.csv` (computed by hand with Decimal arithmetic from `hand-trials.csv`) |
 
 ## 7. Decisions
@@ -304,11 +346,13 @@ synthetic plots as artifacts.
 | Seeds | one key per pair (`pair`/`same`), one per session (`order`), bot answers (`bot`) | seeds survive config changes of other bins; the session key is already in the shared contract |
 | A/B order | balanced within each profile x kind x bin group, shuffled | counterbalanced per bin, not only overall |
 | Trial runner | FastAPI page on the station (same stack as the rater client); listener-paced Play; buttons open at the end of B; RT from the end of B | the issue's proposal (500 ms gap, self-paced, no replay, no feedback); every answer follows both complete motifs |
-| No replay | single-use audio URLs, one play report per trial, refusals logged | play log proves "played exactly once" |
+| No replay | single-use audio URLs, one play report per trial, refusals logged; each audio delivery logged (and synced) before the bytes leave the server; a trial whose audio was delivered but whose play was not reported is skip-only after a reload or restart | play log proves "played exactly once"; the no-replay rule survives a server restart |
+| Delivery log | timing event `asset_ready` (`component = "threshold"`) | the shared `PlayEvent` result is only `played` or `refused`, and the `ThresholdTrial` schema is shared, so the "delivered, not reported" mark is on the skip's `operator_action` event and in `check_plays` (`n_unreported`) and the summary |
+| Output latency | onsets, the opening of the answer buttons and the RT zero point are times at the speaker; the latency is kept as `onset_ms - scheduled_ms` | stations differ in output latency; RT must not start before motif B ends at the speaker |
 | Gain | recorded per session (`gain_db`), not changed by the page | playback gain is fixed by calibration, not generated (Study A protocol §3.2); the page cannot change it |
 | Missing answers | operator skip, `response` null, never replayed | a failed play cannot become a replay |
 | Summary | answered trials only; Wilson 95%; logistic fit on different pairs; tryout and listener data never mixed | the issue's summary; tryouts are not listener data |
-| CSV columns | the skeleton columns plus `run_id`, `sum_sq`, onsets, `t_ms` (appended) | the CSV rebuilds the trial records, so the summary script works from the CSV handed to O6.2.2 |
+| CSV columns | the skeleton columns plus `run_id`, `sum_sq`, onsets, `t_ms`, `set_sha256` (appended) | the CSV rebuilds the trial records, so the summary script works from the CSV handed to O6.2.2; the CSV names its stimulus set |
 | Summary columns | the skeleton columns plus `kind`, `n_no_response`, `mean_distance` (appended) | catch rows and skipped trials stay visible |
 
 ## 8. Pending (human or hardware)

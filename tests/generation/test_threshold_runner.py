@@ -295,7 +295,14 @@ def test_skip_records_a_missing_answer(tmp_path, tiny_set, serve_app):
     with _client(serve_app, runner) as client:
         trial = client.post("/threshold/api/next").json()
         client.get(trial["first"]).raise_for_status()
-        # audio failed before the second motif: the operator skips; it is never replayed
+        # audio failed before the second motif; a reloaded page gets no new audio
+        assert client.get("/threshold/api/state").json()["phase"] == "skip"
+        assert client.post("/threshold/api/next").json() == {
+            "trial_index": 1,
+            "n_trials": 6,
+            "phase": "skip",
+        }
+        # the operator skips; it is never replayed
         assert client.post("/threshold/api/trials/1/skip").json()["n_done"] == 1
         assert client.get(trial["second"]).status_code == 410
         _play(client, 2)
@@ -304,12 +311,122 @@ def test_skip_records_a_missing_answer(tmp_path, tiny_set, serve_app):
     trials, plays, timing = _logs(layout)
     assert [t.response for t in trials[:2]] == [None, None]
     assert trials[0].onset_first_ms is None and trials[1].onset_first_ms is not None
-    check = th.check_plays(session, tiny_set, plays, trials)
+    check = th.check_plays(session, tiny_set, plays, trials, timing=timing)
     assert check.ok, check.problems
-    assert check.n_answered == 4 and check.n_played == 5
-    assert sum(1 for e in timing if e.event == "operator_action") == 2
+    assert check.n_answered == 4 and check.n_played == 5 and check.n_unreported == 1
+    skips = [e.detail for e in timing if e.event == "operator_action"]
+    assert skips == [
+        "skip DEMO-S01.t001 (audio delivered, play not reported)",
+        "skip DEMO-S01.t002",
+    ]
     rows = th.summarize(trials)
     assert sum(r["n_no_response"] for r in rows if r["profile"] == "all") == 2
+
+
+def test_restart_after_audio_delivery_never_replays(tmp_path, tiny_set, serve_app):
+    """The page fetched both motifs (and may have played them), then the server stopped
+    before the play report arrived. After the restart the trial is never issued again:
+    the deliveries were logged before the audio left the server."""
+    layout = _open(tmp_path, tiny_set)
+    session = _session(tiny_set)
+    with _client(serve_app, _runner(layout, tiny_set, session)) as client:
+        trial = client.post("/threshold/api/next").json()
+        client.get(trial["first"]).raise_for_status()
+        client.get(trial["second"]).raise_for_status()
+    _, plays, timing = _logs(layout)
+    assert plays == []
+    sent = th.deliveries(timing, "DEMO-S01")
+    assert sorted(sent) == [1] and [side for side, _ in sent[1]] == ["first", "second"]
+    tokens = {trial[side].rsplit("/", 1)[1] for side in ("first", "second")}
+    assert {token for _, token in sent[1]} == tokens
+    assert all(e.component == "threshold" for e in timing if e.event == th.DELIVERY_EVENT)
+    second_runner = _runner(layout, tiny_set, session)
+    with _client(serve_app, second_runner) as client:
+        state = client.get("/threshold/api/state").json()
+        assert (state["trial_index"], state["phase"], state["n_done"]) == (1, "skip", 0)
+        assert client.post("/threshold/api/next").json() == {
+            "trial_index": 1,
+            "n_trials": 6,
+            "phase": "skip",
+        }
+        for url in (trial["first"], trial["second"]):
+            again = client.get(url)
+            assert again.status_code == 410 and again.json()["error"] == tr.E_TOKEN_USED
+        late = client.post("/threshold/api/trials/1/played", json=_onsets())
+        assert late.status_code == 409 and late.json()["error"] == tr.E_UNREPORTED
+        answer = client.post("/threshold/api/trials/1/response", json={"response": "same"})
+        assert answer.json()["error"] == "E_STATE"
+        assert client.post("/threshold/api/trials/1/skip").json()["n_done"] == 1
+        assert tr.run_bot_session(client, session, tiny_set) == 5
+    trials, plays, timing = _logs(layout)
+    assert (trials[0].trial_index, trials[0].response, trials[0].onset_first_ms) == (1, None, None)
+    assert not [p for p in plays if p.trial_id == "DEMO-S01.t001" and p.result == "played"]
+    refused = [p.reason for p in plays if p.result == "refused"]
+    assert refused == ["E_TOKEN_USED", "E_TOKEN_USED", "E_UNREPORTED"]
+    skips = [e.detail for e in timing if e.event == "operator_action"]
+    assert skips == ["skip DEMO-S01.t001 (audio delivered, play not reported)"]
+    check = th.check_plays(session, tiny_set, plays, trials, timing=timing)
+    assert check.ok, check.problems
+    assert (check.n_played, check.n_answered, check.n_unreported, check.n_refused) == (5, 5, 1, 3)
+    assert th.check_plays(session, tiny_set, plays, trials).n_unreported == 0  # no timing
+    export = tr.export_run(layout, tmp_path / "export", tryout=False, plot=False)
+    assert export.play_checks[0].n_unreported == 1
+    assert export.summary["sessions"][0]["n_unreported_plays"] == 1
+
+
+def test_resume_with_a_half_written_play_pair_is_skip_only(tmp_path, tiny_set, serve_app):
+    """A crash between the two play-event appends leaves one play event: the trial is
+    consumed (never issued again, only skip) and the play check reports the half pair."""
+    layout = _open(tmp_path, tiny_set)
+    session = _session(tiny_set)
+    with _client(serve_app, _runner(layout, tiny_set, session)) as client:
+        _play(client, 1)
+    lines = layout.log("play").read_bytes().splitlines(keepends=True)
+    assert len(lines) == 2
+    layout.log("play").write_bytes(lines[0])
+    # the same crash in a run whose deliveries were not logged (older logs)
+    timing_lines = layout.log("timing").read_bytes().splitlines(keepends=True)
+    kept = [line for line in timing_lines if th.DELIVERY_EVENT.encode() not in line]
+    assert len(kept) == len(timing_lines) - 2
+    layout.log("timing").write_bytes(b"".join(kept))
+    with _client(serve_app, _runner(layout, tiny_set, session)) as client:
+        assert client.get("/threshold/api/state").json()["phase"] == "skip"
+        assert client.post("/threshold/api/next").json()["phase"] == "skip"
+        late = client.post("/threshold/api/trials/1/played", json=_onsets())
+        assert late.json()["error"] == tr.E_UNREPORTED
+        assert client.post("/threshold/api/trials/1/skip").json()["n_done"] == 1
+    trials, plays, timing = _logs(layout)
+    check = th.check_plays(session, tiny_set, plays, trials, complete=False)
+    assert check.problems == ("trial 1: first and second play counts differ",)
+    with_timing = th.check_plays(session, tiny_set, plays, trials, timing=timing, complete=False)
+    assert "trial 1: played without a logged delivery of both motifs" in with_timing.problems
+
+
+def test_onsets_count_from_the_latest_issue_and_record_the_latency(tmp_path, tiny_set, serve_app):
+    """A page reload before any audio was fetched asks for the trial again: the onsets of
+    the page that plays are measured from its own `next` reply. The page's output latency
+    is kept as the gap between `scheduled_ms` and `onset_ms`."""
+    layout = _open(tmp_path, tiny_set)
+    session = _session(tiny_set)
+    clock = ManualClock(1_000)
+    with _client(serve_app, _runner(layout, tiny_set, session, clock)) as client:
+        trial = client.post("/threshold/api/next").json()
+        clock.advance(4_000)  # the page reloads before fetching
+        assert client.post("/threshold/api/next").json() == trial  # same single-use URLs
+        client.get(trial["first"]).raise_for_status()
+        client.get(trial["second"]).raise_for_status()
+        body = {**_onsets(100, 1500), "output_latency_ms": 40}
+        assert client.post("/threshold/api/trials/1/played", json=body).json() == {"ok": True}
+        too_slow = {**_onsets(), "output_latency_ms": 10_001}
+        assert client.post("/threshold/api/trials/2/played", json=too_slow).status_code == 422
+        client.post("/threshold/api/trials/1/response", json={"response": "same"})
+        _play(client, 2)  # no latency reported
+    trials, plays, _ = _logs(layout)
+    first, second = plays[0], plays[1]
+    assert (first.onset_ms, second.onset_ms) == (5_100, 6_500)
+    assert (first.scheduled_ms, second.scheduled_ms) == (5_060, 6_460)
+    assert (trials[0].onset_first_ms, trials[0].onset_second_ms) == (5_100, 6_500)
+    assert plays[2].scheduled_ms is None and plays[2].onset_ms is not None
 
 
 def test_runner_refuses_wrong_assets_and_plans(tmp_path, tiny_set):
@@ -341,9 +458,18 @@ def test_check_plays_detects_replays_and_wrong_assets(tmp_path, tiny_set, serve_
     assert any(
         "more than once" in p for p in th.check_plays(session, tiny_set, dup, trials).problems
     )
-    swapped = [dataclasses.replace(plays[0], asset_id=plays[1].asset_id), *plays[1:]]
+    swapped = [dataclasses.replace(plays[0], asset_id="0" * 64), *plays[1:]]
     problems = th.check_plays(session, tiny_set, swapped, trials).problems
-    assert any("not the planned motif" in p for p in problems)
+    assert problems == ("trial 1: first play is not the planned motif",)
+    assert plays[1].context == "threshold_second" and plays[1].trial_id == "DEMO-S01.t001"
+    swapped = [plays[0], dataclasses.replace(plays[1], asset_id="0" * 64), *plays[2:]]
+    problems = th.check_plays(session, tiny_set, swapped, trials).problems
+    assert problems == ("trial 1: second play is not the planned motif",)
+    # a half pair (first play only) of an unfinished trial
+    half = [p for p in plays if (p.trial_id, p.context) != ("DEMO-S01.t003", "threshold_second")]
+    unfinished = [t for t in trials if t.trial_index != 3]
+    problems = th.check_plays(session, tiny_set, half, unfinished, complete=False).problems
+    assert problems == ("trial 3: first and second play counts differ",)
     late = [dataclasses.replace(plays[0], onset_ms=10**9), *plays[1:]]
     assert any(
         "before the first" in p for p in th.check_plays(session, tiny_set, late, trials).problems
@@ -373,6 +499,26 @@ def test_check_plays_detects_replays_and_wrong_assets(tmp_path, tiny_set, serve_
     )
     other = [dataclasses.replace(p, trial_id="DEMO-S02.t001") for p in plays]
     assert th.check_plays(session, tiny_set, other, []).problems  # other sessions ignored
+    # audio deliveries (timing log): each motif left the server once, before its play
+    _, _, timing = _logs(layout)
+    assert th.check_plays(session, tiny_set, plays, trials, timing=timing).ok
+    sent = [e for e in timing if e.event == th.DELIVERY_EVENT]
+    assert len(sent) == 12
+    problems = th.check_plays(session, tiny_set, plays, trials, timing=[*timing, sent[0]]).problems
+    assert problems == ("trial 1: audio delivered more than once",)
+    lost = [e for e in timing if e is not sent[0]]
+    problems = th.check_plays(session, tiny_set, plays, trials, timing=lost).problems
+    assert problems == ("trial 1: played without a logged delivery of both motifs",)
+    stray = dataclasses.replace(sent[0], detail=sent[0].detail.replace(".t001", ".t099"))
+    problems = th.check_plays(session, tiny_set, plays, trials, timing=[*timing, stray]).problems
+    assert problems == ("audio delivery for unplanned trial 99",)
+    noise = [
+        dataclasses.replace(sent[0], detail="DEMO-S01.t001 third x"),
+        dataclasses.replace(sent[0], detail="DEMO-S01.tx first x"),
+        dataclasses.replace(sent[0], component="panel"),
+        dataclasses.replace(sent[0], detail=None),
+    ]
+    assert th.check_plays(session, tiny_set, plays, trials, timing=[*timing, *noise]).ok
 
 
 # ---------------------------------------------------------------------------
@@ -411,6 +557,37 @@ def test_export_keeps_tryout_and_listener_sessions_apart(tmp_path, tiny_set, ser
         )
         == tr.TRYOUT_LABEL
     )
+
+
+def test_export_refuses_real_listener_data_in_the_repository(tmp_path, capsys, serve_app):
+    """Trials, summaries and plots of a pilot run (listeners or tryout) never land in a git
+    work tree: `export_run`, `export` and `summary` refuse before writing anything."""
+    real = th.generate_stimuli("TH-2026-02", dataclasses.replace(TINY, same_pairs=0))
+    layout = _open(tmp_path, real, "TH-run-9", RunKind.PILOT)
+    session = _session(real, "TH01-L03", listener="L03")
+    with _client(serve_app, _runner(layout, real, session)) as client:
+        tr.run_bot_session(client, session, real)
+    target = ROOT / "generation" / "out" / "never-threshold-export"
+    with pytest.raises(th.ThresholdError) as err:
+        tr.export_run(layout, target, tryout=False)
+    assert err.value.code == th.E_POLICY
+    assert not target.exists()
+    capsys.readouterr()
+    export = ["export", "--run-dir", str(layout.root), "--no-plot", "--out-dir"]
+    assert main([*export, str(target)]) == 2
+    assert "refused (E_POLICY)" in capsys.readouterr().err
+    assert main([*export, str(tmp_path / "restricted")]) == 0
+    assert json.loads(capsys.readouterr().out)["play_checks"][0]["ok"]
+    trials_csv = tmp_path / "restricted" / "trials.csv"
+    th.write_stimuli(real, tmp_path / "real-stimuli.json")
+    summary = ["summary", "--trials", str(trials_csv), "--label", "Listener sessions"]
+    summary += ["--stimuli", str(tmp_path / "real-stimuli.json"), "--no-plot", "--out-dir"]
+    assert main([*summary, str(target)]) == 2
+    assert "refused (E_POLICY)" in capsys.readouterr().err
+    assert not target.exists()
+    assert main([*summary, str(tmp_path / "summary")]) == 0
+    written = json.loads((tmp_path / "summary" / "summary.json").read_text(encoding="utf-8"))
+    assert written["set_sha256"] == real.sha256() and written["demo"] is False
 
 
 def test_command_line_session_export_and_checks(tmp_path, capsys, serve_app):
@@ -464,6 +641,11 @@ def test_command_line_session_export_and_checks(tmp_path, capsys, serve_app):
     capsys.readouterr()
     other = [("L09" if a == "L01" else a) for a in base]
     assert main(other) == 2
+    capsys.readouterr()
+    louder = [("-9" if a == "-10.5" else a) for a in base]
+    assert main(louder) == 2
+    assert "gain_db -10.5 (given -9.0)" in capsys.readouterr().err
+    assert ThresholdSession.read(out["session"]).gain_db == -10.5
     run_dir = tmp_path / "runs" / "DEMO-cli-run"
     stimuli = th.ThresholdStimulusSet.read(stimuli_path)
     runner = _runner(run_layout(tmp_path / "runs", "DEMO-cli-run"), stimuli, session)
@@ -504,7 +686,7 @@ def test_demo_command_through_the_real_server(tmp_path, capsys):
     assert main(["demo", "--out-dir", str(out), "--sessions", "2"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert [c["n_played"] for c in report["play_checks"]] == [224, 224]
-    assert all(c["ok"] and c["n_refused"] == 0 for c in report["play_checks"])
+    assert all(c["ok"] and c["n_refused"] == c["n_unreported"] == 0 for c in report["play_checks"])
     summary = json.loads((out / "export" / "summary.json").read_text(encoding="utf-8"))
     assert summary["set_sha256"] == th.ThresholdStimulusSet.read(DEMO_SET).sha256()
     assert summary["label"].startswith("SYNTHETIC")
@@ -523,7 +705,7 @@ def test_demo_command_through_the_real_server(tmp_path, capsys):
 
 @pytest.mark.browser
 def test_listener_page_runs_a_session(tmp_path, serve_app, browser_page, tiny_set):
-    small = dataclasses.replace(TINY, bin_centers=("0.175",), pairs_per_bin=1, same_pairs=1)
+    small = dataclasses.replace(TINY, bin_centers=("0.175",), pairs_per_bin=1, same_pairs=2)
     stimuli = th.generate_stimuli("DEMO-T-page", small)
     layout = _open(tmp_path, stimuli, clock=SystemClock())
     session = _session(stimuli)
@@ -532,19 +714,41 @@ def test_listener_page_runs_a_session(tmp_path, serve_app, browser_page, tiny_se
     page = browser_page
     page.goto(base + "/threshold/")
     page.wait_for_selector("body[data-state=ready]")
-    assert page.text_content("#progress") == "Trial 1 of 2"
-    for answer in ("#same", "#different"):
+    assert page.text_content("#progress") == "Trial 1 of 3"
+
+    def play_and_answer(answer):
         page.click("#play")
         assert page.is_hidden("#play")  # no replay control during a trial
         page.wait_for_selector(f"{answer}:enabled", timeout=15_000)
         page.click(answer)
         page.wait_for_selector("body[data-state=ready], body[data-state=done]")
+
+    play_and_answer("#same")
+    # trial 2: the audio plays but its play report never reaches the server
+    page.route("**/played", lambda route: route.abort())
+    page.click("#play")
+    page.wait_for_selector("body[data-state=error]", timeout=15_000)
+    assert page.is_visible("#skip")
+    page.unroute("**/played")
+    # after a reload the pair is not played again: only the operator skip remains
+    page.reload()
+    page.wait_for_selector("body[data-state=error]")
+    assert page.is_hidden("#play") and page.is_visible("#skip")
+    assert "cannot be played again" in page.text_content("#status")
+    page.click("#skip")
+    page.wait_for_selector("body[data-state=ready]")
+    play_and_answer("#different")
     page.wait_for_selector("body[data-state=done]")
     assert "complete" in page.text_content("#status")
     trials, plays = tr.read_run_records(layout)
-    check = th.check_plays(session, stimuli, plays, trials)
+    timing = tr.read_run_timing(layout)
+    check = th.check_plays(session, stimuli, plays, trials, timing=timing)
     assert check.ok, check.problems
-    assert [t.response for t in trials] == ["same", "different"]
-    assert all(t.rt_ms is not None and t.onset_second_ms > t.onset_first_ms for t in trials)
-    gap = trials[0].onset_second_ms - trials[0].onset_first_ms
+    assert (check.n_played, check.n_answered, check.n_unreported) == (2, 2, 1)
+    assert [t.response for t in trials] == ["same", None, "different"]
+    played = [t for t in trials if t.response is not None]
+    assert all(t.rt_ms is not None and t.onset_second_ms > t.onset_first_ms for t in played)
+    gap = played[0].onset_second_ms - played[0].onset_first_ms
     assert gap >= 500  # first motif + 500 ms gap (Web Audio schedule)
+    # the output latency the page added is kept: onset (at the speaker) - scheduled
+    assert all(p.scheduled_ms is not None and p.scheduled_ms <= p.onset_ms for p in plays)

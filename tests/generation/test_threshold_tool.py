@@ -361,6 +361,23 @@ def test_write_stimuli_refuses_real_sets_in_the_repository(tmp_path, small_set):
     th.write_stimuli(small_set, tmp_path / "demo.json")
 
 
+def test_real_listener_data_is_refused_in_the_repository(tmp_path, demo_set):
+    trials = th.read_trials_csv(FIXTURES / "hand-trials.csv")
+    assert th.is_demo_data(trials, demo_set) and th.is_demo_data(trials)
+    real_trials = [dataclasses.replace(t, run_id="TH-run-1") for t in trials]
+    assert not th.is_demo_data(real_trials)
+    assert not th.is_demo_data([], dataclasses.replace(demo_set, set_id="TH-2026-01", demo=False))
+    target = ROOT / "generation" / "out" / "never-threshold-trials"
+    with pytest.raises(th.ThresholdError) as err:
+        th.export_csv(real_trials, demo_set, target / "trials.csv")
+    assert err.value.code == th.E_POLICY and not target.exists()
+    with pytest.raises(th.ThresholdError, match="restricted storage"):
+        th.check_output_dir(ROOT, demo=False)
+    th.check_output_dir(ROOT, demo=True)
+    th.check_output_dir(tmp_path, demo=False)
+    th.export_csv(real_trials, demo_set, tmp_path / "trials.csv")
+
+
 # ---------------------------------------------------------------------------
 # Session plans
 
@@ -528,6 +545,58 @@ def test_summary_script_on_the_fixture(tmp_path):
     _ci_copy(out / "summary.png", "hand-fixture-summary.png")
 
 
+def test_summary_script_refuses_trials_of_another_set(tmp_path, capsys, demo_set):
+    """Pair IDs repeat across sets, so `summary --stimuli` checks every row against the
+    set before it writes the set's ID and hash into the evidence file."""
+    from av_generation.threshold_cli import main
+
+    hand = FIXTURES / "hand-trials.csv"
+    assert th.check_trials_csv(hand, demo_set) == ()
+    config = ThresholdConfig(
+        profiles=("P1", "P2"),
+        bin_centers=("0.050", "0.100", "0.200"),
+        bin_halfwidth="0.0125",
+        pairs_per_bin=8,
+        same_pairs=6,
+        gap_ms=500,
+        threshold_default="0.10",
+    )
+    other = th.generate_stimuli("DEMO-T-other", config)
+    assert {t.pair_id for t in th.read_trials_csv(hand)} <= {p.pair_id for p in other.pairs}
+    th.write_stimuli(other, tmp_path / "other.json")
+    renamed = dataclasses.replace(demo_set, set_id="DEMO-T-renamed")
+    th.write_stimuli(renamed, tmp_path / "renamed.json")
+    for stimuli, needle in ((other, "disagrees with the set"), (renamed, "set_sha256")):
+        problems = th.check_trials_csv(hand, stimuli)
+        assert problems and needle in problems[0], problems
+    capsys.readouterr()
+    for name in ("other.json", "renamed.json"):
+        out = tmp_path / f"out-{name}"
+        args = ["summary", "--trials", str(hand), "--out-dir", str(out), "--label", "x"]
+        assert main([*args, "--stimuli", str(tmp_path / name), "--no-plot"]) == 2
+        assert "does not belong to stimulus set" in capsys.readouterr().err
+        assert not out.exists()
+    # a row whose recipes or hashes were edited no longer matches its set
+    text = hand.read_text(encoding="utf-8")
+    first = th.trial_rows(th.read_trials_csv(hand)[:1], demo_set)[0]["pcm_sha256_first"]
+    edited = tmp_path / "edited.csv"
+    edited.write_text(text.replace(first, "0" * 64, 1), encoding="utf-8")
+    assert th.check_trials_csv(edited, demo_set) == (
+        "DEMO-HAND-1 trial 1: pcm_sha256_first differ from set DEMO-T1",
+    )
+    recipe = text.replace("[-3,2,-4]", "[-3,2,-5]", 1)
+    assert recipe != text
+    edited.write_text(recipe, encoding="utf-8")
+    assert "recipe_first" in th.check_trials_csv(edited, demo_set)[0]
+    garbled = text.replace('"{""amplitudes"":[1.0,0.6,0.8]', '"{""amplitudes"":[1.0,0.6,0.8', 1)
+    assert garbled != text
+    edited.write_text(garbled, encoding="utf-8")
+    assert "recipe_first" in th.check_trials_csv(edited, demo_set)[0]
+    edited.write_text(text.replace(demo_set.sha256(), "x" * 64, 1), encoding="utf-8")
+    with pytest.raises(th.ThresholdError, match="set_sha256"):
+        th.read_trials_csv(edited)
+
+
 def test_wilson_interval_known_values():
     assert th.wilson_interval(3, 4) == pytest.approx((0.3006418, 0.9544127), abs=1e-6)
     assert th.wilson_interval(0, 10) == (0.0, pytest.approx(0.2775328, abs=1e-6))
@@ -562,8 +631,31 @@ def test_logistic_fit_matches_scipy():
     assert fit.log_likelihood == pytest.approx(-ref.fun, rel=1e-8)
     assert fit.d50 == pytest.approx(-ref.x[0] / ref.x[1], rel=1e-4)
     assert fit.slope < 0 and 0 < fit.p_same_at_default < 1
-    assert fit.se_slope > 0 and fit.iterations >= 1
+    assert fit.iterations >= 1
     assert set(fit.to_dict()) == set(th.FIT_COLUMNS)
+    # standard errors: square roots of the diagonal of the inverse observed information,
+    # here a central-difference Hessian of the scipy objective at the scipy optimum
+    b = list(ref.x)
+    steps = (1e-3, 1e-2)
+
+    def f(d0, d1):
+        return _neg_log_likelihood((b[0] + d0, b[1] + d1), xs, ys)
+
+    def second(i, j):
+        def shifted(si, sj):
+            d = [0.0, 0.0]
+            d[i] += si * steps[i]
+            d[j] += sj * steps[j]
+            return f(*d)
+
+        total = shifted(1, 1) - shifted(1, -1) - shifted(-1, 1) + shifted(-1, -1)
+        return total / (4 * steps[i] * steps[j])
+
+    h00, h01, h11 = second(0, 0), second(0, 1), second(1, 1)
+    det = h00 * h11 - h01 * h01
+    assert fit.se_intercept == pytest.approx(math.sqrt(h11 / det), rel=1e-4)
+    assert fit.se_slope == pytest.approx(math.sqrt(h00 / det), rel=1e-4)
+    assert fit.se_intercept != pytest.approx(fit.se_slope, rel=0.1)
 
 
 def test_logistic_fit_degenerate_and_separated():

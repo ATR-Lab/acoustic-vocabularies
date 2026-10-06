@@ -23,8 +23,11 @@ default 0.10). It reports data only; it never chooses the threshold.
   bin (`ab_order_rule="balanced_per_bin"`). The `records.ThresholdSession` document is
   written before the first trial (`threshold_runner`).
 - Checks: `check_stimuli` (every pair valid and in its bin, coverage, hashes),
-  `check_session` (plan) and `check_plays` (each pair played exactly once per session).
-- Results: `export_csv` (`TRIAL_CSV_COLUMNS`, one row per trial), `read_trials_csv`,
+  `check_session` (plan), `check_plays` (each pair played exactly once per session; with
+  the timing events also each audio delivery, `DELIVERY_EVENT`) and `check_trials_csv`
+  (an exported CSV belongs to a set).
+- Results: `export_csv` (`TRIAL_CSV_COLUMNS`, one row per trial; real data refused
+  inside a git work tree, `check_output_dir`), `read_trials_csv`,
   `summarize` (proportion `same` per profile and bin with Wilson 95% intervals),
   `fit_logistic` / `fit_summary` (logistic fit of `P(same)` on distance),
   `build_summary` (the evidence document for O6.2.2 and G4) and `plot_summary`.
@@ -38,6 +41,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 import math
 import os
 from collections import Counter
@@ -84,6 +88,7 @@ from av_generation.records import (
     ThresholdSession,
     ThresholdStimulusSet,
     ThresholdTrial,
+    TimingEvent,
 )
 from av_generation.seeds import rng_for, seed_from_key, threshold_seed_key
 
@@ -121,10 +126,22 @@ TRIAL_CSV_COLUMNS: Final[tuple[str, ...]] = (
     "onset_first_ms",
     "onset_second_ms",
     "t_ms",
+    "set_sha256",
 )
 """One row per trial (contract to O6.2.2); recipes as canonical compact JSON, in the order
 played (`first`, `second`); booleans `1`/`0`; empty cells for null values. The columns
-after `tryout` complete the trial record, so `read_trials_csv` rebuilds it exactly."""
+after `tryout` complete the trial record, so `read_trials_csv` rebuilds it exactly, and
+`set_sha256` names the stimulus set the rows belong to (`check_trials_csv`)."""
+
+PROVENANCE_COLUMNS: Final[tuple[str, ...]] = (
+    "recipe_first",
+    "recipe_second",
+    "pcm_sha256_first",
+    "pcm_sha256_second",
+    "sum_sq",
+    "set_sha256",
+)
+"""Trial-CSV columns that `check_trials_csv` compares with the stimulus set."""
 
 SUMMARY_CSV_COLUMNS: Final[tuple[str, ...]] = (
     "profile",
@@ -181,6 +198,15 @@ E_SEARCH: Final = "E_SEARCH"
 E_STIMULI: Final = "E_STIMULI"
 E_SESSION: Final = "E_SESSION"
 E_TRIALS: Final = "E_TRIALS"
+E_POLICY: Final = "E_POLICY"
+
+TIMING_COMPONENT: Final = "threshold"
+"""`TimingEvent.component` of every timing event the listening tool writes."""
+DELIVERY_EVENT: Final = "asset_ready"
+"""Timing event the runner writes (and syncs to disk) before it returns the WAV of one
+motif of a trial: detail `<trial_id> <first|second> <token>` (`delivery_detail`). It
+survives a server restart, so a trial whose audio left the server is never issued again
+(`deliveries`, `check_plays`)."""
 
 
 class ThresholdError(ValueError):
@@ -617,6 +643,30 @@ def write_stimuli(stimuli: ThresholdStimulusSet, path: str | os.PathLike[str]) -
     return stimuli.write(target, exclusive=False)
 
 
+def is_demo_data(
+    trials: Iterable[ThresholdTrial], stimuli: ThresholdStimulusSet | None = None
+) -> bool:
+    """True when every trial comes from a DEMO run (`DEMO-` run ID) and the set, when
+    given, is a DEMO set. Anything else is listener or tryout data (restricted)."""
+    if stimuli is not None and not stimuli.demo:
+        return False
+    return all(t.run_id.startswith(DEMO_PREFIX) for t in trials)
+
+
+def check_output_dir(out_dir: str | os.PathLike[str], *, demo: bool) -> None:
+    """Refuse to write real (non-DEMO) listener or tryout data inside a git work tree or
+    this repository (`E_POLICY`): trials, summaries, fits and plots of real sessions
+    belong in restricted storage. DEMO/synthetic data may go anywhere."""
+    from av_sound.fallback import inside_work_tree
+
+    if not demo and inside_work_tree(out_dir):
+        raise ThresholdError(
+            E_POLICY,
+            f"real listener data cannot be written inside a git work tree ({out_dir}); "
+            "use restricted storage",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Sessions
 
@@ -771,6 +821,32 @@ def session_presentations(
 # ---------------------------------------------------------------------------
 # Play log check
 
+SIDES: Final[tuple[str, str]] = ("first", "second")
+
+
+def delivery_detail(name: str, side: str, token: str) -> str:
+    """Detail of a `DELIVERY_EVENT` for trial `name` (`trial_id`): `<trial_id>
+    <first|second> <token>`."""
+    return f"{name} {side} {token}"
+
+
+def deliveries(timing: Iterable[TimingEvent], session_id: str) -> dict[int, list[tuple[str, str]]]:
+    """Audio deliveries of one session from its timing events: trial index -> the
+    `(side, token)` of each `DELIVERY_EVENT`, in log order. Other events and sessions are
+    ignored."""
+    prefix = f"{session_id}.t"
+    out: dict[int, list[tuple[str, str]]] = {}
+    for event in timing:
+        if event.event != DELIVERY_EVENT or event.component != TIMING_COMPONENT:
+            continue
+        parts = (event.detail or "").split(" ")
+        if len(parts) != 3 or not parts[0].startswith(prefix) or parts[1] not in SIDES:
+            continue
+        suffix = parts[0][len(prefix) :]
+        if suffix.isascii() and suffix.isdigit():
+            out.setdefault(int(suffix), []).append((parts[1], parts[2]))
+    return out
+
 
 @dataclass(frozen=True, slots=True)
 class PlayCheck:
@@ -784,6 +860,11 @@ class PlayCheck:
     n_refused: int
     """Refused play requests (a reused audio token, a second play report)."""
     problems: tuple[str, ...]
+    n_unreported: int = 0
+    """Skipped trials whose audio was delivered but whose play was never reported (for
+    example the server stopped before the page reported the onsets): the listener may have
+    heard the pair, it was not played again and it has no answer. Counted from the
+    delivery events (`timing`); 0 when `check_plays` got no timing events."""
 
     @property
     def ok(self) -> bool:
@@ -796,17 +877,23 @@ def check_plays(
     plays: Iterable[PlayEvent],
     trials: Iterable[ThresholdTrial],
     *,
+    timing: Iterable[TimingEvent] | None = None,
     complete: bool = True,
 ) -> PlayCheck:
     """Check that each pair of the session played exactly once (no replay).
 
     Per planned trial: at most one `played` event per context (`threshold_first`,
-    `threshold_second`), with the asset of the presented order, first onset not after the
-    second; a trial with a record has both plays (unless it was skipped before playing,
-    `response` null and no onsets). With `complete=True` every planned trial must have
-    both plays and a trial record. Events of other sessions are ignored.
+    `threshold_second`), as many first as second plays, with the asset of the presented
+    order, first onset not after the second; a trial with a record has both plays
+    (unless it was skipped before playing, `response` null and no onsets). With
+    `complete=True` every planned trial must have both plays and a trial record, or a
+    skip record. With `timing` (the run's timing events) the audio deliveries are checked
+    too: each motif of a trial left the server at most once, a played trial had both
+    motifs delivered, and a skipped trial whose audio was delivered but never reported
+    counts in `n_unreported` (not as unplayed). Events of other sessions are ignored.
     """
     shown = {p.trial_index: p for p in session_presentations(session, stimuli)}
+    sent = None if timing is None else deliveries(timing, session.session_id)
     prefix = f"{session.session_id}.t"
     played: dict[tuple[int, str], list[PlayEvent]] = {}
     refused = 0
@@ -833,7 +920,7 @@ def check_plays(
         if trial.trial_index in answered:
             problems.append(f"trial {trial.trial_index} recorded twice")
         answered[trial.trial_index] = trial
-    n_played = 0
+    n_played = n_unreported = 0
     for index, shown_trial in shown.items():
         first = played.get((index, "threshold_first"), [])
         second = played.get((index, "threshold_second"), [])
@@ -849,6 +936,14 @@ def check_plays(
             problems.append(f"trial {index}: second motif started before the first")
         both = len(first) == 1 and len(second) == 1
         n_played += both
+        unreported = False
+        if sent is not None:
+            sides = Counter(side for side, _ in sent.get(index, []))
+            if any(n > 1 for n in sides.values()):
+                problems.append(f"trial {index}: audio delivered more than once")
+            if (first or second) and set(sides) != set(SIDES):
+                problems.append(f"trial {index}: played without a logged delivery of both motifs")
+            unreported = bool(sides) and not first and not second
         record = answered.get(index)
         if record is not None:
             if record.pair_id != shown_trial.pair.pair_id or record.order != shown_trial.order:
@@ -856,12 +951,17 @@ def check_plays(
             skipped_unplayed = record.response is None and record.onset_first_ms is None
             if not both and not skipped_unplayed:
                 problems.append(f"trial {index}: answered without exactly one play of each motif")
+            n_unreported += unreported and skipped_unplayed
         elif complete:
             problems.append(f"trial {index}: no trial record")
         if complete and not both and not (record is not None and record.response is None):
             problems.append(f"trial {index}: not played")
     extra = sorted(set(answered) - set(shown))
     problems += [f"record for unplanned trial {i}" for i in extra]
+    if sent is not None:
+        problems += [
+            f"audio delivery for unplanned trial {i}" for i in sorted(set(sent) - set(shown))
+        ]
     return PlayCheck(
         session_id=session.session_id,
         n_planned=len(shown),
@@ -869,6 +969,7 @@ def check_plays(
         n_answered=sum(1 for t in answered.values() if t.response is not None),
         n_refused=refused,
         problems=tuple(problems),
+        n_unreported=n_unreported,
     )
 
 
@@ -899,6 +1000,7 @@ def trial_rows(
     with the set (profile, kind, bin, distance).
     """
     by_id = {p.pair_id: p for p in stimuli.pairs}
+    set_sha256 = stimuli.sha256()
     rows: list[dict[str, str]] = []
     for trial in sorted(trials, key=lambda t: (t.session_id, t.trial_index)):
         pair = by_id.get(trial.pair_id)
@@ -935,6 +1037,7 @@ def trial_rows(
             "onset_first_ms": trial.onset_first_ms,
             "onset_second_ms": trial.onset_second_ms,
             "t_ms": trial.t_ms,
+            "set_sha256": set_sha256,
         }
         rows.append({c: _cell(values[c]) for c in TRIAL_CSV_COLUMNS})
     return rows
@@ -958,7 +1061,9 @@ def _write_csv(
 def export_csv(
     trials: Sequence[ThresholdTrial], stimuli: ThresholdStimulusSet, path: str | os.PathLike[str]
 ) -> str:
-    """Write the trial CSV (`TRIAL_CSV_COLUMNS`); returns its SHA-256 (#23)."""
+    """Write the trial CSV (`TRIAL_CSV_COLUMNS`); returns its SHA-256 (#23). Real
+    (non-DEMO) trials are refused inside a git work tree (`check_output_dir`)."""
+    check_output_dir(Path(path).parent, demo=is_demo_data(trials, stimuli))
     return _write_csv(path, TRIAL_CSV_COLUMNS, trial_rows(trials, stimuli))
 
 
@@ -996,11 +1101,56 @@ def read_trials_csv(path: str | os.PathLike[str]) -> list[ThresholdTrial]:
                 )
             except ValueError as err:
                 raise ThresholdError(E_TRIALS, f"{path}:{reader.line_num}: {err}") from err
-            errors = trial.schema_errors()
-            if errors or row["tryout"] not in ("0", "1"):
+            errors = list(trial.schema_errors())
+            if row["tryout"] not in ("0", "1"):
+                errors.append("tryout must be 1 or 0")
+            if not _is_sha256(row["set_sha256"]):
+                errors.append("set_sha256 must be a SHA-256 hex digest")
+            if errors:
                 raise ThresholdError(E_TRIALS, f"{path}:{reader.line_num}: {errors[:3]}")
             out.append(trial)
     return out
+
+
+def _is_sha256(text: str) -> bool:
+    return len(text) == 64 and all(c in "0123456789abcdef" for c in text)
+
+
+def _provenance(row: Mapping[str, str], column: str) -> object:
+    if column.startswith("recipe_"):
+        try:
+            return json.loads(row[column])
+        except ValueError:
+            return row[column]
+    return row[column]
+
+
+def check_trials_csv(
+    path: str | os.PathLike[str], stimuli: ThresholdStimulusSet
+) -> tuple[str, ...]:
+    """Problems of an exported trials CSV against a stimulus set (empty when every row is
+    a trial of this set): each row must name a pair of the set with its profile, kind,
+    bin and distance (`trial_rows`), and carry the set's recipes, PCM hashes and sum of
+    squares in play order and the set hash (`PROVENANCE_COLUMNS`). Pair IDs repeat
+    across sets, so the summary script runs this before it names a set."""
+    trials = read_trials_csv(path)
+    try:
+        expected = trial_rows(trials, stimuli)
+    except ThresholdError as err:
+        return (str(err),)
+    with open(path, encoding="utf-8", newline="") as handle:
+        rows = sorted(
+            csv.DictReader(handle), key=lambda r: (r["session_id"], int(r["trial_index"]))
+        )
+    problems: list[str] = []
+    for want, got in zip(expected, rows, strict=True):
+        differ = [c for c in PROVENANCE_COLUMNS if _provenance(want, c) != _provenance(got, c)]
+        if differ:
+            problems.append(
+                f"{got['session_id']} trial {got['trial_index']}: {', '.join(differ)} "
+                f"differ from set {stimuli.set_id}"
+            )
+    return tuple(problems)
 
 
 # ---------------------------------------------------------------------------
@@ -1308,6 +1458,7 @@ def _session_entry(
         "n_answered": sum(1 for t in own if t.response is not None),
         "plays_ok": None if check is None else check.ok,
         "n_refused_plays": None if check is None else check.n_refused,
+        "n_unreported_plays": None if check is None else check.n_unreported,
     }
 
 
