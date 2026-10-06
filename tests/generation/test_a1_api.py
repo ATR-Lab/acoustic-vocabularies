@@ -51,7 +51,7 @@ from av_generation.a1 import (
     serve_a1,
     study_service,
 )
-from av_generation.clock import ManualClock, ScaledClock
+from av_generation.clock import ManualClock, SystemClock
 from av_generation.config import BatchConfig
 from av_generation.constants import SLOT_CAP_MS
 from av_generation.ids import (
@@ -447,6 +447,9 @@ def submit(rig: Rig, slot_id: str, recipe: Any, expect: int = 200) -> dict[str, 
 def advance_to_close(rig: Rig, slot_id: str, ms: int) -> None:
     rig.clock.advance(ms)
     wait_for(lambda: any(r.slot_id == slot_id for r in rig.ledger.records()))
+    # The record is written inside the service's timer step, which then opens the next
+    # slot; taking the service lock waits for that step to finish before the clock moves.
+    rig.service.tick()
 
 
 def walk_keys(obj: Any) -> Iterator[str]:
@@ -661,21 +664,22 @@ def test_slots_open_back_to_back_with_40_s_each(tmp_path):
 
 
 def test_slot_auto_closes_in_real_time_within_tolerance(tmp_path):
-    # The real component on an accelerated clock: 40 s of server time take 10 s, so the
-    # 0.5-s tolerance is 125 ms of real time (timer checks run every 10 ms).
-    clock = ScaledClock(4.0)
+    # The real component on the production clock (timer checks every 10 ms): the slot's
+    # record is written 40.0-40.5 s after it opened. Real time, not an accelerated clock,
+    # so the 0.5-s tolerance is not divided by a speed factor on a loaded CI runner.
+    clock = SystemClock()
     rig = make_rig(tmp_path, clock=clock, timed=True)
     atom = ATOMS[0]
     start_rounds(rig, [atom], rounds=1)
     wait_window(rig, atom, 1)
     opened = open_slot(rig)
-    wait_for(lambda: opened["slot_id"] in rig.ledger.consumed_at, timeout=30)
+    wait_for(lambda: opened["slot_id"] in rig.ledger.consumed_at, timeout=60)
     closed_at = rig.ledger.consumed_at[opened["slot_id"]]
     rec = rig.slots()[0]
     assert rec.outcome is SlotOutcome.TIMEOUT
     assert rec.t_ms - rec.t_open_ms == SLOT_CAP_MS
     assert SLOT_CAP_MS <= closed_at - rec.t_open_ms <= SLOT_CAP_MS + 500
-    # Close the other slots quickly: the window ends 120 s (30 real s) after it opened.
+    # Close the other slots quickly (the window ends 120 s after it opened).
     for _ in range(2):
         nxt = open_slot(rig)
         submit(rig, nxt["slot_id"], SHORT_EVENT)
