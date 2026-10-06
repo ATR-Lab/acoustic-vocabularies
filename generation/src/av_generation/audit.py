@@ -46,8 +46,13 @@ construction. Besides the labels and per-method effort, that drops every outcome
 `startup_ms` (model load) and `operator_ms`; the masked table keeps only the
 method-neutral totals (`slots_valid`, `slots_invalid`). Outcome counts stay in the
 unmasked table, with `n_llm_server_error` separating infrastructure failures (model
-`server_error`, counted inside `n_invalid_json`) from model output. Every masked text is
-checked with `masking.masking_findings` before anything is written (`E_MASKING`).
+`server_error`, counted inside `n_invalid_json`) from model output. Problem and note
+texts have method-neutral masked versions (`_Findings`). Every masked text is checked
+with `masking.masking_findings` before anything is written (`E_MASKING`).
+
+Timing: start and end events are paired per key (`pair_intervals`); an atom, round or
+appointment interrupted by a process restart (`resume`, new run clock) keeps the time
+before the restart and is listed in `checks.notes`, not as a problem.
 
 Command line (from the repository root):
 
@@ -55,6 +60,9 @@ Command line (from the repository root):
     uv run --project generation python -m av_generation.audit set --study A --set pilot \\
         --masked-out DIR --unmasked-out DIR <run_dir> ...
     uv run --project generation python -m av_generation.audit tally <run_dir> --out FILE
+
+Exit status: 0; 1 for `batch --strict` with problems or a `tally` mismatch; 2 for every
+refusal (`error (<code>): ...`: `AuditError` codes, `E_POLICY`, `E_IO`).
 """
 
 from __future__ import annotations
@@ -70,6 +78,7 @@ import sys
 from collections import Counter
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Final, Literal, TypeAlias, TypeVar
 
@@ -106,7 +115,13 @@ from av_generation.records import (
     SlotRefusal,
     TimingEvent,
 )
-from av_generation.rundir import CONFIG_NAME, LOG_FILES, MANIFEST_NAME, check_run_location
+from av_generation.rundir import (
+    CONFIG_NAME,
+    LOG_FILES,
+    MANIFEST_NAME,
+    RunPolicyError,
+    check_run_location,
+)
 
 OUTCOME_COLUMNS: Final[tuple[str, ...]] = tuple(f"n_{code}" for code in OUTCOME_CODES)
 
@@ -210,8 +225,10 @@ ATOM_COLUMNS: Final[tuple[str, ...]] = (
 `source` is the commit source in the book's final store book (`selector`,
 `fallback_bank`, `fallback_book`), with `source_slot_id` (selector) or `bank_index`
 (bank); `voided_source` is the source of an earlier commit in a store book voided by a
-whole-book substitution. `n_eligible` and `selected_slot_id` come from the round-4
-decision; `fallback_scan` is `1` when a bank scan was logged for the atom."""
+whole-book substitution. `n_eligible` counts the atom's eligible candidates over its
+four rounds (the sum of the slot rows' `eligible`; empty without decisions);
+`selected_slot_id` and `round4_action` come from the round-4 decision; `fallback_scan` is
+`1` when a bank scan was logged for the atom."""
 
 METHOD_ATOM_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -298,6 +315,8 @@ E_STUDY: Final = "E_STUDY"
 E_MASKING: Final = "E_MASKING"
 E_SET: Final = "E_SET"
 E_SCHEMA: Final = "E_SCHEMA"
+E_IO: Final = "E_IO"
+"""Command line only: a file could not be read or written (exit status 2)."""
 
 Cell: TypeAlias = str | int | float | bool | None
 Row: TypeAlias = dict[str, Cell]
@@ -325,6 +344,9 @@ class AuditResult:
     ok: bool = True
     """No problem found by the audit checks (`summary.json` `checks.problems`)."""
     problems: tuple[str, ...] = ()
+    """The unmasked problem texts (the masked report has method-neutral versions)."""
+    notes: tuple[str, ...] = ()
+    """Informational notes (`checks.notes`, e.g. an atom interrupted by a restart)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -488,8 +510,12 @@ def read_machine_specs(path: str | os.PathLike[str]) -> tuple[dict[str, dict[str
     A JSON object `{role: {field: text}}` (roles and fields `[a-z0-9_]`, texts up to 200
     characters), e.g. `{"llm_host": {"gpu": "...", "driver": "..."}, "a1_station": {...}}`,
     copied from the apparatus manifest (Study A protocol §3.3: machine specifications are
-    logged separately). Raises `AuditError` (`E_INPUT`)."""
-    data = Path(path).read_bytes()
+    logged separately). Raises `AuditError` (`E_INPUT`, also for a missing or unreadable
+    file)."""
+    try:
+        data = Path(path).read_bytes()
+    except OSError as err:
+        raise AuditError(E_INPUT, f"{path}: cannot read machine specifications ({err})") from err
     value = _json_value(data, str(path))
     specs: dict[str, dict[str, str]] = {}
     if not isinstance(value, dict):
@@ -555,6 +581,11 @@ class Intervals:
 
     durations: dict[Hashable, list[int]]
     problems: tuple[str, ...]
+    masked_problems: tuple[str, ...] = ()
+    """The same problems, described with `masked_describe` (one per problem)."""
+    notes: tuple[str, ...] = ()
+    """Intervals interrupted by a restart: counted, but worth a look (not problems)."""
+    masked_notes: tuple[str, ...] = ()
 
     def total(self, keep: Callable[[Hashable], bool] = lambda _key: True) -> int:
         return sum(sum(v) for k, v in self.durations.items() if keep(k))
@@ -565,41 +596,161 @@ class Intervals:
         return sum(values) if values else None
 
 
+_CLOCK_TOLERANCE_MS: Final = 1_000
+"""Two timing events are on the same run clock (one process) when their clock origins
+(`wall_utc - t_ms`) differ by at most this much (the writer reads `t_ms` and `wall_utc`
+with two clock calls)."""
+_UTC_FORMAT: Final = "%Y-%m-%dT%H:%M:%S.%fZ"
+_EPOCH: Final = datetime(1970, 1, 1)
+
+
+def _clock_origin(event: TimingEvent) -> int | None:
+    """`wall_utc - t_ms` in epoch milliseconds (the run clock's start), `None` without
+    `wall_utc`."""
+    if event.wall_utc is None:
+        return None
+    try:
+        moment = datetime.strptime(event.wall_utc, _UTC_FORMAT)
+    except ValueError:
+        return None
+    return (moment - _EPOCH) // timedelta(milliseconds=1) - event.t_ms
+
+
+def _same_clock(first: TimingEvent, second: TimingEvent) -> bool:
+    """Whether two events can be on one run clock (unknown without `wall_utc`: yes)."""
+    a, b = _clock_origin(first), _clock_origin(second)
+    return a is None or b is None or abs(a - b) <= _CLOCK_TOLERANCE_MS
+
+
+@dataclass(slots=True)
+class _Open:
+    """An open interval of `pair_intervals`."""
+
+    since: TimingEvent
+    """Its start event, or the restart event after which it continues."""
+    position: int
+    """Log position of `since`."""
+    seen: int
+    """Log position of its latest start event (the original one or one logged again)."""
+    carried: int = 0
+    """Milliseconds counted before restarts."""
+    restarted: bool = False
+    confirmed: bool = False
+    """The start was logged again after the restart."""
+
+
+_INTERRUPTED: Final = (
+    "interrupted by a restart; counted until the last event before it, then from it"
+)
+_NOT_RESUMED: Final = (
+    "interrupted by a restart and not logged again; counted until the last event before it"
+)
+
+
 def pair_intervals(
     events: Iterable[TimingEvent],
     start: str,
     end: str,
     key: Callable[[TimingEvent], Hashable],
     describe: Callable[[Hashable], str],
+    *,
+    masked_describe: Callable[[Hashable], str] | None = None,
+    restart: str | None = None,
 ) -> Intervals:
     """Pair `start`/`end` events with the same key, in log order (innermost first).
 
-    The duration is the end event's `duration_ms` when set (the writer's own measure,
-    valid across a resume), else `end.t_ms - start.t_ms`. An end before its start (the run
-    clock restarted) or without a start, and a start that never ends, are problems; the
-    durations of such events are not counted."""
-    open_: dict[Hashable, list[TimingEvent]] = {}
+    A segment lasts from its start to its end event: the end's `duration_ms` when set
+    (the writer's own measure), else `end.t_ms - start.t_ms` on one run clock. An end
+    without a start or before its start (the run clock restarted) and a start that never
+    ends are problems; such events are not counted. `masked_describe` describes keys in
+    the masked texts (`describe` by default).
+
+    `restart` (`resume`) names the event a new process logs when it takes over the run
+    with a new run clock (`t_ms` starts again at 0; one process's events share the clock
+    origin `wall_utc - t_ms`). It is for intervals that follow each other (atoms, rounds,
+    appointments). The current interval (the latest start) is interrupted when a restart
+    on another clock follows it: its time until the last event logged on its clock before
+    the restart is kept. When its start is logged again after the restart (an atom or
+    round run again) or its end follows, the interval continues from the restart event
+    and both parts count. Otherwise (an appointment whose last atom was finished by the
+    resume) only the part before the restart counts. Either way it is a note, not a
+    problem. An older open interval is not interrupted: its end is missing."""
+    log = list(events)
+    hide = masked_describe or describe
+    open_: dict[Hashable, list[_Open]] = {}
     durations: dict[Hashable, list[int]] = {}
-    problems: list[str] = []
-    for event in events:
+    problems: list[tuple[str, str]] = []
+    notes: list[tuple[str, str]] = []
+    latest = -1  # log position of the latest start event
+
+    def report(into: list[tuple[str, str]], k: Hashable, text: str) -> None:
+        into.append((f"{describe(k)}: {text}", f"{hide(k)}: {text}"))
+
+    def on_start(event: TimingEvent, position: int) -> None:
+        stack = open_.setdefault(key(event), [])
+        if stack and stack[-1].restarted and not stack[-1].confirmed:
+            stack[-1].confirmed = True  # the interrupted interval runs again
+            stack[-1].seen = position
+        else:
+            stack.append(_Open(event, position, seen=position))
+
+    def on_end(event: TimingEvent) -> None:
+        k = key(event)
+        stack = open_.get(k)
+        entry = stack.pop() if stack else None
+        if entry is None:
+            report(problems, k, f"{end} without {start}")
+            return
+        begun = entry.since
+        if event.duration_ms is not None:
+            durations.setdefault(k, []).append(entry.carried + event.duration_ms)
+        elif event.t_ms >= begun.t_ms and _same_clock(begun, event):
+            durations.setdefault(k, []).append(entry.carried + event.t_ms - begun.t_ms)
+        else:
+            report(problems, k, f"{end} is earlier than {start} on the run clock")
+            return
+        if entry.restarted:
+            report(notes, k, _INTERRUPTED)
+
+    def on_restart(event: TimingEvent, position: int) -> None:
+        for entries in open_.values():
+            for entry in entries:
+                begun = entry.since
+                current = entry.seen == latest and (entry.confirmed or not entry.restarted)
+                if current and (event.t_ms < begun.t_ms or not _same_clock(begun, event)):
+                    entry.carried += (
+                        max(
+                            e.t_ms
+                            for e in log[entry.position : position]
+                            if e.t_ms >= begun.t_ms and _same_clock(begun, e)
+                        )
+                        - begun.t_ms
+                    )
+                    entry.since, entry.position = event, position
+                    entry.restarted, entry.confirmed = True, False
+
+    for position, event in enumerate(log):
         if event.event == start:
-            open_.setdefault(key(event), []).append(event)
+            on_start(event, position)
+            latest = position
         elif event.event == end:
-            k = key(event)
-            stack = open_.get(k)
-            begun = stack.pop() if stack else None
-            if event.duration_ms is not None:
-                durations.setdefault(k, []).append(event.duration_ms)
-            elif begun is not None and event.t_ms >= begun.t_ms:
-                durations.setdefault(k, []).append(event.t_ms - begun.t_ms)
-            elif begun is None:
-                problems.append(f"{describe(k)}: {end} without {start}")
+            on_end(event)
+        elif restart is not None and event.event == restart:
+            on_restart(event, position)
+    for k, entries in open_.items():
+        for entry in entries:
+            if entry.restarted and not entry.confirmed:
+                durations.setdefault(k, []).append(entry.carried)
+                report(notes, k, _NOT_RESUMED)
             else:
-                problems.append(f"{describe(k)}: {end} is earlier than {start} on the run clock")
-    for k, stack in open_.items():
-        if stack:
-            problems.append(f"{describe(k)}: {start} without {end}")
-    return Intervals(durations, tuple(problems))
+                report(problems, k, f"{start} without {end}")
+    return Intervals(
+        durations,
+        tuple(text for text, _ in problems),
+        tuple(masked for _, masked in problems),
+        tuple(text for text, _ in notes),
+        tuple(masked for _, masked in notes),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -632,10 +783,22 @@ class BatchAudit:
     books: list[BookAudit]
     timing: dict[str, Any]
     problems: tuple[str, ...]
+    """Sorted, unmasked problem texts (they may name a method's component or designer)."""
     slot_refusals: int
     fallback_scans: int
     sources: Mapping[str, str]
     machines: dict[str, dict[str, str]] | None = None
+    masked_problems: tuple[str, ...] = ()
+    """The same problems as method-neutral texts, sorted (for the masked report)."""
+    notes: tuple[str, ...] = ()
+    """Sorted informational notes (not check failures)."""
+    masked_notes: tuple[str, ...] = ()
+
+    def problem_texts(self, *, masked: bool) -> tuple[str, ...]:
+        return self.masked_problems if masked else self.problems
+
+    def note_texts(self, *, masked: bool) -> tuple[str, ...]:
+        return self.masked_notes if masked else self.notes
 
 
 def _appointment(position: int) -> int:
@@ -648,6 +811,31 @@ def _rounded(value: float | None) -> float | None:
 
 def _mean(values: Sequence[float]) -> float | None:
     return sum(values) / len(values) if values else None
+
+
+class _Findings:
+    """Problem (or note) texts, each with its masked version.
+
+    Most texts name only books, atoms, slots and rating slots, which the masked report
+    shows anyway, so the masked text is the same. A text that would name or reveal a
+    method (a startup component, a designer, practice mode) gets a method-neutral masked
+    version; the unmasked report keeps the detail."""
+
+    def __init__(self) -> None:
+        self.items: list[tuple[str, str]] = []
+
+    def append(self, text: str, masked: str | None = None) -> None:
+        self.items.append((text, text if masked is None else masked))
+
+    def extend(self, texts: Sequence[str], masked: Sequence[str]) -> None:
+        if len(texts) != len(masked):
+            raise ValueError("every text needs its masked version")
+        self.items.extend(zip(texts, masked, strict=True))
+
+    def sorted(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """(unmasked texts, masked texts), each sorted; duplicates of a text are dropped."""
+        unique = sorted(set(self.items))
+        return tuple(t for t, _ in unique), tuple(sorted(m for _, m in unique))
 
 
 @dataclass(slots=True)
@@ -668,7 +856,7 @@ class _Index:
     """Slot ID -> (eligible, score) from the latest decision that lists it."""
     commits: dict[str, list[CommitRecord]]
     scans: Counter[tuple[str, str]]
-    problems: list[str]
+    problems: _Findings
 
 
 def _index(logs: RunLogs) -> _Index:
@@ -676,7 +864,9 @@ def _index(logs: RunLogs) -> _Index:
     batch_id = config.batch_id
     books = {b.book_id: b for b in config.books}
     run_id = logs.manifest.run_id
-    problems: list[str] = [f"{name} is missing" for name in logs.missing]
+    problems = _Findings()
+    for name in logs.missing:
+        problems.append(f"{name} is missing")
     if logs.manifest.books:
         declared = {(b.book_id, b.method, b.designer_id) for b in logs.manifest.books}
         if declared != {(b.book_id, b.method, b.designer_id) for b in config.books}:
@@ -700,7 +890,11 @@ def _index(logs: RunLogs) -> _Index:
             problems.append(f"slot {sid}: not a slot of batch {batch_id}")
             continue
         if rec.practice:
-            problems.append(f"slot {sid}: practice slot in a batch run")
+            # Practice mode is a method's own (A1): the masked text must not name it.
+            problems.append(
+                f"slot {sid}: practice slot in a batch run",
+                f"slot {sid}: not a slot of batch {batch_id}",
+            )
             continue
         if sid in index.slot_by_id:
             problems.append(f"slot {sid}: recorded more than once")
@@ -785,30 +979,65 @@ def _key_text(key: Hashable) -> str:
     return str(key)
 
 
+RESTART_EVENT: Final = "resume"
+"""The timing event a new orchestrator process logs when it takes over a run
+(`Orchestrator.resume`, #20): the run clock restarts there."""
+
+
 def _timing(logs: RunLogs) -> _Timing:
     batch_id = logs.config.batch_id
     events = [e for e in logs.timing if e.batch_id in (None, batch_id)]
 
-    def pair(start: str, end: str, key: Callable[[TimingEvent], Hashable], what: str) -> Intervals:
-        return pair_intervals(events, start, end, key, lambda k: f"{what} {_key_text(k)}")
+    def pair(
+        start: str,
+        end: str,
+        key: Callable[[TimingEvent], Hashable],
+        what: str,
+        *,
+        sequential: bool = False,
+        neutral: bool = True,
+    ) -> Intervals:
+        # Startup and familiarization keys name a component, a book and a designer:
+        # together they reveal a method, so the masked texts drop the key.
+        return pair_intervals(
+            events,
+            start,
+            end,
+            key,
+            lambda k: f"{what} {_key_text(k)}",
+            masked_describe=None if neutral else lambda _k: f"{what} timing",
+            restart=RESTART_EVENT if sequential else None,
+        )
 
     return _Timing(
-        atoms=pair("atom_start", "atom_end", lambda e: e.atom_id, "atom"),
-        rounds=pair("round_start", "round_end", lambda e: (e.atom_id, e.round), "atom/round"),
+        atoms=pair("atom_start", "atom_end", lambda e: e.atom_id, "atom", sequential=True),
+        rounds=pair(
+            "round_start",
+            "round_end",
+            lambda e: (e.atom_id, e.round),
+            "atom/round",
+            sequential=True,
+        ),
         appointments=pair(
-            "appointment_start", "appointment_end", lambda e: e.appointment, "appointment"
+            "appointment_start",
+            "appointment_end",
+            lambda e: e.appointment,
+            "appointment",
+            sequential=True,
         ),
         startup=pair(
             "startup_start",
             "startup_end",
             lambda e: (e.component, e.book_id, e.actor_id),
             "startup",
+            neutral=False,
         ),
         familiarization=pair(
             "familiarization_start",
             "familiarization_end",
             lambda e: (e.book_id, e.actor_id),
             "familiarization",
+            neutral=False,
         ),
         operator=[e for e in events if e.event == "operator_action"],
         substituted={e.book_id for e in events if e.event == "book_substituted"},
@@ -973,7 +1202,8 @@ def _atom_rows(
         diversity = mean_pairwise_distance([s.recipe for s in valid if s.recipe is not None])
         if diversity is not None:
             diversities.append(diversity)
-        final = index.decisions.get((book_id, atom), {}).get(ROUNDS_PER_ATOM)
+        decisions = index.decisions.get((book_id, atom), {})
+        final = decisions.get(ROUNDS_PER_ATOM)
         commit = store.final.get(atom)
         old = store.voided.get(atom)
         rows.append(
@@ -987,7 +1217,11 @@ def _atom_rows(
                     f"valid_r{r}": sum(1 for s in valid if s.round == r)
                     for r in range(1, ROUNDS_PER_ATOM + 1)
                 },
-                "n_eligible": sum(1 for c in final.candidates if c.eligible) if final else None,
+                "n_eligible": (
+                    sum(1 for s in atom_slots if index.slot_scores.get(s.slot_id, (False, None))[0])
+                    if decisions
+                    else None
+                ),
                 "round4_action": final.action if final else None,
                 "selected_slot_id": final.incumbent_slot_id if final else None,
                 "fallback_scan": index.scans[(book_id, atom)] > 0,
@@ -1101,6 +1335,7 @@ def compute_audit(logs: RunLogs) -> BatchAudit:
     config = logs.config
     index = _index(logs)
     timing = _timing(logs)
+    notes = _Findings()
     for iv in (
         timing.atoms,
         timing.rounds,
@@ -1108,7 +1343,8 @@ def compute_audit(logs: RunLogs) -> BatchAudit:
         timing.startup,
         timing.familiarization,
     ):
-        index.problems.extend(iv.problems)
+        index.problems.extend(iv.problems, iv.masked_problems)
+        notes.extend(iv.notes, iv.masked_notes)
     atom_walls = {atom: timing.atoms.single(atom) for atom in config.atom_order}
     for atom, wall in atom_walls.items():
         if wall is None and not any(p.startswith(f"atom {atom}:") for p in timing.atoms.problems):
@@ -1146,6 +1382,8 @@ def compute_audit(logs: RunLogs) -> BatchAudit:
         "operator_ms": sum(e.duration_ms or 0 for e in timing.operator),
     }
     run_id = logs.manifest.run_id
+    problems, masked_problems = index.problems.sorted()
+    note_texts, masked_notes = notes.sorted()
     return BatchAudit(
         run_id=run_id,
         batch_id=config.batch_id,
@@ -1153,10 +1391,13 @@ def compute_audit(logs: RunLogs) -> BatchAudit:
         complete=logs.complete,
         books=books,
         timing=timing_summary,
-        problems=tuple(sorted(set(index.problems))),
+        problems=problems,
         slot_refusals=sum(1 for r in logs.refusals if r.run_id == run_id),
         fallback_scans=sum(index.scans.values()),
         sources=logs.sources,
+        masked_problems=masked_problems,
+        notes=note_texts,
+        masked_notes=masked_notes,
     )
 
 
@@ -1203,7 +1444,8 @@ def summary_document(audit: BatchAudit, *, masked: bool) -> dict[str, Any]:
         "checks": {
             "complete": audit.complete,
             "ok": not audit.problems,
-            "problems": list(audit.problems),
+            "problems": list(audit.problem_texts(masked=masked)),
+            "notes": list(audit.note_texts(masked=masked)),
             "slot_refusals": audit.slot_refusals,
             "fallback_scans": audit.fallback_scans,
         },
@@ -1452,11 +1694,16 @@ def summary_markdown(audit: BatchAudit, *, masked: bool) -> str:
         "",
         f"- Slot refusals: {audit.slot_refusals}; bank scans: {audit.fallback_scans}.",
     ]
-    if audit.problems:
-        out.append(f"- **{len(audit.problems)} problem(s):**")
-        out.extend(f"  - {p}" for p in audit.problems)
+    problems = audit.problem_texts(masked=masked)
+    if problems:
+        out.append(f"- **{len(problems)} problem(s):**")
+        out.extend(f"  - {p}" for p in problems)
     else:
         out.append("- No problems: every count checked.")
+    notes = audit.note_texts(masked=masked)
+    if notes:
+        out.append(f"- {len(notes)} note(s), not problems:")
+        out.extend(f"  - {n}" for n in notes)
     out += ["", "## Sources", ""]
     out += _table(["File", "SHA-256"], [[k, v] for k, v in audit.sources.items()])
     return "\n".join(out) + "\n"
@@ -1536,7 +1783,9 @@ def build_audit(
         audit.sources = dict(sorted({**audit.sources, "machines.json": digest}.items()))
     texts = report_texts(audit)
     files = _write_texts(Path(out_dir), texts)
-    return AuditResult(files=files, ok=not audit.problems, problems=audit.problems)
+    return AuditResult(
+        files=files, ok=not audit.problems, problems=audit.problems, notes=audit.notes
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1752,10 +2001,14 @@ def set_summary_markdown(
             for a in audits
         ],
     )
-    problems = [(a.batch_id, p) for a in audits for p in a.problems]
+    problems = [(a.batch_id, p) for a in audits for p in a.problem_texts(masked=masked)]
     if problems:
         out += ["", "Problems:", ""]
         out.extend(f"- {batch}: {p}" for batch, p in problems)
+    notes = [(a.batch_id, n) for a in audits for n in a.note_texts(masked=masked)]
+    if notes:
+        out += ["", "Notes (not problems):", ""]
+        out.extend(f"- {batch}: {n}" for batch, n in notes)
     return "\n".join(out) + "\n"
 
 
@@ -1885,8 +2138,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return _run(args)
-    except AuditError as err:
+    except (AuditError, RunPolicyError) as err:
         print(f"error ({err.code}): {err}", file=sys.stderr)
+        return 2
+    except OSError as err:
+        print(f"error ({E_IO}): {err}", file=sys.stderr)
         return 2
 
 
@@ -1898,6 +2154,8 @@ def _run(args: argparse.Namespace) -> int:
         print(json.dumps({"files": result.files, "ok": result.ok}, indent=2, sort_keys=True))
         for problem in result.problems:
             print(f"problem: {problem}", file=sys.stderr)
+        for note in result.notes:
+            print(f"note: {note}", file=sys.stderr)
         return 1 if args.strict and not result.ok else 0
     if command == "set":
         if not args.masked_out and not args.unmasked_out:

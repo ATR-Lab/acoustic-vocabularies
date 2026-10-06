@@ -25,12 +25,16 @@ uv run --project generation python -m av_generation.audit set --study A --set pi
 uv run --project generation python -m av_generation.audit tally <run_dir> --out tally.csv
 ```
 
-`batch` prints the files written with their SHA-256 and `ok`; every problem goes to
-stderr; `--strict` exits 1 when a check found a problem. `set` exits 2 when a set rule
-fails (any `AuditError` does); `tally` exits 1 when a count differs. Python API: `build_audit(run_dir, out_dir, *, machines=None) ->
-AuditResult`, `build_set_audit(run_dirs, out_dir, *, study, set_name, masked) ->
-SetAuditResult`, `tally_sheet(run_dir, path) -> bool`, and the pieces
-`read_run_logs`, `compute_audit`, `report_texts`.
+`batch` prints the files written with their SHA-256 and `ok`; every problem (and note)
+goes to stderr; `--strict` exits 1 when a check found a problem (notes do not count).
+`tally` exits 1 when a count differs. Every refusal exits 2 with `error (<code>): ...` on
+stderr and no traceback: an `AuditError` (`E_INPUT`, also for an unreadable `--machines`
+file; `E_STUDY`, `E_MASKING`, `E_SET`, `E_SCHEMA`), the restricted-run policy
+(`E_POLICY`) or another file that cannot be read or written (`E_IO`). Python API:
+`build_audit(run_dir, out_dir, *, machines=None) -> AuditResult(files, ok, problems,
+notes)`, `build_set_audit(run_dirs, out_dir, *, study, set_name, masked) ->
+SetAuditResult`, `tally_sheet(run_dir, path) -> bool`, and the pieces `read_run_logs`,
+`compute_audit`, `report_texts`.
 
 There is no `generation audit` console script: adding one needs a `[project.scripts]`
 entry in `generation/pyproject.toml`, which implementers do not edit (architecture §14).
@@ -91,7 +95,7 @@ diversity with 6 decimals. Times are run-clock milliseconds.
 | `atoms_selector`, `atoms_bank_fallback`, `atoms_book_fallback` | those atoms by commit source |
 | `failed_generation` | the final store book holds the fallback book (whole-book substitution) |
 | `nonfallback` | all 16 atoms came from the selector: no bank atom, no fallback book (analysis plan §3 sensitivity) |
-| `wall_ms` | batch generation wall time: the sum of the 16 atom durations (`atom_start` to `atom_end`; pauses inside an atom count, breaks between atoms do not); the same for the three books, which run in parallel; empty when an atom has no pair |
+| `wall_ms` | batch generation wall time: the sum of the 16 atom durations (`atom_start` to `atom_end`; pauses inside an atom count, breaks between atoms do not; an atom interrupted by a restart counts both parts, see `summary.json`); the same for the three books, which run in parallel; empty when an atom has no pair |
 | `startup_ms` | startup intervals attributed to the book: events naming the book, or the method's component (`a1`; `a2`; `llm`/`a3`) (unmasked only) |
 | `operator_ms` | `duration_ms` of `operator_action` events naming the book (unmasked only) |
 | `rater_ms` | rater person-time on the book's candidates: the sum over its rating records (every seat, placeholders included) of `t_ms - slot_start_ms` |
@@ -110,7 +114,9 @@ conversion, floats added in a fixed order), so diversity is the same on every pl
 ### Per-book tables
 
 `book-<id>-atoms.csv`: outcome counts of the atom's 12 slots, `valid_r1`..`valid_r4`,
-`n_eligible` and `selected_slot_id` (round-4 decision), `round4_action` (`commit`,
+`n_eligible` (eligible candidates over the atom's four rounds: the sum of its slot rows'
+`eligible`, since each decision lists only its own round's candidates; empty without
+decisions), `selected_slot_id` (the round-4 incumbent) and `round4_action` (`commit`,
 `fallback_scan`, `archive`, `archive_none`), `fallback_scan` (a bank scan was logged),
 `source` with `source_slot_id` (selector) or `bank_index` (bank), `voided_source` (an
 earlier commit in a store book voided by the substitution), the committed `total_ms`,
@@ -132,11 +138,32 @@ timing events listed in `summary.json` `timing`.
 `audit-summary.schema.json`: `books` (the `books.csv` rows), `timing` (batch wall time,
 per appointment, per atom with its four round durations and the longest round, the
 longest atom and appointment, all startup and all operator time), `checks` (`complete`,
-`ok`, `problems`, `slot_refusals`, `fallback_scans`), `machines` (unmasked only) and
-`sources`. Durations pair start and end events with the same key in log order; the end
-event's `duration_ms` wins when set, so a resume that restarts the run clock never
-produces a span across processes. An end before its start, an end without a start or a
-start without an end is a problem and is not counted.
+`ok`, `problems`, `notes`, `slot_refusals`, `fallback_scans`), `machines` (unmasked
+only) and `sources`.
+
+Durations pair start and end events with the same key in log order (`pair_intervals`):
+the end event's `duration_ms` when set, else the difference of `t_ms` on one run clock,
+so no span is measured across processes. An end before its start, an end without a
+start or a start without an end is a problem and is not counted.
+
+Restarts. A new orchestrator process starts a new run clock (`t_ms` from 0) and logs
+`resume` when it takes over the run (#20 `Orchestrator.resume`); events of one process
+share the clock origin `wall_utc - t_ms` (without `wall_utc`, a clock that went back
+marks the restart). The atom, round or appointment in progress when the clock restarts
+is interrupted, not a problem: its time until the last event logged on its clock before
+the restart is kept and listed in `checks.notes`.
+
+- The orchestrator logs `atom_start` (`resumed`) and the round's `round_start` again
+  (and `appointment_start` when the appointment has atoms left): the interval continues
+  from the `resume` event, and both parts count.
+- An appointment whose last atom the resume finished gets no `appointment_end`: only
+  its part before the restart counts (the atom's own wall time has both parts), and the
+  note says so.
+- An older open interval (later intervals of the same kind started before the restart)
+  is not interrupted: its end is missing, which stays a problem.
+
+The time between the last event before the restart and the crash is not in the logs, so
+an interrupted interval is a lower bound.
 
 ## Masking
 
@@ -149,7 +176,14 @@ start without an end is a problem and is not counted.
   specifications (the schema refuses them).
 - Every masked text is checked with `masking.masking_findings` before anything is
   written; a finding (for example a run ID containing `A3`) stops the audit with
-  `E_MASKING`. Problem texts name books, atoms and slots only, never a method.
+  `E_MASKING`.
+- Problems and notes have a masked text and an unmasked one. Most name books, atoms,
+  slots and rating slots only (the masked tables show those anyway) and are the same in
+  both. A text that would name or reveal a method gets a method-neutral masked version:
+  unpaired startup and familiarization events (their keys hold the component, the book
+  and the designer) read `startup timing: ...` / `familiarization timing: ...`, and a
+  practice slot (only A1 has practice mode) reads `slot <id>: not a slot of batch <id>`.
+  The unmasked report keeps the detail; both list the same number of problems.
 - The unmasked directory is for the generation operator. Store it where session
   experimenters and blinded analysts cannot reach it; hand out `masked/` only. Reports
   of pilot, confirmatory and practice runs cannot be written inside a git work tree
@@ -160,7 +194,7 @@ start without an end is a problem and is not counted.
 ## Checks
 
 The audit never stops on a count problem; it reports it (sorted, deduplicated) in
-`checks.problems`, `summary.md` and `AuditResult.problems`:
+`checks.problems`, `summary.md` and `AuditResult.problems` (unmasked texts):
 
 - slot records per book (192) and per atom (12), duplicates, slots of another batch,
   practice slots, slots whose book, run or profile disagrees with the config;
@@ -173,6 +207,9 @@ The audit never stops on a count problem; it reports it (sorted, deduplicated) i
 - message durations outside 1,100-2,000 ms;
 - missing or unpaired timing events;
 - missing required logs, and run-manifest books that differ from the config.
+
+Notes (`checks.notes`, `AuditResult.notes`) are not problems: `ok` and `--strict` ignore
+them. Today they list the intervals interrupted by a restart (see `summary.json`).
 
 `checks.complete` is false while the run manifest is open or after a
 `batch_incomplete` event.
@@ -203,8 +240,10 @@ to the PR; every row must match exactly.
 `av_generation._audit_synth.write_synthetic_batch(runs_root, spec)` writes a synthetic
 batch's logs with the shared record types (no component runs; it is not the #22 dry
 run): a bank fallback, a whole-book substitution with continued generation, an
-`archive_none` atom, a resume that restarts the run clock, per-method outcome mixes,
-missing ratings and one input overflow. `generation/runs/DEMO-AUDIT-01/` holds its
+`archive_none` atom, a resume between appointments that restarts the run clock,
+per-method outcome mixes, missing ratings and one input overflow. Every timing event
+carries `wall_utc` (the process clock's start + `t_ms`). `SynthSpec.crash_at` (off by
+default) adds a mid-atom crash and resume. `generation/runs/DEMO-AUDIT-01/` holds its
 audit (`books.csv`, `summary.json`, `summary.md`, masked and unmasked), its tally sheet
 and `hashes.json` (every output and run file); the logs are not committed because they
 are rebuilt bit for bit. Rebuild with:

@@ -152,6 +152,7 @@
   "checks": {
     "complete": true,
     "fallback_scans": 2,
+    "notes": [],
     "ok": true,
     "problems": [],
     "slot_refusals": 0
@@ -168,7 +169,7 @@
     "logs/fallback-scans.jsonl": "ed9a11e77c41807ca5af4e07aa708b4b339b26851978eafc2d9b87b503fc8a02",
     "logs/ratings.jsonl": "fec004bfc8ecc4aa0333a94b830898a60e02cde5e2339728a2dc4e2688eefe1d",
     "logs/slots.jsonl": "798aed0168318a4336a826536d662c16d670dffa5b774d43ebd3e749527e7c55",
-    "logs/timing.jsonl": "8c4ec1fb19e26b0d569db67c52268708a5b5f446aa32e0d48259b4c175bcfebc",
+    "logs/timing.jsonl": "38f10e4773c7f89d79a65503cc04c5e84d52b29864206bda3eb97802877ddae8",
     "run-manifest.json": "d9ee35c2dde42d717d7387125e521a9dd43a53b1e960ec5df62150092cfd86ef"
   },
   "timing": {

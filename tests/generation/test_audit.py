@@ -3,12 +3,13 @@ the audit built from synthetic batch logs (`av_generation._audit_synth`).
 
 The synthetic batch (`SynthSpec()` defaults) has a bank fallback, a whole-book
 substitution with continued generation, an `archive_none` atom, a resume that restarts
-the run clock, and per-method outcome mixes. The DEMO example under
-`generation/examples/demo-audit/` is rebuilt here and compared byte for byte.
+the run clock, and per-method outcome mixes. The DEMO summary under
+`generation/runs/DEMO-AUDIT-01/` is rebuilt here and compared byte for byte.
 """
 
 import builtins
 import csv
+import dataclasses
 import hashlib
 import io
 import itertools
@@ -137,6 +138,7 @@ def _summary(masked: bool, row: dict) -> dict:
             "complete": True,
             "ok": True,
             "problems": [],
+            "notes": [],
             "slot_refusals": 0,
             "fallback_scans": 0,
         },
@@ -216,6 +218,7 @@ def test_slot_outcome_counts_per_book_sum_to_192(demo_audit):
     assert summary["checks"] == {
         "complete": True,
         "fallback_scans": 2,
+        "notes": [],
         "ok": True,
         "problems": [],
         "slot_refusals": 0,
@@ -429,9 +432,16 @@ def test_every_number_traces_back_to_slot_ids(demo_run, demo_audit):
             if row[column]:
                 assert int(row[column]) == sum(int(a[column]) for a in atoms), column
         valid_by_atom = Counter(s["atom_id"] for s in slots if s["valid"] == "1")
+        eligible_by_atom = Counter(s["atom_id"] for s in slots if s["eligible"] == "1")
         for a in atoms:
             assert int(a["slots_valid"]) == valid_by_atom[a["atom_id"]]
             assert sum(int(a[f"valid_r{r}"]) for r in range(1, 5)) == int(a["slots_valid"])
+            # Eligible candidates over all four rounds, not only round 4's.
+            assert int(a["n_eligible"]) == eligible_by_atom[a["atom_id"]]
+            if a["round4_action"] in ("commit", "archive"):
+                assert int(a["n_eligible"]) >= 1 and a["selected_slot_id"]
+            if a["round4_action"] in ("fallback_scan", "archive_none"):
+                assert a["n_eligible"] == "0"
         masked = _csv(out / "masked" / f"book-{book_id}-slots.csv")
         assert [m["slot_id"] for m in masked] == ids
     assert seen == log_ids
@@ -530,6 +540,212 @@ def test_missing_and_duplicate_records_are_reported(demo_run, tmp_path):
     assert audit.main(["batch", str(run), "--out", str(tmp_path / "cli"), "--strict"]) == 1
 
 
+def _rewrite(path: Path, change) -> None:
+    """Rewrite a JSONL log: `change(record)` returns the new record, or `None` to drop it."""
+    out = []
+    for line in path.read_text("utf-8").splitlines():
+        record = change(json.loads(line))
+        if record is not None:
+            out.append(json.dumps(record, ensure_ascii=False) + "\n")
+    path.write_text("".join(out), encoding="utf-8", newline="\n")
+
+
+def _append(path: Path, *records) -> None:
+    with open(path, "a", encoding="utf-8", newline="\n") as handle:
+        for record in records:
+            handle.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
+
+
+def _first(predicate):
+    """A `_rewrite` change that drops the first record matching `predicate`."""
+    done = []
+
+    def change(record):
+        if not done and predicate(record):
+            done.append(record)
+            return None
+        return record
+
+    return change
+
+
+def _unpaired_llm_startup(run: Path) -> None:
+    _rewrite(
+        run / "logs" / "timing.jsonl",
+        _first(lambda e: e["event"] == "startup_end" and e["component"] == "llm"),
+    )
+
+
+def _unpaired_familiarization(run: Path) -> None:
+    _rewrite(run / "logs" / "timing.jsonl", _first(lambda e: e["event"] == "familiarization_end"))
+
+
+def _unpaired_book_startup(run: Path) -> None:
+    _append(
+        run / "logs" / "timing.jsonl",
+        TimingEvent(
+            run_id="DEMO-AUDIT-01",
+            event="startup_start",
+            t_ms=5_000,
+            batch_id="DEMO-A-P01",
+            book_id=BOOKS["A2"],
+            component="a2",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutate", "unmasked", "masked"),
+    [
+        (
+            _unpaired_llm_startup,
+            "startup llm: startup_start without startup_end",
+            "startup timing: startup_start without startup_end",
+        ),
+        (
+            _unpaired_familiarization,
+            f"familiarization {BOOKS['A1']} D1: familiarization_start without familiarization_end",
+            "familiarization timing: familiarization_start without familiarization_end",
+        ),
+        (
+            _unpaired_book_startup,
+            f"startup a2 {BOOKS['A2']}: startup_start without startup_end",
+            "startup timing: startup_start without startup_end",
+        ),
+    ],
+    ids=["llm-startup", "designer-familiarization", "a2-book-startup"],
+)
+def test_masked_problem_texts_name_no_method(demo_run, tmp_path, mutate, unmasked, masked):
+    run = _copy_run(demo_run, tmp_path)
+    mutate(run)
+    out = tmp_path / "out"
+    result = audit.build_audit(run, out)  # both reports are written; no E_MASKING
+    assert not result.ok and unmasked in result.problems
+    assert sorted(result.files) == sorted(
+        f"{d}/{n}"
+        for d in ("masked", "unmasked")
+        for n in (
+            "books.csv",
+            "summary.json",
+            "summary.md",
+            *(f"book-{b}-{t}.csv" for b in BOOKS.values() for t in ("atoms", "slots")),
+        )
+    )
+    for name in result.files:
+        if name.startswith("masked/"):
+            assert masking_findings((out / name).read_text("utf-8")) == (), name
+    masked_checks = read_json(out / "masked" / "summary.json")["checks"]
+    unmasked_checks = read_json(out / "unmasked" / "summary.json")["checks"]
+    assert masked_checks["ok"] is unmasked_checks["ok"] is False
+    assert masked in masked_checks["problems"] and unmasked in unmasked_checks["problems"]
+    assert len(masked_checks["problems"]) == len(unmasked_checks["problems"])
+    # No masked problem links a component, designer or timing key to a book.
+    masked_md = (out / "masked" / "summary.md").read_text("utf-8")
+    problem_lines = [line for line in masked_md.splitlines() if line.startswith("  - ")]
+    assert f"  - {masked}" in problem_lines
+    for line in problem_lines:
+        assert not {"a1", "a2", "a3", "llm", *BOOKS.values()} & set(line.replace(":", " ").split())
+    assert f"  - {unmasked}" in (out / "unmasked" / "summary.md").read_text("utf-8")
+
+
+# Each check of generation/docs/audit.md "Checks", injected into a copy of the batch.
+_A2_BANK_ATOM = "Q-r2"  # SynthSpec.bank_fallback: A2, position 3 (batch 1 atom order)
+
+
+def _check_cases():
+    a1, a2 = BOOKS["A1"], BOOKS["A2"]
+    practice = f"{a1}.K-a1.r1s1"
+    profile = f"{a2}.K-a1.r2s2"
+
+    def mark_practice(record):
+        return {**record, "practice": True} if record["slot_id"] == practice else record
+
+    def change_profile(record):
+        return {**record, "profile": "P2"} if record["slot_id"] == profile else record
+
+    def supersede(record):
+        first = record["book_id"] == a2 and record["atom_id"] == "K-a1"
+        return {**record, "store_book_id": "DEMO-BK-OLD1"} if first else record
+
+    return [
+        pytest.param(
+            "slots.jsonl",
+            mark_practice,
+            f"slot {practice}: practice slot in a batch run",
+            f"slot {practice}: not a slot of batch DEMO-A-P01",
+            id="practice-slot",
+        ),
+        pytest.param(
+            "ratings.jsonl",
+            _first(lambda r: r["book_id"] == a2 and not r["placeholder"]),
+            f"book {a2}: 575 rating records (expected 576)",
+            None,
+            id="rating-record-missing",
+        ),
+        pytest.param(
+            "timing.jsonl",
+            _first(lambda e: e["event"] == "book_substituted"),
+            f"book {a1}: whole-book substitution and book_substituted events disagree",
+            None,
+            id="substitution-event-missing",
+        ),
+        pytest.param(
+            "slots.jsonl",
+            change_profile,
+            f"slot {profile}: profile differs from the batch config",
+            None,
+            id="profile-mismatch",
+        ),
+        pytest.param(
+            "commits.jsonl",
+            supersede,
+            f"book {a2}: commits to a superseded store book",
+            None,
+            id="superseded-store-book",
+        ),
+    ]
+
+
+@pytest.mark.parametrize(("log", "change", "unmasked", "masked"), _check_cases())
+def test_each_check_reports_its_problem(demo_run, tmp_path, log, change, unmasked, masked):
+    run = _copy_run(demo_run, tmp_path)
+    _rewrite(run / "logs" / log, change)
+    result = audit.compute_audit(audit.read_run_logs(run))
+    assert result.problems and unmasked in result.problems
+    assert (masked or unmasked) in result.masked_problems
+    assert len(result.masked_problems) == len(result.problems)
+    assert masking_findings("\n".join(result.masked_problems)) == ()
+    assert not any("practice" in p for p in result.masked_problems)
+
+
+def test_a_bank_commit_without_an_index_is_reported(demo_run):
+    # The commit schema refuses such a line, so the check guards records built in code.
+    logs = audit.read_run_logs(demo_run)
+    commits = tuple(
+        dataclasses.replace(c, bank_index=None) if c.source == "fallback_bank" else c
+        for c in logs.commits
+    )
+    result = audit.compute_audit(dataclasses.replace(logs, commits=commits))
+    assert result.problems == (
+        f"book {BOOKS['A2']}: bank commit of atom {_A2_BANK_ATOM} has no bank index",
+    )
+
+
+def test_a_startup_that_names_a_book_counts_for_that_book(demo_run, tmp_path):
+    run = _copy_run(demo_run, tmp_path)
+    span = {"batch_id": "DEMO-A-P01", "book_id": BOOKS["A2"], "component": "llm"}
+    _append(
+        run / "logs" / "timing.jsonl",
+        TimingEvent(run_id="DEMO-AUDIT-01", event="startup_start", t_ms=1_000, **span),
+        TimingEvent(run_id="DEMO-AUDIT-01", event="startup_end", t_ms=8_000, **span),
+    )
+    result = audit.compute_audit(audit.read_run_logs(run))
+    assert result.problems == ()
+    startup = {b.book_id: b.row["startup_ms"] for b in result.books}
+    # The book owns it even though `llm` is another method's component (A3 keeps 185 s).
+    assert startup == {BOOKS["A1"]: 12_000, BOOKS["A2"]: 7_000, BOOKS["A3"]: 185_000}
+
+
 def test_timing_gaps_and_clock_restarts_are_reported(demo_run, tmp_path):
     run = _copy_run(demo_run, tmp_path)
     _drop_line(run / "logs" / "timing.jsonl", lambda e: e["event"] == "atom_end")
@@ -567,6 +783,173 @@ def test_pair_intervals():
     )
 
 
+def _wall(origin_s: int, t_ms: int) -> str:
+    """`wall_utc` of an event at `t_ms` on a run clock that started `origin_s` s after 9:00."""
+    seconds, ms = divmod(origin_s * 1000 + t_ms, 1000)
+    minutes, sec = divmod(seconds, 60)
+    hours, minute = divmod(minutes, 60)
+    return f"2026-11-05T{9 + hours:02d}:{minute:02d}:{sec:02d}.{ms:03d}Z"
+
+
+def _atoms(events):
+    return audit.pair_intervals(
+        events,
+        "atom_start",
+        "atom_end",
+        lambda e: e.atom_id,
+        lambda k: f"atom {k}",
+        restart="resume",
+    )
+
+
+def test_pair_intervals_across_restarts():
+    # Process 1 (clock from 9:00): K-a1 done; K-a2 interrupted 400 ms in (last event at
+    # 1,400). Process 2 (clock from 9:10): resumes K-a2, which ends 900 ms after the resume.
+    first, second = 0, 600
+
+    def ev(name, t_ms, origin, **fields):
+        return _event(name, t_ms, wall_utc=_wall(origin, t_ms), **fields)
+
+    events = [
+        ev("atom_start", 0, first, atom_id="K-a1"),
+        ev("atom_end", 800, first, atom_id="K-a1"),
+        ev("atom_start", 1_000, first, atom_id="K-a2"),
+        ev("round_start", 1_400, first, atom_id="K-a2", round=1),
+        ev("startup_start", 2_500, 1_000),  # another process's clock: not K-a2's
+        ev("resume", 3_000, second),  # later on the new clock, but another clock origin
+        ev("atom_start", 3_100, second, atom_id="K-a2", detail="resumed"),
+        ev("atom_end", 3_900, second, atom_id="K-a2"),
+    ]
+    iv = _atoms(events)
+    assert iv.durations == {"K-a1": [800], "K-a2": [400 + 900]}
+    assert iv.problems == ()
+    assert iv.notes == (
+        "atom K-a2: interrupted by a restart; counted until the last event before it, then from it",
+    )
+    # Without `wall_utc`, a run clock that went back marks the restart.
+    plain = [dataclasses.replace(e, wall_utc=None) for e in events]
+    plain[5] = dataclasses.replace(plain[5], t_ms=0)
+    plain[6:] = [dataclasses.replace(e, t_ms=e.t_ms - 3_000) for e in plain[6:]]
+    # The other process's event is now on "the same clock" and after the start: it counts.
+    assert _atoms(plain).durations == {"K-a1": [800], "K-a2": [1_500 + 900]}
+    # Without `restart`, only the resumed part counts and the first start is a problem.
+    old = audit.pair_intervals(
+        events, "atom_start", "atom_end", lambda e: e.atom_id, lambda k: f"atom {k}"
+    )
+    assert old.durations == {"K-a1": [800], "K-a2": [800]}
+    assert old.problems == ("atom K-a2: atom_start without atom_end",)
+
+
+def test_pair_intervals_restart_edge_cases():
+    def ev(name, t_ms, origin, **fields):
+        return _event(name, t_ms, wall_utc=_wall(origin, t_ms), **fields)
+
+    # An appointment whose last atom the resume finished: not logged again, so only the
+    # part before the restart counts; a note, not a problem.
+    events = [
+        ev("appointment_start", 0, 0, appointment=2),
+        ev("round_end", 5_000, 0, appointment=2),
+        ev("resume", 0, 900),
+        ev("appointment_start", 9_000, 900, appointment=3),
+        ev("appointment_end", 20_000, 900, appointment=3),
+    ]
+    iv = audit.pair_intervals(
+        events,
+        "appointment_start",
+        "appointment_end",
+        lambda e: e.appointment,
+        lambda k: f"appointment {k}",
+        restart="resume",
+    )
+    assert iv.durations == {2: [5_000], 3: [11_000]} and iv.problems == ()
+    assert iv.notes == (
+        "appointment 2: interrupted by a restart and not logged again; counted until the "
+        "last event before it",
+    )
+    # An older open atom is not interrupted by the restart: its end is missing.
+    events = [
+        ev("atom_start", 0, 0, atom_id="K-a1"),
+        ev("atom_start", 100, 0, atom_id="K-a2"),
+        ev("atom_end", 900, 0, atom_id="K-a2"),
+        ev("resume", 0, 900),
+        ev("atom_start", 10, 900, atom_id="K-a3"),
+        ev("atom_end", 50, 900, atom_id="K-a3"),
+    ]
+    iv = _atoms(events)
+    assert iv.durations == {"K-a2": [800], "K-a3": [40]} and iv.notes == ()
+    assert iv.problems == ("atom K-a1: atom_start without atom_end",)
+    # A resume on the same run clock (no new process) changes nothing; pauses count.
+    events = [
+        ev("atom_start", 0, 0, atom_id="K-a1"),
+        ev("resume", 600, 0),
+        ev("atom_end", 1_000, 0, atom_id="K-a1"),
+    ]
+    iv = _atoms(events)
+    assert (iv.durations, iv.problems, iv.notes) == ({"K-a1": [1_000]}, (), ())
+    # Interrupted twice: both earlier processes' parts count.
+    events = [
+        ev("atom_start", 0, 0, atom_id="K-a1"),
+        ev("round_start", 300, 0, atom_id="K-a1"),
+        ev("resume", 0, 600),
+        ev("atom_start", 20, 600, atom_id="K-a1"),
+        ev("round_end", 700, 600, atom_id="K-a1"),
+        ev("resume", 0, 1_200),
+        ev("atom_start", 30, 1_200, atom_id="K-a1"),
+        ev("atom_end", 530, 1_200, atom_id="K-a1"),
+    ]
+    iv = _atoms(events)
+    assert iv.durations == {"K-a1": [300 + 700 + 530]} and iv.problems == ()
+    assert len(iv.notes) == 1
+
+
+@pytest.mark.parametrize("crash_at", [(6, 3), (8, 2)], ids=["mid-appointment", "last-atom"])
+def test_a_mid_atom_restart_is_counted_not_failed(tmp_path, crash_at, capsys):
+    """#20 `Orchestrator.resume` finishes an interrupted atom in a new process (run clock
+    back at 0): the batch passes its checks and the interrupted atom keeps both parts."""
+    position, round_ = crash_at
+    run = write_synthetic_batch(
+        tmp_path / "runs", synth_spec(run_id="DEMO-AUDIT-CRASH", crash_at=crash_at)
+    ).root
+    result = audit.build_audit(run, tmp_path / "out")
+    assert result.ok, result.problems
+    events = _jsonl(run / "logs" / "timing.jsonl")
+    crash = next(i for i, e in enumerate(events) if e["event"] == "resume" and e.get("atom_id"))
+    resume = events[crash]
+    atom = resume["atom_id"]
+    starts = [
+        i for i, e in enumerate(events) if e["event"] == "atom_start" and e["atom_id"] == atom
+    ]
+    end = next(e for e in events if e["event"] == "atom_end" and e["atom_id"] == atom)
+    before = events[crash - 1]["t_ms"] - events[starts[0]]["t_ms"]  # one process logs here
+    after = end["t_ms"] - resume["t_ms"]
+    assert len(starts) == 2 and before > 0 and after > 0
+    summary = read_json(tmp_path / "out" / "unmasked" / "summary.json")
+    timing = summary["timing"]
+    row = timing["atoms"][position - 1]
+    assert row["atom_id"] == atom and row["wall_ms"] == before + after
+    assert all(r is not None for r in row["rounds_ms"])
+    assert timing["batch_wall_ms"] == sum(a["wall_ms"] for a in timing["atoms"])
+    assert timing["max_atom_ms"] >= row["wall_ms"]
+    assert all(a["wall_ms"] for a in timing["appointments"])
+    notes = summary["checks"]["notes"]
+    assert summary["checks"]["problems"] == [] and list(result.notes) == notes
+    assert (
+        f"atom {atom}: interrupted by a restart; counted until the last event before it, "
+        "then from it"
+    ) in notes
+    assert any(n.startswith(f"atom/round {atom} {round_}: interrupted") for n in notes)
+    resumed_again = position % 4 != 0  # the appointment's last atom logs no restart
+    note = "interrupted by a restart" + ("; counted" if resumed_again else " and not logged")
+    assert any(n.startswith(f"appointment 2: {note}") for n in notes)
+    masked = read_json(tmp_path / "out" / "masked" / "summary.json")["checks"]
+    assert masked["notes"] == notes and masked["ok"] is True
+    assert "note(s), not problems" in (tmp_path / "out" / "masked" / "summary.md").read_text(
+        "utf-8"
+    )
+    assert audit.main(["batch", str(run), "--out", str(tmp_path / "cli"), "--strict"]) == 0
+    assert f"note: atom {atom}: interrupted" in capsys.readouterr().err
+
+
 def test_bad_inputs_are_refused(demo_run, tmp_path):
     with pytest.raises(audit.AuditError) as err:
         audit.read_run_logs(tmp_path)
@@ -591,7 +974,7 @@ def test_bad_inputs_are_refused(demo_run, tmp_path):
     assert err.value.code == audit.E_STUDY
 
 
-def test_restricted_reports_stay_out_of_git_work_trees(demo_run, tmp_path):
+def test_restricted_reports_stay_out_of_git_work_trees(demo_run, tmp_path, capsys):
     run = _copy_run(demo_run, tmp_path)
     manifest = read_json(run / "run-manifest.json")
     manifest.update(kind="pilot", run_id="AUDIT-P01-RUN")  # restricted run (not DEMO-)
@@ -600,6 +983,11 @@ def test_restricted_reports_stay_out_of_git_work_trees(demo_run, tmp_path):
     with pytest.raises(RunPolicyError) as err:
         audit.build_audit(run, target)
     assert err.value.code == "E_POLICY"
+    # The command line reports the refusal like every other one: exit 2, no traceback.
+    assert audit.main(["batch", str(run), "--out", str(target)]) == 2
+    assert capsys.readouterr().err.startswith("error (E_POLICY): ")
+    assert audit.main(["tally", str(run), "--out", str(target / "tally.csv")]) == 2
+    assert capsys.readouterr().err.startswith("error (E_POLICY): ")
     assert not target.exists()
     assert audit.build_audit(run, tmp_path / "restricted").files  # outside any work tree
 
@@ -720,6 +1108,15 @@ def test_command_line(set_runs, tmp_path, capsys):
     assert audit.main(args) == 2
     assert "E_SET" in capsys.readouterr().err
     assert audit.main(["batch", str(tmp_path / "nothing")]) == 2
+    assert capsys.readouterr().err.startswith("error (E_INPUT): ")
+    # A missing machine-specification file and an output path that is a file.
+    machines = ["batch", str(run), "--out", str(tmp_path / "b2"), "--machines", "nope.json"]
+    assert audit.main(machines) == 2
+    assert capsys.readouterr().err.startswith("error (E_INPUT): nope.json: cannot read")
+    blocker = tmp_path / "a-file"
+    blocker.write_text("not a directory\n", encoding="utf-8")
+    assert audit.main(["batch", str(run), "--out", str(blocker)]) == 2
+    assert capsys.readouterr().err.startswith("error (E_IO): ")
 
 
 # ---------------------------------------------------------------------------

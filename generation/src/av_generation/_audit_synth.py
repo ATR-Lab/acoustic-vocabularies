@@ -17,7 +17,12 @@ Cases built in (positions are 1..16 in the batch's atom order):
   `book_substituted` event); the method keeps generating (`archive`, `archive_none`);
 - `archive_none`: after the substitution, one more zero-eligible atom of that book;
 - `resume_at`: the batch resumes in a new process at that appointment, so the run clock
-  restarts at 0 (durations must come from paired events, never across a restart);
+  restarts at 0 (durations must come from paired events, never across a restart); every
+  timing event carries `wall_utc` = the process clock's start + `t_ms`, as a real run's
+  events do, so the processes have different clock origins;
+- `crash_at` (off by default): the process stops inside an atom's round and a new process
+  resumes the atom mid-way (`Orchestrator.resume`, #20), so the atom, the round and the
+  appointment are interrupted by a restart;
 - per-method outcome mixes (timeouts, validator rejections, model server errors, output
   overflows, one input overflow) and missing ratings.
 """
@@ -28,6 +33,7 @@ import hashlib
 import sys
 import tempfile
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Final
@@ -39,6 +45,7 @@ from av_sound.recipe import AMPLITUDES, GAPS_MS, PITCHES, RHYTHM_WEIGHTS, TOTAL_
 
 from av_generation._paths import examples_path
 from av_generation.audit import build_audit, tally_sheet
+from av_generation.clock import utc_text
 from av_generation.config import BatchConfig
 from av_generation.constants import (
     ATOMS_PER_APPOINTMENT,
@@ -81,6 +88,12 @@ from av_generation.seeds import a2_seed_key, a3_seed_key, bot_seed_key, rng_for,
 
 DEMO_UTC: Final = "2026-11-05T09:00:00.000Z"
 CLOSED_UTC: Final = "2026-11-05T17:00:00.000Z"
+_START: Final = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
+"""`DEMO_UTC`: the first process's run clock starts here."""
+RESUME_DOWNTIME_MS: Final = 900_000
+"""Time between two processes at a resume between appointments (15 min)."""
+CRASH_DOWNTIME_MS: Final = 120_000
+"""Time between a crashed process and the one that resumes the atom (2 min)."""
 FALLBACK_MANIFEST: Final = "testvectors/fallback/demo-manifest.json"
 SYNTH_CODE: Final = RunCode(
     av_generation="0.1.0",
@@ -147,6 +160,12 @@ class SynthSpec:
     overflow_input: tuple[Method, int] | None = (Method.A3, 16)
     """Round 4, slot 3 of this atom: a prompt above the input limit (no model call)."""
     resume_at: int | None = 3
+    crash_at: tuple[int, int] | None = None
+    """(atom position, round): the process stops right after that round's proposal window
+    opened (no slot written); a new process logs `resume` with the run clock back at 0,
+    logs `atom_start` (`resumed`) and the round's start again and reruns the round. When
+    the atom is not the last of its appointment, `appointment_start` is logged again
+    before the next atom (as `run_appointment` does after a resume)."""
     closed: bool = True
     incomplete: bool = False
     """Log a rater withdrawal and `batch_incomplete` (the run is left out of set tables)."""
@@ -199,6 +218,8 @@ class _Synth:
         self.write = _Writers(layout, validate=validate)
         self.rng = rng_for(bot_seed_key(spec.run_id, "synth", "logs"))
         self.t = 0
+        self.clock_start = _START
+        """Wall-clock start of the current process's run clock (`t_ms` = 0)."""
         self.fallback: FallbackSet = load_fallback(sound_data_root() / FALLBACK_MANIFEST)
         self.books = {b.method: b for b in config.books}
         self.store_book = {b.book_id: b.book_id for b in config.books}
@@ -212,9 +233,22 @@ class _Synth:
         return int(self.rng.integers(low, high + 1))
 
     def _event(self, event: str, **fields: Any) -> None:  # noqa: ANN401
+        wall = utc_text(self.clock_start + timedelta(milliseconds=self.t))
         self.write(
-            TimingEvent(run_id=self.run_id, event=event, t_ms=self.t, batch_id=self.batch, **fields)
+            TimingEvent(
+                run_id=self.run_id,
+                event=event,
+                t_ms=self.t,
+                wall_utc=wall,
+                batch_id=self.batch,
+                **fields,
+            )
         )
+
+    def _new_process(self, downtime_ms: int) -> None:
+        """The process stops; another one starts `downtime_ms` later with a new run clock."""
+        self.clock_start += timedelta(milliseconds=self.t + downtime_ms)
+        self.t = 0
 
     @property
     def batch(self) -> str:
@@ -552,6 +586,19 @@ class _Synth:
         )
 
     # Rounds ------------------------------------------------------------------
+    def _crash_round(self, atom: str) -> int | None:
+        crash = self.spec.crash_at
+        return crash[1] if crash is not None and crash[0] == self._position(atom) else None
+
+    def _restart_in(self, atom: str, round_: int) -> None:
+        """The process dies; a new one resumes the atom with a new run clock."""
+        self._new_process(CRASH_DOWNTIME_MS)
+        self._event("resume", atom_id=atom, component="orchestrator", detail="new process")
+        self.t += 50
+        self._event("atom_start", atom_id=atom, component="orchestrator", detail="resumed")
+        self._event("round_start", atom_id=atom, round=round_, component="orchestrator")
+        self._event("proposal_window_start", atom_id=atom, round=round_)
+
     def _atom(self, atom: str, first: bool) -> None:
         self._event("atom_start", atom_id=atom, component="orchestrator")
         incumbents: dict[str, tuple[Fraction, int, SlotRecord] | None] = {
@@ -559,8 +606,10 @@ class _Synth:
         }
         for round_ in range(1, ROUNDS_PER_ATOM + 1):
             self._event("round_start", atom_id=atom, round=round_, component="orchestrator")
-            window = self.t
             self._event("proposal_window_start", atom_id=atom, round=round_)
+            if round_ == self._crash_round(atom):
+                self._restart_in(atom, round_)
+            window = self.t
             slots: dict[str, list[SlotRecord]] = {}
             ends = []
             for book in self.config.books:
@@ -684,7 +733,7 @@ class _Synth:
     # The run ------------------------------------------------------------------
     def run(self) -> None:
         books = self.books
-        self._event("run_start", wall_utc=DEMO_UTC, component="orchestrator")
+        self._event("run_start", component="orchestrator")
         self._startup(model_ms=95_000)
         self._span(
             "familiarization_start",
@@ -697,17 +746,20 @@ class _Synth:
         self._event("operator_action", duration_ms=120_000, detail="panel setup")
         order = self.config.atom_order
         for appointment in range(1, len(order) // ATOMS_PER_APPOINTMENT + 1):
-            if appointment == self.spec.resume_at:
-                self.t = 0
-                self._event("resume", component="orchestrator", detail="new process")
-                self._startup(model_ms=90_000)
-            self._event("appointment_start", appointment=appointment)
             atoms = order[
                 (appointment - 1) * ATOMS_PER_APPOINTMENT : appointment * ATOMS_PER_APPOINTMENT
             ]
+            if appointment == self.spec.resume_at:
+                # The services start first; the orchestrator then takes over the run.
+                self._new_process(RESUME_DOWNTIME_MS)
+                self._startup(model_ms=90_000)
+                self._event("resume", component="orchestrator", detail="new process")
+            self._event("appointment_start", appointment=appointment)
             for atom in atoms:
                 self._atom(atom, first=atom == order[0])
                 self.t += 30_000
+                if self._crash_round(atom) is not None and atom != atoms[-1]:
+                    self._event("appointment_start", appointment=appointment)
             if appointment == 2:
                 self._event(
                     "operator_action",
@@ -725,8 +777,10 @@ class _Synth:
                 rater = self.config.panel.raters[0]
                 self._event("rater_withdrawal", actor_id=rater.rater_id, station=rater.station)
                 self._event("batch_incomplete", detail="rater withdrew")
-            self._event("appointment_end", appointment=appointment)
-        self._event("run_end", wall_utc=CLOSED_UTC, component="orchestrator")
+            if self._crash_round(atoms[-1]) is None:
+                # A resume that finishes the appointment's last atom logs no appointment_end.
+                self._event("appointment_end", appointment=appointment)
+        self._event("run_end", component="orchestrator")
 
     def _startup(self, *, model_ms: int) -> None:
         a1 = self.books[Method.A1]

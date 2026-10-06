@@ -518,6 +518,7 @@
       "required": [
         "complete",
         "fallback_scans",
+        "notes",
         "ok",
         "problems",
         "slot_refusals"
@@ -532,7 +533,15 @@
           "type": "boolean"
         },
         "problems": {
-          "description": "Sorted, method-neutral descriptions of every count or link that failed a check.",
+          "description": "Sorted descriptions of every count or link that failed a check. Masked: method-neutral texts (no startup component, designer or practice mode); unmasked: the full detail.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "notes": {
+          "description": "Sorted informational notes that are not check failures, e.g. an atom, round or appointment interrupted by a restart (counted until the last event logged before it, and from the restart on).",
           "type": "array",
           "items": {
             "type": "string",

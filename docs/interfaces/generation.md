@@ -124,16 +124,23 @@ slots bots rate unacceptable, invalid and timed-out designer slots),
 
 Module `av_generation.audit`; guide [`generation/docs/audit.md`](../../generation/docs/audit.md).
 
-- `build_audit(run_dir, out_dir, *, machines=None) -> AuditResult(files, ok, problems)`:
+- `build_audit(run_dir, out_dir, *, machines=None) -> AuditResult(files, ok, problems,
+  notes)`:
   reads only the run manifest, `config.json` and the slot, refusal, rating, decision,
   commit, fallback-scan and timing logs (`read_run_logs`), and writes `unmasked/` and
   `masked/` together: `books.csv` (`BOOK_COLUMNS` / `MASKED_BOOK_COLUMNS`, one row per
   book, sorted by book ID), `book-<book_id>-atoms.csv` (`ATOM_COLUMNS`),
   `book-<book_id>-slots.csv` (`SLOT_COLUMNS`, the trace table: every count is a sum over
-  slot rows), `summary.json` (`audit-summary.schema.json`: books, timing, `checks`,
-  `machines`, `sources`) and `summary.md`. Same logs, same bytes. Masked texts pass
+  slot rows), `summary.json` (`audit-summary.schema.json`: books, timing, `checks` with
+  `problems` and `notes`, `machines`, `sources`) and `summary.md`. Same logs, same
+  bytes. Masked problem texts are method-neutral; masked texts pass
   `masking.masking_findings` or nothing is written (`AuditError` `E_MASKING`);
   restricted runs' reports are refused inside git work trees (`E_POLICY`).
+- Timing contract with #20: an atom, round or appointment open when a new process logs
+  `resume` (new run clock; `wall_utc - t_ms` identifies the process) is interrupted, not
+  a problem: the part before the restart counts up to the last event logged before it,
+  and the part after it when the start is logged again (or the end follows). It is
+  listed in `checks.notes`.
 - `build_set_audit(run_dirs, out_dir, *, study, set_name, masked) ->
   SetAuditResult(path, sha256, runs, excluded_runs, summary_path, summary_sha256)`:
   `{study}-{set}-audit.csv` (masked; read by #34 at
@@ -145,7 +152,8 @@ Module `av_generation.audit`; guide [`generation/docs/audit.md`](../../generatio
   exactly one per batch, else `AuditError` `E_SET`.
 - `tally_sheet(run_dir, path) -> bool`: independent raw-JSONL counts next to the audit's
   counts with an empty `hand_count` column (hand-tally check).
-- Command line: `python -m av_generation.audit {batch,set,tally}`.
+- Command line: `python -m av_generation.audit {batch,set,tally}`; every refusal exits 2
+  with `error (<code>)` (`AuditError` codes, `E_POLICY`, `E_IO`).
 - #34 reads blinded: `failed_generation`, `nonfallback`, `atoms_*`, `slots_valid`,
   `slots_invalid`, `wall_ms`, `rater_ms`, diversity, `total_ms_*` and the message
   durations; after unmasking, the outcome counts (with `n_llm_server_error`) and the
