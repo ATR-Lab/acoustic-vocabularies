@@ -92,7 +92,8 @@
         "visit_exit",
         "recovery",
         "assessment_stage",
-        "grammar_stage"
+        "grammar_stage",
+        "lesson"
       ]
     },
     "opportunity_id": {
@@ -2242,6 +2243,342 @@
                 }
               }
             ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "lesson"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "schema_version": {
+                "const": "lesson-events-provisional-1"
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "package_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "session_clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "lesson_type": {
+                "enum": [
+                  "atomic_lesson",
+                  "message_lesson"
+                ]
+              },
+              "slot_start_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "audio_request_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                },
+                "minItems": 3,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              "kind": {
+                "enum": [
+                  "play_request",
+                  "onset_authority",
+                  "play_complete",
+                  "display_request",
+                  "display_start",
+                  "display_end",
+                  "retrieval_opportunity",
+                  "retrieval_result",
+                  "highlight_request",
+                  "highlight",
+                  "lesson_end",
+                  "lesson_interrupted"
+                ]
+              },
+              "attempt_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "opportunity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "audio_request_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "presentation_index": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "expected_mono_ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "meaning_display_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "feedback_content_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "highlight": {
+                "enum": [
+                  null,
+                  "none",
+                  "action",
+                  "target"
+                ]
+              },
+              "pcm_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "action_pcm_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "referent_pcm_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "schema_version",
+              "schedule_sha256",
+              "package_sha256",
+              "session_clock_epoch",
+              "lesson_type",
+              "slot_start_mono_ms",
+              "audio_request_ids",
+              "kind",
+              "attempt_id",
+              "opportunity_id",
+              "audio_request_id",
+              "presentation_index",
+              "observed_mono_ms",
+              "expected_mono_ms",
+              "meaning_display_id",
+              "feedback_content_id",
+              "highlight",
+              "pcm_sha256",
+              "action_pcm_sha256",
+              "referent_pcm_sha256"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "play_request",
+                        "onset_authority",
+                        "play_complete"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "audio_request_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                    },
+                    "presentation_index": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "audio_request_id": {
+                      "type": "null"
+                    },
+                    "presentation_index": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "lesson_type": {
+                      "const": "atomic_lesson"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "action_pcm_sha256": {
+                      "type": "null"
+                    },
+                    "referent_pcm_sha256": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "action_pcm_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                    },
+                    "referent_pcm_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "highlight",
+                        "highlight_request"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "highlight": {
+                      "enum": [
+                        "none",
+                        "action",
+                        "target"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "highlight": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "retrieval_result"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "feedback_content_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "play_request",
+                        "onset_authority",
+                        "display_start",
+                        "display_end",
+                        "retrieval_opportunity",
+                        "lesson_end",
+                        "lesson_interrupted"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "expected_mono_ms": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
           }
         }
       }

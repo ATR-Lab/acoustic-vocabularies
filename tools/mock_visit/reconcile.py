@@ -123,7 +123,7 @@ def export_bundle(path, expected):
     require(m["schema_version"] == "data-export-provisional-1" and guid(m["export_id"]), "MOCK_EXPORT_VERSION")
     require(m["headers_qualified"] is False and m["unacknowledged_torn_tail"] is False, "MOCK_EXPORT_SCOPE_OR_TAIL")
     require(all(type(m[k]) is int and m[k] >= 0 for k in ("record_count", "trial_rows", "exposure_rows")), "MOCK_EXPORT_COUNTS")
-    require(isinstance(m["files"], list) and 4 <= len(m["files"]) <= 1005, "MOCK_EXPORT_FILES")
+    require(isinstance(m["files"], list) and 4 <= len(m["files"]) <= 1007, "MOCK_EXPORT_FILES")
     files = {}
     for f in m["files"]:
         exact(f, "path bytes sha256")
@@ -151,6 +151,8 @@ def export_bundle(path, expected):
     require(len(records) == m["record_count"] and (records[-1]["sha256"] if records else "0" * 64) == m["last_record_sha256"], "MOCK_EXPORT_CHAIN_HEAD")
     trials, exposures = table(files["trial-log.csv"]), table(files["exposure-ledger.csv"])
     require(len(trials) == m["trial_rows"] and len(exposures) == m["exposure_rows"], "MOCK_EXPORT_ROW_COUNT")
+    from .lessons import verify_export
+    verify_export(files, records, m["identity"], exposures)
     return m, records, trials, exposures
 
 
@@ -466,6 +468,8 @@ def reconcile(manifest_path, expected_hash):
     if any(i["block"].endswith("lessons") for i in items.values()):
         incomplete.update(native.grammar(result["grammar"], result["requests"]))
         incomplete.update(native.lesson(joined, result["attempts"], items, result["requests"]))
+        from .lessons import reconcile as reconcile_lessons
+        incomplete.update(reconcile_lessons(records, joined, items, m["schedule"]["sha256"], m["package_sha256"]))
         grammar_missing,grammar_count=content.grammar(config,(root/m["config"]["path"]).parent,result["grammar"],read,relative)
         incomplete.update(grammar_missing)
     content_missing, content_count, selection = content.verify(root, artifacts, items, result["requests"], m["package_sha256"], read, relative, result["observations"],

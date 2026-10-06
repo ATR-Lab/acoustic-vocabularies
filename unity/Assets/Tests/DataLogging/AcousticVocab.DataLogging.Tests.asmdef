@@ -5,7 +5,8 @@
     "AcousticVocab.SessionEngine",
     "AcousticVocab.StudyAudio",
     "AcousticVocab.ResponsePanel",
-    "AcousticVocab.Assessment"
+    "AcousticVocab.Assessment",
+    "AcousticVocab.Teaching"
   ],
   "includePlatforms": [
     "Editor"
