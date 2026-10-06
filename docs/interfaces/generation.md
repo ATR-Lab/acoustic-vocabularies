@@ -48,23 +48,35 @@ Guide: [`generation/docs/llm.md`](../../generation/docs/llm.md).
 
 - **Client** (`av_generation.llm`):
   - `OpenAICompatibleClient(base_url, model, *, run_id, clock, request_log=None,
-    timeout_ms=40_000, runtime, model_revision)` and `.from_manifest(base_url, manifest,
-    *, run_id, clock, request_log=None)`.
-  - `propose(messages, schema, seed_key, *, slot_id=None) -> RawOutcome{status, text,
-    latency_ms, tokens_in, tokens_out, seed, finish_reason}` makes one call and never
-    retries. `status` is one of:
+    timeout_ms=40_000, runtime, model_revision, count_timeout_ms=5_000)` and
+    `.from_manifest(base_url, manifest, *, run_id, clock, request_log=None)`.
+  - `propose(messages, schema, seed_key, *, slot_id=None, deadline_ms=None) ->
+    RawOutcome{status, text, latency_ms, tokens_in, tokens_out, seed, finish_reason}`
+    makes one call and never retries, not even a failed connect. `status` is one of:
     - `ok`: `finish_reason` `stop`;
     - `overflow_output`: `length`, 512 tokens;
     - `server_error`: any other finish reason, an HTTP error, a bad body or a refused
       connection;
-    - `timeout`: the request was cancelled at 40 s of run-clock time and the call
-      returned within 40.5 s.
+    - `timeout`: the request was cancelled at 40 s of run-clock time, or at
+      `deadline_ms`, and the call returned within 0.5 s of it.
+  - A finish reason that the log schema cannot hold is returned and logged as `other`
+    (`server_error`).
   - Seed keys are `A3|...` or `B|...` only.
   - One `LlmRequest` per call. It holds the five frozen decoding values, the seed and
     wire seed, `prompt_sha256 = jsonio.messages_sha256`, `schema_sha256 =
     jsonio.schema_sha256`, the status, latency, tokens and `slot_id`.
-  - `count_prompt_tokens(messages)` sends `POST /tokenize` (`add_generation_prompt:
-    true`) and raises `TokenCountError`.
+  - `count_prompt_tokens(messages, *, deadline_ms=None)` sends `POST /tokenize`
+    (`add_generation_prompt: true`) and raises `TokenCountError`. It has its own
+    run-clock cap of 5 s (`TOKEN_COUNT_TIMEOUT_MS`). At the cap or the deadline it
+    raises `TokenCountTimeout`, a subclass of `TokenCountError`.
+  - **Slot budget (#17, #26).** Pass `deadline_ms = ticket.t_open_ms + SLOT_CAP_MS`
+    (run clock) to both calls of a slot, so count plus call stay within the 40-s cap.
+    When the deadline has passed, `propose` makes no call and returns a logged
+    `timeout` with latency 0. `deadline_ms` is part of the `LlmClient` protocol, and
+    `llm_fake.ScriptedLlmClient` accepts it and records it in `FakeCall.deadline_ms`.
+  - The methods are synchronous. Async callers (#20, #21) use
+    `await asyncio.to_thread(client.propose, ...)`; calling them on an event loop
+    blocks that loop for up to 40 s.
   - `decoding_schema()` returns `sound/schema/recipe.schema.json` unchanged, with the
     §3.2 enums. `decoding_schema_sha256()` returns the freeze item
     `schema.decoding_sha256`.
@@ -88,8 +100,12 @@ Guide: [`generation/docs/llm.md`](../../generation/docs/llm.md).
 - **Server** (`av_generation.llm_server`, `generation/llm/server-config.json`):
   - `prepare_launch(model_dir, ...) -> LaunchPlan` raises `ServerRefused.code`. The
     codes are `E_MANIFEST`, `E_CONFIG`, `E_CONFIG_MANIFEST`, `E_RUNTIME_*`,
-    `E_MISSING`, `E_SIZE`, `E_REVISION*`, `E_FILE_BLOB`, `E_CHAT_TEMPLATE`,
-    `E_EXTRA_WEIGHTS` and `E_WEIGHTS_SHA256`.
+    `E_MISSING`, `E_SIZE`, `E_EXTRA_WEIGHTS`, `E_EXTRA_FILE` (any unlisted file, such
+    as a stray `chat_template.jinja`), `E_REVISION*`, `E_FILE_BLOB`,
+    `E_CHAT_TEMPLATE` and `E_WEIGHTS_SHA256`.
+  - The runtime version is the one that the started executable reports
+    (`<vllm> --version`, `executable_vllm_version`). The launcher runs from this uv
+    project, and `--vllm` names the pinned vLLM in its own environment.
   - `start_server(plan) -> ServerProcess` (`E_STARTUP`).
   - The offline environment is `OFFLINE_ENV`.
   - Startup is logged as `startup_start` / `startup_end` timing events with

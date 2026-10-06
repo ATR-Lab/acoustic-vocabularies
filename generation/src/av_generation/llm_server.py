@@ -9,13 +9,16 @@ The server starts from the pinned config file `generation/llm/server-config.json
    (`E_CONFIG_MANIFEST`), and its model name, precision, `max_model_len`, generation
    config, structured-outputs backend, engine seed and load format equal the manifest's
    (`E_CONFIG`);
-3. the installed vLLM is the pinned version (`E_RUNTIME_MISSING`, `E_RUNTIME_VERSION`);
+3. the vLLM executable that will be started reports the pinned version
+   (`<vllm> --version`, run with the offline environment; `E_RUNTIME_MISSING`,
+   `E_RUNTIME_VERSION`). The launcher runs from this uv project and never imports vLLM:
+   the pinned vLLM lives in its own environment on the LLM host (`--vllm`);
 4. the model directory matches the manifest: every file present with the pinned size,
-   revision evidence equal to the pinned revision, git blob of the small files, chat
-   template hash, no stray weight files, and the SHA-256 of every weights shard
-   (`llm_manifest.verify_model_dir`; `E_MISSING`, `E_SIZE`, `E_REVISION`,
-   `E_REVISION_UNKNOWN`, `E_FILE_BLOB`, `E_CHAT_TEMPLATE`, `E_EXTRA_WEIGHTS`,
-   `E_WEIGHTS_SHA256`).
+   no file that the manifest does not list, revision evidence equal to the pinned
+   revision, git blob of the small files, chat template hash, and the SHA-256 of every
+   weights shard (`llm_manifest.verify_model_dir`; `E_MISSING`, `E_SIZE`,
+   `E_EXTRA_WEIGHTS`, `E_EXTRA_FILE`, `E_REVISION`, `E_REVISION_UNKNOWN`,
+   `E_FILE_BLOB`, `E_CHAT_TEMPLATE`, `E_WEIGHTS_SHA256`).
 
 Any failure raises `ServerRefused` with a clear message and starts nothing. Then
 `start_server` runs `vllm serve` with the pinned flags and an offline environment
@@ -25,9 +28,9 @@ waits for `GET /health`. Startup is timed apart from slots: `startup_start` and
 
 CLI (LLM host):
 
-    python -m av_generation.llm_server check --model-dir DIR
-    python -m av_generation.llm_server serve --model-dir DIR --host <station-net address> \\
-        [--timing-log PATH --run-id ID]
+    python -m av_generation.llm_server check --model-dir DIR --vllm VLLM
+    python -m av_generation.llm_server serve --model-dir DIR --vllm VLLM \\
+        --host <station-net address> [--timing-log PATH --run-id ID]
 """
 
 from __future__ import annotations
@@ -39,7 +42,6 @@ import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from importlib import metadata
 from pathlib import Path
 from types import TracebackType
 from typing import IO, Any, Final, Literal, Self
@@ -56,6 +58,8 @@ from av_generation.llm_manifest import (
     load_llm_manifest,
     manifest_path,
     manifest_sha256,
+    run_command,
+    runtime_version_of,
     verify_model_dir,
 )
 from av_generation.records import RecordWriter, TimingEvent
@@ -177,14 +181,6 @@ def config_problems(
     return problems
 
 
-def installed_vllm_version() -> str | None:
-    """The vLLM version installed in this environment (`None` if absent)."""
-    try:
-        return metadata.version("vllm")
-    except metadata.PackageNotFoundError:
-        return None
-
-
 def vllm_command(
     config: ServerConfig,
     model_dir: str | os.PathLike[str],
@@ -229,6 +225,17 @@ def server_env(base: Mapping[str, str] | None = None) -> dict[str, str]:
     env = dict(os.environ if base is None else base)
     env.update(OFFLINE_ENV)
     return env
+
+
+def executable_vllm_version(
+    executable: Sequence[str] = ("vllm",), *, env: Mapping[str, str] | None = None
+) -> str | None:
+    """The version `<executable> --version` reports, run with `server_env(env)`: the vLLM
+    that `vllm_command(..., executable=executable)` starts (`None` if it cannot run, fails
+    or prints no version)."""
+    return runtime_version_of(
+        executable, run=lambda command: run_command(command, env=server_env(env))
+    )
 
 
 def client_host(host: str) -> str:
@@ -308,14 +315,17 @@ def prepare_launch(
     host: str | None = None,
     port: int | None = None,
     executable: Sequence[str] = ("vllm",),
-    runtime_version: Callable[[], str | None] = installed_vllm_version,
+    runtime_version: Callable[[], str | None] | None = None,
     clock: Clock | None = None,
     timing: RecordWriter | None = None,
     run_id: str | None = None,
     progress: Callable[[str], None] | None = None,
     env: Mapping[str, str] | None = None,
 ) -> LaunchPlan:
-    """Run every check of the module docstring; raises `ServerRefused` (nothing started)."""
+    """Run every check of the module docstring; raises `ServerRefused` (nothing started).
+
+    `runtime_version` (tests only) replaces the version probe; by default the version is
+    what `executable` itself reports (`executable_vllm_version`)."""
     clock = clock if clock is not None else SystemClock()
     startup = StartupLog(clock, timing, run_id)
     startup.start(f"llm-server verify model_dir={Path(model_dir).name}")
@@ -327,15 +337,27 @@ def prepare_launch(
         problems = config_problems(config, manifest, manifest_file_sha256=digest)
         if problems:
             raise ServerRefused(problems[0][0], [p for _, p in problems])
-        installed = runtime_version()
+        probe = " ".join([*executable, "--version"])
+        installed = (
+            runtime_version()
+            if runtime_version is not None
+            else executable_vllm_version(executable, env=env)
+        )
         if installed is None:
             raise ServerRefused(
-                E_RUNTIME_MISSING, [f"vLLM is not installed; pinned {manifest.runtime.version}"]
+                E_RUNTIME_MISSING,
+                [
+                    f"`{probe}` gave no vLLM version (not installed, not runnable or failed); "
+                    f"pinned {manifest.runtime.version}"
+                ],
             )
         if installed != manifest.runtime.version:
             raise ServerRefused(
                 E_RUNTIME_VERSION,
-                [f"installed vLLM {installed} differs from the pinned {manifest.runtime.version}"],
+                [
+                    f"`{probe}` reports vLLM {installed}, which differs from the pinned "
+                    f"{manifest.runtime.version}"
+                ],
             )
         verify_model_dir(manifest, model_dir, progress=progress)
     except ModelMismatch as err:
@@ -467,7 +489,6 @@ def _plan_from_args(args: argparse.Namespace) -> LaunchPlan:
         host=args.host,
         port=args.port,
         executable=(args.vllm,),
-        runtime_version=lambda: installed_vllm_version(),
         timing=timing,
         run_id=args.run_id,
         progress=lambda message: print(message, flush=True),
@@ -487,7 +508,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         p.add_argument("--manifest", default=None, help="default: generation/llm/manifest.json")
         p.add_argument("--host", default=None)
         p.add_argument("--port", type=int, default=None)
-        p.add_argument("--vllm", default="vllm", help="vLLM executable")
+        p.add_argument(
+            "--vllm",
+            default="vllm",
+            help="the pinned vLLM executable in its own environment (default: on PATH)",
+        )
         p.add_argument("--timing-log", default=None, help="timing JSONL (startup events)")
         p.add_argument("--run-id", default=None)
     args = parser.parse_args(argv)
@@ -499,7 +524,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if plan.manifest.hardware.status == "pending":
         print(
             "note: hardware not recorded in the manifest; run "
-            "`python -m av_generation.llm_manifest record-hardware` on this host",
+            f"`python -m av_generation.llm_manifest record-hardware --vllm {args.vllm}` "
+            "on this host",
             file=sys.stderr,
         )
     print("command: " + " ".join(plan.command))

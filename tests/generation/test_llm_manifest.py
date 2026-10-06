@@ -4,6 +4,7 @@ runtime, decoding and decoding-schema hash; mapping to apparatus and freeze fiel
 import copy
 import hashlib
 import json
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -26,7 +27,9 @@ from av_generation.jsonio import canonical_sha256, document_text, file_set_sha25
 from av_generation.llm import decoding_schema_sha256
 from av_generation.llm_manifest import (
     E_MANIFEST,
+    MIN_VRAM_MIB,
     LlmManifest,
+    ModelFile,
     ModelMismatch,
     apparatus_values,
     chat_template_sha256,
@@ -41,8 +44,10 @@ from av_generation.llm_manifest import (
     manifest_from_hf_api,
     manifest_path,
     manifest_sha256,
+    parse_runtime_version,
     probe_hardware,
     prompt_hash,
+    runtime_version_of,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -208,26 +213,109 @@ def test_generation_config_takes_the_manifest_hashes():
     assert config.model.revision == MODEL_REVISION
 
 
-def test_probe_hardware_reads_nvidia_smi():
-    outputs = {
-        "--query-gpu=name,memory.total,driver_version": "NVIDIA RTX 6000 Ada, 49140, 570.86.15\n",
-        "plain": "| NVIDIA-SMI 570.86.15   Driver Version: 570.86.15   CUDA Version: 12.8     |\n",
-    }
+COLLECT_ENV = """Collecting environment information...
+==============================
+        PyTorch Info
+==============================
+PyTorch version              : 2.9.0+cu128
+Is debug build               : False
+==============================
+vLLM Version                 : 0.30.0
+"""
+
+
+def fake_host(vllm_version="0.30.0", vram="49140", collect_env=COLLECT_ENV):
+    """A runner standing in for nvidia-smi and the server's vLLM executable."""
+    calls = []
 
     def run(command):
-        return outputs[command[1]] if len(command) > 1 else outputs["plain"]
+        calls.append(tuple(command))
+        if command[0] == "nvidia-smi" and len(command) > 1:
+            return f"NVIDIA RTX 6000 Ada, {vram}, 570.86.15\n"
+        if command[0] == "nvidia-smi":
+            return "| NVIDIA-SMI 570.86.15   Driver Version: 570.86.15   CUDA Version: 12.8 |\n"
+        if command[-1] == "--version":
+            return f"INFO 10-06 [__init__.py:216] Detected platform cuda.\n{vllm_version}\n"
+        if command[-1] == "collect-env":
+            if collect_env is None:
+                raise subprocess.CalledProcessError(1, command)
+            return collect_env
+        raise AssertionError(command)
 
-    versions = {"torch": "2.9.0", "vllm": "0.30.0"}
-    hw = probe_hardware(run=run, version_of=versions.get, now_utc="2026-11-05T09:00:00.000Z")
+    return run, calls
+
+
+def test_probe_hardware_reads_nvidia_smi_and_the_server_vllm():
+    run, calls = fake_host()
+    vllm = ("/opt/vllm-env/bin/vllm",)
+    hw = probe_hardware(run=run, vllm=vllm, now_utc="2026-11-05T09:00:00.000Z")
     assert hw.status == "recorded" and hw.gpu == "NVIDIA RTX 6000 Ada"
     assert hw.vram_mib == 49140 and hw.driver_version == "570.86.15"
     assert hw.cuda_version == "12.8" and hw.vllm_installed == "0.30.0"
+    assert hw.torch_version == "2.9.0+cu128"
+    assert (*vllm, "--version") in calls and (*vllm, "collect-env") in calls
     manifest = load_llm_manifest()
     recorded = replace(manifest, hardware=hw)
     assert manifest_errors(recorded) == ()
     assert freeze_values(recorded, manifest_file_sha256=H)["runtime.gpu"].endswith("(49140 MiB)")
-    small = replace(recorded, hardware=replace(hw, vram_mib=16000))
-    assert any("vram_mib" in e for e in manifest_errors(small)), "needs a >=24 GB GPU"
+    run, _ = fake_host(vllm_version="0.31.0", collect_env=None)
+    other = probe_hardware(run=run, vllm=vllm, now_utc="2026-11-05T09:00:00.000Z")
+    assert other.vllm_installed == "0.31.0" and other.torch_version is None
+
+
+@pytest.mark.parametrize(
+    ("vram_mib", "ok"),
+    [
+        (23_034, True),  # NVIDIA L4 (24 GB)
+        (23_028, True),  # NVIDIA A10 / A10G (24 GB)
+        (24_564, True),  # RTX 4090 / RTX A5000 (24 GB)
+        (MIN_VRAM_MIB, True),
+        (MIN_VRAM_MIB - 1, False),
+        (16_000, False),
+        (15_360, False),  # T4 (16 GB)
+    ],
+)
+def test_recorded_vram_takes_nominal_24_gb_cards(vram_mib, ok):
+    run, _ = fake_host(vram=str(vram_mib))
+    hw = probe_hardware(run=run, now_utc="2026-11-05T09:00:00.000Z")
+    errors = manifest_errors(replace(load_llm_manifest(), hardware=hw))
+    assert (errors == ()) is ok, errors
+    if not ok:
+        assert any("vram_mib" in e for e in errors), "needs a 24-GB GPU"
+
+
+def test_vram_rule_is_24_gb_in_the_schema_and_the_code():
+    schema = json.loads((LLM_DIR / "manifest.schema.json").read_text(encoding="utf-8"))
+    hardware = schema["properties"]["hardware"]
+    assert hardware["then"]["properties"]["vram_mib"]["minimum"] == MIN_VRAM_MIB
+    assert MIN_VRAM_MIB == -(-24 * 10**9 // 2**20)  # 24 x 10^9 bytes, rounded up to MiB
+
+
+@pytest.mark.parametrize(
+    ("output", "version"),
+    [
+        ("0.30.0\n", "0.30.0"),
+        ("INFO 10-06 detected platform cuda.\nWARNING x\n0.30.0\n", "0.30.0"),
+        ("v0.30.0", "0.30.0"),
+        ("0.30.0+cu128\n", "0.30.0+cu128"),
+        ("0.31.0rc1\n", "0.31.0rc1"),
+        ("vllm\n", None),
+        ("", None),
+    ],
+)
+def test_parse_runtime_version(output, version):
+    assert parse_runtime_version(output) == version
+
+
+def test_runtime_version_of_an_executable_that_cannot_run():
+    def missing(command):
+        raise FileNotFoundError(command[0])
+
+    def failing(command):
+        raise subprocess.CalledProcessError(2, command)
+
+    assert runtime_version_of(("vllm",), run=missing) is None
+    assert runtime_version_of(("vllm",), run=failing) is None
 
 
 def _api_info(files, template="DEMO {{ messages }} system"):
@@ -310,10 +398,27 @@ def test_git_blob_matches_the_git_definition(data):
         ("generation_config.json", "config"),
         ("LICENSE", "license"),
         (".gitattributes", "other"),
+        ("README.md", "other"),
+        ("chat_template.jinja", "tokenizer"),
+        ("chat_template.json", "tokenizer"),
+        ("special_tokens_map.json", "tokenizer"),
+        ("added_tokens.json", "tokenizer"),
+        ("tokenizer.model", "tokenizer"),
+        ("additional_chat_templates/tool_use.jinja", "tokenizer"),
+        ("preprocessor_config.json", "config"),
+        ("some_future_file.py", "config"),
     ],
 )
 def test_file_kinds(path, kind):
     assert file_kind(path) == kind
+
+
+def test_only_inert_files_may_go_unverified(manifest):
+    """A file that vLLM or transformers could load must never be pinned as `other`."""
+    template = ModelFile("chat_template.jinja", 10, "0" * 40, None, "other")
+    files = tuple(sorted((*manifest.model.files, template), key=lambda f: f.path))
+    loose = replace(manifest, model=replace(manifest.model, files=files))
+    assert any("chat_template.jinja" in e and "inert" in e for e in manifest_errors(loose))
 
 
 def test_round_trip(manifest):

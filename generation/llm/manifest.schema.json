@@ -222,6 +222,7 @@
       }
     },
     "hardware": {
+      "description": "Recorded on the LLM host (record-hardware). vram_mib is nvidia-smi memory.total; once recorded it must be at least 22889 MiB, which is 24 GB (24 x 10^9 bytes, the nominal size of a 24-GB card) rounded up to whole MiB. 24-GB data-center cards report less than 24 x 1024 MiB (an L4 about 23034 MiB, an A10 about 23028 MiB).",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -285,7 +286,7 @@
           },
           "vram_mib": {
             "type": "integer",
-            "minimum": 24000
+            "minimum": 22889
           },
           "driver_version": {
             "$ref": "#/$defs/text"

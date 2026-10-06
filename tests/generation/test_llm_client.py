@@ -14,8 +14,10 @@ import platform
 import socket
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 
+import httpcore
 import httpx
 import pytest
 from av_sound.recipe import Recipe
@@ -36,15 +38,20 @@ from av_generation.constants import (
 from av_generation.jsonio import messages_sha256, schema_sha256
 from av_generation.llm import (
     CHAT_PATH,
+    FINISH_OTHER,
+    TOKEN_COUNT_TIMEOUT_MS,
     LlmClient,
     OpenAICompatibleClient,
     TokenCountError,
+    TokenCountTimeout,
     chat_request_body,
     decoding_schema,
     decoding_schema_sha256,
+    loggable_finish_reason,
     parse_chat_response,
     response_format,
 )
+from av_generation.llm_fake import ScriptedLlmClient
 from av_generation.llm_manifest import load_llm_manifest
 from av_generation.mock_llm import MOCK_RUNTIME, MockLlmServer, MockReply, count_tokens
 from av_generation.outcomes import LlmStatus
@@ -77,7 +84,7 @@ def base(serve_app, mock):
     return serve_app(mock.app)
 
 
-def make_client(url, tmp_path, *, clock=None, timeout_ms=SLOT_CAP_MS, log=True):
+def make_client(url, tmp_path, *, clock=None, timeout_ms=SLOT_CAP_MS, log=True, **extra):
     writer = (
         RecordWriter(tmp_path / "llm-requests.jsonl", types=(LlmRequest,), fsync=False)
         if log
@@ -92,6 +99,7 @@ def make_client(url, tmp_path, *, clock=None, timeout_ms=SLOT_CAP_MS, log=True):
         runtime=MOCK_RUNTIME,
         model_revision=MODEL_REVISION,
         timeout_ms=timeout_ms,
+        **extra,
     )
     return client, writer
 
@@ -235,6 +243,15 @@ def test_seed_keys_and_decoding_are_checked_before_any_call(base, mock, tmp_path
         OpenAICompatibleClient("llm:8000", MODEL_ID, run_id="DEMO-x", clock=SystemClock())
     with pytest.raises(ValueError, match="timeout_ms"):
         OpenAICompatibleClient(base, MODEL_ID, run_id="DEMO-x", clock=SystemClock(), timeout_ms=0)
+    with pytest.raises(ValueError, match="count_timeout_ms"):
+        OpenAICompatibleClient(
+            base, MODEL_ID, run_id="DEMO-x", clock=SystemClock(), count_timeout_ms=True
+        )
+    with pytest.raises(ValueError, match="deadline_ms"):
+        client.propose(MESSAGES, decoding_schema(), KEY, deadline_ms=1.5)
+    with pytest.raises(ValueError, match="deadline_ms"):
+        client.count_prompt_tokens(MESSAGES, deadline_ms=True)
+    assert mock.calls == [] and mock.tokenize_calls == 0
 
 
 def test_client_from_manifest(base, tmp_path):
@@ -284,6 +301,19 @@ def test_stop_reasons_map_to_statuses_without_retry(base, mock, tmp_path, reply,
     assert len(mock.calls) == 2
 
 
+@pytest.mark.parametrize("finish", ["content filter", "x" * 40, "stop ", "\u00e9t\u00e9"])
+def test_an_unloggable_finish_reason_is_a_logged_server_error(base, mock, tmp_path, finish):
+    """A finish reason the log schema cannot hold never makes `propose` raise."""
+    client, writer = make_client(base, tmp_path)
+    mock.push(MockReply("text", text="{}", finish_reason=finish))
+    outcome = client.propose(MESSAGES, decoding_schema(), KEY, slot_id=SLOT)
+    assert outcome.status is LlmStatus.SERVER_ERROR and outcome.finish_reason == FINISH_OTHER
+    assert writer.count == 1
+    (record,) = logged(tmp_path)
+    assert record.status is LlmStatus.SERVER_ERROR and record.finish_reason == FINISH_OTHER
+    assert record.slot_id == SLOT and len(mock.calls) == 1
+
+
 def test_server_refusals_are_server_errors(base, mock, tmp_path):
     client, _ = make_client(base, tmp_path)
     too_long = [{"role": "user", "content": "word " * (MAX_INPUT_TOKENS + 10)}]
@@ -306,6 +336,45 @@ def test_unreachable_server_is_a_server_error(tmp_path):
     assert time.perf_counter() - started < 5
     (record,) = logged(tmp_path)
     assert record.status is LlmStatus.SERVER_ERROR and record.tokens_in is None
+
+
+class CountingBackend(httpcore.AsyncNetworkBackend):
+    """A network backend whose every connect fails; counts the attempts (no sockets)."""
+
+    def __init__(self):
+        self.attempts = 0
+        self.slept = 0.0
+
+    async def connect_tcp(self, host, port, timeout=None, local_address=None, socket_options=None):
+        self.attempts += 1
+        raise httpcore.ConnectError(f"refused by the test backend ({host}:{port})")
+
+    async def connect_unix_socket(self, path, timeout=None, socket_options=None):
+        raise NotImplementedError
+
+    async def sleep(self, seconds):
+        self.slept += seconds  # a retrying transport would back off here
+
+
+def test_a_failed_connect_is_tried_exactly_once(tmp_path, monkeypatch):
+    """No transport-level retries: one connection attempt per call, also for a count."""
+    backend = CountingBackend()
+    original = httpcore.AsyncConnectionPool.__init__
+
+    def with_backend(self, *args, **kwargs):
+        kwargs["network_backend"] = backend
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpcore.AsyncConnectionPool, "__init__", with_backend)
+    client, _ = make_client("http://127.0.0.1:9", tmp_path)
+    outcome = client.propose(MESSAGES, decoding_schema(), KEY)
+    assert outcome.status is LlmStatus.SERVER_ERROR
+    assert backend.attempts == 1 and backend.slept == 0
+    with pytest.raises(TokenCountError, match="ConnectError"):
+        client.count_prompt_tokens(MESSAGES)
+    assert backend.attempts == 2 and backend.slept == 0
+    (record,) = logged(tmp_path)
+    assert record.status is LlmStatus.SERVER_ERROR
 
 
 # ---------------------------------------------------------------------------
@@ -424,6 +493,90 @@ def test_count_failures_raise_token_count_error(serve_app, tmp_path, response):
         client.count_prompt_tokens(MESSAGES)
 
 
+def test_a_hung_tokenize_ends_at_the_count_cap_on_the_run_clock(base, mock, tmp_path):
+    """A hung `/tokenize` cannot hold a slot: the count has its own 5-s run-clock cap."""
+    assert TOKEN_COUNT_TIMEOUT_MS == 5_000 and TOKEN_COUNT_TIMEOUT_MS < SLOT_CAP_MS // 4
+    assert issubclass(TokenCountTimeout, TokenCountError)
+    client, _ = make_client(base, tmp_path, clock=ScaledClock(10))  # propose cap 40 s
+    assert client.count_timeout_ms == TOKEN_COUNT_TIMEOUT_MS
+    mock.tokenize_delay_s = 30
+    started = time.perf_counter()
+    with pytest.raises(TokenCountTimeout, match="cancelled after"):
+        client.count_prompt_tokens(MESSAGES)
+    # 5 s of run time at speed 10 is 0.5 s; the 40-s propose cap would be 4 s
+    assert 0.5 <= time.perf_counter() - started < 2.5
+    assert wait_for(lambda: mock.tokenize_aborted == 1), "server saw no cancel"
+
+
+def test_a_hung_tokenize_on_the_real_clock(base, mock, tmp_path):
+    client, _ = make_client(base, tmp_path, count_timeout_ms=300)
+    mock.tokenize_delay_s = 30
+    started = time.perf_counter()
+    with pytest.raises(TokenCountTimeout):
+        client.count_prompt_tokens(MESSAGES)
+    assert 0.3 <= time.perf_counter() - started < 0.3 + 0.5
+    assert wait_for(lambda: mock.tokenize_aborted == 1)
+    mock.tokenize_delay_s = 0
+    assert client.count_prompt_tokens(MESSAGES) == count_tokens(MESSAGES)
+
+
+def test_count_and_call_share_one_slot_deadline(base, mock, tmp_path):
+    """With `deadline_ms` (slot open + 40 s), count plus call never pass the slot cap."""
+    clock = ManualClock()
+    client, _ = make_client(base, tmp_path, clock=clock)
+    deadline = clock.now_ms() + SLOT_CAP_MS  # e.g. ticket.t_open_ms + SLOT_CAP_MS
+    assert client.count_prompt_tokens(MESSAGES, deadline_ms=deadline) > 0
+    clock.advance(30_000)  # prompt building and counting used 30 s of the slot
+    mock.push(MockReply(delay_s=20))
+    timer = threading.Timer(0.3, lambda: clock.advance(10_000))
+    timer.start()
+    try:
+        outcome = client.propose(MESSAGES, decoding_schema(), KEY, deadline_ms=deadline)
+    finally:
+        timer.cancel()
+    assert outcome.status is LlmStatus.TIMEOUT and outcome.latency_ms == 10_000
+    (record,) = logged(tmp_path)
+    assert record.t_ms + record.latency_ms == deadline
+    assert wait_for(lambda: mock.calls and mock.calls[-1].aborted)
+
+
+def test_a_later_cap_than_the_deadline_never_extends_the_call(base, mock, tmp_path):
+    clock = ManualClock()
+    client, _ = make_client(base, tmp_path, clock=clock)
+    mock.push(MockReply(delay_s=20))
+    timer = threading.Timer(0.3, lambda: clock.advance(SLOT_CAP_MS))
+    timer.start()
+    try:
+        far = clock.now_ms() + 10 * SLOT_CAP_MS
+        outcome = client.propose(MESSAGES, decoding_schema(), KEY, deadline_ms=far)
+    finally:
+        timer.cancel()
+    assert outcome.status is LlmStatus.TIMEOUT and outcome.latency_ms == SLOT_CAP_MS
+
+
+def test_a_passed_deadline_makes_no_call(base, mock, tmp_path):
+    clock = ManualClock(start_ms=50_000)
+    client, _ = make_client(base, tmp_path, clock=clock)
+    with pytest.raises(TokenCountTimeout, match="deadline"):
+        client.count_prompt_tokens(MESSAGES, deadline_ms=50_000)
+    outcome = client.propose(MESSAGES, decoding_schema(), KEY, slot_id=SLOT, deadline_ms=40_000)
+    assert outcome.status is LlmStatus.TIMEOUT and outcome.latency_ms == 0
+    assert outcome.text is None and outcome.seed == seed_from_key(KEY)
+    assert mock.calls == [] and mock.tokenize_calls == 0
+    (record,) = logged(tmp_path)
+    assert record.status is LlmStatus.TIMEOUT and record.slot_id == SLOT
+    assert record.latency_ms == 0 and record.t_ms == 50_000
+
+
+def test_the_fake_client_takes_the_deadline_too():
+    """`llm_fake.ScriptedLlmClient` follows the `LlmClient` signature (#17's tests)."""
+    fake = ScriptedLlmClient(['{"x": 1}'])
+    assert isinstance(fake, LlmClient)
+    assert fake.count_prompt_tokens(MESSAGES, deadline_ms=40_000) > 0
+    assert fake.propose(MESSAGES, {}, KEY, slot_id=SLOT, deadline_ms=40_000).status == "ok"
+    assert fake.calls[0].deadline_ms == 40_000 and fake.calls[0].slot_id == SLOT
+
+
 def test_count_on_a_dead_server_or_wrong_model(base, tmp_path):
     dead, _ = make_client(f"http://127.0.0.1:{free_port()}", tmp_path)
     with pytest.raises(TokenCountError):
@@ -437,22 +590,52 @@ def test_count_on_a_dead_server_or_wrong_model(base, tmp_path):
 # Callers: event loops, threads
 
 
-def test_works_inside_a_running_event_loop(base, tmp_path):
-    client, _ = make_client(base, tmp_path, log=False)
+def test_works_inside_a_running_event_loop(base, mock, tmp_path):
+    client, _ = make_client(base, tmp_path, log=False, count_timeout_ms=200)
 
     async def main():
-        return client.propose(MESSAGES, decoding_schema(), KEY)
+        count = client.count_prompt_tokens(MESSAGES)
+        mock.tokenize_delay_s = 30
+        with pytest.raises(TokenCountTimeout):
+            client.count_prompt_tokens(MESSAGES)
+        return count, client.propose(MESSAGES, decoding_schema(), KEY)
 
-    assert asyncio.run(main()).status is LlmStatus.OK
+    count, outcome = asyncio.run(main())
+    assert count == count_tokens(MESSAGES) and outcome.status is LlmStatus.OK
+
+
+def test_async_callers_use_a_worker_thread_and_keep_their_loop_free(base, mock, tmp_path):
+    """The documented async pattern: `await asyncio.to_thread(client.propose, ...)`."""
+    client, _ = make_client(base, tmp_path, log=False)
+    mock.push(MockReply(delay_s=0.5))
+
+    async def main():
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            while True:
+                await asyncio.sleep(0.01)
+                ticks += 1
+
+        task = asyncio.create_task(ticker())
+        outcome = await asyncio.to_thread(client.propose, MESSAGES, decoding_schema(), KEY)
+        task.cancel()
+        return outcome, ticks
+
+    outcome, ticks = asyncio.run(main())
+    assert outcome.status is LlmStatus.OK and ticks >= 10, "the caller's loop kept running"
 
 
 def test_parallel_threads_each_make_one_call(base, mock, tmp_path):
     client, writer = make_client(base, tmp_path)
     keys = [a3_seed_key("DEMO-A-P01", "K-a1", 1, slot) for slot in (1, 2, 3)]
     results = {}
+    counts = {}
 
-    def run(key):
-        results[key] = client.propose(MESSAGES, decoding_schema(), key)
+    def run(key):  # one proposer thread: count, then call, as an A3 slot does
+        counts[key] = client.count_prompt_tokens(MESSAGES, deadline_ms=10**9)
+        results[key] = client.propose(MESSAGES, decoding_schema(), key, deadline_ms=10**9)
 
     threads = [threading.Thread(target=run, args=(k,)) for k in keys]
     for thread in threads:
@@ -460,6 +643,7 @@ def test_parallel_threads_each_make_one_call(base, mock, tmp_path):
     for thread in threads:
         thread.join()
     assert {r.status for r in results.values()} == {LlmStatus.OK}
+    assert set(counts.values()) == {count_tokens(MESSAGES)} and mock.tokenize_calls == 3
     assert len(mock.calls) == 3 and writer.count == 3
     assert {r.seed_key for r in logged(tmp_path)} == set(keys)
 
@@ -548,6 +732,53 @@ def test_status_mapping(status_code, finish, content):
         assert result.status is LlmStatus.SERVER_ERROR
     if status_code == 200:
         assert (result.tokens_in, result.tokens_out) == (3, 4)
+
+
+LOG_BASE = LlmRequest(
+    run_id="DEMO-llm-test",
+    seed_key=KEY,
+    seed=seed_from_key(KEY),
+    wire_seed=wire_seed(seed_from_key(KEY)),
+    model=MODEL_ID,
+    runtime=MOCK_RUNTIME,
+    temperature=0.7,
+    top_p=0.9,
+    top_k=50,
+    repetition_penalty=1.0,
+    max_tokens=512,
+    prompt_sha256="a" * 64,
+    schema_sha256="b" * 64,
+    status=LlmStatus.SERVER_ERROR,
+    latency_ms=0,
+    t_ms=0,
+)
+
+
+@settings(max_examples=300, deadline=None)
+@given(
+    finish=st.one_of(st.none(), st.text(max_size=48), st.integers(), st.booleans()),
+    content=st.one_of(st.none(), st.text(max_size=8)),
+    usage=st.one_of(st.none(), st.integers(-5, 2**70), st.text(max_size=3)),
+)
+def test_every_parsed_response_can_be_logged(finish, content, usage):
+    body = json.dumps(
+        {
+            "choices": [{"index": 0, "message": {"content": content}, "finish_reason": finish}],
+            "usage": {"prompt_tokens": usage, "completion_tokens": usage},
+        }
+    ).encode()
+    result = parse_chat_response(200, body)
+    record = replace(
+        LOG_BASE,
+        status=result.status,
+        finish_reason=result.finish_reason,
+        tokens_in=result.tokens_in,
+        tokens_out=result.tokens_out,
+    )
+    record.check()
+    assert result.finish_reason == loggable_finish_reason(finish)
+    if result.finish_reason == FINISH_OTHER and finish != FINISH_OTHER:
+        assert result.status is LlmStatus.SERVER_ERROR
 
 
 def test_chat_path_is_the_openai_endpoint():

@@ -19,6 +19,7 @@ It speaks the subset of the vLLM HTTP API the client uses: `POST /v1/chat/comple
   recipe, fixed text, a 512-token overflow (`finish_reason="length"`), an HTTP error, an
   unreadable body, no choice, and a delay (the slowed server). The server notices when a
   client disconnects during a delay (`MockCall.aborted`), as vLLM aborts the request.
+  `tokenize_delay_s` slows `/tokenize` the same way (`tokenize_aborted`).
 
 Run standalone (also usable as a stand-in `vllm` executable for launcher tests):
 
@@ -259,8 +260,12 @@ class MockLlmServer:
     max_model_len: int = MIN_MAX_MODEL_LEN
     default: MockReply = field(default_factory=MockReply)
     poll_s: float = 0.01
+    tokenize_delay_s: float = 0.0
+    """Delay of every `/tokenize` answer (a slow tokenizer); a client that disconnects
+    meanwhile is counted in `tokenize_aborted`."""
     calls: list[MockCall] = field(default_factory=list)
     tokenize_calls: int = 0
+    tokenize_aborted: int = 0
     _script: list[MockReply] = field(default_factory=list)
     _lock: threading.Lock = field(default_factory=threading.Lock)
     app: FastAPI = field(init=False, repr=False)
@@ -305,6 +310,10 @@ class MockLlmServer:
                 body = json.loads(await request.body())
             except ValueError:
                 return _error(400, "body is not JSON")
+            if self.tokenize_delay_s > 0 and await self._wait(request, self.tokenize_delay_s):
+                with self._lock:
+                    self.tokenize_aborted += 1
+                return Response(status_code=499)
             if not isinstance(body, dict) or set(body) - TOKENIZE_FIELDS:
                 return _error(400, "unsupported tokenize request")
             if body.get("model") != self.model:

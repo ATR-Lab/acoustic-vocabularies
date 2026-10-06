@@ -14,7 +14,7 @@ Consumers:
 
 | Module / file | Contents |
 | --- | --- |
-| `av_generation.llm` | `LlmClient` contract, `OpenAICompatibleClient`, `RawOutcome`, `TokenCountError`, `decoding_schema()`, request body, status mapping |
+| `av_generation.llm` | `LlmClient` contract, `OpenAICompatibleClient`, `RawOutcome`, `TokenCountError` / `TokenCountTimeout`, `decoding_schema()`, request body, status mapping |
 | `av_generation.llm_manifest` | `LlmManifest`, `load_llm_manifest`, `verify_model_dir`, Hugging Face pinning, hardware record, apparatus and freeze mapping; CLI |
 | `av_generation.llm_server` | `ServerConfig`, `prepare_launch` (all refusal checks), `start_server`, `vllm_command`, `OFFLINE_ENV`; CLI |
 | `av_generation.mock_llm` | `MockLlmServer`: mock OpenAI-compatible server (`/v1/chat/completions`, `/tokenize`); stand-in `vllm serve` |
@@ -70,16 +70,24 @@ updated on purpose.
 
 ### Hardware (Pending)
 
-The `hardware` section stays `pending` until it is recorded on the LLM host:
+The `hardware` section stays `pending` until it is recorded on the LLM host (runbook in
+section 2):
 
 ```bash
-python -m av_generation.llm_manifest record-hardware
+uv run --project generation python -m av_generation.llm_manifest record-hardware \
+    --vllm <vllm-env>/bin/vllm
 ```
 
-This command reads the GPU name, VRAM, driver and CUDA versions with `nvidia-smi`, and
-the torch and vLLM versions from the environment. It refuses when the installed vLLM is
-not the pinned version. The schema requires at least 24,000 MiB of VRAM once the
-section is `recorded`.
+This command reads the GPU name, VRAM, driver and CUDA versions with `nvidia-smi`. It
+reads the vLLM version from `<vllm> --version` and the PyTorch version from
+`<vllm> collect-env`, so both come from the environment the server runs in, not from
+this uv project. It refuses when that vLLM is not the pinned version.
+
+Once the section is `recorded`, the schema requires `vram_mib` of at least 22,889 MiB
+(`MIN_VRAM_MIB`). That is 24 GB (24 x 10^9 bytes) rounded up to whole MiB. `vram_mib`
+comes from `nvidia-smi memory.total`, which reports nominal 24-GB cards below
+24 x 1024 MiB: an L4 shows about 23,034 MiB and an A10 about 23,028 MiB. The workload
+needs about 15 GB for the bf16 weights and about 1 GB of KV cache at 16,896 tokens.
 
 ### Apparatus and freeze values
 
@@ -139,14 +147,18 @@ vllm serve <model_dir> --served-model-name Qwen/Qwen2.5-7B-Instruct --dtype bflo
 | `E_MANIFEST` | The manifest is invalid or disagrees with the code |
 | `E_CONFIG` | The config is invalid, or its model name, dtype, `max_model_len`, generation config, backend, engine seed or load format differs from the manifest |
 | `E_CONFIG_MANIFEST` | The config names a different manifest file hash |
-| `E_RUNTIME_MISSING`, `E_RUNTIME_VERSION` | vLLM is not installed, or it is not the pinned version |
+| `E_RUNTIME_MISSING`, `E_RUNTIME_VERSION` | The vLLM executable that would be started (`--vllm`) cannot run or prints no version for `--version`, or it reports another version than the pin |
 | `E_MISSING`, `E_SIZE` | A pinned file is missing or has the wrong size |
-| `E_REVISION`, `E_REVISION_UNKNOWN` | The download metadata or the snapshot directory names another revision, or names no revision |
-| `E_FILE_BLOB` | A git-stored file (config, tokenizer, licence) differs |
-| `E_CHAT_TEMPLATE` | The chat-template hash differs |
 | `E_EXTRA_WEIGHTS` | A weight file that is not in the manifest is present |
+| `E_EXTRA_FILE` | Any other file outside `.cache/` that is not in the manifest is present, for example a `chat_template.jinja`, `chat_template.json`, `additional_chat_templates/`, `special_tokens_map.json` or `added_tokens.json`. transformers prefers a separate template file over the pinned one in `tokenizer_config.json` |
+| `E_REVISION`, `E_REVISION_UNKNOWN` | The download metadata or the snapshot directory names another revision, or names no revision |
+| `E_FILE_BLOB` | A git-stored file (config, tokenizer, licence) differs. A changed chat template in `tokenizer_config.json` is caught here or, if the size changed, as `E_SIZE` |
+| `E_CHAT_TEMPLATE` | The template in `tokenizer_config.json` does not have the hash that the manifest pins. Only an altered pin reaches this check, because a changed file fails `E_SIZE` or `E_FILE_BLOB` first |
 | `E_WEIGHTS_SHA256` | A safetensors shard has the wrong SHA-256 |
 | `E_STARTUP` | The server process exited, or `/health` did not answer within `startup_timeout_s` |
+
+Only `.gitattributes` and Markdown files may be pinned as kind `other` (listed, not
+verified). Every file that vLLM or transformers can read is verified.
 
 Revision evidence comes from one of two sources:
 
@@ -156,19 +168,35 @@ Revision evidence comes from one of two sources:
 
 ### LLM-host runbook (Pending hardware)
 
+There are two environments on the LLM host, and each command below says which one it
+uses:
+
+- **The vLLM environment** holds only the pinned runtime. Nothing from this repository
+  is installed in it. Its executable, `<vllm-env>/bin/vllm`, is the one the server
+  runs.
+- **This uv project** (`uv run --project generation ...`) runs the launcher and the
+  manifest tools. It never imports vLLM. It runs the vLLM executable named by
+  `--vllm`, and it asks that same executable for its version.
+
 ```bash
-# 1. Install the pinned runtime in the server environment (not in this uv project).
-pip install vllm==0.30.0
+# 1. vLLM environment: install the pinned runtime (not in this uv project).
+python3 -m venv <vllm-env> && <vllm-env>/bin/pip install vllm==0.30.0
 # 2. Download the pinned revision (once, before the station network is isolated).
 hf download Qwen/Qwen2.5-7B-Instruct --revision a09a35458c702b33eeacc393d103063234e8bc28 --local-dir <dir>
-# 3. Verify and record the hardware.
-python -m av_generation.llm_manifest verify --model-dir <dir>
-python -m av_generation.llm_manifest record-hardware
-# 4. Check, then serve on the station-network address.
-python -m av_generation.llm_server check --model-dir <dir>
-python -m av_generation.llm_server serve --model-dir <dir> --host <station-net address> \
+# 3. uv project: verify the download and record the hardware.
+uv run --project generation python -m av_generation.llm_manifest verify --model-dir <dir>
+uv run --project generation python -m av_generation.llm_manifest record-hardware --vllm <vllm-env>/bin/vllm
+# 4. uv project: check, then serve on the station-network address.
+uv run --project generation python -m av_generation.llm_server check --model-dir <dir> \
+    --vllm <vllm-env>/bin/vllm
+uv run --project generation python -m av_generation.llm_server serve --model-dir <dir> \
+    --vllm <vllm-env>/bin/vllm --host <station-net address> \
     --timing-log <run>/logs/timing.jsonl --run-id <run id>
 ```
+
+`record-hardware` changes the manifest file, so after step 3 put the new
+`llm_manifest_sha256` into `server-config.json` (`manifest_sha256`). The `--vllm`
+default is the `vllm` found on `PATH`, and the same check applies to it.
 
 Startup is logged separately from slot time. The `startup_start` and `startup_end`
 events have `component="llm"`. The `startup_end` detail holds `verify_ms` and
@@ -184,9 +212,15 @@ client = OpenAICompatibleClient.from_manifest(
     clock=clock,
     request_log=RecordWriter(layout.log("llm_request"), types=(LlmRequest,)),
 )
-n = client.count_prompt_tokens(messages)  # POST /tokenize; TokenCountError
+ticket = ledger.reserve(cap_key, slot_id, study=..., method=...)
+deadline = ticket.t_open_ms + SLOT_CAP_MS  # the slot's 40 s, on the run clock
+n = client.count_prompt_tokens(messages, deadline_ms=deadline)  # TokenCountError
 outcome = client.propose(
-    messages, decoding_schema(), a3_seed_key(ns, atom, rnd, slot), slot_id=slot_id
+    messages,
+    decoding_schema(),
+    a3_seed_key(ns, atom, rnd, slot),
+    slot_id=slot_id,
+    deadline_ms=deadline,
 )  # RawOutcome
 ```
 
@@ -210,7 +244,10 @@ outcome = client.propose(
   | Any other finish reason, no text, a non-200 status, an unreadable body, a refused or reset connection | `server_error` |
   | No complete response at the cap | `timeout` |
 
-  The client never raises for a model or network failure, and it never retries.
+  The client never raises for a model or network failure, and it never retries, not
+  even a failed connect. A finish reason that the log schema cannot hold (a space,
+  more than 32 characters, non-ASCII) is returned and logged as `other`, with
+  `server_error`.
 - **Cap.** The request runs against `timeout_ms` (40,000) of run-clock time. At the cap
   the client cancels the request: it closes the connection, and vLLM aborts a request
   whose client disconnected. It then returns `timeout`. Measured times:
@@ -220,6 +257,22 @@ outcome = client.propose(
 
   The cap never fires early, even when the event loop wakes timers ahead of a coarse
   clock. An unreachable host whose connection hangs also ends as `timeout`.
+- **Token count.** `count_prompt_tokens` has its own run-clock cap,
+  `TOKEN_COUNT_TIMEOUT_MS` (5 s; `count_timeout_ms` in the constructor). At the cap the
+  request is cancelled and `TokenCountTimeout` is raised. That is a `TokenCountError`,
+  so the slot is consumed as `invalid_json` with `llm_status` `server_error`. A hung
+  `/tokenize` therefore costs at most 5 s, not 45 s.
+- **Slot budget.** Study A §3.3 gives each slot up to 40 s, and the token count and the
+  call share it. Both methods take `deadline_ms`, a time on the client's run clock. The
+  cap of either call is then the earlier of its own cap and the deadline. With
+  `deadline_ms = ticket.t_open_ms + SLOT_CAP_MS` from `SlotLedger.reserve`, count plus
+  call end within 40 s of the slot opening (plus the 0.25-s cancel grace), so three
+  slots fit the 120-s window. When the deadline has already passed:
+  - `propose` makes no call and returns `timeout`, logged with `latency_ms` 0;
+  - `count_prompt_tokens` raises `TokenCountTimeout` without a request.
+
+  `llm_fake.ScriptedLlmClient` accepts `deadline_ms` too, and records it in
+  `FakeCall.deadline_ms`.
 - **Log.** There is one `LlmRequest` line per call. It holds the seed key, the seed and
   the wire seed, the five decoding values (schema constants), `prompt_sha256 =
   messages_sha256(messages)`, `schema_sha256`, the status, latency, token counts,
@@ -229,8 +282,13 @@ outcome = client.propose(
   transport. Sessions run under `netguard.deny_outbound(allowed_hosts=[<llm-host>])`,
   as the benchmark does. Tests show that a non-loopback server is refused and that a
   whole session makes no outbound connection.
-- **Threads and loops.** The client is safe to call from parallel proposer threads.
-  Inside a running event loop it runs the call on a helper thread.
+- **Threads and loops.** The methods are synchronous. They block the calling thread
+  for up to the cap, and they are safe to call from parallel proposer threads. Async
+  code, for example a FastAPI handler or a websocket station, must not call them on
+  its event loop. Use `await asyncio.to_thread(client.propose, ...)` and
+  `await asyncio.to_thread(client.count_prompt_tokens, ...)`. A call made on a running
+  loop still works, because `run_coroutine` runs it on a helper thread, but that loop
+  is blocked until the call returns (up to 40 s).
 
 ## 4. Mock server (`mock_llm`)
 
@@ -251,7 +309,8 @@ It refuses what vLLM refuses:
 Replies are scripted with `MockReply`: a recipe, fixed text, an overflow, an HTTP
 error, an unreadable body or no choice, each with an optional delay (the slowed
 server). The mock records a client disconnect during a delay
-(`MockCall.aborted`). `python -m av_generation.mock_llm serve ...` takes `vllm serve`
+(`MockCall.aborted`). `tokenize_delay_s` slows `/tokenize` the same way, and
+`tokenize_aborted` counts the cancelled counts. `python -m av_generation.mock_llm serve ...` takes `vllm serve`
 arguments, so the launcher tests use it as a stand-in executable.
 
 ## 5. Benchmark and repeatability (`llm_bench`)
@@ -290,5 +349,8 @@ run is Pending (hardware).
 | Non-LFS files are pinned by git blob SHA-1, weights by LFS SHA-256 | The API metadata gives no SHA-256 for git-stored files without a download. The blob ID identifies the content, and the launcher recomputes both |
 | Revision evidence comes from the HF download metadata or the snapshot directory name | Checksums alone prove the content. The revision check proves where the files came from (acceptance: refuse on a revision mismatch) |
 | The engine seed is 0, and per-request seeds are derived | Per-request seeds make each slot reproducible as far as the runtime allows. The waveform hash, not the seed, is the reproducibility record |
-| Hardware ≥ 24 GB VRAM is enforced by the manifest schema once recorded | From the issue: bf16 needs about 15-20 GB on a dedicated GPU |
+| Hardware: at least 22,889 MiB (24 GB) of VRAM, enforced by the manifest schema once recorded | From the issue (">= 24 GB"; bf16 needs about 15-20 GB on a dedicated GPU). The rule uses the nominal decimal size because `nvidia-smi` reports 24-GB data-center cards below 24,576 MiB |
+| The token count has its own 5-s run-clock cap, and both calls take a slot deadline | A hung `/tokenize` must not use the slot's 40 s. With the deadline, count plus call stay within the 40-s slot cap (Study A §3.3) |
+| The runtime version comes from the vLLM executable that is started | The launcher runs from this uv project, and the pinned vLLM lives in its own environment. Reading the launcher's own interpreter could miss an unpinned runtime |
+| Every file in the model directory must be in the manifest | A stray `chat_template.jinja` or tokenizer file would replace the pinned template or tokenizer at load time, and the hash check of `tokenizer_config.json` would still pass |
 | The real-time 40.5-s test runs in CI on all three OSes | Acceptance evidence on Linux, macOS and Windows. It is selectable with `-k slow`, because `tests/generation/conftest.py` (shared) registers no `slow` marker |

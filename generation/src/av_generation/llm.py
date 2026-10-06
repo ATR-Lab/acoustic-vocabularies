@@ -8,26 +8,36 @@ slots, B prompts), #22 (dry run), #26 (bank builder). Tests without a server use
 
 Contract (#16 -> #17):
 
-- `propose(messages, schema, seed_key, *, slot_id=None) -> RawOutcome` makes at most one
-  model call with the frozen decoding values (`constants.FROZEN_DECODING`),
-  `response_format` `{"type": "json_schema", ...}` carrying `schema`, and
-  `seed = seeds.seed_from_key(seed_key)` (sent as `seeds.wire_seed(seed)`). It never
-  retries and never raises for a model or network failure: the outcome is `timeout`
-  (request cancelled at the 40-s cap, returned within 40.5 s), `overflow_output`
-  (stopped at 512 tokens), `server_error` or `ok` with the raw text. It appends one
-  `records.LlmRequest` per call when given a writer, with `slot_id`,
+- `propose(messages, schema, seed_key, *, slot_id=None, deadline_ms=None) -> RawOutcome`
+  makes at most one model call with the frozen decoding values
+  (`constants.FROZEN_DECODING`), `response_format` `{"type": "json_schema", ...}`
+  carrying `schema`, and `seed = seeds.seed_from_key(seed_key)` (sent as
+  `seeds.wire_seed(seed)`). It never retries and never raises for a model or network
+  failure: the outcome is `timeout` (request cancelled at the 40-s cap or at
+  `deadline_ms`, returned within 0.5 s of it), `overflow_output` (stopped at 512
+  tokens), `server_error` or `ok` with the raw text. It appends one `records.LlmRequest`
+  per call when given a writer, with `slot_id`,
   `prompt_sha256 = jsonio.messages_sha256(messages)` and
   `schema_sha256 = jsonio.schema_sha256(schema)` (the same definitions #17 uses for the
   slot record, so slot and request join on `slot_id` and on the hashes).
-- `count_prompt_tokens(messages)` returns the prompt tokens the pinned server will see:
-  `POST /tokenize` on the same server with `{"model", "messages",
-  "add_generation_prompt": true}` (vLLM's tokenizer and chat template, including any
-  default system message the template inserts). No tokenizer files or template engine
-  are needed in the client; the LLM manifest (#16) pins the template's SHA-256 and the
-  mock server implements `/tokenize`. If counting fails it raises `TokenCountError`; A3
-  and B then consume the slot as `invalid_json` with `llm_status="server_error"` and no
-  generation call. #17 calls it after `SlotLedger.reserve` and compares with
+- `count_prompt_tokens(messages, *, deadline_ms=None)` returns the prompt tokens the
+  pinned server will see: `POST /tokenize` on the same server with `{"model",
+  "messages", "add_generation_prompt": true}` (vLLM's tokenizer and chat template,
+  including any default system message the template inserts). No tokenizer files or
+  template engine are needed in the client; the LLM manifest (#16) pins the template's
+  SHA-256 and the mock server implements `/tokenize`. The count has its own run-clock cap
+  (`TOKEN_COUNT_TIMEOUT_MS`, 5 s, and never past `deadline_ms`). If counting fails it
+  raises `TokenCountError` (`TokenCountTimeout` when the cap or the deadline is reached);
+  A3 and B then consume the slot as `invalid_json` with `llm_status="server_error"` and
+  no generation call. #17 calls it after `SlotLedger.reserve` and compares with
   `constants.MAX_INPUT_TOKENS` (`overflow_input` above it, no call).
+- Slot budget: the 40-s cap is per slot (Study A protocol §3.3), and the token count and
+  the call share it. A caller passes the same run-clock deadline to both, for example
+  `deadline_ms = ticket.t_open_ms + constants.SLOT_CAP_MS` from `SlotLedger.reserve`, so
+  count plus call never pass the slot cap. `deadline_ms` is a `now_ms()` value of the
+  client's own clock (the run clock). Without it, each call has its own cap. When the
+  deadline has already passed, `propose` makes no call and returns `timeout` (logged,
+  `latency_ms` 0), and `count_prompt_tokens` raises `TokenCountTimeout`.
 
 Status mapping of one call (`parse_chat_response`):
 
@@ -38,10 +48,21 @@ Status mapping of one call (`parse_chat_response`):
   refused or reset connection: `server_error`;
 - no complete response when the run clock reaches the cap: `timeout` (request cancelled).
 
-The cap is measured on the run clock (`clock.Clock`), so accelerated runs (`ScaledClock`)
-cancel at 40 s of run time. Cancelling closes the HTTP connection; vLLM aborts a request
-whose client disconnected. HTTP clients ignore proxy environment variables
-(`trust_env=False`) and never retry.
+A finish reason that the log schema cannot hold (`^[!-~]{1,32}$`, for example one with a
+space or longer than 32 characters) is returned and logged as `other` (`FINISH_OTHER`),
+with status `server_error`; the raw value goes only to the `logging` line.
+
+The caps are measured on the run clock (`clock.Clock`), so accelerated runs
+(`ScaledClock`) cancel at 40 s of run time. Cancelling closes the HTTP connection; vLLM
+aborts a request whose client disconnected. HTTP clients ignore proxy environment
+variables (`trust_env=False`) and never retry, not even a failed connect.
+
+Callers: the methods are synchronous and block the calling thread for up to the cap.
+Proposer threads call them directly (they are thread-safe). Async code (for example a
+FastAPI handler or a websocket station) must not call them on its event loop: use
+`await asyncio.to_thread(client.propose, ...)`. Called on a running loop, they still
+work (`run_coroutine` runs the call on a helper thread), but that loop is blocked until
+the call returns.
 """
 
 from __future__ import annotations
@@ -50,6 +71,7 @@ import asyncio
 import copy
 import json
 import logging
+import re
 import threading
 from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -95,9 +117,15 @@ CANCEL_GRACE_S: Final = 0.25
 """Real seconds allowed for the cancelled request to close before `propose` returns."""
 HTTP_SAFETY_MARGIN_S: Final = 5.0
 """httpx timeout beyond the cap (a safety net; the run-clock cap decides)."""
+TOKEN_COUNT_TIMEOUT_MS: Final = 5_000
+"""Run-clock cap of one `count_prompt_tokens` call, well under the 40-s slot cap."""
 
 FINISH_OK: Final = "stop"
 FINISH_LENGTH: Final = "length"
+FINISH_OTHER: Final = "other"
+"""Logged and returned in place of a finish reason the log schema cannot hold."""
+_FINISH_RE: Final = re.compile(r"[!-~]{1,32}")
+"""`finish_reason` pattern of `llm-request.schema.json`."""
 
 _log = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -129,6 +157,11 @@ class TokenCountError(RuntimeError):
     """`count_prompt_tokens` could not get a count from the server."""
 
 
+class TokenCountTimeout(TokenCountError):
+    """The token count reached its cap or the slot deadline (request cancelled). A
+    `TokenCountError`, so callers that treat every count failure alike keep working."""
+
+
 @runtime_checkable
 class LlmClient(Protocol):
     """What #17 and #26 call. Implementations: `OpenAICompatibleClient` (#16), fakes."""
@@ -140,11 +173,14 @@ class LlmClient(Protocol):
         seed_key: str,
         *,
         slot_id: str | None = None,
+        deadline_ms: int | None = None,
     ) -> RawOutcome:
         """One schema-constrained proposal; see the module docstring."""
         ...
 
-    def count_prompt_tokens(self, messages: Sequence[ChatMessage]) -> int:
+    def count_prompt_tokens(
+        self, messages: Sequence[ChatMessage], *, deadline_ms: int | None = None
+    ) -> int:
         """Prompt tokens of `messages` under the server's tokenizer and chat template
         (raises `TokenCountError`)."""
         ...
@@ -241,6 +277,14 @@ def _count(value: object) -> int | None:
     return value
 
 
+def loggable_finish_reason(value: object) -> str | None:
+    """The finish reason as returned and logged: `None` when absent or empty, the value
+    when the log schema accepts it, else `FINISH_OTHER` (never `stop` or `length`)."""
+    if not isinstance(value, str) or not value:
+        return None
+    return value if _FINISH_RE.fullmatch(value) else FINISH_OTHER
+
+
 def parse_chat_response(status_code: int, body: bytes) -> ChatResult:
     """Map one HTTP response of `/v1/chat/completions` to a status (module docstring)."""
     if status_code != 200:
@@ -258,7 +302,7 @@ def parse_chat_response(status_code: int, body: bytes) -> ChatResult:
     message = choice.get("message")
     text = message.get("content") if isinstance(message, dict) else None
     finish = choice.get("finish_reason")
-    finish_reason = finish if isinstance(finish, str) and finish else None
+    finish_reason = loggable_finish_reason(finish)
     usage = payload.get("usage")
     usage = usage if isinstance(usage, dict) else {}
     if not isinstance(text, str):
@@ -268,7 +312,7 @@ def parse_chat_response(status_code: int, body: bytes) -> ChatResult:
     elif finish_reason == FINISH_LENGTH:
         status, error = LlmStatus.OVERFLOW_OUTPUT, None
     else:
-        status, error = LlmStatus.SERVER_ERROR, f"finish_reason {finish_reason!r}"
+        status, error = LlmStatus.SERVER_ERROR, f"finish_reason {finish!r}"[:120]
     return ChatResult(
         status,
         text=text if isinstance(text, str) else None,
@@ -284,8 +328,13 @@ def parse_chat_response(status_code: int, body: bytes) -> ChatResult:
 
 
 def run_coroutine(factory: Callable[[], Coroutine[Any, Any, _T]]) -> _T:
-    """Run `factory()` to completion on a fresh event loop. Inside a running loop (e.g.
-    an async web handler) it runs on a helper thread, so callers never block a loop."""
+    """Run `factory()` to completion on a fresh event loop and return its result.
+
+    Called from a thread that already runs an event loop, it runs the coroutine on a
+    helper thread (`asyncio.run` cannot nest) and waits for it with `thread.join()`, so
+    that loop is blocked until the coroutine finishes (up to the 40-s cap for a model
+    call). Async callers must therefore not call the client's synchronous methods on
+    their loop: use `await asyncio.to_thread(client.propose, ...)`."""
     try:
         asyncio.get_running_loop()
     except RuntimeError:
@@ -311,6 +360,22 @@ def run_coroutine(factory: Callable[[], Coroutine[Any, Any, _T]]) -> _T:
 # Client
 
 
+@dataclass(frozen=True, slots=True)
+class _Posted:
+    """One POST raced against a run-clock cap."""
+
+    response: httpx.Response | None
+    error: Exception | None
+    timed_out: bool
+    latency_ms: int
+
+
+def _positive_ms(name: str, value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer, got {value!r}")
+    return value
+
+
 class OpenAICompatibleClient:
     """HTTP client for the pinned vLLM server (or the mock server).
 
@@ -318,7 +383,9 @@ class OpenAICompatibleClient:
     `request_log` (a `RecordWriter` on `logs/llm-requests.jsonl`) make every call
     traceable; `runtime` is logged as given (`vllm 0.30.0` from the manifest, or
     `mock ...`). The decoding values are frozen: other values are refused here because
-    the request log could not record them.
+    the request log could not record them. `timeout_ms` caps one `propose` call and
+    `count_timeout_ms` one `count_prompt_tokens` call, both on `clock`; a `deadline_ms`
+    passed to either method can only shorten them (module docstring, "Slot budget").
     """
 
     def __init__(
@@ -333,23 +400,24 @@ class OpenAICompatibleClient:
         timeout_ms: int = SLOT_CAP_MS,
         runtime: str = "vllm",
         model_revision: str | None = None,
+        count_timeout_ms: int = TOKEN_COUNT_TIMEOUT_MS,
     ) -> None:
         if not base_url.startswith(("http://", "https://")):
             raise ValueError(f"base_url must be an http(s) URL, got {base_url!r}")
         if decoding != FROZEN_DECODING:
             raise ValueError(f"decoding values are frozen ({FROZEN_DECODING}), got {decoding}")
-        if isinstance(timeout_ms, bool) or not isinstance(timeout_ms, int) or timeout_ms <= 0:
-            raise ValueError(f"timeout_ms must be a positive integer, got {timeout_ms!r}")
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.run_id = run_id
         self.runtime = runtime
         self.model_revision = model_revision
         self.decoding = decoding
-        self.timeout_ms = timeout_ms
+        self.timeout_ms = _positive_ms("timeout_ms", timeout_ms)
+        self.count_timeout_ms = _positive_ms("count_timeout_ms", count_timeout_ms)
         self._clock = clock
         self._log = request_log
         self._http_timeout = httpx.Timeout(timeout_ms / 1000 + HTTP_SAFETY_MARGIN_S)
+        self._count_http_timeout = httpx.Timeout(count_timeout_ms / 1000 + HTTP_SAFETY_MARGIN_S)
 
     @classmethod
     def from_manifest(
@@ -374,6 +442,57 @@ class OpenAICompatibleClient:
             model_revision=manifest.model.revision,
         )
 
+    # -- caps ---------------------------------------------------------------
+
+    def _until_ms(self, cap_ms: int, deadline_ms: int | None) -> tuple[int, int]:
+        """`(now, end)` on the run clock: `cap_ms` from now, never past `deadline_ms`."""
+        now = self._clock.now_ms()
+        end = now + cap_ms
+        if deadline_ms is not None:
+            end = min(end, deadline_ms)
+        return now, end
+
+    async def _cap(self, until_ms: int) -> None:
+        """Return once the run clock reaches `until_ms` (never early, even where the
+        event loop wakes timers ahead of a coarse clock)."""
+        while (remaining := until_ms - self._clock.now_ms()) > 0:
+            await self._clock.asleep(remaining / 1000)
+
+    def _client(self, timeout: httpx.Timeout) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=timeout,
+            trust_env=False,
+            transport=httpx.AsyncHTTPTransport(retries=0),
+        )
+
+    async def _post(
+        self, path: str, content: bytes, *, until_ms: int, timeout: httpx.Timeout
+    ) -> _Posted:
+        """One POST raced against the run clock: at `until_ms` the request is cancelled
+        (its connection closed) and the result is `timed_out`."""
+        headers = {"Content-Type": "application/json"}
+        start = self._clock.now_ms()
+        async with self._client(timeout) as client:
+            request = asyncio.ensure_future(client.post(path, content=content, headers=headers))
+            cap = asyncio.ensure_future(self._cap(until_ms))
+            try:
+                await asyncio.wait({request, cap}, return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                latency_ms = max(0, self._clock.now_ms() - start)
+                cap.cancel()
+            if not request.done():
+                request.cancel()
+                await asyncio.wait({request}, timeout=CANCEL_GRACE_S)
+                return _Posted(None, None, True, latency_ms)
+            try:
+                response = request.result()
+            except httpx.TimeoutException as err:
+                return _Posted(None, err, True, latency_ms)
+            except (httpx.HTTPError, OSError) as err:
+                return _Posted(None, err, False, latency_ms)
+            return _Posted(response, None, False, latency_ms)
+
     # -- generation ---------------------------------------------------------
 
     def propose(
@@ -383,10 +502,15 @@ class OpenAICompatibleClient:
         seed_key: str,
         *,
         slot_id: str | None = None,
+        deadline_ms: int | None = None,
     ) -> RawOutcome:
         key = parse_seed_key(seed_key)
         if key.namespace not in PROPOSAL_NAMESPACES:
             raise ValueError(f"model calls use A3 or B seed keys, got {seed_key!r}")
+        if deadline_ms is not None and (
+            isinstance(deadline_ms, bool) or not isinstance(deadline_ms, int)
+        ):
+            raise ValueError(f"deadline_ms must be an integer, got {deadline_ms!r}")
         seed = seed_from_key(seed_key)
         body = chat_request_body(self.model, messages, schema, seed, self.decoding)
         draft = LlmRequest(
@@ -409,7 +533,7 @@ class OpenAICompatibleClient:
             model_revision=self.model_revision,
             slot_id=slot_id,
         ).check()  # a bad run ID, slot ID, model or runtime label fails before any call
-        result, latency_ms = run_coroutine(lambda: self._call(body))
+        result, latency_ms = run_coroutine(lambda: self._call(body, deadline_ms))
         outcome = RawOutcome(
             status=result.status,
             text=result.text,
@@ -448,65 +572,55 @@ class OpenAICompatibleClient:
         )
         return outcome
 
-    def _client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(
-            base_url=self.base_url,
-            timeout=self._http_timeout,
-            trust_env=False,
-            transport=httpx.AsyncHTTPTransport(retries=0),
-        )
-
-    async def _cap(self, start_ms: int) -> None:
-        """Return once `timeout_ms` of run-clock time has passed since `start_ms` (never
-        early, even where the event loop wakes timers ahead of a coarse clock)."""
-        while (remaining := self.timeout_ms - (self._clock.now_ms() - start_ms)) > 0:
-            await self._clock.asleep(remaining / 1000)
-
-    async def _call(self, body: Mapping[str, Any]) -> tuple[ChatResult, int]:
-        """One request raced against the run-clock cap; returns the result and latency."""
+    async def _call(
+        self, body: Mapping[str, Any], deadline_ms: int | None
+    ) -> tuple[ChatResult, int]:
+        """One request raced against the cap (or the deadline); result and latency."""
         content = json.dumps(body, ensure_ascii=False, allow_nan=False).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        start = self._clock.now_ms()
-        async with self._client() as client:
-            request = asyncio.ensure_future(
-                client.post(CHAT_PATH, content=content, headers=headers)
-            )
-            cap = asyncio.ensure_future(self._cap(start))
-            try:
-                await asyncio.wait({request, cap}, return_when=asyncio.FIRST_COMPLETED)
-            finally:
-                latency_ms = max(0, self._clock.now_ms() - start)
-                cap.cancel()
-            if not request.done():
-                request.cancel()
-                await asyncio.wait({request}, timeout=CANCEL_GRACE_S)
-                return ChatResult(LlmStatus.TIMEOUT, error="slot cap reached"), latency_ms
-            try:
-                response = request.result()
-            except httpx.TimeoutException as err:
-                return ChatResult(LlmStatus.TIMEOUT, error=type(err).__name__), latency_ms
-            except (httpx.HTTPError, OSError) as err:
-                return ChatResult(LlmStatus.SERVER_ERROR, error=type(err).__name__), latency_ms
-            return parse_chat_response(response.status_code, response.content), latency_ms
+        now, until = self._until_ms(self.timeout_ms, deadline_ms)
+        if until <= now:
+            return ChatResult(LlmStatus.TIMEOUT, error="slot deadline passed; no call"), 0
+        posted = await self._post(CHAT_PATH, content, until_ms=until, timeout=self._http_timeout)
+        if posted.timed_out:
+            reason = "slot cap reached" if posted.error is None else type(posted.error).__name__
+            return ChatResult(LlmStatus.TIMEOUT, error=reason), posted.latency_ms
+        if posted.response is None:
+            name = type(posted.error).__name__
+            return ChatResult(LlmStatus.SERVER_ERROR, error=name), posted.latency_ms
+        response = posted.response
+        return parse_chat_response(response.status_code, response.content), posted.latency_ms
 
     # -- token counting -----------------------------------------------------
 
-    def count_prompt_tokens(self, messages: Sequence[ChatMessage]) -> int:
+    def count_prompt_tokens(
+        self, messages: Sequence[ChatMessage], *, deadline_ms: int | None = None
+    ) -> int:
+        if deadline_ms is not None and (
+            isinstance(deadline_ms, bool) or not isinstance(deadline_ms, int)
+        ):
+            raise ValueError(f"deadline_ms must be an integer, got {deadline_ms!r}")
         body = {
             "model": self.model,
             "messages": plain_messages(messages),
             "add_generation_prompt": True,
         }
-        try:
-            with httpx.Client(
-                base_url=self.base_url,
-                timeout=self._http_timeout,
-                trust_env=False,
-                transport=httpx.HTTPTransport(retries=0),
-            ) as client:
-                response = client.post(TOKENIZE_PATH, json=body)
-        except (httpx.HTTPError, OSError) as err:
+        content = json.dumps(body, ensure_ascii=False, allow_nan=False).encode("utf-8")
+        now, until = self._until_ms(self.count_timeout_ms, deadline_ms)
+        if until <= now:
+            raise TokenCountTimeout("token count not started: the slot deadline has passed")
+        posted = run_coroutine(
+            lambda: self._post(
+                TOKENIZE_PATH, content, until_ms=until, timeout=self._count_http_timeout
+            )
+        )
+        if posted.timed_out:
+            raise TokenCountTimeout(
+                f"token count cancelled after {posted.latency_ms} ms (run clock)"
+            ) from posted.error
+        if posted.response is None:
+            err = posted.error
             raise TokenCountError(f"token count failed: {type(err).__name__}: {err}") from err
+        response = posted.response
         if response.status_code != 200:
             raise TokenCountError(f"token count failed: HTTP {response.status_code}")
         try:

@@ -12,15 +12,15 @@ Pinning happens at development time from Hugging Face API metadata only
 (`manifest_from_hf_api`; no weights are downloaded): LFS files (the safetensors shards)
 carry their LFS SHA-256, every other file its git blob SHA-1 (`blobId`). On the LLM host
 `verify_model_dir` checks a downloaded snapshot against the manifest before the server
-starts (`llm_server`), and `probe_hardware` records GPU, VRAM, driver, CUDA, torch and
-vLLM versions.
+starts (`llm_server`), and `probe_hardware` records GPU, VRAM, driver and CUDA, and the
+vLLM and torch versions of the vLLM executable the server runs.
 
 CLI (development and LLM host):
 
     python -m av_generation.llm_manifest pin --api-json INFO.json --vllm-version 0.30.0 \\
         --retrieved 2026-10-05 --out generation/llm/manifest.json
     python -m av_generation.llm_manifest verify --model-dir DIR
-    python -m av_generation.llm_manifest record-hardware   # on the LLM host
+    python -m av_generation.llm_manifest record-hardware --vllm VLLM   # on the LLM host
     python -m av_generation.llm_manifest show
 """
 
@@ -29,12 +29,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from functools import cache
-from importlib import metadata
 from pathlib import Path
 from typing import Any, Final, Literal
 
@@ -70,9 +70,33 @@ VERIFIED_KINDS: Final[frozenset[str]] = frozenset(
     {"weights", "weights_index", "tokenizer", "config", "license"}
 )
 """File kinds checked on the LLM host; `other` files (README, .gitattributes) are listed
-for completeness only."""
+for completeness only, so `other` is allowed only for files nothing loads
+(`inert_file`)."""
+TOKENIZER_FILES: Final[frozenset[str]] = frozenset(
+    {
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.json",
+        "merges.txt",
+        "tokenizer.model",
+        "special_tokens_map.json",
+        "added_tokens.json",
+        "chat_template.jinja",
+        "chat_template.json",
+    }
+)
+"""Files that set the tokenizer or the chat template (verified when listed)."""
+CONFIG_FILES: Final[frozenset[str]] = frozenset(
+    {"config.json", "generation_config.json", "preprocessor_config.json", "processor_config.json"}
+)
 WEIGHT_SUFFIXES: Final[tuple[str, ...]] = (".safetensors", ".bin", ".pt", ".pth", ".gguf")
-"""Weight-like files: any such file in a model directory must be listed in the manifest."""
+"""Weight-like files: a stray one is refused as `E_EXTRA_WEIGHTS`."""
+DOWNLOAD_CACHE_DIR: Final = ".cache"
+"""`hf download --local-dir` bookkeeping (revision metadata, locks); never read by vLLM."""
+MIN_VRAM_MIB: Final = 22_889
+"""Recorded VRAM must be at least 24 GB (24 x 10^9 bytes) in MiB, rounded up; the
+manifest schema holds the same number. nvidia-smi reports nominal 24-GB cards below
+24 x 1024 MiB (an L4 about 23,034 MiB, an A10 about 23,028 MiB)."""
 
 # Refusal codes (`ModelMismatch.code`)
 E_MANIFEST: Final = "E_MANIFEST"
@@ -82,6 +106,7 @@ E_WEIGHTS_SHA256: Final = "E_WEIGHTS_SHA256"
 E_FILE_SHA256: Final = "E_FILE_SHA256"
 E_FILE_BLOB: Final = "E_FILE_BLOB"
 E_EXTRA_WEIGHTS: Final = "E_EXTRA_WEIGHTS"
+E_EXTRA_FILE: Final = "E_EXTRA_FILE"
 E_REVISION: Final = "E_REVISION"
 E_REVISION_UNKNOWN: Final = "E_REVISION_UNKNOWN"
 E_CHAT_TEMPLATE: Final = "E_CHAT_TEMPLATE"
@@ -359,6 +384,8 @@ def manifest_errors(manifest: LlmManifest) -> tuple[str, ...]:
     if len(set(paths)) != len(paths) or paths != sorted(paths):
         errors.append("files must be unique and sorted by path")
     for entry in model.files:
+        if entry.kind == "other" and not inert_file(entry.path):
+            errors.append(f"{entry.path}: only inert files (.gitattributes, *.md) may be 'other'")
         if entry.kind == "weights" and entry.sha256 is None:
             errors.append(f"{entry.path}: weights need an LFS SHA-256")
         if entry.sha256 is not None:
@@ -421,19 +448,28 @@ def manifest_errors(manifest: LlmManifest) -> tuple[str, ...]:
 # Pinning from Hugging Face API metadata (development time; no download)
 
 
+def inert_file(path: str) -> bool:
+    """A file that neither vLLM nor transformers reads: `.gitattributes` or a Markdown
+    document. Only these may be pinned as `other` (listed, not verified)."""
+    name = path.rsplit("/", 1)[-1]
+    return name == ".gitattributes" or name.endswith(".md")
+
+
 def file_kind(path: str) -> FileKind:
     name = path.rsplit("/", 1)[-1]
     if name.endswith(".safetensors"):
         return "weights"
     if name == "model.safetensors.index.json":
         return "weights_index"
-    if name in ("tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt"):
+    if name in TOKENIZER_FILES or path.startswith("additional_chat_templates/"):
         return "tokenizer"
-    if name in ("config.json", "generation_config.json"):
+    if name in CONFIG_FILES:
         return "config"
     if name in ("LICENSE", "LICENSE.txt", "LICENSE.md"):
         return "license"
-    return "other"
+    if inert_file(path):
+        return "other"
+    return "config"  # unknown files are verified like config files
 
 
 def manifest_from_hf_api(
@@ -575,8 +611,15 @@ def verify_model_dir(
 ) -> None:
     """Refuse a model directory that differs from the manifest (raises `ModelMismatch`).
 
-    Cheap checks first (presence, sizes, revision evidence, git blob of the small files,
-    chat template, stray weight files), then the SHA-256 of every LFS file.
+    Cheap checks first (presence, sizes, stray files, revision evidence, git blob of the
+    small files, chat template), then the SHA-256 of every LFS file.
+
+    Every regular file outside `.cache/` must be listed in the manifest. A stray file
+    could replace a pinned one at load time: transformers prefers a separate
+    `chat_template.jinja` (or `chat_template.json`, `additional_chat_templates/`) over
+    the template in `tokenizer_config.json`, and `special_tokens_map.json` or
+    `added_tokens.json` change the tokenizer. A stray weight file is refused as
+    `E_EXTRA_WEIGHTS`, any other stray file as `E_EXTRA_FILE`.
     """
     root = Path(model_dir)
     if not root.is_dir():
@@ -594,10 +637,14 @@ def verify_model_dir(
             )
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root).as_posix()
-        if rel.startswith(".cache/") or not path.is_file():
+        if rel.split("/", 1)[0] == DOWNLOAD_CACHE_DIR or rel in listed or path.is_dir():
             continue
-        if path.name.endswith(WEIGHT_SUFFIXES) and rel not in listed:
+        if path.name.endswith(WEIGHT_SUFFIXES):
             problems.append((E_EXTRA_WEIGHTS, f"{rel}: weight file not in the manifest"))
+        else:
+            problems.append(
+                (E_EXTRA_FILE, f"{rel}: file not in the manifest (remove it or download again)")
+            )
     revisions = local_revisions(root)
     wrong = sorted({v for v in revisions.values() if v != manifest.model.revision})
     if wrong:
@@ -713,29 +760,74 @@ def freeze_values(manifest: LlmManifest, *, manifest_file_sha256: str) -> dict[s
 # Hardware record (LLM host)
 
 Runner = Callable[[Sequence[str]], str]
+"""Runs a command and returns its stdout; raises `OSError` or
+`subprocess.SubprocessError` when the command cannot run or fails."""
+
+RUNTIME_PROBE_TIMEOUT_S: Final = 300.0
+"""Seconds allowed for `vllm --version` or `vllm collect-env` (importing vLLM is slow)."""
+_VERSION_RE: Final = re.compile(r"v?(\d+(?:\.\d+)+[0-9A-Za-z.+-]*)")
+_TORCH_RE: Final = re.compile(r"^\s*PyTorch version\s*:\s*(\S+)", re.MULTILINE)
 
 
-def _run(command: Sequence[str]) -> str:  # pragma: no cover - needs nvidia-smi
-    return subprocess.run(
-        list(command), check=True, capture_output=True, text=True, timeout=30
+def run_command(
+    command: Sequence[str],
+    *,
+    env: Mapping[str, str] | None = None,
+    timeout_s: float = RUNTIME_PROBE_TIMEOUT_S,
+) -> str:
+    """Run `command` and return its stdout (raises on a failure; see `Runner`)."""
+    return subprocess.run(  # noqa: S603 - fixed commands, no shell
+        list(command),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=timeout_s,
+        env=None if env is None else dict(env),
     ).stdout
 
 
-def _version(dist: str) -> str | None:
+def parse_runtime_version(output: str) -> str | None:
+    """The version printed by `vllm --version`: the last output line that is a bare
+    version (log lines printed while vLLM imports are skipped); `None` if there is none."""
+    for line in reversed(output.splitlines()):
+        match = _VERSION_RE.fullmatch(line.strip())
+        if match:
+            return match.group(1)
+    return None
+
+
+def runtime_version_of(executable: Sequence[str], *, run: Runner = run_command) -> str | None:
+    """The vLLM version of the executable that `vllm serve` would start
+    (`<executable> --version`); `None` when it cannot run, fails or prints no version.
+
+    The launcher and `record-hardware` ask the executable, never this interpreter: the
+    pinned vLLM lives in its own environment on the LLM host (`generation/docs/llm.md`)."""
     try:
-        return metadata.version(dist)
-    except metadata.PackageNotFoundError:
+        return parse_runtime_version(run([*executable, "--version"]))
+    except (OSError, subprocess.SubprocessError):
         return None
+
+
+def torch_version_of(executable: Sequence[str], *, run: Runner = run_command) -> str | None:
+    """The PyTorch version in the environment of `executable`, from
+    `<executable> collect-env` ("PyTorch version: ..."); `None` if not found."""
+    try:
+        match = _TORCH_RE.search(run([*executable, "collect-env"]))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return match.group(1) if match else None
 
 
 def probe_hardware(
     *,
-    run: Runner = _run,
-    version_of: Callable[[str], str | None] = _version,
+    run: Runner = run_command,
+    vllm: Sequence[str] = ("vllm",),
     now_utc: str | None = None,
 ) -> HardwarePin:
-    """GPU name, VRAM, driver and CUDA versions (`nvidia-smi`), torch and vLLM versions.
-    Run on the LLM host only; the values go into the manifest's `hardware` section."""
+    """GPU name, VRAM, driver and CUDA versions (`nvidia-smi`), and the vLLM and PyTorch
+    versions of the vLLM executable `vllm` that the launcher starts (`--version`,
+    `collect-env`). Run on the LLM host only; the values go into the manifest's
+    `hardware` section."""
     gpu_line = run(
         [
             "nvidia-smi",
@@ -756,8 +848,8 @@ def probe_hardware(
         vram_mib=int(float(vram)) if vram else None,
         driver_version=driver or None,
         cuda_version=cuda,
-        torch_version=version_of("torch"),
-        vllm_installed=version_of("vllm"),
+        torch_version=torch_version_of(vllm, run=run),
+        vllm_installed=runtime_version_of(vllm, run=run),
         recorded_utc=now_utc,
     )
 
@@ -790,13 +882,19 @@ def _cmd_verify(args: argparse.Namespace) -> int:
 def _cmd_record_hardware(args: argparse.Namespace) -> int:  # pragma: no cover - LLM host
     from datetime import UTC, datetime
 
+    from av_generation.llm_server import server_env  # the launcher's offline environment
+
     path = Path(args.manifest) if args.manifest else manifest_path()
     manifest = load_llm_manifest(path)
-    hardware = probe_hardware(now_utc=utc_text(datetime.now(UTC)))
+    hardware = probe_hardware(
+        run=lambda command: run_command(command, env=server_env()),
+        vllm=(args.vllm,),
+        now_utc=utc_text(datetime.now(UTC)),
+    )
     if hardware.vllm_installed != manifest.runtime.version:
         print(
-            f"REFUSED installed vLLM {hardware.vllm_installed} != pinned "
-            f"{manifest.runtime.version}",
+            f"REFUSED `{args.vllm} --version` reports vLLM {hardware.vllm_installed}; "
+            f"pinned {manifest.runtime.version}",
             file=sys.stderr,
         )
         return 2
@@ -831,6 +929,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     verify.set_defaults(func=_cmd_verify)
     record = sub.add_parser("record-hardware", help="record GPU/driver/CUDA (LLM host)")
     record.add_argument("--manifest", default=None)
+    record.add_argument(
+        "--vllm", default="vllm", help="the vLLM executable the server runs (default: on PATH)"
+    )
     record.set_defaults(func=_cmd_record_hardware)
     show = sub.add_parser("show", help="print the freeze and apparatus values")
     show.add_argument("--manifest", default=None)

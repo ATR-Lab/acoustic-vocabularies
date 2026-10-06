@@ -19,6 +19,7 @@ from av_generation.jsonio import document_text
 from av_generation.llm import OpenAICompatibleClient, decoding_schema
 from av_generation.llm_manifest import (
     E_CHAT_TEMPLATE,
+    E_EXTRA_FILE,
     E_EXTRA_WEIGHTS,
     E_FILE_BLOB,
     E_MANIFEST,
@@ -47,6 +48,7 @@ from av_generation.llm_server import (
     ServerRefused,
     base_url_for,
     config_problems,
+    executable_vllm_version,
     load_server_config,
     main,
     prepare_launch,
@@ -189,6 +191,12 @@ def _flip_byte(path: Path) -> None:
     path.write_bytes(bytes(data))
 
 
+def _stray(snap, rel: str, data: bytes = b"DEMO stray file\n") -> None:
+    path = snap.model_dir / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+
+
 def _set_revision(snap, revision):
     meta = snap.model_dir / ".cache" / "huggingface" / "download" / "config.json.metadata"
     meta.write_text(f"{revision}\netag\n0\n", encoding="utf-8")
@@ -204,8 +212,28 @@ def _set_revision(snap, revision):
         (lambda s: shutil.rmtree(s.model_dir / ".cache"), E_REVISION_UNKNOWN),
         (lambda s: _flip_byte(s.model_dir / "config.json"), E_FILE_BLOB),
         (lambda s: (s.model_dir / "consolidated.safetensors").write_bytes(b"x"), E_EXTRA_WEIGHTS),
+        (lambda s: _stray(s, "chat_template.jinja", b"{{ 'DEMO unpinned' }}"), E_EXTRA_FILE),
+        (lambda s: _stray(s, "chat_template.json", b'{"chat_template": "x"}'), E_EXTRA_FILE),
+        (lambda s: _stray(s, "additional_chat_templates/tool_use.jinja"), E_EXTRA_FILE),
+        (lambda s: _stray(s, "special_tokens_map.json", b'{"eos_token": "x"}'), E_EXTRA_FILE),
+        (lambda s: _stray(s, "added_tokens.json", b'{"<x>": 1}'), E_EXTRA_FILE),
+        (lambda s: _stray(s, "preprocessor_config.json", b"{}"), E_EXTRA_FILE),
     ],
-    ids=["weights", "size", "missing", "revision", "no-revision", "blob", "extra-weights"],
+    ids=[
+        "weights",
+        "size",
+        "missing",
+        "revision",
+        "no-revision",
+        "blob",
+        "extra-weights",
+        "stray-chat-template-jinja",
+        "stray-chat-template-json",
+        "stray-additional-templates",
+        "stray-special-tokens",
+        "stray-added-tokens",
+        "stray-processor-config",
+    ],
 )
 def test_model_mismatch_refuses_to_start(snap, tmp_path, mutate, code):
     timing = RecordWriter(tmp_path / "timing.jsonl", types=(TimingEvent,), fsync=False)
@@ -217,6 +245,20 @@ def test_model_mismatch_refuses_to_start(snap, tmp_path, mutate, code):
     events = read_records(tmp_path / "timing.jsonl", TimingEvent)
     assert [e.event for e in events] == ["startup_start", "startup_end"]
     assert events[1].detail == f"refused {code}" and events[1].component == "llm"
+
+
+def test_a_stray_chat_template_is_named_and_cache_files_are_ignored(snap):
+    """A separate chat_template.jinja would win over the pinned template at load time."""
+    manifest = load_llm_manifest(snap.manifest)
+    _stray(snap, ".cache/huggingface/download/x.lock", b"")  # hf download bookkeeping
+    verify_model_dir(manifest, snap.model_dir)
+    _stray(snap, "chat_template.jinja", b"{{ 'DEMO unpinned template' }}")
+    with pytest.raises(ModelMismatch) as err:
+        verify_model_dir(manifest, snap.model_dir)
+    assert err.value.code == E_EXTRA_FILE
+    assert err.value.problems == (
+        "chat_template.jinja: file not in the manifest (remove it or download again)",
+    )
 
 
 def test_chat_template_must_match(snap):
@@ -266,6 +308,57 @@ def test_runtime_version_and_manifest_must_match(snap):
     with pytest.raises(ServerRefused) as err:
         snap.prepare()
     assert err.value.code == E_MANIFEST
+
+
+FAKE_VLLM = """import sys
+if sys.argv[1:] == ["--version"]:
+    print("INFO 10-06 12:00:00 [__init__.py:216] Automatically detected platform cuda.")
+    print("{version}")
+    sys.exit(0)
+sys.exit(5)
+"""
+
+
+def fake_vllm(tmp_path: Path, version: str) -> tuple[str, ...]:
+    """A stand-in vLLM executable (run by this interpreter) that reports `version`."""
+    script = tmp_path / f"fake_vllm_{version.replace('.', '_')}.py"
+    script.write_text(FAKE_VLLM.format(version=version), encoding="utf-8")
+    return (sys.executable, str(script))
+
+
+def fake_vllm_command(tmp_path: Path, version: str) -> str:
+    """The same as one executable file, as `--vllm` takes it (a .cmd file on Windows)."""
+    python, script = fake_vllm(tmp_path, version)
+    if os.name == "nt":
+        wrapper = tmp_path / f"vllm-{version}.cmd"
+        wrapper.write_text(f'@"{python}" "{script}" %*\r\n', encoding="utf-8")
+    else:
+        wrapper = tmp_path / f"vllm-{version}"
+        wrapper.write_text(f'#!/bin/sh\nexec "{python}" "{script}" "$@"\n', encoding="utf-8")
+        wrapper.chmod(0o755)
+    return str(wrapper)
+
+
+def test_the_version_comes_from_the_executable_that_is_started(snap, tmp_path):
+    """The runtime check asks the vLLM executable it will start, not this interpreter."""
+    other = fake_vllm(tmp_path, "0.29.1")
+    assert executable_vllm_version(other) == "0.29.1"
+    with pytest.raises(ServerRefused) as err:
+        snap.prepare(executable=other, runtime_version=None)
+    assert err.value.code == E_RUNTIME_VERSION
+    assert "reports vLLM 0.29.1" in str(err.value) and "pinned 0.30.0" in str(err.value)
+    pinned = fake_vllm(tmp_path, VERSION)
+    plan = snap.prepare(executable=pinned, runtime_version=None)
+    assert plan.command[: len(pinned) + 1] == (*pinned, "serve")
+    for broken in (
+        (str(tmp_path / "no-such-vllm"),),  # not installed
+        (sys.executable, "-c", "import sys; sys.exit(1)"),  # fails
+        (sys.executable, "-c", "print('vllm, but no version')"),  # no version line
+    ):
+        assert executable_vllm_version(broken) is None
+        with pytest.raises(ServerRefused) as err:
+            snap.prepare(executable=broken, runtime_version=None)
+        assert err.value.code == E_RUNTIME_MISSING and "--version" in str(err.value)
 
 
 def test_committed_manifest_refuses_a_fake_directory(snap):
@@ -348,20 +441,22 @@ def test_a_server_that_dies_during_startup_is_reported(snap, tmp_path):
     assert events[-1].detail == f"failed {E_STARTUP}"
 
 
-def test_cli_check_and_refusal(snap, tmp_path, capsys, monkeypatch):
-    import av_generation.llm_server as llm_server
-
+@pytest.mark.timeout(180)
+def test_cli_check_and_refusal(snap, tmp_path, capsys):
     args = ["--model-dir", str(snap.model_dir), "--config", str(snap.config)]
     args += ["--manifest", str(snap.manifest)]
-    monkeypatch.setattr(llm_server, "installed_vllm_version", lambda: None)
-    assert main(["check", *args]) == 2
+    assert main(["check", *args, "--vllm", str(tmp_path / "no-such-vllm")]) == 2
     assert "REFUSED E_RUNTIME_MISSING" in capsys.readouterr().err
-    monkeypatch.setattr(llm_server, "installed_vllm_version", lambda: VERSION)
+    assert main(["check", *args, "--vllm", fake_vllm_command(tmp_path, "0.31.0")]) == 2
+    err = capsys.readouterr().err
+    assert "REFUSED E_RUNTIME_VERSION" in err and "reports vLLM 0.31.0" in err
+    vllm = fake_vllm_command(tmp_path, VERSION)
+    args += ["--vllm", vllm]
     timing = tmp_path / "timing.jsonl"
     assert main(["check", *args, "--timing-log", str(timing), "--run-id", "DEMO-llm-host"]) == 0
     out = capsys.readouterr()
-    assert "command: vllm serve" in out.out and "OK verify_ms=" in out.out
-    assert "hardware not recorded" in out.err
+    assert f"command: {vllm} serve" in out.out and "OK verify_ms=" in out.out
+    assert "hardware not recorded" in out.err and f"--vllm {vllm}" in out.err
     events = read_records(timing, TimingEvent)
     assert [e.event for e in events] == ["startup_start", "startup_end"]
     assert events[1].detail == "checked; not started"

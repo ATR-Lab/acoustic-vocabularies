@@ -46,3 +46,21 @@ To use the real worst-case prompt, pass the prompts built by #17 with
 `--messages worst_case=<file> --messages realistic=<file>`. Then replace the two files
 here with the GPU outputs, and add `llm_repeatability.csv` for the same-seed note. The
 CSV files hold prompt hashes only, never prompt text, so the outputs can be published.
+The mock run stays available as a CI artifact (`generation/out/ci/llm-bench-mock/`).
+
+`tests/generation/test_llm_bench.py::test_committed_latency_csv_is_mock_or_gpu_evidence`
+accepts either run, but never a mix of the two:
+
+- **MOCK run:** every row is labelled `MOCK`, with the mock runtime.
+- **GPU run:**
+  - the environment label does not say MOCK;
+  - the runtime is the pinned `vllm 0.30.0`;
+  - the model and revision are the pinned ones;
+  - if `llm_repeatability.csv` is present, it matches the summary.
+
+Both need these values in all 300 rows of each profile:
+
+- the frozen decoding values;
+- the derived seed, with 300 distinct seeds;
+- a `DEMO-bench` seed key;
+- no refused outbound attempt.
