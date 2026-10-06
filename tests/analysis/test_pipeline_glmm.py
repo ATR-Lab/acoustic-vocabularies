@@ -10,6 +10,7 @@ import json
 import stat
 import sys
 import textwrap
+import warnings
 from pathlib import Path
 
 import pytest
@@ -340,7 +341,16 @@ def test_lme4_fits_a_simulated_study_a_model(tmp_path):
         terms = {f.term: f for f in fit.fixed}
         assert {"(Intercept)", "methodA1", "methodA3"} <= set(terms)
         assert fit.n_obs == csv.count(b"\n") - 1
+        a3 = terms["methodA3"]
+        detail = f"methodA3 {a3.estimate:.3f} (SE {a3.se:.3f}, p {a3.p:.2g}), n {fit.n_obs}"
+    else:
+        detail = "; ".join(f"{a.rung} {a.status}: {a.reason}" for a in fit.log.attempts)
     validator("glmm-log.schema.json").validate(fit.log.document())
+    warnings.warn(
+        f"A-trained on central-A: final rung {fit.log.final_rung}; {detail}",
+        UserWarning,
+        stacklevel=1,
+    )
 
 
 def test_glmm_r_script_is_published():

@@ -309,7 +309,14 @@ def test_full_size_end_to_end_with_lme4_within_30_minutes(tmp_path):
         stacklevel=1,
     )
     assert all(t < LIMIT_S for t in timings.values()), timings
+    ladders = []
     for model in ("A-trained", "A-designer", "B-trained"):
         doc = json.loads((root.path / "estimates" / "glmm" / f"{model}.json").read_bytes())
         validator("glmm-log.schema.json").validate(doc)
         assert doc["engine"] is not None and doc["attempts"][0]["status"] != "skipped"
+        steps = ", ".join(
+            f"{a['rung']}={a['status']}(singular={a['singular']})" for a in doc["attempts"]
+        )
+        ladders.append(f"{model}: {steps}; final {doc['final_rung']}")
+    # Evidence in the CI log (the r job uploads no artifact).
+    warnings.warn("GLMM ladders: " + " | ".join(ladders), UserWarning, stacklevel=1)
