@@ -144,6 +144,18 @@ def test_holm_fixtures_from_the_issue():
     ].adjusted_p == pytest.approx(0.06)
 
 
+def test_holm_rejects_a_p_value_exactly_at_its_threshold():
+    """The plan's rule is p <= alpha / k: p exactly .025, then exactly .05, rejects both."""
+    at = holm({"C": 0.025, "S": 0.05})
+    assert at["C"].threshold == 0.025 and at["S"].threshold == 0.05
+    assert at["C"].reject and at["S"].reject
+    assert at["C"].adjusted_p == pytest.approx(0.05) and at["S"].adjusted_p == pytest.approx(0.05)
+    above = holm({"C": 0.025, "S": 0.0500001})
+    assert above["C"].reject and not above["S"].reject
+    first_fails = holm({"C": 0.0250001, "S": 0.03})
+    assert not first_fails["C"].reject and not first_fails["S"].reject
+
+
 def test_holm_three_hypotheses_by_hand():
     r = holm({"a": 0.01, "b": 0.04, "c": 0.03})
     assert [r[k].rank for k in "abc"] == [1, 3, 2]

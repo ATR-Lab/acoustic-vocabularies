@@ -89,15 +89,31 @@ def test_report_follows_section_9_order_and_states_denominators(full):
         for r in rows:
             data = (root.path / "estimates" / r[3]).read_bytes()
             check_watermark(data, ".csv", "SYNTHETIC")
+            # Denominators follow the data: contributing + missing = planned units.
+            units, planned, missing = (int(r[header.index(c)]) for c in UNIT_COLUMNS)
+            assert 0 <= units <= planned and units + missing == planned, r[1]
+        assert rows[0][1] == "flow-enrollment"
+
+
+UNIT_COLUMNS = ("units", "units_planned", "missing")
+
+
+def table_file(root: DataRoot, study: str, table_id: str) -> Path:
+    """The CSV of a report table, found through the study's table index."""
+    header, rows = parse_csv(
+        (root.path / "estimates" / "tables" / f"{study}-index.csv").read_bytes()
+    )
+    (rel,) = [r[header.index("file")] for r in rows if r[header.index("table")] == table_id]
+    return root.path / "estimates" / rel
 
 
 def test_primary_estimates_equal_the_simulation_fast_path(full):
     root, _ = full
-    _, rows = parse_csv((root.path / "estimates" / "tables" / "A-06-a-primary.csv").read_bytes())
+    _, rows = parse_csv(table_file(root, "A", "a-primary").read_bytes())
     fast = {r.contrast: r for r in dataset_results(scenarios()[SIZE["A"]], SEED, 0)}
     assert float(rows[0][4]) == pytest.approx(fast["A3-A2"].estimate * 100, abs=1e-9)
     assert float(rows[0][9]) == pytest.approx(fast["A3-A2"].p, abs=1e-12)
-    _, rows = parse_csv((root.path / "estimates" / "tables" / "B-06-b-primary.csv").read_bytes())
+    _, rows = parse_csv(table_file(root, "B", "b-primary").read_bytes())
     fastb = {r.contrast: r for r in dataset_results(scenarios()[SIZE["B"]], SEED, 0)}
     for row in rows:
         k = row[1][0]

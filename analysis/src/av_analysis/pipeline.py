@@ -1,6 +1,7 @@
 """``av-analysis run --study A|B --data DIR`` (#34).
 
-Reads ``derived/`` (and ``reconciled/visit-status.csv`` for flow and fidelity), refuses
+Reads ``derived/`` (and, when present, ``reconciled/visit-status.csv``,
+``discrepancies.csv`` and ``enrollment.csv`` for flow and fidelity), refuses
 derived tables whose visits did not pass reconciliation unless explained by deviations,
 joins conditions (``unmask``), scores (``scoring``), estimates (``estimators``,
 ``missingness``, ``glmm``) and writes every section 9 output (``report``) into
@@ -10,7 +11,8 @@ give SYNTHETIC-watermarked outputs; a run never writes outside its root.
 Refusals (exit 2): a held visit (accounted opportunities) whose ``reconciliation`` is
 not ``pass`` (a visit passes when every discrepancy is explained by a deviation record),
 persons or books that differ from the allocation lists, derived rows that cannot be
-scored, inputs of the other data kind. ``--glmm``: ``require`` fits every supporting
+scored, inputs of the other data kind, an ``enrollment`` row derived from another reveal
+log than the one read. ``--glmm``: ``require`` fits every supporting
 model through R and fails without it; ``skip`` logs every model as not fitted; ``auto``
 (default) is ``require`` on a REAL root and, on a SYNTHETIC root, fits when ``Rscript``
 is available and otherwise logs the models as not fitted (the GLMM log says why).
@@ -50,7 +52,7 @@ from .estimators import (
     one_sample_t,
     stratified_bootstrap,
 )
-from .fileio import read_bytes
+from .fileio import parse_csv, read_bytes, sha256_file
 from .glmm import GlmmFit, Runner, fit_ladder, model_data, model_specs, not_run_log
 from .missingness import all_assigned_bounds, tipping_grid, tipping_summary
 from .paths import INPUT_PATHS, DataRoot, WatermarkError
@@ -140,6 +142,7 @@ class StudyData:
     scores: list[BatteryScore]
     visit_status: list[Row] | None
     discrepancies: list[Row] | None
+    enrollment: Row | None  # reconciled/enrollment.csv row of the study and set
     inputs: tuple[Mapping[str, Any], ...]
     _index: dict[tuple[str, str, str], Row] = field(init=False, repr=False)
 
@@ -232,6 +235,7 @@ def load_study(root: DataRoot, study: str, set_name: str | None = None) -> Study
             inputs.append(input_entry(root, root.output_path("reconciled", name)))
             rows = [r for r in rows if r["study"] == study]
         optional[spec_name] = rows
+    enrollment = _enrollment_row(root, study, set_name, reveal, inputs)
     golden = root.path / INPUT_PATHS["golden_manifest"]
     if golden.is_file():
         inputs.append(input_entry(root, golden))
@@ -246,8 +250,31 @@ def load_study(root: DataRoot, study: str, set_name: str | None = None) -> Study
         scores=scores,
         visit_status=optional["visit-status"],
         discrepancies=optional["discrepancies"],
+        enrollment=enrollment,
         inputs=tuple(sorted(inputs, key=lambda e: str(e["path"]))),
     )
+
+
+def _enrollment_row(
+    root: DataRoot, study: str, set_name: str, reveal: Path, inputs: list[dict[str, Any]]
+) -> Row | None:
+    """The ``reconciled/enrollment.csv`` row of a study and set (counts only), checked
+    against the reveal log the run read."""
+    rows = _read_table(root, "reconciled", "enrollment.csv", "enrollment")
+    if rows is None:
+        return None
+    inputs.append(input_entry(root, root.output_path("reconciled", "enrollment.csv")))
+    mine = [r for r in rows if (r["study"], r["set"]) == (study, set_name)]
+    if not mine:
+        return None
+    (row,) = mine  # unique: parse_table refuses duplicate keys (study x set)
+    read = sha256_file(reveal) if reveal.is_file() else None
+    if row["reveal_log_sha256"] != read:
+        raise PipelineError(
+            f"reconciled/enrollment.csv ({study} {set_name}) was derived from another reveal "
+            "log than the one read: run av-analysis refresh"
+        )
+    return row
 
 
 # ---------------------------------------------------------------------------------------
@@ -388,8 +415,86 @@ def _condition(data: StudyData, person: str) -> str:
     return data.conditions.person_condition[person]
 
 
+def _persons_with(data: StudyData, keep: Callable[[ScoredTrial], bool]) -> int:
+    """Assigned persons with at least one response opportunity that ``keep`` accepts."""
+    assigned = set(data.assigned())
+    return len({o.person_id for o in data.opportunities if o.person_id in assigned and keep(o)})
+
+
+ENROLLMENT_ROWS: Final[tuple[tuple[str, str], ...]] = (
+    ("planned_units_n", "planned units (main list)"),
+    ("planned_persons_n", "planned person slots (main list)"),
+    ("eligibility_records_n", "pre-allocation eligibility records"),
+    ("eligible_persons_n", "eligible persons named by those records"),
+    ("screening_cases_n", "pre-allocation screening cases"),
+    ("revealed_units_n", "revealed units"),
+    ("revealed_persons_n", "revealed person slots"),
+    ("spares_used_n", "spare dyad slots used"),
+    ("bank_unavailable_n", "bank-unavailable records"),
+)
+
+
+def enrollment_table(data: StudyData) -> ReportTable:
+    """Section 1: pre-allocation eligibility and enrollment (``reconciled/enrollment.csv``,
+    counts only), beside the assigned persons this analysis uses."""
+    e = data.enrollment
+
+    def count(name: str) -> int | None:
+        value = None if e is None else e[name]
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+            raise PipelineError(f"reconciled/enrollment.csv {name}: expected a count")
+        return value
+
+    rows: list[tuple[Cell, ...]] = []
+    for name, label in ENROLLMENT_ROWS:
+        value = count(name)
+        if e is None:
+            note = "Pending: no enrollment row in this data root"
+        elif value is not None:
+            note = ""
+        elif name == "screening_cases_n":
+            note = "Pending: no agreed source for screening cases"
+        else:
+            note = "not applicable (Study A)" if data.study == "A" else "not recorded"
+        rows.append((label, value, note))
+    assigned = data.assigned()
+    source = data.conditions.planned_source
+    rows.append(
+        (
+            "assigned persons in this analysis",
+            len(assigned),
+            "reveal log" if source == "reveal-log" else "main list (no reveal log yet)",
+        )
+    )
+    planned = count("planned_persons_n")
+    revealed = count("revealed_persons_n")
+    if planned is None or revealed is None:
+        planned = revealed = len(assigned)
+    revealed = min(revealed, planned)
+    last = None if e is None else e["last_event_date"]
+    return ReportTable(
+        "flow-enrollment",
+        "Pre-allocation eligibility and enrollment (counts from reconciled/enrollment.csv)",
+        ("stage", "count", "note"),
+        ("text", "int", "text"),
+        tuple(rows),
+        TableMeta(
+            "person",
+            revealed,
+            planned,
+            0,
+            planned - revealed,
+            "No reconciled/enrollment.csv row (written by av-analysis derive, #33): units are "
+            "the assigned persons."
+            if e is None
+            else "Missing: main-list person slots not revealed."
+            + ("" if last is None else f" Latest reveal-log record: {last}."),
+        ),
+    )
+
+
 def flow_section(data: StudyData) -> SectionContent:
-    """Section 1: persons, units and visits."""
+    """Section 1: eligibility and enrollment, persons, units and visits."""
     study = data.study
     pv = PRIMARY_VISIT[study]
     assigned = data.assigned()
@@ -554,6 +659,8 @@ def flow_section(data: StudyData) -> SectionContent:
         f"Assigned persons come from the {source}. "
         "Late visits stay in the data and enter only the timing sensitivity; withdrawal "
         "before all opportunities makes the endpoint missing, never zero.",
+        "Failed generation (codebooks that could not be created) is Pending the generation "
+        "audit tables (#24).",
     ]
     if data.visit_status is not None:
         states = Counter(str(r["visit_state"]) for r in data.visit_status)
@@ -562,7 +669,11 @@ def flow_section(data: StudyData) -> SectionContent:
             + ", ".join(f"{k} {v}" for k, v in sorted(states.items()))
             + "."
         )
-    return SectionContent("flow", tuple(paragraphs), (persons_table, units_table, visits_table))
+    return SectionContent(
+        "flow",
+        tuple(paragraphs),
+        (enrollment_table(data), persons_table, units_table, visits_table),
+    )
 
 
 def fidelity_section(data: StudyData) -> SectionContent:
@@ -604,6 +715,7 @@ def fidelity_section(data: StudyData) -> SectionContent:
                     checked += 1
                     disagree += int(bool(row["exact_correct"]) != bool(o.score.y_operational))
     retries = sum(1 for r in data.trials if r["retry_of"] is not None)
+    with_data = _persons_with(data, lambda o: True)
     delivery = ReportTable(
         "fidelity-delivery",
         "Response opportunities, technical faults and valid delivery by condition (all visits)",
@@ -622,14 +734,16 @@ def fidelity_section(data: StudyData) -> SectionContent:
         tuple(rows),
         TableMeta(
             "person",
-            len(data.assigned()),
+            with_data,
             len(data.assigned()),
             len(data.opportunities),
-            0,
-            "Opportunities are trials, not independent units.",
+            len(data.assigned()) - with_data,
+            "Opportunities are trials, not independent units; missing: assigned persons "
+            "without any opportunity.",
         ),
     )
     novel = [o for o in data.opportunities if o.battery == "novel"]
+    novel_persons = _persons_with(data, lambda o: o.battery == "novel")
     nov = Counter(str(o.row["novelty"]) for o in novel)
     novel_retries = sum(
         1 for r in data.trials if r["retry_of"] is not None and r["trial_type"] == "novel"
@@ -650,10 +764,10 @@ def fidelity_section(data: StudyData) -> SectionContent:
         ),
         TableMeta(
             "person",
-            len(data.assigned()),
+            novel_persons,
             len(data.assigned()),
             len(novel),
-            0,
+            len(data.assigned()) - novel_persons,
             "A technical fault never renews novelty; a retry is never a new first encounter.",
         ),
     )
@@ -878,11 +992,14 @@ def a_primary_section(
         "A1 is a secondary human-design reference; three designers limit generalization.",
     )
     des_rows = []
+    des_units: dict[str, set[str]] = {}
     for d_id in sorted(set(designer.values())):
         for k, (sd, _) in sec.items():
-            vals = [x.value for x in sd if x.value is not None and designer.get(x.unit_id) == d_id]
-            dt = one_sample_t([v for v in vals if v is not None])
+            mine = [x for x in sd if x.value is not None and designer.get(x.unit_id) == d_id]
+            des_units.setdefault(k, set()).update(x.unit_id for x in mine)
+            dt = one_sample_t([x.value for x in mine if x.value is not None])
             des_rows.append((d_id, k, dt.n, pp(dt.mean), pp(dt.low), pp(dt.high)))
+    des_n = max((len(u) for u in des_units.values()), default=0)
     des_table = ReportTable(
         "a-designer",
         "Secondary contrasts by A1 designer (descriptive 95% t intervals, no multiplicity "
@@ -892,11 +1009,12 @@ def a_primary_section(
         tuple(des_rows),
         TableMeta(
             "batch",
-            len({u for u in designer}),
+            des_n,
             len(diffs),
             trials,
-            0,
-            "Batches grouped by the designer of their A1 book.",
+            len(diffs) - des_n,
+            "Batches grouped by the designer of their A1 book; units: batches with an "
+            "available secondary difference.",
         ),
     )
     paragraphs = (
@@ -1230,8 +1348,9 @@ def secondary_section(data: StudyData) -> SectionContent:
             max((r[3] for r in crow), default=0),
             max((r[2] for r in crow), default=0),
             len(data.opportunities),
-            0,
-            "Units vary by endpoint; see the units column.",
+            max((r[2] for r in crow), default=0) - max((r[3] for r in crow), default=0),
+            "Units vary by endpoint; see the units column (the line gives the best-supported "
+            "endpoint).",
         ),
     )
     # Response time on the primary battery.
@@ -1270,6 +1389,9 @@ def secondary_section(data: StudyData) -> SectionContent:
                 sum(1 for o in ops if o.row["response_code"] == "timeout"),
             )
         )
+    rt_persons = _persons_with(
+        data, lambda o: o.row["visit"] == pv and o.battery == PRIMARY_BATTERY
+    )
     rt_table = ReportTable(
         "secondary-rt",
         f"Time to commit on the {pv} trained battery (right-censored at 12 s; Kaplan-Meier median)",
@@ -1288,11 +1410,12 @@ def secondary_section(data: StudyData) -> SectionContent:
         tuple(rt_rows),
         TableMeta(
             "person",
-            len(assigned),
+            rt_persons,
             len(assigned),
             sum(r[1] for r in rt_rows[:-1]),
-            0,
-            "The correct-only median is conditional on correctness, not overall efficiency.",
+            len(assigned) - rt_persons,
+            "Units: assigned persons with opportunities on this battery. The correct-only "
+            "median is conditional on correctness, not overall efficiency.",
         ),
     )
     paragraphs = (
@@ -1399,10 +1522,36 @@ KEY_TERMS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 
+def _glmm_support(
+    fits: Sequence[GlmmFit], glmm_data: Mapping[str, bytes]
+) -> tuple[int, int, set[str]]:
+    """(models fitted, largest model-data trial count, persons in the fitted models' data);
+    a model left at ``descriptive`` contributes nothing."""
+    persons: set[str] = set()
+    trials = 0
+    fitted = 0
+    for fit in fits:
+        csv = glmm_data.get(fit.log.model_id)
+        if fit.log.final_rung == "descriptive" or csv is None:
+            continue
+        fitted += 1
+        header, rows = parse_csv(csv)
+        col = header.index("person_id")
+        persons.update(r[col] for r in rows)
+        trials = max(trials, len(rows))
+    return fitted, trials, persons
+
+
 def sensitivities_section(
-    data: StudyData, fits: Sequence[GlmmFit], step: float
+    data: StudyData,
+    fits: Sequence[GlmmFit],
+    step: float,
+    glmm_data: Mapping[str, bytes] | None = None,
 ) -> tuple[SectionContent, list[str]]:
-    """Section 7: valid delivery, timing, available-observation model, bounds, tipping."""
+    """Section 7: valid delivery, timing, available-observation model, bounds, tipping.
+
+    ``glmm_data``: model id -> the model data CSV of each fit (``run_glmms``), for the
+    denominators of the supporting-model table."""
     study = data.study
     pv = PRIMARY_VISIT[study]
     trials = _trials_n(data, pv, PRIMARY_BATTERY)
@@ -1509,11 +1658,14 @@ def sensitivities_section(
             max(r[4] for r in t_rows),
             t_rows[0][3],
             _trials_n(data, timing_visit, PRIMARY_BATTERY),
-            0,
-            "Study A's primary is the D0 anchor visit (no window): the timing sensitivity "
-            "applies to D7."
-            if study == "A"
-            else "Late W1 visits of either member enter the 'including late' population.",
+            t_rows[0][3] - max(r[4] for r in t_rows),
+            (
+                "Study A's primary is the D0 anchor visit (no window): the timing sensitivity "
+                "applies to D7."
+                if study == "A"
+                else "Late W1 visits of either member enter the 'including late' population."
+            )
+            + " The line gives the 'including late' population.",
         ),
     )
     # Available-observation model.
@@ -1530,6 +1682,7 @@ def sensitivities_section(
                     )
         else:
             g_rows.append((log.model_id, log.final_rung, None, None, None, None, None))
+    fitted, glmm_trials, glmm_persons = _glmm_support(fits, glmm_data or {})
     glmm_table = ReportTable(
         "sens-glmm",
         "Available-observation supporting models (binomial GLMM, logit scale): key fixed effects",
@@ -1538,12 +1691,18 @@ def sensitivities_section(
         tuple(g_rows),
         TableMeta(
             "person",
+            len(glmm_persons),
             len(data.assigned()),
-            len(data.assigned()),
-            sum(1 for o in data.opportunities if o.battery == PRIMARY_BATTERY),
-            0,
-            "All observed trials, partial batteries included; missing at random is assumed, not "
-            "shown.",
+            glmm_trials,
+            len(data.assigned()) - len(glmm_persons),
+            (
+                f"{fitted} of {len(fits)} models fitted; units: persons in the fitted models' "
+                "data, trials: the largest model's. "
+                if fits
+                else ""
+            )
+            + "All observed trials, partial batteries included; missing at random is assumed, "
+            "not shown.",
         ),
         "Rung `descriptive`: no stable model (or not fitted, see the log): the participant and "
         "dyad aggregates in sections 1-5 are the supporting description.",
@@ -1580,7 +1739,9 @@ def sensitivities_section(
             b_rows[0][1],
             trials,
             b_rows[0][1] - b_rows[0][2],
-            "Partial batteries keep their known contribution.",
+            "Partial batteries keep their known contribution; persons_missing counts the "
+            + ("A3 and A2 learners" if study == "A" else "dyad members")
+            + " without a complete endpoint.",
         ),
     )
     cells = tipping_grid(study, bounds_scores, data.conditions, planned, step=step)
@@ -1631,32 +1792,51 @@ def sensitivities_section(
             f"Grid step {step:g}; an assumption exercise, not a measured result.",
         ),
         "Favoured condition: A3 (Study A), active (C), structured (S); its missing scores move "
-        "down, the other condition's up. Empty cells: no change anywhere on the grid.",
+        "down, the other condition's up, from the observed condition means (Study B: by role "
+        "and family, so a missing person's whole score starts at the observed mean of its "
+        "role). Empty cells: no change anywhere on the grid.",
     )
+    grid_columns: tuple[str, ...] = (
+        "contrast",
+        "shift_favoured_pp",
+        "shift_other_pp",
+        "estimate_pp",
+        "direction_changed",
+        "practical_changed",
+    )
+    grid_formats: tuple[str, ...] = ("text", "f1", "f1", "f2", "bool", "bool")
+    grid_rows: list[tuple[Cell, ...]] = []
+    for c in cells:
+        row: tuple[Cell, ...] = (
+            c.contrast,
+            pp(c.shift_favoured),
+            pp(c.shift_other),
+            pp(c.estimate),
+            c.direction_changed,
+            c.practical_changed,
+        )
+        if study == "B":
+            row += (
+                None if c.companion is None else c.companion[0],
+                None if c.companion is None else pp(c.companion[1]),
+            )
+        grid_rows.append(row)
+    if study == "B":
+        grid_columns += ("companion_contrast", "companion_estimate_pp")
+        grid_formats += ("text", "f2")
     grid_table = ReportTable(
         "sens-tipping-grid",
         "Full tipping-point grid",
-        (
-            "contrast",
-            "shift_favoured_pp",
-            "shift_other_pp",
-            "estimate_pp",
-            "direction_changed",
-            "practical_changed",
-        ),
-        ("text", "f1", "f1", "f2", "bool", "bool"),
-        tuple(
-            (
-                c.contrast,
-                pp(c.shift_favoured),
-                pp(c.shift_other),
-                pp(c.estimate),
-                c.direction_changed,
-                c.practical_changed,
-            )
-            for c in cells
-        ),
+        grid_columns,
+        grid_formats,
+        tuple(grid_rows),
         TableMeta(unit, b_rows[0][2], b_rows[0][1], trials, b_rows[0][1] - b_rows[0][2]),
+        "Study B: C cells move the missing whole scores (role), S cells the missing family "
+        "scores (teaching format); within a cell every missing person has one structured and "
+        "one dictionary score and a whole score equal to their average, and the companion "
+        "column gives the other contrast from the same values."
+        if study == "B"
+        else "",
         markdown_rows=0,
     )
     paragraphs = (
@@ -1687,6 +1867,19 @@ def sensitivities_section(
 def deviations_section(data: StudyData, conclusions: Sequence[str]) -> SectionContent:
     """Section 8: missing endpoints by reason, lost opportunities, discrepancies, bounded
     conclusions."""
+    assigned = data.assigned()
+    recorded = len({str(e["person_id"]) for e in data.endpoints} & set(assigned))
+
+    def meta(trials: int, note: str = "") -> TableMeta:
+        return TableMeta(
+            "person",
+            recorded,
+            len(assigned),
+            trials,
+            len(assigned) - recorded,
+            ("Units: assigned persons with endpoints rows. " + note).rstrip(),
+        )
+
     c = Counter(
         (str(e["visit"]), str(e["battery"]), str(e["status"]), str(e["missing_reason"]))
         for e in data.endpoints
@@ -1704,7 +1897,7 @@ def deviations_section(data: StudyData, conclusions: Sequence[str]) -> SectionCo
         ("visit", "battery", "status", "missing_reason", "persons"),
         ("text", "text", "text", "text", "int"),
         rows,
-        TableMeta("person", len(data.assigned()), len(data.assigned()), len(data.opportunities), 0),
+        meta(len(data.opportunities)),
     )
     lost = Counter(str(r["visit"]) for r in data.trials if r["row_source"] == "deviation")
     ids = {i for r in data.trials for i in (r["deviation_ids"] or ())}  # type: ignore[union-attr]
@@ -1714,14 +1907,7 @@ def deviations_section(data: StudyData, conclusions: Sequence[str]) -> SectionCo
         ("visit", "lost_opportunities"),
         ("text", "int"),
         tuple((v, lost[v]) for v in _visits(data.study)),
-        TableMeta(
-            "person",
-            len(data.assigned()),
-            len(data.assigned()),
-            sum(lost.values()),
-            0,
-            f"{len(ids)} linked deviation records.",
-        ),
+        meta(sum(lost.values()), f"{len(ids)} linked deviation records."),
     )
     tables = [missing_table, lost_table]
     if data.discrepancies is not None:
@@ -1735,9 +1921,7 @@ def deviations_section(data: StudyData, conclusions: Sequence[str]) -> SectionCo
                 ("check", "code", "resolved", "n"),
                 ("text", "text", "bool", "int"),
                 tuple((k[0], k[1], k[2], n) for k, n in sorted(dc.items())),
-                TableMeta(
-                    "person", len(data.assigned()), len(data.assigned()), len(data.opportunities), 0
-                ),
+                meta(len(data.opportunities)),
             )
         )
     return SectionContent("deviations", tuple(conclusions), tuple(tables))
@@ -1795,7 +1979,7 @@ def analyze(
             "are never merged with performance outcomes.",
         ),
     )
-    sections["sensitivities"], more = sensitivities_section(data, fits, step)
+    sections["sensitivities"], more = sensitivities_section(data, fits, step, datas)
     summary += more
     sections["deviations"] = deviations_section(data, _conclusions(study, summary))
     return StudyReport(

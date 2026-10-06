@@ -32,7 +32,7 @@ non-`DEMO-` seeds.
 | `scoring` | `score_trial`, `battery_scores`, `scored_opportunities` (`TrialScore`, `BatteryScore`, `ScoredTrial`) |
 | `unmask` | `load_conditions` (`Conditions`, `BookCondition`, `DyadCondition`), `revealed_slots`; the only reader of `keys/` |
 | `estimators` | `one_sample_t`, `holm`, `stratified_bootstrap`, `wilson`, `km_median`; aggregation `a_book_means`, `a_batch_differences`, `b_dyad_differences` |
-| `missingness` | `all_assigned_bounds`, `tipping_grid`, `tipping_summary`, `person_interval` |
+| `missingness` | `all_assigned_bounds`, `tipping_grid`, `tipping_imputations`, `tipping_summary`, `person_interval` |
 | `glmm` | `model_specs`, `model_data`, `fit_ladder` / `fit_with_ladder`, `not_run_log` (ladder order and log format are the skeleton's) |
 | `rbridge` | `run_r`, `version_problems` (pins and `Rscript` lookup are the skeleton's); R script `analysis/r/glmm.R` |
 | `simulate` | `scenarios`, `intercept`, `draw_a`, `draw_b`, `dataset_results`, `operating_characteristics`, `simulate_dataset`, the `simulate` command, schema `operating-characteristics-row.schema.json` |
@@ -47,16 +47,18 @@ non-`DEMO-` seeds.
 `unmask` (Study A `keys/A/<set>-book-key.json` and `inputs/schedules/A/<set>-slots.json`;
 Study B `inputs/schedules/B/<set>-dyads.json`, all checked with their `list_sha256`),
 the reveal log `inputs/reveal/<study>-<set>.jsonl` when it exists, and, when present,
-`reconciled/visit-status.csv`, `reconciled/discrepancies.csv` and
-`inputs/sound/golden-manifest.json`. Every file read is listed with its SHA-256 in the
-run record and in `estimates/manifest.json`.
+`reconciled/visit-status.csv`, `reconciled/discrepancies.csv`,
+`reconciled/enrollment.csv` (counts only) and `inputs/sound/golden-manifest.json`. Every
+file read is listed with its SHA-256 in the run record and in `estimates/manifest.json`.
 
 The set is `--set`, else the root's set, else the only set with rows. A run refuses (exit
 2): tables of the other data kind; a held visit (accounted opportunities) whose
 `reconciliation` is not `pass` (#33 marks a visit `pass` when every discrepancy is
 explained by a deviation record); a person, unit or (Study A) book that differs from the
 allocation lists; derived rows that cannot be scored (`scoring.ScoringError`); lists
-whose `demo` flag differs from the root's kind; an edited list or reveal log.
+whose `demo` flag differs from the root's kind; an edited list or reveal log; an
+`enrollment` row whose `reveal_log_sha256` is not the reveal log read (stale: run
+`av-analysis refresh`).
 
 **Assigned persons** (the all-assigned denominator): the slots revealed in the reveal log
 (Study B: both members of every revealed dyad slot, spares included), or every main-list
@@ -124,14 +126,28 @@ unadjusted 95% intervals.
   differences (A) and dyad differences over every assigned pair (B) are monotone in each
   score, so the worst and best compatible point effects come from the interval ends.
   Study B uses per-family intervals and a whole score equal to their average, so C and S
-  bounds rest on the same per-person values.
-* **Tipping grid** (`tipping_grid`): missing persons take the observed mean of their
-  condition (A3/A2; active/yoked; per family structured/dictionary for S); the favoured
-  condition's missing scores move down and the other's up in steps of .05 (21 x 21
-  cells), clipped to each person's interval; each cell's estimate is the all-assigned
-  point estimate. `direction_changed`: the sign differs from the observed complete-unit
-  estimate (zero counts as changed); `practical_changed`: "at least 10 points in favour"
-  differs. `tipping_summary` reports the first cell (smallest total shift) of each.
+  bounds rest on the same per-person values (Study B scores must carry both family
+  scores). `persons_missing` counts the persons of the contrast without a complete
+  endpoint: A3 and A2 learners (A1 plays no part in A3-A2), both members of every dyad.
+* **Tipping grid** (`tipping_grid`), 21 x 21 cells per contrast in steps of .05; each
+  cell's estimate is the all-assigned point estimate over every planned unit.
+  `direction_changed`: the sign differs from the observed complete-unit estimate (zero
+  counts as changed); `practical_changed`: "at least 10 points in favour" differs.
+  `tipping_summary` reports the first cell (smallest total shift) of each.
+  * Study A: missing A3 and A2 learners take the observed mean of their method, A3 moved
+    down by `i` and A2 up by `j`, clipped to each person's interval.
+  * Study B follows analysis plan section 6 ("do not use inconsistent imputed values for
+    different estimands"): in every cell a missing person has one structured and one
+    dictionary score, each clipped to its family interval, and a whole score equal to
+    their average; C and S of the cell are computed from those same values. The
+    reference is the observed mean of the person's role and family among complete
+    persons, so without data a missing person's whole score starts at the observed mean of
+    its role. The `C` grid moves both family scores of missing active members down by `i`
+    and of missing yoked members up by `j`; the `S` grid moves every missing person's
+    structured score down by `i` and dictionary score up by `j`. Both grids start from the
+    same values, and each cell also reports the other contrast's estimate from its values
+    (`TippingCell.companion`, columns `companion_contrast` and `companion_estimate_pp`).
+    `tipping_imputations` returns the imputed values behind any cell.
 * The valid-delivery, timing and available-observation analyses are in section 7 of the
   report; the non-fallback sensitivity waits for the generation audit tables (#24,
   **Pending**).
@@ -178,7 +194,12 @@ marked `needs_r` and run in the CI `r` job.
 | `runs/run-<study>-<set>.json` | inputs with SHA-256, seed labels, outputs with SHA-256 |
 | `manifest.json` | every file of the area, union of the runs' inputs and seeds (`outputs-manifest.schema.json`) |
 
-Tables by section (ids): 1 `flow-persons`, `flow-units`, `flow-visits`; 2
+Tables by section (ids): 1 `flow-enrollment` (pre-allocation eligibility records,
+eligible persons, screening cases (**Pending** while `screening_cases_n` is null), revealed
+units and person slots, spares used, bank-unavailable records, from
+`reconciled/enrollment.csv`; every count **Pending** when the root has no enrollment row),
+`flow-persons`, `flow-units`, `flow-visits`, and a note that failed generation waits for
+the generation audit tables (#24); 2
 `fidelity-delivery` (faults by type, lost opportunities, valid delivery, uncertain
 onsets, by condition), `fidelity-novelty`, plus the scoring check (logged exact score
 versus recomputed Y), reconciliation states, discrepancies and the golden manifest; 3
@@ -189,6 +210,13 @@ export format); 7 `sens-valid-delivery`, `sens-valid-denominators`, `sens-timing
 `sens-glmm`, `sens-bounds`, `sens-tipping-summary`, `sens-tipping-grid` (CSV only); 8
 `deviations-missing`, `deviations-lost`, `deviations-discrepancies` (when present) and
 generated bounded conclusions.
+
+**Denominators.** Every `TableMeta` line is computed from the data behind its table, and
+contributing + missing = planned units always holds: person tables count the assigned
+persons with data for that table (for example persons with opportunities on the battery
+for `secondary-rt`, persons in the fitted models' data for `sens-glmm`, 0 when every model
+ended `descriptive`); tables with several rows of different support (`sens-timing`,
+`secondary-contrasts`, `a-designer`) state the best-supported row and say so in the note.
 
 ## 8. Synthetic data (`simulate`, `synthetic_tables`)
 
@@ -244,7 +272,8 @@ writes dataset 0 into the root (`derived/` tables merged with other studies' row
 | t, df, p and intervals against hand-computed closed forms within 1e-10; Holm fixtures (.02, .04) and (.03, .04) | `tests/analysis/test_pipeline_estimators.py` |
 | fewer than 2 complete differences -> unavailable (estimator and report) | `test_pipeline_estimators.py`, `test_pipeline_run.py` |
 | scoring rules, battery denominators, partial batteries | `test_pipeline_scoring.py` |
-| bounds and tipping grid against hand calculation | `test_pipeline_missingness.py` |
+| bounds and tipping grid against hand calculation; Study B imputed whole = (structured + dictionary) / 2 in every cell, C and S from the same values | `test_pipeline_missingness.py` |
+| end-to-end rules by hand on edited pilot roots: late W1 visit (primary versus timing population), partial primary battery in the bounds, 95% and 97.5% B intervals, Holm thresholds .025/.05, bootstrap strata, first pass, `not_run` refusal, enrollment flow, denominators; GLMM model-data coding (role, format, method, designer) and timing filter | `test_pipeline_rules.py`, `test_pipeline_glmm.py` |
 | ladder order with singular fits (fake runner; real lme4 fixture, `needs_r`) | `test_pipeline_glmm.py` |
 | null scenario: 2,000 synthetic A datasets reject between .040 and .060 | `test_pipeline_simulate.py` |
 | full-size A (216 learners) and B (128 people) end to end under 30 min: `analysis/ci/34.sh` on every CI runner (fails at 30 min), the `needs_r` test with lme4, `AV_FULL_E2E=1` locally; report order, denominators, manifest, determinism, refusals (pilot size by default) | `test_pipeline_run.py`, `analysis/ci/34.sh` |
@@ -261,8 +290,9 @@ writes dataset 0 into the root (`derived/` tables merged with other studies' row
 * **Per-family denominators** are half of the scheduled opportunities for the assessment
   batteries (18 of 36 at W1/W4), as the matrix balances K and Q.
 * **Tipping reference** is the observed mean of the condition among complete persons
-  (0.5 when none), the estimate the all-assigned point estimate; a zero estimate counts
-  as a change of direction.
+  (Study B: of the role and family; 0.5 when none), the estimate the all-assigned point
+  estimate; a zero estimate counts as a change of direction. Study B uses one set of
+  imputed family scores per person and cell for both contrasts (plan section 6).
 * **GLMM engine**: R `lme4::glmer` through `Rscript` (adopted in the skeleton); one R
   call per rung so the ladder decision stays in Python and is testable without R.
 * **Supporting models** use in-window and anchor visits only; late visits stay in the

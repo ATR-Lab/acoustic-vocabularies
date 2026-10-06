@@ -90,6 +90,119 @@ def test_model_specs_follow_section_5():
         model_specs("C")
 
 
+def model_rows(tmp_path, scenario, late=False):
+    """Load a pilot-size synthetic study (one held W1 visit made late when ``late``) and
+    return (study data, the visit made late, {model_id: (header, rows)})."""
+    from av_analysis.derived import ENDPOINTS, TRIALS, parse_table, table_bytes
+    from av_analysis.fileio import parse_csv
+    from av_analysis.glmm import model_data
+    from av_analysis.paths import DataRoot, write_output
+    from av_analysis.pipeline import load_study
+    from av_analysis.report import write_dataset
+    from av_analysis.simulate import scenarios, simulate_dataset
+
+    root = DataRoot.create(tmp_path / "root", "SYNTHETIC", label="DEMO-glmm-data")
+    sc = scenarios()[scenario]
+    write_dataset(root, simulate_dataset(sc, "DEMO-glmm-data"))
+    late_visit = None
+    if late:
+        trials = parse_table(TRIALS, (root.path / "derived" / "trials.csv").read_bytes())
+        endpoints = parse_table(ENDPOINTS, (root.path / "derived" / "endpoints.csv").read_bytes())
+        late_visit = next(
+            e["visit_id"]
+            for e in endpoints
+            if (e["visit"], e["battery"]) == ("W1", "trained") and e["planned_endpoint"]
+        )
+        for row in (*endpoints, *trials):
+            if row["visit_id"] == late_visit:
+                row["timing"] = "late"
+                if "planned_endpoint" in row:
+                    row["planned_endpoint"] = False
+        for name, table_spec, rows in (
+            ("trials.csv", TRIALS, trials),
+            ("endpoints.csv", ENDPOINTS, endpoints),
+        ):
+            data = table_bytes(table_spec, rows, "SYNTHETIC")
+            write_output(root, "derived", name, data, "SYNTHETIC")
+    data = load_study(root, sc.study)
+    out = {
+        s.model_id: parse_csv(
+            model_data(s, data.opportunities, data.conditions, data_kind="SYNTHETIC")
+        )
+        for s in model_specs(sc.study)
+    }
+    return data, late_visit, out
+
+
+def test_b_model_data_codes_role_format_and_timing(tmp_path):
+    """B-trained data: role_c +0.5 exactly for the active member, format_c +0.5 exactly on
+    the dyad's structured family, columns in spec order, late visits left out."""
+    data, late_visit, out = model_rows(tmp_path, "pilot-B", late=True)
+    header, rows = out["B-trained"]
+    assert header == (
+        "data_kind",
+        "y",
+        "unit_id",
+        "person_id",
+        "item_id",
+        "family",
+        "rep",
+        "visit",
+        "role_c",
+        "format_c",
+    )
+    expected = [
+        o
+        for o in data.opportunities
+        if o.battery == "trained"
+        and o.row["visit"] in ("W1", "W4")
+        and o.row["timing"] in ("in_window", "not_applicable")
+    ]
+    assert len(rows) == len(expected) > 0
+    assert any(o.visit_id == late_visit for o in data.opportunities)
+    cond = data.conditions
+    for row, o in zip(rows, expected, strict=True):
+        rec = dict(zip(header, row, strict=True))
+        d = cond.dyads[rec["unit_id"]]
+        assert rec["person_id"] == o.person_id and o.visit_id != late_visit
+        assert (rec["y"], rec["item_id"], rec["family"]) == (
+            str(o.score.y_operational),
+            o.row["item_id"],
+            o.family,
+        )
+        assert rec["role_c"] == ("0.5" if o.person_id == d.active_person else "-0.5")
+        assert o.person_id in (d.active_person, d.yoked_person)
+        assert rec["format_c"] == ("0.5" if o.family == d.structured_family else "-0.5")
+        assert rec["visit"] == o.row["visit"] and rec["rep"] == str(o.row["pass"])
+    codes = {(r[8], r[9]) for r in rows}
+    assert codes == {("0.5", "0.5"), ("0.5", "-0.5"), ("-0.5", "0.5"), ("-0.5", "-0.5")}
+    late_person = late_visit.rsplit("-", 1)[0]
+    assert not any(r[3] == late_person and r[7] == "W1" for r in rows)
+
+
+def test_a_model_data_codes_method_designer_and_endpoint(tmp_path):
+    data, _, out = model_rows(tmp_path, "pilot-A")
+    cond = data.conditions
+    for model_id in ("A-trained", "A-designer"):
+        header, rows = out[model_id]
+        assert header == ("data_kind", "y", "unit_id", "book_id", "person_id", "item_id") + tuple(
+            next(s for s in model_specs("A") if s.model_id == model_id).factors
+        )
+        assert rows
+        for row in rows:
+            rec = dict(zip(header, row, strict=True))
+            book = cond.books[cond.person_book[rec["person_id"]]]
+            assert (rec["book_id"], rec["unit_id"]) == (book.book_id, book.unit_id)
+            assert rec["endpoint"] in ("D0", "D7") and rec["profile"] == book.profile
+            if model_id == "A-trained":
+                assert rec["method"] == book.method
+            else:
+                assert rec["method_designer"] == (
+                    f"A1-{book.designer}" if book.method == "A1" else book.method
+                )
+        assert {r[header.index("endpoint")] for r in rows} == {"D0", "D7"}
+
+
 def test_ladder_steps_in_order_with_singular_fits():
     """Singular full model: correlations, then the dyad role slope, then the participant
     teaching slope are dropped, each step logged, until the intercept model is stable."""

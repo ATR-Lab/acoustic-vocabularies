@@ -5,9 +5,11 @@ from __future__ import annotations
 import pytest
 
 from av_analysis.missingness import (
+    TippingCell,
     all_assigned_bounds,
     person_interval,
     tipping_grid,
+    tipping_imputations,
     tipping_summary,
 )
 from av_analysis.scoring import BatteryScore
@@ -75,8 +77,9 @@ def test_a_bounds_by_hand():
     assert b.contrast == "A3-A2"
     assert b.low == pytest.approx((d1[0] + d2[0]) / 2, abs=1e-12)
     assert b.high == pytest.approx((d1[1] + d2[1]) / 2, abs=1e-12)
-    # A1 learners have no score: persons missing counts every assigned person without one.
-    assert (b.units_planned, b.units_complete, b.persons_missing) == (2, 2, 6)
+    # A1 learners play no part in A3-A2: persons missing counts A2/A3 learners only
+    # (A-C01-L04 without data, A-C01-L06 partial).
+    assert (b.units_planned, b.units_complete, b.persons_missing) == (2, 2, 2)
 
 
 def test_a_bounds_collapse_without_missing_data():
@@ -221,21 +224,126 @@ def test_tipping_grid_b_by_hand():
         + person_b("B-C02-M2", 0.5, 0.9)
     )
     cells = tipping_grid("B", scores, cond, cond.planned, step=0.05)
-    assert {c.contrast for c in cells} == {"C", "S"} and len(cells) == 2 * 441
-    c0 = next(
-        c for c in cells if c.contrast == "C" and c.shift_favoured == 0 and c.shift_other == 0
-    )
-    # Missing yoked whole score = observed yoked mean (.6): C(B-C02) = .7 - .6 = .1 -> mean .15
-    assert c0.estimate == pytest.approx((0.2 + 0.1) / 2)
-    s0 = next(
-        c for c in cells if c.contrast == "S" and c.shift_favoured == 0 and c.shift_other == 0
-    )
-    # Structured reference = mean(.9 [B-C01-M1 K], .6 [M2 K], .9 [B-C02-M2 Q]) = .8;
-    # dictionary reference = mean(.7, .6, .5) = .6; missing yoked S = .2.
-    assert s0.estimate == pytest.approx((0.1 + (0.4 + 0.2) / 2) / 2)
-    s_shift = next(
-        c for c in cells if c.contrast == "S" and c.shift_favoured == -0.2 and c.shift_other == 0.1
-    )
-    assert s_shift.estimate == pytest.approx((0.1 + (0.4 + (0.6 - 0.7)) / 2) / 2)
+    assert [c.contrast for c in cells] == ["C"] * 441 + ["S"] * 441
+    grid = {(c.contrast, round(c.shift_favoured, 2), round(c.shift_other, 2)): c for c in cells}
+    # References by role and family (complete persons): active structured mean(.9 [B-C01-M1
+    # K], .9 [B-C02-M2 Q]) = .9, active dictionary mean(.7, .5) = .6; yoked structured .6,
+    # dictionary .6 (B-C01-M2). The missing yoked B-C02-M1 starts at structured .6,
+    # dictionary .6, whole .6 (= the observed yoked mean) in both grids.
+    c0, s0 = grid[("C", 0.0, 0.0)], grid[("S", 0.0, 0.0)]
+    assert c0.estimate == pytest.approx((0.2 + (0.7 - 0.6)) / 2)
+    assert s0.estimate == pytest.approx((0.1 + (0.4 + 0.0) / 2) / 2)
+    assert c0.companion == ("S", pytest.approx(s0.estimate))
+    assert s0.companion == ("C", pytest.approx(c0.estimate))
+    # C grid: both yoked family scores move up by j (.6 + .1), so the whole moves by j and
+    # S stays.
+    c_shift = grid[("C", -0.2, 0.1)]
+    assert c_shift.estimate == pytest.approx((0.2 + (0.7 - 0.7)) / 2)
+    assert c_shift.companion == ("S", pytest.approx(s0.estimate))
+    # S grid: structured .6 - .2 = .4, dictionary .6 + .1 = .7 -> member S -.3, whole .55.
+    s_shift = grid[("S", -0.2, 0.1)]
+    assert s_shift.estimate == pytest.approx((0.1 + (0.4 - 0.3) / 2) / 2)
+    assert s_shift.companion == ("C", pytest.approx((0.2 + (0.7 - 0.55)) / 2))
+    (imp,) = tipping_imputations("B", scores, cond, cond.planned, s_shift)
+    assert (imp.person_id, imp.condition) == ("B-C02-M1", "yoked")
+    assert (imp.structured, imp.dictionary, imp.whole) == pytest.approx((0.4, 0.7, 0.55))
     summary = {s.contrast: s for s in tipping_summary(cells, {"C": 0.2, "S": 0.1})}
     assert summary["C"].first_direction_change is not None
+
+
+def b_cell_estimates(cond, scores, imputed):
+    """C and S of a cell recomputed from the complete persons and the imputed values."""
+    values = {}
+    for s in scores:
+        if s.family is not None and s.operational is not None:
+            values.setdefault(s.person_id, {})[s.family] = s.operational
+    for imp in imputed:
+        d = cond.dyads[cond.person_unit[imp.person_id]]
+        other = "Q" if d.structured_family == "K" else "K"
+        assert imp.person_id not in values
+        values[imp.person_id] = {d.structured_family: imp.structured, other: imp.dictionary}
+    c, s = [], []
+    for unit in sorted(cond.planned):
+        d = cond.dyads[unit]
+        other = "Q" if d.structured_family == "K" else "K"
+        st = {p: values[p][d.structured_family] for p in (d.active_person, d.yoked_person)}
+        di = {p: values[p][other] for p in (d.active_person, d.yoked_person)}
+        whole = {p: (st[p] + di[p]) / 2 for p in st}
+        c.append(whole[d.active_person] - whole[d.yoked_person])
+        s.append(sum(st[p] - di[p] for p in st) / 2)
+    return sum(c) / len(c), sum(s) / len(s)
+
+
+def test_tipping_grid_b_uses_one_set_of_values_per_person():
+    """Plan section 6: within a cell, each imputed whole score is the average of the same
+    person's structured and dictionary scores, and both C and S come from those values."""
+    cond = b_conditions()
+    scores = (
+        person_b("B-C01-M1", 0.9, 0.7)
+        + person_b("B-C01-M2", 0.6, 0.6)
+        + person_b("B-C02-M2", 0.5, 0.9)
+    )
+    # Yoked B-C02-M1 (Q structured) withdrew mid-battery: K 6 of 9 accounted correct, Q 3
+    # of 9: structured (Q) in [3/18, 12/18], dictionary (K) in [6/18, 15/18].
+    scores += [
+        partial("B-C02-M1", 9.0, 18),
+        partial("B-C02-M1", 6.0, 9, "K", 18),
+        partial("B-C02-M1", 3.0, 9, "Q", 18),
+    ]
+    cells = tipping_grid("B", scores, cond, cond.planned, step=0.05)
+    for cell in cells:
+        imputed = tipping_imputations("B", scores, cond, cond.planned, cell)
+        assert [i.person_id for i in imputed] == ["B-C02-M1"]
+        for imp in imputed:
+            assert imp.whole == (imp.structured + imp.dictionary) / 2
+            assert 3 / 18 - 1e-12 <= imp.structured <= 12 / 18 + 1e-12
+            assert 6 / 18 - 1e-12 <= imp.dictionary <= 15 / 18 + 1e-12
+        c, s = b_cell_estimates(cond, scores, imputed)
+        mine, other = (c, s) if cell.contrast == "C" else (s, c)
+        assert cell.estimate == pytest.approx(mine, abs=1e-12)
+        assert cell.companion[1] == pytest.approx(other, abs=1e-12)
+    grid = {(c.contrast, round(c.shift_favoured, 2), round(c.shift_other, 2)): c for c in cells}
+
+    def values(contrast, i, j):
+        (imp,) = tipping_imputations("B", scores, cond, cond.planned, grid[(contrast, i, j)])
+        return imp.structured, imp.dictionary, imp.whole
+
+    # Both grids start from the yoked references (.6, .6), inside both family intervals.
+    assert values("C", 0.0, 0.0) == values("S", 0.0, 0.0) == pytest.approx((0.6, 0.6, 0.6))
+    # C grid: both family scores of the yoked member move up by j, each within its interval
+    # (structured at most 12/18, dictionary at most 15/18); the whole is their average.
+    assert values("C", 0.0, 0.1) == pytest.approx((12 / 18, 0.7, (12 / 18 + 0.7) / 2))
+    assert values("C", -0.3, 0.5) == pytest.approx((12 / 18, 15 / 18, 0.75))
+    # S grid: structured down by i, dictionary up by j, each within its own interval.
+    assert values("S", -0.2, 0.1) == pytest.approx((0.4, 0.7, 0.55))
+    assert values("S", -0.5, 0.3) == pytest.approx((3 / 18, 15 / 18, (3 / 18 + 15 / 18) / 2))
+
+
+def test_b_scores_need_both_family_scores():
+    cond = b_conditions()
+    scores = person_b("B-C01-M1", 0.9, 0.7)[:2] + person_b("B-C01-M2", 0.6, 0.6)
+    with pytest.raises(ValueError, match="both family scores"):
+        all_assigned_bounds("B", scores, cond, cond.planned)
+    with pytest.raises(ValueError, match="both family scores"):
+        tipping_grid("B", scores, cond, cond.planned)
+    cells = tipping_grid("B", person_b("B-C01-M2", 0.6, 0.6), cond, cond.planned, step=0.5)
+    with pytest.raises(ValueError, match="contrast"):
+        tipping_imputations(
+            "B", [], cond, cond.planned, TippingCell("A3-A2", 0.0, 0.0, 0.0, False, False)
+        )
+    with pytest.raises(ValueError, match="unknown study"):
+        tipping_imputations("Z", [], cond, cond.planned, cells[0])
+
+
+def test_tipping_imputations_a_match_the_grid():
+    cond = a_conditions(learners=2)
+    scores = [complete("A-C01-L05", 0.9), complete("A-C01-L03", 0.6)]
+    cells = tipping_grid("A", scores, cond, cond.planned, step=0.05)
+    cell = next(c for c in cells if (round(c.shift_favoured, 2), c.shift_other) == (-0.1, 0.5))
+    imputed = {i.person_id: i for i in tipping_imputations("A", scores, cond, cond.planned, cell)}
+    # A1 learners are not imputed; A3 L06 = .9 - .1, A2 L04 = min(.6 + .5, 1).
+    assert set(imputed) == {"A-C01-L04", "A-C01-L06"}
+    assert imputed["A-C01-L06"].whole == pytest.approx(0.8)
+    assert imputed["A-C01-L04"].whole == pytest.approx(1.0)
+    assert imputed["A-C01-L04"].structured is None and cell.companion is None
+    assert cell.estimate == pytest.approx((0.9 + 0.8) / 2 - (0.6 + 1.0) / 2)

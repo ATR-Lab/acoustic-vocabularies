@@ -205,9 +205,12 @@ Producer: analysis pipeline on synthetic data (#34). Consumers: sample-size deci
   auto|require|skip]`: reads `derived/trials.csv`, `derived/endpoints.csv`, the
   allocation lists and book key (`unmask`, the only reader of `keys/`), the reveal log
   when present and, when present, `reconciled/visit-status.csv`,
-  `reconciled/discrepancies.csv` and `inputs/sound/golden-manifest.json`. Refuses (exit 2)
-  a held visit whose `reconciliation` is not `pass`, persons, units or books that differ
-  from the lists, rows that cannot be scored, inputs of the other data kind.
+  `reconciled/discrepancies.csv`, `reconciled/enrollment.csv` (report section 1:
+  pre-allocation eligibility and enrollment counts) and
+  `inputs/sound/golden-manifest.json`. Refuses (exit 2) a held visit whose
+  `reconciliation` is not `pass`, persons, units or books that differ from the lists,
+  rows that cannot be scored, inputs of the other data kind, an `enrollment` row whose
+  `reveal_log_sha256` differs from the reveal log read.
 - Writes into `estimates/` of the same root (watermarked, `paths.write_output`):
 
   | File | Content |
@@ -225,7 +228,9 @@ Producer: analysis pipeline on synthetic data (#34). Consumers: sample-size deci
   `b-primary` (C and S with 95% and 97.5% intervals and the Holm rank, threshold,
   adjusted p and decision); `a-secondary` (A3-A1, A2-A1 with Holm); `sens-bounds`
   (all-assigned bounds) and `sens-tipping-grid` (contrast, shifts, estimate,
-  `direction_changed`, `practical_changed`).
+  `direction_changed`, `practical_changed`; Study B also `companion_contrast` and
+  `companion_estimate_pp`, the other contrast from the same imputed values);
+  `flow-enrollment` (counts from `reconciled/enrollment.csv`).
 - Supporting models (`glmm.model_specs`): `A-trained`, `A-designer` (random intercepts
   for batch, book, learner, message) and `B-trained` (dyad role slope, participant
   teaching-format slope, message intercept), fitted rung by rung with
@@ -249,8 +254,9 @@ Producer: analysis pipeline on synthetic data (#34). Consumers: sample-size deci
   `pipeline.analyze(root, study, ...) -> report.StudyReport`,
   `pipeline.run_analysis(root, study, ...) -> list[Path]`,
   `unmask.load_conditions(root, study, set) -> Conditions` (with `person_book`,
-  `list_sha256` and `planned_source`), `missingness.all_assigned_bounds(...)` and
-  `tipping_grid(...)` over `scoring.BatteryScore`.
+  `list_sha256` and `planned_source`), `missingness.all_assigned_bounds(...)`,
+  `tipping_grid(...)` (`TippingCell.companion`) and `tipping_imputations(..., cell) ->
+  list[ImputedScore]` over `scoring.BatteryScore`.
 
 **Pending (#34):** ratings and consultation export format (section 6 of the report),
 generation fallback flags for the non-fallback sensitivity (#24), a timing model with

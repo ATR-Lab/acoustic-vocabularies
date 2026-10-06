@@ -15,17 +15,30 @@ Rules (``analysis/docs/pipeline.md``, "Missingness"):
   sum ``s`` over ``k`` of ``n`` opportunities -> ``[s / n, (s + n - k) / n]``; no score
   -> ``[0, 1]``. Study B family intervals use the 18 opportunities of each family and the
   whole-score interval is their average, so the C and S bounds come from the same
-  per-person values.
+  per-person values. Study B scores must carry both family scores of every person with a
+  whole score (``scoring.battery_scores`` writes them).
 * A book mean, a batch difference, a dyad difference and the mean over planned units are
   monotone in each person's score, so the bound of each is computed from the endpoints
   of its inputs (worst and best compatible values).
-* Tipping grid: missing persons (no complete planned endpoint) take the observed mean of
-  their condition (A3/A2; active/yoked; per family structured/dictionary for ``S``)
-  shifted by ``-i * step`` (favoured condition) and ``+j * step`` (other condition),
-  ``i, j = 0 .. 1/step``, clipped to the person's interval; the estimate is the
-  all-assigned point estimate over every planned unit. ``direction_changed`` compares its
-  sign with the observed complete-unit estimate; ``practical_changed`` compares
-  "at least 10 points in favour" (``estimators.MEANINGFUL_DIFFERENCE``).
+* Tipping grid, Study A: missing A3 and A2 learners (no complete planned endpoint) take
+  the observed mean of their condition shifted by ``-i * step`` (A3) and ``+j * step``
+  (A2), ``i, j = 0 .. 1/step``, clipped to the person's interval; the estimate is the
+  all-assigned point estimate over every planned unit.
+* Tipping grid, Study B (plan section 6: one set of imputed values per person for every
+  estimand): a missing person gets a structured and a dictionary score, each clipped to
+  its family interval, and its whole score is always their average, so C and S of one
+  cell come from the same per-person values. The reference is the observed mean of the
+  person's role and family (complete persons), so with no data the reference whole score
+  is the observed role mean. The ``C`` grid moves both family scores of missing active
+  persons down by ``i * step`` and of missing yoked persons up by ``j * step``; the ``S``
+  grid moves the structured score of every missing person down by ``i * step`` and the
+  dictionary score up by ``j * step``. Both grids start from the same reference values
+  (their zero cells are equal). Each cell also carries the other contrast's estimate from
+  the same values (:attr:`TippingCell.companion`), and :func:`tipping_imputations`
+  returns the values behind a cell.
+* ``direction_changed`` compares the sign of a cell's estimate with the observed
+  complete-unit estimate (zero counts as changed); ``practical_changed`` compares "at
+  least 10 points in favour" (``estimators.MEANINGFUL_DIFFERENCE``).
 """
 
 from __future__ import annotations
@@ -44,6 +57,8 @@ from .scoring import BatteryScore
 from .unmask import Conditions
 
 Interval = tuple[float, float]
+A_CONDITIONS = ("A3", "A2")  # the conditions of the Study A primary contrast
+B_FAMILY_LABELS = ("structured", "dictionary")
 
 
 @dataclass(frozen=True)
@@ -55,6 +70,8 @@ class Bounds:
     high: float
     units_planned: int
     units_complete: int
+    # Assigned persons of the contrast's conditions without a complete endpoint (Study A:
+    # A3 and A2 learners only; Study B: both members of every planned dyad).
     persons_missing: int
 
 
@@ -68,6 +85,21 @@ class TippingCell:
     estimate: float
     direction_changed: bool
     practical_changed: bool  # crosses the 10-percentage-point interpretation
+    # Study B: the other primary contrast's all-assigned estimate in the same cell, from
+    # the same per-person values (``("S", value)`` in a C cell, ``("C", value)`` in an S
+    # cell); None for Study A.
+    companion: tuple[str, float] | None = None
+
+
+@dataclass(frozen=True)
+class ImputedScore:
+    """The values a missing person takes in one tipping-grid cell."""
+
+    person_id: str
+    condition: str  # Study A: A3 or A2; Study B: active or yoked
+    whole: float  # Study B: always (structured + dictionary) / 2
+    structured: float | None = None  # Study B only
+    dictionary: float | None = None
 
 
 def _mean(values: Sequence[float]) -> float:
@@ -87,6 +119,9 @@ def person_interval(score: BatteryScore | None) -> Interval:
     return (score.operational_sum / n, (score.operational_sum + unknown) / n)
 
 
+Index = Mapping[tuple[str, str | None], BatteryScore]
+
+
 def _index(
     scores: Sequence[BatteryScore], planned: Mapping[str, tuple[str, ...]]
 ) -> dict[tuple[str, str | None], BatteryScore]:
@@ -102,23 +137,60 @@ def _index(
     return out
 
 
-def _complete(index: Mapping[tuple[str, str | None], BatteryScore], person: str) -> bool:
+def _complete(index: Index, person: str) -> bool:
     s = index.get((person, None))
     return s is not None and s.operational is not None
 
 
-def _whole_and_s(
-    index: Mapping[tuple[str, str | None], BatteryScore], person: str, structured: str
-) -> tuple[Interval, Interval, Interval, Interval]:
-    """Study B: (whole, S, structured, dictionary) intervals of a person."""
+@dataclass(frozen=True)
+class _BPerson:
+    """A Study B person slot: family intervals and, when complete, the known scores."""
+
+    person_id: str
+    role: str  # active or yoked
+    structured: Interval
+    dictionary: Interval
+    known: bool  # complete endpoint: both intervals are points
+
+    @property
+    def whole(self) -> Interval:
+        return (
+            (self.structured[0] + self.dictionary[0]) / 2.0,
+            (self.structured[1] + self.dictionary[1]) / 2.0,
+        )
+
+
+def _b_person(index: Index, conditions: Conditions, person: str, structured: str) -> _BPerson:
     dictionary = "Q" if structured == "K" else "K"
-    st = person_interval(index.get((person, structured)))
-    di = person_interval(index.get((person, dictionary)))
-    if (person, structured) not in index and (person, None) in index:
-        whole = person_interval(index[(person, None)])  # no family split: whole only
-    else:
-        whole = ((st[0] + di[0]) / 2.0, (st[1] + di[1]) / 2.0)
-    return whole, (st[0] - di[1], st[1] - di[0]), st, di
+    st, di = index.get((person, structured)), index.get((person, dictionary))
+    if (person, None) in index and (st is None or di is None):
+        raise ValueError(f"{person}: Study B needs both family scores beside the whole score")
+    known = _complete(index, person)
+    if known and (st is None or di is None or st.operational is None or di.operational is None):
+        raise ValueError(f"{person}: complete endpoint without complete family scores")
+    return _BPerson(
+        person,
+        conditions.person_condition[person],
+        person_interval(st),
+        person_interval(di),
+        known,
+    )
+
+
+def _b_people(
+    index: Index, conditions: Conditions, planned: Mapping[str, tuple[str, ...]]
+) -> list[tuple[_BPerson, _BPerson]]:
+    """(active, yoked) of every planned dyad, in unit order."""
+    out = []
+    for unit in sorted(planned):
+        d = conditions.dyads[unit]
+        out.append(
+            (
+                _b_person(index, conditions, d.active_person, d.structured_family),
+                _b_person(index, conditions, d.yoked_person, d.structured_family),
+            )
+        )
+    return out
 
 
 def all_assigned_bounds(
@@ -138,8 +210,12 @@ def all_assigned_bounds(
     """
     index = _index(scores, planned)
     persons = [p for unit in sorted(planned) for p in planned[unit]]
-    missing = sum(1 for p in persons if not _complete(index, p))
     if study == "A":
+        missing = sum(
+            1
+            for p in persons
+            if conditions.person_condition[p] in A_CONDITIONS and not _complete(index, p)
+        )
         lows, highs = [], []
         for unit in sorted(planned):
             book: dict[str, list[Interval]] = {}
@@ -161,13 +237,14 @@ def all_assigned_bounds(
         return [Bounds("A3-A2", _mean(lows), _mean(highs), len(lows), complete, missing)]
     if study != "B":
         raise ValueError(f"unknown study {study!r}")
+    missing = sum(1 for p in persons if not _complete(index, p))
     c_lo, c_hi, s_lo, s_hi = [], [], [], []
-    for unit in sorted(planned):
-        d = conditions.dyads[unit]
-        wa, sa, _, _ = _whole_and_s(index, d.active_person, d.structured_family)
-        wy, sy, _, _ = _whole_and_s(index, d.yoked_person, d.structured_family)
+    for a, y in _b_people(index, conditions, planned):
+        wa, wy = a.whole, y.whole
         c_lo.append(wa[0] - wy[1])
         c_hi.append(wa[1] - wy[0])
+        sa = (a.structured[0] - a.dictionary[1], a.structured[1] - a.dictionary[0])
+        sy = (y.structured[0] - y.dictionary[1], y.structured[1] - y.dictionary[0])
         s_lo.append((sa[0] + sy[0]) / 2.0)
         s_hi.append((sa[1] + sy[1]) / 2.0)
     if not c_lo:
@@ -201,38 +278,28 @@ def _grid(step: float) -> list[float]:
     return [round(i * step, 10) for i in range(k + 1)]
 
 
-def tipping_grid(
-    study: str,
-    scores: Sequence[BatteryScore],
-    conditions: Conditions,
-    planned: Mapping[str, tuple[str, ...]],
-    *,
-    step: float = 0.05,
-) -> list[TippingCell]:
-    """Tipping-point grid of the study's primary contrasts (inputs as the bounds)."""
-    shifts = _grid(step)
-    index = _index(scores, planned)
-    if study == "A":
-        return _tipping_a(index, conditions, planned, shifts)
-    if study == "B":
-        return _tipping_b(index, conditions, planned, shifts)
-    raise ValueError(f"unknown study {study!r}")
-
-
 def _reference(values: Sequence[float]) -> float:
     return _mean(values) if values else 0.5
 
 
-def _tipping_a(
-    index: Mapping[tuple[str, str | None], BatteryScore],
-    conditions: Conditions,
-    planned: Mapping[str, tuple[str, ...]],
-    shifts: Sequence[float],
-) -> list[TippingCell]:
+# ---------------------------------------------------------------------------------------
+# Study A
+
+
+@dataclass(frozen=True)
+class _AModel:
+    observed: float
+    ref: Mapping[str, float]  # A3, A2 -> observed condition mean
+    # per unit: condition -> [(person, known score or None, interval)]
+    units: tuple[Mapping[str, tuple[tuple[str, float | None, Interval], ...]], ...]
+
+
+def _a_model(
+    index: Index, conditions: Conditions, planned: Mapping[str, tuple[str, ...]]
+) -> _AModel:
     observed_scores = [s for (p, f), s in index.items() if f is None]
     diffs = a_batch_differences(a_book_means(observed_scores, conditions))
     obs_values = [d.value for d in diffs if d.value is not None]
-    observed = _mean(obs_values) if obs_values else 0.0
     ref = {
         m: _reference(
             [
@@ -241,119 +308,187 @@ def _tipping_a(
                 if f is None and s.operational is not None and conditions.person_condition[p] == m
             ]
         )
-        for m in ("A3", "A2")
+        for m in A_CONDITIONS
     }
     units = []
     for unit in sorted(planned):
-        members: dict[str, list[tuple[float | None, Interval]]] = {}
+        members: dict[str, list[tuple[str, float | None, Interval]]] = {}
         for p in planned[unit]:
             s = index.get((p, None))
             known = s.operational if s is not None else None
             members.setdefault(conditions.person_condition[p], []).append(
-                (known, person_interval(s))
+                (p, known, person_interval(s))
             )
-        if "A3" in members and "A2" in members:
-            units.append(members)
+        if all(m in members for m in A_CONDITIONS):
+            units.append({m: tuple(members[m]) for m in A_CONDITIONS})
+    return _AModel(_mean(obs_values) if obs_values else 0.0, ref, tuple(units))
+
+
+def _a_cell(model: _AModel, i: float, j: float) -> tuple[float, list[ImputedScore]]:
+    shift = {"A3": -i, "A2": j}
+    imputed = []
+    ds = []
+    for members in model.units:
+        means = {}
+        for m in A_CONDITIONS:
+            values = []
+            for person, known, iv in members[m]:
+                if known is None:
+                    v = _clip(model.ref[m] + shift[m], iv)
+                    imputed.append(ImputedScore(person, m, v))
+                    known = v
+                values.append(known)
+            means[m] = _mean(values)
+        ds.append(means["A3"] - means["A2"])
+    return _mean(ds), imputed
+
+
+def _tipping_a(model: _AModel, shifts: Sequence[float]) -> list[TippingCell]:
     out = []
     for i in shifts:
         for j in shifts:
-            ds = []
-            for members in units:
-                a3 = [k if k is not None else _clip(ref["A3"] - i, iv) for k, iv in members["A3"]]
-                a2 = [k if k is not None else _clip(ref["A2"] + j, iv) for k, iv in members["A2"]]
-                ds.append(_mean(a3) - _mean(a2))
-            est = _mean(ds)
+            est, _ = _a_cell(model, i, j)
             out.append(
                 TippingCell(
                     "A3-A2",
                     0.0 - i,
                     j,
                     est,
-                    _sign(est) != _sign(observed),
-                    _practical(est) != _practical(observed),
+                    _sign(est) != _sign(model.observed),
+                    _practical(est) != _practical(model.observed),
                 )
             )
     return out
 
 
-def _tipping_b(
-    index: Mapping[tuple[str, str | None], BatteryScore],
-    conditions: Conditions,
-    planned: Mapping[str, tuple[str, ...]],
-    shifts: Sequence[float],
-) -> list[TippingCell]:
+# ---------------------------------------------------------------------------------------
+# Study B
+
+
+@dataclass(frozen=True)
+class _BModel:
+    observed: Mapping[str, float]  # C, S: complete-dyad estimates
+    ref: Mapping[tuple[str, str], float]  # (role, structured|dictionary) -> observed mean
+    dyads: tuple[tuple[_BPerson, _BPerson], ...]
+
+
+def _b_model(
+    index: Index, conditions: Conditions, planned: Mapping[str, tuple[str, ...]]
+) -> _BModel:
     dyads = b_dyad_differences(list(index.values()), conditions)
     cs = [d.c for d in dyads if d.complete and d.c is not None]
     ss = [d.s for d in dyads if d.complete and d.s is not None]
-    observed = {"C": _mean(cs) if cs else 0.0, "S": _mean(ss) if ss else 0.0}
-    whole_ref: dict[str, list[float]] = {"active": [], "yoked": []}
-    fam_ref: dict[str, list[float]] = {"structured": [], "dictionary": []}
-    for unit in sorted(planned):
-        d = conditions.dyads[unit]
-        for person, role in ((d.active_person, "active"), (d.yoked_person, "yoked")):
-            if not _complete(index, person):
-                continue
-            whole_ref[role].append(index[(person, None)].operational or 0.0)
-            dictionary = "Q" if d.structured_family == "K" else "K"
-            for fam, label in ((d.structured_family, "structured"), (dictionary, "dictionary")):
-                fs = index.get((person, fam))
-                if fs is not None and fs.operational is not None:
-                    fam_ref[label].append(fs.operational)
-    ref_w = {k: _reference(v) for k, v in whole_ref.items()}
-    ref_f = {k: _reference(v) for k, v in fam_ref.items()}
+    people = _b_people(index, conditions, planned)
+    values: dict[tuple[str, str], list[float]] = {}
+    for pair in people:
+        for person in pair:
+            if person.known:
+                values.setdefault((person.role, "structured"), []).append(person.structured[0])
+                values.setdefault((person.role, "dictionary"), []).append(person.dictionary[0])
+    ref = {
+        (role, label): _reference(values.get((role, label), []))
+        for role in ("active", "yoked")
+        for label in B_FAMILY_LABELS
+    }
+    return _BModel(
+        {"C": _mean(cs) if cs else 0.0, "S": _mean(ss) if ss else 0.0}, ref, tuple(people)
+    )
 
-    people = []
-    for unit in sorted(planned):
-        d = conditions.dyads[unit]
-        row = []
-        for person in (d.active_person, d.yoked_person):
-            whole, _, st, di = _whole_and_s(index, person, d.structured_family)
-            done = _complete(index, person)
-            known_w = index[(person, None)].operational if done else None
-            dictionary = "Q" if d.structured_family == "K" else "K"
-            fs_st = index.get((person, d.structured_family))
-            fs_di = index.get((person, dictionary))
-            known_st = fs_st.operational if done and fs_st is not None else None
-            known_di = fs_di.operational if done and fs_di is not None else None
-            row.append((known_w, whole, known_st, st, known_di, di))
-        people.append(row)
 
+def _b_values(model: _BModel, person: _BPerson, grid: str, i: float, j: float) -> Interval:
+    """(structured, dictionary) of a missing person in a cell of the ``grid`` (C or S)."""
+    if grid == "S":
+        st_shift, di_shift = -i, j
+    else:
+        st_shift = di_shift = -i if person.role == "active" else j
+    return (
+        _clip(model.ref[(person.role, "structured")] + st_shift, person.structured),
+        _clip(model.ref[(person.role, "dictionary")] + di_shift, person.dictionary),
+    )
+
+
+def _b_cell(
+    model: _BModel, grid: str, i: float, j: float
+) -> tuple[dict[str, float], list[ImputedScore]]:
+    imputed = []
+    c_vals, s_vals = [], []
+    for pair in model.dyads:
+        whole: list[float] = []
+        split: list[float] = []
+        for person in pair:
+            if person.known:
+                st, di = person.structured[0], person.dictionary[0]
+            else:
+                st, di = _b_values(model, person, grid, i, j)
+                imputed.append(ImputedScore(person.person_id, person.role, (st + di) / 2.0, st, di))
+            whole.append((st + di) / 2.0)
+            split.append(st - di)
+        c_vals.append(whole[0] - whole[1])
+        s_vals.append(_mean(split))
+    return {"C": _mean(c_vals), "S": _mean(s_vals)}, imputed
+
+
+def _tipping_b(model: _BModel, shifts: Sequence[float]) -> list[TippingCell]:
     out = []
-    for i in shifts:
-        for j in shifts:
-            c_vals, s_vals = [], []
-            for (aw, aiv, ast, asiv, adi, adiv), (yw, yiv, yst, ysiv, ydi, ydiv) in people:
-                a = aw if aw is not None else _clip(ref_w["active"] - i, aiv)
-                y = yw if yw is not None else _clip(ref_w["yoked"] + j, yiv)
-                c_vals.append(a - y)
-                s_member = []
-                for st_known, st_iv, di_known, di_iv in (
-                    (ast, asiv, adi, adiv),
-                    (yst, ysiv, ydi, ydiv),
-                ):
-                    st_v = (
-                        st_known if st_known is not None else _clip(ref_f["structured"] - i, st_iv)
-                    )
-                    di_v = (
-                        di_known if di_known is not None else _clip(ref_f["dictionary"] + j, di_iv)
-                    )
-                    s_member.append(st_v - di_v)
-                s_vals.append(_mean(s_member))
-            for contrast, vals in (("C", c_vals), ("S", s_vals)):
-                est = _mean(vals)
-                obs = observed[contrast]
+    for contrast, companion in (("C", "S"), ("S", "C")):
+        obs = model.observed[contrast]
+        for i in shifts:
+            for j in shifts:
+                est, _ = _b_cell(model, contrast, i, j)
                 out.append(
                     TippingCell(
                         contrast,
                         0.0 - i,
                         j,
-                        est,
-                        _sign(est) != _sign(obs),
-                        _practical(est) != _practical(obs),
+                        est[contrast],
+                        _sign(est[contrast]) != _sign(obs),
+                        _practical(est[contrast]) != _practical(obs),
+                        (companion, est[companion]),
                     )
                 )
-    out.sort(key=lambda c: (c.contrast != "C", -c.shift_favoured, c.shift_other))
     return out
+
+
+def tipping_grid(
+    study: str,
+    scores: Sequence[BatteryScore],
+    conditions: Conditions,
+    planned: Mapping[str, tuple[str, ...]],
+    *,
+    step: float = 0.05,
+) -> list[TippingCell]:
+    """Tipping-point grid of the study's primary contrasts (inputs as the bounds).
+
+    Study A: the ``A3-A2`` cells; Study B: the ``C`` grid, then the ``S`` grid, each in
+    order of ``-shift_favoured``, then ``shift_other``."""
+    shifts = _grid(step)
+    index = _index(scores, planned)
+    if study == "A":
+        return _tipping_a(_a_model(index, conditions, planned), shifts)
+    if study == "B":
+        return _tipping_b(_b_model(index, conditions, planned), shifts)
+    raise ValueError(f"unknown study {study!r}")
+
+
+def tipping_imputations(
+    study: str,
+    scores: Sequence[BatteryScore],
+    conditions: Conditions,
+    planned: Mapping[str, tuple[str, ...]],
+    cell: TippingCell,
+) -> list[ImputedScore]:
+    """The values every missing person takes in ``cell`` (inputs as :func:`tipping_grid`),
+    in unit order: Study A the A3 and A2 learners without a complete endpoint, Study B both
+    members of every planned dyad without one."""
+    index = _index(scores, planned)
+    i, j = 0.0 - cell.shift_favoured, cell.shift_other
+    if study == "A":
+        return _a_cell(_a_model(index, conditions, planned), i, j)[1]
+    if study == "B":
+        if cell.contrast not in ("C", "S"):
+            raise ValueError(f"unknown Study B contrast {cell.contrast!r}")
+        return _b_cell(_b_model(index, conditions, planned), cell.contrast, i, j)[1]
+    raise ValueError(f"unknown study {study!r}")
 
 
 @dataclass(frozen=True)
