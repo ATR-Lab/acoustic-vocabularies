@@ -267,7 +267,7 @@ class CommandDispatcher:
             if self.hold_robot is None:
                 self.fault = "HOLD_NOT_CONFIGURED"
                 return False
-            wanted = self.paused_robot if self.paused and not self.neutral_hold and self.mode != "test" and not self.stopped else self.reset_manager.neutral_state["robot"]
+            wanted = self.paused_robot if self.paused and not self.neutral_hold and self.mode != "test" and not self.stopped else self.reset_manager.neutral_robot_state
             try:
                 self.hold_robot(wanted)
                 if self.mode == "test" or self.stopped or self.neutral_hold:
