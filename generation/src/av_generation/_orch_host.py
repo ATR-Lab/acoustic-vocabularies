@@ -8,6 +8,12 @@ lock), `play` records and the panel `timing` events. Everything a station can le
 through `PanelSlot`, `PanelEvent` and `PanelSnapshot`, which hold no book ID, alias,
 proposal-slot ID, method or seed (masking by construction).
 
+A rater withdrawal (`report_withdrawal`) or an operator stop publishes `end`
+(`withdrawn` / `aborted`) and halts the session: no event follows that `end` (a slot or
+preload the orchestrator would announce next is dropped) and `snapshot()` reports
+`ended` with no slot, so a station that rejoins shows the end screen. The slot in
+progress still locks and its rating records are written.
+
 Rating rules (codes of `rater_protocol.RATING_ERROR_CODES`):
 
 | Situation | Code |
@@ -53,6 +59,9 @@ from av_generation.records import PlayEvent, RatingRecord, RecordWriter
 
 TimingSink = Callable[..., None]
 """`sink(event, **fields)`: writes one `TimingEvent` (the orchestrator's writer)."""
+
+HALT_REASONS: Final = frozenset({"withdrawn", "aborted"})
+"""`end` reasons that stop the session for good (rater withdrawal, operator stop)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,6 +138,7 @@ class PanelHost:
         self._reconnected: dict[str, set[str]] = {}
         self._joined: set[str] = set()
         self._connected: set[str] = set()
+        self._halted = False
 
     # ------------------------------------------------------------ helpers
 
@@ -169,33 +179,49 @@ class PanelHost:
                 self._plans[plan.rating_slot_id] = plan
 
     def publish_preload(self, assets: Mapping[str, bytes], refs: Sequence[AssetRef]) -> None:
-        """Make the next round's WAVs available and announce them."""
+        """Make the next round's WAVs available and announce them (not after a halt)."""
         with self._cond:
+            if self._halted:
+                return
             self._assets = dict(assets)
             self._preload = tuple(refs)
-        self._emit("preload", assets=tuple(refs))
+            self._emit("preload", assets=tuple(refs))
 
-    def publish_slot(self, plan: RatingSlotPlan) -> PanelEvent:
+    def publish_slot(self, plan: RatingSlotPlan) -> PanelEvent | None:
+        """Announce a slot; `None` (nothing is sent) once the session is halted."""
         with self._cond:
+            if self._halted:
+                return None
             self._plans[plan.rating_slot_id] = plan
             self._published.append(plan.rating_slot_id)
             self._state = "slot"
-        return self._emit("slot", slot=plan.panel)
+            return self._emit("slot", slot=plan.panel)
 
     def publish(self, kind: Literal["pause", "resume", "end"], reason: str | None = None) -> None:
+        """Announce a state change. An `end` for `HALT_REASONS` halts the session: no
+        event follows it and `snapshot()` reports `ended` from then on."""
         with self._cond:
+            if self._halted:
+                return
             if kind == "pause":
                 self._state = "between_atoms" if reason == "between_atoms" else "paused"
             elif kind == "resume":
                 self._state = "waiting"
             else:
                 self._state = "ended"
-        self._emit(kind, reason=reason)
+                self._halted = reason in HALT_REASONS
+            self._emit(kind, reason=reason)
 
     @property
     def state(self) -> str:
         with self._cond:
             return self._state
+
+    @property
+    def halted(self) -> bool:
+        """A rater withdrew or the operator stopped the batch (no further events)."""
+        with self._cond:
+            return self._halted
 
     def connected(self) -> tuple[tuple[str, bool], ...]:
         """(station, connected) in seat order (operator console)."""
@@ -219,7 +245,7 @@ class PanelHost:
             }
             for key in [k for k in self._onsets if k[0] == rsid]:
                 del self._onsets[key]
-            if self._published and self._published[-1] == rsid:
+            if self._published and self._published[-1] == rsid and self._state == "slot":
                 self._state = "waiting"
         now = self._clock.now_ms()
         slot = plan.panel
@@ -297,6 +323,8 @@ class PanelHost:
     def snapshot(self) -> PanelSnapshot:
         now = self._clock.now_ms()
         with self._cond:
+            if self._state == "ended":
+                return PanelSnapshot(len(self._events), "ended", None, ())
             open_slots = [self._plans[r] for r in self._published if r not in self._closed]
             current = None
             for plan in open_slots:

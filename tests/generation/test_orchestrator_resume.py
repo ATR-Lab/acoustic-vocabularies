@@ -5,6 +5,7 @@ import collections
 import dataclasses
 import hashlib
 import json
+import threading
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from av_sound.store import VocabularyStore
 
 from av_generation import _batch_sim as sim
 from av_generation._orch_host import PanelHost
-from av_generation.clock import ManualClock
+from av_generation.clock import ManualClock, ScaledClock
 from av_generation.config import RaterSeat
 from av_generation.genconfig import ConfigMismatch
 from av_generation.ids import Method, RunKind
@@ -159,10 +160,12 @@ def test_rater_withdrawal_marks_the_batch_incomplete_and_rebuilds(tmp_path):
     config = sim.demo_batch_config()
     second = config.atom_order[1]
     target = f"{config.batch_id}.{second}.r2p4"
+    during = []
 
     def probe(host, slot):
         if slot.rating_slot_id == target:
             host.report_withdrawal("R02", "S2", "rater withdrew: unwell – stopped")
+            during.append(host.snapshot())  # the slot is still open until its lock
 
     batch = sim.make_sim_batch(tmp_path, "DEMO-wd-01", clock=clock)
     batch.panel.probe = probe
@@ -184,7 +187,20 @@ def test_rater_withdrawal_marks_the_batch_incomplete_and_rebuilds(tmp_path):
         causes = [r["cause"] for r in store.records(book.book_id) if r["event"] == "void"]
         assert causes == ["batch_rebuild"]
     host = batch.orchestrator.panel_host()
-    assert host.wait_events(0, 0)[-1].reason == "withdrawn"
+    events = host.wait_events(0, 0)
+    assert (events[-1].kind, events[-1].reason) == ("end", "withdrawn")
+    assert [(d.state, d.slot, d.preload) for d in during] == [("ended", None, ())]
+    # the session is halted: a rejoining station sees the end, and nothing is announced
+    host.station_joined("R01", "S1", "bot")
+    snap = host.snapshot()
+    assert (snap.state, snap.slot, snap.seq) == ("ended", None, len(events))
+    assert isinstance(host, PanelHost) and host.halted
+    plan = host._plans[target]
+    assert host.publish_slot(plan) is None
+    host.publish_preload({}, ())
+    host.publish("resume")
+    host.publish("end", "aborted")
+    assert host.wait_events(0, 0) == events and host.state == "ended"
     with pytest.raises(BatchIncomplete):
         batch.orchestrator.run_appointment(1)
     assert batch.orchestrator.console().incomplete
@@ -211,6 +227,52 @@ def test_rater_withdrawal_marks_the_batch_incomplete_and_rebuilds(tmp_path):
         "R12",
         "R13",
     }
+
+
+def test_no_event_follows_the_end_after_a_withdrawal_in_accelerated_time(tmp_path):
+    """Accelerated real time, slots announced 0.5 s ahead: a rater withdraws 1 s into
+    rating slot p2. That slot runs to its lock and keeps its records, the next slot is
+    never announced (no event follows `end`) and a rejoining station's snapshot is
+    `ended` with no slot."""
+    clock = ScaledClock(20)
+    batch = sim.make_sim_batch(tmp_path, "DEMO-wd-04", clock=clock)
+    config = batch.orchestrator.config
+    host = batch.orchestrator.panel_host()
+    target = f"{config.batch_id}.{config.atom_order[0]}.r1p2"
+    stop = threading.Event()
+    during = []
+
+    def withdraw():
+        seq = 0
+        while not stop.is_set():
+            for event in host.wait_events(seq, 0.05):
+                seq = event.seq
+                if event.kind == "slot" and event.slot.rating_slot_id == target:
+                    while clock.now_ms() < event.slot.start_ms + 1_000:
+                        clock.sleep(0.1)
+                    host.report_withdrawal("R02", "S2", "unwell")
+                    during.append(host.snapshot())
+                    return
+
+    watcher = threading.Thread(target=withdraw, daemon=True)
+    watcher.start()
+    with pytest.raises(BatchIncomplete), batch.panel:
+        batch.orchestrator.run_atom(config.atom_order[0])
+    stop.set()
+    watcher.join(10)
+    events = host.wait_events(0, 0)
+    ends = [i for i, e in enumerate(events) if e.kind == "end"]
+    assert ends == [len(events) - 1] and events[-1].reason == "withdrawn"
+    published = [e.slot.rating_slot_id for e in events if e.kind == "slot"]
+    assert target in published
+    host.station_joined("R02", "S2", "bot")
+    snap = host.snapshot()
+    assert (snap.state, snap.slot) == ("ended", None)
+    assert [(d.state, d.slot) for d in during] == [("ended", None)]
+    ratings = read_records(batch.layout.log("rating"), RatingRecord)
+    assert ratings[-1].rating_slot_id in published and len(ratings) % 3 == 0
+    assert {r.rating_slot_id for r in ratings} >= {target}
+    assert len(_events(batch.layout, "batch_incomplete")) == 1
 
 
 def test_mark_incomplete_between_appointments(tmp_path):

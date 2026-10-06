@@ -16,19 +16,19 @@
     "decision_records": 192,
     "fallback_scans": 0,
     "message_plays": 0,
-    "play_records": 2943,
+    "play_records": 2961,
     "rating_missing": 0,
-    "rating_placeholders": 70,
+    "rating_placeholders": 67,
     "rating_records_per_rater": {
       "R01": 576,
       "R02": 576,
       "R03": 576
     },
     "slot_outcomes": {
-      "event_too_short": 45,
+      "event_too_short": 42,
       "invalid_json": 12,
       "timeout": 13,
-      "valid": 506
+      "valid": 509
     },
     "slot_records": 576,
     "timing_events": 576
@@ -36,19 +36,19 @@
   "final_chain_heads": {
     "DEMO-BK-7QX4": "3086325d04d40007f0bc112ad77c1d9cbaf806a524cf93fc37953c8236c81bdb",
     "DEMO-BK-H9TC": "7bb07d314bed764558a4ea16dd780dc0666886d7013bdf81c19da0c72cc17bd0",
-    "DEMO-BK-M2RW": "2a786aa33b34835e46544294cd3bc993c22f14b9bbcc671409a9cf03af83dc4a"
+    "DEMO-BK-M2RW": "454f6ee87a3d59f749d9d17f4cba1d8693186e8263fde99213b1730e035d663e"
   },
   "format": "av-generation/sim-batch-summary",
   "format_version": 1,
   "generation_config_sha256": "474ab93b20b0578d17f602c3d0610b3405ad5162421abb4b77fe0972921033f8",
   "log_digests_sorted_lines": {
-    "commit": "b95e39f9febaa3a9e416a5ecba936dc5ef73dbd76c0270dc365e5d2de8339a03",
-    "decision": "727b47706093d63ba32c08bd408c06e2ce41ccd520755d814d8a228b6b89e451",
+    "commit": "70eb2f5ae985bfcdd7d5b703ca022069efba252116504d41a9dbd81244f885c7",
+    "decision": "3bd55afac75cd3e512512e3936135f0fcd279e8fd46a643dd5173fa0c2cfc03d",
     "fallback_scan": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "llm_request": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "play": "4a5988ab9a1a24bf373867cb16457797ddbd5d21eeb52fd27cee2f3dc4def2b5",
-    "rating": "33dee24f0dbaae2ce1e962ee86347816c55eaf04c0ec7631848a48a75ac0cc2b",
-    "slot": "305179170c1a31c59017c935599f0f95df95f8315a3b6d697aa10ec60c2b347a",
+    "play": "fcf046fc6a8e7a43b8e9e4e36d2fdb38f6c04613ca3c816681a2d44cb1ed1602",
+    "rating": "c58f7ed1d396de613b0d74f84ee1eac819d07c6511c6185a9912df73d43d0ed7",
+    "slot": "3c0e7411122a6c5775b7e8fc682c2d4123b23c094118e0ea643edbfe96bd3513",
     "slot_refusal": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "threshold_trial": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "timing": "5d65c3e166bfacabbe79fa2084e7131103d212ab484dbbe20f02e8b977a5b93f"

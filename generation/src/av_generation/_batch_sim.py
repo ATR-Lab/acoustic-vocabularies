@@ -8,9 +8,11 @@ These stand-ins speak the same contracts (`proposers.RoundProposer`,
 other issues land:
 
 - `SimProposer`: fills three slots per round with seeded uniform recipes (the A1 stand-in
-  is a scripted "bot designer" with seed keys in the `A1` namespace), validates them with
-  `av_sound.validate` against the book's committed references and writes one `SlotRecord`
-  per slot. A `propose` callback scripts exact candidates for fixtures.
+  is a scripted "bot designer" with seed keys in the `A1` namespace; from round 2 the A2
+  stand-in's slot 1 changes one coordinate of the incumbent it gets as feedback, so the
+  pinned run depends on the feedback channel), validates them with `av_sound.validate`
+  against the book's committed references and writes one `SlotRecord` per slot. A
+  `propose` callback scripts exact candidates for fixtures.
 - `SyntheticPanel`: three bot seats that read the host's events and submit ratings drawn
   from `seeds.bot_seed_key(run_id, rater, "rating", rating_slot_id)` (or a scripted
   policy). With a `ManualClock` it drives the clock itself (event by event), so a whole
@@ -46,7 +48,7 @@ from av_generation._paths import examples_path
 from av_generation.clock import Clock, ManualClock, ScaledClock
 from av_generation.config import BatchConfig, RaterSeat
 from av_generation.constants import RATING_SLOT_MS, REFERENCE_ONSET_MS, SLOTS_PER_ROUND
-from av_generation.domain import COORDINATES, values_to_recipe
+from av_generation.domain import COORDINATES, replace_values, values_to_recipe
 from av_generation.genconfig import (
     GenerationConfig,
     PromptHashes,
@@ -114,6 +116,15 @@ def uniform_recipe(rng: np.random.Generator) -> Recipe:
     return values_to_recipe([c.values[int(rng.integers(len(c.values)))] for c in COORDINATES])
 
 
+def mutate_one(parent: Recipe, rng: np.random.Generator) -> Recipe:
+    """`parent` with one coordinate set to another allowed value (the A2 stand-in's child
+    of the incumbent; not the A2 mutation operator of #18)."""
+    coord = COORDINATES[int(rng.integers(len(COORDINATES)))]
+    current = coord.get(parent)
+    others = [v for v in coord.values if v != current]
+    return replace_values(parent, {coord.name: others[int(rng.integers(len(others)))]})
+
+
 class SimProposer:
     """A `RoundProposer` stand-in (see the module docstring); writes its own slot records."""
 
@@ -142,6 +153,9 @@ class SimProposer:
         recipe = uniform_recipe(rng)
         if failure is not None and draw < self._p_failure:
             return SimProposal(failure)
+        parent = request.feedback.incumbent() if self.method is Method.A2 and slot == 1 else None
+        if parent is not None and parent.recipe is not None:
+            recipe = mutate_one(parent.recipe, rng)
         return SimProposal("recipe", recipe)
 
     def propose_round(self, request: RoundRequest) -> RoundResult:
@@ -544,12 +558,16 @@ def make_sim_batch(
     return SimBatch(orchestrator, layout, panel, proposers, store, clock)
 
 
-DEMO_PANEL_SETS: Final[Mapping[str, tuple[str, int]]] = {
-    "DEMO-A-P-panel-orders.csv": ("DEMO-A-P", 3),
-    "DEMO-A-C-panel-orders.csv": ("DEMO-A-C", 18),
+DEMO_PANEL_SETS: Final[Mapping[str, tuple[str, tuple[str, ...]]]] = {
+    "DEMO-A-P-panel-orders.csv": ("DEMO-A-P", ("P1", "P3", "P2")),
+    "DEMO-A-C-panel-orders.csv": (
+        "DEMO-A-C",
+        ("P1",) * 4 + ("P2",) * 4 + ("P3",) * 4 + ("P2", "P2", "P1", "P1", "P3", "P3"),
+    ),
 }
 """DEMO panel order schedules (pilot-sized and confirmatory-sized), committed under
-`generation/examples/demo-panel-orders/`."""
+`generation/examples/demo-panel-orders/`: set namespace and the profile of each batch in
+batch-table order (the `profile` column of the schedules DEMO batch tables, #29)."""
 
 
 def demo_panels(set_ns: str, n: int) -> list[tuple[str, str]]:
@@ -557,13 +575,24 @@ def demo_panels(set_ns: str, n: int) -> list[tuple[str, str]]:
     return [(f"{set_ns}{i:02d}-N1", f"{set_ns}{i:02d}") for i in range(1, n + 1)]
 
 
+def demo_panel_profiles(set_ns: str, profiles: Sequence[str]) -> dict[str, str]:
+    """Panel ID -> profile of a DEMO set (`profiles` in batch order)."""
+    panels = demo_panels(set_ns, len(profiles))
+    return {panel_id: profile for (panel_id, _), profile in zip(panels, profiles, strict=True)}
+
+
 def write_demo_panel_orders(out_dir: str | Path) -> dict[str, str]:
     """Write the DEMO panel order schedules; returns file name -> SHA-256."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     return {
-        name: write_panel_order_csv(out / name, set_ns, demo_panels(set_ns, n))
-        for name, (set_ns, n) in DEMO_PANEL_SETS.items()
+        name: write_panel_order_csv(
+            out / name,
+            set_ns,
+            demo_panels(set_ns, len(profiles)),
+            profiles=demo_panel_profiles(set_ns, profiles),
+        )
+        for name, (set_ns, profiles) in DEMO_PANEL_SETS.items()
     }
 
 

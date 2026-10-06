@@ -16,12 +16,12 @@ withdrawal), §3.7 (fallback). Architecture: [`architecture.md`](architecture.md
 | `.run_batch()` | `-> None` | Appointments 1..4 |
 | `.resume()` | `-> str \| None` | Repair torn log tails, reload the logs, finish an interrupted atom; returns the next atom |
 | `.panel_host()` | `-> PanelSessionHost` | The session API for the panel server (#21) |
-| `.console()` | `-> ConsoleView` | Operator console data: panel aliases only |
+| `.console()` | `-> ConsoleView` | Operator console data: panel aliases only; safe to poll from another thread |
 | `.mark_incomplete(reason)` | `-> None` | Operator stop (e.g. a withdrawal between appointments) |
 | `.next_atom()`, `.book_state(book_id, atom_id)`, `.incomplete`, `.config`, `.layout` | | State queries (restricted) |
-| `panel_order_schedule` | `(set_ns, panel_ids) -> Mapping[str, int]` | Panel -> order index 1..6 |
+| `panel_order_schedule` | `(set_ns, panel_ids, *, profiles=None) -> Mapping[str, int]` | Panel -> order index 1..6 (`profiles`: panel -> batch profile) |
 | `panel_aliases` | `(set_ns, panel_id, book_ids) -> Mapping[str, str]` | Book -> `PB-XXXX` alias for one panel |
-| `panel_order_rows`, `write_panel_order_csv` | `(set_ns, [(panel_id, batch_id), ...])` | The schedule CSV (`PANEL_ORDER_COLUMNS`) |
+| `panel_order_rows`, `write_panel_order_csv` | `(set_ns, [(panel_id, batch_id), ...], *, profiles=None)` | The schedule CSV (`PANEL_ORDER_COLUMNS`) |
 | `read_batch_table` | `(path) -> tuple[BatchDefinition, ...]` | Schedules batch table (#29) |
 | `check_permutation` | `(definition, permutation_json) -> None` | Batch table row == the unit's `permutation.json` |
 | `read_book_key` | `(path_or_mapping, unit_id) -> tuple[BookAssignment, ...]` | Schedules book key (#31) |
@@ -52,14 +52,21 @@ which are the single source of the batch definitions:
    the label permutation (`K_action` etc. list the labels of matrix indices 1..4).
 2. `check_permutation(definition, permutation.json)`: refuses a disagreement.
 3. `read_book_key(<set>-book-key.json, unit_id)`: the three anonymous books and methods.
-4. `panel_order_schedule(set_ns, panel_ids)` gives the batch's order index;
+4. `panel_order_schedule(set_ns, panel_ids, profiles={panel_id: definition.profile})`
+   gives the batch's order index;
    `build_batch_config(...)` orders the books by `PANEL_ORDERS[order_index - 1]`, draws
    the panel aliases and checks the result (`check_consistency`).
 
-Panel order schedule. One seeded permutation of the six orders per consecutive group of
-six panels (`rng_for(panel_seed_key(set_ns, "orders"))`), so 18 panels use each order
-exactly 3 times, and each profile's block of six batches (pass the panel IDs in batch
-table order) uses each order once. Three pilot panels get three different orders.
+Panel order schedule. Pass every panel's batch profile (the batch table's `profile`
+column; the table interleaves profiles, e.g. 4 x P1, 4 x P2, 4 x P3, 2 x P2, 2 x P1,
+2 x P3). One seeded stream (`rng_for(panel_seed_key(set_ns, "orders"))`) draws one
+permutation of the six orders per profile (per six panels of that profile), in sorted
+profile order, each uniformly among the permutations that differ at every position
+from the profiles drawn before it. So each profile's six batches use every order once,
+18 panels use each order exactly 3 times, and panels at the same position within their
+profiles get different orders: the three pilot panels (one per profile) use three
+different orders. The CSV has a `profile` column. Without `profiles` the panels form one
+group (each six consecutive panels use every order once, no balance within a profile).
 
 Aliases (book-ID rotation). Per panel, `rng_for(panel_seed_key(set_ns, "aliases",
 panel_id))` draws one alias per book in sorted book-ID order (`PB-` + 4 characters of
@@ -139,7 +146,10 @@ server (#21); see that module for the division of work. Events: `preload` (asset
 round), `slot`, `pause`, `resume`, `end`, with `seq` 1, 2, ... `snapshot()` returns the
 slot in progress (or the next one), the state (`waiting`, `slot`, `paused`,
 `between_atoms`, `ended`) and the round's assets. `asset_bytes(asset_id)` serves the
-round's canonical WAVs (`KeyError` otherwise).
+round's canonical WAVs (`KeyError` otherwise). An `end` for a withdrawal or an operator
+stop (`withdrawn`, `aborted`) halts the session: no event follows it, and `snapshot()`
+returns `ended` with no slot and no assets, also while the slot in progress runs to its
+lock, so a station that rejoins shows the end screen.
 
 Ratings (`submit_rating`) are checked in this order:
 
@@ -197,7 +207,8 @@ across restarts.
 
 `report_withdrawal` (or `mark_incomplete(reason)` between appointments) logs
 `rater_withdrawal` and `batch_incomplete`, publishes `end` (`withdrawn` / `aborted`),
-and the run stops at the next slot lock with `BatchIncomplete`. Every record is kept;
+and the run stops at the next slot lock with `BatchIncomplete` (the slot in progress
+keeps its records; the next slot is never announced). Every record is kept;
 the batch's store books (and a substituted `-FB` book) are voided with
 `cause="batch_rebuild"`. Reopening the run raises `BatchIncomplete` again. Rebuild in a
 new run directory and store:
@@ -219,7 +230,7 @@ leaves runs with a `batch_incomplete` event out.
 | Order within a block (Proposed) | Slot order 1, 2, 3 | Issue proposal; deterministic, already in `BatchConfig.rating_positions` |
 | Missing ratings (Decision/Proposed) | A missing comfort counts as not acceptable; the score uses raters with both judgments and is flagged (`flagged_missing`); a candidate with no score is not eligible | Issue proposal; keeps the 2-of-3 rule strict and the score exact |
 | Batch definitions (Proposed: generated here) | Read from the schedules batch table and checked against `permutation.json` | One source of truth: #29 already generates them with a stored seed; generating them twice could disagree |
-| Order schedule over 18 panels | One seeded permutation of the 6 orders per block of 6 panels | Each order exactly 3 times, and each profile block (6 batches) gets each order once |
+| Order schedule over 18 panels | One seeded permutation of the 6 orders per profile (from the batch table's `profile` column), the profiles' permutations differing at every position | Each order exactly 3 times over 18 panels (§3.1), every profile's 6 batches get each order once although the batch table interleaves profiles, and the 3 pilot panels get 3 different orders |
 | Rebuilt batches | Same order index and books, new panel, aliases and seed namespace | Counterbalancing is per batch; §3.3 asks for a new independent panel |
 | Substitute store book | `<book>-FB`, commits in the fallback book's stored order | Anonymous, valid store ID; the store snapshot equals the frozen `book_sha256` |
 | First atom | `first_atom` = the book's state has no committed atom | Equals "atom 1" in every normal run; after a substitution with nothing archived it keeps distinguishability fixed at 4 when no reference exists (§3.3) |
@@ -230,7 +241,9 @@ leaves runs with a `batch_incomplete` event out.
 ## 8. Synthetic runs (evidence)
 
 `_batch_sim` runs the real orchestrator with simulated proposers (an A1 bot designer and
-A2/A3 stand-ins drawing seeded uniform recipes, about 5 % scripted failures) and a
+A2/A3 stand-ins drawing seeded uniform recipes, about 5 % scripted failures; from round 2
+the A2 stand-in's slot 1 changes one coordinate of the incumbent it receives as feedback,
+so the pinned digests depend on the feedback channel) and a
 synthetic panel of three bot seats (`bot_seed_key` ratings, comfort acceptable with
 p = 0.9):
 

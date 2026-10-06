@@ -47,9 +47,11 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import itertools
 import json
 import os
 import threading
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -193,29 +195,81 @@ class BatchIncomplete(OrchestratorError):
 # Panel order schedule and per-panel aliases (Study A protocol §3.1)
 
 
-def _orders(set_ns: str, n: int) -> list[int]:
+_ORDER_PERMUTATIONS: Final[tuple[tuple[int, ...], ...]] = tuple(
+    itertools.permutations(range(1, len(PANEL_ORDERS) + 1))
+)
+"""The 720 permutations of the order indices 1..6, in lexicographic order."""
+
+
+def _group_orders(set_ns: str, sizes: Mapping[str, int]) -> dict[str, list[int]]:
+    """Order indices for groups of `sizes[g]` panels from one seeded stream.
+
+    Each group's panels take whole permutations of 1..6 (chunk c covers its panels
+    6c..6c+5). Within a chunk the groups draw in sorted order, each uniformly among the
+    permutations that differ at every position from the groups drawn before it (a Latin
+    rectangle; at most 3 profile groups, so one always exists)."""
     rng = rng_for(panel_seed_key(set_ns, "orders"))
-    orders: list[int] = []
-    while len(orders) < n:
-        orders.extend(int(i) + 1 for i in rng.permutation(len(PANEL_ORDERS)))
-    return orders[:n]
+    n_orders = len(PANEL_ORDERS)
+    out: dict[str, list[int]] = {g: [] for g in sizes}
+    chunks = max((-(-n // n_orders) for n in sizes.values()), default=0)
+    for chunk in range(chunks):
+        rows: list[tuple[int, ...]] = []
+        for group in sorted(sizes):
+            if sizes[group] <= chunk * n_orders:
+                continue
+            allowed = [
+                p
+                for p in _ORDER_PERMUTATIONS
+                if all(p[i] != row[i] for row in rows for i in range(n_orders))
+            ]
+            if not allowed:  # pragma: no cover - impossible for fewer than 6 groups
+                raise OrchestratorError(E_SCHEDULE, "too many profile groups")
+            pick = allowed[int(rng.integers(len(allowed)))]
+            rows.append(pick)
+            out[group].extend(pick)
+    return {g: orders[: sizes[g]] for g, orders in out.items()}
 
 
-def panel_order_schedule(set_ns: str, panel_ids: Sequence[str]) -> Mapping[str, int]:
-    """Panel ID -> order index 1..6, each order exactly 3 times over 18 panels (stored
-    seed `seeds.panel_seed_key(set_ns, "orders")`).
+def panel_order_schedule(
+    set_ns: str,
+    panel_ids: Sequence[str],
+    *,
+    profiles: Mapping[str, Profile | str] | None = None,
+) -> Mapping[str, int]:
+    """Panel ID -> order index 1..6 (stored seed `seeds.panel_seed_key(set_ns, "orders")`).
 
-    The orders are drawn as one seeded permutation of the six orders per consecutive
-    group of six panels, so any 6k panels use each order exactly k times, and a group
-    of fewer panels (the 3 pilot panels) uses distinct orders. Pass the panel IDs in
-    batch-table order, so each profile's block of six batches gets every order once.
+    `profiles` maps every panel ID to its batch's profile (the batch table's `profile`
+    column). The panels of each profile, in the given order, take one seeded permutation
+    of the six orders per six panels, so a profile with six batches uses every order
+    exactly once and 18 panels (3 profiles x 6) use each order exactly 3 times; panels at
+    the same position within their profiles get different orders, so the three pilot
+    panels (one per profile) use distinct orders. Without `profiles` every panel is in
+    one group: each six consecutive panels use every order once (any 6k panels use each
+    order k times), with no balance within a profile.
     `set_ns` must be a restricted namespace for pilot and confirmatory sets (the
     schedule would otherwise be computable from public code; `docs/orchestrator.md`).
     """
     ids = [check_id(p, "panel ID") for p in panel_ids]
     if len(set(ids)) != len(ids):
         raise OrchestratorError(E_SCHEDULE, "panel IDs must be distinct")
-    return dict(zip(ids, _orders(set_ns, len(ids)), strict=True))
+    if profiles is None:
+        group_of = dict.fromkeys(ids, "")
+    else:
+        if set(profiles) != set(ids):
+            raise OrchestratorError(E_SCHEDULE, "profiles must name exactly the panel IDs")
+        try:
+            group_of = {p: Profile(profiles[p]).value for p in ids}
+        except ValueError as err:
+            raise OrchestratorError(E_SCHEDULE, f"unknown profile: {err}") from err
+    sizes = Counter(group_of.values())
+    orders = _group_orders(set_ns, sizes)
+    taken = dict.fromkeys(sizes, 0)
+    out: dict[str, int] = {}
+    for panel_id in ids:
+        group = group_of[panel_id]
+        out[panel_id] = orders[group][taken[group]]
+        taken[group] += 1
+    return out
 
 
 def panel_aliases(set_ns: str, panel_id: str, book_ids: Sequence[str]) -> Mapping[str, str]:
@@ -239,25 +293,34 @@ def panel_aliases(set_ns: str, panel_id: str, book_ids: Sequence[str]) -> Mappin
 PANEL_ORDER_COLUMNS: Final[tuple[str, ...]] = (
     "panel_id",
     "batch_id",
+    "profile",
     "order_index",
     "order",
     "seed_key",
     "seed",
     "aliases_seed_key",
 )
-"""Columns of the panel order schedule CSV (restricted unless the set is DEMO): the order
-seed (one per set) and the seed key of each panel's book aliases (ID rotation)."""
+"""Columns of the panel order schedule CSV (restricted unless the set is DEMO): the
+batch's profile (empty without `profiles`), the order seed (one per set) and the seed
+key of each panel's book aliases (ID rotation)."""
 
 
-def panel_order_rows(set_ns: str, panels: Sequence[tuple[str, str]]) -> list[dict[str, str]]:
-    """Rows of the panel order schedule for `(panel_id, batch_id)` pairs in batch order."""
-    schedule = panel_order_schedule(set_ns, [p for p, _ in panels])
+def panel_order_rows(
+    set_ns: str,
+    panels: Sequence[tuple[str, str]],
+    *,
+    profiles: Mapping[str, Profile | str] | None = None,
+) -> list[dict[str, str]]:
+    """Rows of the panel order schedule for `(panel_id, batch_id)` pairs in batch order
+    (`profiles`: panel ID -> profile, as in `panel_order_schedule`)."""
+    schedule = panel_order_schedule(set_ns, [p for p, _ in panels], profiles=profiles)
     key = panel_seed_key(set_ns, "orders")
     seed = str(seed_from_key(key))
     return [
         {
             "panel_id": panel_id,
             "batch_id": check_id(batch_id, "batch ID"),
+            "profile": "" if profiles is None else Profile(profiles[panel_id]).value,
             "order_index": str(schedule[panel_id]),
             "order": "|".join(PANEL_ORDERS[schedule[panel_id] - 1]),
             "seed_key": key,
@@ -269,13 +332,17 @@ def panel_order_rows(set_ns: str, panels: Sequence[tuple[str, str]]) -> list[dic
 
 
 def write_panel_order_csv(
-    path: str | os.PathLike[str], set_ns: str, panels: Sequence[tuple[str, str]]
+    path: str | os.PathLike[str],
+    set_ns: str,
+    panels: Sequence[tuple[str, str]],
+    *,
+    profiles: Mapping[str, Profile | str] | None = None,
 ) -> str:
     """Write the schedule CSV (`PANEL_ORDER_COLUMNS`, `\\n` line ends); returns its SHA-256."""
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=PANEL_ORDER_COLUMNS, lineterminator="\n")
     writer.writeheader()
-    writer.writerows(panel_order_rows(set_ns, panels))
+    writer.writerows(panel_order_rows(set_ns, panels, profiles=profiles))
     data = buffer.getvalue().encode("utf-8")
     with open(path, "wb") as handle:
         handle.write(data)
@@ -754,7 +821,8 @@ class Orchestrator:
 
     def next_atom(self) -> str | None:
         """The next atom to run (`None` when the batch is finished)."""
-        return self._index.next_atom()
+        with self._lock:
+            return self._index.next_atom()
 
     def panel_host(self) -> PanelSessionHost:
         """The session API for the panel server (`panel.create_panel_app`, #21)."""
@@ -762,7 +830,8 @@ class Orchestrator:
 
     def book_state(self, book_id: str, atom_id: str) -> BookState:
         """A book's state when `atom_id` starts (restricted; for tests and the operator)."""
-        return self._index.book_state(book_id, atom_id)
+        with self._lock:
+            return self._index.book_state(book_id, atom_id)
 
     def run_batch(self) -> None:
         """Run every remaining appointment (1..4) of the batch."""
@@ -855,7 +924,14 @@ class Orchestrator:
         self._void_for_rebuild()
 
     def console(self) -> ConsoleView:
-        """The operator console: panel aliases only (never book IDs or methods)."""
+        """The operator console: panel aliases only (never book IDs or methods).
+
+        Thread-safe: an operator UI may poll it while the batch runs (it reads the index
+        under the lock the orchestrator holds while adding records)."""
+        with self._lock:
+            return self._console()
+
+    def _console(self) -> ConsoleView:
         index, config = self._index, self._config
         nxt = index.next_atom()
         books = []
@@ -1193,7 +1269,11 @@ class Orchestrator:
                 nxt = run[k + 1] if k + 1 < len(run) else None
                 if nxt is not None and lead > 0:
                     self._sleep_until(plan.lock_ms - lead)
-                    self._host.publish_slot(nxt)
+                    # After a withdrawal the slot in progress still runs to its lock (its
+                    # records are kept), but the next one is never announced; the host
+                    # also refuses it once the session has ended.
+                    if not self._incomplete:
+                        self._host.publish_slot(nxt)
                 self._sleep_until(plan.lock_ms)
                 records = self._host.close_slot(plan)
                 with self._lock:

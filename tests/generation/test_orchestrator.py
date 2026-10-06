@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import threading
 from fractions import Fraction
 from pathlib import Path
 
@@ -46,16 +47,17 @@ from av_generation.orchestrator import (
     substitute_book_id,
 )
 from av_generation.panel_session import PanelSessionHost
-from av_generation.proposers import BookState, CommittedAtom
+from av_generation.proposers import BookState, CommittedAtom, RaterScore
 from av_generation.records import (
     CommitRecord,
     DecisionRecord,
     RatingRecord,
     RunManifest,
     SlotRecord,
+    TimingEvent,
     read_records,
 )
-from av_generation.selector import pick_incumbent, score_candidate
+from av_generation.selector import parse_score, pick_incumbent, score_candidate
 
 ROOT = Path(__file__).resolve().parents[2]
 FIX = ROOT / "tests/generation/fixtures/orchestrator"
@@ -68,27 +70,76 @@ RUN_ID = "DEMO-A-virtual-01"
 # Panel order schedule and aliases
 
 
-def test_eighteen_panels_use_each_order_exactly_three_times():
-    panels = [p for p, _ in sim.demo_panels("DEMO-A-C", 18)]
-    schedule = panel_order_schedule("DEMO-A-C", panels)
-    assert list(schedule) == panels
+def _table_panels(name, suffix="-N1"):
+    """(panel_id, profile) per batch of a schedules DEMO batch table, in table order."""
+    return [(f"{d.unit_id}{suffix}", d.profile) for d in read_batch_table(FIX / name)]
+
+
+def _check_profile_balance(schedule, panels):
+    by_profile = collections.defaultdict(list)
+    for panel_id, profile in panels:
+        by_profile[profile].append(schedule[panel_id])
+    for orders in by_profile.values():
+        for start in range(0, len(orders), 6):
+            chunk = orders[start : start + 6]
+            assert len(set(chunk)) == len(chunk)  # a full chunk is a permutation of 1..6
+    # panels at the same position within their profiles get different orders
+    for rank in range(max(len(v) for v in by_profile.values())):
+        at_rank = [v[rank] for v in by_profile.values() if rank < len(v)]
+        assert len(set(at_rank)) == len(at_rank)
+    return by_profile
+
+
+def test_each_profile_of_the_batch_table_gets_every_order_once():
+    """The #29 batch table interleaves profiles (blocks of 4, then 2): every profile's six
+    batches still use each order once, and 18 panels use each order 3 times."""
+    panels = _table_panels("demo-confirmatory-batch-table.csv")
+    profiles = dict(panels)
+    assert collections.Counter(profiles.values()) == {Profile.P1: 6, Profile.P2: 6, Profile.P3: 6}
+    assert [p for _, p in panels][12:] != [p for _, p in panels][:6]  # interleaved, not blocks
+    ids = [p for p, _ in panels]
+    schedule = panel_order_schedule("DEMO-A-C", ids, profiles=profiles)
+    assert list(schedule) == ids
     assert collections.Counter(schedule.values()) == {i: 3 for i in range(1, 7)}
-    # each block of six panels (one profile's batches) uses every order once
-    values = [schedule[p] for p in panels]
-    for start in range(0, 18, 6):
-        assert sorted(values[start : start + 6]) == [1, 2, 3, 4, 5, 6]
-    assert panel_order_schedule("DEMO-A-C", panels) == schedule
-    assert panel_order_schedule("DEMO-A-C-other", panels) != schedule
+    by_profile = _check_profile_balance(schedule, panels)
+    assert all(sorted(v) == [1, 2, 3, 4, 5, 6] for v in by_profile.values())
+    assert panel_order_schedule("DEMO-A-C", ids, profiles=profiles) == schedule
+    assert panel_order_schedule("DEMO-A-C-other", ids, profiles=profiles) != schedule
+    # the order of the profiles mapping does not matter, the order of the panels does
+    assert panel_order_schedule("DEMO-A-C", ids, profiles=dict(reversed(panels))) == schedule
+    # the pilot table (one batch per profile) gets three different orders
+    pilot = _table_panels("demo-pilot-batch-table.csv")
+    pilot_schedule = panel_order_schedule("DEMO-A-P", [p for p, _ in pilot], profiles=dict(pilot))
+    assert len(set(pilot_schedule.values())) == 3
+    # without profiles: each six consecutive panels use every order once
+    plain = panel_order_schedule("DEMO-A-C", ids)
+    assert collections.Counter(plain.values()) == {i: 3 for i in range(1, 7)}
+    values = [plain[p] for p in ids]
+    assert all(sorted(values[i : i + 6]) == [1, 2, 3, 4, 5, 6] for i in range(0, 18, 6))
 
 
 @settings(max_examples=40, deadline=None)
-@given(st.from_regex(r"[A-Za-z0-9][A-Za-z0-9._-]{0,20}", fullmatch=True))
-def test_any_set_namespace_gives_a_balanced_schedule(set_ns):
-    panels = [f"P{i:02d}" for i in range(18)]
-    schedule = panel_order_schedule(set_ns, panels)
+@given(
+    st.from_regex(r"[A-Za-z0-9][A-Za-z0-9._-]{0,20}", fullmatch=True),
+    st.permutations(["P1"] * 6 + ["P2"] * 6 + ["P3"] * 6),
+    st.integers(min_value=1, max_value=14),
+)
+def test_any_namespace_and_interleaving_gives_balanced_profiles(set_ns, order, n_extra):
+    panels = [(f"P{i:02d}", profile) for i, profile in enumerate(order)]
+    ids = [p for p, _ in panels]
+    schedule = panel_order_schedule(set_ns, ids, profiles=dict(panels))
     assert collections.Counter(schedule.values()) == {i: 3 for i in range(1, 7)}
-    pilot = panel_order_schedule(set_ns, panels[:3])
-    assert len(set(pilot.values())) == 3
+    by_profile = _check_profile_balance(schedule, panels)
+    assert all(sorted(v) == [1, 2, 3, 4, 5, 6] for v in by_profile.values())
+    pilot = [("PX1", "P1"), ("PX2", "P3"), ("PX3", "P2")]
+    pilot_schedule = panel_order_schedule(set_ns, [p for p, _ in pilot], profiles=dict(pilot))
+    assert len(set(pilot_schedule.values())) == 3
+    assert len(set(panel_order_schedule(set_ns, ids[:3]).values())) == 3
+    # uneven groups (rebuilt or extra panels): every full chunk is still a permutation
+    uneven = panels + [(f"E{i:02d}", order[i % 18]) for i in range(n_extra)]
+    _check_profile_balance(
+        panel_order_schedule(set_ns, [p for p, _ in uneven], profiles=dict(uneven)), uneven
+    )
 
 
 def test_schedule_refuses_duplicate_or_bad_panel_ids():
@@ -97,6 +148,14 @@ def test_schedule_refuses_duplicate_or_bad_panel_ids():
     assert err.value.code == "E_SCHEDULE"
     with pytest.raises(ValueError):
         panel_order_schedule("DEMO-A-C", ["bad id"])
+    for profiles in (
+        {"P01": "P1"},
+        {"P01": "P1", "P02": "P2", "P03": "P3"},
+        {"P01": "P1", "P02": "P4"},
+    ):
+        with pytest.raises(OrchestratorError) as err:
+            panel_order_schedule("DEMO-A-C", ["P01", "P02"], profiles=profiles)
+        assert err.value.code == "E_SCHEDULE"
 
 
 def test_committed_demo_panel_order_csvs_regenerate(tmp_path):
@@ -105,15 +164,36 @@ def test_committed_demo_panel_order_csvs_regenerate(tmp_path):
         committed = (PANEL_ORDERS_DIR / name).read_bytes()
         assert hashlib.sha256(committed).hexdigest() == digest, f"regenerate {name}"
         assert committed == (tmp_path / name).read_bytes()
+    # the DEMO sets use the profiles of the schedules DEMO batch tables
+    for name, table in (
+        ("DEMO-A-C-panel-orders.csv", "demo-confirmatory-batch-table.csv"),
+        ("DEMO-A-P-panel-orders.csv", "demo-pilot-batch-table.csv"),
+    ):
+        _, profiles = sim.DEMO_PANEL_SETS[name]
+        assert [p.value for _, p in _table_panels(table)] == list(profiles)
     with open(PANEL_ORDERS_DIR / "DEMO-A-C-panel-orders.csv", newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     assert tuple(rows[0]) == PANEL_ORDER_COLUMNS
     assert collections.Counter(r["order_index"] for r in rows) == {str(i): 3 for i in range(1, 7)}
+    for profile in ("P1", "P2", "P3"):
+        mine = sorted(int(r["order_index"]) for r in rows if r["profile"] == profile)
+        assert mine == [1, 2, 3, 4, 5, 6]
     for row in rows:
         assert row["order"] == "|".join(PANEL_ORDERS[int(row["order_index"]) - 1])
         assert row["seed_key"] == "PANEL|DEMO-A-C|orders"
         assert row["aliases_seed_key"] == f"PANEL|DEMO-A-C|aliases|{row['panel_id']}"
-    assert panel_order_rows("DEMO-A-C", sim.demo_panels("DEMO-A-C", 18)) == rows
+    _, profiles = sim.DEMO_PANEL_SETS["DEMO-A-C-panel-orders.csv"]
+    assert (
+        panel_order_rows(
+            "DEMO-A-C",
+            sim.demo_panels("DEMO-A-C", 18),
+            profiles=sim.demo_panel_profiles("DEMO-A-C", profiles),
+        )
+        == rows
+    )
+    assert {r["profile"] for r in panel_order_rows("DEMO-A-C", sim.demo_panels("DEMO-A-C", 6))} == {
+        ""
+    }
 
 
 def test_panel_aliases_rotate_and_stay_masked():
@@ -471,6 +551,82 @@ def test_feedback_holds_only_the_books_own_fields(full_run):
     assert leaks == 0
 
 
+def test_feedback_returns_the_books_closed_rounds_and_incumbent(full_run):
+    """Study A protocol §3.3/§3.5: every request carries this book's closed rounds of the
+    atom (recipes, technical status, ratings in seat order, eligibility and score) and the
+    incumbent decided after the last closed round (the A2 parent)."""
+    batch, _ = full_run
+    slots, ratings, decisions, _ = _logs(batch)
+    seat_order = [s.rater_id for s in batch.orchestrator.config.panel.raters]
+    by_slot = collections.defaultdict(list)
+    for r in ratings:
+        by_slot[r.slot_id].append(r)
+    decided = {(d.book_id, d.atom_id, d.round): d for d in decisions}
+    seen = collections.Counter()
+    for proposer in batch.proposers.values():
+        for request in proposer.requests:
+            fb, round_ = request.feedback, request.round
+            assert (fb.book_id, fb.atom_id) == (request.book_id, request.atom_id)
+            assert fb.rounds_closed == round_ - 1
+            closed = sorted(
+                (
+                    s
+                    for s in slots
+                    if s.book_id == request.book_id
+                    and s.atom_id == request.atom_id
+                    and s.round < round_
+                ),
+                key=lambda s: s.slot_index,
+            )
+            assert len(closed) == 3 * (round_ - 1)
+            assert [c.slot_id for c in fb.candidates] == [s.slot_id for s in closed]
+            previous = decided.get((request.book_id, request.atom_id, round_ - 1))
+            for cand, slot in zip(fb.candidates, closed, strict=True):
+                assert (cand.round, cand.slot, cand.slot_index) == (
+                    slot.round,
+                    slot.slot,
+                    slot.slot_index,
+                )
+                assert cand.outcome is slot.outcome
+                assert cand.validator_codes == slot.validator_codes
+                recipe = None if cand.recipe is None else cand.recipe.to_dict()
+                assert recipe == (slot.recipe if slot.recipe else None)
+                expected = score_candidate(
+                    slot, by_slot[slot.slot_id], first_atom=previous.first_atom
+                )
+                if expected.technically_valid:
+                    logged = {r.rater_id: r for r in by_slot[slot.slot_id]}
+                    assert cand.ratings == tuple(
+                        RaterScore(
+                            logged[rid].association,
+                            logged[rid].distinguishability,
+                            logged[rid].comfort,
+                        )
+                        for rid in seat_order
+                    )
+                    seen["rated"] += 1
+                else:
+                    assert cand.ratings == ()
+                assert cand.eligible == expected.eligible
+                seen["candidates"] += 1
+                assert cand.score == (
+                    None if expected.score is None else parse_score(expected.score)
+                )
+            if previous is None:
+                assert round_ == 1
+                assert fb.incumbent_slot_id is None and fb.incumbent_score is None
+                continue
+            assert fb.incumbent_slot_id == previous.incumbent_slot_id
+            assert fb.incumbent_score == (
+                None if previous.incumbent_score is None else parse_score(previous.incumbent_score)
+            )
+            if previous.incumbent_slot_id is not None:
+                assert fb.incumbent().slot_id == previous.incumbent_slot_id
+                seen["incumbent"] += 1
+    assert seen["candidates"] == 48 * (0 + 3 + 6 + 9)
+    assert seen["rated"] > 600 and seen["incumbent"] > 100
+
+
 def test_a2_never_receives_labels_or_meanings(full_run):
     batch, _ = full_run
     meanings = sim.demo_meanings()
@@ -550,6 +706,77 @@ def test_accelerated_clock_batch(tmp_path):
     (out / "DEMO-A-accel-01-summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
     )
+
+
+def test_the_three_proposal_windows_run_in_parallel(tmp_path):
+    """Study A protocol §3.6: the proposal windows of A1, A2 and A3 run at the same time.
+    Each proposer blocks in its first slot until all three have arrived (a serial run
+    would time out); the last one to arrive moves the clock 100 s, so the window takes
+    100 s, not 300 s, and the three books' first slots overlap."""
+    clock = ManualClock()
+    barrier = threading.Barrier(3, action=lambda: clock.advance(100_000))
+
+    def slow(request, slot, rng):
+        if request.round == 1 and slot == 1:
+            barrier.wait(timeout=10)
+        return sim.SimProposal("recipe", sim.uniform_recipe(rng))
+
+    batch = sim.make_sim_batch(
+        tmp_path, "DEMO-par-01", clock=clock, propose=dict.fromkeys(Method, slow)
+    )
+    with batch.panel:
+        batch.orchestrator.run_atom(batch.orchestrator.config.atom_order[0])
+    timing = read_records(batch.layout.log("timing"), TimingEvent)
+    starts = [e for e in timing if e.event == "proposal_window_start"]
+    ends = [e for e in timing if e.event == "proposal_window_end"]
+    assert ends[0].duration_ms == 100_000
+    assert ends[0].detail == "slots_over_cap=3"
+    first = [
+        s
+        for s in read_records(batch.layout.log("slot"), SlotRecord)
+        if s.round == 1 and s.slot == 1
+    ]
+    assert len({s.book_id for s in first}) == 3
+    assert {s.t_open_ms for s in first} == {starts[0].t_ms}
+    assert {s.t_ms for s in first} == {starts[0].t_ms + 100_000}
+    assert max(s.t_open_ms for s in first) < min(s.t_ms for s in first)
+
+
+def test_console_reads_the_index_under_the_orchestrator_lock(tmp_path):
+    """An operator UI may poll `console()` while the orchestrator thread adds records
+    under its lock: the console waits for the lock instead of iterating a changing dict."""
+    batch = sim.make_sim_batch(tmp_path, "DEMO-console-01", clock=ManualClock())
+    orch = batch.orchestrator
+    views = []
+    with orch._lock:  # what the orchestrator holds while it adds records to its index
+        reader = threading.Thread(target=lambda: views.append(orch.console()))
+        reader.start()
+        reader.join(0.3)
+        assert reader.is_alive() and not views
+    reader.join(10)
+    assert len(views) == 1 and views[0].atoms_finished == 0
+    # and polling while a whole atom runs never fails
+    errors, stop = [], threading.Event()
+
+    def poll():
+        while not stop.wait(0.002):
+            try:
+                orch.console()
+                orch.next_atom()
+            except Exception as err:  # noqa: BLE001 - reported below
+                errors.append(err)
+                return
+
+    poller = threading.Thread(target=poll)
+    poller.start()
+    try:
+        with batch.panel:
+            orch.run_atom(orch.config.atom_order[0])
+    finally:
+        stop.set()
+        poller.join(10)
+    assert errors == []
+    assert orch.console().books[0].slots_used == 12
 
 
 def test_store_snapshot_matches_the_commit_log(full_run):

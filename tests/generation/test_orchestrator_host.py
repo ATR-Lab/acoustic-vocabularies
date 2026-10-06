@@ -96,6 +96,14 @@ def probed(tmp_path_factory):
         elif not slot.first_atom and "later" not in seen:
             seen["later"] = [ack(_sub("R01", "S1", slot, d=None))]
             seen["later_slot"] = slot.rating_slot_id
+        elif not slot.first_atom and "duplicate" not in seen:
+            # R01 rates this slot here (its bot stays silent): a second rating is refused
+            # and the first one is what the record keeps
+            seen["duplicate"] = [
+                ack(_sub("R01", "S1", slot, a=6, d=2)),
+                ack(_sub("R01", "S1", slot, a=1, d=7, comfort="unacceptable")),
+            ]
+            seen["duplicate_slot"] = slot.rating_slot_id
         if "prev" in previous and "closed" not in seen:
             seen["closed"] = [ack(_sub("R02", "S2", previous["prev"]))]
         previous["prev"] = slot
@@ -103,6 +111,8 @@ def probed(tmp_path_factory):
     def policy(seat, slot):
         if slot.rating_slot_id == seen.get("later_slot") and seat.rater_id == "R02":
             return None  # a missing rating
+        if slot.rating_slot_id == seen.get("duplicate_slot") and seat.rater_id == "R01":
+            return None  # the probe has rated this slot for R01
         return base(seat, slot)
 
     base = sim.seeded_policy(RUN)
@@ -133,6 +143,7 @@ def test_rating_refusal_codes(probed):
     ]
     assert set(seen["placeholder"]) == {"E_PLACEHOLDER"}
     assert seen["later"] == ["E_PROTOCOL"]
+    assert seen["duplicate"] == [None, "E_DUPLICATE_RATING"]
     assert seen["closed"] == ["E_SLOT_CLOSED"]
     assert seen["refused"] == [
         "E_UNKNOWN_RATER",
@@ -173,6 +184,16 @@ def test_rating_records_per_seat(probed):
     missing = [r for r in ratings if r.missing]
     assert [(r.rater_id, r.rating_slot_id) for r in missing] == [("R02", seen["later_slot"])]
     assert missing[0].rt_ms is None and missing[0].unlock_ms is not None
+    (kept,) = [
+        r for r in ratings if r.rating_slot_id == seen["duplicate_slot"] and r.rater_id == "R01"
+    ]
+    assert (kept.association, kept.distinguishability, kept.comfort, kept.rt_ms) == (
+        6,
+        2,
+        "acceptable",
+        10,
+    )
+    assert not kept.missing and not kept.distinguishability_by_rule
     reconnected = [r for r in ratings if r.reconnected]
     assert [(r.rater_id, r.rating_slot_id) for r in reconnected] == [
         ("R03", seen["reconnected_slot"])
