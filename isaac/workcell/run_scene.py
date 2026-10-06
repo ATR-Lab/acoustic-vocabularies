@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--e2e-control-session-id')
     parser.add_argument('--e2e-public-socket',type=Path)
     parser.add_argument('--e2e-private-socket',type=Path)
+    parser.add_argument('--e2e-private-timing-seconds',type=float,default=0.)
     parser.add_argument('--same-iteration-check',action='store_true')
     early,_=parser.parse_known_args()
     verify_loopback_only()
@@ -234,6 +235,7 @@ def main():
                     station_id=args.e2e_station_id,host_uid=args.e2e_host_uid,
                     control_session_id=args.e2e_control_session_id,
                     public_socket=args.e2e_public_socket,private_socket=args.e2e_private_socket,
+                    private_timing_seconds=args.e2e_private_timing_seconds,
                     joint_csv=ROOT/'docs/spikes/isaac/joint_inventory.csv')
                 if not e2e['service_completed']: raise RuntimeError('JOINED_E2E_SERVICE_FAILED')
             finally: event_log.close()
