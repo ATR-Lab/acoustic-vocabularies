@@ -61,10 +61,13 @@ def coverage(reports, fault_reports=()):
 def verify_suite(path, expected):
     path = Path(path).absolute(); root = path.parent
     plan = strict(read(path, expected, 1024**2))
-    exact(plan, "version scope runs screening_artifacts screen_recordings external_script_reports" + (" fault_cases" if plan.get("version") == 2 else ""))
-    require(type(plan["version"]) is int and plan["version"] in {1, 2} and plan["scope"] == "SIMULATION_TEST", "MOCK_SUITE_SCOPE")
+    exact(plan, "version scope runs screening_artifacts screen_recordings external_script_reports"
+          + (" fault_cases" if plan.get("version") in {2, 3} else "")
+          + (" screening_chains" if plan.get("version") == 3 else ""))
+    require(type(plan["version"]) is int and plan["version"] in {1, 2, 3} and plan["scope"] == "SIMULATION_TEST", "MOCK_SUITE_SCOPE")
     require(isinstance(plan["runs"], list) and 1 <= len(plan["runs"]) <= 64, "MOCK_SUITE_RUNS")
     reports, seen, ledgers, snapshots, fault_runs = [], set(), {}, {}, {}
+    screening_runs = {}
     for run in plan["runs"]:
         exact(run, "scenario manifest")
         require(run["scenario"] == "normal" or run["scenario"] in FAULTS, "MOCK_SUITE_SCENARIO")
@@ -73,6 +76,11 @@ def verify_suite(path, expected):
         require(pin not in seen, "MOCK_SUITE_REUSED_RUN"); seen.add(pin)
         run_path=root / relative(run["manifest"]["path"])
         report=reconcile(run_path,pin);reports.append((run["scenario"], report))
+        if run["scenario"] == "normal":
+            rm = strict(read(run_path, pin))
+            config_pin = rm["config"]["sha256"]
+            require(config_pin not in screening_runs, "MOCK_SUITE_REUSED_CONFIG")
+            screening_runs[config_pin] = (report["study"], report["visit"], report["role"])
         if run["scenario"] != "normal":
             require(run["scenario"] not in fault_runs, "MOCK_SUITE_FAULT_SCENARIO")
             fault_runs[run["scenario"]] = (run_path, pin)
@@ -124,6 +132,26 @@ def verify_suite(path, expected):
         require(checked["scenario"] == scenario, "MOCK_SUITE_FAULT_CASE")
         fault_reports.append(checked)
     result = coverage(reports, fault_reports)
+    screening_cases = plan.get("screening_chains", [])
+    require(isinstance(screening_cases, list) and len(screening_cases) <= 3, "MOCK_SUITE_SCREENING_LIMIT")
+    from .screening import verify_packet
+    screening_reports, bound_configs, packet_pins = [], set(), set()
+    for case in screening_cases:
+        exact(case, "path sha256")
+        require(case["sha256"] not in packet_pins, "MOCK_SUITE_DUPLICATE_SCREENING")
+        packet_pins.add(case["sha256"])
+        checked = verify_packet(root / relative(case["path"]), case["sha256"], screening_runs)
+        for binding in checked["joined_bindings"]:
+            require(binding["config_sha256"] not in bound_configs, "MOCK_SUITE_DUPLICATE_SCREENING_JOIN")
+            bound_configs.add(binding["config_sha256"])
+        screening_reports.append(checked)
+    screening_ok = bool(screening_runs) and bound_configs == set(screening_runs) and all(r["software_chain_verified"] for r in screening_reports)
+    result.update(screening_chain_reports=screening_reports,
+                  screening_chains_verified_for_present_runs=screening_ok,
+                  screening_chain_coverage_complete=screening_ok and set(screening_runs.values()) == REQUIRED,
+                  screening_chain_missing_config_count=len(set(screening_runs)-bound_configs))
+    if not screening_ok:
+        result["incomplete_reasons"].append("SCREENING_CHAIN_EVIDENCE_INCOMPLETE")
     growth=compare_growth(snapshots)
     result["normal_software_complete"] = result["normal_software_complete"] and growth["cross_visit_growth_verified"]
     result.update(version=1, scope="SIMULATION_TEST", suite_plan_sha256=expected,
