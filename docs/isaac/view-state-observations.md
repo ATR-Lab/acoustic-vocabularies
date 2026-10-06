@@ -114,6 +114,13 @@ clock/owner/projection mismatches, rejected target input, capacity/duration,
 partial output and manifest failure, plus ordinary publisher behavior when a
 capture callback throws. Existing service/rate/timing tests remain applicable.
 These tests and the seam implementation are not actual rendered capture evidence.
+The [sanitized software-check record](evidence/view-observation-software-checks.json)
+pins source/archive/log bytes: 124 focused tests passed in the approved Linux
+image with no GPU or external network; Windows passed 121 with three explicit
+platform/dependency skips. The Unix test runs the complete driver against the
+real dispatcher and durable command log with a synthetic simulator. A separate
+producer-to-reader check finalized two synthetic observations and one historical
+reset reply, then verified the exact command copy and strict reader binding.
 
 ## Launch order and post-capture test lock
 
@@ -147,6 +154,8 @@ unchanged 200 ms probe and conservative 250 ms age limits. Each command has a
 bounded 3 s exchange, the whole driver 120 s. There is no retry, mode change,
 reset, stop or motion hook. Unexpected replies, timeout, stale health or lost
 connection abort and retain all prior requests/replies and ambiguous intent.
+Driver intents remain in bounded memory until finalization; they are not
+individually crash-durable. The existing source command log remains durable.
 
 `probe.json` contains exact text payloads, monotonic send/receive timestamps,
 RTTs and failure/completion fields. No successful result is published before its
