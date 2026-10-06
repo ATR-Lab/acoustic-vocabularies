@@ -212,8 +212,74 @@ by the #70 owner (human).
 
 ## Pilot banks (#27)
 
-*Pending (#27).* Register format and run notes. Bank IDs `bank-P001`..; the register's
-config hash is the bank manifest's `generation_config_sha256`.
+Producer: `banks/` (`av_banks.pilot`, `av_banks.register`, `av_banks.archive`,
+`av_banks.metrics`; runbook in [`banks/docs/pilot-banks.md`](../../banks/docs/pilot-banks.md)).
+Consumers: Study B pilot sessions (O6.3.2: banks and register), Unity (#70: loads a pilot
+bank), the confirmatory run (#28: throughput figures, register format, the loader that
+refuses pilot banks).
+
+**IDs and seeds.** Dyad slots `B-P01`..`B-P08` (schedules pilot set) <-> banks
+`bank-P001`..`bank-P008` (`pilot.pilot_bank_id`; `DEMO-bank-P001`.. for rehearsals). Seed
+namespace = bank ID; spare `n` of a slot = the same bank ID at version `1.<n>.0` with
+namespace `<bank_id>-v1.<n>.0`; a run replacing a crashed one uses `major=2` (`2.0.0`,
+spares `2.<n>.0`). Pilot (`bank-P`) and confirmatory (`bank-C`) namespaces
+never meet (`builder.seed_namespace_error`; property test). Spare budget 2
+(`pilot.PILOT_SPARES`), used in slot order for a bank that is `unavailable` or fails
+`banks verify`; the slots left without a usable bank are the shortfall (exit code 3).
+
+**Run.** `python -m av_banks.pilot plan|run|finish|check|archive|load`;
+`pilot_plan(units, *, run_id, demo=False, dyads=8, spares=2, major=1) -> PilotPlan`,
+`run_pilot(plan, *, root, config, proposer, clock, workers=3, parallel_banks=1,
+ledger_factory=slot_ledger, llm_runtime=None, project_banks=72, fsync=True) ->
+PilotResult`, `finish_pilot(root, *, project_banks=72, reports=None) -> PilotFinish`
+(`rows`, `register_sha256`, `reports`, `summary`, `shortfall`, `problems`,
+`exit_code`), `check_pilot(root, *, rerun_verify=False)`, `archive_pilot(root, *, clock)`.
+Root (restricted storage): `pilot-plan.json` (`av-banks/pilot-plan` v1: banks,
+namespaces, permutation hashes, spare budget, config name/hash/threshold, model revision,
+B prompt hash, builder versions), `runs/<run_id>/` and `runs/<run_id>-S<k>/` (#26 run
+layout, every attempt kept), `verify/verify-log.txt`, `verify/<bank>-v<ver>.json`,
+`pilot-register.csv`, `throughput.json`, `throughput.md`, `archive-manifest.json`,
+`archive-sha256.txt`.
+
+**Register** (`register.REGISTER_COLUMNS`; CSV, UTF-8, `\n`, header row, one row per bank
+built, sorted by dyad slot then version): `bank_id, bank_version, role (main|spare),
+dyad_slot, set, status (complete|unavailable), use (0|1: the bank the slot uses, at most
+one per slot), attempt_used, attempts, slots_used, verify (pass|fail), reason,
+seed_namespace, generation_config_sha256 (the config hash), separation_threshold,
+permutation_sha256, bank_sha256, run_id, bank_path` (POSIX, relative to the root).
+`register.write_register(rows, path) -> sha256`, `read_register(path)`,
+`register_row(bank_dir, *, root, role, use, verify_ok)`,
+`register_problems(path, root, *, expected_set, rerun_verify=False)`: every bank hash is
+recomputed from the stored files (`manifest.manifest_from_files`) and must equal the
+register, the stored manifest and `bank-sha256.txt`; every other column must equal the
+stored manifest, config and run manifest.
+
+**Set guard.** `register.open_bank(bank_dir, *, mode)` (`mode` = `pilot`,
+`confirmatory` or `demo`) is the loader for set-bound tooling: in confirmatory mode a
+pilot bank raises `bank_manifest.BankSetError` ("bank 'bank-P001' is a pilot bank;
+confirmatory mode refuses it"), as does any ID that is not `bank-C...` (including
+`PILOT-...`); a manifest that does not hash to `bank-sha256.txt` raises `ManifestError`.
+`register.check_bank_id_set(bank_id, mode)` checks an ID alone.
+
+**Archive** (`archive.archive_tree(root, *, label, created_utc) -> ArchiveResult`,
+`archive_problems(root)`): `archive-manifest.json` (`av-banks/archive-manifest` v1:
+relative path -> SHA-256 of every file, `n_files`, `bytes`, `archive_sha256`) and
+`archive-sha256.txt` (`jsonio.file_set_sha256` of the list); every file then loses its
+write permission (read-only attribute on Windows).
+
+**Throughput** (`metrics.summarize_banks(bank_dirs, *, run_dirs=(), project_banks=72) ->
+ThroughputSummary`, `summary_markdown`): slots per hour per bank builder (attempt time)
+and per run (run time), attempts per bank (mean, histogram), attempt and cell failure
+rates (cells: failed / concluded, per profile), slots per complete and failed attempt and
+per complete cell, outcome and model-status counts, latency and slot-time p50/p95, slots
+over the 40-s cap, and the projection for #28 (72 banks: attempts, slots, hours,
+unavailable banks). `throughput.json` (`av-banks/pilot-summary` v1) adds the shortfall,
+usable slots, spares used, config and register hashes.
+
+**Evidence.** DEMO rehearsal outputs in `banks/examples/demo-pilot/`. **Pending
+(hardware):** the real run on the LLM host (register hash, archive hash, verify log,
+throughput note). **Pending (hardware/human):** the Unity menu smoke test once #70
+reads #26 manifests.
 
 ## Confirmatory banks (#28)
 

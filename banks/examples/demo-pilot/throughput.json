@@ -1,0 +1,120 @@
+{
+  "demo": true,
+  "dyad_slots": 8,
+  "format": "av-banks/pilot-summary",
+  "format_version": 1,
+  "generation_config_sha256": "514edf9a4baf3c6f564bd48c3d6fdbf7c6572714bcef68e53ce08f5a13c4c98d",
+  "register_sha256": "afbd8ae442efbdf2824d59e332f37848357fc3e90f34c5c46b5ed7d7c3da5c1d",
+  "run_id": "DEMO-pilot-banks",
+  "separation_threshold": "0.10",
+  "shortfall": [],
+  "spares": 2,
+  "spares_used": 1,
+  "throughput": {
+    "attempt_failure_rate": 0.385,
+    "attempt_hours": 2.4372,
+    "attempts": 13,
+    "attempts_failed": 5,
+    "attempts_histogram": {
+      "1": 7,
+      "2": 1,
+      "3": 0,
+      "4": 1
+    },
+    "attempts_per_bank": {
+      "max": 4,
+      "mean": 1.444,
+      "min": 1,
+      "n": 9
+    },
+    "attempts_per_complete_bank": {
+      "max": 2,
+      "mean": 1.125,
+      "min": 1,
+      "n": 8
+    },
+    "banks": 9,
+    "banks_complete": 8,
+    "banks_unavailable": 1,
+    "cell_failure_rate": 0.0104,
+    "cell_failure_rate_by_profile": {
+      "P1": 0.005,
+      "P2": 0.0263,
+      "P3": 0.0
+    },
+    "cells_complete": 477,
+    "cells_failed": 5,
+    "latency_ms": {
+      "max": 40000,
+      "n": 2565,
+      "p50": 2101,
+      "p95": 3466
+    },
+    "llm_status": {
+      "ok": 2298,
+      "overflow_output": 92,
+      "server_error": 92,
+      "timeout": 83
+    },
+    "outcomes": {
+      "clipping": 0,
+      "duplicate": 49,
+      "event_too_short": 0,
+      "incompatible": 1,
+      "invalid_json": 239,
+      "out_of_domain": 86,
+      "overflow_input": 0,
+      "overflow_output": 92,
+      "render_fail": 0,
+      "reserved_collision": 0,
+      "schema_violation": 107,
+      "separation_fail": 0,
+      "timeout": 83,
+      "valid": 1908
+    },
+    "projection": {
+      "attempts": 104.0,
+      "banks": 72,
+      "hours_at_run_rate": 19.5,
+      "hours_one_bank_at_a_time": 19.5,
+      "slots": 20520.0,
+      "unavailable": 8.0
+    },
+    "run_hours": 2.4372,
+    "slot_ms": {
+      "max": 40000,
+      "n": 2565,
+      "p50": 2217,
+      "p95": 3468
+    },
+    "slots": 2565,
+    "slots_over_cap": 0,
+    "slots_per_bank": {
+      "max": 517,
+      "mean": 285.0,
+      "min": 236,
+      "n": 9
+    },
+    "slots_per_complete_attempt": {
+      "max": 260,
+      "mean": 248.625,
+      "min": 236,
+      "n": 8
+    },
+    "slots_per_complete_cell": {
+      "max": 10,
+      "mean": 5.252,
+      "min": 4,
+      "n": 477
+    },
+    "slots_per_failed_attempt": {
+      "max": 134,
+      "mean": 115.2,
+      "min": 59,
+      "n": 5
+    },
+    "slots_per_hour": 1052.4,
+    "slots_per_hour_run": 1052.4
+  },
+  "usable_slots": 8
+}

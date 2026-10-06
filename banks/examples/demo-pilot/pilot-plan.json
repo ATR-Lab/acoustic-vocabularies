@@ -1,0 +1,84 @@
+{
+  "banks": [
+    {
+      "bank_id": "DEMO-bank-P001",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P01",
+      "permutation_sha256": "b44fd98216a6ab30bb3f63937e723d05a4e85cc83c260afedf323b26d59de200",
+      "seed_namespace": "DEMO-bank-P001"
+    },
+    {
+      "bank_id": "DEMO-bank-P002",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P02",
+      "permutation_sha256": "12009e8d57da608e09eb157e65957adce4d02a96dfb40978897eb395a6898103",
+      "seed_namespace": "DEMO-bank-P002"
+    },
+    {
+      "bank_id": "DEMO-bank-P003",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P03",
+      "permutation_sha256": "4c043920a002b8ba5d738db65de9a612c6cd8d38ce43bad772f5c64bfb431422",
+      "seed_namespace": "DEMO-bank-P003"
+    },
+    {
+      "bank_id": "DEMO-bank-P004",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P04",
+      "permutation_sha256": "87743face24f19463f70fcda1691b447cb9f563b0cbffff8f16eaee2414a0b8a",
+      "seed_namespace": "DEMO-bank-P004"
+    },
+    {
+      "bank_id": "DEMO-bank-P005",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P05",
+      "permutation_sha256": "c0b3f7ccc23b678cf58d4f3cb657196e03791b7721a224faf2a5034cfcf2b735",
+      "seed_namespace": "DEMO-bank-P005"
+    },
+    {
+      "bank_id": "DEMO-bank-P006",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P06",
+      "permutation_sha256": "d2477f8d803ced844c7af4efe621427f590727306bde1113d09d56ccdebc8bda",
+      "seed_namespace": "DEMO-bank-P006"
+    },
+    {
+      "bank_id": "DEMO-bank-P007",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P07",
+      "permutation_sha256": "1cf79a94db1951c1517fbfc7d3341badf38bd136523b081ce2052813902d9370",
+      "seed_namespace": "DEMO-bank-P007"
+    },
+    {
+      "bank_id": "DEMO-bank-P008",
+      "bank_version": "1.0.0",
+      "dyad_slot": "B-P08",
+      "permutation_sha256": "4b74a217cf2af85383477e134bfd1fafca9c668a71e16e3476a5bb6232118068",
+      "seed_namespace": "DEMO-bank-P008"
+    }
+  ],
+  "builder": {
+    "av_banks": "0.1.0",
+    "av_generation": "0.1.0"
+  },
+  "created_utc": "2026-01-01T00:00:00.000Z",
+  "demo": true,
+  "dyad_slots": 8,
+  "format": "av-banks/pilot-plan",
+  "format_version": 1,
+  "generation_config": {
+    "demo": true,
+    "model_id": "Qwen/Qwen2.5-7B-Instruct",
+    "model_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "name": "DEMO-gen-banks",
+    "prompts_b_sha256": "f664fe311730c6480806fb7dc4db793688764c4bc8fe15f1f6c381ec699704b5",
+    "renderer_version": "0.1.0",
+    "separation_threshold": "0.10",
+    "sha256": "514edf9a4baf3c6f564bd48c3d6fdbf7c6572714bcef68e53ce08f5a13c4c98d",
+    "validator_version": "0.1.0"
+  },
+  "major": 1,
+  "run_id": "DEMO-pilot-banks",
+  "set": "demo",
+  "spares": 2
+}
