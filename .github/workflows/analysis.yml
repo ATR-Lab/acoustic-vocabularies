@@ -1,0 +1,94 @@
+name: Analysis
+
+on:
+  pull_request:
+    paths:
+      - "analysis/**"
+      - "tests/analysis/**"
+      - "schedules/**"
+      - "docs/interfaces/analysis.md"
+      - ".github/workflows/analysis.yml"
+  push:
+    branches: [main]
+    paths:
+      - "analysis/**"
+      - "tests/analysis/**"
+      - "schedules/**"
+      - "docs/interfaces/analysis.md"
+      - ".github/workflows/analysis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analysis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: analysis (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: analysis/uv.lock
+      - name: Install (Python 3.11, locked)
+        run: uv sync --project analysis --locked
+      - name: Lint and format
+        run: |
+          uv run --project analysis ruff check --config analysis/pyproject.toml analysis/src tests/analysis
+          uv run --project analysis ruff format --config analysis/pyproject.toml --check analysis/src tests/analysis
+      - name: Type check
+        working-directory: analysis
+        run: uv run mypy
+      - name: Schemas match the contracts
+        run: uv run --project analysis av-analysis schemas
+      - name: Tests (R-dependent tests run in the r job)
+        run: >
+          uv run --project analysis pytest --import-mode=importlib -p no:cacheprovider tests/analysis
+          -m "not needs_r" --cov=av_analysis --cov-report=term --cov-fail-under=90
+
+  r:
+    name: analysis R (lme4, pinned)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: analysis/uv.lock
+      - uses: r-lib/actions/setup-r@v2.14.0
+        with:
+          r-version: "4.6.1"
+          use-public-rspm: true
+      - name: User library for the pinned packages
+        run: |
+          mkdir -p "$RUNNER_TEMP/R-library"
+          echo "R_LIBS_USER=$RUNNER_TEMP/R-library" >> "$GITHUB_ENV"
+      - name: Install pinned R packages (analysis/r/pins.dcf)
+        run: Rscript --vanilla analysis/r/install.R
+      - name: Install (Python 3.11, locked)
+        run: uv sync --project analysis --locked
+      - name: Tests that need R
+        run: >
+          uv run --project analysis pytest --import-mode=importlib -p no:cacheprovider tests/analysis
+          -m needs_r -v

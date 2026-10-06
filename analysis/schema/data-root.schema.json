@@ -1,0 +1,50 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/data-root.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Marks a directory as an analysis data root and fixes its data kind: synthetic outputs are written only into SYNTHETIC roots, real outputs only into REAL roots outside any committable git path. See analysis/src/av_analysis/paths.py.",
+  "properties": {
+    "data_kind": {
+      "description": "Watermark (paths).",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "format": {
+      "const": "av-analysis/data-root"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "label": {
+      "description": "DEMO-... for SYNTHETIC roots; never DEMO- for REAL roots.",
+      "pattern": "^[A-Za-z0-9._:-]{1,80}$",
+      "type": "string"
+    },
+    "set": {
+      "enum": [
+        "pilot",
+        "confirmatory",
+        "both"
+      ]
+    },
+    "study": {
+      "enum": [
+        "A",
+        "B",
+        "both"
+      ]
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "data_kind",
+    "study",
+    "set",
+    "label"
+  ],
+  "title": "Data-root marker (av-data-root.json)",
+  "type": "object"
+}

@@ -1,0 +1,327 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/visit-status-row.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One row per expected visit of every person whose slot has been revealed: held visits with their reconciliation result, missed, withdrawn and pending visits. The integrity dashboard (#35) reads only this table and discrepancies. Producer #33; consumers #35, #34. Unique key: visit_id. CSV encoding and masking rules: analysis/docs/architecture.md and docs/interfaces/analysis.md.",
+  "properties": {
+    "actual_minutes": {
+      "description": "Run-sheet first start to last end, in minutes.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "anchor_visit": {
+      "description": "Visit the window counts from.",
+      "enum": [
+        "D0",
+        "D7",
+        "V1",
+        "V2",
+        "V3",
+        "W1",
+        "W4",
+        null
+      ]
+    },
+    "booked_minutes": {
+      "description": "Booked minutes of the visit.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "checks_failed": {
+      "description": "Checks with status fail.",
+      "items": {
+        "enum": [
+          "C1",
+          "C2",
+          "C3",
+          "C4",
+          "C5",
+          "C6",
+          "C7",
+          "C8"
+        ]
+      },
+      "type": "array"
+    },
+    "comfort_flag": {
+      "description": "Run sheet records a comfort adjustment or stop.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "data_kind": {
+      "description": "Watermark: SYNTHETIC or REAL, equal to the data root's.",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "days_since_anchor": {
+      "description": "Calendar days from the anchor visit.",
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "deviations_n": {
+      "description": "Deviation records of the visit.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "discrepancies_n": {
+      "description": "Discrepancies of checks C1-C7 plus DEVIATION_UNKNOWN.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_audio_underrun_n": {
+      "description": "Played opportunities with fault audio_underrun.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_failed_reset_n": {
+      "description": "Played opportunities with fault failed_reset.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_hash_mismatch_n": {
+      "description": "Played opportunities with fault hash_mismatch.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_missing_playback_n": {
+      "description": "Played opportunities with fault missing_playback.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_missing_response_log_n": {
+      "description": "Played opportunities with fault missing_response_log.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_n": {
+      "description": "Opportunities with any technical fault.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_presentation_freeze_n": {
+      "description": "Played opportunities with fault presentation_freeze.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "open_deviations_n": {
+      "description": "Deviation records without a resolution.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "opportunities_n": {
+      "description": "Trial-log rows with a scheduled cue (played opportunities).",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "overrun": {
+      "description": "actual_minutes > booked_minutes + 10.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "pair_gap_hours": {
+      "description": "Study B V1-V3: hours between the two dyad members' session starts, on both members' rows (no role is shown).",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "pair_gap_ok": {
+      "description": "Study B V1-V3: windows.yoked_gap_ok for the pair.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "person_id": {
+      "description": "Person slot (A-C07-L03, B-C12-M1). Coded participant IDs and the slot binding stay in the reveal log; no names or contact data anywhere.",
+      "minLength": 1,
+      "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}|B-[PCS][0-9]{2}-M[12])$",
+      "type": "string"
+    },
+    "reconciliation": {
+      "description": "Reconciliation result of the visit.",
+      "enum": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "report_sha256": {
+      "description": "SHA-256 of the visit's reconciliation.json.",
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "set": {
+      "description": "Pilot or confirmatory set.",
+      "enum": [
+        "pilot",
+        "confirmatory"
+      ]
+    },
+    "station_id": {
+      "description": "Coded station ID from the exit manifest.",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "study": {
+      "description": "Study.",
+      "enum": [
+        "A",
+        "B"
+      ]
+    },
+    "suspension_events": {
+      "description": "Suspension events raised by this visit.",
+      "items": {
+        "enum": [
+          "WRONG_FILE_MAPPING",
+          "ANSWER_LEAK",
+          "OLD_WAVEFORM_CHANGED"
+        ]
+      },
+      "type": "array"
+    },
+    "timing": {
+      "description": "Visit timing against its window (windows.classify).",
+      "enum": [
+        "in_window",
+        "early",
+        "late",
+        "not_applicable",
+        "unknown"
+      ]
+    },
+    "unit_id": {
+      "description": "Study A matched batch or Study B dyad slot (A-C07, B-C12).",
+      "minLength": 1,
+      "pattern": "^(A-[PC][0-9]{2}|B-[PCS][0-9]{2})$",
+      "type": "string"
+    },
+    "unresolved_n": {
+      "description": "Discrepancies without a valid deviation link.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "visit": {
+      "description": "Visit (A D0, D7; B V1, V2, V3, W1, W4).",
+      "enum": [
+        "D0",
+        "D7",
+        "V1",
+        "V2",
+        "V3",
+        "W1",
+        "W4"
+      ]
+    },
+    "visit_date": {
+      "description": "Local study date of the visit (run sheet), when held.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "visit_id": {
+      "description": "<person_id>-<visit>, e.g. A-C07-L03-D0.",
+      "minLength": 1,
+      "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+      "type": "string"
+    },
+    "visit_seq": {
+      "description": "1-based order of the visit within its study.",
+      "maximum": 5,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "visit_state": {
+      "description": "held, missed, pending or withdrawn.",
+      "enum": [
+        "held",
+        "missed",
+        "pending",
+        "withdrawn"
+      ]
+    },
+    "window_hi_days": {
+      "description": "Last allowed day after the anchor.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "window_lo_days": {
+      "description": "First allowed day after the anchor.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data_kind",
+    "study",
+    "set",
+    "unit_id",
+    "person_id",
+    "visit",
+    "visit_seq",
+    "visit_id",
+    "station_id",
+    "visit_state",
+    "reconciliation",
+    "checks_failed",
+    "discrepancies_n",
+    "unresolved_n",
+    "suspension_events",
+    "visit_date",
+    "anchor_visit",
+    "days_since_anchor",
+    "window_lo_days",
+    "window_hi_days",
+    "timing",
+    "pair_gap_hours",
+    "pair_gap_ok",
+    "booked_minutes",
+    "actual_minutes",
+    "overrun",
+    "opportunities_n",
+    "fault_n",
+    "fault_audio_underrun_n",
+    "fault_missing_playback_n",
+    "fault_hash_mismatch_n",
+    "fault_failed_reset_n",
+    "fault_missing_response_log_n",
+    "fault_presentation_freeze_n",
+    "comfort_flag",
+    "deviations_n",
+    "open_deviations_n",
+    "report_sha256"
+  ],
+  "title": "Per-visit status row (reconciled/visit-status.csv)",
+  "type": "object"
+}

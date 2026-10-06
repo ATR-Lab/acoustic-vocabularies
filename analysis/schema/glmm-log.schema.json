@@ -1,0 +1,151 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/glmm-log.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Every rung of the analysis plan section 5 ladder that was tried or skipped, in order full, no_correlations, no_dyad_role_slope, no_participant_teaching_slope, descriptive (#34).",
+  "properties": {
+    "attempts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "converged": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "formula": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "rung": {
+            "enum": [
+              "full",
+              "no_correlations",
+              "no_dyad_role_slope",
+              "no_participant_teaching_slope",
+              "descriptive"
+            ]
+          },
+          "singular": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "failed",
+              "skipped"
+            ]
+          },
+          "step": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step",
+          "rung",
+          "formula",
+          "status",
+          "converged",
+          "singular",
+          "messages",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "data_kind": {
+      "description": "Watermark (paths).",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "data_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "engine": {
+      "additionalProperties": false,
+      "properties": {
+        "lme4_version": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "optimizer": {
+          "type": "string"
+        },
+        "r_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "r_version",
+        "lme4_version",
+        "optimizer"
+      ],
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "final_rung": {
+      "enum": [
+        "full",
+        "no_correlations",
+        "no_dyad_role_slope",
+        "no_participant_teaching_slope",
+        "descriptive"
+      ]
+    },
+    "format": {
+      "const": "av-analysis/glmm-log"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "model_id": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": "string"
+    },
+    "study": {
+      "enum": [
+        "A",
+        "B"
+      ]
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "data_kind",
+    "study",
+    "model_id",
+    "engine",
+    "data_sha256",
+    "attempts",
+    "final_rung"
+  ],
+  "title": "GLMM fallback-ladder log (estimates/glmm/<model_id>.json)",
+  "type": "object"
+}
