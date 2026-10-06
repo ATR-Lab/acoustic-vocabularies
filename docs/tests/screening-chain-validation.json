@@ -1,12 +1,12 @@
 {
   "version": 1,
   "scope": "synthetic_software_contract_validation",
-  "source_commit": "04cc2d305a340a8d914182b1f1ee5af6c8ff9bd2",
+  "source_commit": "6f498ba0d6a124cba2ef06774b0290f05e034f9a",
   "source_files_sha256_basis": "Git blob bytes at source_commit; working-tree line endings may differ",
   "source_files_sha256": {
-    "tools/mock_visit/screening.py": "d4b9e779e39aa37be0a9a39257f5f93c57cb01e73e89bc230198eda5c628dcb1",
+    "tools/mock_visit/screening.py": "0fc1b2492cdcfad135de2e5aa1b83a80629c1e9a45a23d377e6132c31efd9c1d",
     "tools/mock_visit/suite.py": "f1139255bcccc8b18d466b6329f182f591d7c52192b4ba92d3ff23f1402a09d9",
-    "tests/test_mock_visit_screening.py": "b188fbccdcd38bdb331c7cb81f08764ff26c3bc50c67f4936b50db0647e1950a",
+    "tests/test_mock_visit_screening.py": "3b70b32817759247a04601f6e96fa3cc128174489dbe0770d0a18e3fefb43e3c",
     "unity/Assets/Tests/Orientation/OrientationScreeningExportTests.cs": "0ee8f7b689aeb4dbfd8f0b6e4c1ccffb45ae2cf9f12513de77ece0442180d09a"
   },
   "unity": {
@@ -22,12 +22,12 @@
   },
   "python": {
     "command": "python -m unittest discover -s tests -p test_mock_visit*.py",
-    "cases": 134,
-    "passed": 134,
+    "cases": 135,
+    "passed": 135,
     "failed": 0,
     "skipped": 0,
     "actual_csharp_export_test_enabled": true,
-    "raw_log_sha256": "69452347243b4053c06755b3880f41845210ffcb2fda682ccfc2ceb3875905e4"
+    "raw_log_sha256": "1485d1dcbeacf849cebeac3d42f42af0719ab5758cff7a0920b5c27f5ca27375"
   },
   "exports": [
     {

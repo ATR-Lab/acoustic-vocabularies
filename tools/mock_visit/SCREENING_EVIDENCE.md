@@ -118,7 +118,7 @@ independently. Without an export, that one interoperability test explicitly
 skips; ordinary CI does not invent a retained native artifact.
 
 The retained [validation record](../../docs/tests/screening-chain-validation.json)
-pins the actual three-case Unity export and the independent 134-case Python
+pins the actual three-case Unity export and the independent 135-case Python
 contract run with those exports supplied. All passed without skips. The sealed
 C# journals contain 45, 87 and 87 events respectively, with 8, 16 and 16 practice
 responses. Their `engineering_draft:true` and `eligible:false` fields are
