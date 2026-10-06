@@ -18,7 +18,8 @@ def _read(path, pin):
 
 def _mock_path(path):
     result = local_path(path)
-    require(any(p in (".local", "private", "local-data") for p in result.parts)
+    # Skip the root and first level: on macOS every temp path resolves under the system /private.
+    require(any(p in (".local", "private", "local-data") for p in result.parts[2:])
             and any(p.startswith("simulation-test-") for p in result.parts), "simulation_path_required")
     return result
 
