@@ -88,7 +88,7 @@ caption{text-align:left;font-weight:600;padding:2px 0 6px}
 th,td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;
 white-space:nowrap}
 td.wrap-text{white-space:normal;min-width:16em}
-th{background:var(--soft);font-weight:600}
+th{background:var(--soft);font-weight:600;white-space:normal;vertical-align:bottom}
 .n{text-align:right}
 .alert{border:2px solid;border-radius:8px;padding:10px 14px;margin:8px 0}
 .alert h3{margin:0 0 6px}.alert p{margin:4px 0}
