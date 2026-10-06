@@ -77,3 +77,9 @@ native runs. Adversarial cases include rehashed early phrase substitution,
 unselected B combinations, missing/reordered/reused permits, cross-session and
 cross-channel grafts, unknown PCM, process overlap and truncated coverage.
 The retained actual A008 prefix is checked separately and remains incomplete.
+
+The [validation record](../../docs/tests/heldout-history-validation.json) pins
+the tested source, 154 passing mock-history tests and the retained A008 result.
+That actual prefix contains 15 study requests, 30 observations and 6 grammar
+audio events; it cannot establish a complete D0/D7 history. Source hashes in the
+record refer to Git blob bytes at the stated commit, not local line endings.

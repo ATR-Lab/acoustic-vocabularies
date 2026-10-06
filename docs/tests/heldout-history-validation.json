@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "scope": "retained_software_history_validation",
+  "source_commit": "5f3c9613034c064f362e769e68e0bc673febf534",
+  "source_files_sha256_basis": "Git blob bytes at source_commit; working-tree line endings may differ",
+  "source_files_sha256": {
+    "tools/mock_visit/holdouts.py": "9a49d10ebb019e5ec0994cb35b6996b029780f31fecd38568432038d304ce1f3",
+    "tests/test_mock_visit_holdouts.py": "5160093dc0ca7059c71d5558493bdd83836c473844f5878dc8a91c7d84c5a8bf",
+    "tools/mock_visit/HOLDOUT_HISTORY.md": "6f3a0c6810e0d78defe84886f89fd1d806c0f5370c163410bd53c9a41831efb8"
+  },
+  "python": {
+    "command": "python -m pytest -q tests/test_mock_visit*.py",
+    "cases": 154,
+    "passed": 154,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 37.23,
+    "new_scanner_cases": 19,
+    "sealed_producer_package_fixture_enabled": true,
+    "retained_csharp_orientation_fixture_enabled": true,
+    "xml_sha256": "d7245e3e9d29fc6e7dce4518a3af387228b892f3fd455478ba734c74b86e7c29",
+    "raw_log_sha256": "074b358bea187cff66f1426bf7920ef5f9745357262c9ae6124749fcc9b9c88d"
+  },
+  "synthetic_histories": {
+    "A": {
+      "visits": [
+        "D0",
+        "D7"
+      ],
+      "study_audio_requests": 276
+    },
+    "B": {
+      "visits": [
+        "V1",
+        "V2",
+        "V3",
+        "W1",
+        "W4"
+      ],
+      "study_audio_requests": 500
+    },
+    "claim": "Schedule-shaped synthetic journals, including sealed producer PCM and composition vectors; not actual native visit counts"
+  },
+  "retained_native_prefix": {
+    "label": "A008 incomplete prefix",
+    "result_sha256": "87937e4be3b8252930e9c10cdc5f8b6625f3231385cb058e4a17b716ae86601f",
+    "result": {
+      "scope": "SIMULATION_TEST",
+      "study": "A",
+      "recorded_history_scan_passed": true,
+      "software_history_complete": false,
+      "incomplete_reasons": [
+        "COMPLETE_VISIT_HISTORY_MISSING",
+        "NATIVE_RUN_INCOMPLETE",
+        "SCHEDULED_NOVEL_REQUESTS_MISSING"
+      ],
+      "visits_present": 1,
+      "missing_complete_visits": [
+        "D0",
+        "D7"
+      ],
+      "audio_requests": 15,
+      "audio_observations": 30,
+      "grammar_audio_events": 6,
+      "authorized_heldout_requests": 0,
+      "heldout_callback_events": 0,
+      "acoustic_qualified": false,
+      "omitted_run_custody_verified": false,
+      "participant_qualified": false,
+      "issue78_accepted": false,
+      "plan_sha256": "9cff721fffcc6f40941851d3c7c2e0a4e2269ba5a586efc4082ad45005a2d10f",
+      "role": "reference",
+      "runs": [
+        {
+          "manifest_sha256": "6ef6fe3109faf4e5df79ea2c42cad258e01df53e03d38dc9826bdd18a041b498",
+          "software_reconciliation_complete": false
+        }
+      ]
+    },
+    "claim": "Offline scan of previously finalized artifacts; no new native run or complete-history evidence"
+  },
+  "schema_validation": {
+    "schemas": 45,
+    "synthetic_examples": 14,
+    "passed": true,
+    "raw_log_sha256": "668f606820d8cd56d187c1662e91c6f6bb83ee8f1616e767032f5f1027b240b7"
+  },
+  "review_resolutions": [
+    "Grammar and study audio IDs share immutable session/channel ownership; cross-visit grammar reuse and both cross-channel graft directions are rejected.",
+    "No retained audio is a nonpassing incomplete history, never an absence proof.",
+    "Unknown PCM is rejected rather than treated as clear."
+  ],
+  "limits": [
+    "Supplied-record integrity does not establish that all earlier runs were retained.",
+    "The actual prefix is incomplete; no complete native A or B history is claimed.",
+    "Synthetic positive histories and adversarial fixtures are software contract tests only.",
+    "No acoustic onset, audibility, physical headset, human review, private methodology or participant admission qualification.",
+    "Initial fixture-path and null-auxiliary-path test failures remain retained privately; final results above are the corrected source checkpoint."
+  ],
+  "omitted_run_custody_verified": false,
+  "acoustic_qualified": false,
+  "participant_qualified": false,
+  "issue78_accepted": false
+}
