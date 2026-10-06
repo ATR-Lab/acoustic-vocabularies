@@ -23,5 +23,18 @@
       "sha256": "4456d726263464e6d340da4fe12c2b9eede2a7ca64093c99f25e23e2b46f7ed6",
       "note": "Includes seven new failure-trace cases and the prior100controlcases; counts are not additive."
     }
-  ]
+  ],
+  "native_build": {
+    "build_id": "simulation-native-013",
+    "source_commit": "6f367fb4275a14ac21578632e83f2ce9b62bbeb7",
+    "dirty_source": false,
+    "target": "StandaloneWindows64",
+    "result": "Succeeded",
+    "errors": 0,
+    "duration_seconds": 16.688528899999998,
+    "total_bytes": 158717479,
+    "files": 205,
+    "manifest_sha256": "accc06c3a560890712dbf5bac38e45e963b036ad6f0703ee2fa0214edf2ea857",
+    "inventory_independently_rehashed": true
+  }
 }
