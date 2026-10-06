@@ -1,6 +1,8 @@
 # Experimental state-reader handle cache
 
-The handle cache is **disabled by default**. No production runner enables it.
+The handle cache is **disabled by default**. The joined engineering runner has
+an explicit `--e2e-handle-cache` option for a bounded comparison; ordinary runs
+remain uncached. This option does not enable the separate same-iteration path.
 The receiver-only hour uses its original frozen state reader and is independent
 of this change. Pinned-runtime binding and tamper evidence is required before
 the opt-in path can be used for a bounded profile; no optimized full-hour result
@@ -122,3 +124,77 @@ the initial failed matrix, no-op probe, final matrix and both profiles. Exact
 deployed source hashes and normalized tracked-text hashes are separate because
 the local Windows checkout may use CRLF line endings. Raw USD, images and
 traces remain in ignored local evidence directories.
+
+## Current joined-service comparison
+
+The optional runner flag enables the existing guarded accessor immediately
+before `run_joined_service`, after the ordinary uncached reset fixture has been
+captured and verified. It does not replace the full hold/readback/comparison,
+publisher sampling, physics steps, actuator flushes, durable telemetry, GC
+policy, private exchange deadline or freshness limits. Initialization failure
+aborts; there is no uncached fallback. The top-level run summary records the
+actual accessor's `e2e_handle_cache_enabled` state. READY and control/public
+wire contracts are unchanged.
+
+Use the existing isolated runtime and pinned assets. Add `--e2e-handle-cache`
+only to a fresh `run_scene.py --reset-check --skip-reach --e2e-seconds <5..3600>`
+run with all existing explicit station, control-session, UID and Unix endpoint
+arguments. The flag rejects reach or additional diagnostic workflows
+before simulator startup. Other measurements must use separate fresh runs.
+The existing `--capture` camera setup and initial images remain allowed; they
+occur before enabling the cache and before the measured service. Keep that
+choice identical in both comparison arms to retain the same scene identity.
+The normal source remains unchanged when the option is absent.
+
+Before any comparison, retain the pinned-runtime live-read and 20-mutation /
+2-no-op checks above. Compare the same committed source with the option off/on
+in separate processes, keeping image, scene, snapshot, GC, host workload and
+observers fixed. Preserve complete runs and report any common predeclared
+warm-up separately. Require matching actual projections and inspect failures,
+publication deadlines and frame intervals. The option itself and its 19
+configuration checks are not evidence of a throughput improvement or completed
+native visit. No new full-hour, route, headset or participant qualification is
+granted by this engineering option.
+
+### Actual current-service screen
+
+The comparison used the same committed source `96131c9` and approved Isaac
+image in four fresh OFF/ON/ON/OFF processes, requesting 40 seconds each. Camera
+setup, scene and snapshot matched. There was no receiver, private client,
+timing observer or same-iteration optimization. The state-reader, cache guard,
+geometry generator and tamper-test normalized hashes match the retained USD
+0.24.5 matrix above; no structural guard changed. Every process exited 0,
+reported the expected actual cache flag and retained matching first/last
+43-joint/60-object projections. This is endpoint projection evidence, not an
+assertion that every intermediate full state was compared.
+
+| Phase | Full-service physics steps/s | Maximum publication gap (ms) | Gaps >250 ms |
+|---|---:|---:|---:|
+| OFF 1 | 15.358 | 407.156 | 1 |
+| ON 1 | 17.767 | 845.715 | 2 |
+| ON 2 | 18.345 | 373.627 | 3 |
+| OFF 2 | 14.685 | 403.787 | 1 |
+
+All complete timing screens failed; missed publication deadlines numbered
+586, 489, 466 and 613. The observed improvement does not meet the required
+60 physics steps/s or 30 public frames/s. Host load varied across the ordered
+phases: one-minute load rose from 3.62 to 16.22 and ended at 13.35. Unrelated
+workloads were preserved, so these four short processes do not establish an
+isolated causal estimate or predict performance under a native receiver.
+
+The separate predeclared window begins 10 seconds after the first retained
+publication and ends at the last actual publication. Its rates were 15.147,
+19.973, 18.370 and 14.889 steps/s. In those windows, the median inclusive
+sample/comparison/serialization duration was 26.692 and 24.473 ms with the
+cache off, versus 18.465 and 19.062 ms with it on. This timer does not isolate
+JSON encoding. The second ON phase still had two >250 ms gaps after warm-up;
+excluding warm-up never changes the complete-run failures. GC policy was
+unchanged and no GC timing observer ran, so these stalls cannot be assigned
+to GC from this evidence.
+
+The [current-service result and artifact hashes](state-reader-joined-results.json)
+retain complete and secondary measurements, exact source/image pins and raw
+artifact hashes. Task containers and sockets were removed; unrelated GPU and
+ROS processes were preserved. The option remains experimental and off by
+default. No optimized hour, completed native visit, network, headset or
+participant qualification follows from this screen.
