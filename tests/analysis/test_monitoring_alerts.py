@@ -20,6 +20,7 @@ from av_analysis.monitoring import (
     render,
 )
 from av_analysis.monitoring_demo import INJECTIONS, demo_tables, write_demo_root
+from av_analysis.vocab import FAULT_RATE_TRIGGER, FAULT_TYPES, OVERRUN_SHARE_TRIGGER
 
 
 def _red_alerts(html: str) -> dict[str, list[str]]:
@@ -129,9 +130,10 @@ def _triggers(doc) -> set[tuple[str, str | None, str | None]]:
     return {(t["trigger"], t["study"], t["set"]) for t in doc["alerts"]["triggers"]}
 
 
-def test_amber_triggers_follow_the_protocol_thresholds(tmp_path):
-    tables = demo_tables("DEMO-triggers", studies=("A", "B"), sets=("pilot",), progress=1.0)
-    data = MonitoringData(
+def _demo_data(studies) -> MonitoringData:
+    """Allow-listed in-memory demo rows of the pilot set (full size)."""
+    tables = demo_tables("DEMO-triggers", studies=studies, sets=("pilot",), progress=1.0)
+    return MonitoringData(
         "SYNTHETIC",
         {
             name: tuple({k: v for k, v in r.items() if k in keep} for r in rows)
@@ -140,6 +142,10 @@ def test_amber_triggers_follow_the_protocol_thresholds(tmp_path):
         },
         {},
     )
+
+
+def test_amber_triggers_follow_the_protocol_thresholds(tmp_path):
+    data = _demo_data(("A", "B"))
     base = _triggers(dashboard_document(data))
     assert ("target_reached", "A", "pilot") in base and ("target_reached", "B", "pilot") in base
     visits = list(data.tables["visit-status"])
@@ -180,6 +186,57 @@ def test_amber_triggers_follow_the_protocol_thresholds(tmp_path):
     assert ("target_exceeded", "A", "pilot") in found
     assert ("enrollment_mismatch", "A", "pilot") in found
     assert ("target_reached", "A", "pilot") not in found
+
+
+# Analysis plan section 8: "more than" 5% of opportunities faulted and "more than" 10% of
+# visits overrunning; exactly at the threshold is not above it.
+QUIET = {
+    "opportunities_n": 0,
+    "fault_n": 0,
+    "overrun": None,
+    **{f"fault_{t}_n": 0 for t in FAULT_TYPES},
+}
+
+
+def _quiet_held_rows(data: MonitoringData) -> tuple[list[dict], list[int]]:
+    """Study A pilot rows without faults or overrun checks, and the held row indexes."""
+    rows = [{**r, **QUIET} for r in data.tables["visit-status"]]
+    return rows, [i for i, r in enumerate(rows) if r["visit_state"] == "held"]
+
+
+@pytest.mark.parametrize(("faulted", "raised"), [(5, False), (6, True)])
+def test_fault_rate_trigger_is_strictly_more_than_5_percent(faulted, raised):
+    data = _demo_data(("A",))
+    rows, held = _quiet_held_rows(data)
+    rows[held[0]].update(opportunities_n=100, fault_n=faulted, fault_audio_underrun_n=faulted)
+    edited = _with_rows(data, "visit-status", rows)
+    doc = dashboard_document(edited)
+    assert (("fault_rate", "A", "pilot") in _triggers(doc)) is raised
+    (group,) = doc["faults"]["by_group"]
+    assert group["fault_rate"] == faulted / 100
+    assert (group["fault_rate"] == FAULT_RATE_TRIGGER) is not raised  # 5/100: at the trigger
+    summaries = [doc["faults"]["pooled"], group, *doc["faults"]["by_station"]]
+    assert [s["trigger_exceeded"] for s in summaries if s["fault_n"]] == [raised] * 3
+    html = render(edited)
+    assert ("above trigger" in html) is raised  # overruns are unchecked: "no data"
+    assert html.count("below trigger") == (0 if raised else 3)
+
+
+@pytest.mark.parametrize(("overran", "raised"), [(1, False), (2, True)])
+def test_overrun_share_trigger_is_strictly_more_than_10_percent(overran, raised):
+    data = _demo_data(("A",))
+    rows, held = _quiet_held_rows(data)
+    for j, i in enumerate(held[:10]):
+        rows[i]["overrun"] = j < overran
+    edited = _with_rows(data, "visit-status", rows)
+    doc = dashboard_document(edited)
+    assert (("overrun_share", "A", "pilot") in _triggers(doc)) is raised
+    (group,) = doc["overruns"]["by_group"]
+    assert (group["checked_n"], group["overrun_n"]) == (10, overran)
+    assert group["overrun_share"] == overran / 10
+    assert (group["overrun_share"] == OVERRUN_SHARE_TRIGGER) is not raised  # 1/10: at it
+    assert group["trigger_exceeded"] is raised
+    assert doc["overruns"]["pooled"]["trigger_exceeded"] is raised
 
 
 @pytest.mark.parametrize(

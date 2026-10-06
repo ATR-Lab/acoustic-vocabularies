@@ -136,8 +136,15 @@ allowlist in `monitoring.py` and a synthetic dashboard (CI artifact
 ## 5. Metrics
 
 Every number is a count, or a sum of cells, of the three tables. Thus the page equals
-the reconciliation totals. The tests compare each `data-metric` element of the page with
-sums computed straight from the CSV text.
+the reconciliation totals. The tests compute every value straight from the CSV text and
+compare it with the page and with `dashboard.json`:
+
+- each `data-metric` element (a count);
+- each `data-list` table or list: missed visits, withdrawals, window exceptions, dyad
+  pairs outside 24 h, failed reconciliations, open deviations, comfort and withdrawal
+  reports, red-alert visit IDs, and the fault and overrun rates with their trigger
+  status ("above trigger" in red);
+- each amber trigger (`<li data-trigger>`), against the protocol thresholds.
 
 | Panel | Metric | Definition |
 | --- | --- | --- |
@@ -163,7 +170,12 @@ record documents the amendment, and the event stays on the page.
 **Amber triggers** (`monitoring_metrics.TRIGGERS`): enrollment target reached or
 exceeded, enrollment and visit-status counts that differ, fault rate above 5%, overrun
 share above 10%, failed reconciliations, held visits without a reconciliation result,
-and dyad sessions outside the 24 h pair rule.
+and dyad sessions outside the 24 h pair rule. "Above" is strict, as in the analysis
+plan: exactly 5% of opportunities faulted, or exactly 10% of visits overrunning, does
+not raise the trigger. The enrollment check works in both directions: an `enrollment`
+row whose revealed persons differ from the persons in `visit-status`, and a study and
+set with `visit-status` rows but no `enrollment` row. The enrollment panel also shows
+an amber line for such a study and set, so it does not disappear from the panel.
 
 ## 6. Reading guide
 
@@ -181,7 +193,10 @@ Read the panels from top to bottom. Each panel starts with a one-line hint.
    slots with the frozen target. At "target reached: stop", assign nobody more. Do not
    refill a withdrawal after assignment. The second table shows the list sizes, the
    eligibility records, the screening cases ("Pending" until their source exists), the
-   Study B spare slots and bank-unavailable records, and the last reveal date.
+   Study B spare slots and bank-unavailable records, and the last reveal date. An amber
+   line "no row in reconciled/enrollment.csv" means that visit-status has visits for a
+   study and set that the enrollment table does not have: check the reveal log and run
+   the reconciliation again.
 4. **Allocation progress per batch or dyad.** One row per batch (Study A) or dyad slot
    (Study B). "Slots revealed" shows how many of the unit's person slots are assigned.
    Each visit column shows held of expected visits. For a dyad, "1 / 2" means one of the
@@ -234,9 +249,10 @@ chain: `synth-logs`, then `refresh`, with and without the `wrong_hash` and
 ## 8. Evidence and timing
 
 - Tests: `tests/analysis/test_monitoring.py` (allowlist, masking gates, output schema),
-  `test_monitoring_counts.py` (page = tables, property tests), `test_monitoring_alerts.py`
-  (red alerts, triggers) and `test_monitoring_cli.py` (command, refresh, watermark,
-  determinism, timing).
+  `test_monitoring_counts.py` (page and `dashboard.json` = tables: counts, lists, rate
+  status and triggers; property tests), `test_monitoring_alerts.py` (red alerts,
+  triggers and their thresholds) and `test_monitoring_cli.py` (command, refresh,
+  watermark, determinism, last update, timing).
 - CI hook `analysis/ci/35.sh` builds a full-size synthetic dashboard with the three
   injected events. It times the regeneration, also tries the #33 chain, and on Linux
   takes a headless-Chrome screenshot. Everything goes to the artifact

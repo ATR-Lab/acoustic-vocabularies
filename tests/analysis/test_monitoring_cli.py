@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import subprocess
 import sys
@@ -75,6 +77,24 @@ def test_last_update_is_the_latest_visit_or_reveal_date(tmp_path):
         "latest_visit_date": latest_visit,
         "latest_reveal_date": latest_reveal,
     }
+
+
+def test_last_update_is_the_reveal_date_when_it_is_later_than_every_visit(tmp_path):
+    root = write_demo_root(tmp_path / "r", "DEMO-asof-reveal", studies=("A",), sets=("pilot",))
+    path = root.area("reconciled") / "enrollment.csv"
+    header, *rows = list(csv.reader(io.StringIO(path.read_text(encoding="utf-8"), newline="")))
+    for row in rows:
+        row[header.index("last_event_date")] = "2030-01-31"
+    buf = io.StringIO(newline="")
+    csv.writer(buf, lineterminator="\n").writerows([header, *rows])
+    path.write_bytes(buf.getvalue().encode("utf-8"))
+    write_dashboard(root)
+    doc = json.loads((root.area("monitoring") / "dashboard.json").read_text(encoding="utf-8"))
+    as_of = doc["as_of"]
+    assert as_of["latest_visit_date"] < "2030-01-31"
+    assert as_of["data_date"] == as_of["latest_reveal_date"] == "2030-01-31"
+    html = (root.area("monitoring") / "index.html").read_text(encoding="utf-8")
+    assert "<dt>Data as of</dt><dd>2030-01-31</dd>" in html
 
 
 def test_empty_tables_give_an_empty_dashboard(tmp_path):

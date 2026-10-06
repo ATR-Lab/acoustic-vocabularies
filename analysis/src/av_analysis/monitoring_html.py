@@ -5,7 +5,9 @@ The page is one self-contained file: inline CSS, no script, no external resource
 ``Content-Security-Policy`` meta element forbids both), light and dark colour schemes, and
 the watermark (``<meta name="av-data-kind">`` and, for synthetic data, a visible
 ``SYNTHETIC`` banner at the top and bottom). Every number shown as a count carries a
-``data-metric`` attribute naming it (for example ``faults.all.fault_n``), so tests compare
+``data-metric`` attribute naming it (for example ``faults.all.fault_n``), and every list of
+visits, withdrawals or rates carries a ``data-list`` attribute on its table or list (on the
+"None." line when it is empty, for example ``attrition.A.pilot.missed``), so tests compare
 the page with the reconciled tables cell by cell. The renderer never sees a table row: it
 receives the validated document, whose schema admits counts, coded IDs, enumerations and
 generated text only. All text is HTML-escaped. Same document, same bytes.
@@ -19,7 +21,7 @@ from html import escape
 from typing import Any, Final
 
 from .codes import CHECK_BY_ID
-from .monitoring_metrics import STATION_UNRECORDED, TRIGGERS, percent
+from .monitoring_metrics import STATION_UNRECORDED, TRIGGERS, percent, plural
 from .vocab import FAULT_RATE_TRIGGER, FAULT_TITLES, FAULT_TYPES, OVERRUN_SHARE_TRIGGER
 
 TITLE: Final = "Integrity monitoring dashboard"
@@ -156,26 +158,33 @@ def _table(
     *,
     empty: str = "None.",
     compact: bool = False,
+    list_id: str | None = None,
 ) -> str:
     """A captioned table; ``headers`` are (title, numeric); ``compact`` sizes it to its
-    content instead of the panel width."""
+    content instead of the panel width; ``list_id`` names it (``data-list``)."""
+    named = _list_attr(list_id)
     if not rows:
-        return f'<p class="muted">{escape(caption)}: {escape(empty)}</p>'
+        return f'<p class="muted"{named}>{escape(caption)}: {escape(empty)}</p>'
     head = "".join(Cell(h, numeric=num).render("th") for h, num in headers)
     body = "\n".join("<tr>" + "".join(c.render() for c in row) + "</tr>" for row in rows)
     css = ' class="compact"' if compact else ""
     return (
-        f'<div class="scroll"><table{css}><caption>{escape(caption)}</caption>\n'
+        f'<div class="scroll"><table{css}{named}><caption>{escape(caption)}</caption>\n'
         f"<thead><tr>{head}</tr></thead>\n<tbody>\n{body}\n</tbody></table></div>"
     )
 
 
-def _ids(values: Sequence[str], *, attr: str | None = None) -> str:
+def _list_attr(list_id: str | None) -> str:
+    return f' data-list="{escape(list_id)}"' if list_id is not None else ""
+
+
+def _ids(values: Sequence[str], *, list_id: str, attr: str | None = None) -> str:
+    named = _list_attr(list_id)
     if not values:
-        return '<p class="muted">None.</p>'
+        return f'<p class="muted"{named}>None.</p>'
     extra = f' data-alert="{escape(attr)}"' if attr else ""
     items = "".join(f"<li><code{extra}>{escape(v)}</code></li>" for v in values)
-    return f'<ul class="ids">{items}</ul>'
+    return f'<ul class="ids"{named}>{items}</ul>'
 
 
 def _group_title(group: Mapping[str, Any]) -> str:
@@ -229,12 +238,13 @@ def _alerts(doc: Mapping[str, Any]) -> str:
             f"{_span(a['discrepancies_n'], f'alerts.{event}.discrepancies_n')}; not linked "
             f"to a deviation record: {_span(a['unresolved_n'], f'alerts.{event}.unresolved_n')}"
             f". Affected visits: {_span(len(a['visit_ids']), f'alerts.{event}.visits_n')}.</p>"
-            f"{_ids(a['visit_ids'], attr=event)}</div>"
+            f"{_ids(a['visit_ids'], list_id=f'alerts.{event}.visits', attr=event)}</div>"
         )
     triggers = doc["alerts"]["triggers"]
     out.append("<h3>Triggers to review</h3>")
+    named = _list_attr("alerts.triggers")
     if not triggers:
-        out.append('<p class="good">No trigger reached.</p>')
+        out.append(f'<p class="good"{named}>No trigger reached.</p>')
     else:
         items = []
         for t in triggers:
@@ -247,7 +257,7 @@ def _alerts(doc: Mapping[str, Any]) -> str:
                 f'<li data-trigger="{escape(t["trigger"])}"><strong>'
                 f"{escape(TRIGGERS[t['trigger']])}</strong>{scope}: {escape(t['message'])}</li>"
             )
-        out.append(f'<div class="alert amber"><ul class="plain">{"".join(items)}</ul></div>')
+        out.append(f'<div class="alert amber"><ul class="plain"{named}>{"".join(items)}</ul></div>')
     return "\n".join(out)
 
 
@@ -328,8 +338,22 @@ def _enrollment(doc: Mapping[str, Any]) -> str:
                 sources,
                 empty="no enrollment rows yet",
             ),
+            *_missing_enrollment(doc),
         ]
     )
+
+
+def _missing_enrollment(doc: Mapping[str, Any]) -> list[str]:
+    """A warning per study and set with visit-status rows but no enrollment row."""
+    enrolled = {(e["study"], e["set"]) for e in doc["enrollment"]}
+    return [
+        f'<p class="warn" data-enrollment-missing="{escape(_gk(a))}">'
+        f"{escape(_group_title(a))}: no row in reconciled/enrollment.csv, but visit-status "
+        f"lists {plural(a['persons_n'], 'person')}. Check the reveal log and rerun the "
+        "reconciliation.</p>"
+        for a in doc["attrition"]
+        if (a["study"], a["set"]) not in enrolled
+    ]
 
 
 def _allocation(doc: Mapping[str, Any]) -> str:
@@ -404,9 +428,12 @@ def _attrition(doc: Mapping[str, Any]) -> str:
                 rows,
             )
         )
-        out.append("<p>Missed visits:</p>" + _ids(g["missed_visit_ids"]))
+        out.append("<p>Missed visits:</p>" + _ids(g["missed_visit_ids"], list_id=f"{k}.missed"))
         withdrawals = [f"{w['person_id']} from {w['visit']}" for w in g["withdrawals"]]
-        out.append("<p>Withdrawals (person slot, first visit not held):</p>" + _ids(withdrawals))
+        out.append(
+            "<p>Withdrawals (person slot, first visit not held):</p>"
+            + _ids(withdrawals, list_id=f"{k}.withdrawals")
+        )
     return "\n".join(out) or '<p class="muted">No visits yet.</p>'
 
 
@@ -469,6 +496,7 @@ def _windows(doc: Mapping[str, Any]) -> str:
                 [("Visit", False), ("Timing", False), ("Day", True), ("Window", False)],
                 exceptions,
                 compact=True,
+                list_id=f"{k}.exceptions",
             )
         )
         pairs = g["pairs"]
@@ -495,6 +523,7 @@ def _windows(doc: Mapping[str, Any]) -> str:
                     [("Dyad", False), ("Visit", False), ("Gap (h)", True)],
                     pair_rows,
                     compact=True,
+                    list_id=f"{k}.pairs.outside",
                 )
             )
     return "\n".join(out) or '<p class="muted">No visits yet.</p>'
@@ -585,22 +614,27 @@ def _faults(doc: Mapping[str, Any]) -> str:
                 "Apparatus faults, pooled and by study",
                 headers,
                 [_fault_rows(p, label, s) for p, label, s in scopes],
+                list_id="faults.scopes",
             ),
             _table(
                 "Apparatus faults by station",
                 headers,
                 [_fault_rows(p, label, s) for p, label, s in stations],
                 empty="no station data",
+                list_id="faults.stations",
             ),
             _table("Faulted opportunities by fault type", by_type_headers, by_type),
             note,
-            _table("Visit overruns (booking + 10 min)", o_headers, o_rows),
+            _table(
+                "Visit overruns (booking + 10 min)", o_headers, o_rows, list_id="overruns.scopes"
+            ),
             _table(
                 "Visit overruns by station",
                 o_headers,
                 o_stations,
                 empty="no station data",
                 compact=True,
+                list_id="overruns.stations",
             ),
         ]
     )
@@ -698,6 +732,7 @@ def _reconciliation(doc: Mapping[str, Any]) -> str:
                 ],
                 failing,
                 compact=True,
+                list_id="reconciliation.failing",
             ),
             _table(
                 "Discrepancies by code",
@@ -722,6 +757,7 @@ def _reconciliation(doc: Mapping[str, Any]) -> str:
                 [("Visit", False), ("Open", True)],
                 open_rows,
                 compact=True,
+                list_id="reconciliation.open_deviations",
             ),
             _table(
                 "Comfort and withdrawal reports by visit",
@@ -733,6 +769,7 @@ def _reconciliation(doc: Mapping[str, Any]) -> str:
                 ],
                 welfare_rows,
                 compact=True,
+                list_id="reconciliation.welfare",
             ),
         ]
     )

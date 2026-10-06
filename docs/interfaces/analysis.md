@@ -258,7 +258,9 @@ rates). Design, allowlist and reading guide: `analysis/docs/monitoring.md`.
 - **Red alerts** for `WRONG_FILE_MAPPING`, `ANSWER_LEAK`, `OLD_WAVEFORM_CHANGED`: from a
   discrepancy's `suspension_event` (or its code's event) and from `visit-status`
   `suspension_events`, with the affected visit IDs; a linked deviation record does not
-  remove an alert. Amber triggers: `monitoring_metrics.TRIGGERS`.
+  remove an alert. Amber triggers: `monitoring_metrics.TRIGGERS` (rates strictly above
+  5% and 10%; `enrollment_mismatch` also when a study and set has `visit-status` rows
+  but no `enrollment` row).
 - **Last update**: the later of the latest visit date and the latest reveal-log date,
   with the SHA-256 of the three input tables (no wall clock).
 - `dashboard.json` (`format` `av-analysis/dashboard-data`, `format_version` 1): `as_of`,

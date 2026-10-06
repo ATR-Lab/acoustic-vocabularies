@@ -638,6 +638,16 @@ def _triggers(doc: Mapping[str, Any]) -> list[dict[str, Any]]:
                 f"enrollment table: {e['revealed_persons_n']} revealed persons; visit-status: "
                 f"{e['tracked_persons_n']} persons.",
             )
+    # The other direction: a study and set with visit-status rows but no enrollment row.
+    enrolled = {(e["study"], e["set"]) for e in doc["enrollment"]}
+    for a in doc["attrition"]:
+        if (a["study"], a["set"]) not in enrolled:
+            add(
+                "enrollment_mismatch",
+                a["study"],
+                a["set"],
+                f"enrollment table: no row; visit-status: {plural(a['persons_n'], 'person')}.",
+            )
     for f in doc["faults"]["by_group"]:
         if f["trigger_exceeded"]:
             add(
