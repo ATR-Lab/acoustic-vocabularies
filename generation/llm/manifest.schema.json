@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/llm/manifest.schema.json",
+  "title": "LLM manifest",
+  "description": "The pinned A3/B model, runtime, chat template, decoding values and decoding-schema hash (av_generation.llm_manifest, #16; Study A protocol §3.6). Model metadata comes from the Hugging Face API for one revision; no weights are stored or downloaded in the repository. The hardware section stays pending until it is recorded on the LLM host. The file SHA-256 of this document is llm_manifest_sha256.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "chat_template",
+    "decoding",
+    "decoding_schema",
+    "format",
+    "format_version",
+    "hardware",
+    "model",
+    "provenance",
+    "runtime"
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "text": {
+      "type": "string",
+      "pattern": "^[ -~]{1,200}$"
+    },
+    "nullable_text": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "git_blob_sha1",
+        "kind",
+        "path",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "git_blob_sha1": {
+          "$ref": "#/$defs/sha1"
+        },
+        "sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "config",
+            "license",
+            "other",
+            "tokenizer",
+            "weights",
+            "weights_index"
+          ]
+        }
+      }
+    }
+  },
+  "properties": {
+    "format": {
+      "const": "av-generation/llm-manifest"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecture",
+        "files",
+        "id",
+        "last_modified_utc",
+        "license",
+        "license_file",
+        "model_type",
+        "revision",
+        "tokenizer_revision",
+        "weights_sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+        },
+        "revision": {
+          "$ref": "#/$defs/sha1"
+        },
+        "tokenizer_revision": {
+          "$ref": "#/$defs/sha1"
+        },
+        "license": {
+          "$ref": "#/$defs/text"
+        },
+        "license_file": {
+          "$ref": "#/$defs/text"
+        },
+        "architecture": {
+          "$ref": "#/$defs/text"
+        },
+        "model_type": {
+          "$ref": "#/$defs/text"
+        },
+        "last_modified_utc": {
+          "$ref": "#/$defs/text"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/file"
+          }
+        },
+        "weights_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "chat_template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "file",
+        "inserts_default_system_message",
+        "sha256"
+      ],
+      "properties": {
+        "file": {
+          "const": "tokenizer_config.json"
+        },
+        "field": {
+          "const": "chat_template"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "inserts_default_system_message": {
+          "type": "boolean"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine_seed",
+        "generation_config",
+        "load_format",
+        "max_model_len",
+        "name",
+        "precision",
+        "structured_outputs_backend",
+        "structured_outputs_request",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "vllm"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([.+-][A-Za-z0-9.+-]+)?$"
+        },
+        "precision": {
+          "enum": [
+            "bfloat16"
+          ]
+        },
+        "max_model_len": {
+          "type": "integer",
+          "minimum": 16896
+        },
+        "generation_config": {
+          "const": "vllm"
+        },
+        "structured_outputs_backend": {
+          "enum": [
+            "guidance",
+            "outlines",
+            "xgrammar"
+          ]
+        },
+        "structured_outputs_request": {
+          "const": "response_format.json_schema"
+        },
+        "engine_seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "load_format": {
+          "const": "safetensors"
+        }
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cuda_version",
+        "driver_version",
+        "gpu",
+        "recorded_utc",
+        "status",
+        "torch_version",
+        "vllm_installed",
+        "vram_mib"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "recorded"
+          ]
+        },
+        "gpu": {
+          "$ref": "#/$defs/nullable_text"
+        },
+        "vram_mib": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "driver_version": {
+          "$ref": "#/$defs/nullable_text"
+        },
+        "cuda_version": {
+          "$ref": "#/$defs/nullable_text"
+        },
+        "torch_version": {
+          "$ref": "#/$defs/nullable_text"
+        },
+        "vllm_installed": {
+          "$ref": "#/$defs/nullable_text"
+        },
+        "recorded_utc": {
+          "$ref": "#/$defs/nullable_text"
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "recorded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "gpu": {
+            "$ref": "#/$defs/text"
+          },
+          "vram_mib": {
+            "type": "integer",
+            "minimum": 24000
+          },
+          "driver_version": {
+            "$ref": "#/$defs/text"
+          },
+          "cuda_version": {
+            "$ref": "#/$defs/text"
+          },
+          "vllm_installed": {
+            "$ref": "#/$defs/text"
+          },
+          "recorded_utc": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "gpu": {
+            "type": "null"
+          },
+          "vram_mib": {
+            "type": "null"
+          },
+          "driver_version": {
+            "type": "null"
+          },
+          "cuda_version": {
+            "type": "null"
+          },
+          "torch_version": {
+            "type": "null"
+          },
+          "vllm_installed": {
+            "type": "null"
+          },
+          "recorded_utc": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "decoding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_input_tokens",
+        "max_tokens",
+        "repetition_penalty",
+        "seed_function",
+        "slot_cap_ms",
+        "temperature",
+        "top_k",
+        "top_p",
+        "wire_seed"
+      ],
+      "properties": {
+        "temperature": {
+          "const": 0.7
+        },
+        "top_p": {
+          "const": 0.9
+        },
+        "top_k": {
+          "const": 50
+        },
+        "repetition_penalty": {
+          "const": 1.0
+        },
+        "max_tokens": {
+          "const": 512
+        },
+        "max_input_tokens": {
+          "const": 16384
+        },
+        "slot_cap_ms": {
+          "const": 40000
+        },
+        "seed_function": {
+          "const": "sha256-first8-be-unsigned-v1"
+        },
+        "wire_seed": {
+          "const": "signed-int64-twos-complement"
+        }
+      }
+    },
+    "decoding_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "carries_domain",
+        "sha256",
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "const": "sound/schema/recipe.schema.json"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "carries_domain": {
+          "type": "boolean"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "api_url",
+        "retrieved_utc",
+        "weights_downloaded"
+      ],
+      "properties": {
+        "api_url": {
+          "type": "string",
+          "pattern": "^https://huggingface\\.co/api/models/[ -~]{1,200}$"
+        },
+        "retrieved_utc": {
+          "$ref": "#/$defs/text"
+        },
+        "weights_downloaded": {
+          "const": false
+        }
+      }
+    }
+  }
+}
