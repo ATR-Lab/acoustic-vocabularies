@@ -1,0 +1,29 @@
+{
+  "books": [
+    {
+      "book_id": "BK-C-V54BM6",
+      "designer": "D3",
+      "method": "A1",
+      "unit_id": "A-C01"
+    },
+    {
+      "book_id": "BK-C-CBVP7N",
+      "designer": null,
+      "method": "A2",
+      "unit_id": "A-C01"
+    },
+    {
+      "book_id": "BK-C-GXGC6T",
+      "designer": null,
+      "method": "A3",
+      "unit_id": "A-C01"
+    }
+  ],
+  "demo": true,
+  "format": "av-schedules/a-book-key",
+  "format_version": 1,
+  "note": "Trimmed DEMO copy of schedules/examples/demo-allocation/A/confirmatory-book-key.json (unit A-C01 only, learner slots removed) for #20 tests.",
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "study": "A"
+}
