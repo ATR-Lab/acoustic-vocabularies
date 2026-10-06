@@ -19,7 +19,7 @@ from .protocol import decode
 
 
 class PrivateCommandTransport:
-    def __init__(self, handoff, *, socket_path=None, allowed_uid=None, host=None, port=None):
+    def __init__(self, handoff, *, socket_path=None, allowed_uid=None, host=None, port=None, timing=None):
         if (socket_path is None) == (host is None):
             raise ValueError("choose exactly one Unix socket or explicit loopback TCP listener")
         if socket_path is not None:
@@ -33,6 +33,7 @@ class PrivateCommandTransport:
         if self.path is not None and self.path.exists():
             raise FileExistsError("inspect existing private socket before replacing it")
         self.handoff, self.host, self.port, self.allowed_uid = handoff, host, port, allowed_uid
+        self.timing, self.timing_task = timing, None
         self.control_session_id = handoff.dispatcher.control_session_id
         if not health_probe.valid_id(self.control_session_id):
             raise ValueError("Pinned private control session required")
@@ -49,6 +50,11 @@ class PrivateCommandTransport:
             from websockets.server import WebSocketServerProtocol, serve, unix_serve
             owner = self
             class RestrictedProtocol(WebSocketServerProtocol):
+                def data_received(self, data):
+                    if owner.timing is not None:
+                        owner.timing.record('socket_data', connection=id(self), a=len(data))
+                    super().data_received(data)
+
                 async def process_request(self, path, headers):
                     if owner.path:
                         raw = self.transport.get_extra_info("socket").getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
@@ -71,18 +77,25 @@ class PrivateCommandTransport:
             self.server = self.loop.run_until_complete(listener)
             if self.path:
                 os.chmod(self.path, 0o600)
+            if self.timing is not None:
+                self.timing_task = self.loop.create_task(self.timing.loop_watch())
             self.ready.set()
             self.loop.run_forever()
         except Exception as error:
             self.failed = error
             self.ready.set()
         finally:
+            if self.timing_task is not None and not self.timing_task.done():
+                self.timing_task.cancel()
+                try: self.loop.run_until_complete(self.timing_task)
+                except asyncio.CancelledError: pass
             self.loop.close()
 
     async def _client(self, websocket, _path=None):
         from websockets.exceptions import ConnectionClosed
         try:
             async for raw in websocket:
+                request_id = ''
                 if not isinstance(raw, str):
                     reply = self.handoff.deny("binary frame", websocket.private_peer, "MALFORMED")
                 else:
@@ -94,14 +107,34 @@ class PrivateCommandTransport:
                         # Admission used the same UID/loopback peer check above.
                         # No simulation-thread dispatch, cache entry or command
                         # journal write for a read-only probe, including refusal.
-                        reply = health_probe.reply(value, self.control_session_id, self.handoff.health)
+                        if self.timing is not None:
+                            request_id = value.get('request_id') if health_probe.valid_id(value.get('request_id')) else ''
+                            self.timing.record('probe_ingress', request_id, id(websocket))
+                        reply = health_probe.reply(value, self.control_session_id,
+                            self.handoff.health if self.timing is None else self._traced_health)
                     else:
                         future = self.handoff.submit(raw, websocket.private_peer)
                         # Disconnects do not cancel an admitted command or its log.
                         reply = await asyncio.shield(asyncio.wrap_future(future))
-                await websocket.send(json.dumps(reply, allow_nan=False))
+                if self.timing is not None: self.timing.record('send_begin', request_id, id(websocket))
+                try:
+                    await websocket.send(json.dumps(reply, allow_nan=False))
+                except Exception:
+                    if self.timing is not None: self.timing.record('send_error', request_id, id(websocket))
+                    raise
+                if self.timing is not None: self.timing.record('send_end', request_id, id(websocket))
         except ConnectionClosed:
-            pass
+            if self.timing is not None: self.timing.record('connection_closed', connection=id(websocket))
+
+    def _traced_health(self):
+        self.timing.record('provider_begin')
+        try:
+            value = self.handoff.health()
+        except Exception:
+            self.timing.record('provider_error')
+            raise
+        self.timing.record('provider_end')
+        return value
 
     def close(self):
         self.handoff.close()  # Calling owner thread logs/completes pending jobs.
@@ -109,6 +142,10 @@ class PrivateCommandTransport:
             async def finish():
                 self.server.close()
                 await self.server.wait_closed()
+                if self.timing_task is not None:
+                    self.timing_task.cancel()
+                    try: await self.timing_task
+                    except asyncio.CancelledError: pass
             asyncio.run_coroutine_threadsafe(finish(), self.loop).result(timeout=10)
             self.loop.call_soon_threadsafe(self.loop.stop)
             self.thread.join(timeout=10)

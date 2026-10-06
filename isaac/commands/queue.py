@@ -9,10 +9,11 @@ from .protocol import decode
 
 
 class CommandQueue:
-    def __init__(self, dispatcher, capacity=32):
+    def __init__(self, dispatcher, capacity=32, *, timing=None):
         if type(capacity) is not int or capacity < 1:
             raise ValueError("positive bounded command capacity required")
         self.dispatcher = dispatcher
+        self.timing = timing
         self.queue = queue.PriorityQueue(maxsize=capacity)
         self.sequence = 0
         self.lock_boundary = -1
@@ -22,13 +23,19 @@ class CommandQueue:
 
     def refresh_health(self):
         self.dispatcher._thread()
+        if self.timing is not None: self.timing.record('cache_wait', a=1)
         with self.lock:
+            if self.timing is not None: self.timing.record('cache_acquired', a=1)
             self.cached_health = self.dispatcher.health()
             self.cached_sim_time = float(self.dispatcher.reset_manager.adapter.sim_time)
+        if self.timing is not None: self.timing.record('cache_released', a=1)
 
     def health(self):
+        if self.timing is not None: self.timing.record('cache_wait', a=0)
         with self.lock:
+            if self.timing is not None: self.timing.record('cache_acquired', a=0)
             value = deepcopy(self.cached_health)
+        if self.timing is not None: self.timing.record('cache_released', a=0)
         now = time.monotonic_ns()/1e6
         elapsed = max(0., now-value["health_sample_host_mono_ms"])
         for key in ("neutral_verification_age_ms", "publisher_age_ms"):
