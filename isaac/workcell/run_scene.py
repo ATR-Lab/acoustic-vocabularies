@@ -13,6 +13,7 @@ sys.path.insert(0,str(ROOT))
 sys.path.insert(0,str(ROOT/'spikes/O5.1.2'))
 from evidence import verify_loopback_only, require_revision
 from isaac.workcell.layout import canonical_bytes, digest, preconditions
+from isaac.view_capture.options import add_arguments as add_view_arguments, profile_options as view_options
 
 
 def validate_cache_profile(args):
@@ -56,8 +57,10 @@ def main():
     parser.add_argument('--e2e-handle-cache',action='store_true',
                         help='Experimental guarded USD handle cache for the bounded joined service only')
     parser.add_argument('--same-iteration-check',action='store_true')
+    add_view_arguments(parser)
     early,_=parser.parse_known_args()
     validate_cache_profile(early)
+    observation_options=view_options(early)
     verify_loopback_only()
     pins=json.loads((ROOT/'spikes/O5.1.2/pins.json').read_text())
     require_revision(Path('/lab'),pins['isaac_lab_commit'])
@@ -256,6 +259,7 @@ def main():
                     control_session_id=args.e2e_control_session_id,
                     public_socket=args.e2e_public_socket,private_socket=args.e2e_private_socket,
                     private_timing_seconds=args.e2e_private_timing_seconds,
+                    view_observation=observation_options,
                     joint_csv=ROOT/'docs/spikes/isaac/joint_inventory.csv')
                 if not e2e['service_completed']: raise RuntimeError('JOINED_E2E_SERVICE_FAILED')
             finally: event_log.close()
