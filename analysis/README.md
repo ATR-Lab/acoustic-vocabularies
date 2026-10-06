@@ -14,7 +14,7 @@ dependency on `../schedules`). Architecture, module ownership and rules:
 | Shared contracts: log templates, vocabularies, checks and codes, windows, table specs, schemas, data roots and watermark, masking | skeleton | implemented |
 | Reconciliation: loaders, checks C1-C8, exposure ledger, reconciled and derived tables, synthetic logs | #33 | interfaces |
 | Analysis pipeline: scoring, estimators, bootstraps, GLMMs (R), bounds, tipping points, simulation, section 9 report | #34 | interfaces (ladder log, report order and R pins implemented) |
-| Integrity dashboard | #35 | interfaces (panel list implemented) |
+| Integrity dashboard: column allowlist, panels, red alerts, static HTML and metrics JSON, synthetic demo tables | #35 | implemented |
 
 ## Use
 
@@ -29,6 +29,9 @@ uv run --project analysis av-analysis schemas
 uv run --project analysis av-analysis check-templates <methodology templates folder>
 # After each visit: reconcile --all, derive, dashboard (skips steps not implemented yet)
 uv run --project analysis av-analysis refresh --root <dir>
+# Integrity dashboard on synthetic (DEMO) reconciled tables
+uv run --project analysis python -m av_analysis.monitoring_demo --out <dir> --inject wrong_hash
+uv run --project analysis av-analysis dashboard --root <dir>
 ```
 
 ## API
@@ -47,10 +50,11 @@ uv run --project analysis av-analysis refresh --root <dir>
 | `cli` | `av-analysis` commands; `refresh` runs `REFRESH_STEPS` (reconcile, derive, dashboard) | skeleton |
 | `loaders`, `references`, `reconcile`, `ledger`, `derive`, `synthetic_logs` | reconciliation | #33 |
 | `scoring`, `unmask`, `estimators`, `missingness`, `glmm`, `rbridge`, `simulate`, `report`, `pipeline` | analysis pipeline | #34 |
-| `monitoring` | integrity dashboard | #35 |
+| `monitoring`, `monitoring_metrics`, `monitoring_html`, `monitoring_demo` | integrity dashboard: `allowlist()`, `load_monitoring_data()`, `render()`, `write_dashboard()`, `build_document()`, `demo_tables()` | #35 |
 
 Schemas: [`schema/`](schema/) (`*-row.schema.json` for the six tables, `data-root`,
-`exit-manifest`, `reconciliation`, `outputs-manifest`, `glmm-log`). R environment:
+`exit-manifest`, `reconciliation`, `outputs-manifest`, `glmm-log`; `dashboard-data` from
+`monitoring`). R environment:
 [`r/pins.dcf`](r/pins.dcf), `r/install.R`, `r/check_pins.R`.
 
 ## Development
