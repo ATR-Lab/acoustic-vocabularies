@@ -38,6 +38,19 @@ during parsing, a newer receipt already queued at pump entry, real expiry,
 clock rejection, parser/observer delays, bounded draining, epochs, faults,
 overflow and echo correlation. The clean Windows build014 inventory contains
 205 independently rehashed files. Exact pins and the retained failing baseline
-are in `public-state-processing-clock.validation.json`. Actual build014 native
-verification remains separate; the visit and participant qualification are
-incomplete.
+are in `public-state-processing-clock.validation.json`.
+
+Actual B014 active V1 prepared its menu view at 15.2021289 s but failed preflight
+at 37.9826174 s before any Start/Pause or audio request. The retained private
+probe failed in receive after 216.3951 ms with zero fragments/bytes, timeout
+token canceled and lifetime token not canceled. This is a distinct current
+private-probe deadline failure; the queue-clock correction does not relax it.
+The process exited 0 with cleanup/export and independent byte-integrity checks
+passing; the visit remains incomplete.
+
+Between preparation and that failure, the source journal contains no
+`STATE_QUEUED_TOO_LONG` or `HOST_CLOCK_REGRESSED`. This is a bounded observation,
+not a whole-run absence claim: six old-queue refusals and one overflow occurred
+during initial startup, before preparation. Seven stale/recovered pairs remain
+in the prepared window. There is no completed menu, visit, physical readability,
+timing or participant qualification from this run.
