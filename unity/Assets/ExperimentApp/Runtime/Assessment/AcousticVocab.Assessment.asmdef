@@ -1,0 +1,8 @@
+{
+  "name": "AcousticVocab.Assessment",
+  "rootNamespace": "AcousticVocab.Assessment",
+  "references": ["AcousticVocab.Foundation", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio", "AcousticVocab.ResponsePanel", "AcousticVocab.StateIntegration", "AcousticVocab.StateSources", "AcousticVocab.Teaching", "Unity.XR.Hands"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": true
+}

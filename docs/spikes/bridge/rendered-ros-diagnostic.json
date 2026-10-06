@@ -1,0 +1,21 @@
+{
+  "candidate": "ros-sharp-2.3.0",
+  "source_kind": [
+    "live"
+  ],
+  "applied_frames": 601,
+  "duration_received_s": 19.9955099,
+  "callback_ms_median": 0.30820000000275627,
+  "callback_ms_p95": 0.5206999999991524,
+  "callback_ms_max": 19.770499999999913,
+  "source_fresh_values": [
+    "false"
+  ],
+  "diagnostic_values": [
+    "true"
+  ],
+  "messages_sha256": "5195a285f637c3d0002877b43649369a64ddafe5e21c5f30fa6c36e19ee13e49",
+  "image_sha256": "20d955d52ca0650a4eade3d405a11c45d57b74cdcacd2eec799c8739f694c4fd",
+  "unity_exit_code": 0,
+  "device_acceptance": false
+}

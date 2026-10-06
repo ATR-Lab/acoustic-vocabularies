@@ -1,0 +1,48 @@
+{
+  "scope": "synthetic_software_validation",
+  "source_commit": "76cb1b74cf9299722dc0566b22b7627026032d41",
+  "source_archive_sha256": "4774d3034ad6b7f1d37b8768cf0962e4d5daf37f7690ef1f1cd526e565944651",
+  "linux": {
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "network": "none",
+    "gpu_requested": false,
+    "installed_dependencies": false,
+    "passed": 124,
+    "skipped": 0,
+    "failed": 0,
+    "log_sha256": "b8a2d44d97b6c02d7d2919f5319126b3861d966782eb685bd8d4680db06553f2",
+    "junit_sha256": "76af66c3c04a08b59df86b49285978bd089fc8698c148f8fd3b40083d7b2c0bf",
+    "actual_socket_scope": "existing Unix WebSocket plus real dispatcher and durable log, synthetic simulator only"
+  },
+  "windows": {
+    "passed": 121,
+    "skipped": 3,
+    "failed": 0,
+    "junit_sha256": "e34eb0a51810427b3c373b5d8690b1802521c29ba4d712db6b9277fd39812934",
+    "skip_reasons": [
+      "Windows symlink privilege unavailable",
+      "Linux/approved websockets required for Unix driver test",
+      "approved WebSocket exception dependency unavailable"
+    ]
+  },
+  "producer_reader_parity": {
+    "producer_commit": "e72cc344d62f37e89cb042ac68a7bb5fdd567521",
+    "producer_raw_sha256": "a42d853566067534e3e5d31f912894c861ea8833378ebd7181916787a3f48511",
+    "reader_raw_sha256": "88a51aefdd3a9ba6cc9cfe99f3aa1ef8a7b2a3d471f6c255331366923d8bcdb0",
+    "report_sha256": "904a42d8a2c60b9b5818861bad50381823611de014e2008a9bd43564241d8266",
+    "manifest_sha256": "bcf2ea4e1b6d5a747dbdbd00237681ed6dae0a6d9178ead27cf7a232100111d3",
+    "observations": 2,
+    "reset_replies": 1,
+    "exact_command_copy": true,
+    "historical_ack_only": true,
+    "passed": true
+  },
+  "limitations": [
+    "No GPU, loaded articulation, native capture, 32-target matrix, physical headset, acoustic or timing qualification",
+    "Socket test uses a synthetic simulator with actual command transport and durable logging",
+    "Producer-reader parity is synthetic interoperability with full-shaped actual code-path artifacts",
+    "Prior permission-denied nonroot image launch retained separately; final tests ran using approved image default user"
+  ],
+  "participant_ready": false,
+  "g3_signed": false
+}

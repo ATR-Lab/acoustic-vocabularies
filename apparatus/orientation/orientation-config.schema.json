@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Private silent orientation setup",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "configuration_status",
+    "protocol_version",
+    "plan_file",
+    "plan_sha256",
+    "demo_directory",
+    "demo_index_sha256",
+    "allow_engineering_draft"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "configuration_status": {
+      "enum": [
+        "example_only",
+        "provisioned_engineering"
+      ]
+    },
+    "protocol_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "not": {
+        "pattern": "[\\x00-\\x1F\\x7F]"
+      },
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "plan_file": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 110,
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "\\.\\."
+          },
+          {
+            "pattern": "[\\r\\n]"
+          }
+        ]
+      },
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\\.json$"
+    },
+    "plan_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "demo_directory": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "\\.\\."
+          },
+          {
+            "pattern": "[\\r\\n]"
+          }
+        ]
+      },
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "demo_index_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "allow_engineering_draft": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "configuration_status": {
+            "const": "provisioned_engineering"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "plan_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "demo_index_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        }
+      }
+    }
+  ]
+}

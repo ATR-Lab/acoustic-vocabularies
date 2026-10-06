@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "configuration_status": "example_only",
+  "protocol_version": "engineering-pending-review",
+  "plan_file": "orientation-plan.local.json",
+  "plan_sha256": null,
+  "demo_directory": "orientation-demos",
+  "demo_index_sha256": null,
+  "allow_engineering_draft": true
+}

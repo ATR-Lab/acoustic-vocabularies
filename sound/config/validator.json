@@ -1,0 +1,6 @@
+{
+  "config_version": 1,
+  "description": "Separation threshold for the 12-feature distance screen (Study A protocol §3.2). A candidate passes when its distance to every committed motif is at least this value. One value for every method and for Study B banks; the separation-threshold listening check (#23, O6.2.2) keeps or revises it before G4 (#25).",
+  "separation_threshold": "0.10",
+  "status": "pilot default; freezes at G4"
+}

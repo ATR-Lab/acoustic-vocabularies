@@ -1,0 +1,108 @@
+{
+  "balance_max_abs_deviation": {
+    "family_first": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "label_index": {
+      "all": "0",
+      "sq_arm=SQ-1": "1",
+      "sq_arm=SQ-2": "1",
+      "swap_w1_w4=0": "1",
+      "swap_w1_w4=1": "1"
+    },
+    "message_cell": {
+      "all": "0.5"
+    },
+    "message_heldout": {
+      "all": "2.5"
+    },
+    "message_novel": {
+      "all": "1"
+    },
+    "sq_arm": {
+      "all": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "swap_w1_w4": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0"
+    },
+    "wave1_label_position": {
+      "all": "1.5"
+    },
+    "wave1_position": {
+      "all": "0",
+      "sq_arm=SQ-1": "0.5",
+      "sq_arm=SQ-2": "0.5",
+      "swap_w1_w4=0": "0.5",
+      "swap_w1_w4=1": "0.5"
+    },
+    "wave2_label_position": {
+      "all": "0.5"
+    },
+    "wave2_position": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "wave3_label_position": {
+      "all": "0.5"
+    },
+    "wave3_position": {
+      "all": "0",
+      "sq_arm=SQ-1": "0",
+      "sq_arm=SQ-2": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    }
+  },
+  "demo": true,
+  "files": {
+    "B-P01/curriculum.csv": "42aec7d7b2c82727a6471a18913268777a9ca7430e7b28c728688f1aec5fa5b8",
+    "B-P01/permutation.json": "00900feeab79e5a00e200f74451e458051c7818d600ece6d77a080db3bf744bf",
+    "B-P02/curriculum.csv": "70d36d2b7f6f3dae142714efa5291b0310cd17ea461f54d135ca965154581aa7",
+    "B-P02/permutation.json": "2bd5eb46606451b9a31a9df6bf356ebc23968d2d2a2fccf760dfeb0d68fc8fce",
+    "B-P03/curriculum.csv": "60bd5ea48b2fb0297c9565e7f3933b343e18764dac975e4422751446ad3ca9d1",
+    "B-P03/permutation.json": "1da0689e7a4adc87801233863f435a4b683e846315332019f9cfab37dc5d23b2",
+    "B-P04/curriculum.csv": "a7536773aca7220567d598ea7cea250d74e513746b956233707ecac890322fdb",
+    "B-P04/permutation.json": "165688c93fed59f6e210c256e84eb7d601e64253277bab56a7f63132d4501fe8",
+    "B-P05/curriculum.csv": "705d8be3e9dfb3a58f626707ece07ac7ab642ecb0d7b606517c72db184f28fdb",
+    "B-P05/permutation.json": "96bf7edeaf30f99ca3bc255125c9bcd95500328f348aaf23f98296a4ec9a854a",
+    "B-P06/curriculum.csv": "65d6f1c1b660c33b28db6023b2a7ee03fbb889a25b02eb0d664b214ac23ccf5f",
+    "B-P06/permutation.json": "2ceb7ba2325a0b1e557705da2a922df7c2c008689c3c591d3bb5b98818242d7d",
+    "B-P07/curriculum.csv": "24f276d881eec6fb18285917b7831b4bfcd67e8442728c1eefa10522ae1c833c",
+    "B-P07/permutation.json": "f7ed7f118ce7568c75b32674ff85bbc26321c9553105a85a5e50036d0ef735d3",
+    "B-P08/curriculum.csv": "6aced33a00413cfc2e562a55bfb7ee1b70e54096e6e0a1335980d81e6a0a0f27",
+    "B-P08/permutation.json": "ed9f967eacc88f9334312d0260c9fbd4d03d766d134db4ff5a537b5e31928637",
+    "pilot-balance.csv": "8f9304c33c911381dc163e6606831fbc01989bf48a8123bea11847728dc9271b",
+    "pilot-design-table.csv": "1159c137b83aa8585a93e369d465c8704ff34de431f8b77330e441144ef9eed8"
+  },
+  "format": "av-schedules/manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "B",
+  "units": [
+    "B-P01",
+    "B-P02",
+    "B-P03",
+    "B-P04",
+    "B-P05",
+    "B-P06",
+    "B-P07",
+    "B-P08"
+  ]
+}

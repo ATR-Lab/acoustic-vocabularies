@@ -5,6 +5,15 @@ on:
     paths:
       - "sound/**"
       - "tests/sound/**"
+      - "tests/test_menu_store_bridge.py"
+      - "tests/test_prepare_joined_engineering.py"
+      - "tests/test_prepare_mock_visits.py"
+      - "tools/prepare_mock_visits.py"
+      - "ops/console/**"
+      - "tools/prepare_joined_engineering.py"
+      - "tools/menu_store_bridge.py"
+      - "tools/menu_store_fixture.py"
+      - "apparatus/schemas/menu-store-bridge.schema.json"
       - "tests/golden/**"
       - ".github/workflows/sound.yml"
       - ".gitattributes"
@@ -13,6 +22,15 @@ on:
     paths:
       - "sound/**"
       - "tests/sound/**"
+      - "tests/test_menu_store_bridge.py"
+      - "tests/test_prepare_joined_engineering.py"
+      - "tests/test_prepare_mock_visits.py"
+      - "tools/prepare_mock_visits.py"
+      - "ops/console/**"
+      - "tools/prepare_joined_engineering.py"
+      - "tools/menu_store_bridge.py"
+      - "tools/menu_store_fixture.py"
+      - "apparatus/schemas/menu-store-bridge.schema.json"
       - "tests/golden/**"
       - ".github/workflows/sound.yml"
       - ".gitattributes"
@@ -62,6 +80,15 @@ jobs:
         run: >
           uv run --project sound coverage report --rcfile=sound/pyproject.toml
           --include='*/av_sound/renderer.py' --fail-under=90
+      - name: Actual menu/store bridge and private mailbox
+        run: >
+          uv run --project sound pytest --import-mode=importlib -p no:cacheprovider
+          tests/test_menu_store_bridge.py
+      - name: Pinned private DEMO engineering staging
+        run: >
+          uv run --project sound pytest --import-mode=importlib -p no:cacheprovider
+          tests/test_prepare_joined_engineering.py
+          tests/test_prepare_mock_visits.py ops/console/tests/test_simulation.py
       - name: Determinism fingerprint
         run: |
           uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -76,3 +103,43 @@ jobs:
           print(f"- renderer_hash `{renderer_hash()}`")
           print(f"- digest of freshly rendered reference PCM `{digest}` ({len(rendered)} vectors)")
           EOF
+      - name: Composition fingerprint
+        run: |
+          uv run --project sound python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import hashlib, json, platform
+          from av_sound import Profile, composite_hash
+          from av_sound.grammar import MESSAGES
+          from av_sound.synthetic import synthetic_book
+          books = [synthetic_book(p) for p in Profile]
+          live = [composite_hash(b[m.action.atom_id], b[m.referent.atom_id]) for b in books for m in MESSAGES]
+          data = json.load(open("sound/testvectors/composition/vectors.json", encoding="utf-8"))
+          ref = [m["composite_sha256"] for b in data["books"] for m in b["messages"]]
+          digest = hashlib.sha256("".join(live).encode()).hexdigest()
+          print(f"- {platform.system()}: live composite digest `{digest}` ({len(live)} messages), equals vectors.json: {live == ref}")
+          assert live == ref
+          EOF
+      - name: Reserved nonlexical assets (registry check and WAVs)
+        run: >
+          uv run --project sound python sound/tools/make_reserved_assets.py --check --table
+          --wav-dir "$RUNNER_TEMP/reserved-assets" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload reserved-asset WAVs for listening (synthetic, nonlexical)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: reserved-assets-wav
+          path: ${{ runner.temp }}/reserved-assets/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Example packages (synthetic; committed JSON check and full build)
+        run: |
+          uv run --project sound python sound/tools/build_example_package.py --check
+          uv run --project sound python sound/tools/build_example_package.py \
+            --out "$RUNNER_TEMP/package-demo" --dyad | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload the synthetic example packages (DEMO, with WAVs)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-demo
+          path: ${{ runner.temp }}/package-demo/
+          retention-days: 14
+          if-no-files-found: error
