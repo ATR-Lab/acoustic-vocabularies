@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "run": "DEMO-desktop-store-interop-05",
+  "scope": "actual_Unity_Editor_client_to_actual_Python_store_private_file_mailbox_with_existing_DEMO_package",
+  "result": "pass_for_recorded_scope",
+  "python_commit": "91957e09a25568649a39e9dab8afc77899e163a4",
+  "fixture_generator_commit": "2c242280e31b8b8534d2e5dfd6128e2ce7c51488",
+  "runtime": {
+    "os": "Windows",
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "pytest": "8.4.2",
+    "jsonschema": "4.25.1",
+    "unity": "6000.6.0f1 (f7f8ed4d1e24)"
+  },
+  "source_sha256": {
+    "tools/menu_store_bridge.py": "cd4d3f9c457f2c077726750b6c8d260f5e66fa33d584b8c70a0c720a11582df1",
+    "tools/menu_store_fixture.py": "52a0651488b1de93303b1136e7a5b8daa49a94840bd4c31ff1d7f908459e9720",
+    "unity/Assets/ExperimentApp/Editor/SelectionMenus/MenuBuild.cs": "48b70bcfd622f6feabbc61a5c5b907b4be299b72f9a309ef1cca5eccd7ee50e5",
+    "unity/Assets/ExperimentApp/Editor/SelectionMenus/MenuStoreInterop.cs": "662a2c7e5dae7e51f41e061552c62edd60a79b79e564e9464139b96cc6974367",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/AssemblyInfo.cs": "e91a8380ba953db5e2e64e5a51fecc25fe747a681230f8dae8cf320be634f00d",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/FileMenuStore.cs": "35738dac1e48cc0ad68004c27c959a2ffc1fd4c3fdee1662c705748ba5ca0d62",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs": "7f2609b5c33b3ff561ed6049822616b67b6c13d87f245ee4c7a0f0ae169b00de",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContent.cs": "435cec703208a99ed28c318f16f8068664bd20b882a398167efd425306e23db0",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContracts.cs": "1fc27e86711971032c28a55f54a8b0ee7f188bb1de3394b85c9b598fdcb2ad82",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuExposureProjection.cs": "98b0edf7e0e14cbdcaff8ecbe688369eef9fccd0803d3e6317b660431727e4b1",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs": "3b6251ffeda4f29f4a64d1b6b2a21c3efcfbda74169b9f22154bfcc6da094dbc",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuReplaySequence.cs": "da964e25d47811886e11cad25a769167c27a7879b22b1d861e586619dc355d17",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs": "d8c500535cccefae5e52df6bcf9895c208006e71287c0648a2d76271e5eb5dca",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs": "9e484d6aaa7357c0f468404a67e9029ba18729b67c920cbb6da34c5db97bbeeb"
+  },
+  "unity_source_manifest_sha256": "bbd21d773be6a74e5088961070c5a1df0f6d0ea825d28c364d9dfd448edb24f4",
+  "operations": {
+    "atom": 1,
+    "verify": 2,
+    "profile": 1
+  },
+  "durable_unity_checkpoints": 8,
+  "actual_store_records": 2,
+  "actual_bridge_journal_records": 2,
+  "committed_atoms": 1,
+  "assertions": {
+    "full_store_and_package_reverified": true,
+    "matching_request_receipt_snapshot_hashes": true,
+    "profile_receipt_preserved": true,
+    "pending_intent": false
+  },
+  "python_exit": 0,
+  "unity_exit": 0,
+  "owned_service_processes_remaining": 0,
+  "client_elapsed_ms": {
+    "profile_ms": 882.6858000000002,
+    "atom_ms": 1027.9183999999998,
+    "verify_ms": 475.0500000000002
+  },
+  "timing_qualified": false,
+  "participant_ready": false,
+  "qualified_bank": false,
+  "audio_played": false,
+  "headset_tested": false,
+  "python_tests": {
+    "passed": 47,
+    "seconds": 68.7,
+    "root_missing_numpy_skip_explicit": true,
+    "sound_ci": "dedicated locked sound-runtime step on Linux, macOS and Windows; remote results separate"
+  },
+  "artifact_sha256": {
+    "atom_request": "232ff2f52cbc6466775b5e11dc254c4cc8fe9e987c04ed578d8dfd067287cd7f",
+    "atom_response": "ba2892035cd3a160f9177bf76f11c285fb66fca67d838f0e50ef61a7ccb2c53d",
+    "final_verify_request": "ca64b43ef3f3e356faca65f6a796f2814dda1a7069e8f11a63ee276a8ff1f658",
+    "final_verify_response": "aafab6e10efe5f92c98e0dadcf3f4256819033c2f73be696d601ad2f918a1eae",
+    "initial_verify_request": "835df4889c02ee6039049d31c6ab8738954cc1a8416b8bd8ec1b6ad3678cf522",
+    "initial_verify_response": "c52f0fa2c31513f4b3a9a80ccbdd9313f4a3be47a5a9d28459d322a200a96810",
+    "profile_request": "63d4cccfc8ee807443a29c04414548b4fc4aed4e653a5d49e7004d06dc66619e",
+    "profile_response": "2fe81d8890f9a9c983b1cbb19387ea1223c788e11033220c903d6497c511ee21",
+    "initial-snapshot.json": "f0918224fc9b7b734a055a99c7c67aa7114da241eb9dc66ecf7a029beb883c7e",
+    "final-snapshot.json": "325c8dbaedef221c8d4cb8b2685fb047f3d50cc096d00287885e10922566cb98",
+    "unity-report.json": "a5b979e3bf7231352fdedfdfb397d09119797794bbcc96370fa1853249703307",
+    "unity-checkpoint.jsonl": "c31b3c50d71ff99f85096600228a307b6ceb9f2981b64801a0717ed36ed873e0",
+    "service.stdout.log": "fe36f5a0e805027fea15c0eb675d2ef725a43bfa0cc7220bd43a085dcb8652c5",
+    "service.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verified-evidence.json": "d8ea384104e01441cfd1690f6ea74cdc1f604da66d0dd58c1b2f47b357475765",
+    "actual_store_log": "aa7cb9c9e2123a614892bb9243b0456e3d32196aee91fa43a837ff628f3d4b19",
+    "bridge_journal": "f5bc2f83de36bb7aaa1f2d50fca4e1839ddd519e4f25d9e980fa494e88cf622a",
+    "unity_editor_log": "ae3d8a829c7b174369ae356cda6ca81d6823f7230db7c24f5aa121d869e7499f"
+  },
+  "prior_attempt": {
+    "run": "DEMO-desktop-store-interop-04",
+    "outcome": "Unity IL post-processing startup stalled before user code; no request reached service",
+    "processed": 0,
+    "service_seconds": 300.0,
+    "python_exit": 0,
+    "stdout_sha256": "4dfa2fbd5b1a57ebcefbcd238754d8435abceb234b24486b980a5bd476c2969a"
+  },
+  "limitations": [
+    "One profile and one atom passed through actual Unity Editor/FileMenuStore and the actual Python store; no audio or participant scene was exercised.",
+    "The provisional deterministic DEMO bank is not a qualified #26 participant bank.",
+    "The mailbox is co-located private desktop file transport; Android compilation does not qualify headset connectivity.",
+    "Reported request durations are single engineering observations, not timing or study acceptance.",
+    "Python tests separately exercise actual-store 8/12/16 accumulation and real admissibility rejection; that larger sequence was not performed through this Unity run.",
+    "Client/server storage power-loss behavior and participant recovery remain unqualified."
+  ],
+  "unity_source_commit": "b824e0896107de89530ea18a97fcb95f631d47e5",
+  "source_hash_note": "SHA-256 of raw Windows source files used for the live run, verified unchanged before publication; Git line-ending normalization can change raw byte hashes."
+}

@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "scope": "engineering_provisional",
+  "participants": false,
+  "source_kind": "live",
+  "capture_surface": "desktop_engineering",
+  "station_id": "DEMO-station",
+  "build_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "snapshot": {
+    "path": "neutral-v1.json",
+    "sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e"
+  },
+  "image": {
+    "width": 1920,
+    "height": 1080,
+    "max_channel_delta": 0,
+    "minimum_unique_rgb_colors": 8
+  },
+  "poses": [
+    {
+      "id": "center",
+      "head_pose": {
+        "position_m": [
+          0.0,
+          1.2,
+          -2.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "id": "yaw_left",
+      "head_pose": {
+        "position_m": [
+          0.0,
+          1.2,
+          -2.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          -0.13052619222005157,
+          0.0,
+          0.9914448613738104
+        ]
+      }
+    },
+    {
+      "id": "yaw_right",
+      "head_pose": {
+        "position_m": [
+          0.0,
+          1.2,
+          -2.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.13052619222005157,
+          0.0,
+          0.9914448613738104
+        ]
+      }
+    },
+    {
+      "id": "pitch_up",
+      "head_pose": {
+        "position_m": [
+          0.0,
+          1.2,
+          -2.0
+        ],
+        "rotation_xyzw": [
+          -0.08715574274765817,
+          0.0,
+          0.0,
+          0.9961946980917455
+        ]
+      }
+    },
+    {
+      "id": "pitch_down",
+      "head_pose": {
+        "position_m": [
+          0.0,
+          1.2,
+          -2.0
+        ],
+        "rotation_xyzw": [
+          0.08715574274765817,
+          0.0,
+          0.0,
+          0.9961946980917455
+        ]
+      }
+    }
+  ],
+  "head_position_tolerance_m": 0.001,
+  "head_orientation_tolerance_rad": 0.008726646259971648,
+  "state_tolerances": {
+    "joint_rad": 0.008726646259971648,
+    "position_m": 0.001,
+    "orientation_rad": 0.008726646259971648,
+    "linear_velocity_m_s": 1e-05,
+    "angular_velocity_rad_s": 1e-05,
+    "environment_absolute": 1e-07
+  },
+  "panel_state_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "max_state_arrival_age_ms": 250
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "qualification": "explicit_synthetic_examples_no_participant_data",
+  "run_sheet_template_sha256": "b0bd19bf23f8b676429ef5d1d54321d3773a227fdc6e996287d19a7865947a46",
+  "deviations_header_qualified": false,
+  "files": [
+    {
+      "path": "demo-a-deviations.provisional.csv",
+      "bytes": 185,
+      "sha256": "b289935c9bd6fa32f957b02904f31e620293a5b1440e9294c17d28712d8eaffd"
+    },
+    {
+      "path": "demo-a-run-sheet.csv",
+      "bytes": 372,
+      "sha256": "c2e42c68f49fbe2691470086c31603bb9f1e702857d7e361631ca7c5c4764385"
+    },
+    {
+      "path": "demo-b-active-deviations.provisional.csv",
+      "bytes": 185,
+      "sha256": "b289935c9bd6fa32f957b02904f31e620293a5b1440e9294c17d28712d8eaffd"
+    },
+    {
+      "path": "demo-b-active-run-sheet.csv",
+      "bytes": 372,
+      "sha256": "48c7456279f8fce97070ca2b4a1e65cbb73c2f162c518860cc729043e71cb622"
+    },
+    {
+      "path": "demo-b-yoked-deviations.provisional.csv",
+      "bytes": 185,
+      "sha256": "b289935c9bd6fa32f957b02904f31e620293a5b1440e9294c17d28712d8eaffd"
+    },
+    {
+      "path": "demo-b-yoked-run-sheet.csv",
+      "bytes": 372,
+      "sha256": "48c7456279f8fce97070ca2b4a1e65cbb73c2f162c518860cc729043e71cb622"
+    }
+  ]
+}

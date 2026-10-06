@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "build_commit": "533a284c8909df61826b050acdbba4de3c0294b7",
+  "build_id": "frame-probe-003",
+  "build_dirty_source": true,
+  "dirty_scope": "Public evidence documentation only; runtime source committed.",
+  "physical_legibility_or_comfort_qualified": false,
+  "defaults_changed": false,
+  "system_runtime_changed": false,
+  "temporary_config_original_absence_restored": true,
+  "authoritative_constraints": "apparatus/response-panel/response-panel.schema.json",
+  "default_geometry": {
+    "distance_m": 0.7,
+    "vertical_offset_m": -0.18,
+    "text_angle_deg": 0.6,
+    "button_width_m": 0.135,
+    "button_height_m": 0.065,
+    "gap_m": 0.012
+  },
+  "provisional_common_geometry": {
+    "distance_m": 0.7,
+    "vertical_offset_m": 0,
+    "text_angle_deg": 1.0,
+    "button_width_m": 0.18,
+    "button_height_m": 0.065,
+    "gap_m": 0.012
+  },
+  "trial_1_2_degree_result": "Targets fit; action labels exceeded unchanged 0.135 m button fit guard, panel fault retained.",
+  "common_trial_result": "Both all-target and all-action views fit at common 1.0 degree / 0.18 m button width; no panel fault.",
+  "remaining_defect": "Commit row still overlaps G1 shoulders/upper torso. This is not a physical legibility or comfort acceptance pass.",
+  "view_distinction": "Actual native XR mirror inspected; supplementary 1280x720 camera render has a different aspect from the 1440x1584 eye texture. No forced tracked head pitch.",
+  "runs": [
+    {
+      "run": "command-large-001",
+      "result": {
+        "version": 1,
+        "code": "FRAME_PROBE_COMPLETE",
+        "exit_code": 0,
+        "actual_render_callbacks": 828,
+        "captured": true,
+        "maximum_observed_interval_ms": 15.618700000002718,
+        "faulted": false,
+        "physical_qualification": false
+      },
+      "native_exit_code": 0,
+      "preview_png_sha256": "078f02022c4821aa46bc6a8675b99fd95d855e8c794956eba862f21743dbf253",
+      "metadata_sha256": "84059988b95bf02407b5c8067f4d2aa3aef3d0dc4bfcbcadb2cbfb42b725fa1f",
+      "raw_manifest_sha256": "3b25538523c5df38e4ebb4799623b7df100505d22df42367cbcc6baeca420550",
+      "xr_observations": {
+        "runtime_name": "Meta XR Simulator",
+        "runtime_reported_hz": 72.0,
+        "observer_position_m": [
+          0.0,
+          1.5,
+          1.45
+        ],
+        "observer_forward": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "observer_rotation_xyzw": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "camera_vertical_fov_deg": 96.00001,
+        "camera_aspect": 0.909090936,
+        "screen_width": 1280,
+        "screen_height": 720,
+        "eye_texture_width": 1440,
+        "eye_texture_height": 1584
+      }
+    },
+    {
+      "run": "actions-large-001",
+      "result": {
+        "version": 1,
+        "code": "FRAME_PROBE_COMPLETE",
+        "exit_code": 0,
+        "actual_render_callbacks": 828,
+        "captured": true,
+        "maximum_observed_interval_ms": 18.170399999999063,
+        "faulted": true,
+        "physical_qualification": false
+      },
+      "native_exit_code": 0,
+      "preview_png_sha256": "df08cf139b944969153c66f1f1bd1dacf1f08b32b229f83d5cd81d293155d735",
+      "metadata_sha256": "024829260c9c37edc9a30daa80ad50d92c3754c3460dc4ad5cfea2f5918c2eeb",
+      "raw_manifest_sha256": "9c7c642a03d6d227823c666688b52a5c5d0f8d1e28eb891dc8c456e165a1d0d9",
+      "xr_observations": {
+        "runtime_name": "Meta XR Simulator",
+        "runtime_reported_hz": 72.0,
+        "observer_position_m": [
+          0.0,
+          1.5,
+          1.45
+        ],
+        "observer_forward": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "observer_rotation_xyzw": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "camera_vertical_fov_deg": 96.00001,
+        "camera_aspect": 0.909090936,
+        "screen_width": 1280,
+        "screen_height": 720,
+        "eye_texture_width": 1440,
+        "eye_texture_height": 1584
+      }
+    },
+    {
+      "run": "actions-fit-001",
+      "result": {
+        "version": 1,
+        "code": "FRAME_PROBE_COMPLETE",
+        "exit_code": 0,
+        "actual_render_callbacks": 826,
+        "captured": true,
+        "maximum_observed_interval_ms": 24.90129999999772,
+        "faulted": false,
+        "physical_qualification": false
+      },
+      "native_exit_code": 0,
+      "preview_png_sha256": "ec4ee5780e94e592b309937729083b284fe0bd540229b590a74d0121587c81f1",
+      "metadata_sha256": "9718143aa99e54877d1f808876f6393ea90188efb63bc6c72d9f8f6e2a76ef0f",
+      "raw_manifest_sha256": "83c5b8fafeb5cc4d0b834064e1eacd65c95a6fd2c2fbce48064a406b7acbd397",
+      "xr_observations": {
+        "runtime_name": "Meta XR Simulator",
+        "runtime_reported_hz": 72.0,
+        "observer_position_m": [
+          0.0,
+          1.5,
+          1.45
+        ],
+        "observer_forward": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "observer_rotation_xyzw": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "camera_vertical_fov_deg": 96.00001,
+        "camera_aspect": 0.909090936,
+        "screen_width": 1280,
+        "screen_height": 720,
+        "eye_texture_width": 1440,
+        "eye_texture_height": 1584
+      }
+    },
+    {
+      "run": "command-fit-001",
+      "result": {
+        "version": 1,
+        "code": "FRAME_PROBE_COMPLETE",
+        "exit_code": 0,
+        "actual_render_callbacks": 827,
+        "captured": true,
+        "maximum_observed_interval_ms": 18.98359999999593,
+        "faulted": false,
+        "physical_qualification": false
+      },
+      "native_exit_code": 0,
+      "preview_png_sha256": "86c49e0dc8bd900978d11fe6244f7dd50ef36481ede2d10adc68127459f073df",
+      "metadata_sha256": "203ffac35d8f1b85273232960501dcf76cee516d5abe45767fc9ff250f508abb",
+      "raw_manifest_sha256": "dd5f7599dd35f4230203bec153109c2e484973077fe52ec48d6e56a3793af1a6",
+      "xr_observations": {
+        "runtime_name": "Meta XR Simulator",
+        "runtime_reported_hz": 72.0,
+        "observer_position_m": [
+          0.0,
+          1.5,
+          1.45
+        ],
+        "observer_forward": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "observer_rotation_xyzw": [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "camera_vertical_fov_deg": 96.00001,
+        "camera_aspect": 0.909090936,
+        "screen_width": 1280,
+        "screen_height": 720,
+        "eye_texture_width": 1440,
+        "eye_texture_height": 1584
+      }
+    }
+  ]
+}

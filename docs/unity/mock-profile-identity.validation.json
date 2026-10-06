@@ -1,0 +1,58 @@
+{
+  "scope": "profile_identity_regression_and_retained_partial_native_evidence",
+  "runtime_changed": false,
+  "new_native_visit_executed_by_this_change": false,
+  "synthetic_tests": {
+    "runner": "existing pytest",
+    "passed": 92,
+    "failed": 0,
+    "skipped": 0,
+    "junit_sha256": "23467784139d89f916ee01a2b63cd843fd71883c5a2d83902d5893af5bfaeafa"
+  },
+  "regressions": [
+    "Full producer person ID is matched to the exact allocation unit/member, despite another unit having the same short member slot.",
+    "Mismatched or missing schedule person identity, configured unit/coded identity, allocation unit, duplicate match and role are refused.",
+    "Frozen profile order and exact full canonical sample checks remain exercised."
+  ],
+  "retained_native": {
+    "scope": "SIMULATION_TEST",
+    "native_source_commit": "4ddd7f65d2f7648fe7a60ec5e3d853659996646f",
+    "manifest_sha256": "4d82eaf8c750ad1c0678f05f27456be8cea46c45e69238f17924c9681f93ff31",
+    "report_sha256": "e6b22601092a9a5a90950473470fe003b4fd8214181f2b93b60cd89aa4d8d43d",
+    "integrity_verified": true,
+    "software_reconciliation_complete": false,
+    "process_exit": 0,
+    "scheduled_opportunities": 39,
+    "completed_opportunities": 0,
+    "requested_plays": 0,
+    "selection_count": 0,
+    "fault_codes": [
+      "MENU_FOCUS_LOST",
+      "OPERATOR_ADAPTER_FAILED",
+      "SESSION_JOIN_DISPOSED"
+    ],
+    "incomplete_reasons": [
+      "ACTUAL_DISPLAY_TRACE_MISSING",
+      "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+      "FORMS_DISPLAY_TRACE_INCOMPLETE",
+      "FORMS_INCOMPLETE",
+      "FRAME_CAPTURE_INCOMPLETE",
+      "FRAME_FAULT_PRESENT",
+      "GRAMMAR_COMPLETION_MISSING",
+      "MENU_DISPLAY_COVERAGE_INCOMPLETE",
+      "MENU_EVENTS_INCOMPLETE",
+      "MENU_LEDGER_UNSEALED",
+      "MENU_SEAL_MISSING",
+      "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+      "NATIVE_RUN_END_INCOMPLETE",
+      "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+      "SCHEDULED_PLAYS_INCOMPLETE",
+      "STORE_FINAL_WAVE_INCOMPLETE",
+      "VISIT_COMPLETE_RECORD_MISSING"
+    ]
+  },
+  "raw_artifacts_modified": false,
+  "participant_qualified": false,
+  "acoustic_onset_qualified": false,
+  "issue81_accepted": false
+}

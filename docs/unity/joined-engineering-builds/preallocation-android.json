@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "preallocation-quest-001",
+    "commit_sha": "7965eb8a513a62d1162fc21f9a3b30be63e539e3",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 36.5096001,
+  "total_bytes": 797140580,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 55987258,
+      "sha256": "967c016f95cfb2eda394803b90836070f8e29a6cbb308cd802c5379fe8880c31"
+    }
+  ]
+}

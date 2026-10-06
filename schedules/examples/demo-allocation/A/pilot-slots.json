@@ -1,0 +1,214 @@
+{
+  "allocation_seed": "sha256:f9cba56f0cd0cec2427a11e22d601a7e1b7f929967745ec76e05628169e3188c",
+  "audience": "learner-facing",
+  "counts": {
+    "batches": 3,
+    "slots": 18,
+    "slots_per_batch": 6,
+    "waves": 1
+  },
+  "demo": true,
+  "design_table_sha256": "95bb0adfcbd189330bcf77a7d6f32a549a2123c065266c04783986494feb58d4",
+  "format": "av-schedules/a-slots",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "list_sha256": "9fd1ae7da1080b3b3c075972ea4860f859df984bae141bb0226f88eb9120edae",
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "slots": [
+    {
+      "book_id": "BK-P-JX4WNY",
+      "order": 1,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-P02-L01",
+      "unit_id": "A-P02",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-P-6PG4NT",
+      "order": 2,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-P02-L02",
+      "unit_id": "A-P02",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-P-JX4WNY",
+      "order": 3,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-P02-L03",
+      "unit_id": "A-P02",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-P-VWXK65",
+      "order": 4,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-P02-L04",
+      "unit_id": "A-P02",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-P-VWXK65",
+      "order": 5,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-P02-L05",
+      "unit_id": "A-P02",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-P-6PG4NT",
+      "order": 6,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-P02-L06",
+      "unit_id": "A-P02",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-P-8NJTRJ",
+      "order": 7,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-P03-L01",
+      "unit_id": "A-P03",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-P-M46K6Q",
+      "order": 8,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-P03-L02",
+      "unit_id": "A-P03",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-P-M46K6Q",
+      "order": 9,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-P03-L03",
+      "unit_id": "A-P03",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-P-GQPYGC",
+      "order": 10,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-P03-L04",
+      "unit_id": "A-P03",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-P-GQPYGC",
+      "order": 11,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-P03-L05",
+      "unit_id": "A-P03",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-P-8NJTRJ",
+      "order": 12,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-P03-L06",
+      "unit_id": "A-P03",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-P-G7FR5K",
+      "order": 13,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-P01-L01",
+      "unit_id": "A-P01",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-P-GWM557",
+      "order": 14,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-P01-L02",
+      "unit_id": "A-P01",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-P-G7FR5K",
+      "order": 15,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-P01-L03",
+      "unit_id": "A-P01",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-P-GWM557",
+      "order": 16,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-P01-L04",
+      "unit_id": "A-P01",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-P-TV655F",
+      "order": 17,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-P01-L05",
+      "unit_id": "A-P01",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-P-TV655F",
+      "order": 18,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-P01-L06",
+      "unit_id": "A-P01",
+      "wave": 1,
+      "wave_position": 3
+    }
+  ],
+  "study": "A",
+  "waves": [
+    {
+      "units": [
+        "A-P02",
+        "A-P03",
+        "A-P01"
+      ],
+      "wave": 1
+    }
+  ]
+}

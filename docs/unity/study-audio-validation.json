@@ -1,0 +1,268 @@
+{
+  "issue": 64,
+  "qualification": "engineering_validation_only",
+  "tests": [
+    {
+      "run": "audio-editmode-02",
+      "kind": "editmode",
+      "source_commit": "985d985",
+      "result": "Passed",
+      "passed": 101,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 42.9813739,
+      "result_sha256": "b894469da0fedbc3ca3900c39653b3d9b8338ff73513e32dadab6b12534fa268"
+    },
+    {
+      "run": "audio-playmode-01",
+      "kind": "playmode",
+      "source_commit": "985d985",
+      "result": "Passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 47.1395905,
+      "result_sha256": "2c0d3a8dc91c6d9f5d7b741ddace0140b02eb9136088cc15e9d6b2e309f63eaa"
+    },
+    {
+      "run": "audio-editmode-03",
+      "kind": "editmode",
+      "source_commit": "3a51abf479b61e733c688e86e7e31ff691d5a0b9",
+      "result": "Passed",
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 23.970778,
+      "result_sha256": "79e2bec23d2767fa3d1076e06c0bdb4d37f665cbb05bccf26efda6d0957e2861"
+    },
+    {
+      "run": "audio-playmode-02",
+      "kind": "playmode",
+      "source_commit": "3a51abf479b61e733c688e86e7e31ff691d5a0b9",
+      "result": "Passed",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 47.0769401,
+      "result_sha256": "9f56412ce282b6950d22d0fa15617ea6e8684a9f69eb7bd2346bca874bf99048"
+    }
+  ],
+  "builds": [
+    {
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "audio-link-001",
+        "commit_sha": "ff537470c224fef9aba3e78fb8c29068d83a5426",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "StandaloneWindows64",
+        "dirty_source": false,
+        "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+        "development_only": true
+      },
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "manifest_sha256": "8ffe18462b23c4cbb8e7cf9238b87645e5de1b9d7dcfd19c9db4c7429f175b27",
+      "file_count": 192,
+      "verified_file_bytes": 104652015,
+      "primary_binary": {
+        "path": "experiment.exe",
+        "bytes": 667136,
+        "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
+      }
+    },
+    {
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "audio-quest-002",
+        "commit_sha": "ff537470c224fef9aba3e78fb8c29068d83a5426",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "Android",
+        "dirty_source": false,
+        "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+        "development_only": true
+      },
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "manifest_sha256": "d516fe1cf002cf5c04029b972cfbbc8b35b6121436d9c49daa2f0827cb120acf",
+      "file_count": 1,
+      "verified_file_bytes": 37098482,
+      "primary_binary": {
+        "path": "experiment.apk",
+        "bytes": 37098482,
+        "sha256": "b37ff8d98371fc9649a641dd94a326c45b203f812c23703b185234c8f592dbaa"
+      }
+    },
+    {
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "audio-link-002",
+        "commit_sha": "3a51abf479b61e733c688e86e7e31ff691d5a0b9",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "StandaloneWindows64",
+        "dirty_source": false,
+        "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+        "development_only": true
+      },
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "manifest_sha256": "ba8cd1a73b38dae7c717789c7b483337eefea5083cd0b1b132af86d717f5591a",
+      "file_count": 192,
+      "verified_file_bytes": 104652015,
+      "primary_binary": {
+        "path": "experiment.exe",
+        "bytes": 667136,
+        "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
+      }
+    },
+    {
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "audio-quest-003",
+        "commit_sha": "3a51abf479b61e733c688e86e7e31ff691d5a0b9",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "Android",
+        "dirty_source": false,
+        "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+        "development_only": true
+      },
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "manifest_sha256": "d57a1e12cad0d64ddaeeda0c6417d41f2c9990f06514d4163ca9dbd25168ecc9",
+      "file_count": 1,
+      "verified_file_bytes": 37098350,
+      "primary_binary": {
+        "path": "experiment.apk",
+        "bytes": 37098350,
+        "sha256": "8356a089cf25138544d6abe9a3460847157bd738a1f95c9b64a9542b6e3d8e1e"
+      }
+    }
+  ],
+  "callback_smoke": {
+    "plays_per_run": 100,
+    "samples_per_play": 9600,
+    "sample_rate_hz": 48000,
+    "silent": true,
+    "evidence": "actual output callback sample coverage",
+    "acoustic_delivery_measured": false,
+    "acoustic_onset_estimate": null,
+    "onset_uncertainty_ms": null,
+    "trial_ready": false
+  },
+  "reserved_assets": {
+    "artifact_id": 11319808212,
+    "artifact_digest": "sha256:639354aa241a6f4a80eed53e09762c05617dd531c831f51d1ae906e49e4e20f5",
+    "producer_commit": "080e947a8de05ad64e311c0c06f8127e2980be9c",
+    "workflow_run_id": 37248278258,
+    "files": [
+      {
+        "file": "calibration-P1.wav",
+        "bytes": 192044,
+        "sha256": "f5a1a6d526bb5685e8a26217c5313e0afd18c3824c9adee8643fe99e2af8bd90"
+      },
+      {
+        "file": "calibration-P2.wav",
+        "bytes": 192044,
+        "sha256": "94c4aa228c33f3f57b78bb5c10ccc86a00e85efe5d59fa0c7e8ac09d2d2bb19a"
+      },
+      {
+        "file": "calibration-P3.wav",
+        "bytes": 192044,
+        "sha256": "0645d88eabf758f4e53645119538f703dc1ae641771655e900e1b9089f1787fd"
+      }
+    ],
+    "producer_check": "passed"
+  },
+  "calibration_ui": [
+    {
+      "run": "simulator-01",
+      "source_build": "audio-link-001",
+      "result": "focus_loss_latched_before_playback",
+      "raw_log_sha256": "af0fca30cb7dac9a9f81a836133ba0c9726fd3ba273f02bafecdd92c71b63d2e",
+      "event_count": 3,
+      "event_types": [
+        "calibration_started",
+        "calibration_preloaded",
+        "calibration_fault"
+      ],
+      "fault_codes": [
+        "CALIBRATION_FOCUS_LOST"
+      ],
+      "initial_relative_gain": 0.1,
+      "estimated_preload_bytes": 2880000,
+      "plays_completed": 0,
+      "comfort_answers": 0,
+      "gain_adjustment_observed": false,
+      "rendering_observed": true,
+      "interaction_sequence_verified": false
+    },
+    {
+      "run": "desktop-01",
+      "source_build": "audio-link-001",
+      "result": "focus_loss_latched_before_playback",
+      "raw_log_sha256": "791213340dcf9047ba2b634f7c41a1c26e6b058e32384e5d0667231c6ad80fb6",
+      "event_count": 3,
+      "event_types": [
+        "calibration_started",
+        "calibration_preloaded",
+        "calibration_fault"
+      ],
+      "fault_codes": [
+        "CALIBRATION_FOCUS_LOST"
+      ],
+      "initial_relative_gain": 0.1,
+      "estimated_preload_bytes": 2880000,
+      "plays_completed": 0,
+      "comfort_answers": 0,
+      "gain_adjustment_observed": false,
+      "rendering_observed": true,
+      "interaction_sequence_verified": false
+    },
+    {
+      "run": "desktop-02",
+      "source_build": "audio-link-001",
+      "result": "focus_loss_latched_before_playback",
+      "raw_log_sha256": "c12dceeb3677509766265b86128ef32be6f7573f8270f26632c9f176a64b850e",
+      "event_count": 3,
+      "event_types": [
+        "calibration_started",
+        "calibration_preloaded",
+        "calibration_fault"
+      ],
+      "fault_codes": [
+        "CALIBRATION_FOCUS_LOST"
+      ],
+      "initial_relative_gain": 0.1,
+      "estimated_preload_bytes": 2880000,
+      "plays_completed": 0,
+      "comfort_answers": 0,
+      "gain_adjustment_observed": false,
+      "rendering_observed": true,
+      "interaction_sequence_verified": false
+    }
+  ],
+  "retained_failed_attempts": [
+    {
+      "run": "audio-editmode-01",
+      "reason": "Workcell tests lacked the required private G1 description; audio and foundation tests passed; corrected environment in run02"
+    },
+    {
+      "run": "audio-quest-001",
+      "reason": "Ninja MAX_PATH failure with long Gradle cache; short process cache succeeded in run02"
+    }
+  ],
+  "remaining": [
+    "Physical Quest/audio-route 100-play loopback and earphone-microphone evidence",
+    "On-device preload/headroom and controlled underrun",
+    "Native calibration six-play sequence, gain adjustment/restore and comfort answers",
+    "Protocol owner, ADR-005 route and G3 qualification",
+    "Licensed Unity CI runner"
+  ]
+}

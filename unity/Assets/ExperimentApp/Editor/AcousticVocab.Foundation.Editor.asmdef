@@ -1,0 +1,26 @@
+{
+  "name": "AcousticVocab.Foundation.Editor",
+  "references": [
+    "AcousticVocab.Foundation",
+    "Unity.InputSystem",
+    "Unity.XR.CoreUtils",
+    "Unity.XR.Management",
+    "Unity.XR.Management.Editor",
+    "Unity.XR.OpenXR",
+    "Unity.XR.OpenXR.Editor",
+    "AcousticVocab.Workcell",
+    "AcousticVocab.StudyAudio",
+    "UnityEngine.UI",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.Assessment",
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.SelectionMenus",
+    "AcousticVocab.SessionIntegration",
+    "AcousticVocab.Orientation"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}
