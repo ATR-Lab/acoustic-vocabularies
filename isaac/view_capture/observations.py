@@ -220,6 +220,9 @@ proof of delivery or rendering. The native journal must match exact identities.
     def close(self):
         if self.closed:
             return self.result
+        # A stalled final interval may have no later publication callback.
+        # Enforce the same owner/clock/duration bound at finalization too.
+        self._active()
         self.closed = True
         if not self.observations or not self.replies:
             self.fail('OBS_NO_PAIRED_ROWS')

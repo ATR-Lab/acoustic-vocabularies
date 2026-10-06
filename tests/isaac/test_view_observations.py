@@ -248,6 +248,18 @@ def test_clock_regression_cannot_be_captured(tmp_path):
     assert finish(journal,log)['fault']=='OBS_CLOCK_REGRESSED'
 
 
+@pytest.mark.parametrize('clock_change,fault',[
+    (11_000_000_000,'OBS_DURATION_LIMIT'),(-1_000_000_000,'OBS_CLOCK_REGRESSED')])
+def test_final_interval_without_callback_still_checks_clock_and_duration(tmp_path,clock_change,fault):
+    journal,log,state,now,encoder=setup(tmp_path)
+    journal.command_sink(log)(event());publish(journal,state,now,encoder)
+    now[0]+=clock_change
+    report=finish(journal,log)
+    assert not report['complete'] and report['fault']==fault
+    assert report['observation_count']==1 and report['reset_reply_count']==1
+    assert all(report['files'].values())
+
+
 def test_output_appearing_before_close_is_not_written(tmp_path):
     journal,log,state,now,encoder=setup(tmp_path)
     journal.command_sink(log)(event());publish(journal,state,now,encoder)
