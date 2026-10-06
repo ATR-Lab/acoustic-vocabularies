@@ -114,3 +114,58 @@ clock/owner/projection mismatches, rejected target input, capacity/duration,
 partial output and manifest failure, plus ordinary publisher behavior when a
 capture callback throws. Existing service/rate/timing tests remain applicable.
 These tests and the seam implementation are not actual rendered capture evidence.
+
+## Launch order and post-capture test lock
+
+Avoid a circular plan/config/READY dependency. First reserve a fresh explicit
+private control session and station, then prepare the joined config and its
+simulation capability from the existing independently pinned neutral/scene,
+endpoints, materials and clean native build. Freeze the plan with those config,
+capability, build and source pins. Only then start the source with that plan hash.
+Check actual READY against every reserved identity and scene/snapshot pin before
+native launch. Never substitute a fabricated READY or edit already pinned input.
+The source's random public session is learned from real frames and joined to the
+source header afterward; it does not need to be an input to the frozen plan.
+
+After the native capture has disposed/disconnected its private control client,
+the operator explicitly releases ownership. While the same source remains in
+test mode, the approved Linux Python environment can run this bounded driver as
+the socket's allowed UID, with no additional dependency or endpoint:
+
+```text
+python -m isaac.view_capture.lock_probe run
+  --ready <actual-ready.json> --ready-sha256 <independent raw SHA-256>
+  --output <fresh private directory> --uid <allowed local UID>
+  --native-control-released
+```
+
+The driver cannot prove that another client is closed; the explicit handoff is
+an operator prerequisite. It verifies the pinned READY/session and restricted
+Unix socket, then sends one correlated current-health probe and one fresh `demo`
+request for each of the 32 existing legal pairs. It requires actual test mode,
+unchanged 200 ms probe and conservative 250 ms age limits. Each command has a
+bounded 3 s exchange, the whole driver 120 s. There is no retry, mode change,
+reset, stop or motion hook. Unexpected replies, timeout, stale health or lost
+connection abort and retain all prior requests/replies and ambiguous intent.
+
+`probe.json` contains exact text payloads, monotonic send/receive timestamps,
+RTTs and failure/completion fields. No successful result is published before its
+own fsync; incomplete temporary files are diagnostic data only. A completed
+driver means 32 exact `PROTECTED_TARGET_COMMAND` rejections, not completed view
+capture, actual simulator identity, timing qualification or participant authority.
+
+After normal source finalization, bind the private driver result to the exact
+finalized command journal copied by the observation manifest:
+
+```text
+python -m isaac.view_capture.lock_probe join
+  --probe <probe.json> --probe-sha256 <raw hash>
+  --commands <finalized commands.jsonl> --commands-sha256 <manifest hash>
+  --output <new binding.json>
+```
+
+This narrow join checks all legal pairs, correlation, exact request text,
+canonical reply equality, station/UID/session and unique ordered durable events.
+The complete source/native verifier still validates the finalized observation
+manifest and all view/state evidence; this command cannot replace it. All driver
+artifacts are private and generated, not committed study fixtures.
