@@ -41,6 +41,11 @@ def identifier(value, maximum=80):
     return isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0," + str(maximum-1) + r"}", value) is not None
 
 
+def screening_id(value):
+    # The existing native receipt/operator facade permits a leading '.', '_' or '-'.
+    return isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9._-]{1,32}", value) is not None
+
+
 def text(value, maximum):
     return isinstance(value, str) and 0 < len(value) <= maximum and not any(unicodedata.category(x) == "Cc" for x in value)
 
@@ -108,7 +113,7 @@ def orientation_receipt(receipt):
     require(type(receipt["schema_version"]) is int and receipt["schema_version"] == 1
             and receipt["receipt_type"] == "orientation-outcome", "SCREEN_ORIENTATION_VERSION")
     require(all(identifier(receipt[k]) for k in ("orientation_id", "station_id", "protocol_version"))
-            and identifier(receipt["screening_id"], 32), "SCREEN_ORIENTATION_ID")
+            and screening_id(receipt["screening_id"]), "SCREEN_ORIENTATION_ID")
     require(all(hash_value(receipt[k]) for k in ("plan_sha256", "demo_index_sha256", "journal_sha256")), "SCREEN_ORIENTATION_PIN")
     require(type(receipt["journal_bytes"]) is int and 0 < receipt["journal_bytes"] <= 8*1024**2, "SCREEN_ORIENTATION_JOURNAL")
     require(type(receipt["engineering_draft"]) is bool and type(receipt["eligible"]) is bool
@@ -245,7 +250,7 @@ def allocation_receipt(value, reveal=False):
             and all(hash_value(value[k]) for k in ("list_sha256", "journal_head_sha256")), "SCREEN_ALLOCATION_RECEIPT")
     people = value["screening_ids"]
     require(isinstance(people, list) and len(people) == (1 if value["study"] == "A" else 2)
-            and all(identifier(x, 32) for x in people) and len(set(people)) == len(people), "SCREEN_ALLOCATION_PEOPLE")
+            and all(screening_id(x) for x in people) and len(set(people)) == len(people), "SCREEN_ALLOCATION_PEOPLE")
     if reveal:
         require(hash_value(value["eligibility_receipt_sha256"]) and hash_value(value["entry_sha256"])
                 and sha(canonical(value["entry"])) == value["entry_sha256"], "SCREEN_ALLOCATION_ENTRY")
@@ -281,7 +286,7 @@ def allocation(doc, raw, checkpoint, retained_head):
             exact(evidence, "orientation_receipts")
             people, receipts = p.get("participant_ids"), evidence["orientation_receipts"]
             count = 1 if doc["study"] == "A" else 2
-            require(isinstance(people, list) and len(people) == count and all(identifier(x, 32) for x in people) and len(set(people)) == count
+            require(isinstance(people, list) and len(people) == count and all(screening_id(x) for x in people) and len(set(people)) == count
                     and isinstance(receipts, list) and len(receipts) == count, "SCREEN_ALLOCATION_PEOPLE")
             for person, receipt in zip(people, receipts):
                 validate_orientation(receipt)
@@ -404,7 +409,7 @@ def verify_packet(path, expected, expected_runs=None):
         joins = []
         for row in packet["joins"]:
             exact(row, "screening_id config package_hashes")
-            require(identifier(row["screening_id"], 32), "SCREEN_JOIN_PERSON")
+            require(screening_id(row["screening_id"]), "SCREEN_JOIN_PERSON")
             config = inputs.obj(row["config"], "JOIN_CONFIG_MISSING", maximum=65536)
             hashes = inputs.obj(row["package_hashes"], "PACKAGE_MAPPING_MISSING", maximum=1024**2)
             if config is None: continue

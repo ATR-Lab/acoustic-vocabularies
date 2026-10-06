@@ -27,7 +27,7 @@ H = sha(b"synthetic package identity; no sound package is admitted")
 
 
 class Fixture:
-    def __init__(self, root, study="A", second=False):
+    def __init__(self, root, study="A", second=False, person_prefix="SYNTHETIC-"):
         self.root = root
         self.study = study
         root.mkdir(parents=True)
@@ -40,7 +40,7 @@ class Fixture:
                          practice_pairs=[dict(id=f"p{i}", target=t, action=a, request="SYNTHETIC") for i,(t,a) in enumerate(zip(TARGETS,ACTIONS))],
                          second_order=[f"p{i}" for i in reversed(range(8))])
         pp=self.put("plan.json", self.plan); di=self.put("index.json", {"synthetic_index": True})
-        people=[f"SYNTHETIC-{i}" for i in range(1 if study=="A" else 2)]
+        people=[f"{person_prefix}{i}" for i in range(1 if study=="A" else 2)]
         self.rows=[];self.receipts=[]
         for i,person in enumerate(people):
             receipt=dict(schema_version=1,receipt_type="orientation-outcome",screening_id=person,station_id="SYNTHETIC-station",
@@ -153,6 +153,10 @@ class ScreeningTests(unittest.TestCase):
         raw=b''.join(canonical(r)+b'\n' for r in rows)
         receipt=_receipt(dict({k:v for k,v in f.receipts[0].items() if k!='receipt_sha256'},journal_sha256=sha(raw),journal_bytes=len(raw)))
         with self.assertRaises(EvidenceError):orientation(receipt,raw,f.plan)
+
+    def test_existing_screening_id_grammar_is_preserved(self):
+        f=Fixture(self.root,person_prefix='_SYNTHETIC-')
+        self.assertTrue(f.verify()['software_chain_verified'])
 
     def test_draft_and_failed_screening_can_be_verified_without_reveal(self):
         f=Fixture(self.root)
