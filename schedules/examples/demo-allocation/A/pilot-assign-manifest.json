@@ -1,0 +1,45 @@
+{
+  "allocation_seed": "sha256:f9cba56f0cd0cec2427a11e22d601a7e1b7f929967745ec76e05628169e3188c",
+  "balance_max_abs_deviation": {
+    "batch_method": {
+      "unit=A-P01": "0",
+      "unit=A-P02": "0",
+      "unit=A-P03": "0"
+    },
+    "slot_method": {
+      "all": "1"
+    },
+    "wave_designer": {
+      "wave=1": "0"
+    },
+    "wave_position_profile": {
+      "all": "0.6667"
+    },
+    "wave_profile": {
+      "wave=1": "0"
+    },
+    "wave_swap_w1_w4": {
+      "wave=1": "0.5"
+    }
+  },
+  "demo": true,
+  "design_table_sha256": "95bb0adfcbd189330bcf77a7d6f32a549a2123c065266c04783986494feb58d4",
+  "files": {
+    "pilot-assign-balance.csv": "b2e5480fc3ec00668bd2e69744cd1cbe6217085998d336eac0063fb158e764ff",
+    "pilot-book-key.json": "1b0b98f1804c27a794aec144e8f016186bd0daa349a0c38e7e4fd6e3be707f25",
+    "pilot-slots.json": "3f1bd9ed32cd0fb9c9317140bb398cc88f4b8cf7ac52bcae34157d25d3ff87ca"
+  },
+  "format": "av-schedules/assign-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "lists": {
+    "pilot-book-key.json": "d2891f3a9c2a5c9a8927e97e9306ead7f22364fdec14608111740f48a785deb4",
+    "pilot-slots.json": "9fd1ae7da1080b3b3c075972ea4860f859df984bae141bb0226f88eb9120edae"
+  },
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "study": "A"
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/speech-list.schema.json",
+  "title": "Frozen speech list for the task-validity block",
+  "description": "Eight spoken commands in semantic-label space, one list per study and set: the four K actions paired with a seeded permutation of trays A-D and the four Q actions with a seeded permutation of containers E-H, so each of the 8 actions and 8 targets appears exactly once. Written by av_schedules (#30); recorded by the speech-command set (#71); every validity block of the study and set uses this list in its own seeded order. Not per-person hidden-answer material. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "generator",
+    "demo",
+    "seed_label",
+    "study",
+    "set",
+    "seed",
+    "seed_tokens",
+    "commands"
+  ],
+  "properties": {
+    "format": {"const": "av-schedules/speech-list"},
+    "format_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "av-schedules"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "demo": {"type": "boolean"},
+    "seed_label": {"type": "string", "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$"},
+    "study": {"enum": ["A", "B"]},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "seed": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 of the master seed and seed_tokens joined by '|', i.e. sha256(\"{master}|{study}|{study}-{P|C}|speech-list\")."
+    },
+    "seed_tokens": {
+      "type": "array",
+      "prefixItems": [
+        {"enum": ["A", "B"]},
+        {"type": "string", "pattern": "^[AB]-[PC]$"},
+        {"const": "speech-list"}
+      ],
+      "items": false,
+      "minItems": 3
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["position", "speech_id", "family", "semantic_action", "semantic_referent"],
+        "properties": {
+          "position": {"type": "integer", "minimum": 1, "maximum": 8},
+          "speech_id": {
+            "type": "string",
+            "pattern": "^[KQ]-[A-Z_]+-[A-H]$",
+            "description": "<family>-<ACTION>-<TARGET>, e.g. K-ADD_ONE-B; unique among the 32 legal commands."
+          },
+          "family": {"enum": ["K", "Q"]},
+          "semantic_action": {"enum": ["ADD_ONE", "REMOVE_ONE", "FLIP_CARD", "ALIGN_ARROW", "SCAN", "TAG", "CLOSE", "QUARANTINE"]},
+          "semantic_referent": {"enum": ["A", "B", "C", "D", "E", "F", "G", "H"]}
+        }
+      }
+    }
+  }
+}

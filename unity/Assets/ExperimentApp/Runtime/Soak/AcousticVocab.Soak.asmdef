@@ -1,0 +1,1 @@
+{"name":"AcousticVocab.Soak","references":["AcousticVocab.Foundation","AcousticVocab.StateSources"],"autoReferenced":true,"overrideReferences":true,"precompiledReferences":["Newtonsoft.Json.dll"]}

@@ -1,0 +1,17 @@
+{
+  "name": "AcousticVocab.Orientation.Editor",
+  "references": [
+    "AcousticVocab.Orientation",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateIntegration.Editor",
+    "AcousticVocab.Workcell",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.ResponsePanel.Editor",
+    "AcousticVocab.StateSources"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

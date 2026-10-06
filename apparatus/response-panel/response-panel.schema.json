@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/acoustic-vocab/response-panel.schema.json",
+  "title": "Explicit engineering response-panel configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "configuration_status",
+    "protocol_version",
+    "input_method",
+    "hand",
+    "distance_m",
+    "vertical_offset_m",
+    "text_angle_deg",
+    "button_width_m",
+    "button_height_m",
+    "gap_m",
+    "engineering_mode",
+    "engineering_role",
+    "practice_window_ms"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "configuration_status": {
+      "type": "string",
+      "enum": [
+        "example_only",
+        "provisioned_engineering"
+      ]
+    },
+    "protocol_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "input_method": {
+      "type": "string",
+      "enum": [
+        "controller_ray",
+        "hand_poke"
+      ]
+    },
+    "hand": {
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "distance_m": {
+      "type": "number",
+      "minimum": 0.35,
+      "maximum": 1.2
+    },
+    "vertical_offset_m": {
+      "type": "number",
+      "minimum": -0.5,
+      "maximum": 0
+    },
+    "text_angle_deg": {
+      "type": "number",
+      "minimum": 0.3,
+      "maximum": 1.5
+    },
+    "button_width_m": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 0.2
+    },
+    "button_height_m": {
+      "type": "number",
+      "minimum": 0.05,
+      "maximum": 0.1
+    },
+    "gap_m": {
+      "type": "number",
+      "minimum": 0.005,
+      "maximum": 0.03
+    },
+    "engineering_mode": {
+      "type": "string",
+      "enum": [
+        "disabled",
+        "full_message",
+        "atomic_probe",
+        "lesson_atomic",
+        "lesson_message",
+        "practice"
+      ]
+    },
+    "engineering_role": {
+      "type": "string",
+      "enum": [
+        "command",
+        "action",
+        "target"
+      ]
+    },
+    "practice_window_ms": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 600000
+    }
+  }
+}
