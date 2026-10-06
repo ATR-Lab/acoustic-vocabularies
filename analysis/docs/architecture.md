@@ -297,7 +297,8 @@ apparatus faults.
 - **Deviation links.** A discrepancy is resolved by a trial-log `deviation_id`, an
   exposure-ledger `matching_deviation_id`, or a deviation record whose `event_id` names
   the row, visit or person slot; later corrections go to the append-only
-  `raw/deviations-log.csv`.
+  `raw/deviations-log.csv`, whose records name their visit (a row as `<visit_id>/<row>`;
+  `reconciliation.md` section 6).
 - **Times** carry a UTC offset (section 6).
 - **Yoked timing** is read as: the yoked session starts after the active session ended
   and within 24 h of the active start (`windows.yoked_gap_ok`).

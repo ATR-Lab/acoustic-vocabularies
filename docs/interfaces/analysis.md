@@ -124,9 +124,9 @@ never undertaken after withdrawal has no row (`missing_reason` `withdrawn_mid_ba
 | Check | Name | Codes (suspension event) |
 | --- | --- | --- |
 | C1 | raw-integrity | `RAW_MANIFEST_MISSING`, `RAW_FILE_MISSING`, `RAW_FILE_UNLISTED`, `RAW_HASH_CHANGED`, `RAW_FORMAT`, `REFERENCE_INPUT` |
-| C2 | counts | `COUNT_MISSING_TRIAL`, `COUNT_EXTRA_TRIAL`, `COUNT_MISSING_PLAY`, `COUNT_EXTRA_PLAY`, `COUNT_RUN_SHEET`, `BLOCK_ORDER` |
+| C2 | counts | `COUNT_MISSING_TRIAL`, `COUNT_EXTRA_TRIAL`, `COUNT_MISSING_PLAY`, `COUNT_EXTRA_PLAY`, `COUNT_RUN_SHEET`, `BLOCK_ORDER`, `RESPONSE_EVENT_MISSING`, `TECHNICAL_FLAG_MISSING` |
 | C3 | waveform-hashes | `WAVEFORM_HASH_MISMATCH`, `PACKAGE_HASH_MISMATCH` (both `WRONG_FILE_MAPPING`), `WAVEFORM_HASH_MISSING` |
-| C4 | exposure | `HOLDOUT_OUTSIDE_TEST`, `HOLDOUT_WRONG_VISIT`, `HOLDOUT_REPEAT_AS_NOVEL`, `UNCERTAIN_NOT_CONSUMED`, `RETRY_LINK_BROKEN`, `ANSWER_DISPLAY_LEAK` (`ANSWER_LEAK`) |
+| C4 | exposure | `HOLDOUT_OUTSIDE_TEST`, `HOLDOUT_WRONG_VISIT`, `HOLDOUT_REPEAT_AS_NOVEL`, `UNCERTAIN_NOT_CONSUMED`, `RETRY_LINK_BROKEN`, `ANSWER_DISPLAY_LEAK` (`ANSWER_LEAK`), `PLAYBACK_STATUS_CONFLICT` |
 | C5 | growth (B) | `OLD_ATOM_CHANGED` (`OLD_WAVEFORM_CHANGED`), `STORE_CHAIN_BROKEN` |
 | C6 | yoked-ledger (B) | `YOKED_SOURCE_MISSING`, `YOKED_MISMATCH`, `YOKED_GAP` |
 | C7 | windows | `WINDOW_EARLY`, `WINDOW_LATE`, `VISIT_ORDER` |
@@ -188,7 +188,9 @@ Commands (exit 0 success, 1 findings, 2 refused input):
   `code`, `rows`, `deviation_id`, `resolved`, `suspension_event`, `detail`), `summary`.
   Same inputs, same bytes. Exit 1 when a visit fails.
 - `av-analysis derive --root DIR`: the six tables and `reconciled/manifest.json`,
-  `derived/manifest.json`; refuses a report whose inputs changed since it was written.
+  `derived/manifest.json`; refuses a report whose inputs changed since it was written, or
+  older than an input a rerun would read (a raw file of the visit, its earlier visits or
+  the partner visit, the study-wide log, a reference input it reported missing).
 - `av-analysis synth-logs --demo-seed DEMO-... --out DIR [--study] [--set] [--units N]
   [--max-persons N]`: a SYNTHETIC root with clean logs for every visit type;
   `--fault NAME --visit ID [--documented]` injects a fault (`codes.FAULT_INJECTIONS`);
@@ -200,20 +202,27 @@ profile menu and no-cue trials); exposure-ledger `stage` is the trial type of th
 opportunity (or `practice`), `atom_or_message_id` the item heard (menus: the atom),
 `candidate_id` `<atom_id>-<rank>` or the preset `P1`..`P3`, `presentation_index` the play
 number within its trial, and `trial_ref` links the play to its trial; deviations
-`prior_audio_exposure` is `none`, `audible` or `uncertain` (empty: uncertain).
+`prior_audio_exposure` is `none`, `audible` or `uncertain` (empty: uncertain), and
+`event_id` names a row as reports do, qualified as `<visit_id>/<row>` in
+`raw/deviations-log.csv`.
 
 Deviation links: a row-level link (`deviation_id`, `matching_deviation_id`) or a record
 whose `event_id` names a row resolves any code; a record naming only the visit, person
 slot or participant resolves codes whose category fits
-(`reconcile_checks.LINK_CATEGORIES`). Unresolved discrepancies fail the visit through C8
-`DEVIATION_MISSING`.
+(`reconcile_checks.LINK_CATEGORIES`). Only records that concern the visit count
+(`reconcile_checks.visit_records`): the visit's `deviations.csv`, and study-wide log
+records that name no other participant or unit and whose `event_id` is the visit ID, the
+person slot, `<visit_id>/<row>`, a row ID starting with `<visit_id>-`, or empty with the
+coded participant ID. Unresolved discrepancies fail the visit through C8
+`DEVIATION_MISSING`; a raw file changed during the run fails C1 (`RAW_HASH_CHANGED`,
+never resolved) and `raw_unchanged`.
 
 How the tables are computed (details in the guide, section 8):
 
 - `trials`: scheduled trials and retries linked to a logged trial; `valid_delivery` needs
   the scheduled linked plays all `confirmed_audible` or `estimated` with
   `observed_complete` (no-cue trials: always), a response code for test trials, no fault
-  type and no hash or play-count discrepancy; prior counts and `novelty` from the
+  type and no hash, play-count, playback-status or response-event discrepancy; prior counts and `novelty` from the
   exposure fold (plays linked by `trial_ref`, trial-log order); a `COUNT_MISSING_TRIAL`
   resolved by a `technical` or `audio` record becomes a `row_source` deviation row.
 - `endpoints`: `accounted_n` counts trials rows that are not retries (lost rows
@@ -223,7 +232,7 @@ How the tables are computed (details in the guide, section 8):
   export.
 - `visit-status`: `withdrawn` and `missed` from `withdrawal` and `missed_visit` records;
   `pair_gap_hours` is the absolute gap between the two members' session starts;
-  deviation counts include study-wide records naming the visit or a row of it.
+  deviation counts include the study-wide records that concern the visit.
 - `exposure-cumulative`: counts of plays that consumed exposure, by phase;
   `violations` are the C4 codes of the person's reports naming the item.
 - `enrollment`: from the reveal logs; `screening_cases_n` null (Pending #73).

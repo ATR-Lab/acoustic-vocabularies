@@ -109,6 +109,11 @@ SHA256_HEX_RE: Final = r"^[0-9a-f]{64}$"
 HASH_CHECK_RE: Final = r"^(sha256:|DEMO-placeholder:)[0-9a-f]{64}$"
 MESSAGE_ID_RE: Final = r"^[KQ]-a[1-4]-r[1-4]$"
 ATOM_ID_RE: Final = r"^[KQ]-[ar][1-4]$"
+# deviations ``event_id``: the row it explains, as a report names rows (a trial or event
+# ID, ``visit-run-sheet.csv:<block>``, a data-root path), the visit ID or the person slot;
+# the study-wide log qualifies a row by its visit as ``<visit_id>/<row>``
+# (``reconcile_checks.log_event``).
+EVENT_REF_RE: Final = r"^[A-Za-z0-9._:/-]+$"
 # Exposure-ledger ``stage``: the schedule trial type of the play's opportunity, or
 # ``practice`` (a non-study practice cue; any study item there is unscheduled).
 STAGES: Final[tuple[str, ...]] = (*TRIAL_TYPES, "practice")
@@ -326,7 +331,7 @@ DOMAINS: Final[dict[TemplateName, dict[str, Check]]] = {
         "operator": _pattern(STAFF_ID_RE, "coded staff ID", empty=False),
         "participant_id": _pattern(CODED_ID_RE, "coded ID"),
         "dyad_or_batch": _pattern(UNIT_RE, "batch or dyad slot ID"),
-        "event_id": _TOKEN,
+        "event_id": _pattern(EVENT_REF_RE, "event reference"),
         "category": _enum(DEVIATION_CATEGORIES, empty=False),
         "observed_problem": _any,
         "action_taken": _any,

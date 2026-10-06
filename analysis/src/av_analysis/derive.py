@@ -10,19 +10,24 @@ with its raw logs and reference inputs and writes, through ``derived.table_bytes
 * ``derived/trials.csv``, ``derived/endpoints.csv`` and ``derived/manifest.json``
   (``outputs-manifest.schema.json``).
 
-A report whose listed inputs no longer have the hashes it recorded is refused (rerun
-``reconcile``). ``visit-status`` has a row for every expected visit of every revealed
-person (held when the raw folder exists; ``missed`` or ``withdrawn`` from deviation
-records; ``pending`` otherwise). ``trials`` has a row per trial-log row of each reconciled
-visit that is a scheduled item or a retry linked to one, plus a ``row_source`` deviation
+A report is refused (rerun ``reconcile``) when a listed input no longer has the hash it
+recorded, or when a raw file the run would now read (the visit's folder, the person's
+earlier visits, the other dyad member's visit, ``raw/deviations-log.csv``) or a reference
+input it reported missing has appeared since. ``visit-status`` has a row for every
+expected visit of every revealed person (held when the raw folder exists; ``missed`` or
+``withdrawn`` from deviation records; ``pending`` otherwise). ``trials`` has a row per
+trial-log row of each reconciled visit that is a scheduled item or a retry linked to one,
+plus a ``row_source`` deviation
 row for each scheduled opportunity lost to a verified apparatus or logger failure
 (``reconcile``), and ``endpoints`` counts it as accounted and faulted; opportunities never
 undertaken after withdrawal get no row and leave the battery partial or missing
-(``withdrawn_mid_battery``). ``enrollment`` counts eligibility records and reveals from the
-reveal log. Derived tables carry no condition labels; the dashboard (#35) and the
-analysis pipeline (#34) read only these files, never raw logs. ``av-analysis refresh``
-(``cli``) runs reconcile, this command and the dashboard in order. Computation rules per
-column are in ``analysis/docs/reconciliation.md``.
+(``withdrawn_mid_battery``); the deviation records of a visit are looked up in its own
+scope (``reconcile_checks.visit_records``), never by ID across visits. ``enrollment``
+counts eligibility records and reveals from the reveal log. Derived tables carry no
+condition labels; the dashboard (#35) and the analysis pipeline (#34) read only these
+files, never raw logs. ``av-analysis refresh`` (``cli``) runs reconcile, this command and
+the dashboard in order. Computation rules per column are in
+``analysis/docs/reconciliation.md``.
 """
 
 from __future__ import annotations
@@ -44,13 +49,23 @@ from .derived import TABLES, Row, table_bytes
 from .fileio import json_bytes, read_bytes, sha256_bytes
 from .ledger import Prior, VisitLogs, fold, person_rows, visit_logs
 from .loaders import RefusedInputError, load_deviations_log, load_raw_visit
-from .paths import OUTPUTS_MANIFEST, RECONCILIATION_REPORT, DataRoot, WatermarkError, write_output
+from .paths import (
+    DEVIATIONS_LOG,
+    OUTPUTS_MANIFEST,
+    RECONCILIATION_REPORT,
+    DataRoot,
+    WatermarkError,
+    write_output,
+)
+from .reconcile import related_visits
 from .reconcile_checks import (
     LOST_OPPORTUNITY_CATEGORIES,
     WITHDRAWAL_CATEGORIES,
     Record,
     records_of,
+    scope_of,
     visit_date,
+    visit_records,
     visit_times,
 )
 from .references import (
@@ -81,7 +96,14 @@ TEST_TYPES: Final = ("pre_old", "trained", "novel", "atomic", "no_cue", "speech"
 VERIFIED_STATUS: Final = ("confirmed_audible", "estimated")
 # Discrepancy codes on a trial (or one of its plays) that invalidate its delivery.
 INVALIDATING: Final = frozenset(
-    {"WAVEFORM_HASH_MISMATCH", "WAVEFORM_HASH_MISSING", "COUNT_MISSING_PLAY", "COUNT_EXTRA_PLAY"}
+    {
+        "WAVEFORM_HASH_MISMATCH",
+        "WAVEFORM_HASH_MISSING",
+        "COUNT_MISSING_PLAY",
+        "COUNT_EXTRA_PLAY",
+        "PLAYBACK_STATUS_CONFLICT",
+        "RESPONSE_EVENT_MISSING",
+    }
 )
 STAGE_BLOCK: Final[dict[str, str]] = {
     "profile_menu": "profile_menu",
@@ -158,6 +180,7 @@ def _report(root: DataRoot, visit_id: str) -> tuple[Mapping[str, Any], str] | No
     doc = json.loads(data)
     if not isinstance(doc, dict) or doc.get("data_kind") != root.data_kind:
         raise RefusedInputError(f"{visit_id}: reconciliation report of another data kind")
+    listed = {entry["path"] for entry in doc.get("inputs", [])}
     for entry in doc.get("inputs", []):
         area, _, rel = entry["path"].partition("/")
         if area not in ("raw", "inputs"):
@@ -168,7 +191,38 @@ def _report(root: DataRoot, visit_id: str) -> tuple[Mapping[str, Any], str] | No
                 f"{visit_id}: {entry['path']} changed since the reconciliation report was "
                 "written; rerun reconcile"
             )
+    for rel in _appeared(root, visit_id, doc, listed):
+        raise RefusedInputError(
+            f"{visit_id}: {rel} appeared since the reconciliation report was written; "
+            "rerun reconcile"
+        )
     return doc, sha256_bytes(data)
+
+
+def _appeared(root: DataRoot, visit_id: str, doc: Mapping[str, Any], listed: set[str]) -> list[str]:
+    """Inputs a rerun of ``reconcile`` would read now that the report does not list: raw
+    files of the folders it reads (the visit, the person's earlier visits, the other dyad
+    member's visit), the study-wide log, and reference inputs it reported missing."""
+    earlier, partner = related_visits(visit_id)
+    now: list[str] = []
+    for vid in (visit_id, *earlier, *([partner] if partner else [])):
+        folder = root.raw_visit_dir(vid)
+        if folder.is_dir():
+            now += [
+                path.relative_to(root.path).as_posix()
+                for path in sorted(folder.rglob("*"))
+                if path.is_file()
+            ]
+    if root.input_path("raw", DEVIATIONS_LOG).is_file():
+        now.append(f"raw/{DEVIATIONS_LOG}")
+    for d in doc.get("discrepancies", []):
+        if d.get("code") != "REFERENCE_INPUT":
+            continue
+        for row in d.get("rows", []):
+            area, _, rel = row.partition("/")
+            if area == "inputs" and root.input_path("inputs", rel).is_file():
+                now.append(row)
+    return [rel for rel in now if rel not in listed]
 
 
 def _persons(root: DataRoot) -> list[_Person]:
@@ -197,11 +251,31 @@ def _persons(root: DataRoot) -> list[_Person]:
     return out
 
 
-def _records(root: DataRoot, p: _Person) -> list[Record]:
+def _records(p: _Person, log: Sequence[Record]) -> list[Record]:
+    """Every deviation record of the person's held visits and the study-wide log (visit
+    states: withdrawal and missed-visit records)."""
     out: list[Record] = []
     for logs in p.held.values():
         out.extend(records_of(logs.raw.deviations))
-    out.extend(records_of(load_deviations_log(root)))
+    out.extend(log)
+    return out
+
+
+def _scoped(p: _Person, visit: str, log: Sequence[Record]) -> list[Record]:
+    """The deviation records that concern one visit of the person, as ``reconcile`` links
+    them (``reconcile_checks.visit_records``): the visit's own ``deviations.csv`` and the
+    study-wide log records about the visit, a row of it, the person or the participant."""
+    logs = p.held.get(visit)
+    scope = scope_of(logs, f"{p.person_id}-{visit}", [p.coded_id])
+    return visit_records(logs.raw.deviations if logs is not None else None, log, scope)
+
+
+def _by_id(records: Sequence[Record]) -> dict[str, Record]:
+    """Deviation ID -> record (the first one: a visit's own record before the log; C1
+    reports an ID used twice)."""
+    out: dict[str, Record] = {}
+    for r in records:
+        out.setdefault(r.deviation_id, r)
     return out
 
 
@@ -257,20 +331,6 @@ def _state(p: _Person, visit: str, records: Sequence[Record]) -> str:
     return "pending"
 
 
-def _visit_records(p: _Person, visit: str, log: Sequence[Record]) -> list[Record]:
-    vid = f"{p.person_id}-{visit}"
-    out = records_of(p.held[visit].raw.deviations) if visit in p.held else []
-    events = {r.get("event_id", "") for r in p.held[visit].plays} if visit in p.held else set()
-    for r in log:
-        if (
-            r.event_id == vid
-            or r.event_id.startswith(f"{vid}-")
-            or (r.event_id and r.event_id in events)
-        ):
-            out.append(r)
-    return out
-
-
 # ---------------------------------------------------------------------------------------
 # Trials
 
@@ -322,12 +382,14 @@ def _named(report: Mapping[str, Any] | None) -> dict[str, list[Mapping[str, Any]
     return out
 
 
-def _trial_rows(root: DataRoot, p: _Person, records: Mapping[str, Record]) -> list[Row]:
+def _trial_rows(
+    root: DataRoot, p: _Person, scoped: Mapping[str, Mapping[str, Record]]
+) -> list[Row]:
     refs = p.refs
     if refs is None:
         return []
     order = VISITS[p.study]  # type: ignore[index]
-    lost = {v: _lost(p, v, records) for v in p.reports}
+    lost = {v: _lost(p, v, scoped[v]) for v in p.reports}
     visits = [_augmented(p, v, lost.get(v, {})) for v in order if v in p.held]
     result = fold(visits)
     rows: list[Row] = []
@@ -343,6 +405,7 @@ def _trial_rows(root: DataRoot, p: _Person, records: Mapping[str, Record]) -> li
             for item in block["items"]
         }
         named = _named(p.reports[visit])
+        records = scoped[visit]
         plays = logs.plays_by_trial() if logs.linked else {}
         known = {r.get("trial_id", "") for r in logs.trials}
         common: Row = {
@@ -576,7 +639,7 @@ def _endpoint_rows(
     p: _Person,
     trials: Sequence[Row],
     states: Mapping[str, str],
-    records: Mapping[str, Record],
+    scoped: Mapping[str, Mapping[str, Record]],
 ) -> list[Row]:
     refs = p.refs
     if refs is None:
@@ -624,7 +687,7 @@ def _endpoint_rows(
                     "status": status,
                     "missing_reason": None
                     if status == "complete"
-                    else _missing_reason(p, visit, battery, states[visit], records),
+                    else _missing_reason(p, visit, battery, states[visit], scoped[visit]),
                     "visit_date": timing.visit_date,
                     "anchor_visit": timing.anchor_visit,
                     "days_since_anchor": timing.days,
@@ -667,7 +730,7 @@ def _status_rows(
     trials: Sequence[Row],
     states: Mapping[str, str],
     by_person: Mapping[str, _Person],
-    log: Sequence[Record],
+    scoped: Mapping[str, Sequence[Record]],
 ) -> list[Row]:
     order = VISITS[p.study]  # type: ignore[index]
     unit = p.person_id[:5]
@@ -683,7 +746,7 @@ def _status_rows(
         booked = booked_minutes(p.study, visit)
         actual = round((end - start).total_seconds() / 60) if start and end else None
         comfort = [r.get("comfort_check", "") for r in (logs.sheet if logs else ())]
-        recs = _visit_records(p, visit, log)
+        recs = scoped[visit]
         gap, gap_ok = _pair(p, visit, by_person)
         station = (logs.raw.exit_manifest or {}).get("station_id") if logs else None
         rows.append(
@@ -816,13 +879,15 @@ def derive_tables(root: DataRoot) -> dict[str, list[Row]]:
     log = records_of(load_deviations_log(root))
     tables: dict[str, list[Row]] = {name: [] for name in TABLES}
     for p in persons:
-        all_records = _records(root, p)
-        records = {r.deviation_id: r for r in all_records}
-        states = {v: _state(p, v, all_records) for v in VISITS[p.study]}  # type: ignore[index]
-        trials = _trial_rows(root, p, records)
+        visits = VISITS[p.study]  # type: ignore[index]
+        all_records = _records(p, log)
+        scoped = {v: _scoped(p, v, log) for v in visits}
+        by_id = {v: _by_id(scoped[v]) for v in visits}
+        states = {v: _state(p, v, all_records) for v in visits}
+        trials = _trial_rows(root, p, by_id)
         tables["trials"].extend(trials)
-        tables["endpoints"].extend(_endpoint_rows(root, p, trials, states, records))
-        tables["visit-status"].extend(_status_rows(root, p, trials, states, by_person, log))
+        tables["endpoints"].extend(_endpoint_rows(root, p, trials, states, by_id))
+        tables["visit-status"].extend(_status_rows(root, p, trials, states, by_person, scoped))
         tables["discrepancies"].extend(_discrepancy_rows(root, p))
         if p.refs is not None and p.reports:
             order = VISITS[p.study]  # type: ignore[index]

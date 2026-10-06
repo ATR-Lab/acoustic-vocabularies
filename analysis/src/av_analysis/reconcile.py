@@ -9,14 +9,20 @@
 * Raw files are opened read-only; the SHA-256 values of every raw file the run reads (the
   visit's folder, the person's earlier visits, the other dyad member's visit for C6 and
   ``raw/deviations-log.csv``) are taken before and after the run and must be identical
-  (``raw_unchanged``; acceptance criterion).
+  (``raw_unchanged``; acceptance criterion). Otherwise C1 reports ``RAW_HASH_CHANGED``
+  naming the files (data-root paths), which no deviation record can resolve, and the
+  visit fails (``Report.passed``; exit 1).
 * Deterministic: no run time, inputs listed sorted by path, discrepancies in check order
   then by rows; the same inputs give identical bytes.
 * Each discrepancy has a code (``codes.CODES``), the rows involved and a deviation link
   (trial-log ``deviation_id``, exposure-ledger ``matching_deviation_id``, or a deviations
   record whose ``event_id`` names the row, visit or person, with a category that fits the
   code: ``reconcile_checks.LINK_CATEGORIES``); otherwise it is unresolved and C8 reports
-  ``DEVIATION_MISSING``. Check status: ``pass`` (none), ``explained`` (all linked),
+  ``DEVIATION_MISSING``. Records are the visit's ``deviations.csv`` and only those
+  ``raw/deviations-log.csv`` records that concern the visit
+  (``reconcile_checks.visit_records``: the log names rows as ``<visit_id>/<row>``, so a
+  record about another visit, person or unit never explains this visit's discrepancies).
+  Check status: ``pass`` (none), ``explained`` (all linked),
   ``fail`` (any unresolved), ``not_applicable`` (study or visit without it, or, for C2-C6,
   reference inputs that could not be loaded: C1 then fails the visit with
   ``REFERENCE_INPUT``).
@@ -64,7 +70,19 @@ from .paths import (
     parse_visit_id,
     write_output,
 )
-from .reconcile_checks import Context, Linked, c6_applies, evaluate, records_of
+from .reconcile_checks import (
+    Context,
+    Found,
+    Linked,
+    Record,
+    c6_applies,
+    collect,
+    evaluate,
+    finish,
+    records_of,
+    scope_of,
+    visit_records,
+)
 from .references import (
     InputReader,
     ReferenceError,
@@ -130,7 +148,8 @@ class Report:
 
     @property
     def passed(self) -> bool:
-        return all(c.status != "fail" for c in self.checks)
+        """No check fails and no raw file changed during the run."""
+        return self.raw_unchanged and all(c.status != "fail" for c in self.checks)
 
     def document(self) -> dict[str, Any]:
         """The JSON document of the report."""
@@ -254,6 +273,13 @@ def build_context(
             history[logs.visit] = logs
     partner = cache.logs(partner_id) if partner_id is not None else None
     log = load_deviations_log(root)
+    log_records = records_of(log)
+    scope = scope_of(this, raw.visit_id, [refs.participant_id if refs else _coded(this)])
+    partner_records: list[Record] = []
+    if partner_id is not None:
+        partner_scope = scope_of(partner, partner_id, [_coded(partner)])
+        own = partner.raw.deviations if partner is not None else None
+        partner_records = visit_records(own, log_records, partner_scope)
     return Context(
         root_synthetic=root.synthetic,
         this=this,
@@ -263,9 +289,17 @@ def build_context(
         partner=partner,
         partner_id=partner_id,
         log=log,
-        records=records_of(raw.deviations) + records_of(log),
-        partner_records=records_of(partner.raw.deviations) if partner is not None else [],
+        scope=scope,
+        records=visit_records(raw.deviations, log_records, scope),
+        partner_records=partner_records,
     )
+
+
+def _coded(logs: VisitLogs | None) -> str | None:
+    """The coded participant ID a visit's trial log records (first row), if any."""
+    if logs is None or not logs.trials:
+        return None
+    return logs.trials[0].get("participant_id") or None
 
 
 def _results(linked: list[tuple[str, CheckStatus, list[Linked]]]) -> tuple[CheckResult, ...]:
@@ -336,11 +370,17 @@ def reconcile_visit(root: DataRoot, visit_id: str, *, cache: _Cache | None = Non
     except ReferenceError as exc:
         error = (exc.path, exc.message)
     ctx = build_context(root, raw, refs, error, cache)
-    checks = _results(evaluate(ctx))
+    collected = collect(ctx)
     log_path = root.input_path("raw", DEVIATIONS_LOG)
     log_size = len(read_bytes(log_path)) if ctx.log is not None else 0
     inputs = _inputs(ctx, reader, log_size)
     after = _raw_hashes(root, scope)
+    changed = sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p))
+    extra: list[Found] = []
+    if changed:  # never explained by a deviation record: rerun on stable raw files
+        detail = "raw file changed, appeared or disappeared while reconciliation ran"
+        extra.append(Found("C1", "RAW_HASH_CHANGED", tuple(changed), detail, linkable=False))
+    checks = _results(finish(ctx, collected, extra))
     manifest = raw.exit_manifest or {}
     unit = person[:5]
     return Report(
@@ -353,7 +393,7 @@ def reconcile_visit(root: DataRoot, visit_id: str, *, cache: _Cache | None = Non
         session_id=_token(manifest.get("session_id")),
         station_id=_token(manifest.get("station_id")),
         inputs=inputs,
-        raw_unchanged=before == after,
+        raw_unchanged=not changed,
         checks=checks,
     )
 

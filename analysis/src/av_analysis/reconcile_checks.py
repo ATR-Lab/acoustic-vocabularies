@@ -15,8 +15,9 @@ participant IDs or roles (C6 is written identically into both members' reports).
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from typing import Any, Final
 
@@ -47,12 +48,22 @@ from .references import (
 )
 from .schemas import validator
 from .templates import TEMPLATES
-from .vocab import CONSUMING_AUDIBLE_STATUS, VISITS, CheckStatus, parse_timestamp
+from .vocab import (
+    CONSUMING_AUDIBLE_STATUS,
+    FREEZE_FAULT_MS,
+    VISITS,
+    CheckStatus,
+    fault_type,
+    parse_timestamp,
+    split_fault_codes,
+)
 from .windows import ANCHOR_VISITS, classify, window, yoked_gap_ok
 
 TEST_TRIAL_TYPES: Final = ("pre_old", "trained", "novel", "atomic", "no_cue", "speech")
 NO_PLAY_CUE: Final = ("profile_menu", "no_cue")
-YOKED_TIMING_TOLERANCE_MS: Final = 100  # proposal: menu replay onsets within 100 ms
+# audible_status values that verify delivery (onset confirmed, or callback-complete).
+VERIFIED_AUDIBLE: Final = ("confirmed_audible", "estimated")
+YOKED_TIMING_TOLERANCE_MS: Final = 100  # proposal: replayed timings within 100 ms
 YOKED_FIELDS: Final = (
     "stage",
     "atom_or_message_id",
@@ -99,6 +110,9 @@ LINK_CATEGORIES: Final[dict[str, frozenset[str]]] = {
     "VISIT_ORDER": frozenset({"window", "procedure", "missed_visit"}),
     "DEVIATION_UNKNOWN": frozenset({"correction"}),
     "DEVIATION_MISSING": frozenset(),
+    "RESPONSE_EVENT_MISSING": frozenset({"technical", "procedure", "correction"}),
+    "TECHNICAL_FLAG_MISSING": frozenset({"technical", "audio", "correction"}),
+    "PLAYBACK_STATUS_CONFLICT": frozenset({"technical", "audio", "correction"}),
 }
 # Deviation categories of a verified apparatus or logger failure: a COUNT_MISSING_TRIAL
 # resolved by one of them becomes a ``row_source`` deviation trial row (``derive``).
@@ -115,6 +129,7 @@ class Found:
     rows: tuple[str, ...]
     detail: str
     pair: bool = False  # C6: deviation scope covers both dyad members
+    linkable: bool = True  # False: no deviation record can explain it (C1 run integrity)
 
 
 @dataclass(frozen=True)
@@ -128,25 +143,104 @@ class Record:
     resolution: str
     prior_audio_exposure: str
     source: str  # path relative to the data root
+    dyad_or_batch: str = ""
+    # What the record names relative to the visit it is scoped to (see visit_records):
+    # its event_id for a visit's own record; for a study-wide log record the visit ID,
+    # the person slot, a row of the visit ("" for a participant-level record), or None
+    # when it concerns the visit only because a row of the visit names its ID.
+    link_event: str | None = None
+
+
+def _record(row: Mapping[str, str], source: str) -> Record:
+    return Record(
+        deviation_id=row.get("deviation_id", ""),
+        category=row.get("category", ""),
+        event_id=row.get("event_id", ""),
+        participant_id=row.get("participant_id", ""),
+        resolution=row.get("resolution", ""),
+        prior_audio_exposure=row.get("prior_audio_exposure", ""),
+        source=source,
+        dyad_or_batch=row.get("dyad_or_batch", ""),
+        link_event=row.get("event_id", ""),
+    )
 
 
 def records_of(table: LoadedTable | None) -> list[Record]:
     """Deviation records of a deviations table (rows without an ID are skipped)."""
     if table is None:
         return []
-    return [
-        Record(
-            deviation_id=row.get("deviation_id", ""),
-            category=row.get("category", ""),
-            event_id=row.get("event_id", ""),
-            participant_id=row.get("participant_id", ""),
-            resolution=row.get("resolution", ""),
-            prior_audio_exposure=row.get("prior_audio_exposure", ""),
-            source=table.path,
-        )
-        for row in table.rows
-        if row.get("deviation_id")
-    ]
+    return [_record(row, table.path) for row in table.rows if row.get("deviation_id")]
+
+
+@dataclass(frozen=True)
+class Scope:
+    """The visit a deviation record must concern to explain its discrepancies."""
+
+    visit_id: str
+    person: str
+    coded: frozenset[str]  # coded participant IDs bound to the person (may be empty)
+    named: frozenset[str]  # deviation IDs that rows of the visit name
+
+    @property
+    def unit(self) -> str:
+        return self.person[:5]
+
+
+def scope_of(logs: VisitLogs | None, visit_id: str, coded: Iterable[str | None]) -> Scope:
+    """The :class:`Scope` of a visit (``logs`` None: a visit without raw logs)."""
+    person = visit_id.rsplit("-", 1)[0]
+    named: set[str] = set()
+    if logs is not None:
+        named |= {r.get("deviation_id", "") for r in logs.trials}
+        named |= {r.get("matching_deviation_id", "") for r in logs.plays}
+    return Scope(visit_id, person, frozenset(c for c in coded if c), frozenset(named - {""}))
+
+
+def log_event(record: Record, scope: Scope) -> str | None:
+    """What a study-wide log record names relative to a visit, or None when it does not
+    concern the visit.
+
+    The log holds records of every visit, and row names such as ``visit-run-sheet.csv``,
+    ``visit-run-sheet.csv:trained``, ``receipts.jsonl:3``, atom IDs or opaque event IDs
+    recur across visits, units and persons. A log record therefore concerns a visit only
+    when it names no other participant or unit (``participant_id`` empty, the person slot
+    or the coded ID; ``dyad_or_batch`` empty or the visit's unit) and its ``event_id`` is
+    the visit ID, the person slot, ``<visit_id>/<row>`` (any row name of the visit's
+    report), a row ID that starts with ``<visit_id>-`` (scheduled trial IDs and their
+    retries), or empty with the coded participant ID. A record that a row of the visit
+    names by ``deviation_id`` also concerns it (``link_event`` None: no other link).
+    """
+    if not _identity_fits(record, scope):
+        return None
+    event, visit = record.event_id, scope.visit_id
+    if event in (visit, scope.person) or event.startswith(f"{visit}-"):
+        return event
+    if event.startswith(f"{visit}/") and len(event) > len(visit) + 1:
+        return event[len(visit) + 1 :]
+    if not event and record.participant_id in scope.coded:
+        return ""
+    return None
+
+
+def visit_records(own: LoadedTable | None, log: Sequence[Record], scope: Scope) -> list[Record]:
+    """Deviation records that may explain a visit's discrepancies: the visit's own
+    ``deviations.csv`` (in file order), then the study-wide log records that concern it
+    (:func:`log_event`), with ``link_event`` set relative to the visit."""
+    out = records_of(own)
+    for r in log:
+        event = log_event(r, scope)
+        if event is not None:
+            out.append(replace(r, link_event=event))
+        elif r.deviation_id in scope.named and _identity_fits(r, scope):
+            out.append(replace(r, link_event=None))
+    return out
+
+
+def _identity_fits(record: Record, scope: Scope) -> bool:
+    """A record names no other participant and no other unit than the visit's."""
+    if record.participant_id and record.participant_id not in scope.coded | {scope.person}:
+        return False
+    return not record.dyad_or_batch or record.dyad_or_batch == scope.unit
 
 
 @dataclass
@@ -161,8 +255,9 @@ class Context:
     partner: VisitLogs | None  # Study B V1-V3: the other member's same visit
     partner_id: str | None  # its visit ID (held or not)
     log: LoadedTable | None  # raw/deviations-log.csv
-    records: list[Record] = field(default_factory=list)  # this visit + the log
-    partner_records: list[Record] = field(default_factory=list)
+    scope: Scope  # this visit (scope_of)
+    records: list[Record] = field(default_factory=list)  # visit_records of this visit
+    partner_records: list[Record] = field(default_factory=list)  # ... of the partner visit
 
     @property
     def study(self) -> str:
@@ -224,15 +319,11 @@ def _sorted_rows(rows: Iterable[str]) -> tuple[str, ...]:
 
 
 def concerns(ctx: Context, row: Mapping[str, str]) -> bool:
-    """Whether a deviations-log row names this visit (its ID, a row of it, the person slot
-    or the coded participant ID)."""
-    event = row.get("event_id", "")
-    logs = ctx.this
-    if event in (logs.visit_id, logs.person) or event.startswith(f"{logs.visit_id}-"):
+    """Whether a deviations-log row concerns this visit (:func:`visit_records` rules)."""
+    record = _record(row, ctx.log.path if ctx.log is not None else "")
+    if log_event(record, ctx.scope) is not None:
         return True
-    if event and any(p.get("event_id") == event for p in logs.plays):
-        return True
-    return ctx.refs is not None and row.get("participant_id") == ctx.refs.participant_id
+    return record.deviation_id in ctx.scope.named and _identity_fits(record, ctx.scope)
 
 
 # ---------------------------------------------------------------------------------------
@@ -298,15 +389,9 @@ def check_c1(ctx: Context) -> list[Found]:
     elif ctx.refs is not None:
         for path, message in ctx.refs.problems:
             add("REFERENCE_INPUT", [path], message)
-    seen: dict[str, str] = {}
-    for record in ctx.records:
-        if record.deviation_id in seen and seen[record.deviation_id] != record.source:
-            add(
-                "RAW_FORMAT",
-                [record.deviation_id],
-                "deviation ID used in both the visit's deviations and the study-wide log",
-            )
-        seen[record.deviation_id] = record.source
+    uses = Counter(record.deviation_id for record in ctx.records)
+    for dev_id in sorted(d for d, n in uses.items() if n > 1):
+        add("RAW_FORMAT", [dev_id], "deviation ID used by more than one record of the visit")
     return out
 
 
@@ -480,8 +565,73 @@ def check_c2(ctx: Context) -> list[Found]:
             )
         )
     out.extend(_c2_run_sheet(ctx, sched, logged))
+    out.extend(_c2_events(ctx, sched))
     if plays is not None:
         out.extend(_c2_plays(ctx, sched, plays))
+    return out
+
+
+def _fault_codes(row: Mapping[str, str]) -> tuple[str, ...] | None:
+    """The trial's technical fault codes; None for an invalid cell (C1 reports it)."""
+    try:
+        return split_fault_codes(row.get("technical_fault_code", ""))
+    except ValueError:
+        return None
+
+
+def _c2_events(
+    ctx: Context, sched: Mapping[str, tuple[Mapping[str, Any], Mapping[str, Any], int]]
+) -> list[Found]:
+    """Response events and technical flags of each scheduled trial and retry (Study A
+    protocol section 8; Common procedures sections 2 and 8): a delivered test trial has a
+    complete response event or a missing-response fault code (``RESPONSE_EVENT_MISSING``);
+    a trial whose cue was confirmed silent, of uncertain onset or never requested, with a
+    presentation freeze over 250 ms or a failed neutral reset has a fault code
+    (``TECHNICAL_FLAG_MISSING``)."""
+    out: list[Found] = []
+    for row in ctx.this.trials:
+        tid = row.get("trial_id", "")
+        target = row.get("retry_of") or tid
+        if target not in sched:
+            continue  # extra trials are reported elsewhere
+        trial_type = sched[target][1]["trial_type"]
+        status = row.get("playback_status", "")
+        codes = _fault_codes(row)
+        flags: list[str] = []
+        if status in ("confirmed_no_onset", "uncertain"):
+            flags.append(f"playback {status}")
+        if status == "not_requested" and PLAYS[trial_type] > 0:
+            flags.append("scheduled cue not requested")
+        freeze = row.get("frame_freeze_ms", "")
+        if freeze.isdigit() and int(freeze) > FREEZE_FAULT_MS:
+            flags.append(f"frame freeze over {FREEZE_FAULT_MS} ms")
+        if row.get("reset_ok") == "false":
+            flags.append("failed neutral reset")
+        if flags and codes == ():
+            out.append(
+                Found(
+                    "C2",
+                    "TECHNICAL_FLAG_MISSING",
+                    (tid,),
+                    f"{'; '.join(flags)} without a technical_fault_code",
+                )
+            )
+        delivered = status in ("observed_complete", "uncertain") or trial_type == "no_cue"
+        if trial_type not in TEST_TRIAL_TYPES or not delivered:
+            continue
+        code = row.get("response_code", "")
+        event = code != "" and (code != "commit" or row.get("commit_mono_ms", "") != "")
+        flagged = codes is None or any(fault_type(c) == "missing_response_log" for c in codes)
+        if not event and not flagged:
+            out.append(
+                Found(
+                    "C2",
+                    "RESPONSE_EVENT_MISSING",
+                    (tid,),
+                    "delivered test trial has no complete response event (response code, "
+                    "commit time) and no missing-response fault code",
+                )
+            )
     return out
 
 
@@ -788,7 +938,18 @@ def check_c4(ctx: Context) -> list[Found]:
                 )
             )
         statuses = [p.get("audible_status", "") for p in plays.get(tid, [])]
-        heard = row.get("playback_status") in ("observed_complete", "uncertain") or any(
+        logged = row.get("playback_status", "")
+        if _overstated(logged, statuses):
+            out.append(
+                Found(
+                    "C4",
+                    "PLAYBACK_STATUS_CONFLICT",
+                    (tid, *[p.get("event_id", "") for p in plays.get(tid, [])]),
+                    f"playback_status {logged} but the trial's plays are "
+                    f"{', '.join(sorted(set(statuses)))}",
+                )
+            )
+        heard = logged in ("observed_complete", "uncertain") or any(
             s in CONSUMING_AUDIBLE_STATUS for s in statuses
         )
         if heard and row.get("exposure_consumed") == "false":
@@ -825,6 +986,43 @@ def check_c4(ctx: Context) -> list[Found]:
     return out
 
 
+def _at_block_end(
+    trials: Sequence[Mapping[str, str]],
+    i: int,
+    block: str,
+    sched: Mapping[str, tuple[Mapping[str, Any], Mapping[str, Any], int]],
+) -> bool:
+    """Whether the retry in trial-log row ``i`` runs at the end of ``block`` (Common
+    procedures section 6): after every scheduled trial of the block that was logged, with
+    only other retries of the block's trials between them."""
+
+    def block_of(tid: str) -> str | None:
+        return sched[tid][0]["block"] if tid in sched else None
+
+    last = max(
+        (
+            k
+            for k, r in enumerate(trials)
+            if not r.get("retry_of") and block_of(r.get("trial_id", "")) == block
+        ),
+        default=-1,
+    )
+    if last < 0 or i < last:
+        return False
+    return all(r.get("retry_of") and block_of(r["retry_of"]) == block for r in trials[last + 1 : i])
+
+
+def _overstated(logged: str, statuses: Sequence[str]) -> bool:
+    """The trial-log playback_status claims more delivery, or less exposure, than the
+    audible_status of the trial's linked plays (Common procedures section 8). A more
+    conservative trial status (``uncertain``) is never a conflict."""
+    if logged == "observed_complete":
+        return any(s not in VERIFIED_AUDIBLE for s in statuses)
+    if logged == "confirmed_no_onset":
+        return any(s in CONSUMING_AUDIBLE_STATUS for s in statuses)
+    return logged == "not_requested" and bool(statuses)
+
+
 def _c4_retries(
     ctx: Context,
     by_id: Mapping[str, Mapping[str, str]],
@@ -833,7 +1031,6 @@ def _c4_retries(
     logs, refs = ctx.this, ctx.refs
     assert refs is not None
     sched = _items(refs)
-    position = {row.get("trial_id", ""): i for i, row in enumerate(logs.trials)}
     retries_of: dict[str, list[str]] = {}
     out: list[Found] = []
     for i, row in enumerate(logs.trials):
@@ -854,19 +1051,13 @@ def _c4_retries(
             p.get("audible_status") != "confirmed_no_onset" for p in plays.get(original_id, [])
         ):
             why = "the retried trial has no verified no-onset failure"
-        else:
-            block = sched[original_id][0]["block"]
-            later = [
-                r
-                for r in logs.trials[position[original_id] + 1 : i]
-                if r.get("trial_id") in sched and sched[r["trial_id"]][0]["block"] != block
-            ]
-            same = (row.get("trial_type"), row.get("message_id")) == (
-                original.get("trial_type"),
-                original.get("message_id"),
-            )
-            if i < position[original_id] or later or not same:
-                why = "the retry is not in the block of the retried trial"
+        elif not _at_block_end(logs.trials, i, sched[original_id][0]["block"], sched):
+            why = "the retry is not at the end of the retried trial's block"
+        elif (row.get("trial_type"), row.get("message_id")) != (
+            original.get("trial_type"),
+            original.get("message_id"),
+        ):
+            why = "the retry runs another item than the retried trial"
         if why is not None:
             out.append(Found("C4", "RETRY_LINK_BROKEN", _sorted_rows((tid, original_id)), why))
     return out
@@ -1048,54 +1239,42 @@ def check_c6(ctx: Context) -> list[Found]:
     source_by_id = {r.get("event_id", ""): r for r in sources}
     copies_of: dict[str, list[str]] = {}
     sequence: list[str] = []
+    # Details are role-neutral: each text below is raised for plays of either member.
+    unmatched = "selection event has no counterpart in the pair's ledgers"
+    misnamed = "selection event names a source event inconsistently with the pair's ledgers"
     for r in active.plays:
-        if r.get("yoked_source_event_id"):
-            add(
-                "YOKED_MISMATCH",
-                [r.get("event_id", "")],
-                "a selection event names a source event inconsistently with the pair's ledgers",
-            )
+        if r.get("stage") in SELECTION_STAGES and r.get("yoked_source_event_id"):
+            add("YOKED_MISMATCH", [r.get("event_id", ""), r["yoked_source_event_id"]], misnamed)
     for r in yoked.plays:
         eid = r.get("event_id", "")
         src = r.get("yoked_source_event_id", "")
         if r.get("stage") not in SELECTION_STAGES:
             continue
-        if not src or src not in source_by_id:
-            add(
-                "YOKED_SOURCE_MISSING",
-                [eid, src],
-                "selection event has no matching source event in the pair's ledgers",
-            )
+        if not src:
+            add("YOKED_SOURCE_MISSING", [eid], unmatched)
+            continue
+        if src not in source_by_id:
+            add("YOKED_MISMATCH", [eid, src], misnamed)
             continue
         copies_of.setdefault(src, []).append(eid)
         sequence.append(src)
-        s = source_by_id[src]
-        differ = [f for f in YOKED_FIELDS if r.get(f, "") != s.get(f, "")]
-        try:
-            gap = abs(
-                (int(r["audio_onset_mono_ms"]) - int(r["display_start_mono_ms"]))
-                - (int(s["audio_onset_mono_ms"]) - int(s["display_start_mono_ms"]))
-            )
-        except (KeyError, ValueError):
-            gap = 0
-        if gap > YOKED_TIMING_TOLERANCE_MS:
-            differ.append("timing")
+        differ = _yoked_differences(r, source_by_id[src])
         if differ:
             add("YOKED_MISMATCH", [eid, src], f"matched events differ in {', '.join(differ)}")
     for src in source_by_id:
         n = len(copies_of.get(src, []))
         if n == 0:
-            add(
-                "YOKED_SOURCE_MISSING",
-                [src],
-                "selection event has no matching counterpart in the pair's ledgers",
-            )
+            add("YOKED_SOURCE_MISSING", [src], unmatched)
         elif n > 1:
             add("YOKED_MISMATCH", [src, *copies_of[src]], "selection event matched more than once")
     expected_order = [s for s in source_by_id if s in copies_of]
     for got, want in zip(list(dict.fromkeys(sequence)), expected_order, strict=False):
         if got != want:
-            add("YOKED_MISMATCH", [got, want], "matched selection events are in a different order")
+            add(
+                "YOKED_MISMATCH",
+                [got, want, *copies_of[got], *copies_of[want]],
+                "matched selection events are in a different order",
+            )
             break
     a_start, a_end = visit_times(active)
     y_start, _ = visit_times(yoked)
@@ -1108,6 +1287,46 @@ def check_c6(ctx: Context) -> list[Found]:
             "after the earlier session ended and within 24 h of its start",
         )
     return out
+
+
+def _ms(row: Mapping[str, str], column: str) -> int | None:
+    value = row.get(column, "")
+    try:
+        return int(value) if value != "" else None
+    except ValueError:
+        return None
+
+
+def _span(row: Mapping[str, str], start: str, end: str) -> int | None:
+    a, b = _ms(row, start), _ms(row, end)
+    return None if a is None or b is None else b - a
+
+
+def _yoked_differences(copy: Mapping[str, str], source: Mapping[str, str]) -> list[str]:
+    """Fields and timings in which a matched copy differs from its source event (Study B
+    protocol sections 5.2 and 5.3: same files, plays, meanings, order, nominal and actual
+    timing, choice or default, meaning-display durations and pauses). Timings are compared
+    within :data:`YOKED_TIMING_TOLERANCE_MS`; a timing recorded on one side only differs."""
+    differ = [f for f in YOKED_FIELDS if copy.get(f, "") != source.get(f, "")]
+    copied, scheduled = _timings(copy), _timings(source)
+    for name, a in copied.items():
+        b = scheduled[name]
+        if (a is None) != (b is None) or (
+            a is not None and b is not None and abs(a - b) > YOKED_TIMING_TOLERANCE_MS
+        ):
+            differ.append(name)
+    return differ
+
+
+def _timings(row: Mapping[str, str]) -> dict[str, int | None]:
+    """Replayed timings of a selection play (ms): onset after the display start, audio
+    duration, meaning-display duration and pause."""
+    return {
+        "timing": _span(row, "display_start_mono_ms", "audio_onset_mono_ms"),
+        "audio duration": _span(row, "audio_onset_mono_ms", "audio_offset_mono_ms"),
+        "meaning-display duration": _span(row, "display_start_mono_ms", "display_end_mono_ms"),
+        "pause": _ms(row, "pause_ms"),
+    }
 
 
 # ---------------------------------------------------------------------------------------
@@ -1208,7 +1427,13 @@ def _explicit(ctx: Context, rows: Sequence[str], pair: bool) -> list[str]:
 
 
 def link(ctx: Context, found: Found) -> Linked:
-    """Resolve a discrepancy against the deviation records (see LINK_CATEGORIES)."""
+    """Resolve a discrepancy against the deviation records that concern the visit (and,
+    for C6, the other member's visit): a row-level ``deviation_id`` or
+    ``matching_deviation_id``, then a record naming one of its rows (any category), then
+    one naming the visit, the person slot or (event empty) the participant with a category
+    of LINK_CATEGORIES. A found with ``linkable`` false is never resolved."""
+    if not found.linkable:
+        return Linked(found, None, False)
     if found.code == "DEVIATION_MISSING":
         return Linked(found, None, False)
     visits, persons, coded, records = _scope(ctx, found.pair)
@@ -1222,14 +1447,17 @@ def link(ctx: Context, found: Found) -> Linked:
         [
             r
             for r in records
-            if r.event_id and r.event_id in rows and r.event_id not in visits | persons
+            if r.link_event and r.link_event in rows and r.link_event not in visits | persons
         ],
-        [r for r in records if r.event_id in visits and r.category in allowed],
-        [r for r in records if r.event_id in persons and r.category in allowed],
+        [r for r in records if r.link_event in visits and r.category in allowed],
+        [r for r in records if r.link_event in persons and r.category in allowed],
         [
             r
             for r in records
-            if not r.event_id and r.participant_id in coded and r.category in allowed
+            if r.link_event == ""
+            and r.participant_id
+            and r.participant_id in coded
+            and r.category in allowed
         ],
     ]
     for level in levels:
@@ -1323,17 +1551,33 @@ def _key(d: Linked) -> tuple[str, tuple[str, ...], int, str]:
     return (d.found.check, d.found.rows, _CODE_ORDER[d.found.code], d.found.detail)
 
 
-def evaluate(ctx: Context) -> list[tuple[str, CheckStatus, list[Linked]]]:
-    """(check, status, linked discrepancies) for C1..C8, discrepancies sorted by rows."""
-    results: list[tuple[str, CheckStatus, list[Linked]]] = []
-    every: list[Linked] = []
+def collect(ctx: Context) -> list[tuple[str, bool, list[Found]]]:
+    """(check, applicable, discrepancies before linking) for C1..C7."""
+    out: list[tuple[str, bool, list[Found]]] = []
     for check, rule in CHECKS_IN_ORDER:
         ok = applicable(ctx, check)
-        found = rule(ctx) if ok else []
-        unique = list(dict.fromkeys(found))
-        items = sorted((link(ctx, f) for f in unique), key=_key)
+        out.append((check, ok, list(dict.fromkeys(rule(ctx) if ok else []))))
+    return out
+
+
+def finish(
+    ctx: Context, collected: Sequence[tuple[str, bool, list[Found]]], extra: Sequence[Found] = ()
+) -> list[tuple[str, CheckStatus, list[Linked]]]:
+    """Link the collected discrepancies (plus ``extra`` ones found after the checks ran,
+    added to their check) and add C8: (check, status, linked discrepancies) for C1..C8,
+    discrepancies sorted by rows."""
+    results: list[tuple[str, CheckStatus, list[Linked]]] = []
+    every: list[Linked] = []
+    for check, ok, found in collected:
+        mine = list(dict.fromkeys([*found, *(f for f in extra if f.check == check)]))
+        items = sorted((link(ctx, f) for f in mine), key=_key)
         results.append((check, status_of(items, ok), items))
         every.extend(items)
     c8 = sorted(check_c8(ctx, every), key=_key)
     results.append(("C8", status_of(c8, True), c8))
     return results
+
+
+def evaluate(ctx: Context) -> list[tuple[str, CheckStatus, list[Linked]]]:
+    """(check, status, linked discrepancies) for C1..C8, discrepancies sorted by rows."""
+    return finish(ctx, collect(ctx))
