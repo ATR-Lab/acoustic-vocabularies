@@ -45,6 +45,7 @@ namespace AcousticVocab.StateIntegration
         int queued;
         readonly object diagnosticLock=new object();
         string workerPhase="not_started",firstFailureCode,firstFailurePhase;
+        string failedExchangeKind,failedExchangeRequestId;PrivateControlExchange.Failure exchangeFailure;
         double phaseStarted,lastSent=-1,lastReceived=-1,firstFailureAt;
         double probeSent=-1,probeSample=-1,commandReceived=-1,commandSample=-1;bool latestObservationWasProbe;
         readonly ControlHealthGate healthGate;
@@ -89,6 +90,7 @@ namespace AcousticVocab.StateIntegration
                 value["last_completed_received_local_mono_ms"]=lastReceived<0?JValue.CreateNull():new JValue(lastReceived);
                 value["first_failure_code"]=firstFailureCode==null?JValue.CreateNull():new JValue(firstFailureCode);value["first_failure_phase"]=firstFailurePhase==null?JValue.CreateNull():new JValue(firstFailurePhase);
                 value["first_failure_local_mono_ms"]=firstFailureCode==null?JValue.CreateNull():new JValue(firstFailureAt);
+                value["exchange_failure"]=exchangeFailure==null?JValue.CreateNull():exchangeFailure.ToJson(failedExchangeKind,failedExchangeRequestId);
             }
             return value;
         }
@@ -112,6 +114,8 @@ namespace AcousticVocab.StateIntegration
         public void Interrupt(){RecordFailure("CONTROL_EXPLICIT_INTERRUPT","owner");healthGate.Invalidate();modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
         void Phase(string value){lock(diagnosticLock){workerPhase=value;phaseStarted=now();}}
         void Completed(PrivateControlExchange.Reply reply){lock(diagnosticLock){lastSent=reply.Sent;lastReceived=reply.Received;}}
+        void ExchangeFailed(string kind,string requestId,PrivateControlExchange.Failure failure)
+        {lock(diagnosticLock){if(exchangeFailure!=null)return;failedExchangeKind=kind;failedExchangeRequestId=requestId;exchangeFailure=failure;}}
         void RecordFailure(string code,string phase=null)
         {lock(diagnosticLock){if(firstFailureCode!=null)return;firstFailureCode=code;firstFailurePhase=phase??workerPhase;firstFailureAt=now();}}
         internal static string FailureCode(Exception error)=>error is ControlFault bounded?bounded.Code:
@@ -176,14 +180,14 @@ namespace AcousticVocab.StateIntegration
                     {
                         string id=(string)StationConfig.ParseStrict(raw)["request_id"];
                         Phase("command_exchange");
-                        var reply=await PrivateControlExchange.Run(client,raw,ControlHealthGate.CommandDeadlineMs,now,lifetime.Token);
+                        var reply=await PrivateControlExchange.Run(client,raw,ControlHealthGate.CommandDeadlineMs,now,lifetime.Token,failure=>ExchangeFailed("command",id,failure));
                         Completed(reply);
                         ReceiveReply(id,reply.Raw,reply.Sent,reply.Received);
                     }
                     string probeId=Guid.NewGuid().ToString("N");
                     string probe=PrivateHealthProbe.Request(session,probeId).ToString(Formatting.None);
                     Phase("health_exchange");
-                    var health=await PrivateControlExchange.Run(client,probe,200,now,lifetime.Token);
+                    var health=await PrivateControlExchange.Run(client,probe,200,now,lifetime.Token,failure=>ExchangeFailed("health_probe",probeId,failure));
                     Completed(health);
                     ReceiveHealthProbe(probeId,health.Raw,health.Sent,health.Received);
                     Phase("cadence_delay");
