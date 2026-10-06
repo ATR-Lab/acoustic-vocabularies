@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/freeze-manifest.schema.json",
   "title": "G4 generation freeze manifest",
-  "description": "Every value frozen at gate G4 (#25; Study A protocol §3.2, §3.6; Common procedures §9), each with its SHA-256 where it is a file or document and its source, readable without the code. Item keys: av_generation.freeze.REQUIRED_ITEM_KEYS. apparatus holds the values copied into the apparatus manifest. Sign-off records roles and links, never names.",
+  "description": "Every value frozen at gate G4 (#25; Study A protocol sections 3.2, 3.6; Common procedures section 9), each with its SHA-256 where it is a hash, file or document and its source, readable without the code (generation/docs/freeze.md). Item keys and order: av_generation.freeze.REQUIRED_ITEM_KEYS. guard says how the CI freeze guard checks an item: code (recomputed from the running code), file (recomputed from the committed file at path), config (copied from the frozen generation config, config.document, which must equal the running code) or recorded (recorded at the freeze from the GPU host, restricted storage or a human decision). sha256 is the value itself for hash items, the canonical SHA-256 of the value for objects and null otherwise. A draft may leave items pending (value null); a frozen manifest may not. apparatus holds the values copied into the apparatus manifest. Sign-off records roles and links, never names.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "apparatus",
+    "description",
     "format",
     "format_version",
     "freeze_version",
@@ -34,11 +35,17 @@
         "frozen"
       ]
     },
+    "description": {
+      "description": "One paragraph for readers: what this manifest is; a draft says that it is not frozen.",
+      "type": "string",
+      "pattern": "^[ -~]{1,1000}$"
+    },
     "protocol_version": {
       "type": "string",
       "pattern": "^[!-~]{1,32}$"
     },
     "repo_commit": {
+      "description": "The commit whose code the values were collected from (null in a draft).",
       "oneOf": [
         {
           "type": "string",
@@ -50,6 +57,7 @@
       ]
     },
     "tag": {
+      "description": "The signed repository tag of the commit that adds this manifest (null in a draft).",
       "oneOf": [
         {
           "type": "string",
@@ -68,7 +76,9 @@
         "additionalProperties": false,
         "required": [
           "category",
+          "guard",
           "key",
+          "path",
           "sha256",
           "source",
           "value"
@@ -96,16 +106,37 @@
               "pilot",
               "config",
               "llm",
-              "meanings"
+              "meanings",
+              "generation"
+            ]
+          },
+          "guard": {
+            "enum": [
+              "code",
+              "file",
+              "config",
+              "recorded"
             ]
           },
           "value": {
-            "description": "Any JSON value (string, number, boolean, null, array or object)."
+            "description": "Any JSON value (string, number, boolean, array or object); null while the item is pending in a draft."
           },
           "sha256": {
             "oneOf": [
               {
                 "$ref": "common.schema.json#/$defs/sha256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "description": "Repository-relative POSIX path of the committed file a file item is read from; null otherwise.",
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$"
               },
               {
                 "type": "null"
@@ -232,6 +263,36 @@
           },
           "signoff": {
             "minItems": 2
+          },
+          "items": {
+            "items": {
+              "properties": {
+                "value": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          },
+          "apparatus": {
+            "properties": {
+              "renderer_recipe_schema_hash": {
+                "type": "string"
+              },
+              "model_revision": {
+                "type": "string"
+              },
+              "runtime_precision": {
+                "type": "string"
+              },
+              "prompt_hash": {
+                "type": "string"
+              },
+              "fallback_bank_hash": {
+                "type": "string"
+              }
+            }
           }
         }
       }
