@@ -37,6 +37,8 @@ runtime; the tests refuse any non-loopback connection.
 | `schema/` | JSON Schemas of every log record and run document, the generation config, meaning sets, the rater protocol, the dry-run plan, audit summary, freeze manifest, bank manifest and bank amendments |
 | `examples/demo-batch-config.json` | Synthetic batch configuration (`DEMO-A-P01`) |
 | `examples/demo-meanings/` | Synthetic meaning set (`DEMO-meanings-01`; placeholder texts, not study texts) |
+| `examples/demo-slot-ledger/` | Synthetic slot ledger and refusals (`DEMO-slot-ledger-01`; every outcome code) |
+| `prompts/` | A3/B prompt set `prompts-v1`: fixed instruction, context templates, hash file (frozen at G4) |
 | `docs/` | Architecture and component docs |
 | `../tests/generation/` | Test suite (shared fixtures in `conftest.py`) |
 

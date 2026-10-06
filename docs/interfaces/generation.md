@@ -57,15 +57,38 @@ server's `POST /tokenize` (`messages`, `add_generation_prompt: true`), raising
 
 ## Prompt builder, parser and slot ledger (#17)
 
-*Pending (#17).* Contract fixed by the skeleton: `SlotLedger(path, *, run_id, clock,
-refusals, timing, cap=12)` with `.reserve(cap_key, slot_id, *, study, method) ->
-SlotTicket` (cap and reuse checked before any work), `.consume(SlotRecord)` (needs an
-open ticket), `.used(cap_key)`, `.remaining(cap_key)`, `.records(cap_key=None)`;
-`SlotCapExceeded`, `SlotReused`, `SlotNotReserved`, `AttemptCapExceeded`;
-`load_prompt_set(path, *, meanings)`; `build_a3_prompt(book_state, atom_id, round, slot,
-*, semantic_label, feedback, same_round, prompt_set) -> BuiltPrompt`;
-`build_b_prompt(cell, *, prompt_set)`; `parse_output(text)`; `A3Proposer`. To fill:
-prompt-set format and hash file, B instruction decision.
+Details: [`generation/docs/prompts-and-ledger.md`](../../generation/docs/prompts-and-ledger.md).
+
+| Module | Public API |
+| --- | --- |
+| `ledger` | `SlotLedger(path, *, run_id, clock, refusals=None, timing=None, cap=12)`. `.reserve(cap_key, slot_id, *, study, method) -> SlotTicket` runs before any work: it checks the cap first (`SlotCapExceeded`, refusal `slot_cap`), then reuse (`SlotReused`, refusals `slot_reused` / `slot_closed`), and also the slot ID against the cap key and one method per cap key (`LedgerError`). `.consume(SlotRecord)` needs the matching open ticket (`SlotNotReserved`) and validates, then appends one canonical line. Also `.check_attempt(bank_id, attempt)` (`AttemptCapExceeded` for a 5th attempt, refusal `attempt_cap`), `.used(cap_key)`, `.remaining(cap_key)`, `.records(cap_key=None)`, `.open_tickets()` and `.repairs`. Refusals are always logged: to `refusals`, else to `slot-refusals.jsonl` beside the ledger. On reopen, torn tails are cut and logged as `log_repaired`, and the existing records count toward the caps. |
+| `prompts` | `load_prompt_set(path, *, meanings, expected=None) -> PromptSet`. Its fields are `a3_instruction`, `b_instruction`, the section templates, `files`, `set_sha256`, `a3_sha256`, `b_sha256` and `schema_sha256`, plus `.hashes() -> genconfig.PromptHashes`. Also `default_prompt_set_dir()` (`generation/prompts/`) and `prompt_set_manifest(path, *, name)`. `build_a3_prompt(book_state, atom_id, round, slot, *, semantic_label, feedback, same_round, prompt_set) -> BuiltPrompt` and `build_b_prompt(cell, *, prompt_set, threshold=None) -> BuiltPrompt`. `BuiltPrompt` carries `messages` (system = instruction, user = canonical context JSON), `prompt_sha256 = jsonio.messages_sha256(messages)` and `context_json`. Errors: `PromptSetError`, `PromptContextError`. |
+| `parser` | `parse_output(text) -> ParsedOutput(obj, error)`: exactly one strict JSON object, else `obj=None` (outcome `invalid_json`, logged as validator code `E_JSON`). |
+| `a3` | `A3Proposer(client, ledger, prompt_set, decoding_schema, *, clock, reserved=None)`, a `RoundProposer` with three slots a round. `BSlotProposer(client, ledger, prompt_set, decoding_schema, *, clock, threshold=None, reserved=None).propose_slot(cell, *, seed_namespace) -> SlotRecord` handles one Study B slot for #26. `RAW_OUTPUT_MAX_CHARS`. |
+
+Prompt set `prompts-v1` (`generation/prompts/`) has the following hashes. The freeze
+items are `prompts.a3_sha256` and `prompts.b_sha256`:
+
+- `a3_sha256` `0e20949a8ff628ba3258a06b70eb5231342466799301d4d5c67a22c9fd681209`
+- `b_sha256` `c23dab615f354ccb471c5c980842f7285b1b031ae85723138841df3a8579a8a7`
+- set `d3f6c84f8247dd810f520038611bcad45cf82c9ad9ac4ed75754ac2613d0e4ce`
+- context recipe schema `a8ee5754442748826ebf2452a59e2d6cb7925f6db887163c4228a3cc5b957b6c`
+
+The fixed instruction (Study A §3.6) has SHA-256
+`05738403a734776ffa77729d142b26ec36dbc58767a29cf161bd377ca904ebe3`. Study B reuses it byte
+for byte. Measured with the pinned tokenizer, the worst-case prompts are 4,923 tokens
+(A3) and 10,115 tokens (B), both below 16,384.
+
+Example ledger: `generation/examples/demo-slot-ledger/` (DEMO, all 14 outcome codes and
+two refusals).
+
+Call order per method:
+
+- A1 opens a slot with `reserve`.
+- A2 runs `reserve`, sample or mutate, validate, `consume`.
+- A3 and B run build prompt, `reserve`, `count_prompt_tokens` (`overflow_input` above
+  16,384; a failed count is `invalid_json`/`server_error`), one `propose`, parse,
+  validate, `consume`.
 
 ## A2 mutation search (#18)
 
