@@ -1,0 +1,33 @@
+name: Integrity baseline
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  python-contracts:
+    name: integrity contracts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+      - run: uv sync --project sound --locked
+      - name: Score, reject malformed exports, validate real growth and generated histories
+        shell: bash
+        env:
+          PYTHONPATH: .
+        run: >
+          uv run --project sound python -m pytest
+          tests/test_command_scoring.py tests/test_integrity_export.py tests/test_integrity_producers.py
+          -k 'not native_semantics' -q
+      # Unity-export mutations run in unity-foundation after actual native tests.
+      # This Python-only job is not the full station or licensed-Unity gate.

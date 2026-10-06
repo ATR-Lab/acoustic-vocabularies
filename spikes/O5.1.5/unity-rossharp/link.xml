@@ -1,0 +1,8 @@
+<linker>
+  <!-- ROS# discovers message metadata through reflection. Spike-first preservation
+       trades binary size for explicit AOT reachability; device execution still required. -->
+  <assembly fullname="Assembly-CSharp" preserve="all" />
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+  <assembly fullname="System.Text.Json" preserve="all" />
+  <assembly fullname="websocket-sharp" preserve="all" />
+</linker>

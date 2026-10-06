@@ -1,0 +1,39 @@
+{
+  "source": "loaded_isaac_articulation_and_workcell",
+  "demo_hook": "synthetic_no_motion",
+  "initial_reset_ok": true,
+  "protected_rejections": 32,
+  "protected_state_sha256_before": "354bcd2d757cc4a936ceebc1bd3a35042b1b8aae281edba41266063760545ce3",
+  "protected_state_sha256_after": "354bcd2d757cc4a936ceebc1bd3a35042b1b8aae281edba41266063760545ce3",
+  "protected_state_exactly_unchanged": true,
+  "physics_steps_requested": 240,
+  "physics_steps_neutral_verified": 240,
+  "synthetic_teaching_hooks_completed": 32,
+  "actual_motion_content_validated": false,
+  "object_drift_rejected": true,
+  "object_drift_not_silently_restored": true,
+  "explicit_recovery_reset_ok": true,
+  "fault_remains_latched": true,
+  "command_events_sha256": "c14dacc3d292f770db78853dc71984fc2151cd4a05113bde0fa5d048f9236cdb",
+  "measured_date": "2026-10-04",
+  "source_revisions": {
+    "commands": "825e628",
+    "reset": "f319440",
+    "workcell": "8802e2e"
+  },
+  "log_schema_version": "0.3.1",
+  "terminal_event_count": 68,
+  "terminal_reason_counts": {
+    "RESET_COMPLETE": 2,
+    "PROTECTED_TARGET_COMMAND": 32,
+    "MODE_CHANGED": 2,
+    "DEMO_COMPLETE": 32
+  },
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "limitations": [
+    "Teaching hook is synthetic and performs no motion; actual #56 trajectories are not validated.",
+    "This run includes the queue-boundary and cached-health implementation; actual network deployment and full publisher-bound exposure remain separate checks.",
+    "No headset, station network, private methodology or source-clock qualification is implied."
+  ]
+}
