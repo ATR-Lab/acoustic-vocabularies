@@ -35,6 +35,48 @@ class SyntheticReset:
 
 @unittest.skipUnless(importlib.util.find_spec("websockets"), "requires approved preinstalled websockets")
 class CommandTransportTest(unittest.TestCase):
+    def test_opt_in_probe_trace_correlates_real_socket_without_dispatching(self):
+        from websockets.client import connect
+        from isaac.e2e.private_timing import PrivateTiming
+        events=[]
+        dispatcher=CommandDispatcher(SyntheticReset(), events.append,
+            station_id='engineering-fixture',allowed_client='127.0.0.1')
+        with tempfile.TemporaryDirectory() as directory:
+            timing=PrivateTiming(Path(directory)/'timing.json',1)
+            handoff=CommandQueue(dispatcher,timing=timing)
+            with socket.socket() as free:
+                free.bind(('127.0.0.1',0));port=free.getsockname()[1]
+            service=PrivateCommandTransport(handoff,host='127.0.0.1',port=port,timing=timing)
+            identifiers=[]
+            async def client():
+                async with connect(f'ws://127.0.0.1:{port}/commands') as ws:
+                    for _ in range(8):
+                        probe=self.probe(dispatcher);identifiers.append(probe['request_id'])
+                        await ws.send(json.dumps(probe))
+                        reply=json.loads(await ws.recv())
+                        self.assertEqual(reply['request_id'],probe['request_id'])
+                        self.assertEqual(reply['reason'],'HEALTH')
+                        self.assertEqual(set(reply),{'version','kind','control_session_id','request_id','accepted','reason','health'})
+                    await asyncio.sleep(.05)
+            timing.start()
+            try:
+                asyncio.run(asyncio.wait_for(client(),3))
+                self.assertEqual(events,[])
+                self.assertEqual(handoff.sequence,0)
+                self.assertEqual(len(dispatcher.cache),0)
+            finally:
+                try:service.close()
+                finally:timing.close()
+            trace=json.loads(timing.path.read_text());rows=trace['rows']
+            self.assertEqual([r[3] for r in rows if r[1]=='probe_ingress'],identifiers)
+            self.assertEqual([r[3] for r in rows if r[1]=='send_end' and r[3]],identifiers)
+            self.assertEqual(sum(r[1]=='provider_begin' for r in rows),8)
+            self.assertEqual(sum(r[1]=='provider_end' for r in rows),8)
+            self.assertTrue(any(r[1]=='socket_data' and r[5]>0 for r in rows))
+            self.assertTrue(any(r[1]=='loop_lag' for r in rows))
+            self.assertFalse(trace['complete'])  # Deliberately closes before1s.
+            self.assertEqual(trace['dropped'],0)
+
     @staticmethod
     def probe(dispatcher, **changes):
         value = dict(version=1, kind="private_health_probe",
