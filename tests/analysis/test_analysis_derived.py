@@ -11,6 +11,7 @@ from hypothesis import strategies as st
 from av_analysis.derived import (
     DISCREPANCIES,
     ENDPOINTS,
+    ENROLLMENT,
     EXPOSURE_CUMULATIVE,
     TABLES,
     TRIALS,
@@ -26,16 +27,17 @@ from av_analysis.derived import (
     table,
     table_bytes,
 )
-from av_analysis.vocab import FAULT_CODES
+from av_analysis.vocab import FAULT_TYPES, MISSING_REASONS, ROW_SOURCES
 
 
-def test_five_tables_with_watermark_first():
+def test_six_tables_with_watermark_first():
     assert list(TABLES) == [
         "trials",
         "endpoints",
         "visit-status",
         "discrepancies",
         "exposure-cumulative",
+        "enrollment",
     ]
     for spec in TABLES.values():
         assert spec.header[0] == "data_kind"
@@ -46,11 +48,55 @@ def test_five_tables_with_watermark_first():
         assert spec.filename == f"{spec.name}.csv"
     assert {s.area for s in TABLES.values()} == {"derived", "reconciled"}
     assert TRIALS.area == ENDPOINTS.area == "derived"
-    assert [f"fault_{f}_n" for f in FAULT_CODES] == [
+    assert [f"fault_{f}_n" for f in FAULT_TYPES] == [
         c for c in VISIT_STATUS.header if c.startswith("fault_") and c != "fault_n"
     ]
     with pytest.raises(KeyError):
         TRIALS.column("nope")
+
+
+def test_every_required_string_column_has_a_valid_example(sample_row):
+    for spec in TABLES.values():
+        for c in spec.columns:
+            if c.type == "str" and not c.nullable:
+                assert c.example, (spec.name, c.name)
+                assert row_problems(spec, sample_row(spec)) == [], spec.name
+
+
+def test_lost_opportunities_are_accounted_not_missing(sample_row):
+    # Analysis plan section 2, Study B protocol section 10: an opportunity lost to a
+    # verified apparatus or logger failure is a trials row (operational 0), while an
+    # opportunity never undertaken after withdrawal has none.
+    assert TRIALS.column("row_source").values == ROW_SOURCES == ("logged", "deviation")
+    lost = sample_row(
+        TRIALS,
+        row_source="deviation",
+        response_code=None,
+        response_action=None,
+        response_target=None,
+        exact_correct=None,
+        action_correct=None,
+        referent_correct=None,
+        playback_status=None,
+        fault_codes=("OPPORTUNITY_LOST",),
+        fault_types=("other",),
+        valid_delivery=False,
+        deviation_ids=("DV-1",),
+    )
+    assert row_problems(TRIALS, lost) == []
+    assert row_problems(TRIALS, sample_row(TRIALS, fault_codes=("audio_underrun",)))
+    assert row_problems(TRIALS, sample_row(TRIALS, fault_types=("AUDIO_UNDERRUN",)))
+    assert "lost_n" in ENDPOINTS.header and "audio_offset_mono_ms" in TRIALS.header
+    assert {"withdrawn_mid_battery", "technical_stop"} <= set(MISSING_REASONS)
+    assert ENDPOINTS.column("missing_reason").values == MISSING_REASONS
+
+
+def test_enrollment_and_welfare_counts_are_declared(sample_row):
+    assert ENROLLMENT.area == "reconciled" and ENROLLMENT.policy == "masked"
+    assert ENROLLMENT.key == ("study", "set")
+    assert not any("participant" in c for c in ENROLLMENT.header)
+    assert row_problems(ENROLLMENT, sample_row(ENROLLMENT, screening_cases_n=None)) == []
+    assert {"comfort_deviations_n", "withdrawal_deviations_n"} <= set(VISIT_STATUS.header)
 
 
 @pytest.mark.parametrize("name", list(TABLES))

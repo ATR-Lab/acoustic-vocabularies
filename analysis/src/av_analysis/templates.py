@@ -9,7 +9,9 @@ files use CRLF line endings; files written by this package use LF.
 
 Every column also has a class (:data:`COLUMN_CLASS`) that the masking rules use: outcome,
 response, hidden-answer and condition columns never reach a reconciliation report or the
-integrity dashboard, and free text is never rendered.
+integrity dashboard, staff columns never reach any output, and free text is never
+rendered. :data:`EXTENSION_COLUMNS` lists the optional columns a raw file may add after
+the template columns (proposal; **Pending** #64/#72).
 """
 
 from __future__ import annotations
@@ -188,8 +190,19 @@ TEMPLATES: Final[dict[TemplateName, Template]] = {
 }
 TEMPLATE_SHA256: Final[dict[str, str]] = {t.filename: t.sha256 for t in TEMPLATES.values()}
 
+# Optional trailing columns accepted after the template columns, in this order (the
+# loaders refuse any other extra column). ``pcm_sha256``: the PCM-sample hash of composed
+# audio, which has no file hash (``vocab``: ``waveform_sha256``).
+EXTENSION_COLUMNS: Final[dict[TemplateName, tuple[str, ...]]] = {
+    "trial-log": ("pcm_sha256",),
+    "exposure-ledger": ("pcm_sha256",),
+    "visit-run-sheet": (),
+    "deviations": (),
+}
+
 ColumnClass = Literal[
-    "identity",  # study, IDs, versions, staff codes
+    "identity",  # study, IDs, versions
+    "staff",  # coded staff IDs and sign-offs: never copied into any output
     "condition",  # method, role or scaffold, or a field that reveals one
     "item",  # what was presented (family, type, item ID, stage, candidate)
     "hidden_answer",  # the private intended tuple
@@ -218,8 +231,10 @@ COLUMN_CLASS: Final[dict[str, ColumnClass]] = {
     "event_id": "identity",
     "deviation_id": "identity",
     "dyad_or_batch": "identity",
-    "operator": "identity",
-    "reviewer": "identity",
+    # staff
+    "operator": "staff",
+    "reviewer": "staff",
+    "operator_signoff": "staff",
     # condition (or condition-revealing: only a yoked event has a source event)
     "role": "condition",
     "method_masked": "condition",
@@ -297,7 +312,8 @@ COLUMN_CLASS: Final[dict[str, ColumnClass]] = {
     "comfort_check": "welfare",
     # links
     "matching_deviation_id": "link",
-    "operator_signoff": "link",
+    # extension columns
+    "pcm_sha256": "audio",
     # free text
     "deviations": "free_text",
     "observed_problem": "free_text",
@@ -312,7 +328,7 @@ def template(name: TemplateName) -> Template:
 
 
 def columns_of_class(*classes: ColumnClass) -> frozenset[str]:
-    """Template columns whose class is one of ``classes``."""
+    """Template and extension columns whose class is one of ``classes``."""
     return frozenset(c for c, k in COLUMN_CLASS.items() if k in classes)
 
 

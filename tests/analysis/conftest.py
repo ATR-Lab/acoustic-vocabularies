@@ -47,29 +47,13 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip)
 
 
-# Valid sample values for the string columns of the derived and reconciled tables.
-SAMPLE_STR = {
-    "unit_id": "A-C01",
-    "book_id": "BK-C-7QX4MN",
-    "person_id": "A-C01-L01",
-    "visit_id": "A-C01-L01-D0",
-    "session_id": "SYNTHETIC-1",
-    "trial_id": "A-C01-L01-D0-TR-01",
-    "retry_of": "A-C01-L01-D0-TR-02",
-    "item_id": "K-a1-r1",
-    "station_id": "S1",
-    "report_sha256": "0" * 64,
-    "detail": "row missing",
-    "first_audible_event_id": "E-1",
-    "deviation_id": "DV-1",
-}
-
-
 def _sample_value(column):
+    """A valid value of a column: the spec's ``example`` for strings (None for a nullable
+    string without one), the first enum or list value, or a value inside the bounds."""
     if column.type == "enum":
         return column.values[0]
     if column.type == "str":
-        return SAMPLE_STR[column.name]
+        return column.example
     if column.type == "int":
         return 1 if column.minimum is None else max(column.minimum, 1)
     if column.type == "float":
@@ -79,7 +63,7 @@ def _sample_value(column):
     if column.type == "date":
         return "2027-03-01"
     if column.type == "list":
-        return (column.values[0],) if column.values is not None else ("A-C01-L01-D0-TR-01",)
+        return (column.values[0],) if column.values is not None else ()
     raise AssertionError(column.type)
 
 

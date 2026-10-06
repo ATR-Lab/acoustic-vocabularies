@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import types
 from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, ValidationError
 
+from av_analysis import schemas as schemas_module
 from av_analysis.codes import CHECKS
 from av_analysis.derived import TABLES
 from av_analysis.glmm import Engine, GlmmLog, LadderAttempt
@@ -50,7 +52,7 @@ def test_check_and_write_detect_drift(tmp_path):
     (tmp_path / "glmm-log.schema.json").unlink()
     problems = "\n".join(check_schema_files(tmp_path))
     assert "trials-row.schema.json: differs" in problems
-    assert "stray.schema.json: not generated" in problems
+    assert "stray.schema.json: not generated (no core schema or module SCHEMAS entry)" in problems
     assert "glmm-log.schema.json: missing" in problems
 
 
@@ -120,19 +122,44 @@ def test_reconciliation_example_validates_and_is_masked():
 
 
 def test_exit_and_outputs_manifest_examples_validate():
+    # Projection of the #72 ExportBundle manifest (docs/data/synthetic-visit on main).
+    source = {
+        "format": "data-export-provisional-1",
+        "export_id": "312f03e7f2ed4a74bbaead05993c2aaf",
+        "manifest_sha256": SHA,
+        "protocol_version": "engineering-test",
+        "build_sha256": SHA,
+        "headers_qualified": False,
+        "unacknowledged_torn_tail": False,
+        "record_count": 614,
+        "trial_rows": 36,
+        "exposure_rows": 36,
+    }
     exit_manifest = {
         "format": "av-analysis/exit-manifest",
         "format_version": 1,
         "data_kind": "REAL",
         "visit_id": "A-C07-L03-D0",
-        "session_id": "s-0001",
-        "station_id": "S2",
+        "session_id": "11111111111111111111111111111111",
+        "station_id": "synthetic-station",
         "closed": "complete",
-        "files": [{"path": "trial-log.csv", "bytes": 1, "sha256": SHA}],
+        "source": source,
+        "files": [
+            {"path": "trial-log.csv", "bytes": 1, "sha256": SHA},
+            {"path": "export/raw/events-0000.local.jsonl", "bytes": 2, "sha256": SHA},
+        ],
     }
-    validator("exit-manifest.schema.json").validate(exit_manifest)
-    with pytest.raises(ValidationError):
-        validator("exit-manifest.schema.json").validate({**exit_manifest, "visit_id": "x"})
+    check = validator("exit-manifest.schema.json")
+    check.validate(exit_manifest)
+    check.validate({**exit_manifest, "data_kind": "SYNTHETIC", "source": None})
+    for bad in (
+        {**exit_manifest, "visit_id": "x"},
+        {k: v for k, v in exit_manifest.items() if k != "source"},
+        {**exit_manifest, "source": {**source, "extra": 1}},
+        {**exit_manifest, "source": {k: v for k, v in source.items() if k != "export_id"}},
+    ):
+        with pytest.raises(ValidationError):
+            check.validate(bad)
     outputs = {
         "format": "av-analysis/outputs-manifest",
         "format_version": 1,
@@ -167,3 +194,49 @@ def test_glmm_log_document_validates():
     assert doc["final_rung"] == "no_correlations"
     assert [a["step"] for a in doc["attempts"]] == [1, 2]
     json.dumps(doc)
+
+
+def _extra_schema(name):
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/" + name,
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+
+def test_modules_publish_schemas_through_their_schemas_mapping(monkeypatch):
+    import av_analysis.simulate as simulate
+
+    monkeypatch.setattr(
+        simulate,
+        "SCHEMAS",
+        {"oc-row.schema.json": lambda: _extra_schema("oc-row.schema.json")},
+        raising=False,
+    )
+    docs = schema_documents()
+    assert "oc-row.schema.json" in docs
+    assert list(docs) == sorted(docs)
+    assert "oc-row.schema.json" in schemas_module.module_schemas()
+    assert "oc-row.schema.json" not in schemas_module.core_schemas()
+
+
+def test_module_schemas_refuse_duplicates_and_bad_names(monkeypatch):
+    import av_analysis.monitoring as monitoring
+    import av_analysis.simulate as simulate
+
+    one = {"x.schema.json": lambda: _extra_schema("x.schema.json")}
+    monkeypatch.setattr(simulate, "SCHEMAS", one, raising=False)
+    monkeypatch.setattr(monitoring, "SCHEMAS", one, raising=False)
+    with pytest.raises(ValueError, match="published twice"):
+        schema_documents()
+    monkeypatch.setattr(monitoring, "SCHEMAS", {}, raising=False)
+    core = {"glmm-log.schema.json": lambda: _extra_schema("glmm-log.schema.json")}
+    monkeypatch.setattr(simulate, "SCHEMAS", core, raising=False)
+    with pytest.raises(ValueError, match="already a core schema"):
+        schema_documents()
+    wrong_id = {"y.schema.json": lambda: _extra_schema("z.schema.json")}
+    monkeypatch.setattr(simulate, "SCHEMAS", wrong_id, raising=False)
+    with pytest.raises(ValueError, match="must end .schema.json and match"):
+        schema_documents()
+    assert isinstance(simulate, types.ModuleType)

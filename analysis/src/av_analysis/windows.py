@@ -8,8 +8,10 @@ first visit of each study is the anchor and has no window. The yoked Study B acq
 session must start after its active session ended and within 24 h of the active start
 (:func:`yoked_gap_ok`; proposed reading of "within 24 h", Study B protocol section 5.3).
 
-Calendar dates are the local study dates recorded on the run sheet; no time-zone
-conversion is applied.
+A visit's date is the calendar date of its first run-sheet ``start_time`` in the UTC
+offset recorded with it (``vocab.parse_timestamp``: ISO 8601 with an offset). Session
+times must be timezone-aware: gaps are computed on absolute time, so a gap across a
+daylight-saving change is exact, and naive datetimes are refused.
 """
 
 from __future__ import annotations
@@ -74,14 +76,22 @@ def classify(study: str, visit: str, visit_date: date | None, anchor_date: date 
     return "in_window"
 
 
+def _require_aware(*values: datetime) -> None:
+    for v in values:
+        if v.tzinfo is None or v.utcoffset() is None:
+            raise ValueError(f"naive datetime {v.isoformat()}: session times need a UTC offset")
+
+
 def yoked_gap_hours(active_start: datetime, yoked_start: datetime) -> float:
-    """Hours from the active session's start to the yoked session's start."""
+    """Hours from the active session's start to the yoked session's start (aware times)."""
+    _require_aware(active_start, yoked_start)
     return (yoked_start - active_start).total_seconds() / 3600.0
 
 
 def yoked_gap_ok(active_start: datetime, active_end: datetime, yoked_start: datetime) -> bool:
     """True if the yoked session starts after the active one ended and within 24 h of its
-    start (both datetimes timezone-aware or both naive, as recorded)."""
+    start. All three datetimes must be timezone-aware (``ValueError`` otherwise)."""
+    _require_aware(active_start, active_end, yoked_start)
     if yoked_start < active_end:
         return False
     return yoked_gap_hours(active_start, yoked_start) <= YOKED_MAX_HOURS

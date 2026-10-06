@@ -1,4 +1,4 @@
-"""Package skeleton: every module imports, is documented, and the docs name its owner."""
+"""Package skeleton: every module imports and is documented in an analysis guide."""
 
 from __future__ import annotations
 
@@ -24,16 +24,61 @@ from av_analysis.fileio import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-ARCHITECTURE = ROOT / "analysis" / "docs" / "architecture.md"
+DOCS = ROOT / "analysis" / "docs"
+ARCHITECTURE = DOCS / "architecture.md"
 INTERFACES = ROOT / "docs" / "interfaces" / "analysis.md"
 MODULES = sorted(m.name for m in pkgutil.iter_modules(av_analysis.__path__) if m.name != "__main__")
+SKELETON_MODULES = (
+    "_paths",
+    "cli",
+    "codes",
+    "derive",
+    "derived",
+    "estimators",
+    "fileio",
+    "glmm",
+    "ledger",
+    "loaders",
+    "masking",
+    "missingness",
+    "monitoring",
+    "paths",
+    "pipeline",
+    "rbridge",
+    "reconcile",
+    "references",
+    "report",
+    "schemas",
+    "scoring",
+    "seeds",
+    "simulate",
+    "synthetic_logs",
+    "templates",
+    "unmask",
+    "vocab",
+    "windows",
+)
+
+
+def _guides() -> str:
+    """Text of every analysis guide: architecture.md and the issues' own guides
+    (reconciliation.md, pipeline.md, monitoring.md), so a module an issue adds is
+    documented in its own guide without editing the shared architecture table."""
+    return "\n".join(p.read_text(encoding="utf-8") for p in sorted(DOCS.glob("*.md")))
 
 
 @pytest.mark.parametrize("name", MODULES)
 def test_module_imports_and_is_documented(name):
     module = importlib.import_module(f"av_analysis.{name}")
     assert module.__doc__ and module.__doc__.strip()
-    assert f"`{name}`" in ARCHITECTURE.read_text(encoding="utf-8"), name
+    assert f"`{name}`" in _guides(), f"document `{name}` in an analysis/docs/*.md guide"
+
+
+def test_skeleton_modules_are_in_the_architecture_table():
+    text = ARCHITECTURE.read_text(encoding="utf-8")
+    for name in SKELETON_MODULES:
+        assert f"| `{name}` |" in text, name
+    assert set(SKELETON_MODULES) <= set(MODULES)
 
 
 def test_interface_document_has_a_section_per_issue():
@@ -47,7 +92,7 @@ def test_interface_document_has_a_section_per_issue():
 
 
 def test_docs_hold_no_absolute_local_paths():
-    for path in (ARCHITECTURE, INTERFACES, ROOT / "analysis" / "README.md"):
+    for path in (*sorted(DOCS.glob("*.md")), INTERFACES, ROOT / "analysis" / "README.md"):
         text = path.read_text(encoding="utf-8")
         assert "/Users/" not in text and "C:\\" not in text
 
@@ -57,13 +102,15 @@ def test_vocabularies_are_unique():
         vocab.PLAYBACK_STATUS,
         vocab.AUDIBLE_STATUS,
         vocab.RESPONSE_CODES,
-        vocab.FAULT_CODES,
+        vocab.FAULT_TYPES,
         vocab.DEVIATION_CATEGORIES,
         vocab.VISIT_STATES,
         vocab.TIMINGS,
+        vocab.MISSING_REASONS,
+        vocab.ROW_SOURCES,
     ):
         assert len(set(values)) == len(values)
-    assert set(vocab.FAULT_TITLES) == set(vocab.FAULT_CODES)
+    assert set(vocab.FAULT_TITLES) == set(vocab.FAULT_TYPES)
     assert vocab.BATTERIES == ("pre_old", "trained", "novel", "atomic", "validity")
     assert vocab.ALL_VISITS == ("D0", "D7", "V1", "V2", "V3", "W1", "W4")
 

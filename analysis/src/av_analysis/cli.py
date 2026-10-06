@@ -1,9 +1,11 @@
 """Command line: ``av-analysis <command>`` (also ``python -m av_analysis``).
 
 Shared commands (implemented in the skeleton): ``init-root``, ``schemas``,
-``check-templates``. Issue commands are registered from their owning modules, each of
-which defines ``add_arguments(parser)`` and ``main(args) -> int``, so an issue edits only
-its own module:
+``check-templates`` and ``refresh`` (the operator sequence after a visit: ``reconcile
+--all``, ``derive``, ``dashboard`` on one data root; a step whose command is not
+implemented yet is skipped). Issue commands are registered from their owning modules,
+each of which defines ``add_arguments(parser)`` and ``main(args) -> int``, so an issue
+edits only its own module:
 
 =============  ========================  =====
 Command        Module                    Owner
@@ -47,6 +49,12 @@ ISSUE_COMMANDS: Final[dict[str, tuple[str, str, str]]] = {
     "simulate": ("simulate", "#34", "synthetic datasets and operating characteristics"),
     "dashboard": ("monitoring", "#35", "regenerate the integrity monitoring dashboard"),
 }
+# ``refresh``: the issue commands run in order, each with ``--root`` (and these arguments).
+REFRESH_STEPS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
+    ("reconcile", ("--all",)),
+    ("derive", ()),
+    ("dashboard", ()),
+)
 ENV_TEMPLATES: Final = "AV_TEMPLATES_DIR"
 ENV_PLANNING: Final = "AV_PLANNING_DIR"
 
@@ -104,6 +112,26 @@ def _check_templates(args: argparse.Namespace) -> int:
     return 0 if result.ok and not result.drift else 1
 
 
+def _refresh(args: argparse.Namespace) -> int:
+    """Run :data:`REFRESH_STEPS`: continue after findings (exit 1) so the tables and the
+    dashboard show them; stop at a refused input (exit 2 or more). Exit 3 if no step ran."""
+    parser, handlers = build_parser()
+    worst, ran = 0, 0
+    for step, extra in REFRESH_STEPS:
+        step_args = parser.parse_args([step, "--root", args.root, *extra])
+        try:
+            code = handlers[step](step_args)
+        except NotImplementedError as exc:
+            print(f"refresh: {step} skipped (not implemented yet: {exc})", file=sys.stderr)
+            continue
+        ran += 1
+        print(f"refresh: {step} exit {code}")
+        if code >= 2:
+            return code
+        worst = max(worst, code)
+    return worst if ran else 3
+
+
 def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Handler]]:
     """The argument parser and the handler of every command."""
     parser = argparse.ArgumentParser(
@@ -132,6 +160,12 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Handler]]:
     )
     p.add_argument("dir", nargs="?", help=f"templates folder (default ${ENV_TEMPLATES})")
     handlers["check-templates"] = _check_templates
+
+    p = sub.add_parser(
+        "refresh", help="after a visit: reconcile --all, derive, dashboard (skips missing steps)"
+    )
+    p.add_argument("--root", required=True, help="data root (av-data-root.json)")
+    handlers["refresh"] = _refresh
 
     for name, (module_name, owner, help_text) in ISSUE_COMMANDS.items():
         module = importlib.import_module(f"{__package__}.{module_name}")

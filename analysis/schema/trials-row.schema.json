@@ -2,7 +2,7 @@
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/trials-row.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "One row per trial-log row of a reconciled visit (every scheduled item and every linked retry), joined with the schedule's item and private intended tuple and with the cumulative exposure ledger. Holds the scoring inputs; scoring (Y, operational and valid-delivery) is #34's. No condition labels. Producer #33; consumers #34. Unique key: visit_id, trial_id. CSV encoding and masking rules: analysis/docs/architecture.md and docs/interfaces/analysis.md.",
+  "description": "One row per trial-log row of a reconciled visit (every scheduled item and every linked retry), plus one row per scheduled opportunity lost to an apparatus or logger failure that a deviation record verifies (row_source deviation: no trial-log row, fault code OPPORTUNITY_LOST, valid_delivery false, response fields null; it scores 0 in the operational score). Joined with the schedule's item and private intended tuple and with the cumulative exposure ledger. Holds the scoring inputs; scoring (Y, operational and valid-delivery) is #34's. Opportunities never undertaken after withdrawal have no row. No condition labels. Producer #33; consumers #34. Unique key: visit_id, trial_id. CSV encoding and masking rules: analysis/docs/architecture.md and docs/interfaces/analysis.md.",
   "properties": {
     "action_correct": {
       "description": "Logged action component score.",
@@ -15,6 +15,13 @@
       "description": "Hours since the item's last lesson or test (logged).",
       "type": [
         "number",
+        "null"
+      ]
+    },
+    "audio_offset_mono_ms": {
+      "description": "Audible offset (ms; host monotonic): with the onset gives the message duration and latency from message end.",
+      "type": [
+        "integer",
         "null"
       ]
     },
@@ -97,6 +104,7 @@
           "COUNT_RUN_SHEET",
           "BLOCK_ORDER",
           "WAVEFORM_HASH_MISMATCH",
+          "WAVEFORM_HASH_MISSING",
           "PACKAGE_HASH_MISMATCH",
           "HOLDOUT_OUTSIDE_TEST",
           "HOLDOUT_WRONG_VISIT",
@@ -105,6 +113,7 @@
           "RETRY_LINK_BROKEN",
           "ANSWER_DISPLAY_LEAK",
           "OLD_ATOM_CHANGED",
+          "STORE_CHAIN_BROKEN",
           "YOKED_SOURCE_MISSING",
           "YOKED_MISMATCH",
           "YOKED_GAP",
@@ -125,7 +134,7 @@
       ]
     },
     "exposure_consumed": {
-      "description": "Reconciled: the cue was audible or its onset uncertain.",
+      "description": "Reconciled: the cue was audible, estimated or uncertain (deviation rows: unless the deviation record states that no audio was presented).",
       "type": "boolean"
     },
     "family": {
@@ -135,6 +144,30 @@
         "Q",
         null
       ]
+    },
+    "fault_codes": {
+      "description": "Technical fault codes of the row as logged (vocab.split_fault_codes; deviation rows: OPPORTUNITY_LOST). Empty: no fault.",
+      "items": {
+        "minLength": 1,
+        "pattern": "^[A-Z][A-Z0-9_]{0,79}$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "fault_types": {
+      "description": "Apparatus fault types of the row (vocab.fault_type of each code, plus presentation_freeze when frame_freeze_ms > 250 and failed_reset when reset_ok is false), each once, in vocab.FAULT_TYPES order.",
+      "items": {
+        "enum": [
+          "audio_underrun",
+          "missing_playback",
+          "hash_mismatch",
+          "failed_reset",
+          "missing_response_log",
+          "presentation_freeze",
+          "other"
+        ]
+      },
+      "type": "array"
     },
     "item_id": {
       "description": "Message, atom or speech ID played (null: profile menu, no-cue).",
@@ -183,12 +216,13 @@
       "type": "string"
     },
     "playback_status": {
-      "description": "Observed delivery (vocab.PLAYBACK_STATUS).",
+      "description": "Observed delivery as logged (vocab.PLAYBACK_STATUS); null for deviation rows.",
       "enum": [
-        "played",
+        "observed_complete",
         "uncertain",
-        "no_onset",
-        "no_cue"
+        "confirmed_no_onset",
+        "not_requested",
+        null
       ]
     },
     "position": {
@@ -228,12 +262,12 @@
       ]
     },
     "response_code": {
-      "description": "Logged response code (vocab.RESPONSE_CODES).",
+      "description": "Logged response code (vocab.RESPONSE_CODES); null: no response recorded (lesson or menu item, no-onset failure, interrupted attempt, deviation row).",
       "enum": [
         "commit",
         "dont_know",
         "timeout",
-        "none"
+        null
       ]
     },
     "response_target": {
@@ -264,6 +298,13 @@
       "type": [
         "string",
         "null"
+      ]
+    },
+    "row_source": {
+      "description": "logged: a trial-log row; deviation: a scheduled opportunity without a trial-log row, lost to an apparatus or logger failure verified by a deviation record (deviation_ids names it).",
+      "enum": [
+        "logged",
+        "deviation"
       ]
     },
     "scheduled_onset_mono_ms": {
@@ -324,18 +365,6 @@
         null
       ]
     },
-    "technical_fault_code": {
-      "description": "Apparatus fault, if any.",
-      "enum": [
-        "audio_underrun",
-        "missing_playback",
-        "hash_mismatch",
-        "failed_reset",
-        "missing_response_log",
-        "presentation_freeze",
-        null
-      ]
-    },
     "timing": {
       "description": "Visit timing against its window (windows.classify).",
       "enum": [
@@ -384,7 +413,7 @@
       "type": "string"
     },
     "valid_delivery": {
-      "description": "Verified playback (or a no-cue trial) and usable response logging, as reconciled against the exposure ledger (never inferred from a function returning success).",
+      "description": "Verified playback (or a no-cue trial) and usable response logging, as reconciled against the exposure ledger (never inferred from a function returning success); false for deviation rows.",
       "type": "boolean"
     },
     "visit": {
@@ -400,7 +429,7 @@
       ]
     },
     "visit_date": {
-      "description": "Local study date of the visit (run sheet), when held.",
+      "description": "Calendar date of the visit's first run-sheet start_time, in the UTC offset recorded.",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
       "type": [
         "string",
@@ -433,6 +462,7 @@
     "session_id",
     "trial_id",
     "retry_of",
+    "row_source",
     "block",
     "block_position",
     "position",
@@ -453,10 +483,12 @@
     "scheduled_onset_mono_ms",
     "audio_onset_estimate_mono_ms",
     "onset_uncertainty_ms",
+    "audio_offset_mono_ms",
     "commit_mono_ms",
     "response_time_ms",
     "playback_status",
-    "technical_fault_code",
+    "fault_codes",
+    "fault_types",
     "valid_delivery",
     "exposure_consumed",
     "novelty",

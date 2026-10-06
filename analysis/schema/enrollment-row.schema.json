@@ -1,0 +1,118 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/enrollment-row.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One row per study and set: pre-allocation screening and eligibility records and revealed slots, from the reveal log (eligibility, bank_unavailable and reveal events). Counts only: no coded participant IDs, no list entry fields. Targets are not stored here (the dashboard takes them from the frozen sample-size decisions). Producer #33; consumers #35, #34. Unique key: study, set. CSV encoding and masking rules: analysis/docs/architecture.md and docs/interfaces/analysis.md.",
+  "properties": {
+    "bank_unavailable_n": {
+      "description": "Study B bank_unavailable records; null for Study A.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "data_kind": {
+      "description": "Watermark: SYNTHETIC or REAL, equal to the data root's.",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "eligibility_records_n": {
+      "description": "Eligibility records in the reveal log.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "eligible_persons_n": {
+      "description": "Participants named by those records.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "last_event_date": {
+      "description": "UTC date of the latest reveal-log record.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "planned_persons_n": {
+      "description": "Person slots of the main list units.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "planned_units_n": {
+      "description": "Main list units: Study A batches, Study B dyad slots.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reveal_log_sha256": {
+      "description": "SHA-256 of the reveal log read (null: no reveal log yet).",
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "revealed_persons_n": {
+      "description": "Revealed person slots.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "revealed_units_n": {
+      "description": "Units with at least one revealed slot.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "screening_cases_n": {
+      "description": "Pre-allocation screening cases (Study B: people who could not form a compatible pair); null until their source is agreed (Pending).",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "set": {
+      "description": "Pilot or confirmatory set.",
+      "enum": [
+        "pilot",
+        "confirmatory"
+      ]
+    },
+    "spares_used_n": {
+      "description": "Study B spare dyad slots revealed in place of a main slot; null for Study A.",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "study": {
+      "description": "Study.",
+      "enum": [
+        "A",
+        "B"
+      ]
+    }
+  },
+  "required": [
+    "data_kind",
+    "study",
+    "set",
+    "planned_units_n",
+    "planned_persons_n",
+    "eligibility_records_n",
+    "eligible_persons_n",
+    "screening_cases_n",
+    "revealed_units_n",
+    "revealed_persons_n",
+    "spares_used_n",
+    "bank_unavailable_n",
+    "last_event_date",
+    "reveal_log_sha256"
+  ],
+  "title": "Enrollment and reveals row (reconciled/enrollment.csv)",
+  "type": "object"
+}

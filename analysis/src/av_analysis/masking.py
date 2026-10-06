@@ -10,6 +10,10 @@ Rules (``docs/architecture.md``, "Masking"):
   allowed, condition labels and personal fields are not. Conditions are joined only in
   the analysis pipeline (#34), from the allocation key, at unmasking.
 
+Personal fields include the staff template columns (``operator``, ``reviewer``,
+``operator_signoff``; class ``staff``): they hold coded staff IDs, but no output copies
+them (defence in depth for the "no names" rule, Common procedures section 8).
+
 A field is forbidden when its exact name is a template column of a forbidden class, when
 one of its ``_``-separated tokens is a deny token (``exact_correct`` -> ``correct``), or
 when it contains a deny sequence (``response_time``). The dashboard additionally renders
@@ -32,6 +36,7 @@ _RESPONSE: Final = columns_of_class("response")
 _HIDDEN: Final = columns_of_class("hidden_answer")
 _CONDITION: Final = columns_of_class("condition")
 _FREE_TEXT: Final = columns_of_class("free_text")
+_STAFF: Final = columns_of_class("staff")
 
 # Tokens (exact ``_``-separated parts of a field name) per reason.
 OUTCOME_TOKENS: Final = frozenset({"correct", "accuracy", "score", "scores", "rt", "latency"})
@@ -70,7 +75,7 @@ def forbidden_reason(field: str, policy: Policy) -> str | None:
     ``hidden_answer``, ``rating``, ``condition``, ``personal``), or None if allowed."""
     name = field.lower()
     tokens = _tokens(field)
-    if tokens & PERSONAL_TOKENS or any(s in name for s in PERSONAL_SEQUENCES):
+    if name in _STAFF or tokens & PERSONAL_TOKENS or any(s in name for s in PERSONAL_SEQUENCES):
         return "personal"
     if name in _CONDITION or name in CONDITION_NAMES or tokens & CONDITION_TOKENS:
         return "condition"

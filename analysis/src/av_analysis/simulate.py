@@ -5,8 +5,10 @@ Ports the planning simulation's data-generating process (method/role/scaffold ef
 the logit scale with batch, book, person, item and interaction variance components and
 attrition; central and pessimistic scenarios, null scenarios) and adds missingness and
 fault patterns. Generates the derived tables directly (``derived.TRIALS`` and
-``derived.ENDPOINTS`` rows, ``data_kind`` ``SYNTHETIC``) plus the unmasking key, into a
-SYNTHETIC data root only (``paths``), with every seed stored.
+``derived.ENDPOINTS`` rows, ``data_kind`` ``SYNTHETIC``) plus the files ``unmask`` reads
+(Study A slot list and book key, Study B dyad list) as a :class:`SyntheticDataset`, into a
+SYNTHETIC data root only: tables through ``paths.write_output``, ``keys/`` and ``inputs/``
+files through ``paths.write_synthetic_input``, with every seed stored.
 
 ``av-analysis simulate --scenario NAME --datasets N --seed DEMO-... --out DIR`` writes the
 operating-characteristics CSV (rejection rates with Monte Carlo uncertainty); acceptance:
@@ -40,8 +42,20 @@ def scenarios() -> Mapping[str, Scenario]:
     raise NotImplementedError("#34: simulation scenarios")
 
 
-def simulate_dataset(scenario: Scenario, seed: str) -> dict[str, list[Row]]:
-    """One synthetic dataset: ``trials`` and ``endpoints`` rows (SYNTHETIC)."""
+@dataclass(frozen=True)
+class SyntheticDataset:
+    """One synthetic dataset: derived tables plus the unmasking inputs it implies."""
+
+    scenario: str
+    seed: str  # DEMO- label (seeds.rng)
+    tables: Mapping[str, list[Row]]  # "trials", "endpoints" (derived.TABLES names)
+    # Data-root-relative path -> bytes, e.g. "keys/A/pilot-book-key.json",
+    # "inputs/schedules/A/pilot-slots.json", "inputs/schedules/B/pilot-dyads.json".
+    files: Mapping[str, bytes]
+
+
+def simulate_dataset(scenario: Scenario, seed: str) -> SyntheticDataset:
+    """One synthetic dataset (SYNTHETIC) with its unmasking key and lists."""
     raise NotImplementedError("#34: synthetic dataset")
 
 

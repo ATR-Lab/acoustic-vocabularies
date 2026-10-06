@@ -4,8 +4,10 @@ Rules (repository convention): UTF-8 without BOM, ``\\n`` line endings, JSON wit
 ``indent=2``, sorted keys, ``ensure_ascii=False`` and a trailing newline; CSV through
 ``csv.writer(lineterminator="\\n")``. The same inputs give the same bytes on every
 platform. Raw files are only ever opened for reading (``read_bytes``, ``sha256_file``).
-Writes into a data root go through ``paths.write_output``, which checks the area and
-the SYNTHETIC/REAL watermark before calling :func:`write_bytes`.
+Writes into a data root go through ``paths.write_output`` (output areas), which checks
+the area and the SYNTHETIC/REAL watermark before calling :func:`write_bytes`, or, for
+synthetic generators only, ``paths.write_synthetic_input`` (``raw/``, ``inputs/``,
+``keys/`` of a SYNTHETIC root).
 """
 
 from __future__ import annotations

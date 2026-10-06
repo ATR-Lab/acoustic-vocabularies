@@ -27,26 +27,29 @@ uv run --project analysis av-analysis init-root <dir> --kind SYNTHETIC --label D
 uv run --project analysis av-analysis schemas
 # Compare the external methodology templates with the encoded headers and hashes
 uv run --project analysis av-analysis check-templates <methodology templates folder>
+# After each visit: reconcile --all, derive, dashboard (skips steps not implemented yet)
+uv run --project analysis av-analysis refresh --root <dir>
 ```
 
 ## API
 
 | Module | Contents | Issue |
 | --- | --- | --- |
-| `templates` | `TEMPLATES`, `Template`, `TRIAL_LOG_COLUMNS` (and the other three), `TEMPLATE_SHA256`, `COLUMN_CLASS`, `columns_of_class()`, `check_external(dir)` | skeleton |
-| `vocab` | raw-log values (`PLAYBACK_STATUS`, `RESPONSE_CODES`, `FAULT_CODES`, ...), output enumerations, thresholds | skeleton |
+| `templates` | `TEMPLATES`, `Template`, `TRIAL_LOG_COLUMNS` (and the other three), `EXTENSION_COLUMNS`, `TEMPLATE_SHA256`, `COLUMN_CLASS`, `columns_of_class()`, `check_external(dir)` | skeleton |
+| `vocab` | raw-log values (`PLAYBACK_STATUS`, `AUDIBLE_STATUS`, `RESPONSE_CODES`, ...), `FAULT_TYPES`, `fault_type()`, `split_fault_codes()`, `parse_timestamp()`, output enumerations, thresholds | skeleton |
 | `codes` | `CHECKS`, `CODES`, `code()`, `SUSPENSION_EVENTS`, `FAULT_INJECTIONS` | skeleton |
 | `windows` | `WINDOWS`, `window()`, `classify()`, `yoked_gap_ok()` | skeleton |
-| `derived` | `TRIALS`, `ENDPOINTS`, `VISIT_STATUS`, `DISCREPANCIES`, `EXPOSURE_CUMULATIVE`, `table_bytes()`, `parse_table()`, `row_schema()` | skeleton |
-| `schemas` | `schema_documents()`, `check_schema_files()`, `validator(name)` | skeleton |
-| `paths` | `DataRoot`, `INPUT_PATHS`, `write_output()`, `check_watermark()`, `visit_id()`, `WatermarkError` | skeleton |
+| `derived` | `TRIALS`, `ENDPOINTS`, `VISIT_STATUS`, `DISCREPANCIES`, `EXPOSURE_CUMULATIVE`, `ENROLLMENT`, `table_bytes()`, `parse_table()`, `row_schema()` | skeleton |
+| `schemas` | `schema_documents()` (core plus modules' `SCHEMAS`), `check_schema_files()`, `validator(name)` | skeleton |
+| `paths` | `DataRoot`, `INPUT_PATHS`, `write_output()`, `write_synthetic_input()`, `check_watermark()`, `visit_id()`, `WatermarkError` | skeleton |
 | `masking` | `forbidden_reason(field, policy)`, `forbidden_columns()`, `forbidden_keys()` | skeleton |
 | `fileio`, `seeds` | canonical bytes and hashes; `rng(*labels)` | skeleton |
+| `cli` | `av-analysis` commands; `refresh` runs `REFRESH_STEPS` (reconcile, derive, dashboard) | skeleton |
 | `loaders`, `references`, `reconcile`, `ledger`, `derive`, `synthetic_logs` | reconciliation | #33 |
 | `scoring`, `unmask`, `estimators`, `missingness`, `glmm`, `rbridge`, `simulate`, `report`, `pipeline` | analysis pipeline | #34 |
 | `monitoring` | integrity dashboard | #35 |
 
-Schemas: [`schema/`](schema/) (`*-row.schema.json` for the five tables, `data-root`,
+Schemas: [`schema/`](schema/) (`*-row.schema.json` for the six tables, `data-root`,
 `exit-manifest`, `reconciliation`, `outputs-manifest`, `glmm-log`). R environment:
 [`r/pins.dcf`](r/pins.dcf), `r/install.R`, `r/check_pins.R`.
 

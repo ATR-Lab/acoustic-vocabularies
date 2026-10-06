@@ -2,9 +2,12 @@
 
 ``av-analysis dashboard --root DIR`` regenerates ``monitoring/index.html`` (static HTML and
 CSS, no JavaScript from outside, no network) from the reconciled tables only:
-``reconciled/visit-status.csv`` and ``reconciled/discrepancies.csv`` (``derived``). It
-shows the last update time as the latest visit date and the SHA-256 of the input tables
-(deterministic; no wall clock).
+``reconciled/visit-status.csv``, ``reconciled/discrepancies.csv`` and
+``reconciled/enrollment.csv`` (``derived``). It shows the last update time as the latest
+visit date and the SHA-256 of the input tables (deterministic; no wall clock). After each
+reconciliation run the operator runs ``av-analysis refresh --root DIR`` (``cli``:
+reconcile ``--all``, derive, dashboard), so the dashboard is regenerated without #33's
+commands importing this module.
 
 Hard rule: no accuracy, response, response-time or rating field and no method, role or
 scaffold split ever reaches the rendering layer. The loader keeps only allow-listed
@@ -13,12 +16,14 @@ columns (:func:`allowlist`), every allow-listed column must pass
 rendered, and a build that meets a disallowed column fails (:class:`DisallowedColumnError`).
 Faults are pooled and by station, never by condition. Coded IDs only.
 
-Panels (:data:`PANELS`, issue #35): enrollment against frozen targets
-(``av_schedules.planning`` ``ALLOCATION_CHECKS`` / ``PILOT_ALLOCATION_COUNTS``; final
-targets from the sample-size decisions), allocation progress per batch or dyad, attrition
-and missed visits, window adherence (``windows``), faults by type against
-``vocab.FAULT_RATE_TRIGGER`` and overruns against ``vocab.OVERRUN_*``, reconciliation
-status and open deviations, and red alerts for the three suspension events
+Panels (:data:`PANELS`, issue #35): enrollment against frozen targets (``enrollment``
+counts; targets from ``av_schedules.planning`` ``ALLOCATION_CHECKS`` /
+``PILOT_ALLOCATION_COUNTS`` until the sample-size decisions freeze them), allocation
+progress per batch or dyad, attrition and missed visits, window adherence (``windows``),
+faults by type (``vocab.FAULT_TYPES``) against ``vocab.FAULT_RATE_TRIGGER`` and overruns
+against ``vocab.OVERRUN_*``, reconciliation status, open deviations, comfort and
+withdrawal reports (``visit-status`` ``comfort_flag``, ``comfort_deviations_n``,
+``withdrawal_deviations_n``), and red alerts for the three suspension events
 (``codes.SUSPENSION_EVENTS``) with the affected visit IDs.
 """
 
@@ -45,7 +50,7 @@ class Panel:
 
 PANELS: Final[tuple[Panel, ...]] = (
     Panel("alerts", "Suspension alerts", ("discrepancies", "visit-status")),
-    Panel("enrollment", "Enrollment against frozen targets", ("visit-status",)),
+    Panel("enrollment", "Enrollment against frozen targets", ("enrollment", "visit-status")),
     Panel("allocation", "Allocation progress per batch or dyad", ("visit-status",)),
     Panel("attrition", "Attrition and missed visits", ("visit-status",)),
     Panel("windows", "Visit-window adherence", ("visit-status",)),
@@ -56,7 +61,7 @@ PANELS: Final[tuple[Panel, ...]] = (
         ("visit-status", "discrepancies"),
     ),
 )
-SOURCE_TABLES: Final[tuple[str, ...]] = ("visit-status", "discrepancies")
+SOURCE_TABLES: Final[tuple[str, ...]] = ("visit-status", "discrepancies", "enrollment")
 
 
 class DisallowedColumnError(RuntimeError):

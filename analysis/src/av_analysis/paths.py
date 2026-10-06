@@ -31,6 +31,12 @@ element) and, for synthetic data, a visible ``SYNTHETIC`` banner. A REAL root ma
 inside a committable path of a git work tree, and roots never nest inside a root of the
 other kind. So synthetic outputs cannot land in a real-data directory, and real outputs
 cannot land in a synthetic one or in the public repository.
+
+Read-only areas (``raw/``, ``inputs/``, ``keys/``) are filled by copying exports and
+frozen inputs into a root; no analysis command writes them. The one exception is
+:func:`write_synthetic_input`, the only sanctioned writer of those areas, used by the
+synthetic generators (#33 ``synth-logs`` and fault injection, #34 ``simulate``): it
+accepts SYNTHETIC roots only and refuses content marked as real.
 """
 
 from __future__ import annotations
@@ -78,7 +84,10 @@ OUTPUTS_MANIFEST: Final = "manifest.json"  # <area>/manifest.json of every outpu
 # person_id, visit, package_id). ``inputs/schedules/`` is a copy of the schedules output
 # folder of the set (av-schedules ``--out`` layout) WITHOUT the Study A book key, which
 # goes to ``keys/``; #33 refuses an ``inputs/`` tree that contains a book key. Package
-# folders hold the package JSON documents only (never WAVs).
+# folders hold the package JSON documents only (never WAVs). Study B store snapshots are
+# the menu-store bridge's ``verified_snapshot`` result after the visit's selections
+# (``docs/interfaces/menu-store-bridge.md``, #70) and ``receipts.jsonl`` its selection
+# receipts in order (``before_head``/``after_head`` chain); see ``references``.
 INPUT_PATHS: Final[dict[str, str]] = {
     "schedule": "inputs/schedules/{study}/{unit_id}/schedules/{person_id}/{visit}.json",
     "run_sheet": "inputs/schedules/{study}/{unit_id}/run-sheets/{person_id}/{visit}.csv",
@@ -89,6 +98,7 @@ INPUT_PATHS: Final[dict[str, str]] = {
     "package_audio": "inputs/packages/{package_id}/audio.json",
     "package_hashes": "inputs/schedules/{study}/{set}-package-hashes.json",
     "store_snapshot": "inputs/store-snapshots/{unit_id}/{visit}.json",
+    "store_receipts": "inputs/store-snapshots/{unit_id}/receipts.jsonl",
     "golden_manifest": "inputs/sound/golden-manifest.json",
     "generation_audit": "inputs/generation/{study}-{set}-audit.csv",
     "book_key": "keys/A/{set}-book-key.json",
@@ -271,15 +281,26 @@ class DataRoot:
                 f"{self.path} holds {self.data_kind} data; refusing to write {data_kind} outputs"
             )
 
+    def _inside(self, area: Area, relpath: str, what: str) -> Path:
+        parts = relpath.split("/")
+        if "\\" in relpath or ":" in relpath or any(p in ("", ".", "..") for p in parts):
+            raise WatermarkError(f"invalid {what} path {relpath!r}")
+        return self.area(area).joinpath(*parts)
+
     def output_path(self, area: Area, relpath: str) -> Path:
         """Path of an output file: ``area`` must be an output area and ``relpath`` a
         relative POSIX path that stays inside it."""
         if area not in OUTPUT_AREAS:
             raise WatermarkError(f"area {area!r} is read-only")
-        parts = relpath.split("/")
-        if "\\" in relpath or ":" in relpath or any(p in ("", ".", "..") for p in parts):
-            raise WatermarkError(f"invalid output path {relpath!r}")
-        return self.area(area).joinpath(*parts)
+        return self._inside(area, relpath, "output")
+
+    def input_path(self, area: Area, relpath: str) -> Path:
+        """Path of a file in a read-only area (``raw``, ``inputs``, ``keys``); ``relpath``
+        must be a relative POSIX path that stays inside it. Reading only: writes go through
+        :func:`write_synthetic_input`."""
+        if area not in READ_ONLY_AREAS:
+            raise WatermarkError(f"area {area!r} is not an input area")
+        return self._inside(area, relpath, "input")
 
 
 def _check_nesting(path: Path, data_kind: DataKind) -> None:
@@ -343,5 +364,61 @@ def write_output(
     root.require(data_kind)
     path = root.output_path(area, relpath)
     check_watermark(data, path.suffix, data_kind)
+    write_bytes(path, data)
+    return path
+
+
+def _refuse_real_content(data: bytes, relpath: str) -> None:
+    """Raise :class:`WatermarkError` if synthetic input ``data`` is marked as real."""
+    suffix = Path(relpath).suffix.lower()
+    if suffix == ".json":
+        try:
+            doc = json.loads(data)
+        except ValueError:
+            raise WatermarkError(f"{relpath}: not valid JSON") from None
+        if isinstance(doc, dict):
+            if "data_kind" in doc and doc["data_kind"] != "SYNTHETIC":
+                raise WatermarkError(f"{relpath}: data_kind is not SYNTHETIC")
+            if "demo" in doc and doc["demo"] is not True:
+                raise WatermarkError(f"{relpath}: demo is not true")
+        if Path(relpath).name == EXIT_MANIFEST and (
+            not isinstance(doc, dict) or doc.get("data_kind") != "SYNTHETIC"
+        ):
+            raise WatermarkError(f"{relpath}: an exit manifest needs data_kind SYNTHETIC")
+    elif suffix == ".csv":
+        try:
+            header, rows = parse_csv(data)
+        except CsvFormatError as exc:
+            raise WatermarkError(f"{relpath}: not strict CSV: {exc}") from None
+        if "data_kind" in header:
+            i = header.index("data_kind")
+            if any(r[i] != "SYNTHETIC" for r in rows):
+                raise WatermarkError(f"{relpath}: data_kind column is not SYNTHETIC")
+
+
+def write_synthetic_input(root: DataRoot, area: Area, relpath: str, data: bytes) -> Path:
+    """Write one file into a read-only area of a SYNTHETIC root (the only sanctioned way).
+
+    For synthetic generators only: #33 ``synth-logs`` and fault injection (raw logs, exit
+    manifests, ``inputs/``) and #34 ``simulate`` (``keys/`` and ``inputs/``). Refuses a
+    root that is not SYNTHETIC, an area other than ``raw``, ``inputs`` or ``keys``, a path
+    that leaves the area, a ``raw/`` path other than ``deviations-log.csv`` or
+    ``<visit_id>/<file>``, and content marked as real: a JSON object whose ``data_kind`` is
+    not ``SYNTHETIC`` or whose ``demo`` is not ``true``, an exit manifest without
+    ``data_kind`` ``SYNTHETIC``, or a CSV whose ``data_kind`` column holds another value.
+    Existing files are replaced (fault injection rewrites raw files).
+    """
+    if not root.synthetic:
+        raise WatermarkError(f"{root.path} holds REAL data; synthetic inputs are refused")
+    path = root.input_path(area, relpath)
+    if area == "raw" and relpath != DEVIATIONS_LOG:
+        head, _, rest = relpath.partition("/")
+        try:
+            parse_visit_id(head)
+        except ValueError:
+            raise WatermarkError(f"invalid raw path {relpath!r}") from None
+        if not rest or "/" in rest:
+            raise WatermarkError(f"invalid raw path {relpath!r}")
+    _refuse_real_content(data, f"{area}/{relpath}")
     write_bytes(path, data)
     return path

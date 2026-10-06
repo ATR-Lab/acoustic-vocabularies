@@ -16,6 +16,21 @@
   linked), ``fail`` (any unresolved), ``not_applicable`` (study or visit without it).
 * Never computes accuracy by condition, never writes outcome, response, response-time,
   rating or condition fields (``masking`` policy ``masked``).
+* **C6 is symmetric.** Study B C6 (yoked ledger) is evaluated once per dyad and visit
+  over both members' exposure ledgers and run sheets, and the same C6 status,
+  discrepancies (same codes, rows and details) and partner input files are written into
+  both members' reports, as ``pair_gap_hours`` is reported on both members' rows. C6
+  ``rows`` list event IDs sorted, never marked as source or copy, and details name no
+  role, so no report, visit-status row or discrepancy row shows which member was yoked.
+  For V1-V3 C6 is never ``not_applicable`` for one member only.
+* **Lost opportunities.** A scheduled opportunity without a trial-log row is a
+  ``COUNT_MISSING_TRIAL`` discrepancy. When a deviation record verifies an apparatus or
+  logger failure for it (category ``technical`` or ``audio``, ``event_id`` naming the
+  trial, the visit or the session) the discrepancy is resolved and ``derive`` emits a
+  ``trials`` row with ``row_source`` deviation (operational score 0). When the record is
+  a withdrawal, the opportunity was never undertaken and gets no row.
+* Raw times (run sheet, deviations) are ISO 8601 with a UTC offset
+  (``vocab.parse_timestamp``); a naive time is a ``RAW_FORMAT`` discrepancy.
 """
 
 from __future__ import annotations

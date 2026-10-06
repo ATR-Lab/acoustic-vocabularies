@@ -9,7 +9,8 @@ on:
       - "docs/interfaces/analysis.md"
       - ".github/workflows/analysis.yml"
   push:
-    branches: [main]
+    # o4.5.*: the stacked analysis branches run before their pull requests open.
+    branches: [main, "o4.5.*"]
     paths:
       - "analysis/**"
       - "tests/analysis/**"
@@ -60,6 +61,26 @@ jobs:
         run: >
           uv run --project analysis pytest --import-mode=importlib -p no:cacheprovider tests/analysis
           -m "not needs_r" --cov=av_analysis --cov-report=term --cov-fail-under=90
+      - name: Issue evidence hooks (analysis/ci/*.sh, see analysis/ci/README.md)
+        run: |
+          shopt -s nullglob
+          mkdir -p analysis/out/ci
+          for hook in analysis/ci/*.sh; do
+            name="$(basename "$hook" .sh)"
+            export AV_CI_OUT="analysis/out/ci/$name"
+            mkdir -p "$AV_CI_OUT"
+            echo "::group::$hook"
+            bash "$hook"
+            echo "::endgroup::"
+          done
+      - name: Upload evidence (analysis/out/ci)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-evidence-${{ matrix.os }}
+          path: analysis/out/ci/
+          if-no-files-found: ignore
+          retention-days: 30
 
   r:
     name: analysis R (lme4, pinned)

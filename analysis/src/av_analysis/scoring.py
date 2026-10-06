@@ -4,12 +4,16 @@ From ``derived/trials.csv`` and ``derived/endpoints.csv``:
 
 * ``Y = 1`` only when the first committed action and referent both equal the private
   target; wrong components, ``dont_know`` and ``timeout`` are 0. A verified technical
-  failure is 0 in the operational score and keeps its fault code; the valid-delivery
-  score excludes it (``valid_delivery``). A linked retry never becomes a new first
-  encounter.
+  failure is 0 in the operational score and keeps its fault codes; the valid-delivery
+  score excludes it (``valid_delivery``). That includes ``trials`` rows with
+  ``row_source`` deviation (opportunities lost to a verified apparatus or logger
+  failure: no response fields, ``OPPORTUNITY_LOST``). A linked retry never becomes a new
+  first encounter.
 * A person's battery score is the mean of its scheduled ``Y`` values, available only when
   the endpoints row is ``complete`` (withdrawal before all 36 makes the endpoint
-  missing, never 0); Study B structured and dictionary denominators are 18 each.
+  missing, never 0; ``missing_reason`` ``withdrawn_mid_battery``); Study B structured and
+  dictionary denominators are 18 each. A partial battery keeps its known contribution
+  (``operational_sum``) for the all-assigned bounds (``missingness``).
 * Response time: commit minus audible onset (ms); time-to-commit right-censored at 12 s.
 """
 
@@ -39,12 +43,14 @@ class TrialScore:
 class BatteryScore:
     """One person's score on one battery of one visit, with its denominators."""
 
+    person_id: str
     visit_id: str
     battery: str
     family: str | None  # None: both families; "K"/"Q": per-family score (B scaffold)
     scheduled_n: int
-    operational_n: int
+    operational_n: int  # accounted opportunities (endpoints accounted_n, or per family)
     valid_n: int
+    operational_sum: float  # sum of operational Y over the accounted opportunities
     operational: float | None  # None when the endpoint is not complete
     valid_delivery: float | None
 

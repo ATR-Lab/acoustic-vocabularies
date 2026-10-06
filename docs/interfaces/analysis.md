@@ -26,7 +26,7 @@ Every command works on a data root marked by `av-data-root.json`
 | `raw/deviations-log.csv` | read-only | study-wide append-only deviations and corrections (deviations template) |
 | `inputs/` | read-only | reference inputs, paths below |
 | `keys/` | read-only, #34 only | `A/<set>-book-key.json` |
-| `reconciled/` | #33 | `<visit_id>/reconciliation.json`, `visit-status.csv`, `discrepancies.csv`, `exposure-cumulative.csv`, `manifest.json` |
+| `reconciled/` | #33 | `<visit_id>/reconciliation.json`, `visit-status.csv`, `discrepancies.csv`, `exposure-cumulative.csv`, `enrollment.csv`, `manifest.json` |
 | `derived/` | #33 | `trials.csv`, `endpoints.csv`, `manifest.json` |
 | `estimates/` | #34 | section 9 report, tables, GLMM logs, `manifest.json` |
 | `monitoring/` | #35 | `index.html`, `manifest.json` |
@@ -45,34 +45,58 @@ output folder of the set, without the book key):
 | `package_hashes` | `inputs/schedules/{study}/{set}-package-hashes.json` |
 | `reveal_log` | `inputs/reveal/{study}-{set}.jsonl` |
 | `package_manifest`, `package_audio` | `inputs/packages/{package_id}/manifest.json`, `.../audio.json` (JSON only) |
-| `store_snapshot` | `inputs/store-snapshots/{unit_id}/{visit}.json` (Study B, after each wave) |
+| `store_snapshot` | `inputs/store-snapshots/{unit_id}/{visit}.json` (Study B: the menu-store bridge's `verified_snapshot` after the visit's selections) |
+| `store_receipts` | `inputs/store-snapshots/{unit_id}/receipts.jsonl` (Study B: the bridge's selection receipts, in order) |
 | `golden_manifest` | `inputs/sound/golden-manifest.json` |
 | `generation_audit` | `inputs/generation/{study}-{set}-audit.csv` (**Pending** #24) |
 | `book_key` | `keys/A/{set}-book-key.json` |
 
-**Exit manifest** ([schema](../../analysis/schema/exit-manifest.schema.json)), written by
-the station when a session closes (**Pending** agreement with #72/#73): `format`
+**Exit manifest** ([schema](../../analysis/schema/exit-manifest.schema.json)): `format`
 `av-analysis/exit-manifest`, `format_version` 1, `data_kind`, `visit_id`, `session_id`,
-`station_id`, `closed` (`complete`/`interrupted`), `files` (`path`, `bytes`, `sha256`
-of every other file in the folder).
+`station_id`, `closed` (`complete`/`interrupted`), `source` and `files` (`path`, `bytes`,
+`sha256` of every other file in the folder). It is a projection of the data logger's
+ExportBundle manifest (#72, `docs/data/README.md`), written when an export is imported
+into a data root (**Pending** agreement with #72/#73); the synthetic generator writes
+`source` null, a REAL root requires it.
+
+| Exit manifest | ExportBundle manifest (`data-export-provisional-1`) |
+| --- | --- |
+| `session_id`, `station_id` | `identity.session_id`, `identity.station_id` |
+| `visit_id` | person slot bound to `identity.coded_id` in the reveal log, plus the visit |
+| `closed` | `interrupted` when `unacknowledged_torn_tail` is true or the journal has no `visit_complete` record, else `complete` |
+| `source.format`, `source.export_id` | `schema_version`, `export_id` |
+| `source.manifest_sha256` | SHA-256 of the export manifest bytes (supplied out of band) |
+| `source.protocol_version`, `source.build_sha256` | `identity.protocol_version`, `identity.build_sha256` |
+| `source.headers_qualified`, `source.unacknowledged_torn_tail` | same names |
+| `source.record_count`, `source.trial_rows`, `source.exposure_rows` | same names |
+| `files` | the template CSVs written by the column adapter, the operator's run sheet and deviations, and any export files kept (for example under `export/`), hashed at import |
 
 **Watermark.** JSON outputs carry top-level `data_kind`; CSV outputs a first column
 `data_kind`; HTML `<meta name="av-data-kind" content="SYNTHETIC|REAL">`; Markdown a line
 `av-data-kind: SYNTHETIC|REAL`; synthetic HTML and Markdown a visible `SYNTHETIC` banner.
 `paths.write_output` refuses anything else and any write into a root of the other kind.
+`raw/`, `inputs/` and `keys/` are written only by the synthetic generators, through
+`paths.write_synthetic_input` (SYNTHETIC roots only, content marked as real refused).
 
-### Raw-log values (proposal; **Pending** confirmation by #67, #72, #73)
+### Raw-log values (**Pending** confirmation by #67, #72, #73)
 
-| Column | Values |
-| --- | --- |
-| trial log `playback_status` | `played`, `uncertain`, `no_onset`, `no_cue` |
-| trial log `response_code` | `commit`, `dont_know`, `timeout`, `none` |
-| trial log `technical_fault_code` | empty or `audio_underrun`, `missing_playback`, `hash_mismatch`, `failed_reset`, `missing_response_log`, `presentation_freeze` |
-| exposure ledger `audible_status` | `audible`, `uncertain`, `not_audible` |
-| run sheet `comfort_check` | `ok`, `adjusted`, `stopped` |
-| deviations `category` | `technical`, `audio`, `matching`, `window`, `missed_visit`, `withdrawal`, `comfort`, `corpus_exposure`, `answer_leak`, `procedure`, `correction`, `other` |
-| booleans | `true`, `false` |
-| `waveform_sha256` | PCM-sample SHA-256 (`composite_sha256` for messages, `pcm_sha256` for atoms and options) |
+Where the provisional data logger on main already emits a value (#72,
+`data-csv-provisional-1`), the analysis accepts the producer's value; the column adapter
+from the provisional headers to the template headers is still **Pending**.
+
+| Column | Values | Source |
+| --- | --- | --- |
+| trial log `playback_status` | `observed_complete`, `uncertain`, `confirmed_no_onset`, `not_requested` | producer |
+| exposure ledger `audible_status` | `confirmed_audible`, `estimated`, `uncertain`, `confirmed_no_onset` (all but the last consume exposure) | producer |
+| trial log `response_code` | `commit`, `dont_know`, `timeout`; empty = no response recorded | producer |
+| `technical_fault_code` | empty, or codes `^[A-Z][A-Z0-9_]{0,79}$` joined by `;`; fault type by `vocab.fault_type` (`AUDIO_UNDERRUN`, `MISSING_PLAYBACK`, `HASH_MISMATCH`, `FAILED_RESET`, `MISSING_RESPONSE_LOG`, `PRESENTATION_FREEZE` and known producer codes; any other code: `other`); also `presentation_freeze` when `frame_freeze_ms` > 250 and `failed_reset` when `reset_ok` is `false` | producer codes; mapping proposal |
+| `waveform_sha256` | file SHA-256 for playback from a package file; PCM-sample SHA-256 (`composite_sha256`, `pcm_sha256`) for audio composed in memory; empty only for composed audio with a `pcm_sha256` extension value | **Pending** #64/#72 |
+| extension columns | trial log and exposure ledger may end with `pcm_sha256` (`templates.EXTENSION_COLUMNS`) | proposal |
+| run sheet `start_time`, `end_time`; deviations `timestamp` | ISO 8601 with seconds and a UTC offset, e.g. `2027-03-01T09:30:00+01:00` (`Z` for UTC); naive times refused | proposal |
+| deviations `operator`, `reviewer`; run sheet `operator_signoff` | coded staff IDs `^[A-Z]{1,3}[0-9]{2,4}$` (e.g. `S03`), never names; never copied to outputs | proposal |
+| run sheet `comfort_check` | `ok`, `adjusted`, `stopped` | proposal |
+| deviations `category` | `technical`, `audio`, `matching`, `window`, `missed_visit`, `withdrawal`, `comfort`, `corpus_exposure`, `answer_leak`, `procedure`, `correction`, `other` | proposal |
+| booleans | `true`, `false` | producer |
 
 ### Tables
 
@@ -81,11 +105,19 @@ Row schemas (generated from `derived.TABLES`, typed rows):
 [`endpoints`](../../analysis/schema/endpoints-row.schema.json),
 [`visit-status`](../../analysis/schema/visit-status-row.schema.json),
 [`discrepancies`](../../analysis/schema/discrepancies-row.schema.json),
-[`exposure-cumulative`](../../analysis/schema/exposure-cumulative-row.schema.json).
+[`exposure-cumulative`](../../analysis/schema/exposure-cumulative-row.schema.json),
+[`enrollment`](../../analysis/schema/enrollment-row.schema.json).
 CSV: UTF-8, `\n`, header = column names in schema order (`required`), first column
 `data_kind`, empty cell = null, `true`/`false`, decimal integers, floats as shortest
 round-trip decimal, dates `YYYY-MM-DD`, lists joined by `|`, rows sorted and unique on
 the table key. Read and write them with `derived.parse_table` / `derived.table_bytes`.
+
+`trials` has one row per trial-log row and one per scheduled opportunity lost to an
+apparatus or logger failure that a deviation record verifies (`row_source` `deviation`:
+fault code `OPPORTUNITY_LOST`, `valid_delivery` false, response fields null; operational
+score 0). `endpoints.accounted_n` and `fault_n` include them (`lost_n`). An opportunity
+never undertaken after withdrawal has no row (`missing_reason` `withdrawn_mid_battery`);
+`technical_stop` marks a technical stop without a verifying deviation record.
 
 ### Checks and discrepancy codes
 
@@ -93,15 +125,21 @@ the table key. Read and write them with `derived.parse_table` / `derived.table_b
 | --- | --- | --- |
 | C1 | raw-integrity | `RAW_MANIFEST_MISSING`, `RAW_FILE_MISSING`, `RAW_FILE_UNLISTED`, `RAW_HASH_CHANGED`, `RAW_FORMAT`, `REFERENCE_INPUT` |
 | C2 | counts | `COUNT_MISSING_TRIAL`, `COUNT_EXTRA_TRIAL`, `COUNT_MISSING_PLAY`, `COUNT_EXTRA_PLAY`, `COUNT_RUN_SHEET`, `BLOCK_ORDER` |
-| C3 | waveform-hashes | `WAVEFORM_HASH_MISMATCH`, `PACKAGE_HASH_MISMATCH` (both `WRONG_FILE_MAPPING`) |
+| C3 | waveform-hashes | `WAVEFORM_HASH_MISMATCH`, `PACKAGE_HASH_MISMATCH` (both `WRONG_FILE_MAPPING`), `WAVEFORM_HASH_MISSING` |
 | C4 | exposure | `HOLDOUT_OUTSIDE_TEST`, `HOLDOUT_WRONG_VISIT`, `HOLDOUT_REPEAT_AS_NOVEL`, `UNCERTAIN_NOT_CONSUMED`, `RETRY_LINK_BROKEN`, `ANSWER_DISPLAY_LEAK` (`ANSWER_LEAK`) |
-| C5 | growth (B) | `OLD_ATOM_CHANGED` (`OLD_WAVEFORM_CHANGED`) |
+| C5 | growth (B) | `OLD_ATOM_CHANGED` (`OLD_WAVEFORM_CHANGED`), `STORE_CHAIN_BROKEN` |
 | C6 | yoked-ledger (B) | `YOKED_SOURCE_MISSING`, `YOKED_MISMATCH`, `YOKED_GAP` |
 | C7 | windows | `WINDOW_EARLY`, `WINDOW_LATE`, `VISIT_ORDER` |
 | C8 | deviation-links | `DEVIATION_MISSING`, `DEVIATION_UNKNOWN` |
 
 `codes.CODES` holds each code's title, description and first resolution step; the list
-may grow (consumers render codes generically). Windows (`windows.WINDOWS`): A D7 6-8 days
+may grow (consumers render codes generically). C3 compares a logged hash with both
+expected hashes of the scheduled item (`references.ExpectedHash`: PCM or composite hash,
+and the file hash, `null` for composed audio). C5 compares, for every atom of an earlier
+wave, the `verified_snapshot` entry (profile, rank, PCM and file hash, selection receipt)
+across later snapshots and checks that the receipts' `before_head`/`after_head` chain links
+the snapshots' `book_head` values; per-atom recipe identity is **Pending** (#70, #26). C6
+is evaluated once per dyad and visit and written identically into both members' reports. Windows (`windows.WINDOWS`): A D7 6-8 days
 after D0; B V2 1-3 and V3 3-5 days after V1 (V3 after V2); W1 6-8 and W4 26-30 days after
 the person's V3; yoked acquisition sessions after the active one ended and within 24 h of
 its start.
@@ -111,14 +149,26 @@ its start.
 `masking.forbidden_reason(field, policy)`: policy `masked` (reports, reconciled tables,
 everything the dashboard reads or renders) forbids outcome, response, response-time,
 hidden-answer, rating, condition and personal fields; policy `derived` (derived tables)
-forbids condition and personal fields.
+forbids condition and personal fields. Personal fields include the staff template
+columns `operator`, `reviewer` and `operator_signoff`.
 
 ### Command line
 
 `av-analysis` (`uv run --project analysis av-analysis ...` or `python -m av_analysis`):
-`init-root`, `schemas [--write]`, `check-templates [DIR]` (skeleton); `synth-logs`,
-`reconcile`, `derive` (#33); `run`, `simulate` (#34); `dashboard` (#35). Exit codes: 0
-success, 1 findings, 2 refused input, 3 not implemented yet.
+`init-root`, `schemas [--write]`, `check-templates [DIR]`, `refresh --root DIR`
+(skeleton); `synth-logs`, `reconcile`, `derive` (#33); `run`, `simulate` (#34);
+`dashboard` (#35). Exit codes: 0 success, 1 findings, 2 refused input, 3 not implemented
+yet. `refresh` is the operator sequence after a visit: `reconcile --all`, `derive`,
+`dashboard`; it continues after findings, stops at a refused input and skips a command
+that is not implemented yet.
+
+### Schemas published by issue modules
+
+`analysis/schema/` holds the core schemas above and any schema an issue module publishes
+through a module-level `SCHEMAS` mapping (`"<name>.schema.json"` -> function returning the
+document, `$id` ending in that name); `av-analysis schemas` collects them, so an issue
+adds a schema (for example #34's operating-characteristics rows, #35's dashboard data)
+without editing `schemas.py`.
 
 ## Reconciliation (#33)
 
@@ -133,12 +183,16 @@ discrepancy-code guide).
   `not_applicable`; counts), `discrepancies` (`seq`, `check`, `code`, `rows`,
   `deviation_id`, `resolved`, `suspension_event`, `detail`), `summary`. Same inputs, same
   bytes. Exit 1 when a visit fails.
-- `av-analysis derive --root DIR`: the five tables and the area manifests.
+- `av-analysis derive --root DIR`: the six tables and the area manifests.
 - `av-analysis synth-logs --demo-seed DEMO-... --out DIR [--fault NAME --visit ID]`:
   SYNTHETIC roots for every visit type; fault injection (`codes.FAULT_INJECTIONS`).
 
+Synthetic generators write `raw/` and `inputs/` only through
+`paths.write_synthetic_input`; synthetic event IDs are opaque.
+
 **Pending (#33):** loader value rules, reference-input details, the per-check rules,
-how counts in `visit-status` are computed, sample reports per visit type, timings.
+how counts in `visit-status` and `enrollment` are computed, sample reports per visit
+type, timings.
 
 ## Analysis pipeline (#34)
 
@@ -159,7 +213,15 @@ hash). Design: `analysis/docs/pipeline.md`.
 - R: `analysis/r/pins.dcf` (R 4.6.1, CRAN snapshot 2026-09-01, lme4 2.0-6),
   `install.R`, `check_pins.R`; `rbridge.run_r` contract in `rbridge`.
 - `av-analysis simulate --scenario NAME --datasets N --seed DEMO-... --out DIR`:
-  synthetic derived tables and operating characteristics.
+  synthetic derived tables and operating characteristics; `simulate.simulate_dataset`
+  returns a `SyntheticDataset` (tables plus the key and list files `unmask` reads,
+  written with `paths.write_synthetic_input`).
+- Interfaces fixed by the skeleton: `unmask.load_conditions(root, study, set) ->
+  Conditions` (books or dyads, person -> unit and condition, unit -> planned persons);
+  `missingness.all_assigned_bounds(study, scores, conditions, planned)` and
+  `tipping_grid(study, scores, conditions, planned, *, step=0.05)` over
+  `scoring.BatteryScore` values (with `operational_sum`, the known contribution of a
+  partial battery).
 
 **Pending (#34):** estimator output tables, report file layout, model specifications,
 R scripts, scenario list, operating-characteristics CSV columns.
@@ -171,9 +233,13 @@ research assistants (masked staff), pilot reviews. Design and reading guide:
 `analysis/docs/monitoring.md`.
 
 - `av-analysis dashboard --root DIR`: `monitoring/index.html` (static, watermarked) from
-  `reconciled/visit-status.csv` and `reconciled/discrepancies.csv` only, through an
-  explicit column allowlist (`monitoring.allowlist()`); panels `monitoring.PANELS`
-  (alerts, enrollment, allocation, attrition, windows, faults, reconciliation).
+  `reconciled/visit-status.csv`, `reconciled/discrepancies.csv` and
+  `reconciled/enrollment.csv` only, through an explicit column allowlist
+  (`monitoring.allowlist()`); panels `monitoring.PANELS` (alerts, enrollment, allocation,
+  attrition, windows, faults, reconciliation). Comfort and welfare come from
+  `visit-status` `comfort_flag`, `comfort_deviations_n` and `withdrawal_deviations_n`;
+  faults by type from `fault_<type>_n` (`vocab.FAULT_TYPES`, including `other`).
+- Regenerated after each reconciliation run by `av-analysis refresh --root DIR`.
 - Red alerts for `WRONG_FILE_MAPPING`, `ANSWER_LEAK`, `OLD_WAVEFORM_CHANGED` with visit IDs.
 
 **Pending (#35):** the allowlist, panel metrics, last-update rule, reading guide,

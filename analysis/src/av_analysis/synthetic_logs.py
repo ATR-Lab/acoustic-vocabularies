@@ -8,8 +8,13 @@ gives schedules, allocation lists and run sheets) plus synthetic package JSON, a
 ``raw/<visit_id>/`` with the four template CSVs and an exit manifest for every visit type
 (A D0, D7; B V1, V2, V3, W1, W4, both dyad members, yoked within 24 h). Clean logs must
 reconcile with zero discrepancies. Responses are synthetic placeholders drawn from
-``seeds.rng`` (no learning model; #34's ``simulate`` owns outcome models); IDs and
-session IDs carry a ``SYNTHETIC`` marker.
+``seeds.rng`` (no learning model; #34's ``simulate`` owns outcome models); session IDs
+carry a ``SYNTHETIC`` marker. Values follow ``vocab`` (the provisional producer's values,
+canonical fault codes, times with a UTC offset, coded staff IDs); exposure event IDs are
+opaque (no person slot, so C6 rows reveal no role); exit manifests have ``source`` null.
+
+Every file in ``raw/``, ``inputs/`` and ``keys/`` is written through
+``paths.write_synthetic_input`` (SYNTHETIC roots only), never with ``fileio`` directly.
 
 Fault injection: ``inject_fault`` applies one fault of ``codes.FAULT_INJECTIONS`` to a
 visit of a synthetic root (rewriting the raw files and their exit manifest consistently,

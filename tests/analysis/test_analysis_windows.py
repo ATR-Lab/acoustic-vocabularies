@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from av_analysis.vocab import parse_timestamp
 from av_analysis.windows import (
     ANCHOR_VISITS,
     WINDOWS,
@@ -75,9 +76,45 @@ def test_classify_is_consistent_with_the_bounds(key, days):
 
 
 def test_yoked_gap():
-    start = datetime(2027, 3, 1, 10, 0)
+    start = datetime(2027, 3, 1, 10, 0, tzinfo=UTC)
     end = start + timedelta(minutes=75)
     assert yoked_gap_hours(start, start + timedelta(hours=23)) == 23.0
     assert yoked_gap_ok(start, end, start + timedelta(hours=24))
     assert not yoked_gap_ok(start, end, start + timedelta(hours=24, minutes=1))
     assert not yoked_gap_ok(start, end, start + timedelta(minutes=30))  # before active ended
+
+
+def test_yoked_gap_uses_recorded_offsets_and_refuses_naive_times():
+    # Across a daylight-saving change the wall-clock gap is 24.5 h, the real gap 23.5 h.
+    active = parse_timestamp("2027-03-27T10:00:00+01:00")
+    active_end = parse_timestamp("2027-03-27T11:15:00+01:00")
+    yoked = parse_timestamp("2027-03-28T10:30:00+02:00")
+    assert yoked_gap_hours(active, yoked) == 23.5
+    assert yoked_gap_ok(active, active_end, yoked)
+    assert parse_timestamp("2027-03-28T10:30:00+02:00").date() == date(2027, 3, 28)
+    naive = datetime(2027, 3, 1, 10, 0)
+    with pytest.raises(ValueError, match="naive"):
+        yoked_gap_hours(naive, naive)
+    with pytest.raises(ValueError, match="naive"):
+        yoked_gap_ok(active, active_end, naive)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "2027-03-01T09:30:00",  # naive
+        "2027-03-01 09:30:00+01:00",
+        "2027-03-01T09:30+01:00",  # no seconds
+        "2027-02-30T09:30:00+01:00",  # impossible date
+        "2027-03-01T09:30:00+1:00",
+        "",
+    ],
+)
+def test_parse_timestamp_refuses_naive_or_malformed_times(text):
+    with pytest.raises(ValueError):
+        parse_timestamp(text)
+
+
+def test_parse_timestamp_accepts_offsets_and_fractions():
+    assert parse_timestamp("2027-03-01T09:30:00Z").utcoffset() == timedelta(0)
+    assert parse_timestamp("2027-03-01T09:30:00.250-05:00").microsecond == 250_000

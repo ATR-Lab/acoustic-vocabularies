@@ -49,6 +49,11 @@
       },
       "type": "array"
     },
+    "comfort_deviations_n": {
+      "description": "Deviation records of category comfort (comfort and welfare reports).",
+      "minimum": 0,
+      "type": "integer"
+    },
     "comfort_flag": {
       "description": "Run sheet records a comfort adjustment or stop.",
       "type": [
@@ -81,37 +86,42 @@
       "type": "integer"
     },
     "fault_audio_underrun_n": {
-      "description": "Played opportunities with fault audio_underrun.",
+      "description": "Opportunities with at least one fault of type audio_underrun (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
     "fault_failed_reset_n": {
-      "description": "Played opportunities with fault failed_reset.",
+      "description": "Opportunities with at least one fault of type failed_reset (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
     "fault_hash_mismatch_n": {
-      "description": "Played opportunities with fault hash_mismatch.",
+      "description": "Opportunities with at least one fault of type hash_mismatch (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
     "fault_missing_playback_n": {
-      "description": "Played opportunities with fault missing_playback.",
+      "description": "Opportunities with at least one fault of type missing_playback (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
     "fault_missing_response_log_n": {
-      "description": "Played opportunities with fault missing_response_log.",
+      "description": "Opportunities with at least one fault of type missing_response_log (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
     "fault_n": {
-      "description": "Opportunities with any technical fault.",
+      "description": "Opportunities with any technical fault (lost opportunities included).",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "fault_other_n": {
+      "description": "Opportunities with at least one fault of type other (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
     "fault_presentation_freeze_n": {
-      "description": "Played opportunities with fault presentation_freeze.",
+      "description": "Opportunities with at least one fault of type presentation_freeze (vocab.FAULT_TYPES).",
       "minimum": 0,
       "type": "integer"
     },
@@ -121,7 +131,7 @@
       "type": "integer"
     },
     "opportunities_n": {
-      "description": "Trial-log rows with a scheduled cue (played opportunities).",
+      "description": "Accounted scheduled opportunities of the visit (trials rows that are not retries, including lost opportunities).",
       "minimum": 0,
       "type": "integer"
     },
@@ -237,7 +247,7 @@
       ]
     },
     "visit_date": {
-      "description": "Local study date of the visit (run sheet), when held.",
+      "description": "Calendar date of the visit's first run-sheet start_time, in the UTC offset recorded.",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
       "type": [
         "string",
@@ -280,6 +290,11 @@
         "integer",
         "null"
       ]
+    },
+    "withdrawal_deviations_n": {
+      "description": "Deviation records of category withdrawal.",
+      "minimum": 0,
+      "type": "integer"
     }
   },
   "required": [
@@ -317,9 +332,12 @@
     "fault_failed_reset_n",
     "fault_missing_response_log_n",
     "fault_presentation_freeze_n",
+    "fault_other_n",
     "comfort_flag",
     "deviations_n",
     "open_deviations_n",
+    "comfort_deviations_n",
+    "withdrawal_deviations_n",
     "report_sha256"
   ],
   "title": "Per-visit status row (reconciled/visit-status.csv)",

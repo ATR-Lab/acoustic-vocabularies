@@ -12,6 +12,7 @@ from av_schedules.planning import TEMPLATE_SHA256 as SCHEDULES_TEMPLATE_SHA256
 from av_analysis.cli import templates_dir_from_env
 from av_analysis.templates import (
     COLUMN_CLASS,
+    EXTENSION_COLUMNS,
     TEMPLATE_NAMES,
     TEMPLATE_SHA256,
     TEMPLATES,
@@ -60,7 +61,11 @@ def test_every_template_column_has_a_class():
         for c in t.columns:
             assert c in COLUMN_CLASS, c
     used = {c for t in TEMPLATES.values() for c in t.columns}
-    assert set(COLUMN_CLASS) == used
+    extensions = {c for cols in EXTENSION_COLUMNS.values() for c in cols}
+    assert set(EXTENSION_COLUMNS) == set(TEMPLATE_NAMES)
+    assert not extensions & used
+    assert set(COLUMN_CLASS) == used | extensions
+    assert columns_of_class("staff") == {"operator", "reviewer", "operator_signoff"}
     assert columns_of_class("outcome") == {
         "exact_correct",
         "action_correct",

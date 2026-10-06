@@ -3,13 +3,21 @@
 Loads the four methodology logs of a raw visit folder (``paths``: ``raw/<visit_id>/``)
 and the study-wide ``raw/deviations-log.csv``, opening every file read-only
 (``fileio.read_bytes``). A file must decode as UTF-8 (BOM allowed), its header must equal
-the template (``templates.TEMPLATES``; extra headset-specific columns only when ADR-007's
-extension list is agreed: **Pending**), and every value must be in its domain
-(``vocab``: playback and audible status, response and fault codes, booleans
-``true``/``false``, integer milliseconds, comfort checks, deviation categories). Problems
-are returned as ``RowProblem`` values and become ``RAW_FORMAT`` discrepancies (C1); a
-loader never repairs a value. In a REAL root, a visit whose exit manifest says
-``SYNTHETIC`` or whose IDs carry a ``DEMO-`` or ``SYNTHETIC`` marker is refused.
+the template (``templates.TEMPLATES``) optionally followed by the template's extension
+columns (``templates.EXTENSION_COLUMNS``, in order; other headset-specific columns only
+once listed: **Pending** ADR-007), and every value must be in its domain (``vocab``:
+playback and audible status, response codes, ``;``-joined fault codes, booleans
+``true``/``false``, integer milliseconds, ISO 8601 times with a UTC offset, coded staff
+IDs, comfort checks, deviation categories). Problems are returned as ``RowProblem``
+values and become ``RAW_FORMAT`` discrepancies (C1); a loader never repairs a value. In a
+REAL root, a visit whose exit manifest says ``SYNTHETIC``, whose exit manifest ``source``
+is missing or has an unacknowledged torn tail, or whose IDs carry a ``DEMO-`` or
+``SYNTHETIC`` marker is refused.
+
+The provisional station export (#72 ``data-csv-provisional-1``) uses other headers
+(``coded_id``, ``opportunity_id``/``attempt_id``, ...). Its values already follow
+``vocab``; the column adapter to the template headers is **Pending** (#72/#73 with #33)
+and runs before files are placed in ``raw/``.
 """
 
 from __future__ import annotations

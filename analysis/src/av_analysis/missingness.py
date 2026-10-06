@@ -12,7 +12,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+
+from .scoring import BatteryScore
+from .unmask import Conditions
 
 
 @dataclass(frozen=True)
@@ -39,11 +43,29 @@ class TippingCell:
     practical_changed: bool  # crosses the 10-percentage-point interpretation
 
 
-def all_assigned_bounds(study: str) -> list[Bounds]:
-    """Bounds of the study's primary contrasts."""
+def all_assigned_bounds(
+    study: str,
+    scores: Sequence[BatteryScore],
+    conditions: Conditions,
+    planned: Mapping[str, tuple[str, ...]],
+) -> list[Bounds]:
+    """Bounds of the study's primary contrasts.
+
+    ``scores``: primary-battery scores of the assigned persons who have one (complete or
+    partial, with ``operational_sum``; Study B also per family); ``conditions``: the
+    unmasked labels (``unmask.load_conditions``); ``planned``: unit -> every assigned
+    person slot (``Conditions.planned``), so a person without any score is bounded too.
+    """
     raise NotImplementedError("#34: all-assigned bounds")
 
 
-def tipping_grid(study: str, *, step: float = 0.05) -> list[TippingCell]:
-    """Tipping-point grid of the study's primary contrasts."""
+def tipping_grid(
+    study: str,
+    scores: Sequence[BatteryScore],
+    conditions: Conditions,
+    planned: Mapping[str, tuple[str, ...]],
+    *,
+    step: float = 0.05,
+) -> list[TippingCell]:
+    """Tipping-point grid of the study's primary contrasts (inputs as the bounds)."""
     raise NotImplementedError("#34: tipping-point grid")

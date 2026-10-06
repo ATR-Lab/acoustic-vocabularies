@@ -39,6 +39,24 @@ class DyadCondition:
     swap_w1_w4: bool  # heldout-set order (bootstrap stratum)
 
 
+@dataclass(frozen=True)
+class Conditions:
+    """Restricted condition labels of one study and set, as the estimators need them."""
+
+    study: str
+    set_name: str
+    books: Mapping[str, BookCondition]  # A: book ID -> condition (empty for B)
+    dyads: Mapping[str, DyadCondition]  # B: dyad slot -> condition (empty for A)
+    person_unit: Mapping[str, str]  # person slot -> batch (A) or dyad slot (B)
+    person_condition: Mapping[str, str]  # person slot -> A1/A2/A3 (A), active/yoked (B)
+    planned: Mapping[str, tuple[str, ...]]  # unit -> every assigned person slot (all-assigned)
+
+
+def load_conditions(root: DataRoot, study: str, set_name: str) -> Conditions:
+    """Conditions of one study and set (slot or dyad list plus, for A, the book key)."""
+    raise NotImplementedError("#34: unmasking")
+
+
 def load_a_conditions(root: DataRoot, set_name: str) -> Mapping[str, BookCondition]:
     """Book ID -> condition."""
     raise NotImplementedError("#34: Study A unmasking")

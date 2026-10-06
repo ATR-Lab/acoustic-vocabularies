@@ -1,15 +1,16 @@
 """Specifications of the reconciled and derived tables: the contract #33 -> #34 / #35.
 
-Producer: reconciliation (#33). Five tables, each a CSV in a data root (``paths``):
+Producer: reconciliation (#33). Six tables, each a CSV in a data root (``paths``):
 
 ======================  ===========  ============================================  ==========
 Table                   Area         One row per                                   Consumers
 ======================  ===========  ============================================  ==========
-``trials``              derived      trial-log row of a reconciled visit           #34
+``trials``              derived      trial-log row, or verified lost opportunity   #34
 ``endpoints``           derived      person x visit x test battery                 #34
 ``visit-status``        reconciled   expected visit of every revealed person       #35, #34
 ``discrepancies``       reconciled   discrepancy of a reconciliation report        #35, #34
 ``exposure-cumulative`` reconciled   person x item (atom or message) ever played   #34, #33
+``enrollment``          reconciled   study x set: screening, eligibility, reveals  #35, #34
 ======================  ===========  ============================================  ==========
 
 Encoding (all tables): UTF-8, ``\\n``, header = the column names in order, first column
@@ -24,7 +25,8 @@ policy (outcomes allowed, no condition labels: #34 joins method, role and scaffo
 the allocation key). ``tests/analysis`` checks every spec against ``masking``.
 
 Row JSON Schemas (``analysis/schema/<table>-row.schema.json``) are generated from these
-specs (``av-analysis schemas --write``) and describe the parsed, typed row.
+specs (``av-analysis schemas --write``) and describe the parsed, typed row. Every
+non-nullable string column has an ``example`` value (used by the tests' sample rows).
 """
 
 from __future__ import annotations
@@ -49,16 +51,19 @@ from .vocab import (
     ALL_VISITS,
     BATTERIES,
     BOOL_TEXT,
+    CONSUMING_AUDIBLE_STATUS,
     DATA_KINDS,
     ENDPOINT_STATUS,
     FAMILIES,
-    FAULT_CODES,
+    FAULT_CODE_RE,
+    FAULT_TYPES,
     ITEM_KINDS,
     MISSING_REASONS,
     NOVELTY,
     PLAYBACK_STATUS,
     RECONCILIATION_STATES,
     RESPONSE_CODES,
+    ROW_SOURCES,
     SETS,
     STUDIES,
     TIMINGS,
@@ -108,6 +113,7 @@ class Column:
     pattern: str | None = None  # str/list item pattern
     minimum: int | None = None
     maximum: int | None = None
+    example: str | None = None  # a valid value of a str column (tests' sample rows)
 
     def schema(self) -> dict[str, Any]:
         """JSON Schema of the typed value."""
@@ -145,8 +151,15 @@ class Column:
         return s
 
 
-def _s(name: str, desc: str, *, pattern: str | None = None, nullable: bool = False) -> Column:
-    return Column(name, "str", desc, nullable=nullable, pattern=pattern)
+def _s(
+    name: str,
+    desc: str,
+    *,
+    pattern: str | None = None,
+    nullable: bool = False,
+    example: str | None = None,
+) -> Column:
+    return Column(name, "str", desc, nullable=nullable, pattern=pattern, example=example)
 
 
 def _e(name: str, values: Sequence[str], desc: str, *, nullable: bool = False) -> Column:
@@ -223,23 +236,38 @@ class TableSpec:
 _DATA_KIND = _e("data_kind", DATA_KINDS, "Watermark: SYNTHETIC or REAL, equal to the data root's.")
 _STUDY = _e("study", STUDIES, "Study.")
 _SET = _e("set", SETS, "Pilot or confirmatory set.")
-_UNIT = _s("unit_id", "Study A matched batch or Study B dyad slot (A-C07, B-C12).", pattern=UNIT_RE)
+_UNIT = _s(
+    "unit_id",
+    "Study A matched batch or Study B dyad slot (A-C07, B-C12).",
+    pattern=UNIT_RE,
+    example="A-C01",
+)
 _BOOK = _s(
     "book_id",
     "Study A anonymous book ID from the learner-facing slot list (no method meaning); "
     "Study B bank ID. Methods are joined by #34 from the restricted key at unmasking.",
     pattern=BOOK_RE,
+    example="BK-C-7QX4MN",
 )
 _PERSON = _s(
     "person_id",
     "Person slot (A-C07-L03, B-C12-M1). Coded participant IDs and the slot binding stay in "
     "the reveal log; no names or contact data anywhere.",
     pattern=PERSON_RE,
+    example="A-C01-L01",
 )
 _VISIT = _e("visit", ALL_VISITS, "Visit (A D0, D7; B V1, V2, V3, W1, W4).")
 _VISIT_SEQ = _i("visit_seq", "1-based order of the visit within its study.", minimum=1, maximum=5)
-_VISIT_ID = _s("visit_id", "<person_id>-<visit>, e.g. A-C07-L03-D0.", pattern=VISIT_ID_RE)
-_VISIT_DATE = _d("visit_date", "Local study date of the visit (run sheet), when held.")
+_VISIT_ID = _s(
+    "visit_id",
+    "<person_id>-<visit>, e.g. A-C07-L03-D0.",
+    pattern=VISIT_ID_RE,
+    example="A-C01-L01-D0",
+)
+_VISIT_DATE = _d(
+    "visit_date",
+    "Calendar date of the visit's first run-sheet start_time, in the UTC offset recorded.",
+)
 _ANCHOR = _e("anchor_visit", ALL_VISITS, "Visit the window counts from.", nullable=True)
 _DAYS = _i("days_since_anchor", "Calendar days from the anchor visit.", minimum=None, nullable=True)
 _WIN_LO = _i("window_lo_days", "First allowed day after the anchor.", nullable=True)
@@ -254,9 +282,13 @@ TRIALS: Final = TableSpec(
     title="Derived trial table",
     description=(
         "One row per trial-log row of a reconciled visit (every scheduled item and every "
-        "linked retry), joined with the schedule's item and private intended tuple and with "
-        "the cumulative exposure ledger. Holds the scoring inputs; scoring (Y, operational "
-        "and valid-delivery) is #34's. No condition labels."
+        "linked retry), plus one row per scheduled opportunity lost to an apparatus or "
+        "logger failure that a deviation record verifies (row_source deviation: no "
+        "trial-log row, fault code OPPORTUNITY_LOST, valid_delivery false, response fields "
+        "null; it scores 0 in the operational score). Joined with the schedule's item and "
+        "private intended tuple and with the cumulative exposure ledger. Holds the scoring "
+        "inputs; scoring (Y, operational and valid-delivery) is #34's. Opportunities never "
+        "undertaken after withdrawal have no row. No condition labels."
     ),
     producer="#33",
     consumers=("#34",),
@@ -274,8 +306,20 @@ TRIALS: Final = TableSpec(
         _VISIT_SEQ,
         _VISIT_ID,
         _s("session_id", "Opaque session ID of the raw logs.", pattern=TOKEN_RE, nullable=True),
-        _s("trial_id", "Schedule trial ID, or the engine's ID of a retry.", pattern=TOKEN_RE),
+        _s(
+            "trial_id",
+            "Schedule trial ID, or the engine's ID of a retry.",
+            pattern=TOKEN_RE,
+            example="A-C01-L01-D0-TR-01",
+        ),
         _s("retry_of", "trial_id this row retries (C4).", pattern=TOKEN_RE, nullable=True),
+        _e(
+            "row_source",
+            ROW_SOURCES,
+            "logged: a trial-log row; deviation: a scheduled opportunity without a trial-log "
+            "row, lost to an apparatus or logger failure verified by a deviation record "
+            "(deviation_ids names it).",
+        ),
         _e("block", BLOCKS, "Schedule block."),
         _i("block_position", "1-based block position in the visit.", minimum=1),
         _i(
@@ -300,7 +344,13 @@ TRIALS: Final = TableSpec(
         ),
         _e("target_action", ACTION_LABELS, "PRIVATE intended action label.", nullable=True),
         _e("target_referent", REFERENT_LABELS, "PRIVATE intended referent label.", nullable=True),
-        _e("response_code", RESPONSE_CODES, "Logged response code (vocab.RESPONSE_CODES)."),
+        _e(
+            "response_code",
+            RESPONSE_CODES,
+            "Logged response code (vocab.RESPONSE_CODES); null: no response recorded "
+            "(lesson or menu item, no-onset failure, interrupted attempt, deviation row).",
+            nullable=True,
+        ),
         _e("response_action", ACTION_LABELS, "First committed action.", nullable=True),
         _e("response_target", REFERENT_LABELS, "First committed target.", nullable=True),
         _b("exact_correct", "Logged exact score (null without a response window).", nullable=True),
@@ -319,16 +369,45 @@ TRIALS: Final = TableSpec(
             nullable=True,
         ),
         _i("onset_uncertainty_ms", "Onset uncertainty (ms).", nullable=True),
+        _i(
+            "audio_offset_mono_ms",
+            "Audible offset (ms; host monotonic): with the onset gives the message duration "
+            "and latency from message end.",
+            minimum=None,
+            nullable=True,
+        ),
         _i("commit_mono_ms", "Commit time (ms).", minimum=None, nullable=True),
         _i("response_time_ms", "Logged commit minus onset (ms).", minimum=None, nullable=True),
-        _e("playback_status", PLAYBACK_STATUS, "Observed delivery (vocab.PLAYBACK_STATUS)."),
-        _e("technical_fault_code", FAULT_CODES, "Apparatus fault, if any.", nullable=True),
+        _e(
+            "playback_status",
+            PLAYBACK_STATUS,
+            "Observed delivery as logged (vocab.PLAYBACK_STATUS); null for deviation rows.",
+            nullable=True,
+        ),
+        _l(
+            "fault_codes",
+            "Technical fault codes of the row as logged (vocab.split_fault_codes; deviation "
+            "rows: OPPORTUNITY_LOST). Empty: no fault.",
+            pattern=FAULT_CODE_RE,
+        ),
+        _l(
+            "fault_types",
+            "Apparatus fault types of the row (vocab.fault_type of each code, plus "
+            "presentation_freeze when frame_freeze_ms > 250 and failed_reset when reset_ok "
+            "is false), each once, in vocab.FAULT_TYPES order.",
+            values=FAULT_TYPES,
+        ),
         _b(
             "valid_delivery",
             "Verified playback (or a no-cue trial) and usable response logging, as reconciled "
-            "against the exposure ledger (never inferred from a function returning success).",
+            "against the exposure ledger (never inferred from a function returning success); "
+            "false for deviation rows.",
         ),
-        _b("exposure_consumed", "Reconciled: the cue was audible or its onset uncertain."),
+        _b(
+            "exposure_consumed",
+            "Reconciled: the cue was audible, estimated or uncertain (deviation rows: unless "
+            "the deviation record states that no audio was presented).",
+        ),
         _e(
             "novelty",
             NOVELTY,
@@ -382,10 +461,16 @@ ENDPOINTS: Final = TableSpec(
         _i("scheduled_n", "Scheduled opportunities (e.g. 36 trained trials)."),
         _i(
             "accounted_n",
-            "Opportunities with a trial-log row (played or technical failure); excludes "
-            "opportunities not undertaken after withdrawal.",
+            "Scheduled opportunities with a trials row: logged (played, or a logged technical "
+            "failure) or lost to a verified apparatus or logger failure (row_source "
+            "deviation). Excludes opportunities not undertaken after withdrawal.",
         ),
-        _i("fault_n", "Accounted opportunities with a technical fault."),
+        _i(
+            "fault_n",
+            "Accounted opportunities with a technical fault (including lost_n); they score 0 "
+            "in the operational score.",
+        ),
+        _i("lost_n", "Accounted opportunities with row_source deviation."),
         _i("valid_delivery_n", "Accounted opportunities with valid delivery."),
         _i("retry_n", "Linked retries (not counted in accounted_n)."),
         _e(
@@ -397,7 +482,7 @@ ENDPOINTS: Final = TableSpec(
         _e(
             "missing_reason",
             MISSING_REASONS,
-            "Why the battery is partial or missing.",
+            "Why the battery is partial or missing (vocab.MISSING_REASONS); null when complete.",
             nullable=True,
         ),
         _VISIT_DATE,
@@ -415,7 +500,8 @@ ENDPOINTS: Final = TableSpec(
 )
 
 _FAULT_COLUMNS: Final = tuple(
-    _i(f"fault_{f}_n", f"Played opportunities with fault {f}.") for f in FAULT_CODES
+    _i(f"fault_{f}_n", f"Opportunities with at least one fault of type {f} (vocab.FAULT_TYPES).")
+    for f in FAULT_TYPES
 )
 
 VISIT_STATUS: Final = TableSpec(
@@ -468,12 +554,21 @@ VISIT_STATUS: Final = TableSpec(
         _i("booked_minutes", "Booked minutes of the visit.", nullable=True),
         _i("actual_minutes", "Run-sheet first start to last end, in minutes.", nullable=True),
         _b("overrun", "actual_minutes > booked_minutes + 10.", nullable=True),
-        _i("opportunities_n", "Trial-log rows with a scheduled cue (played opportunities)."),
-        _i("fault_n", "Opportunities with any technical fault."),
+        _i(
+            "opportunities_n",
+            "Accounted scheduled opportunities of the visit (trials rows that are not "
+            "retries, including lost opportunities).",
+        ),
+        _i("fault_n", "Opportunities with any technical fault (lost opportunities included)."),
         *_FAULT_COLUMNS,
         _b("comfort_flag", "Run sheet records a comfort adjustment or stop.", nullable=True),
         _i("deviations_n", "Deviation records of the visit."),
         _i("open_deviations_n", "Deviation records without a resolution."),
+        _i(
+            "comfort_deviations_n",
+            "Deviation records of category comfort (comfort and welfare reports).",
+        ),
+        _i("withdrawal_deviations_n", "Deviation records of category withdrawal."),
         _s(
             "report_sha256",
             "SHA-256 of the visit's reconciliation.json.",
@@ -511,7 +606,7 @@ DISCREPANCIES: Final = TableSpec(
         _s("deviation_id", "Linked deviation record.", pattern=TOKEN_RE, nullable=True),
         _b("resolved", "Linked to an existing deviation record."),
         _e("suspension_event", SUSPENSIONS, "Suspension event of the code.", nullable=True),
-        _s("detail", "Generated explanation (no outcome values)."),
+        _s("detail", "Generated explanation (no outcome values).", example="row missing"),
     ),
 )
 
@@ -534,7 +629,7 @@ EXPOSURE_CUMULATIVE: Final = TableSpec(
         _SET,
         _UNIT,
         _PERSON,
-        _s("item_id", "Message or atom ID.", pattern=ITEM_RE),
+        _s("item_id", "Message or atom ID.", pattern=ITEM_RE, example="K-a1-r1"),
         _e("item_kind", ("message", "atom"), "Kind of item."),
         _e("matrix_status", ("trained", "heldout", "atom"), "Matrix status of the item."),
         _e(
@@ -543,7 +638,7 @@ EXPOSURE_CUMULATIVE: Final = TableSpec(
         _e(
             "first_audible_visit",
             ALL_VISITS,
-            "Visit of the first audible or uncertain play.",
+            "Visit of the first play that consumed exposure (audible, estimated or uncertain).",
             nullable=True,
         ),
         _s(
@@ -552,9 +647,14 @@ EXPOSURE_CUMULATIVE: Final = TableSpec(
             pattern=TOKEN_RE,
             nullable=True,
         ),
-        _e("first_audible_status", ("audible", "uncertain"), "Its audible status.", nullable=True),
+        _e(
+            "first_audible_status",
+            CONSUMING_AUDIBLE_STATUS,
+            "Its exposure-ledger audible_status (vocab.CONSUMING_AUDIBLE_STATUS).",
+            nullable=True,
+        ),
         _e("first_audible_block", BLOCKS, "Block of that play.", nullable=True),
-        _i("audible_plays_n", "All audible or uncertain plays."),
+        _i("audible_plays_n", "All plays that consumed exposure."),
         _i("selection_plays_n", "Plays in profile or atom menus."),
         _i("teaching_plays_n", "Plays in lessons."),
         _i("test_plays_n", "Plays in pre-old, protected and validity blocks."),
@@ -563,8 +663,60 @@ EXPOSURE_CUMULATIVE: Final = TableSpec(
     ),
 )
 
+ENROLLMENT: Final = TableSpec(
+    name="enrollment",
+    area="reconciled",
+    title="Enrollment and reveals",
+    description=(
+        "One row per study and set: pre-allocation screening and eligibility records and "
+        "revealed slots, from the reveal log (eligibility, bank_unavailable and reveal "
+        "events). Counts only: no coded participant IDs, no list entry fields. Targets are "
+        "not stored here (the dashboard takes them from the frozen sample-size decisions)."
+    ),
+    producer="#33",
+    consumers=("#35", "#34"),
+    policy="masked",
+    key=("study", "set"),
+    sort=("study", "set"),
+    columns=(
+        _DATA_KIND,
+        _STUDY,
+        _SET,
+        _i("planned_units_n", "Main list units: Study A batches, Study B dyad slots."),
+        _i("planned_persons_n", "Person slots of the main list units."),
+        _i("eligibility_records_n", "Eligibility records in the reveal log."),
+        _i("eligible_persons_n", "Participants named by those records."),
+        _i(
+            "screening_cases_n",
+            "Pre-allocation screening cases (Study B: people who could not form a compatible "
+            "pair); null until their source is agreed (Pending).",
+            nullable=True,
+        ),
+        _i("revealed_units_n", "Units with at least one revealed slot."),
+        _i("revealed_persons_n", "Revealed person slots."),
+        _i(
+            "spares_used_n",
+            "Study B spare dyad slots revealed in place of a main slot; null for Study A.",
+            nullable=True,
+        ),
+        _i(
+            "bank_unavailable_n",
+            "Study B bank_unavailable records; null for Study A.",
+            nullable=True,
+        ),
+        _d("last_event_date", "UTC date of the latest reveal-log record."),
+        _s(
+            "reveal_log_sha256",
+            "SHA-256 of the reveal log read (null: no reveal log yet).",
+            pattern=SHA256_RE,
+            nullable=True,
+        ),
+    ),
+)
+
 TABLES: Final[dict[str, TableSpec]] = {
-    t.name: t for t in (TRIALS, ENDPOINTS, VISIT_STATUS, DISCREPANCIES, EXPOSURE_CUMULATIVE)
+    t.name: t
+    for t in (TRIALS, ENDPOINTS, VISIT_STATUS, DISCREPANCIES, EXPOSURE_CUMULATIVE, ENROLLMENT)
 }
 
 

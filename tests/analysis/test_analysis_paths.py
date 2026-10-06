@@ -24,6 +24,7 @@ from av_analysis.paths import (
     parse_visit_id,
     visit_id,
     write_output,
+    write_synthetic_input,
 )
 from av_analysis.schemas import validator
 
@@ -186,3 +187,49 @@ def test_check_watermark_rules():
         check_watermark(b"\xff", ".md", "REAL")
     with pytest.raises(WatermarkError, match="no watermark rule"):
         check_watermark(b"x", ".png", "SYNTHETIC")
+
+
+def test_input_paths_stay_in_input_areas(tmp_path):
+    root = synthetic(tmp_path)
+    assert root.input_path("keys", "A/pilot-book-key.json") == (
+        root.path / "keys" / "A" / "pilot-book-key.json"
+    )
+    with pytest.raises(WatermarkError, match="not an input area"):
+        root.input_path("derived", "x.csv")
+    with pytest.raises(WatermarkError, match="invalid input path"):
+        root.input_path("inputs", "../x.json")
+
+
+def test_write_synthetic_input_is_the_only_writer_of_read_only_areas(tmp_path):
+    root = synthetic(tmp_path)
+    manifest = json_bytes({"data_kind": "SYNTHETIC", "files": []})
+    path = write_synthetic_input(root, "raw", "A-C01-L01-D0/exit-manifest.json", manifest)
+    assert path.read_bytes() == manifest
+    write_synthetic_input(root, "raw", "A-C01-L01-D0/trial-log.csv", b"study\nA\n")
+    write_synthetic_input(root, "raw", "deviations-log.csv", b"deviation_id\n")
+    key = json_bytes({"demo": True, "format": "x"})
+    write_synthetic_input(root, "keys", "A/pilot-book-key.json", key)
+    write_synthetic_input(root, "inputs", "reveal/A-pilot.jsonl", b'{"line": 1}\n')
+    # Replacing a file is allowed (fault injection rewrites raw files).
+    write_synthetic_input(root, "raw", "A-C01-L01-D0/trial-log.csv", b"study\nB\n")
+    refusals = [
+        ("derived", "trials.csv", b"data_kind\nSYNTHETIC\n", "not an input area"),
+        ("raw", "../x.csv", b"", "invalid input path"),
+        ("raw", "notes.csv", b"a\n", "invalid raw path"),
+        ("raw", "A-C01-L01-D0", b"a\n", "invalid raw path"),
+        ("raw", "A-C01-L01-D0/sub/x.csv", b"a\n", "invalid raw path"),
+        ("raw", "A-C01-L01-D0/exit-manifest.json", json_bytes({"files": []}), "exit manifest"),
+        ("raw", "A-C01-L01-D0/exit-manifest.json", b"[1]", "exit manifest"),
+        ("inputs", "x.json", json_bytes({"data_kind": "REAL"}), "not SYNTHETIC"),
+        ("inputs", "x.json", json_bytes({"demo": False}), "demo is not true"),
+        ("inputs", "x.json", b"{", "not valid JSON"),
+        ("inputs", "x.csv", b"data_kind,a\nREAL,1\n", "data_kind column"),
+        ("inputs", "x.csv", b"a,a\n", "not strict CSV"),
+    ]
+    for area, rel, data, message in refusals:
+        with pytest.raises(WatermarkError, match=message):
+            write_synthetic_input(root, area, rel, data)
+    real = DataRoot.create(tmp_path / "real", "REAL", label="real-1")
+    with pytest.raises(WatermarkError, match="holds REAL data"):
+        write_synthetic_input(real, "inputs", "x.json", json_bytes({"demo": True}))
+    assert not (real.path / "inputs").exists()

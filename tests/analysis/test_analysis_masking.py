@@ -47,6 +47,9 @@ def test_issue_35_fixture_columns_are_all_forbidden_when_masked():
         ("first_name", "personal", "personal"),
         ("contact_email", "personal", "personal"),
         ("participant_name", "personal", "personal"),
+        ("operator", "personal", "personal"),
+        ("reviewer", "personal", "personal"),
+        ("operator_signoff", "personal", "personal"),
         ("name", None, None),
         ("fault_missing_response_log_n", None, None),
         ("presentation_index", None, None),
@@ -61,7 +64,7 @@ def test_forbidden_reason(field, masked, derived):
 
 
 def test_every_outcome_response_or_condition_template_column_is_forbidden_when_masked():
-    classes = {"outcome", "response", "hidden_answer", "condition"}
+    classes = {"outcome", "response", "hidden_answer", "condition", "staff"}
     from av_analysis.templates import COLUMN_CLASS
 
     for t in TEMPLATES.values():

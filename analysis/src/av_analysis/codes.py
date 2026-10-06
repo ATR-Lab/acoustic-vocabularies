@@ -107,7 +107,8 @@ CODES: Final[tuple[Code, ...]] = (
         "C1",
         "Reference input",
         "A reference input (schedule, run sheet, package JSON, package-hash mapping,"
-        " allocation list, store snapshot) is missing, invalid or of the wrong data kind.",
+        " allocation list, reveal log, store snapshot or receipts) is missing, invalid or of"
+        " the wrong data kind.",
         "Place the frozen input in the data root's inputs/ area and rerun.",
     ),
     # C2 counts
@@ -116,7 +117,8 @@ CODES: Final[tuple[Code, ...]] = (
         "C2",
         "Missing trial",
         "A scheduled item has no trial-log row.",
-        "Link the deviation that explains it (withdrawal, stop, fault); never add rows.",
+        "Link the deviation that explains it (withdrawal, or an apparatus or logger failure"
+        " that destroyed the opportunity); never add rows to the raw logs.",
     ),
     Code(
         "COUNT_EXTRA_TRIAL",
@@ -162,6 +164,13 @@ CODES: Final[tuple[Code, ...]] = (
         "A played waveform_sha256 differs from the package manifest for that message or atom.",
         "Suspend the affected collection, preserve the records and verify the package.",
         "WRONG_FILE_MAPPING",
+    ),
+    Code(
+        "WAVEFORM_HASH_MISSING",
+        "C3",
+        "Waveform hash missing",
+        "A play has no waveform_sha256, and no PCM hash of composed audio in the export.",
+        "Recover the hash from the station's raw journal; otherwise record a deviation.",
     ),
     Code(
         "PACKAGE_HASH_MISMATCH",
@@ -224,10 +233,18 @@ CODES: Final[tuple[Code, ...]] = (
         "OLD_ATOM_CHANGED",
         "C5",
         "Old atom changed",
-        "An atom committed at an earlier wave has a different recipe or waveform hash after a"
-        " later wave.",
+        "An atom committed at an earlier wave has a different profile, rank, PCM or file hash"
+        " or selection receipt in a later store snapshot.",
         "Suspend the affected collection; restore the committed atom from the store.",
         "OLD_WAVEFORM_CHANGED",
+    ),
+    Code(
+        "STORE_CHAIN_BROKEN",
+        "C5",
+        "Store chain broken",
+        "The store's selection receipts do not link one wave's book head to the next, or the"
+        " profile selection changed.",
+        "Preserve the store and the receipts and verify the book before the next session.",
     ),
     # C6 yoked-ledger
     Code(

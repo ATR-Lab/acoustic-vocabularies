@@ -5,7 +5,7 @@
   "description": "One row per person and item (atom or complete message) that was scheduled or played up to the last reconciled visit: first audible exposure and play counts by phase. Producer #33; consumers #34, #33. Unique key: person_id, item_id. CSV encoding and masking rules: analysis/docs/architecture.md and docs/interfaces/analysis.md.",
   "properties": {
     "audible_plays_n": {
-      "description": "All audible or uncertain plays.",
+      "description": "All plays that consumed exposure.",
       "minimum": 0,
       "type": "integer"
     },
@@ -41,15 +41,16 @@
       ]
     },
     "first_audible_status": {
-      "description": "Its audible status.",
+      "description": "Its exposure-ledger audible_status (vocab.CONSUMING_AUDIBLE_STATUS).",
       "enum": [
-        "audible",
+        "confirmed_audible",
+        "estimated",
         "uncertain",
         null
       ]
     },
     "first_audible_visit": {
-      "description": "Visit of the first audible or uncertain play.",
+      "description": "Visit of the first play that consumed exposure (audible, estimated or uncertain).",
       "enum": [
         "D0",
         "D7",
@@ -166,6 +167,7 @@
           "COUNT_RUN_SHEET",
           "BLOCK_ORDER",
           "WAVEFORM_HASH_MISMATCH",
+          "WAVEFORM_HASH_MISSING",
           "PACKAGE_HASH_MISMATCH",
           "HOLDOUT_OUTSIDE_TEST",
           "HOLDOUT_WRONG_VISIT",
@@ -174,6 +176,7 @@
           "RETRY_LINK_BROKEN",
           "ANSWER_DISPLAY_LEAK",
           "OLD_ATOM_CHANGED",
+          "STORE_CHAIN_BROKEN",
           "YOKED_SOURCE_MISSING",
           "YOKED_MISMATCH",
           "YOKED_GAP",
