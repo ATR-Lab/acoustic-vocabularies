@@ -20,14 +20,17 @@ stations and the host use them.
 ## 1. Session flow
 
 1. The operator opens the station URL on each station:
-   `http://<server>:<port>/panel/station?station=S1&rater=R01` (`panel.station_url`). The
-   page asks for the station and the coded rater ID if the URL has none. The rater
-   presses **Start** once: this click unlocks browser audio.
+   `http://<server>:<port>/panel/station?station=S1&rater=R01&key=<seat key>`
+   (`panel.station_url`). The page asks for the station and the coded rater ID if the URL
+   has none. The rater presses **Start** once: this click unlocks browser audio.
 2. The station connects to `/panel/ws` and sends `hello` (`kind="human"`; bots send
    `"bot"`). The server accepts only a seat of `host.seats()` (rater ID, station and
    kind); anything else gets `error E_UNKNOWN_RATER` and the socket closes. A second
    `hello` for a connected station replaces the old socket (`station_left` for the old
-   one, then `station_joined`).
+   one, then `station_joined`); the old socket is closed with
+   `panel.REPLACED_CLOSE_CODE` = 4001, after which the old page shows "opened in another
+   window" and does not reconnect (two pages on one seat would otherwise take it from
+   each other forever).
 3. The server answers `welcome` (`session_id` = run ID, `state` from
    `host.snapshot()`), the pending `preload`, and, during a slot, that `slot` with
    `rejoin=true`. Every later host event follows in `seq` order.
@@ -35,6 +38,19 @@ stations and the host use them.
    asset of the round (section 3) and follows the slots (section 4).
 5. `pause` shows a neutral pause screen after the current slot locks; `resume` returns
    to the waiting screen; `end` shows the end screen and stops all audio.
+
+Access control. A WebSocket handshake whose `Origin` header names another host gets
+HTTP 403 (a page of another site cannot open a station socket); clients that send no
+`Origin` (bots, scripts) pass. With `create_panel_app(..., access_secret=secret)` each
+seat has a key, `panel.seat_key(secret, rater_id, station)` (HMAC-SHA-256, 32 hex
+digits): the station URL carries it as `key`, the page sends it on the WebSocket URL and
+on every asset request, and the server refuses a `hello` without the seat's own key
+(`E_UNKNOWN_RATER`) and an asset request without any seat's key (HTTP 403). So a device
+on the lab network that knows a coded rater ID and a station name cannot take a seat or
+download the sounds. The orchestrator should pass a fresh secret per session
+(`secrets.token_bytes(32)`, never stored in git) and print the station URLs with
+`station_url(..., key=app.state.panel.seat_key(rater_id, station))`; `panel_demo` does
+this. Without a secret (tests) no key is needed.
 
 ## 2. Clock sync
 
@@ -67,7 +83,8 @@ bytes whose SHA-256 differs (HTTP 500), unknown IDs (404) and any other name (40
 station fetches each asset of a `preload` message once, checks the byte count and the
 SHA-256 (`crypto.subtle` on `https`/`localhost`, otherwise the page's own SHA-256, since
 plain `http` on the lab network is not a secure context), decodes it and answers
-`asset_ready {asset_id, ok}`. An asset that failed its check is never played. The host
+`asset_ready {asset_id, ok}`. An asset that failed its check is never played (it is
+fetched once more at its slot; section 4 says what the slot then shows). The host
 issues each round's `preload` before the round's first slot (#20: 1 s ahead, as the
 candidates exist only after the proposal window); on a LAN the ~18 assets of a round
 (about 1.5 MB) load well within that. A slot whose asset is still loading plays as soon
@@ -109,12 +126,27 @@ No replay, by construction:
   missing;
 - the server never asks a station to play: it has no play message.
 
+A sound that did not play cannot be rated. The sounds a rater must hear are
+`panel.required_plays(slot)`: the candidate, and the reference when the slot asks for
+distinguishability. If one of them does not start (its asset failed the fetch or the
+hash check, it would start more than `MAX_LATE_START_MS` late, it has not started
+`MAX_LATE_START_MS` after its onset because the fetch hangs, the audio context is not
+running, or the audio clock has not passed the onset when the station checks 100 ms
+later), the slot turns into a neutral "could not be played" screen with no controls,
+before the unlock; the sounds of the slot that have not started are cancelled (the
+reference is scheduled only after the candidate) and the rating is missing. A `played`
+report is sent only for a sound whose onset the audio clock passed. The server enforces
+the same rule: it refuses a rating (`E_PROTOCOL`) from a station that has not reported
+`played` (accepted by the host) for every sound of `required_plays`, so a station that
+skips the rule still cannot store a rating of a sound it did not play.
+
 Reconnects: if only the socket drops (the page keeps its state), the page keeps playing
 the slot as scheduled (no second start of anything already started) and the rater may
 still rate before the lock; the record gets `reconnected=true`. If the page lost its
 state (reload or new browser), the slot is skipped as above and its rating is stored as
 missing with `reconnected=true`. `played` and `asset_ready` messages produced while the
-socket is down are sent after the next `welcome`; ratings are not queued.
+socket is down are sent after the next `welcome` (before any rating, so the server has
+the plays first); ratings are not queued.
 
 ## 5. Ratings
 
@@ -128,18 +160,21 @@ The server refuses, before the host sees anything:
 
 | Code | Rule |
 | --- | --- |
-| `E_PROTOCOL` | the frame is not a schema-valid station message (values outside 1-7, non-integers, extra fields such as free text, binary frames, frames above `panel.MAX_FRAME_BYTES` = 4 KiB, which also close the socket) |
+| `E_PROTOCOL` | the frame is not a schema-valid station message (values outside 1-7, non-integers, extra fields such as free text, binary frames, frames above `panel.MAX_FRAME_BYTES` = 4 KiB, which also close the socket), or an integer field holds a JSON number with a fraction part of zero such as `5.0` (the schema's `integer` allows it; the server and the #20 host do not) |
 | `E_UNKNOWN_SLOT` | the rating names a slot the session never scheduled |
 | `E_SLOT_CLOSED` | received at or after the lock (`start + 20,000 ms`) |
 | `E_PLACEHOLDER` | the slot is a placeholder (invalid candidate) |
 | `E_LOCKED` | received before the controls unlock (`start + unlock_offset_ms`) |
 | `E_FIRST_ATOM` | distinguishability given on a first-atom slot |
 | `E_PROTOCOL` | distinguishability missing on any other slot |
+| `E_PROTOCOL` | the station has not reported `played` for every sound of `panel.required_plays` (section 4) |
 | `E_DUPLICATE_RATING` | this station already has an accepted rating for the slot |
 
-The checks run in this order (the same order and codes as the #20 host).
-`panel.rating_refusal(slot, submission)` implements the slot rules (closed, placeholder,
-locked, first atom, values); the host has the last word (`host.submit_rating`). The first-atom value 4 is stored by the host, never sent by a
+The checks run in this order (the same order and codes as the #20 host, which has no
+play check of its own). `panel.rating_refusal(slot, submission)` implements the slot
+rules (closed, placeholder, locked, first atom, values: only `int` values, so `5.0` and
+`True` are refused also when a host calls it directly); the host has the last word
+(`host.submit_rating`). The first-atom value 4 is stored by the host, never sent by a
 station.
 
 ## 6. What the host (#20) provides and records
@@ -166,17 +201,34 @@ is a reference implementation) must:
 ## 7. Withdrawal
 
 **Stop taking part** opens a dialog with four reasons (`rater_request`, `discomfort`,
-`technical`, `other`). Confirming sends `withdraw`; the server calls
-`host.report_withdrawal`, answers `end withdrawn` and closes the socket. The station
-shows a neutral screen and never reconnects; a later `hello` from the same seat gets
-`end withdrawn` again. The host keeps every record and marks the batch incomplete (#20).
+`technical`, `other`). Confirming shows the neutral withdrawn screen at once, stops all
+audio and sends `withdraw`; the server calls `host.report_withdrawal`, answers
+`end withdrawn` and closes the socket. If the socket is down when the rater confirms
+(or drops before the answer), the page keeps the withdrawal and keeps reconnecting until
+the server has answered it: after the next `welcome` it sends the queued `played`
+reports and then `withdraw`, ignores every other message, and stops on the server's
+`end withdrawn` (or on `end withdrawn` in reply to its `hello`, when the server already
+has the withdrawal). So the host always learns of the withdrawal. A later `hello` from
+the same seat gets `end withdrawn` again (before any `welcome`), which shows the
+withdrawn screen. The host keeps every record and marks the batch incomplete (#20).
+
+The #20 host ends the session when a rater withdraws and broadcasts `end withdrawn` to
+every station. A station shows its withdrawn screen only for its own withdrawal or for
+`end withdrawn` in reply to its `hello`; a broadcast `end withdrawn` after `welcome`
+shows the normal end screen.
 
 ## 8. Bot rater (#22)
 
-`BotRater(base_url, *, rater_id, station, run_id, policy, clock=None).run() ->
-BotRunResult` speaks the same protocol as the page: `hello` with `kind="bot"`, the same
-sync bursts, preload with hash check, `played` at the scheduled onsets (no audio output)
-and one rating per rateable slot at `unlock + rt`. Judgments come from
+`BotRater(base_url, *, rater_id, station, run_id, policy, clock=None, access_key=None)
+.run() -> BotRunResult` speaks the same protocol as the page: `hello` with `kind="bot"`,
+the same sync bursts, preload with hash check, `played` at the scheduled onsets (no audio
+output) and one rating per rateable slot at `unlock + rt`, only if it played every sound
+of `required_plays` (an asset that failed its check leaves the rating missing). A
+withdrawal is sent again after a reconnect until the server's `end`; a socket closed with
+`REPLACED_CLOSE_CODE` ends the run (`errors` has `E_REPLACED`). `access_key` is the seat
+key when the server has an access secret. `BotRunResult.end_reason` is the reason of the
+server's `end` (`withdrawn` also when another rater withdrew and #20 ended the session);
+`BotRunResult.withdrawn` says whether this bot withdrew. Judgments come from
 `bot_rating(run_id, rater_id, rating_slot_id, *, ask_distinguishability, policy)`, drawn
 from `rng_for(bot_seed_key(run_id, rater_id, "rating", rating_slot_id))` in a fixed order
 (missing, association, distinguishability, comfort, response time), so they do not depend
@@ -203,7 +255,8 @@ DEMO session (synthetic assets, DEMO batch config and meanings; never study mate
         --host 0.0.0.0 --port 8765 --public-url http://<server-ip>:8765 \
         --rounds 4 --atom-index 5 --run-id DEMO-panel-skew-01 --out-dir generation/out/panel
 
-It prints the three station URLs, starts the 36 consecutive slots (one atom: 4 rounds x 9)
+It prints the three station URLs (with seat keys from a fresh access secret per run, so
+only these URLs open a seat), starts the 36 consecutive slots (one atom: 4 rounds x 9)
 20 s after the last station joins and writes `logs/plays.jsonl`, `logs/ratings.jsonl`,
 `logs/timing.jsonl` and `panel-schedule.json` under `--out-dir/<run-id>/` (ignored by git).
 `--bots` seats bot raters instead (no browsers); `--placeholder R:P` adds placeholders.
@@ -248,18 +301,25 @@ run outside git.
 - `tests/generation/test_rater_client.py`: rating rules (property test), server
   messages (property test against the schema and masking), clock-sync error bound
   (property test), page/static files/CSP and masking, assets by hash, hello and seat
-  checks, invalid ratings and free text never forwarded, binary and oversized frames,
-  join snapshot and socket replacement, rating window, privacy and records, the first-atom
-  rule, `played` checks, withdrawal, event order, the scripted host and its logs, the
-  DEMO session, three bot raters over one round (drop and reconnect, forced unacceptable,
-  missing, re-published slot), a first-atom round with a withdrawal, and both command
-  lines.
+  checks, invalid ratings (also `5.0`, `True`) and free text never forwarded, binary and
+  oversized frames, join snapshot and socket replacement (close code 4001), rating
+  window, privacy and records, the first-atom rule, `played` checks, ratings refused
+  without the station's reported plays, cross-site handshakes and seat keys (WebSocket and
+  assets), withdrawal, event order, the scripted host and its logs, the DEMO session,
+  three bot raters over one round (drop and reconnect, forced unacceptable, missing,
+  re-published slot), bots that rate only what they played, a bot withdrawal during a
+  socket drop, a replaced bot that stops, a first-atom round with a withdrawal, and both
+  command lines.
 - `tests/generation/test_rater_station_browser.py` (`-m browser`, Chromium in CI): the
   page's SHA-256 against `hashlib`; one round on three stations (controls locked before
   the unlock and after 20 s, each sound started once despite keys, clicks and a
   re-sent slot, placeholder screen, logged onsets within 50 ms and skew within 100 ms,
-  private acks, stored ratings); the first-atom slot; a socket drop, a reload and a fresh
-  browser mid-slot without replay; setup, pause, withdrawal and an unknown station.
+  private acks, stored ratings); the first-atom slot; a candidate and a reference that
+  fail to load (neutral screen, controls locked, ratings missing); a socket drop, a
+  reload and a fresh browser mid-slot without replay; a withdrawal during a socket drop
+  (reaches the host; the other station shows the normal end after the broadcast
+  `end withdrawn`; the withdrawn seat opened again shows the withdrawn screen); two pages
+  on one seat (the older one stops); setup, pause, withdrawal and an unknown station.
 - `tests/generation/test_panel_skew.py`: WAV formats, onset detection (property test),
   recorder-clock alignment, the 36-slot skew criterion on synthetic captures, and the
   command lines.
@@ -271,6 +331,10 @@ run outside git.
 | Clock sync with chained probe bursts, min-RTT sample, every 60 s and on reconnect | the protocol has no station-to-server offset message; chaining gives the server `T4`, so the host logs the same estimate the station uses |
 | Audio scheduled on the audio clock via `getOutputTimestamp` | scheduling at the output time removes the output latency the browser knows; timers are not precise enough |
 | A rejoin past the candidate onset skips the whole slot; a socket blip with page state continues | a rater who missed the candidate cannot rate it; a rater who heard everything keeps a valid rating; both are `reconnected` |
+| A slot whose candidate (or asked-for reference) did not start becomes neutral; the server refuses a rating without the station's `played` reports | the same rule for every way a sound can fail (asset, lateness, stopped audio clock); the server check also holds against a station that does not follow it |
+| A withdrawal is kept and resent after reconnects until the server answers | a socket drop must not lose it: the host must mark the batch incomplete |
+| Replaced sockets closed with 4001, no reconnect on it | otherwise two pages on one seat replace each other forever |
+| Same-origin check and optional seat keys (HMAC of a per-session secret) | a device on the lab network or a page of another site cannot take a seat or fetch the sounds; tests need no key |
 | Slots and plays remembered in `sessionStorage` | a reload can never play a slot again |
 | Explicit Submit button, one submission | the rater confirms; an unsubmitted choice is missing, as the issue states |
 | `E_LOCKED` before the unlock, `E_SLOT_CLOSED` from 20 s; check order and codes as in the #20 host | two different situations, one code each; server and host answer every case alike |

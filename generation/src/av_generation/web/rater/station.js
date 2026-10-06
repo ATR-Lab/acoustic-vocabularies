@@ -10,7 +10,14 @@
  * - each slot is handled at most once per page session (sessionStorage), and each
  *   (slot, role) is played at most once; a slot joined after its candidate onset is shown
  *   as a neutral screen with no audio and no rating controls;
- * - controls unlock at unlock_offset_ms and lock at 20 s; ratings go to the server only.
+ * - a slot whose candidate (or, when distinguishability is asked, reference) did not
+ *   start (asset failed, too late, audio not running) is shown as a neutral screen with
+ *   no controls: a rater who did not hear the sound cannot rate it;
+ * - controls unlock at unlock_offset_ms and lock at 20 s; ratings go to the server only;
+ * - a withdrawal is kept until the server answers it (the page reconnects for it); an
+ *   `end` broadcast to every station never shows the withdrawal screen;
+ * - a socket closed with REPLACED_CLOSE_CODE (another page took this seat) is not
+ *   reconnected.
  */
 (() => {
   "use strict";
@@ -21,6 +28,8 @@
   const ASSET_URL_RE = /^\/panel\/assets\/[0-9a-f]{64}\.wav$/;
   const STATION_RE = /^S[0-9]{1,2}$/;
   const RATER_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
+  const KEY_RE = /^[0-9a-f]{32}$/;
+  const REPLACED_CLOSE_CODE = 4001;
   const SLOT_MS = 20000;
   const REFERENCE_OFFSET_MS = 2000;
   const ONSET_TOLERANCE_MS = 50;
@@ -95,6 +104,7 @@
   const st = {
     station: params.get("station") || "",
     rater: params.get("rater") || "",
+    key: KEY_RE.test(params.get("key") || "") ? params.get("key") : null,
     ctx: null,
     ws: null,
     welcomed: false,
@@ -115,6 +125,7 @@
     active: null,
     formSlot: null,        // the slot whose controls the form shows
     pause: null,
+    withdrawal: null,      // {reason, sentOn}: kept until the server answers it
     outbox: [],
     log: [],
   };
@@ -160,7 +171,9 @@
   // ---------------------------------------------------------------------
   // Screens
 
-  const SCREENS = ["start", "wait", "slot", "placeholder", "rejoin", "pause", "end", "withdrawn", "error"];
+  const SCREENS = [
+    "start", "wait", "slot", "placeholder", "rejoin", "missed", "pause", "end", "withdrawn", "error",
+  ];
 
   function show(name) {
     for (const s of SCREENS) $(`screen-${s}`).hidden = s !== name;
@@ -195,10 +208,18 @@
     if (!send(message)) st.outbox.push(message);
   }
 
+  function withKey(path) {
+    return st.key ? `${path}?key=${st.key}` : path;
+  }
+
+  function closeSocket() {
+    if (st.ws) st.ws.close(1000);
+  }
+
   function connect() {
-    if (st.finished) return;
+    if (st.finished && !st.withdrawal) return;
     const scheme = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const ws = new WebSocket(scheme + window.location.host + WS_PATH);
+    const ws = new WebSocket(scheme + window.location.host + withKey(WS_PATH));
     st.ws = ws;
     st.welcomed = false;
     ws.onopen = () => {
@@ -222,14 +243,23 @@
       }
       if (ws === st.ws) handle(message);
     };
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (ws !== st.ws) return;
       st.ws = null;
       st.welcomed = false;
       st.burst = null;
       setConnection(false);
-      record("disconnected");
-      if (st.finished) return;
+      record("disconnected", event.code);
+      if (event.code === REPLACED_CLOSE_CODE) {
+        // Another page or device joined as this station: stop here, never take the
+        // seat back (two pages would otherwise replace each other forever).
+        st.withdrawal = null;
+        finish("error");
+        $("error-text").textContent =
+          "This station was opened in another window. Please tell the session operator.";
+        return;
+      }
+      if (st.finished && !st.withdrawal) return;
       const delay = RECONNECT_DELAYS_MS[Math.min(st.attempt, RECONNECT_DELAYS_MS.length - 1)];
       st.attempt += 1;
       window.setTimeout(connect, delay);
@@ -237,6 +267,10 @@
   }
 
   function handle(message) {
+    if (st.withdrawal) {
+      whileWithdrawing(message);
+      return;
+    }
     switch (message.type) {
       case "welcome":
         st.welcomed = true;
@@ -268,7 +302,10 @@
         onResume();
         break;
       case "end":
-        finish(message.reason === "withdrawn" ? "withdrawn" : "end");
+        // `end withdrawn` before `welcome` is the server's answer to a hello from a
+        // withdrawn seat; after `welcome` it is a broadcast (another rater withdrew and
+        // the session ended), which is the normal end for this station.
+        finish(message.reason === "withdrawn" && !st.welcomed ? "withdrawn" : "end");
         break;
       case "error":
         record("error", `${message.code} ${message.message}`);
@@ -332,7 +369,9 @@
   }
 
   window.setInterval(() => {
-    if (st.welcomed && !st.burst && now() - st.lastSync >= SYNC_INTERVAL_MS) startBurst();
+    if (st.welcomed && !st.finished && !st.burst && now() - st.lastSync >= SYNC_INTERVAL_MS) {
+      startBurst();
+    }
   }, 1000);
 
   // ---------------------------------------------------------------------
@@ -347,7 +386,7 @@
       let buffer = null;
       try {
         if (!ASSET_URL_RE.test(target)) throw new Error("bad asset url");
-        const response = await fetch(target, { cache: "no-store" });
+        const response = await fetch(withKey(target), { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.arrayBuffer();
         if (nBytes !== undefined && data.byteLength !== nBytes) throw new Error("size mismatch");
@@ -387,17 +426,40 @@
     };
   }
 
+  // The sounds a rater must hear before rating (panel.required_plays): the candidate,
+  // and the reference when distinguishability is asked.
+  function requiredRoles(message) {
+    return message.reference && message.ask_distinguishability
+      ? ["candidate", "reference"]
+      : ["candidate"];
+  }
+
+  function notPlayed(slot, role, why) {
+    record("not_played", `${slot.id}|${role} ${why}`);
+    if (requiredRoles(slot.message).includes(role)) miss(slot, `${role}: ${why}`);
+  }
+
   async function schedulePlay(slot, role, asset, scheduledServerMs, onsetPerf) {
     const key = `${slot.id}|${role}`;
     if (st.played.has(key)) return;
     const buffer = await ensureBuffer(asset.asset_id);
     if (slot.dead || st.finished || st.played.has(key)) return;
+    if (slot.mode !== "rate") {
+      record("not_played", `${key} slot not rateable`);
+      return;
+    }
     if (!buffer) {
-      record("not_played", `${key} asset not ready`);
+      notPlayed(slot, role, "asset not ready");
       return;
     }
     if (now() > onsetPerf + MAX_LATE_START_MS) {
-      record("not_played", `${key} too late`);
+      notPlayed(slot, role, "too late");
+      return;
+    }
+    if (st.ctx.state !== "running") {
+      // start() on a stopped audio clock returns but plays nothing
+      st.ctx.resume().catch((err) => record("resume_error", String(err)));
+      notPlayed(slot, role, `audio ${st.ctx.state}`);
       return;
     }
     st.played.add(key);
@@ -409,12 +471,24 @@
     let when = map.ctxAt(onsetPerf);
     if (when <= st.ctx.currentTime) when = st.ctx.currentTime; // late: start now
     source.start(when);
-    slot.sources.push(source);
+    const entry = { node: source, when, cancelled: false };
+    slot.sources.push(entry);
+    slot.started.add(role);
     const planned = map.perfAt(when);
     record("play", { key, planned });
     // Report once the sound is out, with the output time re-read from the audio clock
-    // then (a stalled or drifting device shows up in the logged onset).
+    // then (a stalled or drifting device shows up in the logged onset). A start() call
+    // is no proof of output: the audio clock must have run past the onset.
     window.setTimeout(() => {
+      if (entry.cancelled) {
+        record("cancelled", key); // stopped before its onset: it never played
+        return;
+      }
+      if (st.ctx.state !== "running" || st.ctx.currentTime < when) {
+        record("not_heard", { key, state: st.ctx.state, currentTime: st.ctx.currentTime, when });
+        if (requiredRoles(slot.message).includes(role)) miss(slot, `${role}: audio clock stopped`);
+        return;
+      }
       const onset = audioMap().perfAt(when);
       record("played", { key, onset });
       queue({
@@ -455,7 +529,8 @@
       lockPerf: startPerf + SLOT_MS,
       timers: [],
       sources: [],
-      mode: "rate",
+      started: new Set(),    // roles whose sound started in this page
+      mode: "rate",          // rate | placeholder | rejoin | missed
       unlocked: false,
       locked: false,
       submitted: false,
@@ -475,12 +550,23 @@
     }
     record("slot", { id, mode: slot.mode, late });
     if (slot.mode === "rate") {
-      schedulePlay(slot, "candidate", message.candidate, message.start_server_ms, startPerf);
+      // The reference is scheduled only after the candidate: a candidate that cannot
+      // play makes the slot neutral, and then nothing else plays in it.
+      const candidate = schedulePlay(
+        slot, "candidate", message.candidate, message.start_server_ms, startPerf,
+      );
       if (message.reference) {
-        schedulePlay(
+        candidate.then(() => schedulePlay(
           slot, "reference", message.reference,
           message.start_server_ms + REFERENCE_OFFSET_MS, startPerf + REFERENCE_OFFSET_MS,
-        );
+        ));
+      }
+      // An asset that never loads (a fetch that hangs) must not leave the slot rateable.
+      for (const role of requiredRoles(message)) {
+        const onset = role === "candidate" ? startPerf : startPerf + REFERENCE_OFFSET_MS;
+        at(slot, onset + MAX_LATE_START_MS, () => {
+          if (!slot.started.has(role)) miss(slot, `${role}: not started in time`);
+        });
       }
       at(slot, startPerf + REFERENCE_OFFSET_MS, () => revealReference(slot));
       at(slot, slot.unlockPerf, () => unlock(slot));
@@ -500,6 +586,11 @@
     }
     if (slot.mode === "rejoin") {
       show("rejoin");
+      return;
+    }
+    if (slot.mode === "missed") {
+      show("missed");
+      progress($("missed-progress"), slot);
       return;
     }
     const m = slot.message;
@@ -535,8 +626,37 @@
     }
   }
 
+  // The slot's sound did not reach the rater: neutral screen, no controls, no rating
+  // (the host stores the rating as missing). Never undone within the slot.
+  function miss(slot, why) {
+    if (slot.dead || slot.mode !== "rate") return;
+    slot.mode = "missed";
+    record("slot_missed", { id: slot.id, why });
+    stopSources(slot);
+    if (st.active === slot) activate(slot);
+  }
+
+  // Stop the slot's sounds; one stopped before its onset never played (no `played`).
+  function stopSources(slot) {
+    for (const entry of slot.sources) {
+      if (st.ctx.currentTime < entry.when) entry.cancelled = true;
+      try {
+        entry.node.stop();
+      } catch (err) {
+        record("stop_error", String(err));
+      }
+    }
+  }
+
   function unlock(slot) {
     slot.unlocked = true;
+    if (slot.mode === "rate") {
+      const unheard = requiredRoles(slot.message).filter((role) => !slot.started.has(role));
+      if (unheard.length) {
+        miss(slot, `${unheard.join(",")}: not started by the unlock`);
+        return;
+      }
+    }
     if (st.active === slot) renderControls(slot);
   }
 
@@ -634,26 +754,57 @@
     for (const slot of st.slots.values()) {
       slot.dead = true;
       for (const t of slot.timers) window.clearTimeout(t);
-      for (const source of slot.sources) {
-        try {
-          source.stop();
-        } catch (err) {
-          record("stop_error", String(err));
-        }
-      }
+      stopSources(slot);
     }
     st.slots.clear();
     st.active = null;
     $("withdraw-dialog").hidden = true;
     show(screen);
-    if (st.ws) st.ws.close(1000);
+    if (!st.withdrawal) closeSocket();
   }
 
+  function finishWithdrawal(why) {
+    record("withdrawal_done", why);
+    st.withdrawal = null;
+    closeSocket();
+  }
+
+  function sendWithdrawal() {
+    const w = st.withdrawal;
+    if (!w || w.sentOn === st.ws) return;
+    if (send({ type: "withdraw", reason: w.reason })) {
+      w.sentOn = st.ws;
+      record("withdraw_sent", w.reason);
+    }
+  }
+
+  // The withdrawal is final for the rater at once (withdrawn screen, audio stopped),
+  // but the page keeps (re)connecting until the server has answered it, so the host
+  // always learns of it (a socket drop must not lose it).
   function withdraw(reason) {
     $("withdraw-dialog").hidden = true;
     if (st.finished) return;
-    send({ type: "withdraw", reason });
+    st.withdrawal = { reason, sentOn: null };
     finish("withdrawn");
+    sendWithdrawal();
+  }
+
+  function whileWithdrawing(message) {
+    const w = st.withdrawal;
+    if (message.type === "welcome") {
+      st.welcomed = true;
+      st.attempt = 0;
+      st.sessionId = message.session_id;
+      setConnection(true);
+      for (const queued of st.outbox.splice(0)) send(queued); // plays that happened before
+      sendWithdrawal();
+    } else if (message.type === "end" && message.reason === "withdrawn") {
+      // the server's answer to this withdrawal (or to a hello of a withdrawn seat)
+      if (w.sentOn === st.ws || !st.welcomed) finishWithdrawal("acknowledged");
+    } else if (message.type === "error" && message.code === "E_UNKNOWN_RATER") {
+      finishWithdrawal("seat refused"); // the session no longer takes this seat
+    }
+    // anything else (slots, preloads, sync) is ignored after a withdrawal
   }
 
   // ---------------------------------------------------------------------
@@ -723,6 +874,7 @@
       mode: st.active ? st.active.mode : null,
       pause: st.pause,
       finished: st.finished,
+      withdrawalPending: st.withdrawal !== null,
       buffers: st.buffers.size,
       played: Array.from(st.played),
       log: st.log.slice(),

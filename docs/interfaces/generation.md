@@ -109,22 +109,30 @@ contract: `av_generation.panel_session` (implemented by #20).
 
 | Module | Public API |
 | --- | --- |
-| `panel` | `create_panel_app(host, *, clock)` (FastAPI: `GET /panel/station`, `GET /panel/static/{station.js,station.css}`, `GET /panel/assets/<sha256>.wav`, WebSocket `/panel/ws`; `app.state.panel` is the `PanelServer`); `STATION_STATIC_DIR` (`web/rater/`); `rating_refusal(slot, submission) -> code \| None` (slot rules, in the #20 host's order: `E_SLOT_CLOSED` from `start + 20,000`, `E_PLACEHOLDER`, `E_LOCKED` before `start + unlock_offset_ms`, `E_FIRST_ATOM` for a distinguishability on a first-atom slot, `E_PROTOCOL` for a missing one elsewhere or a value outside 1-7); `slot_message(slot, *, rejoin=False)`, `preload_message(assets)`, `server_message(event)`, `asset_url(asset_id)`, `station_url(base_url, station, rater_id)`; `ClockSyncEstimator` (chained probe bursts); constants `SYNC_BURST` (8), `SYNC_INTERVAL_MS` (60,000), `SLOT_LEAD_MS` (500, `slot` event lead of the scripted host and #20), `ONSET_TOLERANCE_MS` (50), `MAX_SKEW_MS` (100), `MAX_LATE_START_MS` (1,000), `MAX_FRAME_BYTES` (4,096) |
-| `rater` | `BotRater(base_url, *, rater_id, station, run_id, policy, clock=None, max_reconnects=20, open_timeout_s=10.0).run() -> BotRunResult`; `BotRatingPolicy(p_comfort_acceptable=0.9, force_unacceptable_slots=frozenset(), p_missing=0.0, drop_slots=frozenset(), withdraw_at=None, rt_ms_range=(400, 4000))` (rating-slot IDs, never book IDs); `bot_rating(run_id, rater_id, rating_slot_id, *, ask_distinguishability, policy) -> BotRating` (stream `rng_for(bot_seed_key(run_id, rater_id, "rating", rating_slot_id))`) |
+| `panel` | `create_panel_app(host, *, clock, access_secret=None)` (FastAPI: `GET /panel/station`, `GET /panel/static/{station.js,station.css}`, `GET /panel/assets/<sha256>.wav`, WebSocket `/panel/ws`; `app.state.panel` is the `PanelServer`, with `.seat_key(rater_id, station)`); `STATION_STATIC_DIR` (`web/rater/`); `rating_refusal(slot, submission) -> code \| None` (slot rules, in the #20 host's order: `E_SLOT_CLOSED` from `start + 20,000`, `E_PLACEHOLDER`, `E_LOCKED` before `start + unlock_offset_ms`, `E_FIRST_ATOM` for a distinguishability on a first-atom slot, `E_PROTOCOL` for a missing one elsewhere or a value that is not an `int` in 1-7, e.g. `5.0`); `required_plays(slot)` (the roles a station must have reported `played` before rating: the candidate, and the reference when distinguishability is asked); `seat_key(secret, rater_id, station)` (HMAC seat key); `slot_message(slot, *, rejoin=False)`, `preload_message(assets)`, `server_message(event)`, `asset_url(asset_id)`, `station_url(base_url, station, rater_id, *, key=None)`; `ClockSyncEstimator` (chained probe bursts); constants `SYNC_BURST` (8), `SYNC_INTERVAL_MS` (60,000), `SLOT_LEAD_MS` (500, `slot` event lead of the scripted host and #20), `ONSET_TOLERANCE_MS` (50), `MAX_SKEW_MS` (100), `MAX_LATE_START_MS` (1,000), `MAX_FRAME_BYTES` (4,096), `REPLACED_CLOSE_CODE` (4001), `SEAT_KEY_PARAM` (`key`) |
+| `rater` | `BotRater(base_url, *, rater_id, station, run_id, policy, clock=None, max_reconnects=20, open_timeout_s=10.0, access_key=None).run() -> BotRunResult`; `BotRatingPolicy(p_comfort_acceptable=0.9, force_unacceptable_slots=frozenset(), p_missing=0.0, drop_slots=frozenset(), withdraw_at=None, rt_ms_range=(400, 4000))` (rating-slot IDs, never book IDs); `bot_rating(run_id, rater_id, rating_slot_id, *, ask_distinguishability, policy) -> BotRating` (stream `rng_for(bot_seed_key(run_id, rater_id, "rating", rating_slot_id))`) |
 | `panel_demo` | `ScriptedPanelHost(session, *, clock, run_dir=None)` (a `PanelSessionHost` for a fixed schedule: `begin`, `begin_when_joined`, `tick`, `start`/`stop`, `wait_ended`, `republish`, `operator`; records in `.ratings`, `.plays`, `.timing` and `run_dir/logs/`); `demo_session(*, run_id, seats, atom_index, rounds, placeholders, positions, ...) -> ScriptedSession` (DEMO batch config, meanings and rendered DEMO atoms); `schedule_document(host)` (`panel-schedule.json`); CLI `python -m av_generation.panel_demo` |
 | `panel_skew` | `detect_onsets(signal, rate)`, `parse_wav(data)` / `read_capture(path)`, `align(scheduled_ms, detected_ms)`, `capture_onsets(capture, schedule, channels)`, `logged_onsets(plays)`, `onset_table(schedule, onsets)`, `summarize(rows, schedule, ...)`, `read_schedule(path)`, `schedule_from_plays(plays, run_id)`; CLI `python -m av_generation.panel_skew logged\|loopback` (`logged-onsets.csv`, `loopback-skew.csv` and their `-summary.json`) |
 
-Rules the server enforces: every frame is schema-checked (ratings only integers 1-7 and a
-binary comfort; no free text; otherwise `error E_PROTOCOL` and nothing reaches the host);
-`hello` first and only for a seat of `host.seats()` (`E_UNKNOWN_RATER`); a new `hello`
-replaces the station's old socket; `sync_request` is answered at once; `played` must
-match the slot's asset and scheduled time; ratings are pre-checked (`E_UNKNOWN_SLOT`,
-`rating_refusal`, then `E_DUPLICATE_RATING`) before `host.submit_rating`, and `rating_ack`
-goes to the rating station only. A (re)joining station gets `welcome`, the pending
-`preload` and the current `slot` with `rejoin=true`; stations never play a sound twice
-and skip a slot joined after its candidate onset (its rating is missing). The host writes
-every rating, play and panel timing record (`panel_session`; host duties in the component
-doc, section 6).
+Rules the server enforces: a browser handshake from another origin gets HTTP 403; every
+frame is schema-checked and integer fields must be JSON integers (ratings only integers
+1-7 and a binary comfort; no free text; otherwise `error E_PROTOCOL` and nothing reaches
+the host); `hello` first and only for a seat of `host.seats()` (`E_UNKNOWN_RATER`), with
+the seat key when the app has an `access_secret` (also needed for assets; the orchestrator
+should pass one, e.g. `secrets.token_bytes(32)`, and hand out `station_url(..., key=
+app.state.panel.seat_key(...))`); a new `hello` replaces the station's old socket, which
+is closed with `REPLACED_CLOSE_CODE` (stations and bots then stop); `sync_request` is
+answered at once; `played` must match the slot's asset and scheduled time; ratings are
+pre-checked (`E_UNKNOWN_SLOT`, `rating_refusal`, `E_PROTOCOL` unless the station
+reported playing every sound of `required_plays`, then `E_DUPLICATE_RATING`) before
+`host.submit_rating`, and `rating_ack` goes to the rating station only. A (re)joining
+station gets `welcome`, the pending `preload` and the current `slot` with `rejoin=true`;
+stations never play a sound twice, skip a slot joined after its candidate onset and show
+a slot whose sound did not play as a neutral screen (rating missing in both cases). A
+withdrawal is resent after a reconnect until the server answers it; a broadcast
+`end withdrawn` (#20 ends the session when a rater withdraws) shows the normal end screen
+on the other stations. The host writes every rating, play and panel timing record
+(`panel_session`; host duties in the component doc, section 6).
 
 ## Synthetic-panel dry run (#22)
 

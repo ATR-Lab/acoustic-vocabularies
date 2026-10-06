@@ -14,6 +14,7 @@ import httpx
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from websockets.exceptions import InvalidStatus
 from websockets.sync.client import connect
 
 from av_generation.clock import ManualClock, ScaledClock
@@ -22,6 +23,7 @@ from av_generation.constants import RATING_SLOT_MS
 from av_generation.masking import masking_findings
 from av_generation.panel import (
     MAX_FRAME_BYTES,
+    REPLACED_CLOSE_CODE,
     SLOT_LEAD_MS,
     STATION_STATIC_DIR,
     SYNC_BURST,
@@ -29,6 +31,8 @@ from av_generation.panel import (
     create_panel_app,
     preload_message,
     rating_refusal,
+    required_plays,
+    seat_key,
     server_message,
     slot_message,
     station_url,
@@ -69,8 +73,20 @@ H = "a" * 64
 class Station:
     """A raw protocol client (websockets, sync) that keeps every frame it receives."""
 
-    def __init__(self, base, station="S1", rater="R01", kind="bot", *, hello=True, resume=None):
-        self.ws = connect(base.replace("http", "ws", 1) + WS_PATH, open_timeout=5).__enter__()
+    def __init__(
+        self,
+        base,
+        station="S1",
+        rater="R01",
+        kind="bot",
+        *,
+        hello=True,
+        resume=None,
+        key=None,
+        origin=None,
+    ):
+        url = base.replace("http", "ws", 1) + WS_PATH + ("" if key is None else f"?key={key}")
+        self.ws = connect(url, open_timeout=5, origin=origin).__enter__()
         self.frames = []
         if hello:
             self.send(
@@ -130,6 +146,23 @@ class Station:
             }
         )
         return self.until("rating_ack")
+
+    def hear(self, slot, roles=("candidate", "reference")):
+        """Report playing the slot's sounds (`slot` is the `slot` message). No reply: the
+        server handles a socket's frames in order, so a later rating sees them."""
+        for role in roles:
+            asset = slot[role]
+            if asset is not None:
+                self.send(
+                    {
+                        "type": "played",
+                        "rating_slot_id": slot["rating_slot_id"],
+                        "role": role,
+                        "asset_id": asset["asset_id"],
+                        "scheduled_server_ms": slot["start_server_ms"] + asset["offset_ms"],
+                        "onset_server_ms": slot["start_server_ms"] + asset["offset_ms"] + 3,
+                    }
+                )
 
     def close(self):
         self.ws.close()
@@ -231,6 +264,11 @@ def test_rating_refusal_rules():
     invalid = _slot(placeholder=True)
     assert rating_refusal(invalid, submission(invalid, at_ms=15_000)) == "E_PLACEHOLDER"
     assert rating_refusal(slot, submission(slot, at_ms=15_000, association=8)) == "E_PROTOCOL"
+    # only real ints: JSON 5.0 passes the schema's "integer", True is not a rating (#20)
+    for values in ({"association": 5.0}, {"distinguishability": 3.0}, {"association": True}):
+        assert rating_refusal(slot, submission(slot, at_ms=15_000, **values)) == "E_PROTOCOL"
+    late = dataclasses.replace(submission(slot, at_ms=15_000), rt_ms=700.0)
+    assert rating_refusal(slot, late) == "E_PROTOCOL"
 
 
 @settings(max_examples=200, deadline=None)
@@ -428,6 +466,10 @@ def test_hello_first_and_unknown_seats_are_refused(serve_app):
         {"association": 8},
         {"association": 0},
         {"association": 4.5},
+        {"association": 5.0},
+        {"distinguishability": 3.0},
+        {"rt_ms": 900.0},
+        {"association": True},
         {"distinguishability": "3"},
         {"comfort": "fine"},
         {"comment": "too loud"},
@@ -455,6 +497,7 @@ def test_invalid_ratings_and_free_text_never_reach_the_host(serve_app, change):
     assert error["code"] == "E_PROTOCOL"
     assert host.calls["submit_rating"] == 0
     # the socket stays usable for a valid rating afterwards
+    station.hear(slot)
     assert station.rating(slot["rating_slot_id"])["accepted"] is True
     assert host.calls["submit_rating"] == 1
 
@@ -497,6 +540,7 @@ def test_join_snapshot_sync_and_replaced_socket(serve_app):
     s1b = Station(base)
     assert s1b.until("welcome")["state"] == "slot"
     assert s1.closed()
+    assert s1.ws.close_code == REPLACED_CLOSE_CODE  # stations do not reconnect on it
     wait_for(
         lambda: [t.event for t in host.timing][-2:] == ["station_disconnect", "station_reconnect"]
     )
@@ -514,9 +558,11 @@ def test_rating_window_privacy_and_records(serve_app):
     s2.until("welcome")
     p1, p2, p5 = (slot_of(host, p) for p in (1, 2, 5))
     at(host, clock, p1.start_ms - SLOT_LEAD_MS)
-    assert s1.until("slot")["rating_slot_id"] == p1.rating_slot_id
+    m1 = s1.until("slot")
+    assert m1["rating_slot_id"] == p1.rating_slot_id
     assert s2.until("slot")["rejoin"] is False
     at(host, clock, p1.start_ms + 500)
+    s1.hear(m1)
     assert s1.rating(p1.rating_slot_id)["code"] == "E_LOCKED"
     at(host, clock, p1.start_ms + p1.unlock_offset_ms)
     ack = s1.rating(p1.rating_slot_id, association=6, distinguishability=2, comfort="unacceptable")
@@ -573,6 +619,7 @@ def test_first_atom_stores_distinguishability_by_rule(serve_app):
     message = s1.until("slot")
     assert message["ask_distinguishability"] is False and message["reference"] is None
     at(host, clock, p1.start_ms + 2_000)
+    s1.hear(message)
     assert s1.rating(p1.rating_slot_id, distinguishability=5)["code"] == "E_FIRST_ATOM"
     assert s1.rating(p1.rating_slot_id, distinguishability=None)["accepted"] is True
     at(host, clock, p1.start_ms + RATING_SLOT_MS)
@@ -620,12 +667,88 @@ def test_played_reports_are_checked_against_the_slot(serve_app):
     assert host.calls["report_play"] == 1
 
 
+def test_a_rating_needs_the_reported_plays_of_the_station(serve_app):
+    session = demo_session(seats=BOTS, rounds=1, positions=[1])
+    host, clock, base = manual_panel(serve_app, session)
+    host.begin(0)
+    s1, s2 = Station(base, "S1", "R01"), Station(base, "S2", "R02")
+    s1.until("welcome")
+    s2.until("welcome")
+    p1 = slot_of(host, 1)
+    assert required_plays(p1) == ("candidate", "reference")
+    at(host, clock, p1.start_ms + p1.unlock_offset_ms)
+    m1 = s1.until("slot")
+    s2.until("slot")
+    # S1 never heard anything; S2's plays do not count for S1
+    s2.hear(m1)
+    assert s1.rating(p1.rating_slot_id)["code"] == "E_PROTOCOL"
+    s1.hear(m1, roles=("candidate",))  # the reference did not play (distinguishability asked)
+    assert s1.rating(p1.rating_slot_id)["code"] == "E_PROTOCOL"
+    assert host.calls["submit_rating"] == 0
+    s1.hear(m1, roles=("reference",))
+    assert s1.rating(p1.rating_slot_id)["accepted"] is True
+    assert s2.rating(p1.rating_slot_id)["accepted"] is True
+    at(host, clock, p1.start_ms + RATING_SLOT_MS)
+    rated = [r for r in host.ratings if r.station in ("S1", "S2")]
+    assert len(rated) == 2
+    for record in rated:
+        assert not record.missing and record.candidate_onset_ms == 3
+        assert record.reference_onset_ms == 2_003
+
+
+def test_required_plays_follow_the_slot_message():
+    assert required_plays(_slot()) == ("candidate", "reference")
+    assert required_plays(_slot(first_atom=True)) == ("candidate",)
+    assert required_plays(_slot(placeholder=True)) == ()
+    silent = dataclasses.replace(_slot(), reference=None, reference_meaning=None)
+    assert required_plays(silent) == ("candidate",)
+    unnamed = dataclasses.replace(_slot(), reference_meaning=None)  # not sent to stations
+    assert slot_message(unnamed)["reference"] is None and required_plays(unnamed) == ("candidate",)
+
+
+def test_cross_site_handshakes_and_keyless_seats_are_refused(serve_app):
+    session = demo_session(seats=BOTS, rounds=1, positions=[1])
+    secret = b"DEMO-panel-access-secret"
+    host = SpyHost(session, clock=ManualClock())
+    app = create_panel_app(host, clock=ManualClock(), access_secret=secret)
+    base = serve_app(app)
+    key = seat_key(secret, "R01", "S1")
+    assert app.state.panel.seat_key("R01", "S1") == key
+    assert len(key) == 32 and key == seat_key(secret, "R01", "S1")
+    assert key not in (seat_key(secret, "R02", "S1"), seat_key(b"other", "R01", "S1"))
+    url = station_url(base, "S1", "R01", key=key)
+    assert url.endswith(f"/panel/station?station=S1&rater=R01&key={key}")
+    # a browser page of another site cannot open a station socket
+    with pytest.raises(InvalidStatus) as refused:
+        Station(base, key=key, origin="http://elsewhere.example")
+    assert refused.value.response.status_code == 403
+    # without the seat's key there is no seat (another seat's key does not open it)
+    for wrong in (None, seat_key(secret, "R02", "S2"), "0" * 32):
+        station = Station(base, key=wrong)
+        assert station.recv()["code"] == "E_UNKNOWN_RATER"
+        assert station.closed()
+    assert host.calls["station_joined"] == 0
+    same_site = Station(base, key=key, origin=base)
+    assert same_site.until("welcome")["station"] == "S1"
+    # assets: only with a seat key
+    asset_id = next(iter(session.assets))
+    asset = base + ASSET_PATH.format(asset_id=asset_id)
+    assert httpx.get(asset, timeout=5).status_code == 403
+    assert httpx.get(asset, params={"key": "0" * 32}, timeout=5).status_code == 403
+    response = httpx.get(asset, params={"key": seat_key(secret, "R03", "S3")}, timeout=5)
+    assert response.status_code == 200 and hashlib.sha256(response.content).hexdigest() == asset_id
+
+
 def test_host_failures_keep_the_station_connected(serve_app):
     class Failing(SpyHost):
         def report_play(self, report):
-            raise RuntimeError("disk full")
+            self.calls["report_play"] += 1
+            if self.calls["report_play"] == 1:
+                raise RuntimeError("disk full")
+            ScriptedPanelHost.report_play(self, report)
 
         def submit_rating(self, submission):
+            self.calls["submit_rating"] += 1
             raise RuntimeError("disk full")
 
         def asset_ready(self, rater_id, station, asset_id, ok):
@@ -652,8 +775,14 @@ def test_host_failures_keep_the_station_connected(serve_app):
         }
     )
     assert s1.until("error")["code"] == "E_PROTOCOL"
+    # the host did not take that play report: the rating is refused before the host
     ack = s1.rating(slot["rating_slot_id"])
     assert (ack["accepted"], ack["code"]) == (False, "E_PROTOCOL")
+    assert host.calls["submit_rating"] == 0
+    s1.hear(slot)
+    ack = s1.rating(slot["rating_slot_id"])
+    assert (ack["accepted"], ack["code"]) == (False, "E_PROTOCOL")
+    assert host.calls["submit_rating"] == 1
     s1.send({"type": "sync_request", "seq": 0, "client_ms": 1.0})
     assert s1.until("sync_reply")["seq"] == 0
 
@@ -794,12 +923,21 @@ def test_demo_session_shape_is_deterministic():
 # bot raters over the real server (accelerated clock)
 
 
-def run_bots(serve_app, session, policies, *, speed=25.0, republish=None):
+def run_bots(
+    serve_app,
+    session,
+    policies,
+    *,
+    speed=25.0,
+    republish=None,
+    host_cls=ScriptedPanelHost,
+    bot_classes=None,
+):
     clock = ScaledClock(speed)
-    host = ScriptedPanelHost(session, clock=clock)
+    host = host_cls(session, clock=clock)
     base = serve_app(create_panel_app(host, clock=clock))
     bots = [
-        BotRater(
+        (bot_classes or {}).get(s.station, BotRater)(
             base,
             rater_id=s.rater_id,
             station=s.station,
@@ -893,6 +1031,78 @@ def test_first_atom_round_with_a_withdrawal(serve_app):
     assert rated and all(r.distinguishability == 4 and r.distinguishability_by_rule for r in rated)
     assert not any(p.context == "rating_reference" for p in host.plays)
     assert len(host.ratings) == 9
+
+
+def test_bots_rate_only_what_they_played(serve_app):
+    session = demo_session(seats=BOTS, rounds=1, positions=[1, 2, 3])
+    p1, p2, p3 = (s.panel for s in session.slots)
+    broken = {p1.reference.asset_id, p2.candidate.asset_id}
+
+    class BrokenAssets(ScriptedPanelHost):
+        def asset_bytes(self, asset_id):  # the server answers 500: the hash check fails
+            data = super().asset_bytes(asset_id)
+            return data + b"\0" if asset_id in broken else data
+
+    host, results = run_bots(serve_app, session, {}, host_cls=BrokenAssets)
+    for station, result in results.items():
+        # slot 1: the candidate played but the reference (distinguishability asked) did not;
+        # slot 2: the candidate did not play; slot 3: both played and the bot rated
+        assert set(result.ratings) == {p3.rating_slot_id}, station
+        assert {p1.rating_slot_id, p2.rating_slot_id} <= set(result.missing)
+        assert {code for code, _ in result.errors} == {"E_ASSET"}
+        assert {a for a, ok in result.assets.items() if not ok} == broken
+    records = {(r.station, r.rating_slot_id): r for r in host.ratings}
+    for station in ("S1", "S2", "S3"):
+        assert records[(station, p1.rating_slot_id)].missing
+        assert records[(station, p1.rating_slot_id)].candidate_onset_ms is not None
+        assert records[(station, p2.rating_slot_id)].missing
+        assert not records[(station, p3.rating_slot_id)].missing
+
+
+def test_a_bot_withdrawal_survives_a_socket_drop(serve_app):
+    session = demo_session(seats=BOTS, rounds=1, positions=[1, 2, 3], atom_index=0)
+    ids = [s.panel.rating_slot_id for s in session.slots]
+
+    class DropsOnWithdraw(BotRater):
+        dropped = False
+
+        def _send(self, ws, message):
+            if message["type"] == "withdraw" and not self.dropped:
+                self.dropped = True
+                ws.close()  # the socket is gone when the rater withdraws
+            super()._send(ws, message)
+
+    host, results = run_bots(
+        serve_app,
+        session,
+        {"S3": BotRatingPolicy(withdraw_at=ids[1])},
+        bot_classes={"S3": DropsOnWithdraw},
+    )
+    s3 = results["S3"]
+    assert host.withdrawals == [("R03", "S3", "rater_request")]
+    assert s3.withdrawn and s3.end_reason == "withdrawn" and s3.reconnects == 1
+    assert s3.ratings.keys() == {ids[0]}  # nothing rated or played after the withdrawal
+    assert not any(p.station == "S3" and p.rating_slot_id == ids[2] for p in host.plays)
+    timing = [(t.event, t.station) for t in host.timing]
+    assert timing.count(("rater_withdrawal", "S3")) == 1
+    assert timing.count(("station_reconnect", "S3")) == 1
+
+
+def test_a_replaced_bot_stops_instead_of_taking_the_seat_back(serve_app):
+    host, _, base = manual_panel(serve_app, demo_session(seats=BOTS, rounds=1, positions=[1]))
+    bot = BotRater(base, rater_id="R01", station="S1", run_id=DEMO_RUN_ID, policy=BotRatingPolicy())
+    results = []
+    thread = threading.Thread(target=lambda: results.append(bot.run()), daemon=True)
+    thread.start()
+    wait_for(lambda: any(t.event == "clock_sync" for t in host.timing))
+    other = Station(base, "S1", "R01")
+    assert other.until("welcome")["station"] == "S1"
+    thread.join(10)
+    assert results and results[0].errors == [("E_REPLACED", "another client took the seat")]
+    assert results[0].reconnects == 0 and results[0].end_reason is None
+    time.sleep(0.3)
+    events = [t.event for t in host.timing if t.station == "S1"]
+    assert events.count("station_reconnect") == 1 and events.count("station_disconnect") == 1
 
 
 def test_bot_rating_draws_are_deterministic_and_policies_checked():

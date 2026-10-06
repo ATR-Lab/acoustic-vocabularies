@@ -17,9 +17,16 @@ ID: the driver computes the IDs from the restricted batch config
 Station rules the bot follows (the same as the station page): a slot is handled at most
 once (a re-sent or rejoin `slot` never plays again); an asset is played only if its
 hash matched; on a rejoin past the candidate onset the slot is skipped (no audio, no
-rating). Fixtures for #22: `p_missing` (no rating), `drop_slots` (the socket drops after
-the candidate onset and reconnects mid-slot; that slot's rating is missing) and
-`withdraw_at` (the rater withdraws in that slot).
+rating); a slot is rated only if the bot played every sound of `panel.required_plays`
+(else its rating is missing); a withdrawal is sent again after a reconnect until the
+server answers it; a socket closed with `panel.REPLACED_CLOSE_CODE` (another client took
+the seat) ends the run. Fixtures for #22: `p_missing` (no rating), `drop_slots` (the
+socket drops after the candidate onset and reconnects mid-slot; that slot's rating is
+missing) and `withdraw_at` (the rater withdraws in that slot).
+
+`BotRunResult.end_reason` is the reason of the server's `end`: `withdrawn` also when
+another rater withdrew and the host ended the session (#20); `withdrawn` (the field)
+says whether this bot withdrew.
 
 Clocks: `clock` is the bot's own monotonic clock (default `SystemClock`). For
 accelerated runs (`ScaledClock`) pass a clock with the same speed as the server's, e.g.
@@ -37,6 +44,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Final
+from urllib.parse import urlencode
 
 import httpx
 from websockets.exceptions import ConnectionClosed, InvalidHandshake
@@ -51,7 +59,13 @@ from av_generation.constants import (
     REFERENCE_ONSET_MS,
 )
 from av_generation.ids import check_id
-from av_generation.panel import ONSET_TOLERANCE_MS, SYNC_BURST, SYNC_INTERVAL_MS
+from av_generation.panel import (
+    ONSET_TOLERANCE_MS,
+    REPLACED_CLOSE_CODE,
+    SEAT_KEY_PARAM,
+    SYNC_BURST,
+    SYNC_INTERVAL_MS,
+)
 from av_generation.rater_protocol import PROTOCOL_VERSION, WS_PATH, parse_message
 from av_generation.seeds import bot_seed_key, rng_for
 
@@ -156,7 +170,8 @@ class BotRunResult:
     ratings: dict[str, tuple[bool, str | None]] = field(default_factory=dict)
     """rating_slot_id -> (accepted, refusal code)."""
     missing: list[str] = field(default_factory=list)
-    """Rateable slots left without a rating (policy, drop or lateness)."""
+    """Rateable slots left without a rating (policy, drop, lateness or a sound not
+    played)."""
     assets: dict[str, bool] = field(default_factory=dict)
     """asset_id -> hash check passed."""
     errors: list[tuple[str, str]] = field(default_factory=list)
@@ -164,6 +179,7 @@ class BotRunResult:
     pauses: list[str] = field(default_factory=list)
     reconnects: int = 0
     withdrawn: bool = False
+    """This bot withdrew (and the server answered the withdrawal)."""
     offset_ms: float | None = None
     rtt_ms: float | None = None
 
@@ -196,12 +212,17 @@ class BotRater:
         clock: Clock | None = None,
         max_reconnects: int = 20,
         open_timeout_s: float = 10.0,
+        access_key: str | None = None,
     ) -> None:
+        """`access_key`: the seat key (`panel.seat_key`) when the server has an access
+        secret; it goes on the WebSocket URL and every asset request."""
         if not base_url.startswith(("http://", "https://")):
             raise ValueError(f"base_url must be http(s)://host:port, got {base_url!r}")
         check_id(run_id, "run ID")
         self.base_url = base_url.rstrip("/")
-        self.ws_url = "ws" + self.base_url[len("http") :] + WS_PATH
+        query = "" if access_key is None else "?" + urlencode({SEAT_KEY_PARAM: access_key})
+        self.ws_url = "ws" + self.base_url[len("http") :] + WS_PATH + query
+        self._key_params = {} if access_key is None else {SEAT_KEY_PARAM: access_key}
         self.rater_id = rater_id
         self.station = station
         self.run_id = run_id
@@ -222,6 +243,8 @@ class BotRater:
         self._burst: tuple[int, float] | None = None
         self._burst_samples: list[tuple[float, float]] = []
         self._last_sync_server_ms: float | None = None
+        self._withdraw_reason: str | None = None
+        """Set when the bot withdraws; sent again after each `welcome` until `end`."""
         self._finished = False
         self._http = httpx.Client(base_url=self.base_url, timeout=10.0)
 
@@ -257,6 +280,14 @@ class BotRater:
                     pause_ms = DROP_PAUSE_MS
                 except (OSError, ConnectionClosed, InvalidHandshake, TimeoutError) as err:
                     if self._finished:
+                        break
+                    if (
+                        isinstance(err, ConnectionClosed)
+                        and err.rcvd is not None
+                        and err.rcvd.code == REPLACED_CLOSE_CODE
+                    ):  # another client took this seat: never take it back
+                        self.result.errors.append(("E_REPLACED", "another client took the seat"))
+                        self._finished = True
                         break
                     attempts += 1
                     self.result.errors.append(("E_CONNECTION", type(err).__name__))
@@ -322,6 +353,9 @@ class BotRater:
             message = parse_message(text, sender="server")
             if message["type"] == "welcome":
                 welcomed = True
+                if self._withdraw_reason is not None:
+                    self._send_withdrawal(ws)  # first: the withdrawal must reach the host
+                    continue
                 if message["state"] == "ended":
                     self._finish(ws, "ended")
                     return
@@ -366,6 +400,8 @@ class BotRater:
 
     def _on_message(self, ws: ClientConnection, message: dict[str, Any]) -> None:
         kind = message["type"]
+        if self._withdraw_reason is not None and kind not in ("end", "error"):
+            return  # after a withdrawal only the server's answer matters
         if kind == "sync_reply":
             self._on_sync_reply(ws, message)
         elif kind == "preload":
@@ -389,7 +425,7 @@ class BotRater:
         if asset_id in self._buffers:
             return
         try:
-            response = self._http.get(asset["url"])
+            response = self._http.get(asset["url"], params=self._key_params)
             data = response.content if response.status_code == 200 else b""
         except httpx.HTTPError:
             data = b""
@@ -471,8 +507,9 @@ class BotRater:
 
     def _rate(self, ws: ClientConnection, slot: _Slot, draw: BotRating, unlock: int) -> None:
         now = self._server_now()
-        if now is None or now >= slot.start + RATING_SLOT_MS:
-            self.result.missing.append(slot.id)
+        unheard = [r for r in _required_roles(slot.message) if (slot.id, r) not in self._played]
+        if now is None or now >= slot.start + RATING_SLOT_MS or unheard:
+            self.result.missing.append(slot.id)  # a sound that did not play is not rated
             return
         self._send(
             ws,
@@ -492,4 +529,18 @@ class BotRater:
 
     def _withdraw(self, ws: ClientConnection) -> None:
         self.result.withdrawn = True
-        self._send(ws, {"type": "withdraw", "reason": WITHDRAW_REASON})
+        self._withdraw_reason = WITHDRAW_REASON
+        self._actions.clear()  # no more plays or ratings
+        self._send_withdrawal(ws)
+
+    def _send_withdrawal(self, ws: ClientConnection) -> None:
+        """Send the withdrawal; a closed socket raises and `run` reconnects, and the
+        next `welcome` sends it again (until the server's `end`)."""
+        self._send(ws, {"type": "withdraw", "reason": self._withdraw_reason})
+
+
+def _required_roles(message: dict[str, Any]) -> tuple[str, ...]:
+    """`panel.required_plays` from a `slot` message (what a station sees)."""
+    if message["reference"] is not None and message["ask_distinguishability"]:
+        return ("candidate", "reference")
+    return ("candidate",)

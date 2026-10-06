@@ -10,18 +10,27 @@ server keeps no rating of its own: it relays, checks and answers.
 
 Rules the app enforces before calling the host:
 
-- every frame is validated with `rater_protocol.parse_message(..., sender="station")`;
-  anything else gets `error` `E_PROTOCOL` and is not forwarded (no free text, ratings
-  only integers 1-7 and a binary comfort choice, frames of at most `MAX_FRAME_BYTES`);
+- a WebSocket handshake whose `Origin` header names another host is refused (HTTP 403);
+  clients that send no `Origin` (bots, scripts) are allowed;
+- every frame is validated with `rater_protocol.parse_message(..., sender="station")`
+  and every integer field must be a JSON integer (`5.0` is refused); anything else gets
+  `error` `E_PROTOCOL` and is not forwarded (no free text, ratings only integers 1-7 and
+  a binary comfort choice, frames of at most `MAX_FRAME_BYTES`);
 - a station must send `hello` first; a seat that is not in `host.seats()` (rater,
-  station and kind) gets `E_UNKNOWN_RATER` and the socket closes. A second `hello` for
-  a connected station replaces the old socket (`station_left` for the old one first);
+  station and kind) gets `E_UNKNOWN_RATER` and the socket closes. With an
+  `access_secret`, the handshake must also carry the seat's key (`seat_key`, query
+  parameter `key`), and asset requests a key of any seat. A second `hello` for a
+  connected station replaces the old socket: the old one is closed with
+  `REPLACED_CLOSE_CODE` (stations do not reconnect after it) and `station_left` is
+  called for it first;
 - `sync_request` is answered at once from the server clock. The server also turns each
   burst of `SYNC_BURST` chained probes into one offset estimate for the host
   (`ClockSyncEstimator`, `host.clock_synced`);
 - `played` must name a known slot, the slot's asset for that role and the exact
-  scheduled time; `rating` is pre-checked with `rating_refusal` and refused as a
-  duplicate after an accepted rating of the same station; the host has the last word
+  scheduled time; `rating` is pre-checked with `rating_refusal`, refused with
+  `E_PROTOCOL` unless the station reported playing every sound of `required_plays`
+  (a rater who did not hear the candidate cannot rate it), and refused as a duplicate
+  after an accepted rating of the same station; the host has the last word
   (`host.submit_rating`). A `rating_ack` goes to the rating station only: ratings stay
   private;
 - a (re)joining station gets `welcome` from `host.snapshot()`, the pending `preload`
@@ -38,6 +47,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import hashlib
+import hmac
 import json
 import logging
 import re
@@ -45,8 +55,8 @@ from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Final
-from urllib.parse import urlencode
+from typing import Any, Final, Literal, TypeGuard
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import Response
@@ -109,11 +119,28 @@ lead above the network and processing delay works (the #20 host also uses 500 ms
 MAX_SKEW_MS: Final = 100
 """Proposed limit of the station-to-station onset skew."""
 MAX_FRAME_BYTES: Final = 4_096
+REPLACED_CLOSE_CODE: Final = 4_001
+"""WebSocket close code of a socket replaced by a newer `hello` for the same station.
+The station page and the bot stop reconnecting on it (two pages on one seat would
+otherwise take the seat from each other forever)."""
+SEAT_KEY_PARAM: Final = "key"
+"""Query parameter of the seat key on the station URL, the WebSocket URL and asset URLs."""
 HELLO_TIMEOUT_S: Final = 10.0
 SEND_TIMEOUT_S: Final = 2.0
 WAIT_EVENTS_TIMEOUT_S: Final = 0.25
 
 _ASSET_NAME_RE: Final = re.compile(r"([0-9a-f]{64})\.wav")
+_INTEGER_FIELDS: Final = (
+    "protocol_version",
+    "seq",
+    "scheduled_server_ms",
+    "onset_server_ms",
+    "association",
+    "distinguishability",
+    "rt_ms",
+)
+"""Station-message fields the schema types as `integer`. JSON Schema also accepts
+`5.0` there; the server does not (`type(v) is int`), like the #20 host."""
 _SECURITY_HEADERS: Final[Mapping[str, str]] = {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
@@ -132,15 +159,21 @@ log = logging.getLogger(__name__)
 # Pure helpers (shared with the host and the bot)
 
 
+def _is_int(value: object) -> TypeGuard[int]:
+    """A real `int` (not `bool`, not an integral `float` such as `5.0`)."""
+    return type(value) is int
+
+
 def rating_refusal(slot: PanelSlot, submission: RatingSubmission) -> str | None:
     """The refusal code of a rating for `slot`, or `None` when the slot rules allow it.
 
     In this order (the same as the #20 host): `E_SLOT_CLOSED` (received at or after the
     lock, 20 s after the slot start), `E_PLACEHOLDER` (invalid candidate: no rating),
     `E_LOCKED` (received before the controls unlock), `E_FIRST_ATOM` (distinguishability
-    given on a first-atom slot), `E_PROTOCOL` (a value outside 1-7, a missing
-    distinguishability on any other slot, a negative response time). Unknown slots and
-    duplicates need session state and are checked by the caller (unknown first,
+    given on a first-atom slot), `E_PROTOCOL` (a value that is not an `int` in 1-7 (also
+    `5.0` or `True`), a missing distinguishability on any other slot, a response time
+    that is not a non-negative `int`). Unknown slots, unheard sounds (`required_plays`)
+    and duplicates need session state and are checked by the caller (unknown first,
     duplicates last).
     """
     elapsed = submission.received_ms - slot.start_ms
@@ -156,12 +189,40 @@ def rating_refusal(slot: PanelSlot, submission: RatingSubmission) -> str | None:
     if not slot.first_atom:
         values.append(submission.distinguishability)
     if (
-        not all(v is not None and RATING_MIN <= v <= RATING_MAX for v in values)
+        not all(_is_int(v) and RATING_MIN <= v <= RATING_MAX for v in values)
         or submission.comfort not in COMFORT_VALUES
+        or not _is_int(submission.rt_ms)
         or submission.rt_ms < 0
     ):
         return "E_PROTOCOL"
     return None
+
+
+def required_plays(slot: PanelSlot) -> tuple[Literal["candidate", "reference"], ...]:
+    """The sounds a station must have played (and reported with `played`) before it
+    may rate `slot`: the candidate, and the reference when the slot asks for
+    distinguishability and its `slot` message carries one (`slot_message`). None for a
+    placeholder. A rater who did not hear these cannot rate the slot (`panel` server,
+    station page and bot rater)."""
+    if slot.placeholder or slot.candidate is None:
+        return ()
+    if (
+        slot.ask_distinguishability
+        and slot.reference is not None
+        and slot.reference_meaning is not None
+    ):
+        return ("candidate", "reference")
+    return ("candidate",)
+
+
+def seat_key(secret: bytes, rater_id: str, station: str) -> str:
+    """The key of one seat for a session `secret` (HMAC-SHA-256, 32 hex digits).
+
+    With `create_panel_app(..., access_secret=secret)`, a station must present its
+    seat's key to join, so a device that only knows the coded rater ID and the station
+    name cannot take a seat. Keep the secret and the station URLs outside git."""
+    message = f"av-panel-seat\n{rater_id}\n{station}".encode()
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()[:32]
 
 
 def asset_url(asset_id: str) -> str:
@@ -233,11 +294,13 @@ def server_message(event: PanelEvent) -> dict[str, Any]:
     return {"type": "end", "reason": event.reason}
 
 
-def station_url(base_url: str, station: str, rater_id: str) -> str:
-    """The station page URL for one seat (what the operator opens on that station)."""
-    return (
-        f"{base_url.rstrip('/')}{STATION_PAGE}?{urlencode({'station': station, 'rater': rater_id})}"
-    )
+def station_url(base_url: str, station: str, rater_id: str, *, key: str | None = None) -> str:
+    """The station page URL for one seat (what the operator opens on that station);
+    `key` is the seat key (`seat_key`) when the server has an access secret."""
+    query = {"station": station, "rater": rater_id}
+    if key is not None:
+        query[SEAT_KEY_PARAM] = key
+    return f"{base_url.rstrip('/')}{STATION_PAGE}?{urlencode(query)}"
 
 
 def _ascii(text: str, limit: int = 200) -> str:
@@ -253,6 +316,27 @@ def _encode(message: Mapping[str, Any]) -> str:
 
 def _error(code: str, text: str) -> dict[str, Any]:
     return {"type": "error", "code": code, "message": _ascii(text)}
+
+
+def _non_integers(message: Mapping[str, Any]) -> list[str]:
+    return [
+        name
+        for name in _INTEGER_FIELDS
+        if message.get(name) is not None and not _is_int(message[name])
+    ]
+
+
+def _same_origin(origin: str | None, host: str | None) -> bool:
+    """A browser handshake must come from a page of this server (`Origin` = `Host`).
+    Clients without an `Origin` header (bots, scripts) pass: only browsers send it."""
+    if origin is None:
+        return True
+    parts = urlsplit(origin)
+    return (
+        host is not None
+        and parts.scheme in ("http", "https")
+        and parts.netloc.lower() == host.lower()
+    )
 
 
 @dataclass
@@ -313,12 +397,17 @@ class _Station:
 class PanelServer:
     """State of one panel app (one session). Use `create_panel_app`."""
 
-    def __init__(self, host: PanelSessionHost, clock: Clock) -> None:
+    def __init__(
+        self, host: PanelSessionHost, clock: Clock, access_secret: bytes | None = None
+    ) -> None:
         self.host = host
         self.clock = clock
+        self.access_secret = access_secret
         self._stations: dict[str, _Station] = {}
         self._slots: dict[str, PanelSlot] = {}
         self._rated: set[tuple[str, str]] = set()
+        self._heard: set[tuple[str, str, str]] = set()
+        """(station, rating_slot_id, role) of every `played` report the host took."""
         self._withdrawn: set[tuple[str, str]] = set()
         self._registry = asyncio.Lock()
         self._dispatch = asyncio.Lock()
@@ -348,6 +437,17 @@ class PanelServer:
     def connected(self) -> tuple[tuple[str, str], ...]:
         """(station, rater ID) of the connected stations."""
         return tuple(sorted((s.station, s.rater_id) for s in self._stations.values()))
+
+    def seat_key(self, rater_id: str, station: str) -> str | None:
+        """The seat key stations must present, or `None` without an access secret."""
+        if self.access_secret is None:
+            return None
+        return seat_key(self.access_secret, rater_id, station)
+
+    def key_matches(self, key: str | None, rater_id: str, station: str) -> bool:
+        """Whether `key` opens this seat (always true without an access secret)."""
+        wanted = self.seat_key(rater_id, station)
+        return wanted is None or (key is not None and hmac.compare_digest(key, wanted))
 
     # -- event broadcast ----------------------------------------------------
 
@@ -423,6 +523,10 @@ class PanelServer:
 
     async def handle(self, ws: WebSocket) -> None:
         """Serve one station socket until it closes."""
+        if not _same_origin(ws.headers.get("origin"), ws.headers.get("host")):
+            await ws.close(1008)  # before accept: the client gets HTTP 403
+            return
+        key = ws.query_params.get(SEAT_KEY_PARAM)
         await ws.accept()
         self.ensure_pump()
         station: _Station | None = None
@@ -435,12 +539,12 @@ class PanelServer:
             except (RaterProtocolError, _BadFrame, TimeoutError) as err:
                 await self._reply_and_close(ws, _error("E_PROTOCOL", str(err)), 1008)
                 return
-            if hello["type"] != "hello":
+            if hello["type"] != "hello" or _non_integers(hello):
                 await self._reply_and_close(
-                    ws, _error("E_PROTOCOL", "the first message must be hello"), 1008
+                    ws, _error("E_PROTOCOL", "the first message must be a valid hello"), 1008
                 )
                 return
-            station = await self._join(ws, hello)
+            station = await self._join(ws, hello, key)
             if station is None:
                 return
             while not station.closed:
@@ -461,8 +565,15 @@ class PanelServer:
             if station is not None:
                 await self._leave(station)
 
-    async def _join(self, ws: WebSocket, hello: Mapping[str, Any]) -> _Station | None:
+    async def _join(
+        self, ws: WebSocket, hello: Mapping[str, Any], key: str | None
+    ) -> _Station | None:
         rater_id, name, kind = hello["rater_id"], hello["station"], hello["kind"]
+        if not self.key_matches(key, rater_id, name):
+            await self._reply_and_close(
+                ws, _error("E_UNKNOWN_RATER", f"no seat for {rater_id} at {name}"), 1008
+            )
+            return None
         if (rater_id, name) in self._withdrawn:
             await self._reply_and_close(ws, {"type": "end", "reason": "withdrawn"}, 1000)
             return None
@@ -476,7 +587,7 @@ class PanelServer:
             old = self._stations.pop(name, None)
             if old is not None:
                 old.replaced = True
-                await self._close(old, 1000)
+                await self._close(old, REPLACED_CLOSE_CODE)
                 await asyncio.to_thread(self.host.station_left, old.rater_id, old.station)
             try:
                 await asyncio.to_thread(self.host.station_joined, rater_id, name, kind)
@@ -520,6 +631,10 @@ class PanelServer:
             message = parse_message(text, sender="station")
         except RaterProtocolError as err:
             await self._send(station, _error("E_PROTOCOL", str(err)))
+            return
+        bad = _non_integers(message)
+        if bad:
+            await self._send(station, _error("E_PROTOCOL", f"not a JSON integer: {', '.join(bad)}"))
             return
         try:
             await self._dispatch_message(station, message)
@@ -598,6 +713,7 @@ class PanelServer:
             received_ms=self.clock.now_ms(),
         )
         await asyncio.to_thread(self.host.report_play, report)
+        self._heard.add((station.station, slot.rating_slot_id, role))
 
     async def _on_rating(self, station: _Station, message: Mapping[str, Any]) -> None:
         received = self.clock.now_ms()
@@ -614,6 +730,14 @@ class PanelServer:
         )
         slot = self._slots.get(slot_id)
         code = "E_UNKNOWN_SLOT" if slot is None else rating_refusal(slot, submission)
+        if slot is not None and code is None:
+            unheard = [
+                role
+                for role in required_plays(slot)
+                if (station.station, slot_id, role) not in self._heard
+            ]
+            if unheard:  # the station never reported playing it: it cannot rate it
+                code = "E_PROTOCOL"
         if code is None and (station.station, slot_id) in self._rated:
             code = "E_DUPLICATE_RATING"
         ack = RatingAck(False, code)
@@ -646,12 +770,17 @@ def _static(name: str) -> bytes:
     return (STATION_STATIC_DIR / name).read_bytes()
 
 
-def create_panel_app(host: PanelSessionHost, *, clock: Clock) -> Any:  # noqa: ANN401 - FastAPI app
+def create_panel_app(
+    host: PanelSessionHost, *, clock: Clock, access_secret: bytes | None = None
+) -> Any:  # noqa: ANN401 - FastAPI app
     """The panel server for one session (#21): station page, assets and WebSockets.
 
     `clock` must be the host's run clock (the times in slots, plays and ratings).
-    `app.state.panel` is the `PanelServer` (connected stations, shutdown)."""
-    server = PanelServer(host, clock)
+    `access_secret` (recommended for lab sessions, e.g. `secrets.token_bytes(32)`)
+    makes every station present its seat key (`seat_key`; `station_url(..., key=...)`)
+    and every asset request a key of some seat; `None` (tests) needs no key.
+    `app.state.panel` is the `PanelServer` (connected stations, seat keys, shutdown)."""
+    server = PanelServer(host, clock, access_secret)
     page = _static("index.html")
     static = {name: (_static(name), media) for name, media in STATIC_FILES.items()}
 
@@ -682,10 +811,14 @@ def create_panel_app(host: PanelSessionHost, *, clock: Clock) -> Any:  # noqa: A
         return Response(body, media_type=media, headers=_SECURITY_HEADERS)
 
     @app.get("/panel/assets/{name}")
-    async def asset(name: str) -> Response:
+    async def asset(name: str, key: str | None = None) -> Response:
         match = _ASSET_NAME_RE.fullmatch(name)
         if match is None:
             return Response(status_code=404)
+        if access_secret is not None:
+            seats = await asyncio.to_thread(host.seats)
+            if not any(server.key_matches(key, s.rater_id, s.station) for s in seats):
+                return Response(status_code=403)
         try:
             data = await asyncio.to_thread(host.asset_bytes, match[1])
         except KeyError:

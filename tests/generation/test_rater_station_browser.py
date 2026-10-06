@@ -1,5 +1,6 @@
 """Rater station page in Chromium (#21): no replay, control locking, first-atom rule,
-placeholders, reconnects, pause and withdrawal. Real time: each slot takes 20 s.
+placeholders, sounds that fail to play, reconnects, two pages on one seat, pause and
+withdrawal (also during a socket drop). Real time: each slot takes 20 s.
 
 The page keeps its Content-Security-Policy in these tests (no eval), so state is read by
 polling `page.evaluate`. An init script counts every `AudioBufferSourceNode.start` and
@@ -11,6 +12,7 @@ import contextlib
 import hashlib
 import json
 import random
+import re
 import time
 
 import pytest
@@ -19,7 +21,7 @@ from av_generation.clock import SystemClock
 from av_generation.config import RaterSeat
 from av_generation.constants import RATING_SLOT_MS
 from av_generation.masking import masking_findings
-from av_generation.panel import ONSET_TOLERANCE_MS, create_panel_app, station_url
+from av_generation.panel import ONSET_TOLERANCE_MS, create_panel_app, seat_key, station_url
 from av_generation.panel_demo import ScriptedPanelHost, demo_session
 from av_generation.rater_protocol import STATION_PAGE
 
@@ -81,25 +83,34 @@ def audio_starts(page):
 
 
 class Panel:
-    def __init__(self, chromium, serve_app, session):
+    def __init__(self, chromium, serve_app, session, *, keys=True, host_cls=ScriptedPanelHost):
         self.clock = SystemClock()
-        self.host = ScriptedPanelHost(session, clock=self.clock)
-        self.base = serve_app(create_panel_app(self.host, clock=self.clock))
+        self.host = host_cls(session, clock=self.clock)
+        self.secret = b"DEMO-browser-panel-secret" if keys else None
+        app = create_panel_app(self.host, clock=self.clock, access_secret=self.secret)
+        self.base = serve_app(app)
         self.browser = chromium
         self.contexts = []
         self.frames = {}
 
-    def open(self, seat, *, start=True):
+    def open(self, seat, *, start=True, broken=()):
+        """A fresh browser for `seat`; requests for the `broken` asset IDs get 404."""
         context = self.browser.new_context()
         self.contexts.append(context)
         page = context.new_page()
         page.add_init_script(INIT)
+        for asset_id in broken:
+            page.route(
+                re.compile(rf"/panel/assets/{asset_id}\.wav"),
+                lambda route: route.fulfill(status=404),
+            )
         frames = self.frames.setdefault(seat.station, [])
         page.on(
             "websocket",
             lambda ws: ws.on("framereceived", lambda payload: frames.append(json.loads(payload))),
         )
-        page.goto(station_url(self.base, seat.station, seat.rater_id))
+        key = None if self.secret is None else seat_key(self.secret, seat.rater_id, seat.station)
+        page.goto(station_url(self.base, seat.station, seat.rater_id, key=key))
         if start:
             page.click("#start-button")
             wait_until(lambda: state(page)["offset"] is not None)
@@ -119,8 +130,8 @@ class Panel:
 def panel(chromium, serve_app):
     made = []
 
-    def make(session):
-        made.append(Panel(chromium, serve_app, session))
+    def make(session, **kwargs):
+        made.append(Panel(chromium, serve_app, session, **kwargs))
         return made[-1]
 
     yield make
@@ -311,8 +322,93 @@ def test_reconnect_mid_slot_never_replays(panel):
     assert [c for slot_id, c in plays if slot_id == s3.rating_slot_id] == ["rating_candidate"]
 
 
-def test_setup_pause_withdrawal_and_unknown_station(panel):
+def test_a_sound_that_did_not_play_cannot_be_rated(panel):
+    session = demo_session(seats=HUMANS[:2], rounds=1, positions=[1, 2], lead_in_ms=3_000)
+    s1, s2 = (s.panel for s in session.slots)
+    p = panel(session)
+    # S1: the candidate of slot 1 and the reference of slot 2 fail to load (HTTP 404)
+    broken = (s1.candidate.asset_id, s2.reference.asset_id)
+    lost, fine = p.open(HUMANS[0], broken=broken), p.open(HUMANS[1])
+    p.host.begin()
+    p.host.start()
+    s1, s2 = p.slot(1), p.slot(2)
+    sleep_until(p.host, s1.start_ms + s1.unlock_offset_ms + 300)
+    assert lost.is_visible("#screen-missed") and not lost.is_visible("#rating-form")
+    assert controls_disabled(lost) and state(lost)["mode"] == "missed"
+    assert audio_starts(lost) == []  # neither the candidate nor the reference played
+    assert fine.is_visible("#screen-slot") and not controls_disabled(fine)
+    rate(fine, 5, 4, "acceptable")
+    wait_until(lambda: fine.text_content("#slot-status") == "Saved. Thank you.")
+    # Slot 2: S1's candidate plays, its reference does not: distinguishability cannot be
+    # rated, so the slot turns neutral before the unlock and stays locked.
+    sleep_until(p.host, s2.start_ms + s2.unlock_offset_ms + 300)
+    assert lost.is_visible("#screen-missed") and controls_disabled(lost)
+    assert len(audio_starts(lost)) == 1
+    assert p.host.wait_ended(40)
+    records = {(r.station, r.position): r for r in p.host.ratings}
+    assert records[("S1", 1)].missing and records[("S1", 1)].candidate_onset_ms is None
+    assert records[("S1", 2)].missing and records[("S1", 2)].candidate_onset_ms is not None
+    assert records[("S1", 2)].reference_onset_ms is None
+    assert not records[("S2", 1)].missing and records[("S2", 1)].association == 5
+    acks = [f for f in p.frames["S1"] if f["type"] == "rating_ack"]
+    assert acks == []  # S1 never sent a rating
+    failed = [t for t in p.host.timing if t.event == "asset_ready" and t.station == "S1"]
+    assert {t.detail.split()[1] for t in failed if t.detail.startswith("failed")} == set(broken)
+
+
+class EndsOnWithdrawal(ScriptedPanelHost):
+    """Like the #20 host: a withdrawal ends the session for every station."""
+
+    def report_withdrawal(self, rater_id, station, reason):
+        super().report_withdrawal(rater_id, station, reason)
+        self.operator("end", "withdrawn")
+
+
+def test_withdrawal_during_a_socket_drop_reaches_the_host(panel):
+    p = panel(demo_session(seats=HUMANS[:2], rounds=1, positions=[1]), host_cls=EndsOnWithdrawal)
+    leaving, staying = p.open(HUMANS[0]), p.open(HUMANS[1])
+    # The socket drops and the rater withdraws before the page has reconnected.
+    pending = leaving.evaluate(
+        """() => {
+          window.__avSockets.at(-1).close();
+          document.getElementById("withdraw-button").click();
+          document.querySelector("#withdraw-dialog [data-reason='technical']").click();
+          return window.avStation.state().withdrawalPending;
+        }"""
+    )
+    assert pending is True
+    assert leaving.is_visible("#screen-withdrawn")
+    wait_until(lambda: p.host.withdrawals == [("R01", "S1", "technical")])
+    wait_until(lambda: not state(leaving)["withdrawalPending"])
+    time.sleep(1.5)
+    assert leaving.evaluate("() => window.__avSockets.length") == 2  # one reconnect, then none
+    assert leaving.evaluate("() => window.__avSockets.at(-1).readyState") == 3  # closed
+    # The host ended the session for everyone: the other station shows the normal end.
+    wait_until(lambda: staying.is_visible("#screen-end"))
+    assert not staying.is_visible("#screen-withdrawn")
+    # The withdrawn seat opened again: the server's own answer shows the withdrawn screen.
+    again = p.open(HUMANS[0], start=False)
+    again.click("#start-button")
+    wait_until(lambda: again.is_visible("#screen-withdrawn"))
+    assert len(p.host.withdrawals) == 1
+
+
+def test_two_pages_on_one_seat_do_not_take_it_from_each_other(panel):
     p = panel(demo_session(seats=HUMANS, rounds=1, positions=[1]))
+    first = p.open(HUMANS[0])
+    second = p.open(HUMANS[0])
+    wait_until(lambda: first.is_visible("#screen-error"))
+    assert "another window" in first.text_content("#error-text")
+    time.sleep(3)
+    assert first.evaluate("() => window.__avSockets.length") == 1
+    assert second.evaluate("() => window.__avSockets.length") == 1
+    assert state(second)["connected"] and not state(second)["finished"]
+    events = [t.event for t in p.host.timing if t.station == "S1" and t.event.startswith("station")]
+    assert events == ["station_connect", "station_disconnect", "station_reconnect"]
+
+
+def test_setup_pause_withdrawal_and_unknown_station(panel):
+    p = panel(demo_session(seats=HUMANS, rounds=1, positions=[1]), keys=False)
     context = p.browser.new_context()
     p.contexts.append(context)
     page = context.new_page()

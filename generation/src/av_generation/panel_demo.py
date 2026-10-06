@@ -22,8 +22,10 @@ Command line (DEMO runs only; logs go to `--out-dir`, never into git):
     uv run --project generation python -m av_generation.panel_demo --rounds 4 --atom-index 5 \
         --host 0.0.0.0 --port 8765 --out-dir generation/out/panel
 
-prints the three station URLs and starts the schedule `--start-delay-s` after all
-three seats have joined (`--bots` seats bot raters instead of browsers).
+prints the three station URLs (each with its seat key: the server takes a fresh access
+secret per run, so only these URLs open a seat) and starts the schedule
+`--start-delay-s` after all three seats have joined (`--bots` seats bot raters instead
+of browsers).
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ import argparse
 import dataclasses
 import json
 import math
+import secrets
 import sys
 import threading
 import time
@@ -56,7 +59,13 @@ from av_generation.constants import (
 )
 from av_generation.ids import parse_rating_slot_id, proposal_slot_id, rating_slot_id
 from av_generation.meanings import load_meanings
-from av_generation.panel import SLOT_LEAD_MS, create_panel_app, rating_refusal, station_url
+from av_generation.panel import (
+    SLOT_LEAD_MS,
+    create_panel_app,
+    rating_refusal,
+    seat_key,
+    station_url,
+)
 from av_generation.panel_session import (
     AssetRef,
     PanelEvent,
@@ -717,11 +726,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     host = ScriptedPanelHost(session, clock=clock, run_dir=run_dir)
     host.begin_when_joined(int(args.start_delay_s * 1000))
     host.start()
-    app = create_panel_app(host, clock=clock)
+    # A session secret, not data: it only decides which clients may take a seat.
+    secret = secrets.token_bytes(32)
+    keys = {s.station: seat_key(secret, s.rater_id, s.station) for s in seats}
+    app = create_panel_app(host, clock=clock, access_secret=secret)
     with serve_in_thread(app, host=args.host, port=args.port) as base:
         print(f"panel session {args.run_id}: {len(session.slots)} slots, logs in {run_dir}")
         for seat in seats:
-            url = station_url(args.public_url or base, seat.station, seat.rater_id)
+            url = station_url(
+                args.public_url or base, seat.station, seat.rater_id, key=keys[seat.station]
+            )
             print(f"  {seat.station} ({seat.rater_id}): {url}")
         bots = [
             threading.Thread(
@@ -732,6 +746,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     run_id=args.run_id,
                     policy=BotRatingPolicy(),
                     clock=clock,
+                    access_key=keys[s.station],
                 ).run,
                 daemon=True,
             )
