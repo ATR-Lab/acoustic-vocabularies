@@ -22,7 +22,7 @@ its hashes.
 | `a3/instruction.txt` | The fixed instruction of Study A §3.6: 219 ASCII bytes, one line, no final newline |
 | `b/instruction.txt` | The Study B instruction: the same bytes (section 7, decision 1) |
 | `a3/context-template.json`, `b/context-template.json` | The static context sections of each mode (format `av-generation/context-template` v1) |
-| `prompt-set.json` | The hash file: file SHA-256s, set hashes and the schema hash |
+| `prompt-set.json` | The hash file: file SHA-256s, set hashes and the context-schema hash |
 
 The instruction file holds the exact text between the quotation marks of Study A §3.6.
 Its SHA-256 is
@@ -38,7 +38,17 @@ paths. Each value is pinned in the tests and goes into the freeze:
 | `a3_sha256` (files under `a3/`) | `0e20949a8ff628ba3258a06b70eb5231342466799301d4d5c67a22c9fd681209` | freeze item `prompts.a3_sha256`, `GenerationConfig.prompts.a3_sha256` |
 | `b_sha256` (files under `b/`) | `c23dab615f354ccb471c5c980842f7285b1b031ae85723138841df3a8579a8a7` | freeze item `prompts.b_sha256`, `GenerationConfig.prompts.b_sha256` |
 | `set_sha256` (all four files) | `d3f6c84f8247dd810f520038611bcad45cf82c9ad9ac4ed75754ac2613d0e4ce` | `PromptSet.set_sha256` |
-| `schema_sha256` (the recipe schema shown in both templates) | `a8ee5754442748826ebf2452a59e2d6cb7925f6db887163c4228a3cc5b957b6c` | `jsonio.schema_sha256` of the context's `schema` section |
+| `context_schema_sha256` (the recipe schema shown in both templates) | `a8ee5754442748826ebf2452a59e2d6cb7925f6db887163c4228a3cc5b957b6c` | `PromptSet.context_schema_sha256`; `PromptSet.check_decoding_schema` compares the decoding schema with it |
+
+`context_schema_sha256` is not the decoding-schema hash. These are two different hashes:
+
+| Hash | Of what | Where |
+| --- | --- | --- |
+| `context_schema_sha256` | The recipe schema that the prompt shows: the decoding schema without its root `$schema`, `$id`, `title` and `description` (`prompts.context_schema`) | `prompt-set.json`, `PromptSet` |
+| Decoding-schema hash, `jsonio.schema_sha256(decoding_schema)` | The exact schema sent in `response_format` (#16: `sound/schema/recipe.schema.json`, unchanged, `39ba4e4e...249c41`) | `schema_sha256` of every slot record and `LlmRequest`; freeze item `schema.decoding_sha256`; `GenerationConfig.decoding_schema_sha256` |
+
+The context-schema hash is not a separate freeze item. The template bytes, including the
+schema they show, are already in `a3_sha256` and `b_sha256`.
 
 `load_prompt_set(path, *, meanings, expected=None)` checks these points:
 
@@ -46,7 +56,7 @@ paths. Each value is pinned in the tests and goes into the freeze:
 - Every hash in the hash file matches the files.
 - The instructions are printable ASCII on one line.
 - The templates have exactly the static sections, the right mode and the same recipe
-  schema.
+  schema, without root annotations.
 - `expected` (`GenerationConfig.prompts`) equals the set hashes.
 
 Any failure raises `PromptSetError`. `PromptSet.hashes()` returns the
@@ -85,8 +95,12 @@ Each context copies the template's static sections unchanged:
 - `features`: the 12-feature order, normalization and distance.
 - `grammar`: action motif, 200 ms silence, referent motif; 3 events per motif.
 - `schema`: the published recipe schema (`sound/schema/recipe.schema.json` without
-  `$schema`, `$id`, `title` and the root `description`). A test keeps it equal to the
-  published schema.
+  `$schema`, `$id`, `title` and the root `description`, `prompts.context_schema`). A
+  test keeps it equal to the published schema. `A3Proposer` and `BSlotProposer` refuse a
+  decoding schema that differs from it in anything but these annotations
+  (`PromptSet.check_decoding_schema` raises `PromptSetError` at construction). So the
+  schema that the instruction calls "the supplied schema" is always the schema that the
+  model is decoded with.
 
 The builders then add the dynamic sections.
 
@@ -151,7 +165,10 @@ Before every call, A3 and B count the prompt with the server's `/tokenize`
 template.
 
 - Above 16,384 tokens (`constants.MAX_INPUT_TOKENS`), the slot closes as
-  `overflow_input`, with `tokens_in` set and no model call.
+  `overflow_input`, with `tokens_in` set and no model call. A prompt of exactly 16,384
+  tokens is sent. `test_slot_ledger.py::test_overflow_input_starts_above_16384_tokens`
+  (A3) and `test_b_overflow_input_starts_above_16384_tokens` (B) check both sides of
+  the limit.
 - A failed count (`TokenCountError`) closes the slot as `invalid_json`, with
   `llm_status="server_error"` and no call.
 
@@ -269,7 +286,7 @@ canonical line per consumed slot.
 | --- | --- |
 | A1 (#19) | `reserve` when the designer opens a slot. `consume` on submit, or with `timeout` at the 40-s cap or at the end of the window. |
 | A2 (#18) | `reserve`, sample or mutate, validate, `consume` (with `A2Detail`). |
-| A3 | build the prompt, `reserve`, count, call, parse, validate, `consume` (section 7). |
+| A3 | build the prompt, `reserve`, count, call, parse, validate, `consume` (section 7). The 40-s cap starts at `reserve`. |
 | B (#26) | `check_attempt` per attempt; per slot, `BSlotProposer.propose_slot(cell, seed_namespace=)`, or the same steps by hand. |
 
 ## 7. A3 and B slots
@@ -286,12 +303,19 @@ Each slot then runs these steps:
 
 1. Build the prompt. The prompt includes the request's same-round records and this
    round's earlier slots.
-2. `reserve`.
-3. If `request.window_end_ms` has already passed, close the slot as `timeout` with no
+2. `reserve`. The ticket's open time `t_open_ms` starts the slot's proposal time.
+3. Compute the slot deadline, `a3.slot_deadline_ms(t_open_ms, request.window_end_ms)`:
+   40 s after the slot opened, or the end of the proposal window if that comes first.
+   If the deadline has already passed, close the slot as `timeout` with no count and no
    call.
-4. Count the tokens; this can give `overflow_input` or a failed count.
+4. Count the tokens. A failed count gives `invalid_json`, and more than 16,384 tokens
+   gives `overflow_input`. If the count used up the time to the deadline, the slot is
+   `timeout`. None of these makes a call.
 5. Make one `propose` call with `a3_seed_key(batch_ns, atom, round, slot)` and
-   `slot_id=`. The status maps through `outcome_from_llm_status`.
+   `slot_id=`. The status maps through `outcome_from_llm_status`. If an `ok` answer
+   arrives after the deadline, the slot is `timeout`. The record keeps
+   `llm_status="ok"`, the raw output, the token counts and the latency, but the output
+   is not parsed or validated.
 6. Parse the output.
 7. `validate` against `request.book.references()` with the book's threshold, then map
    the result with `outcome_from_validation`.
@@ -301,11 +325,38 @@ Two failures still close the slot as `invalid_json` with `llm_status="server_err
 with a logged warning: a client that raises, and a client that returns an unknown
 status.
 
+### The 40-s cap
+
+Study A §3.3 gives each slot up to 40 s of proposal time. For A3 and B, these 40 s cover
+the token count and the model call together, measured on the run clock from `reserve`.
+This is the same rule as A1, whose 40-s timer also starts when the slot opens. The
+proposer enforces the deadline at two points:
+
+- It never starts a call at or after the deadline.
+- It never accepts an answer that arrives after the deadline. An answer exactly at the
+  deadline counts.
+
+The `LlmClient` contract (#16) has no per-call deadline. The client cancels a call at its
+own 40-s cap and returns within 40.5 s. So a call that starts late, after a slow count or
+late in the window, can still hold the proposer for up to 40.5 s after the call starts.
+The outcome is then `timeout`, and the next slot starts late. To cancel the call at the
+slot deadline itself, the client needs a per-call time budget (a #16 contract
+extension). A per-call budget would end the wall-clock overrun; the outcome rule stays
+the same. On the pinned server `/tokenize` takes milliseconds, so in practice the
+overrun is small.
+
+The tests use a scripted slow token count and slow calls on a `ManualClock`:
+`test_the_40_s_cap_covers_the_token_count_and_the_call`,
+`test_window_end_closes_remaining_slots_without_calls` and
+`test_b_slots_have_the_40_s_cap` in `test_a3_proposer.py`.
+
 `BSlotProposer(client, ledger, prompt_set, decoding_schema, *, clock, threshold=None,
 reserved=None)` runs one bank slot per `propose_slot(cell, *, seed_namespace)` call. It
 follows the same steps, with these differences:
 
 - the seed key is `b_seed_key(bank_ns, attempt, profile, atom, slot)`;
+- the deadline is the 40-s cap only (`slot_deadline_ms(t_open_ms)`; there is no
+  proposal window);
 - validation runs against `cell.other_atom_references()`;
 - a waveform equal to a retained option of the same cell is `duplicate`
   (`mode="B"`, `cell_duplicate`);
@@ -316,7 +367,9 @@ The bank builder (#26) keeps the first four `valid` options and owns the attempt
 Every slot record carries these fields:
 
 - `seed_key` and `seed`;
-- `prompt_sha256`, and `schema_sha256` (`jsonio.schema_sha256(decoding_schema)`);
+- `prompt_sha256`, and `schema_sha256`: the decoding-schema hash
+  (`jsonio.schema_sha256(decoding_schema)`, the same value as #16's `LlmRequest`), not
+  the prompt set's `context_schema_sha256`;
 - `llm_status`;
 - `tokens_in` (the server's count, else the `/tokenize` count) and `tokens_out`;
 - `latency_ms`;
@@ -346,16 +399,18 @@ the ledger of the mock-server integration test, under `generation/out/ci/`.
 | Decision | Rationale |
 | --- | --- |
 | The Study B instruction reuses the A3 instruction byte for byte; only the context block differs (proposed in #17) | Study B §4 uses the same core proposer. Both hashes are frozen at G4. |
-| The fixed instruction is committed | It is one protocol-fixed sentence that is already public in issue #17, and the acceptance test needs it byte for byte. It contains no vocabulary, meaning text, codebook or allocation. The meaning texts stay restricted (DEMO set in git). |
+| The fixed instruction is committed | It is one protocol-fixed sentence that is already public in issue #17, and the acceptance test needs it byte for byte. It contains no vocabulary, meaning text, codebook or allocation. The meaning texts stay restricted (DEMO set in git). Architecture §8 still says that prompt sets quoting the protocol never enter git; the orchestrator updates that wording. **Pending (human):** owner sign-off on committing the sentence. |
 | The instruction is the `system` message and the context the `user` message | The instruction stays exactly as stored, and the pinned template's default system message is not added. |
 | Canonical compact JSON context; features and scores rounded half-even to 4 decimals; ratings sorted | Deterministic and platform-independent, compact enough to keep the worst case at 30% (A3) and 62% (B) of the input limit, and the seat order never shows. |
-| The context shows the published recipe schema and a validator-code glossary | The instruction says "only the supplied schema and allowed values". The schema matches the decoding schema's constraints (#16 owns the decoding schema and its hash). |
+| The context shows the published recipe schema and a validator-code glossary | The instruction says "only the supplied schema and allowed values". The proposers check that the decoding schema, without its root annotations, is the schema the context shows (`PromptSet.check_decoding_schema`). #16 owns the decoding schema and its hash. |
+| The hash file calls the context-schema hash `context_schema_sha256` | Every `schema_sha256` field (slot record, `LlmRequest`) and `schema.decoding_sha256` hash the decoding schema. A different name keeps the two hashes apart at G4. |
 | Validator codes, not messages, in the feedback | `CandidateFeedback` carries codes only. Same-round entries follow the same rule, and the worst case stays bounded. |
 | The builders filter inputs (book, atom, closed rounds, cell) instead of trusting the caller | The prompt is the last masking boundary. Leak tests run against hostile inputs. |
-| The prompt is built before `reserve` | A contract violation raises before a slot is charged. Building a prompt is not proposal work. |
+| The prompt is built before `reserve` | A contract violation raises before a slot is charged. Building a prompt is not proposal work. A 13th slot can only be named by a slot ID of rounds 1-4, so its prompt builds and `reserve` refuses and logs it. Architecture §3.1 and §3.3 still list `reserve` first; the orchestrator updates them. |
 | A parser refusal is logged as validator code `E_JSON` with the parser message | One outcome mapping for every parsed slot. A3 sees why a slot failed. |
 | A client exception or unknown status is `server_error` / `invalid_json` | A failed slot always closes and the next one proceeds (no retry). The warning keeps the cause visible. |
-| A slot whose window has ended closes as `timeout` without a call | A proposer never runs past its proposal window (`RoundRequest.window_end_ms`). |
+| The 40-s cap covers the token count and the call; the slot deadline is the cap or the window end, whichever comes first | Study A §3.3 gives each slot up to 40 s of proposal time, and A1's timer also starts when the slot opens. No call starts at or after the deadline, and no answer after it is accepted (section 7). |
+| After the count, `overflow_input` and a failed count come before `timeout` | Overflow is a property of the prompt, so the same state gives the same outcome. A failed count stays visible as `server_error`. |
 | The ledger checks the cap before reuse, and checks slot IDs against cap keys and methods | Any request beyond 12 is a `slot_cap` refusal. A slot can never be charged to the wrong book, cell or method. |
 | Refusals are always logged (default file next to the ledger) | The acceptance criterion requires a 13th-slot request to be logged, even when the caller passes no writer. |
 | `BSlotProposer` lives with A3 | Study B uses the frozen A3 core. #26 gets one tested slot path instead of a copy. |

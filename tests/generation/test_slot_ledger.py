@@ -2,6 +2,7 @@
 fixture per outcome code (each consumes exactly one slot, at most one model call)."""
 
 import dataclasses
+import json
 import random
 import shutil
 import tempfile
@@ -15,7 +16,9 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from av_generation import _demo_ledger as demo
+from av_generation.a3 import BSlotProposer
 from av_generation.clock import ManualClock
+from av_generation.constants import MAX_INPUT_TOKENS
 from av_generation.ids import (
     IdError,
     Method,
@@ -566,6 +569,53 @@ def test_failed_token_count_consumes_the_slot_without_a_call(tmp_path):
     assert [r.outcome for r in result.records] == [SlotOutcome.INVALID_JSON] * 3
     assert {r.llm_status for r in result.records} == {LlmStatus.SERVER_ERROR}
     assert client.call_count == 0 and len(ledger.records()) == 3
+
+
+def _task_slot(messages):
+    return json.loads(messages[-1]["content"])["task"]["slot"]
+
+
+def test_overflow_input_starts_above_16384_tokens(tmp_path):
+    """Study A §3.6: at most 16,384 input tokens. 16,384 is sent; 16,385 is not."""
+    assert MAX_INPUT_TOKENS == 16_384
+    clock = ManualClock(0)
+    ledger = demo.demo_ledger(tmp_path, clock, run_id=RUN)
+    counts = {1: 16_383, 2: 16_384, 3: 16_385}
+    client = ScriptedLlmClient(
+        [demo.A_OUTPUTS[SlotOutcome.VALID]] * 2,
+        token_counter=lambda messages: counts[_task_slot(messages)],
+    )
+    proposer = demo.a3_proposer(client, ledger, clock)
+    records = proposer.propose_round(demo.demo_request(1, clock=clock, run_id=RUN)).records
+    assert [(r.outcome, r.tokens_in) for r in records] == [
+        (SlotOutcome.VALID, 16_383),
+        (SlotOutcome.VALID, 16_384),
+        (SlotOutcome.OVERFLOW_INPUT, 16_385),
+    ]
+    assert [c.slot_id for c in client.calls] == [r.slot_id for r in records[:2]]
+    assert records[2].llm_status is None and records[2].raw_output is None
+
+
+def test_b_overflow_input_starts_above_16384_tokens(tmp_path):
+    clock = ManualClock(0)
+    ledger = demo.demo_ledger(tmp_path, clock, run_id=RUN)
+    counts = {1: 16_384, 2: 16_385}
+    client = ScriptedLlmClient(
+        [demo.B_OUTPUTS[SlotOutcome.VALID]],
+        token_counter=lambda messages: counts[_task_slot(messages)],
+    )
+    proposer = BSlotProposer(
+        client, ledger, demo.demo_prompt_set(), demo.demo_decoding_schema(), clock=clock
+    )
+    records = [
+        proposer.propose_slot(demo.demo_cell(slot, ledger.records()), seed_namespace=demo.BANK)
+        for slot in (1, 2)
+    ]
+    assert [(r.outcome, r.tokens_in) for r in records] == [
+        (SlotOutcome.VALID, 16_384),
+        (SlotOutcome.OVERFLOW_INPUT, 16_385),
+    ]
+    assert [c.slot_id for c in client.calls] == [records[0].slot_id]
 
 
 def test_demo_example_ledger_is_reproducible(tmp_path):

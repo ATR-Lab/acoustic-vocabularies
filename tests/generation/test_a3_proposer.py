@@ -17,14 +17,16 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from av_generation import _demo_ledger as demo
-from av_generation.a3 import RAW_OUTPUT_MAX_CHARS, A3Proposer, BSlotProposer
+from av_generation.a3 import RAW_OUTPUT_MAX_CHARS, A3Proposer, BSlotProposer, slot_deadline_ms
 from av_generation.clock import ManualClock, SystemClock
+from av_generation.constants import SLOT_CAP_MS
 from av_generation.ids import Method, Study
 from av_generation.jsonio import messages_sha256, schema_sha256
 from av_generation.ledger import SlotCapExceeded
 from av_generation.llm import LlmClient, RawOutcome, TokenCountError
 from av_generation.llm_fake import ScriptedLlmClient
 from av_generation.outcomes import LlmStatus, SlotOutcome
+from av_generation.prompts import PromptSetError
 from av_generation.proposers import RoundProposer
 from av_generation.records import SlotRecord, SlotRefusal, read_records
 from av_generation.seeds import a3_seed_key, b_seed_key, seed_from_key, wire_seed
@@ -113,23 +115,144 @@ def test_a_closed_slot_is_never_retried(tmp_path):
     assert client.call_count == 3 and len(ledger.records()) == 3
 
 
+def task_slot(messages):
+    """The slot (A3: round slot, B: cell slot) a prompt is for."""
+    return json.loads(messages[-1]["content"])["task"]["slot"]
+
+
+def answer_after(clock, ms, text=VALID):
+    """A scripted `ok` call that takes `ms` of run-clock time (and counts no tokens)."""
+
+    def entry(messages, schema, seed_key):
+        clock.advance(ms)
+        return RawOutcome(LlmStatus.OK, text, ms, None, 20, 0, "stop")
+
+    return entry
+
+
+def test_slot_deadline_is_the_cap_or_the_window_end():
+    assert slot_deadline_ms(1_000) == 1_000 + SLOT_CAP_MS == 41_000
+    assert slot_deadline_ms(1_000, 120_000) == 41_000
+    assert slot_deadline_ms(100_000, 120_000) == 120_000
+
+
 def test_window_end_closes_remaining_slots_without_calls(tmp_path):
     clock = ManualClock(0)
-
-    def slow(messages, schema, seed_key):
-        clock.advance(demo.WINDOW_MS)
-        return VALID
-
-    client = scripted([slow])
+    client = scripted([answer_after(clock, 39_000), answer_after(clock, 12_000)])
     proposer, ledger, _ = proposer_for(client, tmp_path, clock)
-    result = proposer.propose_round(demo.demo_request(1, clock=clock))
-    assert [r.outcome for r in result.records] == [
-        SlotOutcome.VALID,
+    request = replace(demo.demo_request(1, clock=clock), window_end_ms=50_000)
+    first, second, third = proposer.propose_round(request).records
+    assert first.outcome is SlotOutcome.VALID and first.t_ms == 39_000
+    # slot 2 opened at 39 s; its answer came at 51 s, after the window ended (50 s)
+    assert (second.outcome, second.llm_status, second.t_ms) == (
         SlotOutcome.TIMEOUT,
-        SlotOutcome.TIMEOUT,
+        LlmStatus.OK,
+        51_000,
+    )
+    assert second.raw_output == VALID and second.recipe is None and second.validator_codes == ()
+    assert second.latency_ms == 12_000 and second.tokens_in is not None
+    # slot 3 opens after the window: no count, no call
+    assert (third.outcome, third.llm_status, third.tokens_in) == (SlotOutcome.TIMEOUT, None, None)
+    assert client.call_count == 2 and client.token_counts == 2
+    assert len(ledger.records()) == 3
+
+
+def test_the_40_s_cap_covers_the_token_count_and_the_call(tmp_path):
+    """Slot 1: the count takes 40 s, so no call. Slot 2: count 25 s + call 15 s, the answer
+    comes exactly at the cap and counts. Slot 3: count 25 s + call 15.001 s, too late."""
+    clock = ManualClock(0)
+    count_ms = {1: SLOT_CAP_MS, 2: 25_000, 3: 25_000}
+
+    def slow_count(messages):
+        clock.advance(count_ms[task_slot(messages)])
+        return 1_000
+
+    client = scripted(
+        [answer_after(clock, 15_000), answer_after(clock, 15_001)], token_counter=slow_count
+    )
+    proposer, ledger, _ = proposer_for(client, tmp_path, clock)
+    first, second, third = proposer.propose_round(demo.demo_request(1, clock=clock)).records
+    assert [(r.t_open_ms, r.t_ms) for r in (first, second, third)] == [
+        (0, 40_000),
+        (40_000, 80_000),
+        (80_000, 120_001),
     ]
-    assert client.call_count == 1
-    assert result.records[1].llm_status is None and result.records[1].tokens_in is None
+    assert (first.outcome, first.llm_status, first.tokens_in) == (
+        SlotOutcome.TIMEOUT,
+        None,
+        1_000,
+    )
+    assert second.outcome is SlotOutcome.VALID and second.llm_status is LlmStatus.OK
+    assert (third.outcome, third.llm_status, third.raw_output) == (
+        SlotOutcome.TIMEOUT,
+        LlmStatus.OK,
+        VALID,
+    )
+    assert third.recipe is None and third.pcm_sha256 is None
+    assert [c.slot_id for c in client.calls] == [second.slot_id, third.slot_id]
+    assert client.token_counts == 3 and len(ledger.records()) == 3
+
+
+def test_overflow_and_failed_counts_win_over_a_slow_count(tmp_path):
+    """Once the count is known, `overflow_input` (a property of the prompt) and a failed
+    count are logged as such even if the count also used up the slot's time."""
+    clock = ManualClock(0)
+
+    def slow_count(messages):
+        clock.advance(SLOT_CAP_MS)
+        if task_slot(messages) == 2:
+            raise TokenCountError("tokenize timed out")
+        return 16_385 if task_slot(messages) == 1 else 10
+
+    client = scripted([], token_counter=slow_count)
+    proposer, _, _ = proposer_for(client, tmp_path, clock)
+    records = proposer.propose_round(demo.demo_request(1, clock=clock)).records
+    assert [(r.outcome, r.llm_status) for r in records] == [
+        (SlotOutcome.OVERFLOW_INPUT, None),
+        (SlotOutcome.INVALID_JSON, LlmStatus.SERVER_ERROR),
+        (SlotOutcome.TIMEOUT, None),
+    ]
+    assert client.call_count == 0
+
+
+def test_b_slots_have_the_40_s_cap(tmp_path):
+    clock = ManualClock(0)
+    ledger = demo.demo_ledger(tmp_path, clock)
+
+    def slow_count(messages):
+        if task_slot(messages) == 1:
+            clock.advance(SLOT_CAP_MS)
+        return 10
+
+    client = scripted(
+        [answer_after(clock, SLOT_CAP_MS + 1), answer_after(clock, SLOT_CAP_MS)],
+        token_counter=slow_count,
+    )
+    proposer = BSlotProposer(
+        client, ledger, demo.demo_prompt_set(), demo.demo_decoding_schema(), clock=clock
+    )
+    records = [
+        proposer.propose_slot(demo.demo_cell(slot, ledger.records()), seed_namespace=demo.BANK)
+        for slot in (1, 2, 3)
+    ]
+    assert [(r.outcome, r.llm_status) for r in records] == [
+        (SlotOutcome.TIMEOUT, None),
+        (SlotOutcome.TIMEOUT, LlmStatus.OK),
+        (SlotOutcome.VALID, LlmStatus.OK),
+    ]
+    assert client.call_count == 2
+
+
+@pytest.mark.parametrize("study", ["A", "B"])
+def test_a_decoding_schema_the_prompt_does_not_show_is_refused(tmp_path, study):
+    clock = ManualClock(0)
+    ledger = demo.demo_ledger(tmp_path, clock)
+    schema = demo.demo_decoding_schema()
+    schema["properties"]["total_ms"]["enum"] = [450, 600]
+    cls = A3Proposer if study == "A" else BSlotProposer
+    with pytest.raises(PromptSetError, match="must agree"):
+        cls(scripted([]), ledger, demo.demo_prompt_set(), schema, clock=clock)
+    assert ledger.records() == () and ledger.open_tickets() == ()
 
 
 def test_a_raising_client_closes_the_slot_as_server_error(tmp_path, caplog):

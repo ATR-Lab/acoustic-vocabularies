@@ -1,6 +1,7 @@
 {
   "a3_sha256": "0e20949a8ff628ba3258a06b70eb5231342466799301d4d5c67a22c9fd681209",
   "b_sha256": "c23dab615f354ccb471c5c980842f7285b1b031ae85723138841df3a8579a8a7",
+  "context_schema_sha256": "a8ee5754442748826ebf2452a59e2d6cb7925f6db887163c4228a3cc5b957b6c",
   "demo": false,
   "files": {
     "a3/context-template.json": "f8759e009f6756bc9f8cc482360c18bc5c59360e3e13fc13d8204be89d13be8b",
@@ -11,6 +12,5 @@
   "format": "av-generation/prompt-set",
   "format_version": 1,
   "name": "prompts-v1",
-  "schema_sha256": "a8ee5754442748826ebf2452a59e2d6cb7925f6db887163c4228a3cc5b957b6c",
   "set_sha256": "d3f6c84f8247dd810f520038611bcad45cf82c9ad9ac4ed75754ac2613d0e4ce"
 }

@@ -4,7 +4,8 @@ Study B protocol §4).
 Prompt set (`generation/prompts/`, loaded with `load_prompt_set`):
 
 ```
-prompt-set.json               hash file: name, demo flag, file hashes, set hashes
+prompt-set.json               hash file: name, demo flag, file hashes, set hashes,
+                              context-schema hash
 a3/instruction.txt            the fixed instruction (Study A §3.6), exact bytes, no newline
 a3/context-template.json      static context sections of the A3 prompt
 b/instruction.txt             the Study B instruction (the A3 text, byte for byte)
@@ -35,7 +36,13 @@ Hashes (shared definitions, `av_generation.jsonio`):
   `b/` (relative POSIX paths; freeze items `prompts.a3_sha256` / `prompts.b_sha256`;
   `GenerationConfig.prompts`, see `PromptSet.hashes()`); `set_sha256` over all four files;
 - `BuiltPrompt.prompt_sha256` = `jsonio.messages_sha256(messages)`, the per-call hash in
-  the slot record and the `LlmRequest` (#16 computes it the same way).
+  the slot record and the `LlmRequest` (#16 computes it the same way);
+- `PromptSet.context_schema_sha256` = `jsonio.schema_sha256` of the recipe schema the
+  context shows (the templates' `schema` section). It is not the decoding-schema hash
+  (`schema.decoding_sha256`, the `schema_sha256` of slot records and `LlmRequest`s): the
+  context schema is the decoding schema without its root annotations (`context_schema`),
+  and `PromptSet.check_decoding_schema` holds the two together. The templates' bytes are
+  already covered by `a3_sha256` / `b_sha256`, so it is not a separate freeze item.
 
 Determinism: the same state gives a byte-identical prompt and `prompt_sha256`. Numbers in
 the context are exact integers, recipe amplitudes (0.6, 0.8, 1.0), or exact fractions
@@ -118,6 +125,9 @@ DYNAMIC_SECTIONS: Final[dict[str, frozenset[str]]] = {
 """Sections the builders fill per slot."""
 FEATURE_PLACES: Final = 4
 """Decimal places of features and scores in the context (exact half-even rounding)."""
+SCHEMA_ANNOTATIONS: Final[tuple[str, ...]] = ("$schema", "$id", "title", "description")
+"""Root keys of a JSON Schema that the context leaves out (`context_schema`): they name or
+describe the schema and constrain nothing."""
 _MANIFEST_KEYS: Final[frozenset[str]] = frozenset(
     {
         "format",
@@ -128,7 +138,7 @@ _MANIFEST_KEYS: Final[frozenset[str]] = frozenset(
         "a3_sha256",
         "b_sha256",
         "set_sha256",
-        "schema_sha256",
+        "context_schema_sha256",
     }
 )
 
@@ -165,12 +175,25 @@ class PromptSet:
     """`file_set_sha256` of the `a3/` files: freeze item `prompts.a3_sha256`."""
     b_sha256: str
     """`file_set_sha256` of the `b/` files: freeze item `prompts.b_sha256`."""
-    schema_sha256: str
-    """`jsonio.schema_sha256` of the recipe schema shown in the context (both modes)."""
+    context_schema_sha256: str
+    """`jsonio.schema_sha256` of the recipe schema shown in the context (both modes). Not
+    the decoding-schema hash; see `check_decoding_schema`."""
 
     def hashes(self) -> PromptHashes:
         """The `GenerationConfig.prompts` value of this set."""
         return PromptHashes(a3_sha256=self.a3_sha256, b_sha256=self.b_sha256)
+
+    def check_decoding_schema(self, decoding_schema: Mapping[str, Any]) -> None:
+        """Raise `PromptSetError` unless the context shows `decoding_schema`: its
+        `context_schema` must hash to `context_schema_sha256`. Then the schema the
+        instruction calls "the supplied schema" is the one the model is decoded with."""
+        shown = schema_sha256(context_schema(decoding_schema))
+        if shown != self.context_schema_sha256:
+            raise PromptSetError(
+                f"prompt set {self.name!r} shows the recipe schema {self.context_schema_sha256}"
+                f", but the decoding schema {schema_sha256(decoding_schema)} gives {shown} "
+                "without its annotations: the prompt and the decoding schema must agree"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +209,12 @@ class BuiltPrompt:
 
 # ---------------------------------------------------------------------------
 # Prompt sets
+
+
+def context_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
+    """`schema` without its root annotations (`SCHEMA_ANNOTATIONS`): the form a context
+    template shows."""
+    return {key: value for key, value in schema.items() if key not in SCHEMA_ANNOTATIONS}
 
 
 def default_prompt_set_dir() -> Path:
@@ -239,8 +268,13 @@ def _read_sections(path: Path, mode: str) -> dict[str, Any]:
     sections = doc["sections"]
     if not isinstance(sections, dict) or set(sections) != STATIC_SECTIONS:
         raise PromptSetError(f"{path}: sections must be exactly {sorted(STATIC_SECTIONS)}")
-    if not isinstance(sections["schema"], dict):
+    schema = sections["schema"]
+    if not isinstance(schema, dict):
         raise PromptSetError(f"{path}: sections.schema must be a JSON Schema object")
+    if schema != context_schema(schema):
+        raise PromptSetError(
+            f"{path}: sections.schema must not carry the root annotations {SCHEMA_ANNOTATIONS}"
+        )
     return sections
 
 
@@ -266,7 +300,7 @@ def prompt_set_manifest(path: str | os.PathLike[str], *, name: str) -> dict[str,
         "a3_sha256": file_set_sha256(_subset(files, "a3")),
         "b_sha256": file_set_sha256(_subset(files, "b")),
         "set_sha256": file_set_sha256(files),
-        "schema_sha256": schemas.pop(),
+        "context_schema_sha256": schemas.pop(),
     }
 
 
@@ -279,7 +313,7 @@ def load_prompt_set(
     """Load and hash-check a prompt-set directory (#17).
 
     The files must be exactly `SET_FILES` and match the hash file `prompt-set.json` (file
-    hashes, set hashes, schema hash, name and demo flag). `expected` (the generation
+    hashes, set hashes, context-schema hash, name and demo flag). `expected` (the generation
     config's `prompts`) must equal the set's hashes. Raises `PromptSetError`.
     """
     root = Path(path)
@@ -311,7 +345,7 @@ def load_prompt_set(
         b_sections=_read_sections(root / "b" / TEMPLATE_NAME, "b"),
         a3_sha256=computed["a3_sha256"],
         b_sha256=computed["b_sha256"],
-        schema_sha256=computed["schema_sha256"],
+        context_schema_sha256=computed["context_schema_sha256"],
     )
     if expected is not None and prompt_set.hashes() != expected:
         raise PromptSetError(

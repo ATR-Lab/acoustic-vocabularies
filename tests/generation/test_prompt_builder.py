@@ -30,12 +30,14 @@ from av_generation.outcomes import SlotOutcome
 from av_generation.prompts import (
     DYNAMIC_SECTIONS,
     MANIFEST_NAME,
+    SCHEMA_ANNOTATIONS,
     STATIC_SECTIONS,
     PromptContextError,
     PromptSetError,
     _decimal,
     build_a3_prompt,
     build_b_prompt,
+    context_schema,
     default_prompt_set_dir,
     load_prompt_set,
     prompt_set_manifest,
@@ -165,12 +167,36 @@ def test_template_schema_is_the_published_recipe_schema(prompt_set):
     expected = {
         k: v for k, v in sound.items() if k not in ("$schema", "$id", "title", "description")
     }
+    assert context_schema(sound) == expected and set(SCHEMA_ANNOTATIONS) <= set(sound)
     for sections in (prompt_set.a3_sections, prompt_set.b_sections):
         assert sections["schema"] == expected
         assert sections["features"]["order"] == list(FEATURE_NAMES)
         assert set(sections["codes"]) == set(REASON_CODES)
         assert set(sections) == STATIC_SECTIONS
-    assert prompt_set.schema_sha256 == schema_sha256(expected)
+    assert prompt_set.context_schema_sha256 == schema_sha256(expected)
+
+
+def test_context_schema_hash_is_not_the_decoding_schema_hash(prompt_set):
+    """The hash file names the context schema's hash `context_schema_sha256`; the
+    decoding-schema hash (`schema_sha256` of slot records and #16's `LlmRequest`, freeze
+    item `schema.decoding_sha256`) hashes the unstripped schema and differs."""
+    stored = json.loads((PROMPTS / MANIFEST_NAME).read_text("utf-8"))
+    assert "schema_sha256" not in stored
+    assert stored["context_schema_sha256"] == prompt_set.context_schema_sha256
+    decoding = demo.demo_decoding_schema()
+    assert schema_sha256(decoding) != prompt_set.context_schema_sha256
+    assert schema_sha256(context_schema(decoding)) == prompt_set.context_schema_sha256
+
+
+def test_decoding_schema_must_be_the_schema_the_prompt_shows(prompt_set):
+    decoding = demo.demo_decoding_schema()
+    prompt_set.check_decoding_schema(decoding)  # the stand-in (#16's schema) agrees
+    prompt_set.check_decoding_schema({**decoding, "title": "renamed"})  # annotations only
+    changed = json.loads(json.dumps(decoding))
+    changed["properties"]["total_ms"]["enum"] = [450, 600, 750]
+    for other in (changed, context_schema(decoding) | {"minProperties": 1}, {}):
+        with pytest.raises(PromptSetError, match="must agree"):
+            prompt_set.check_decoding_schema(other)
 
 
 def test_prompt_hashes_feed_the_generation_config(prompt_set):
@@ -227,6 +253,7 @@ def test_edited_files_are_refused(tmp_path, prompt_set):
         "template_mode",
         "template_json",
         "schema_differs",
+        "schema_annotation",
         "schema_type",
         "name",
     ],
@@ -240,13 +267,15 @@ def test_malformed_sets_are_refused(tmp_path, prompt_set, edit):
         "sections": lambda d: d["sections"].update(task={}),
         "template_format": lambda d: d.update(format_version=2),
         "template_mode": lambda d: d.update(mode="B"),
-        "schema_differs": lambda d: d["sections"]["schema"].update(title="other"),
+        "schema_differs": lambda d: d["sections"]["schema"].update(minProperties=1),
+        "schema_annotation": lambda d: d["sections"]["schema"].update(title="other"),
         "schema_type": lambda d: d["sections"].update(schema=[]),
     }
     if edit in template_edits:
         template_edits[edit](doc)
         a3_template.write_text(json.dumps(doc))
-        with pytest.raises(PromptSetError):
+        errors = {"schema_differs": "same recipe schema", "schema_annotation": "annotations"}
+        with pytest.raises(PromptSetError, match=errors.get(edit)):
             prompt_set_manifest(target, name="prompts-v1")
     elif edit == "template_json":
         a3_template.write_text("{")

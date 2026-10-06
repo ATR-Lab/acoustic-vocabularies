@@ -1,24 +1,31 @@
 """A3 proposer and the Study B slot proposer: prompt -> model -> parser -> validator -> ledger
-(#17; Study A protocol §3.6, Study B protocol §4).
+(#17; Study A protocol §3.3 and §3.6, Study B protocol §4).
 
 One slot, in order (`A3Proposer` runs three a round; `BSlotProposer` one per call):
 
 1. Build the prompt (`prompts.build_a3_prompt` / `build_b_prompt`). A request that breaks
    the context contract raises `prompts.PromptContextError` here, before anything is
    charged.
-2. `ledger.reserve(...)`: a 13th slot is refused (and logged) before any model work.
-3. If the proposal window has already ended (A3: `RoundRequest.window_end_ms`), the slot
-   closes as `timeout` without a call.
+2. `ledger.reserve(...)`: a 13th slot is refused (and logged) before any model work. The
+   ticket's open time starts the slot's proposal time.
+3. The slot deadline is `slot_deadline_ms(t_open_ms, window_end_ms)`: 40 s
+   (`constants.SLOT_CAP_MS`) after the slot opened, and never later than the end of the
+   proposal window (A3: `RoundRequest.window_end_ms`; B has no window). The 40 s cover
+   the token count and the model call together. If the deadline has passed when the slot
+   starts, the slot closes as `timeout` without a count or a call.
 4. `client.count_prompt_tokens(messages)` (the server's `/tokenize`). A failed count
    (`llm.TokenCountError`) consumes the slot as `invalid_json` with
    `llm_status="server_error"`; above `constants.MAX_INPUT_TOKENS` (16,384) the slot is
-   `overflow_input`. Neither makes a model call.
+   `overflow_input`. If the count used up the time to the deadline, the slot is
+   `timeout`. None of these makes a model call.
 5. Exactly one `client.propose(messages, decoding_schema, seed_key, slot_id=)` with
    `seeds.a3_seed_key(...)` / `seeds.b_seed_key(...)`. The model status decides first
    (`outcomes.outcome_from_llm_status`: `timeout`, `overflow_output`, `server_error` ->
    `invalid_json`); a client that raises or returns an unknown status is treated as
-   `server_error` (logged as a warning), so the slot still closes. Token counts and
-   latencies that are not non-negative integers are logged as `null`.
+   `server_error` (logged as a warning), so the slot still closes. A result that arrives
+   after the slot deadline is `timeout` (the server's status stays in `llm_status`, the
+   text in `raw_output`; nothing is parsed or validated). Token counts and latencies that
+   are not non-negative integers are logged as `null`.
 6. `parser.parse_output`: anything but exactly one JSON object is `invalid_json`
    (validator code `E_JSON` with the parser's message).
 7. `av_sound.validate` against the book's committed references (A3) or the other atoms'
@@ -28,11 +35,21 @@ One slot, in order (`A3Proposer` runs three a round; `BSlotProposer` one per cal
 8. `ledger.consume(record)`: exactly one record per slot, whatever the outcome. There is
    no repair, retry or re-ask: the next slot proceeds.
 
-The slot record's `schema_sha256` is `jsonio.schema_sha256(decoding_schema)`, its
-`prompt_sha256` the built prompt's, `raw_output` the model text (clipped to the schema's
-65,536 characters), `tokens_in` the server's count. Slots of a round run one after
-another, so later slots see earlier same-round proposals (without ratings); ratings arrive
-only after the orchestrator closes the round.
+Time limits: the `LlmClient` contract (#16) has no per-call deadline; the client cancels a
+call at its own 40-s cap (result within 40.5 s). So the proposer enforces the slot
+deadline around the call: it never starts a call at or after the deadline, and it never
+accepts a result that arrives after it. A call that starts late (after a slow count, or
+late in the window) can still hold the proposer up to the client's cap after it starts;
+cancelling at the slot deadline needs a per-call budget in the client (a #16 contract
+extension).
+
+The proposers check at construction that the decoding schema is the schema the prompt
+shows (`PromptSet.check_decoding_schema`). The slot record's `schema_sha256` is
+`jsonio.schema_sha256(decoding_schema)` (the decoding-schema hash, as in #16's
+`LlmRequest`), its `prompt_sha256` the built prompt's, `raw_output` the model text (clipped
+to the schema's 65,536 characters), `tokens_in` the server's count. Slots of a round run
+one after another, so later slots see earlier same-round proposals (without ratings);
+ratings arrive only after the orchestrator closes the round.
 """
 
 from __future__ import annotations
@@ -49,7 +66,7 @@ from av_sound.validate import Reference, ValidationResult, validate
 from av_sound.wav import file_sha256
 
 from av_generation.clock import Clock
-from av_generation.constants import MAX_INPUT_TOKENS, SLOTS_PER_ROUND
+from av_generation.constants import MAX_INPUT_TOKENS, SLOT_CAP_MS, SLOTS_PER_ROUND
 from av_generation.ids import Method, Study, bank_slot_id, proposal_slot_id
 from av_generation.jsonio import schema_sha256
 from av_generation.ledger import SlotLedger, SlotTicket
@@ -72,6 +89,13 @@ RAW_OUTPUT_MAX_CHARS: Final = 65_536
 Reserved = ReservedRegistry | Iterable[ReservedEntry] | None
 
 _log = logging.getLogger(__name__)
+
+
+def slot_deadline_ms(t_open_ms: int, window_end_ms: int | None = None) -> int:
+    """The run-clock time at which a slot opened at `t_open_ms` ends: `SLOT_CAP_MS` later,
+    or at `window_end_ms` (the end of the proposal window) if that comes first."""
+    cap = t_open_ms + SLOT_CAP_MS
+    return cap if window_end_ms is None else min(cap, window_end_ms)
 
 
 def _count(value: object) -> int | None:
@@ -106,11 +130,13 @@ class _SlotCore:
         self,
         client: LlmClient,
         ledger: SlotLedger,
+        prompt_set: PromptSet,
         decoding_schema: Mapping[str, Any],
         *,
         clock: Clock,
         reserved: Reserved,
     ) -> None:
+        prompt_set.check_decoding_schema(decoding_schema)
         self.client = client
         self.ledger = ledger
         self.decoding_schema = decoding_schema
@@ -130,10 +156,10 @@ class _SlotCore:
         references: tuple[Reference, ...],
         threshold: ThresholdLike | None,
         mode: Literal["A", "B"],
+        deadline_ms: int,
         cell_hashes: frozenset[str] = frozenset(),
-        deadline_ms: int | None = None,
     ) -> _Result:
-        if deadline_ms is not None and self.clock.now_ms() >= deadline_ms:
+        if self.clock.now_ms() >= deadline_ms:
             return _Result(SlotOutcome.TIMEOUT)
         try:
             tokens = _count(self.client.count_prompt_tokens(prompt.messages))
@@ -145,6 +171,8 @@ class _SlotCore:
             return _Result(SlotOutcome.INVALID_JSON, llm_status=LlmStatus.SERVER_ERROR)
         if tokens > MAX_INPUT_TOKENS:
             return _Result(SlotOutcome.OVERFLOW_INPUT, tokens_in=tokens)
+        if self.clock.now_ms() >= deadline_ms:  # the count used up the slot's time
+            return _Result(SlotOutcome.TIMEOUT, tokens_in=tokens)
         raw: RawOutcome | None
         try:
             raw = self.client.propose(
@@ -171,6 +199,9 @@ class _SlotCore:
         forced = outcome_from_llm_status(status)
         if forced is not None:
             result.outcome = forced
+            return result
+        if self.clock.now_ms() > deadline_ms:  # the answer came after the slot ended
+            result.outcome = SlotOutcome.TIMEOUT
             return result
         parsed = parse_output(text)
         if parsed.obj is None:
@@ -235,7 +266,8 @@ class A3Proposer:
     """`proposers.RoundProposer` for A3 (#17); see the module docstring.
 
     `reserved` is the reserved-signal registry for the validator (`None`: the published
-    `sound/reserved/registry.json`).
+    `sound/reserved/registry.json`). Raises `prompts.PromptSetError` when the prompt set
+    does not show `decoding_schema` (`PromptSet.check_decoding_schema`).
     """
 
     method = Method.A3
@@ -251,7 +283,9 @@ class A3Proposer:
         reserved: Reserved = None,
     ) -> None:
         self.prompt_set = prompt_set
-        self._core = _SlotCore(client, ledger, decoding_schema, clock=clock, reserved=reserved)
+        self._core = _SlotCore(
+            client, ledger, prompt_set, decoding_schema, clock=clock, reserved=reserved
+        )
 
     def propose_round(self, request: RoundRequest) -> RoundResult:
         """Fill the round's three slots in order and return their records."""
@@ -302,7 +336,7 @@ class A3Proposer:
             references=request.book.references(),
             threshold=request.book.threshold,
             mode="A",
-            deadline_ms=request.window_end_ms,
+            deadline_ms=slot_deadline_ms(ticket.t_open_ms, request.window_end_ms),
         )
         return core.consume(
             ticket,
@@ -326,7 +360,9 @@ class BSlotProposer:
     `reserved` the reserved-signal registry (default: the published registry). The
     caller keeps the first four `valid` options per cell, stops a cell at four, fails an
     attempt when a cell has used 12 slots without four, and calls
-    `SlotLedger.check_attempt` before each attempt.
+    `SlotLedger.check_attempt` before each attempt. Each slot has the 40-s cap
+    (`slot_deadline_ms`; no window). Raises `prompts.PromptSetError` when the prompt set
+    does not show `decoding_schema`.
     """
 
     method = Method.B
@@ -344,7 +380,9 @@ class BSlotProposer:
     ) -> None:
         self.prompt_set = prompt_set
         self.threshold = threshold
-        self._core = _SlotCore(client, ledger, decoding_schema, clock=clock, reserved=reserved)
+        self._core = _SlotCore(
+            client, ledger, prompt_set, decoding_schema, clock=clock, reserved=reserved
+        )
 
     def propose_slot(self, cell: BCellState, *, seed_namespace: str) -> SlotRecord:
         """Fill bank slot `cell.slot` of the cell and return its record."""
@@ -369,6 +407,7 @@ class BSlotProposer:
             references=cell.other_atom_references(),
             threshold=self.threshold,
             mode="B",
+            deadline_ms=slot_deadline_ms(ticket.t_open_ms),
             cell_hashes=cell.cell_hashes(),
         )
         return core.consume(
