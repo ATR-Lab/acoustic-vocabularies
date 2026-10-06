@@ -76,10 +76,41 @@ slot records carry `A2Detail`.
 
 ## A1 hand-designer interface (#19)
 
-*Pending (#19).* Skeleton: `A1SlotService(ledger, plays, timing, *, clock, designer_id,
-meanings, practice=False)` (a `RoundProposer`; opening a slot reserves it),
-`create_a1_app(service)`, route table `a1.ROUTES`. To fill: request/response bodies,
-practice-mode storage, kiosk setup.
+Implemented in `av_generation.a1` (reference:
+[`generation/docs/a1-interface.md`](../../generation/docs/a1-interface.md); designer and
+operator guide: [`generation/docs/a1-operating-guide.md`](../../generation/docs/a1-operating-guide.md)).
+
+- `A1SlotService(ledger, plays, timing, *, clock, designer_id, meanings, practice=False,
+  refusals=None, station=None, run_id=None, token_factory=None, audio_ttl_ms=60000,
+  poll_interval_s=0.01)`: the A1 `RoundProposer`. `propose_round(request) ->
+  RoundResult` opens the round's window for the designer's book and blocks until its
+  three slots have closed (submit, 40-s server timer, or the window's end for unopened
+  slots). It raises `ValueError` for a request of another method, another book, a
+  practice/study mismatch, or feedback naming another book.
+- `create_a1_app(service)`: FastAPI app serving `a1.ROUTES` (`GET /a1/`,
+  `GET /a1/api/state`, `POST /a1/api/slots/open`,
+  `POST /a1/api/slots/{slot_id}/submit` with `{"recipe": ...}`,
+  `GET /a1/api/audio/{token}`, `GET /a1/api/feedback`, `GET /a1/api/book`,
+  `POST /a1/api/activity`). Errors: `{"error": {"code", "message"}}` with `E_NO_WINDOW`,
+  `E_SLOT_OPEN`, `E_SLOT_CAP`, `E_SLOT_REUSED`, `E_UNKNOWN_SLOT`, `E_SLOT_CLOSED`,
+  `E_UNKNOWN_TOKEN`, `E_TOKEN_USED`, `E_TOKEN_EXPIRED`, `E_BAD_REQUEST`, `E_TOO_LARGE`,
+  `E_BAD_ACTIVITY`. The same operations are methods of the service (`state()`,
+  `open_slot()`, `submit(slot_id, recipe)`, `audio(token)`, `feedback()`, `book()`,
+  `activity(kind)`), which the dry-run bot designer (#22) may call in-process.
+- Logs: one `slot` record per slot through `SlotLedger.reserve`/`consume` (#17;
+  `designer_id`, `practice`, `latency_ms`, `design_ms`, `raw_output`; no seed);
+  `slot_refusal` for edits of closed slots (`slot_closed`) and requests after the
+  atom's 12 slots (`slot_cap`); `play` (`a1_preview` / `a1_practice`, `audio_kind atom`,
+  `asset_id` = WAV file SHA-256, `pcm_sha256`, `slot_id`, `token_id`; one `played` per
+  valid slot at most, then `refused` with `E_TOKEN_USED` / `E_TOKEN_EXPIRED`); `timing`
+  (`familiarization_*`, `design_active_*`, component `a1`). Every `played` event joins a
+  consumed `valid` slot with the same hashes.
+- Practice mode (O1.2.4): `_a1_practice.open_practice_session(runs_root, run_id, *,
+  designer_id, meanings, clock, kind="practice"|"demo", ...)` makes a separate practice
+  run (`purpose practice`; batch and book IDs with a `PRACTICE` token, refused by study
+  services); `python -m av_generation._a1_cli practice ...` serves it. Synthetic
+  practice texts: `generation/examples/demo-practice-meanings/`. Kiosk browser policy:
+  `generation/kiosk/a1-chrome-policy.json`.
 
 ## Separation-threshold listening tool (#23)
 
