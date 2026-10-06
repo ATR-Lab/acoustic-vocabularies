@@ -413,7 +413,7 @@ class SyntheticPanel:
             delta = t_ms - self.clock.now_ms()
             if delta <= 0:
                 return
-            self.clock.sleep(min(delta, 50) / 1000)
+            self.clock.sleep(min(delta, 2_000) / 1000)
 
     def _seat_loop(self, seat: RaterSeat) -> None:
         for event in self._events():
