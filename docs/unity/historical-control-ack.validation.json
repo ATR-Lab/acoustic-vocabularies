@@ -28,6 +28,15 @@
       "failed": 0,
       "skipped": 0,
       "sha256": "40bbfb398a1403423875e689ee66a35a5362adb71870f5ffabbc288b30cd0d50"
+    },
+    {
+      "kind": "PlayMode",
+      "scope": "engine_teaching_menu_lifecycle",
+      "source_commit": "3ff95c5ed971ecfc2d464f7e2945c54b8b08315c",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "5134ee515a419865b8084769f83dacbb419975c983094fac952541b500bee628"
     }
   ],
   "regression_evidence_note": "The slow completion regression uses measured B011 RTT and source ages with controlled synthetic host sample anchors. It is not an actual backend transaction replay.",
