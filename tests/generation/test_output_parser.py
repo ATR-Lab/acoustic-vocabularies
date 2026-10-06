@@ -18,18 +18,18 @@ RECIPE = {
 TEXT = json.dumps(RECIPE)
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        TEXT,
-        json.dumps(RECIPE, indent=2),
-        "\n" + TEXT + "\n",
-        " \t\r\n" + TEXT + " \r\n\t",
-        '{"total_ms": 450}',
-        "{}",
-        '{"total_ms": 1e3, "x": null}',
-    ],
-)
+ACCEPTED = {
+    "compact": TEXT,
+    "indented": json.dumps(RECIPE, indent=2),
+    "newlines": "\n" + TEXT + "\n",
+    "json_whitespace": " \t\r\n" + TEXT + " \r\n\t",
+    "partial_recipe": '{"total_ms": 450}',
+    "empty_object": "{}",
+    "other_values": '{"total_ms": 1e3, "x": null}',
+}
+
+
+@pytest.mark.parametrize("text", list(ACCEPTED.values()), ids=list(ACCEPTED))
 def test_accepts_exactly_one_object(text):
     parsed = parse_output(text)
     assert parsed.ok and parsed.error is None
@@ -41,34 +41,36 @@ def test_object_passes_unchanged():
     assert parsed.obj == {"total_ms": 500, "extra": [1, 2], "pitches": "x"}
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        None,
-        "",
-        "   \n\t",
-        "Here is the recipe: " + TEXT,
-        TEXT + " I hope this helps.",
-        TEXT + TEXT,
-        TEXT + "\n" + TEXT,
-        "```json\n" + TEXT + "\n```",
-        "[" + TEXT + "]",
-        '"' + TEXT.replace('"', '\\"') + '"',
-        "450",
-        "null",
-        "true",
-        TEXT[:-1],
-        '{"total_ms": 450, "total_ms": 600}',
-        '{"total_ms": NaN}',
-        '{"total_ms": Infinity}',
-        "﻿" + TEXT,
-        "{'total_ms': 450}",
-        '{"total_ms": 450,}',
-        " " + TEXT,
-        "\x00" + TEXT,
-        "[" * 100_000,
-    ],
-)
+REFUSED = {
+    "none": None,
+    "empty": "",
+    "whitespace": "   \n\t",
+    "prose_before": "Here is the recipe: " + TEXT,
+    "prose_after": TEXT + " I hope this helps.",
+    "two_objects": TEXT + TEXT,
+    "two_lines": TEXT + "\n" + TEXT,
+    "code_fence": "```json\n" + TEXT + "\n```",
+    "array": "[" + TEXT + "]",
+    "string": '"' + TEXT.replace('"', '\\"') + '"',
+    "number": "450",
+    "null": "null",
+    "true": "true",
+    "truncated": TEXT[:-1],
+    "duplicate_key": '{"total_ms": 450, "total_ms": 600}',
+    "nan": '{"total_ms": NaN}',
+    "infinity": '{"total_ms": Infinity}',
+    "bom": "\ufeff" + TEXT,
+    "single_quotes": "{'total_ms': 450}",
+    "trailing_comma": '{"total_ms": 450,}',
+    "nbsp": "\u00a0" + TEXT,
+    "nul": "\x00" + TEXT,
+    "deep_nesting": "[" * 100_000,
+}
+"""Refused texts by short name (test IDs stay short: Windows limits environment values,
+and pytest puts the test ID into PYTEST_CURRENT_TEST)."""
+
+
+@pytest.mark.parametrize("text", list(REFUSED.values()), ids=list(REFUSED))
 def test_refuses_anything_else(text):
     parsed = parse_output(text)
     assert not parsed.ok and parsed.obj is None
