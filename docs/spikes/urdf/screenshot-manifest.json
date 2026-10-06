@@ -1,0 +1,37 @@
+{
+  "source": "Unity 6000.6.0f1 offscreen editor rendering",
+  "isaac_pose_sha256": "e658c275074b90378e75958f8db36916b7bb1961bc227c458fb5f6914d60aea3",
+  "canonical_map_sha256": "1d6a3129b2dc3747284043d43b1ecd33bbaae6003874a5a01f63711b3a7b686e",
+  "binary_storage": "ignored local capture directory; publishing blocked by Git LFS upload rejection",
+  "side_by_side_isaac_review": "pending",
+  "headset_evidence": false,
+  "captures": [
+    {
+      "filename": "default.png",
+      "pose_id": "default",
+      "sha256": "08ebbee6fffaf956e0083f8e1da03e39b7d6c1001fee6279399e3c522c3dfeca",
+      "bytes": 68587,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "locally viewed: full robot geometry rendered; no obvious missing meshes"
+    },
+    {
+      "filename": "joint_20_75pct.png",
+      "pose_id": "joint_20_75pct",
+      "sha256": "2a9513a40f62a171fa343234219b63a6c060726c45ac7fb38fdd24701a3ab662",
+      "bytes": 67108,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "locally viewed: full robot geometry rendered; no obvious missing meshes"
+    },
+    {
+      "filename": "spread_4.png",
+      "pose_id": "spread_4",
+      "sha256": "cc1db6b36f08371a8f259f7b7dbd27321ac1605ec255b8f37ad38f93c0fd9006",
+      "bytes": 71203,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "locally viewed: full robot geometry rendered; no obvious missing meshes"
+    }
+  ]
+}

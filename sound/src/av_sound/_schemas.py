@@ -18,8 +18,11 @@ from av_sound._paths import schema_path
 from av_sound.recipe import StrictJsonError, strict_json_loads
 
 SCHEMA_FILES: tuple[str, ...] = (
+    "package.schema.json",
+    "provisional-bank.schema.json",
     "recipe.schema.json",
     "reserved-registry.schema.json",
+    "store-record.schema.json",
     "validation-result.schema.json",
     "validator-config.schema.json",
 )

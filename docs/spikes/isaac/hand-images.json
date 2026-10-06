@@ -1,0 +1,38 @@
+{
+  "source": "offscreen_isaac_camera",
+  "harness_commit": "da08a4b",
+  "width": 1280,
+  "height": 720,
+  "eye_usd_world": [
+    1.1,
+    -0.15,
+    1.1
+  ],
+  "target_usd_world": [
+    0.32,
+    0,
+    0.84
+  ],
+  "focal_length_mm": 24,
+  "horizontal_aperture_mm": 36,
+  "vertical_fov_degrees": 45.74733038125343,
+  "review": "all three images inspected; both hands visible, finger flexion apparent",
+  "binaries": "retained in ignored local evidence because LFS service rejects uploads",
+  "files": [
+    {
+      "name": "pose-hands_flexed.png",
+      "bytes": 228738,
+      "sha256": "33802a8cad210e6f067b21e602ece772883b2500a58bf127da6e1e0ebae556d1"
+    },
+    {
+      "name": "pose-hands_half_flexed.png",
+      "bytes": 230753,
+      "sha256": "4d2f80186d30e6edda87041c60f70c7faf222f47189fa9a746454bb925d7e158"
+    },
+    {
+      "name": "pose-hands_open.png",
+      "bytes": 235462,
+      "sha256": "e8cd9137bbbd3a9ce15a06c8572d682e7957b19412e17160f70f259dcbb7f141"
+    }
+  ]
+}

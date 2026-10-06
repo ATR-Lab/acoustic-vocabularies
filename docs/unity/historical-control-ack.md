@@ -1,0 +1,70 @@
+# Durable control completion and current exposure health
+
+Refs #148, #81 and #82. This follow-up separates historical command completion
+from current exposure admission. It does not widen the 250 ms exposure limit
+or enable participant admission in the simulation player.
+
+Native B011 completed an initial post-reset preflight and deliberately paused
+before its first menu cue. The shared ledger remained header-only and a fresh
+lease began. Its next reset transaction took 536.8959 ms. The earlier client
+rejected that reply in the 250 ms health parser before retaining completion;
+the failure and incomplete native result remain preserved in
+`post-reset-health.validation.json`.
+
+Backend inspection separately found that actual reset verification preceded
+reply construction and durable writes. Disk synchronization can delay a valid
+command reply. This does not make its embedded health snapshot current, and
+the measured transaction is not network-only latency.
+
+The updated client uses the same strict closed health parser for both paths:
+
+- A command reply retains its original 3000 ms transaction deadline, exact
+  pending request ID, required mode, reason, reset result, pinned session,
+  scalar types and nonregressing server sample. Unexpected `duplicate=true`
+  replies are refused because this client never retries. The original reply
+  must be durably written before its completion enters history.
+- Recording completion advances the server sample floor and invalidates the
+  prior grant. It never supplies fresh exposure ages. Request persistence and
+  all pending commands also block admission, including when a real probe is
+  already queued. A failed request or reply write latches failure.
+- Admission requires an actual correlated probe sent after the latest command
+  receipt and sampled strictly later on the server. Each reset additionally
+  retains its own exact completion identity. The probe keeps its original
+  send/receipt timestamps, 200 ms transport deadline, 250 ms queue limit and
+  250 ms combined RTT/source/receipt-age bound. No reset is automatically
+  retried, and no stale timestamp is renewed by a Unity read or durable write.
+
+`ModeAcknowledged` remains historical completion for construction and issuing
+the next reset. Exposure consumers also require current hold health and their
+exact reset/renderer gates. A mode acknowledgment alone cannot authorize audio.
+
+The focused queue regression uses B011's measured transaction length and
+reported ages with controlled synthetic host sample anchors. It is software
+evidence, not a replay of an actual backend transaction. Tests also cover
+multiple pending resets, probes arriving during persistence, expired queues,
+replay, unexpected duplicates, malformed payloads, host regression, sink
+failure and exact command/probe deadline boundaries.
+
+Exact test and build pins are in the adjacent validation record. Previous
+native failures remain unchanged.
+
+## Native build012 observations
+
+Both B active V1 and A D0 recorded exact durable reset completion, then stopped
+in preflight on a cancelled current-health exchange before Start or any audio.
+B's retained reset transaction was 164.5439 ms; it is not native proof of a
+greater-than-250 ms historical ACK. Its immediately following probe had no
+completed receipt. In A, a progressing post-reset probe was retained with a
+77.191 ms RTT before a later probe cancelled.
+
+The failure observations were 216.2631 ms (B) and 216.8653 ms (A) after their
+`health_exchange` phase starts. These are phase-to-failure intervals, not
+completed network RTTs. Both retained `CONTROL_OPERATION_CANCELLED` before
+candidate cleanup; the coordinator reported `SESSION_PREFLIGHT_FAILED`.
+Historical completion did not grant stale exposure. The existing diagnostic
+does not retain the failed probe ID, send/receive stage or cancellation token
+origin, so those causes remain under investigation without changing limits.
+
+Both processes exited 0 with successful cleanup/export, intact independently
+reconciled evidence, `complete=false` and zero requested audio. Neither menu
+nor lesson completion, full-visit acceptance or resolution of #148 is claimed.

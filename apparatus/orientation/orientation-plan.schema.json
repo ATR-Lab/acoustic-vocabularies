@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Silent orientation content plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "protocol_version",
+    "content_status",
+    "review_evidence_sha256",
+    "source_note",
+    "practice_window_ms",
+    "actions",
+    "targets",
+    "practice_pairs",
+    "second_order"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "protocol_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "not": {
+        "pattern": "[\\x00-\\x1F\\x7F]"
+      },
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "content_status": {
+      "enum": [
+        "engineering_draft",
+        "protocol_reviewed"
+      ]
+    },
+    "review_evidence_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "not": {
+        "pattern": "[\\x00-\\x1F\\x7F]"
+      }
+    },
+    "practice_window_ms": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 600000
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "meaning"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "ADD_ONE",
+              "REMOVE_ONE",
+              "FLIP_CARD",
+              "ALIGN_ARROW",
+              "SCAN",
+              "TAG",
+              "CLOSE",
+              "QUARANTINE"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "not": {
+              "pattern": "[\\x00-\\x1F\\x7F]"
+            }
+          },
+          "meaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "not": {
+              "pattern": "[\\x00-\\x1F\\x7F]"
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "meaning"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+              "F",
+              "G",
+              "H"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "not": {
+              "pattern": "[\\x00-\\x1F\\x7F]"
+            }
+          },
+          "meaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "not": {
+              "pattern": "[\\x00-\\x1F\\x7F]"
+            }
+          }
+        }
+      }
+    },
+    "practice_pairs": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "target",
+          "action",
+          "request"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "not": {
+              "pattern": "[\\x00-\\x1F\\x7F]"
+            },
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+          },
+          "target": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E",
+              "F",
+              "G",
+              "H"
+            ]
+          },
+          "action": {
+            "enum": [
+              "ADD_ONE",
+              "REMOVE_ONE",
+              "FLIP_CARD",
+              "ALIGN_ARROW",
+              "SCAN",
+              "TAG",
+              "CLOSE",
+              "QUARANTINE"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "not": {
+              "pattern": "[\\x00-\\x1F\\x7F]"
+            }
+          }
+        }
+      }
+    },
+    "second_order": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80,
+        "not": {
+          "pattern": "[\\x00-\\x1F\\x7F]"
+        },
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "content_status": {
+            "const": "protocol_reviewed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "review_evidence_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "review_evidence_sha256": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "status": "needs_actual_run",
+  "source_kind": "live",
+  "rate_hz": 30,
+  "duration_s": null,
+  "scene_sha256": null,
+  "reset_snapshot_sha256": null,
+  "raw_csv_sha256": null,
+  "frames": null,
+  "absolute_period_error_p99_ms": null,
+  "max_gap_ms": null,
+  "schema_samples_checked": null,
+  "schema_samples_valid": null,
+  "local_receive_complete": null,
+  "protected_neutral_check_passed": null,
+  "disconnect_step_rate_change_percent": null,
+  "rate_screen": null,
+  "network_headset_qualified": false,
+  "adr_002_accepted": false
+}

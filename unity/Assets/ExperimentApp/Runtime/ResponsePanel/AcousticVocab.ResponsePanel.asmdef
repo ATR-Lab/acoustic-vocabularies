@@ -1,0 +1,4 @@
+{
+  "name": "AcousticVocab.ResponsePanel",
+  "references": ["AcousticVocab.Foundation", "Unity.XR.Hands"]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "AcousticVocab.Assessment.Editor",
+  "references": ["AcousticVocab.Assessment", "AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor", "AcousticVocab.StudyAudio", "AcousticVocab.StateIntegration", "AcousticVocab.StateIntegration.Editor", "AcousticVocab.ResponsePanel", "AcousticVocab.ResponsePanel.Editor"],
+  "includePlatforms": ["Editor"]
+}

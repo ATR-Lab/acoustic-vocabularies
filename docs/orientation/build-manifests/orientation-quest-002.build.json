@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "orientation-quest-002",
+    "commit_sha": "9b067fb15457a84d96b9a9c372f9740c6aee6081",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 57.471258299999995,
+  "total_bytes": 761326973,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 54742242,
+      "sha256": "6ff6272d6eadba69a22ce74091f9ccece83dd87a0bac1bd68236dac8cc6b982d"
+    }
+  ]
+}

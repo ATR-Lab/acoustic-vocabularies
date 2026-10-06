@@ -1,0 +1,58 @@
+{
+  "status": "rendered_completed_with_frame_discard_nonbaseline",
+  "run_id": "rendered-600",
+  "checked_date": "2026-10-04",
+  "mode": "headless_offscreen_camera",
+  "num_instances": 1,
+  "num_envs_per_instance": 1,
+  "elapsed_seconds": 600.0121428580023,
+  "physics_steps": 25446,
+  "process_exit_code": 0,
+  "renderer_error_entries": 1,
+  "renderer_error": "OgnSdOnNewFrame: frames [14375|30, 14375|30] discarded",
+  "independent_frame_delivery_verified": false,
+  "interactive_viewport_verified": false,
+  "statistics": {
+    "gpu_total_used_mib": {
+      "count": 583,
+      "mean": 5189.118353344768,
+      "p95": 5189.0,
+      "max": 5258.0
+    },
+    "process_rss_mib": {
+      "count": 583,
+      "mean": 6339.634387060463,
+      "p95": 6340.4296875,
+      "max": 6340.48828125
+    },
+    "cpu_one_core_percent": {
+      "count": 583,
+      "mean": 413.9749111099765,
+      "p95": 424.61107107379047,
+      "max": 431.1285731584917
+    },
+    "step_wall_ms": {
+      "count": 25446,
+      "mean": 21.074269549948912,
+      "p95": 22.692133,
+      "max": 47.907948
+    },
+    "step_interval_ms": {
+      "count": 25445,
+      "mean": 23.578675282806053,
+      "p95": 25.40039,
+      "max": 41.617868
+    },
+    "render_interval_ms": {
+      "count": 25445,
+      "mean": 23.578675282806053,
+      "p95": 25.40039,
+      "max": 41.617868
+    }
+  },
+  "protocol_os_pin_met": false,
+  "gpu_baseline_qualified": false,
+  "unitree_dds_started": false,
+  "network_mode": "none",
+  "notes": "Existing GPU workload preserved. CPU-only rosbridge setup/diagnostics overlapped. Both hands reviewed in separate close hand fixture. No G1 approval."
+}

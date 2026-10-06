@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST_grammar_refusal_diagnostics",
+  "runtime_source_commit": "fbb3c7da9dd826645a1a50e24bc9293b7a4a5365",
+  "editor_version": "6000.6.0f1",
+  "tests": [
+    {
+      "run": "grammar-native-failure-003",
+      "kind": "focused_EditMode",
+      "result": "Passed",
+      "total": 25,
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "c5c8b18a5f8976944854e80102a295aa395a8014e4d8a0d611592157ac7dffa2"
+    },
+    {
+      "run": "grammar-native-failure-004",
+      "kind": "actual_AudioPlayer_PlayMode",
+      "result": "Passed",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "9b0e6e3873a3e8829b9a228ab9b0c6c6e248d0330ff13751eada1adbe3b8e32e"
+    }
+  ],
+  "preserved_test_compile_attempt": {
+    "run": "grammar-native-failure-001",
+    "result": "Failed",
+    "reason": "New PlayMode test assembly initially lacked the existing Newtonsoft reference; test assembly reference corrected before passing runs"
+  },
+  "native_build": {
+    "build_id": "simulation-native-005",
+    "result": "Succeeded",
+    "errors": 0,
+    "dirty_source": false,
+    "inventory": "native-simulation-builds/windows-005.json",
+    "inventory_sha256": "7747da5b14fb6b5c96db6be28ea5af3e8bada790bbdfb24a7431ec220abdd941",
+    "native_inventory_raw_sha256": "300ed43e1a09a4cee05999af8b6e78b4f5a406508dd11b25d3d4e39593eb1951",
+    "files": 205,
+    "total_bytes": 158697463,
+    "native_launch_attempted": false
+  },
+  "actual_build004_attempts": [
+    {
+      "run": "build004-smoke-001",
+      "status": "JOIN_FOCUS_LOST",
+      "complete": false,
+      "cleanup_succeeded": true,
+      "export_succeeded": true,
+      "native_result_sha256": "4d462be20a0b9f395ac5dc64b4703922db4a799fd620ada7b4e629694f072693",
+      "process_exit": 0,
+      "process_result_sha256": "69663726ddf91c80dd1b2b5aa55e61b2c39f268a6f9be484c2aef7b7a6ae8dd7",
+      "reconciliation_sha256": "18166ef641b66235a3459158dfdf8faf0b56e45505349005251cbf7b073c11d1"
+    },
+    {
+      "run": "build004-full-001",
+      "status": "GRAMMAR_FAILED",
+      "complete": false,
+      "cleanup_succeeded": true,
+      "export_succeeded": true,
+      "native_result_sha256": "69ea638cb4d8ab09ed5e3eec6e66b59793cddffd1fba2d76eed6cd04f5b02628",
+      "process_exit": 0,
+      "process_result_sha256": "9c5d3db9e7344f93cd4afc7813cf76020373513a68f570d4a6fc7c7aa8dfbd80",
+      "reconciliation_sha256": "5c9a45b09029a496eabbdf2d35d2b9b6c7f4356113a555207c3f95807f683177"
+    }
+  ],
+  "build004_grammar_observation": {
+    "durable_reserved_chime_audio_requests": 1,
+    "actual_audio_callbacks": 0,
+    "study_cue_requests": 0,
+    "complete": false,
+    "underlying_audio_refusal_code": "masked_as_GRAMMAR_FAILED_in_build004",
+    "cause_resolved": false
+  },
+  "limitations": [
+    "Build003 OS-denied attempt retained separately; owner later changed policy and build004 launched normally.",
+    "Build004 smoke/full startup processes briefly overlapped; smoke ended over one minute before grammar request. These are not clean single-client timing evidence.",
+    "Build005 native diagnostic is pending fresh backend readiness and operator launch.",
+    "No acoustic onset, physical headset qualification, completed visit, or issue81 acceptance is established."
+  ]
+}

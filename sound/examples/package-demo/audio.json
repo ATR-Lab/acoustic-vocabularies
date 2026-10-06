@@ -1,0 +1,475 @@
+{
+  "atoms": [
+    {
+      "atom_id": "K-a1",
+      "file_sha256": "70864bad118aea407e10cdfe5e1b59a1c3dec6f3de4a9a96422811a5ecdc708c",
+      "n_samples": 21600,
+      "path": "atoms/K-a1.wav",
+      "pcm_sha256": "909e93b54b06d45a69d70afa0a57b86344acd67556a35659a1dfa3a0c3a74db6"
+    },
+    {
+      "atom_id": "K-a2",
+      "file_sha256": "ea03d5622fed01b6df1041ced683721cc0abd1aeb7bfb5e07b338f0d781029fc",
+      "n_samples": 28800,
+      "path": "atoms/K-a2.wav",
+      "pcm_sha256": "e2825152d01ba9f449181d2b3c8daf84fff98ac67f8f09407e8101a6785cbb82"
+    },
+    {
+      "atom_id": "K-a3",
+      "file_sha256": "6dafa0a0ed01b54aa9ed59581753f116637a7c0754db0ee084d2b7d95af0f890",
+      "n_samples": 36000,
+      "path": "atoms/K-a3.wav",
+      "pcm_sha256": "31731dee9ce23d97a0c4801c58db8b244eb9e068f2f309b96e34b594b576875e"
+    },
+    {
+      "atom_id": "K-a4",
+      "file_sha256": "933dc0cb4e640b985f8b150b702b7ceb2c288de99fa7e557055e304913829f8d",
+      "n_samples": 43200,
+      "path": "atoms/K-a4.wav",
+      "pcm_sha256": "8819fcaaa21e9ff866c3a449adfbbb0db090432368b0b9d886fb974af029c54a"
+    },
+    {
+      "atom_id": "K-r1",
+      "file_sha256": "8a0a7b795aae563350ba35b9e79f67961864182c2542fcd3b1d43742be21e748",
+      "n_samples": 21600,
+      "path": "atoms/K-r1.wav",
+      "pcm_sha256": "b0b05e1a4ced73f1815b9cf67cd701979ccf9f9144163e489d946e63669c9134"
+    },
+    {
+      "atom_id": "K-r2",
+      "file_sha256": "a1ee55d11f2727e4f4767462af7393d77b29ba8c34834fb742cc5e3f7f7e2080",
+      "n_samples": 28800,
+      "path": "atoms/K-r2.wav",
+      "pcm_sha256": "92c237bd1f109281efc9c225b7817438629e4805d7bc607103ab1a7fb143fef8"
+    },
+    {
+      "atom_id": "K-r3",
+      "file_sha256": "378a236cbdba7e91d325d535f387382288fd9014b40af5d88a02180e3f3be62a",
+      "n_samples": 36000,
+      "path": "atoms/K-r3.wav",
+      "pcm_sha256": "ba79bb204523db05b38c77e24291f3a741490b785fff187e26edb7d73a683705"
+    },
+    {
+      "atom_id": "K-r4",
+      "file_sha256": "447ab516530406d479907a2a5e0f1b2e4ee2f86a79b6bd1c6932681de7e2762d",
+      "n_samples": 43200,
+      "path": "atoms/K-r4.wav",
+      "pcm_sha256": "a6ead7d973e140815086795029695d0b8819c554821316f966ea05d5fcc559e1"
+    },
+    {
+      "atom_id": "Q-a1",
+      "file_sha256": "ba0588fa8345fa8fe1ded1e3a7ab5cfcc4394f27d6d92f923c2fb250c49f2e05",
+      "n_samples": 21600,
+      "path": "atoms/Q-a1.wav",
+      "pcm_sha256": "7ea76f81c992ec2996acca59e29ea3b1cbb9638942ba1898f0823225d313eca0"
+    },
+    {
+      "atom_id": "Q-a2",
+      "file_sha256": "432e84872b6ee504724c4259a2341a4f390aea5cd22f42c2061d13053efcb3d3",
+      "n_samples": 28800,
+      "path": "atoms/Q-a2.wav",
+      "pcm_sha256": "dd23eb3a32b7e06659844460e81c0e3c0cea00fdc03b54172ed6139a5d3b345c"
+    },
+    {
+      "atom_id": "Q-a3",
+      "file_sha256": "ab98e20767e46128b7ee1e57052c0503202c6fb5671367baec64e1b046e533a6",
+      "n_samples": 36000,
+      "path": "atoms/Q-a3.wav",
+      "pcm_sha256": "be267a4c80aa7c3f024b0c8e1e3cff3c7da380ec4976f610cf34340bdcbfcd06"
+    },
+    {
+      "atom_id": "Q-a4",
+      "file_sha256": "b9825d081648650eeeca690308ab1220172775be76b97c039250dade4271313b",
+      "n_samples": 43200,
+      "path": "atoms/Q-a4.wav",
+      "pcm_sha256": "bc2bf70c8c8a8b85709951652c9ed32179131a442b653983bf3f95123efa5de6"
+    },
+    {
+      "atom_id": "Q-r1",
+      "file_sha256": "d892c11bf9969b7450b13fa2f9a40528c4b4dc1a471b40c727eb35448964384d",
+      "n_samples": 21600,
+      "path": "atoms/Q-r1.wav",
+      "pcm_sha256": "5d5fae306dc6fc400f690f7d0b6b9a05f7bd15ece42b4fd6ecb4d35427855118"
+    },
+    {
+      "atom_id": "Q-r2",
+      "file_sha256": "228c3fd1119c9678b3219d8db20ba1005ef5f011422b835326bc8c97379e27df",
+      "n_samples": 28800,
+      "path": "atoms/Q-r2.wav",
+      "pcm_sha256": "0b0e9399634a3cfe8455a57dcc0c5a3e0cf947725dd71c7b7195358a25d7f67f"
+    },
+    {
+      "atom_id": "Q-r3",
+      "file_sha256": "34a04e43162c89aaea00baa6a47237417960cb432722eaa80f2df8b49976a867",
+      "n_samples": 36000,
+      "path": "atoms/Q-r3.wav",
+      "pcm_sha256": "b32511b830022a02b19c5721f53991bcca5b148b5a1029d06426f9536d5136ad"
+    },
+    {
+      "atom_id": "Q-r4",
+      "file_sha256": "bfaf5a4e53ddacbb3227a6c4320b3167f55444b87b65d52027457332bc40ee12",
+      "n_samples": 43200,
+      "path": "atoms/Q-r4.wav",
+      "pcm_sha256": "a8d5447b185c9b3035b8ebd3923ccf38fe9f25b60b29854c45993f183325c221"
+    }
+  ],
+  "format": "av-sound/package-audio",
+  "format_version": 1,
+  "messages": [
+    {
+      "action_atom": "K-a1",
+      "composite_sha256": "6cad926167dbdf56958777306d3af17da05122a57238a9d5f5d111bd38d29126",
+      "duration_ms": 1100,
+      "file_sha256": "0e41db63c0f3ca8537395ea16b7cbe8a3ec86b5a780edd25eb52ce20c82a862b",
+      "message_id": "K-a1-r1",
+      "n_samples": 52800,
+      "path": "messages/K-a1-r1.wav",
+      "referent_atom": "K-r1",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a1",
+      "composite_sha256": "bbbc8f3e96789a012a2b55b04cdceeb114343134eb7e5f9b8f42bb2d095c596f",
+      "duration_ms": 1250,
+      "file_sha256": null,
+      "message_id": "K-a1-r2",
+      "n_samples": 60000,
+      "path": null,
+      "referent_atom": "K-r2",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "K-a1",
+      "composite_sha256": "f1e9bbe084ac6301454c0fea520df251596cea226fa398edbb9d89e0ba20abd4",
+      "duration_ms": 1400,
+      "file_sha256": "2c1de7b7fbd7bd10db0f3aa55673c212d224bf53897ffa853ceccde73b09df79",
+      "message_id": "K-a1-r3",
+      "n_samples": 67200,
+      "path": "messages/K-a1-r3.wav",
+      "referent_atom": "K-r3",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a1",
+      "composite_sha256": "52362fcca900058b402711331bc520e23438e788de212190348c37bc05142c9a",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "K-a1-r4",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "K-r4",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "K-a2",
+      "composite_sha256": "9438fe1503379bf7a9e5d27b4a9a6e35a9468ccd2feea6581b968b7e850bc18f",
+      "duration_ms": 1250,
+      "file_sha256": null,
+      "message_id": "K-a2-r1",
+      "n_samples": 60000,
+      "path": null,
+      "referent_atom": "K-r1",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "K-a2",
+      "composite_sha256": "b9ca6d23c1901bae03e16fc84abfcea33b539bc16202106d33a00c8631d962d3",
+      "duration_ms": 1400,
+      "file_sha256": "f4f071ed95233a55c58b5ef08244a6edf1c8d428ca72ebdeb0bd1a51752bd490",
+      "message_id": "K-a2-r2",
+      "n_samples": 67200,
+      "path": "messages/K-a2-r2.wav",
+      "referent_atom": "K-r2",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a2",
+      "composite_sha256": "a80ed3634eb4e32f24c52ac11ad8e7533cbeb180714835e11ba9b9884ae2d994",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "K-a2-r3",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "K-r3",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "K-a2",
+      "composite_sha256": "4d28be22ea544019c95cb834b49ce25697c5d01de5a22feca38b9414dbac00dd",
+      "duration_ms": 1700,
+      "file_sha256": "a964d26a1f267dcc85b7fb731e23eebba933fd3215f7f08a04f6e8d4600d7e7a",
+      "message_id": "K-a2-r4",
+      "n_samples": 81600,
+      "path": "messages/K-a2-r4.wav",
+      "referent_atom": "K-r4",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a3",
+      "composite_sha256": "48e3e12b66a31d0e8dc0c8a62f791b5ce36886a75600d55b4644cac59ac38857",
+      "duration_ms": 1400,
+      "file_sha256": "4e41f747c8ca6217e475a7ca36af00f165c25cbff72c400ffc6c8455a924ce33",
+      "message_id": "K-a3-r1",
+      "n_samples": 67200,
+      "path": "messages/K-a3-r1.wav",
+      "referent_atom": "K-r1",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a3",
+      "composite_sha256": "878a7246eea20a4fdb6e6293f3a1cecd3d5298bc0cfe912eb170f9ba651bfd1f",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "K-a3-r2",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "K-r2",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "K-a3",
+      "composite_sha256": "4b9d3dfe2c4e58a09cfc87e90f917e26e39a968a301f72cfb8960a08a1bc07b8",
+      "duration_ms": 1700,
+      "file_sha256": "0402e820b28de44051d617baf09e85f0d409cf1a5963c16da9a0a01d733cd521",
+      "message_id": "K-a3-r3",
+      "n_samples": 81600,
+      "path": "messages/K-a3-r3.wav",
+      "referent_atom": "K-r3",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a3",
+      "composite_sha256": "bf7beac84df0b780ec13d1f5fb89fbbf24c2fb60891f194ec1486e37db166f7b",
+      "duration_ms": 1850,
+      "file_sha256": "b4bf5dce3e16910bdb86844d872e3e6e72cca60f1ce2f96f20e297b5bc3f719c",
+      "message_id": "K-a3-r4",
+      "n_samples": 88800,
+      "path": "messages/K-a3-r4.wav",
+      "referent_atom": "K-r4",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a4",
+      "composite_sha256": "0aa114e126183b696ea789240f231c796dfcd38ecd55332c516f92010d85deb7",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "K-a4-r1",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "K-r1",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "K-a4",
+      "composite_sha256": "7508a6b407cf99fdcdd53e3fce0f05ef25cfa7e69b3b1e2c98597fa8d5d9671e",
+      "duration_ms": 1700,
+      "file_sha256": "900790a7350394ceb03efaea4e5c8aab789c39051cdcce66b1a45a22d9c3f7dd",
+      "message_id": "K-a4-r2",
+      "n_samples": 81600,
+      "path": "messages/K-a4-r2.wav",
+      "referent_atom": "K-r2",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a4",
+      "composite_sha256": "4449d1ac9534f9925ac9ebfa4af1c4f5975341725ce26891de3a9497edbfd1a4",
+      "duration_ms": 1850,
+      "file_sha256": "d9bba7c8c1f143a7623664ad7161d319eb720f1faefce8047494d8d52ca8bfd5",
+      "message_id": "K-a4-r3",
+      "n_samples": 88800,
+      "path": "messages/K-a4-r3.wav",
+      "referent_atom": "K-r3",
+      "status": "trained"
+    },
+    {
+      "action_atom": "K-a4",
+      "composite_sha256": "3fbaa0b3209a25c1dd71e940c14c126bb0a2b9c7cb04b2c251127a976182c096",
+      "duration_ms": 2000,
+      "file_sha256": null,
+      "message_id": "K-a4-r4",
+      "n_samples": 96000,
+      "path": null,
+      "referent_atom": "K-r4",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a1",
+      "composite_sha256": "c399eaaf23ad833b44c058f3a36fb510d8d4c59d4430b48d9301356720050444",
+      "duration_ms": 1100,
+      "file_sha256": "c792b3ddbae0ed0d2ea99a5370c26e2260ddef4d35a66f352584ef1b5a65cb6d",
+      "message_id": "Q-a1-r1",
+      "n_samples": 52800,
+      "path": "messages/Q-a1-r1.wav",
+      "referent_atom": "Q-r1",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a1",
+      "composite_sha256": "c6865aeb72fb7dddff5eaa2169a7b0229441862e9fcba4812a90e0b626f5491c",
+      "duration_ms": 1250,
+      "file_sha256": null,
+      "message_id": "Q-a1-r2",
+      "n_samples": 60000,
+      "path": null,
+      "referent_atom": "Q-r2",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a1",
+      "composite_sha256": "bf8899159b2237b1cfbd5480f1b9d9d9d26829e141cea123e6ebc0624aa130b5",
+      "duration_ms": 1400,
+      "file_sha256": "e4f63ca59af7f19def7dc45eecc79ea5ae6b52b42ff89dadc78b3daf6316511f",
+      "message_id": "Q-a1-r3",
+      "n_samples": 67200,
+      "path": "messages/Q-a1-r3.wav",
+      "referent_atom": "Q-r3",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a1",
+      "composite_sha256": "c5017c4343667ad01676d967f9ad04a6adeb8d8ff42e00eba6fc34d0f8bea5ce",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "Q-a1-r4",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "Q-r4",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a2",
+      "composite_sha256": "8e94529576cff27b87ef010cdd962e1ba8122b28226d54333640729f918c387e",
+      "duration_ms": 1250,
+      "file_sha256": null,
+      "message_id": "Q-a2-r1",
+      "n_samples": 60000,
+      "path": null,
+      "referent_atom": "Q-r1",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a2",
+      "composite_sha256": "d9a4a2640e8c30e09679098712d0059223cdbfcac4014bf223c43d54637f5548",
+      "duration_ms": 1400,
+      "file_sha256": "0afe8863b081730473612100a26434bda6f90cdef235df70694af09021d7a694",
+      "message_id": "Q-a2-r2",
+      "n_samples": 67200,
+      "path": "messages/Q-a2-r2.wav",
+      "referent_atom": "Q-r2",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a2",
+      "composite_sha256": "f33229916eb701a8709f3f4e546a5ad0efdff2832baa4a36e21c92aa3e4602d5",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "Q-a2-r3",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "Q-r3",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a2",
+      "composite_sha256": "d528a8ee7b14c4932d5cae3f6821418a269eb52f1348255aa164c709d38c34ce",
+      "duration_ms": 1700,
+      "file_sha256": "46d60864a5c75cf9bab73b0e820717a93d68ff146fb801721a06e83e5c943ccc",
+      "message_id": "Q-a2-r4",
+      "n_samples": 81600,
+      "path": "messages/Q-a2-r4.wav",
+      "referent_atom": "Q-r4",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a3",
+      "composite_sha256": "9bde9137443c57ef2bf5d886c24c5900f49bc0c036f603b7dfba29797c05f8b1",
+      "duration_ms": 1400,
+      "file_sha256": "39453f0bf7f3f6c84d76c3c7dac2528a34142b1a4997894bae31095e061eba12",
+      "message_id": "Q-a3-r1",
+      "n_samples": 67200,
+      "path": "messages/Q-a3-r1.wav",
+      "referent_atom": "Q-r1",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a3",
+      "composite_sha256": "dc56fbbbea6a08a704df0e6392af92674eba54248eaf6b1d20ea38cc15de10fe",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "Q-a3-r2",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "Q-r2",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a3",
+      "composite_sha256": "5af7e112ba373373c4be0a49d8a6f492a53c4c0db88f3efab39f14714d07bef7",
+      "duration_ms": 1700,
+      "file_sha256": "bf5f2f9658c8cd6882c333f38bffc3284d46ffc863364261124da81b9a0869c5",
+      "message_id": "Q-a3-r3",
+      "n_samples": 81600,
+      "path": "messages/Q-a3-r3.wav",
+      "referent_atom": "Q-r3",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a3",
+      "composite_sha256": "30569ac3380518deeac709995e34b1b8711f07537e68c234c5598056cbc1d207",
+      "duration_ms": 1850,
+      "file_sha256": "cb1992a266e01fe40e30ecf186191e7c3417395028296266899460e0f85e3b01",
+      "message_id": "Q-a3-r4",
+      "n_samples": 88800,
+      "path": "messages/Q-a3-r4.wav",
+      "referent_atom": "Q-r4",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a4",
+      "composite_sha256": "c120eb0d7194384ace99e068a52b4416f35c147baf794d576c65d7a66f5da364",
+      "duration_ms": 1550,
+      "file_sha256": null,
+      "message_id": "Q-a4-r1",
+      "n_samples": 74400,
+      "path": null,
+      "referent_atom": "Q-r1",
+      "status": "heldout"
+    },
+    {
+      "action_atom": "Q-a4",
+      "composite_sha256": "6e44478ea2223e105aca596f7cea5108d85787f00fdb662965e6b884b727271a",
+      "duration_ms": 1700,
+      "file_sha256": "a26ad2531ca120e7274e051a8e23725983a8f696f3f8e7cf7d27a8930fdc05a0",
+      "message_id": "Q-a4-r2",
+      "n_samples": 81600,
+      "path": "messages/Q-a4-r2.wav",
+      "referent_atom": "Q-r2",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a4",
+      "composite_sha256": "73d8a9617d69207ad00ced5dd949f79e0f3391ec7ab71b49d1cb45a3bb966caf",
+      "duration_ms": 1850,
+      "file_sha256": "c7ae1a33e42a2840d49d084697937f1e49693aa9a56c5bedb570fa9f5918e71a",
+      "message_id": "Q-a4-r3",
+      "n_samples": 88800,
+      "path": "messages/Q-a4-r3.wav",
+      "referent_atom": "Q-r3",
+      "status": "trained"
+    },
+    {
+      "action_atom": "Q-a4",
+      "composite_sha256": "43c2d912b5ca0fe16c88a6ab4440fb3544edf9e30909d42a1d634c8472973a11",
+      "duration_ms": 2000,
+      "file_sha256": null,
+      "message_id": "Q-a4-r4",
+      "n_samples": 96000,
+      "path": null,
+      "referent_atom": "Q-r4",
+      "status": "heldout"
+    }
+  ],
+  "package_id": "DEMO-BOOK-P1",
+  "profile": "P1",
+  "study": "A"
+}
