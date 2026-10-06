@@ -77,5 +77,18 @@
     "export_succeeded": true,
     "native_result_sha256": "9159f883520679c8fa5c2d49827a1765ba0a6f15b43f9bf0ef19c4a37a29cf9c"
   },
+  "diagnostic_native_build": {
+    "build_id": "simulation-native-011",
+    "source_commit": "38d5bc39c50899c92714e3fc6475ad385a6f59e1",
+    "dirty_source": false,
+    "target": "StandaloneWindows64",
+    "result": "Succeeded",
+    "errors": 0,
+    "duration_seconds": 24.6641169,
+    "total_bytes": 158712871,
+    "files": 205,
+    "manifest_sha256": "0441fe062c225ee0c5a8bb7599222fb2fffb48f01523f3c6ebe5acf594135d2e",
+    "inventory_independently_rehashed": true
+  },
   "affected_segment_native_validation": "incomplete; no menu or study audio started"
 }
