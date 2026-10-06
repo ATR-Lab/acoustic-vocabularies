@@ -1,7 +1,9 @@
 """Study B bank manifest and amendment log (#26 owns this module and both schemas).
 
 Skeleton tests: the manifest schema (set/ID rules), the bank hash, the amendment chain
-and the effective menu. #26 extends this module with the typed reader/writer tests.
+and the effective menu, plus the attempt rules #26 added to the schema. The typed
+reader/writer, `verify` and `amend` live in `banks/` (`av_banks`) and are tested in
+`tests/banks/` (they need the banks project).
 """
 
 import copy
@@ -169,3 +171,32 @@ def test_amendment_chain_errors():
     assert bank_amendment_errors(dict(first, recheck=dict(first["recheck"], ok=False)))
     with pytest.raises(ValueError):
         effective_menu(doc, [first, second])
+
+
+def test_attempt_entries_name_the_failed_cell_only_when_failed():
+    doc = _bank_manifest()
+    failed = {
+        "attempt": 1,
+        "status": "failed",
+        "slots_used": 31,
+        "failed_cell": {"profile": "P1", "atom_id": "K-a3"},
+        "slots_sha256": "f" * 64,
+        "wall_ms": 900,
+    }
+    complete = dict(doc["attempts"][0], attempt=2)
+    assert bank_manifest_errors(dict(doc, attempts=[failed, complete], attempt_used=2)) == ()
+    for bad in (
+        dict(failed, failed_cell=None),
+        dict(complete, failed_cell={"profile": "P1", "atom_id": "K-a3"}),
+        dict(complete, slots_used=191),
+    ):
+        assert bank_manifest_errors(dict(doc, attempts=[bad]))
+    unavailable = dict(
+        doc,
+        status="unavailable",
+        attempt_used=None,
+        cells=[],
+        attempts=[dict(failed, attempt=n) for n in (1, 2, 3, 4)],
+    )
+    assert bank_manifest_errors(unavailable) == ()
+    assert bank_manifest_errors(dict(unavailable, attempts=unavailable["attempts"][:3]))

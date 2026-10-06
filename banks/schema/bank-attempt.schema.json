@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/bank-attempt.schema.json",
+  "title": "Study B bank attempt summary",
+  "description": "attempts/<n>/attempt.json of a bank directory (#26; Study B protocol §4): one independently seeded attempt of the bank builder, kept on disk whether it completed or failed, with its reason, timing and throughput. The slot records themselves are attempts/<n>/slots.jsonl (slot-record.schema.json); slots_sha256 is the SHA-256 of that file. A failed attempt names the cell (profile, atom) that used its 12 slots without 4 retained options; with parallel profile streams other profiles stop at their next slot (status stopped). The bank manifest's attempts[] entries are derived from these files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "attempt",
+    "bank_id",
+    "bank_version",
+    "cells",
+    "ended_utc",
+    "failed_cell",
+    "failed_cells",
+    "format",
+    "format_version",
+    "profiles",
+    "reason",
+    "seed_namespace",
+    "slots_sha256",
+    "slots_used",
+    "started_utc",
+    "status",
+    "t_end_ms",
+    "t_start_ms",
+    "throughput",
+    "wall_ms",
+    "workers"
+  ],
+  "properties": {
+    "format": {"const": "av-banks/bank-attempt"},
+    "format_version": {"const": 1},
+    "bank_id": {"$ref": "#/$defs/id"},
+    "bank_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "seed_namespace": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "attempt": {"type": "integer", "minimum": 1, "maximum": 4},
+    "status": {"enum": ["complete", "failed"]},
+    "reason": {"oneOf": [{"$ref": "#/$defs/text"}, {"type": "null"}]},
+    "slots_used": {"type": "integer", "minimum": 1, "maximum": 576},
+    "slots_sha256": {"$ref": "#/$defs/sha256"},
+    "failed_cell": {"oneOf": [{"$ref": "#/$defs/cell_ref"}, {"type": "null"}]},
+    "failed_cells": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/cell_ref"}},
+    "workers": {"type": "integer", "minimum": 1, "maximum": 3},
+    "t_start_ms": {"type": "integer", "minimum": 0},
+    "t_end_ms": {"type": "integer", "minimum": 0},
+    "wall_ms": {"type": "integer", "minimum": 0},
+    "started_utc": {"$ref": "#/$defs/utc"},
+    "ended_utc": {"$ref": "#/$defs/utc"},
+    "profiles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cells_complete", "profile", "slots_used", "status", "wall_ms"],
+        "properties": {
+          "profile": {"$ref": "#/$defs/profile"},
+          "status": {"enum": ["complete", "failed", "stopped", "not_started"]},
+          "slots_used": {"type": "integer", "minimum": 0, "maximum": 192},
+          "cells_complete": {"type": "integer", "minimum": 0, "maximum": 16},
+          "wall_ms": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["atom_id", "outcomes", "profile", "retained", "slots_used"],
+        "properties": {
+          "profile": {"$ref": "#/$defs/profile"},
+          "atom_id": {"$ref": "#/$defs/atom_id"},
+          "slots_used": {"type": "integer", "minimum": 1, "maximum": 12},
+          "retained": {"type": "integer", "minimum": 0, "maximum": 4},
+          "outcomes": {
+            "type": "object",
+            "propertyNames": {
+              "enum": [
+                "valid",
+                "invalid_json",
+                "schema_violation",
+                "out_of_domain",
+                "render_fail",
+                "event_too_short",
+                "clipping",
+                "duplicate",
+                "reserved_collision",
+                "separation_fail",
+                "incompatible",
+                "overflow_input",
+                "overflow_output",
+                "timeout"
+              ]
+            },
+            "additionalProperties": {"type": "integer", "minimum": 1, "maximum": 12}
+          }
+        }
+      }
+    },
+    "throughput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latency_ms", "slot_ms", "slots", "slots_over_cap", "slots_per_minute", "wall_ms"],
+      "properties": {
+        "slots": {"type": "integer", "minimum": 0},
+        "wall_ms": {"type": "integer", "minimum": 0},
+        "slots_per_minute": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]},
+        "latency_ms": {"$ref": "#/$defs/stats"},
+        "slot_ms": {"$ref": "#/$defs/stats"},
+        "slots_over_cap": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "complete"}}},
+      "then": {
+        "properties": {
+          "failed_cell": {"type": "null"},
+          "failed_cells": {"maxItems": 0},
+          "reason": {"type": "null"},
+          "slots_used": {"minimum": 192}
+        }
+      },
+      "else": {
+        "properties": {
+          "failed_cell": {"$ref": "#/$defs/cell_ref"},
+          "failed_cells": {"minItems": 1},
+          "reason": {"$ref": "#/$defs/text"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "profile": {"enum": ["P1", "P2", "P3"]},
+    "atom_id": {"type": "string", "pattern": "^[KQ]-[ar][1-4]$"},
+    "text": {"type": "string", "pattern": "^[ -~]{1,400}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"},
+    "cell_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["atom_id", "profile"],
+      "properties": {
+        "profile": {"$ref": "#/$defs/profile"},
+        "atom_id": {"$ref": "#/$defs/atom_id"}
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max", "n", "p50", "p95"],
+      "properties": {
+        "n": {"type": "integer", "minimum": 0},
+        "p50": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "p95": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "max": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      }
+    }
+  }
+}
