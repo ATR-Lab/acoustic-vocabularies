@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/audio-calibration.schema.json",
+  "title": "Private nonsemantic calibration configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "coded_id",
+    "visit_id",
+    "profile_order",
+    "examples",
+    "preload_budget_bytes",
+    "engineering_desktop_preview"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "coded_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "visit_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "profile_order": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "P1",
+          "P2",
+          "P3"
+        ]
+      }
+    },
+    "examples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "properties": {
+        "P1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file",
+            "file_sha256",
+            "pcm_sha256"
+          ],
+          "properties": {
+            "file": {
+              "const": "calibration-P1.wav"
+            },
+            "file_sha256": {
+              "const": "f5a1a6d526bb5685e8a26217c5313e0afd18c3824c9adee8643fe99e2af8bd90"
+            },
+            "pcm_sha256": {
+              "const": "e50e47627a73137392e2cfdd0dac2253adda3c8b10aea49174c9506c3fb90211"
+            }
+          }
+        },
+        "P2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file",
+            "file_sha256",
+            "pcm_sha256"
+          ],
+          "properties": {
+            "file": {
+              "const": "calibration-P2.wav"
+            },
+            "file_sha256": {
+              "const": "94c4aa228c33f3f57b78bb5c10ccc86a00e85efe5d59fa0c7e8ac09d2d2bb19a"
+            },
+            "pcm_sha256": {
+              "const": "5c1cf02801d36137df047975043a89613aff99882eca77f3604579a2e223dca8"
+            }
+          }
+        },
+        "P3": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file",
+            "file_sha256",
+            "pcm_sha256"
+          ],
+          "properties": {
+            "file": {
+              "const": "calibration-P3.wav"
+            },
+            "file_sha256": {
+              "const": "0645d88eabf758f4e53645119538f703dc1ae641771655e900e1b9089f1787fd"
+            },
+            "pcm_sha256": {
+              "const": "14299502afa920cc0413def79b289f0258dcea794bf4922a0666ad34186ea2b1"
+            }
+          }
+        }
+      }
+    },
+    "preload_budget_bytes": {
+      "type": "integer",
+      "minimum": 2880000,
+      "maximum": 67108864
+    },
+    "engineering_desktop_preview": {
+      "type": "boolean"
+    }
+  }
+}

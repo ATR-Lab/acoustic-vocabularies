@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "source_kind": "actual_isaac_sim_5.1",
+  "protected_mode": false,
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "comparison_record": "actual-hour-results.json",
+  "source_provenance": {
+    "scene_source": "8802e2e",
+    "reset_source": "f319440",
+    "command_source": "825e628",
+    "publisher_core_source": "aef994a",
+    "receiver_harness_source": "b7a7288",
+    "change": "Only harness collector_mode=process and subprocess receiver; core files byte-identical to original run",
+    "files": {
+      "workcell-process/isaac/workcell/run_scene.py": "368868e7b04e2a8dfd6d8632f6311ac48ebc1f5f272207ce79cccf3bc62efb7d",
+      "integration-process/isaac/publisher/protocol.py": "d4347de070f726531a2c709bdb6c70f4e0f46eb79601bbc12ce91b8d6024a5d6",
+      "integration-process/isaac/publisher/benchmark.py": "956add74cbcdb25a350c0f89f9860554dd77ed94da227716b4b51405642b72b4",
+      "integration-process/isaac/publisher/process_collector.py": "80db30650c14140dd2d3d7ea9c6baca32b31ab1ab5c7970112be16a733c9f34f",
+      "integration-process/isaac/publisher/transport.py": "fb7974ac4d7a7d91e7ab8436d2f2b7fd702e017d7b611b65188a4c4d45b9f67d",
+      "integration-process/isaac/publisher/disconnect_benchmark.py": "128c2224d9437004c6b36aea961584cb4b3eec0bbb9036470dac9f8dbc728efe",
+      "integration-process/isaac/publisher/analyze.py": "0238c7be51c88dc0b46204193e6a83ce84431cefb32f0c0ef4574ef1a3269981",
+      "integration-process/isaac/publisher/runtime.py": "54cd9b33e6fa26d4fd37b29ba1371ceee73af7527a394c2dd38759fe24573ef7",
+      "integration-process/isaac/publisher/__init__.py": "8b60b31925545bb72d8a616b064a3207dec8eeab580838176225eb810a776c40"
+    }
+  },
+  "publisher": {
+    "rate_hz": 30,
+    "duration_s": 3600.013084065,
+    "required_duration_s": 3600,
+    "frames": 108001,
+    "source_kind": "live",
+    "complete": true,
+    "contiguous": true,
+    "simulation_progressing": true,
+    "interval_median_ms": 33.315195,
+    "interval_p99_ms": 39.39824590999998,
+    "absolute_period_error_p99_ms": 6.069881136666657,
+    "nominal_period_ms": 33.333333333333336,
+    "max_gap_ms": 43.906904,
+    "gaps_over_250_ms": 0,
+    "queue_overwrites": 0,
+    "missed_deadlines": 0,
+    "timing_screen": false,
+    "rate_screen": false,
+    "raw_csv_sha256": "aa482911e8ed43b1632a23faccb11527c17b4b2c2896fa8c97d4c2b1ce49ad65",
+    "limitations": [
+      "Publisher timing only; does not qualify network, clocks or headset rendering",
+      "Disconnect/reconnect simulation-cost comparison is a separate check"
+    ]
+  },
+  "physics": {
+    "steps": 216002,
+    "step_hz": 60,
+    "processing_ms_max": 42.604332
+  },
+  "local_receiver": {
+    "mode": "process",
+    "received": 108001,
+    "sequence_gaps": 0,
+    "runtime_validated_frames": 108001,
+    "local_receive_complete": true
+  },
+  "independent_checks": {
+    "csv_summary_recomputed": true,
+    "retained_samples_json_schema_validated": 2,
+    "disconnect_phase_rates_and_comparisons_recomputed": true
+  },
+  "disconnect": {
+    "source_kind": "live",
+    "collector_mode": "process",
+    "phase_seconds_requested": 30.0,
+    "elapsed_s": 120.020711947,
+    "completed": true,
+    "failure": null,
+    "phases": [
+      {
+        "phase": "no_client",
+        "steps": 2485,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 82.83333333333333,
+        "physics_call_median_ms": 7.304419,
+        "publisher_call_median_ms": 0.007215,
+        "active_processing_total_s": 29.988202314000052
+      },
+      {
+        "phase": "connected",
+        "steps": 2408,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 80.26666666666667,
+        "physics_call_median_ms": 7.487230500000001,
+        "publisher_call_median_ms": 0.007624499999999999,
+        "active_processing_total_s": 29.968457208
+      },
+      {
+        "phase": "disconnected",
+        "steps": 2495,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 83.16666666666667,
+        "physics_call_median_ms": 7.288751,
+        "publisher_call_median_ms": 0.007161,
+        "active_processing_total_s": 29.967316241999928
+      },
+      {
+        "phase": "reconnected",
+        "steps": 2418,
+        "elapsed_s": 30.0,
+        "physics_steps_per_host_second": 80.6,
+        "physics_call_median_ms": 7.4428149999999995,
+        "publisher_call_median_ms": 0.0075335,
+        "active_processing_total_s": 29.967469489
+      }
+    ],
+    "comparisons": [
+      {
+        "reference": "no_client",
+        "comparison": "connected",
+        "absolute_rate_change_fraction": 0.0309859154929577,
+        "within_five_percent": true
+      },
+      {
+        "reference": "connected",
+        "comparison": "disconnected",
+        "absolute_rate_change_fraction": 0.03612956810631236,
+        "within_five_percent": true
+      },
+      {
+        "reference": "disconnected",
+        "comparison": "reconnected",
+        "absolute_rate_change_fraction": 0.03086172344689391,
+        "within_five_percent": true
+      },
+      {
+        "reference": "no_client",
+        "comparison": "disconnected",
+        "absolute_rate_change_fraction": 0.004024144869215407,
+        "within_five_percent": true
+      },
+      {
+        "reference": "no_client",
+        "comparison": "reconnected",
+        "absolute_rate_change_fraction": 0.026961770623742467,
+        "within_five_percent": true
+      }
+    ],
+    "client_events": [
+      {
+        "phase": "connected",
+        "event": "connected",
+        "host_mono_ns": 1147004019995849
+      },
+      {
+        "phase": "connected",
+        "event": "disconnected",
+        "host_mono_ns": 1147033941581095,
+        "received": 896,
+        "sequence_gaps": 0,
+        "error": null
+      },
+      {
+        "phase": "reconnected",
+        "event": "connected",
+        "host_mono_ns": 1147064022443275
+      },
+      {
+        "phase": "reconnected",
+        "event": "disconnected",
+        "host_mono_ns": 1147093939280840,
+        "received": 896,
+        "sequence_gaps": 0,
+        "error": null
+      }
+    ],
+    "client_errors": [],
+    "no_main_loop_wait_for_client": true,
+    "unpaced_simulation": true,
+    "public_publish_rate_hz": 30,
+    "protected_mode": false,
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "five_percent_disconnect_screen": true,
+    "limitations": [
+      "Separate unprotected engineering throughput diagnostic; not headset or network acceptance",
+      "Includes actual background workload variation; exact phase timings and active costs retained"
+    ]
+  },
+  "raw_evidence_sha256": {
+    "publisher-check/summary.json": "00b5dc8284f921c0edce12e44d3a35f630b8a1d07298b6cb093f4d2fe632e287",
+    "publisher-check/metadata.json": "92768ef24e431a32b7783d1d1219f50e048a93cf06ee710183f6ea1d8b745768",
+    "publisher-check/publish.csv": "aa482911e8ed43b1632a23faccb11527c17b4b2c2896fa8c97d4c2b1ce49ad65",
+    "publisher-check/health.json": "aa0b1c1a18966f563234588bcefb47dad0400d36c6b7f6efd4b107244740e12d",
+    "publisher-check/sample-first.json": "35b19adb0cb9dcc479f1f3428b3064822656635a9b55f6b7445c16a9d547968d",
+    "publisher-check/sample-last.json": "a1c2ce4d508240c2bd1de4fcfdd4f85a10b5da4148ea42c549687035386a69a5",
+    "disconnect-check/summary.json": "1c3c8b2092392b38de85f74a37ab1c5e4ad7dc1855547ac4f7b475c788c74507",
+    "disconnect-check/steps.csv": "235e3f2634b0541beb4caaf0b8f60db8739117e26ea58ecde2411af6dd57f3a2",
+    "disconnect-check/publish.csv": "11b6f369778366d24a7539165533cbb2f4921a80831d7a5752026dc2bc755e08"
+  },
+  "qualification": "FAIL: publisher timing/rate; PASS: separate unpaced five-percent disconnect diagnostic",
+  "limitations": [
+    "Unprotected simulator workload; sampled frames do not establish neutral pose",
+    "Only diagnostic receiver placement changed; no production reader cache or comparator optimization in this run",
+    "Two sequential runs do not isolate all background workload variation or establish causal jitter improvement",
+    "Disconnect pass applies to the measured unpaced diagnostic, not headset/network or protected throughput",
+    "No network latency, headset rendering, acoustic onset or G2 acceptance",
+    "Ubuntu 24.04 container deviation from requested Ubuntu 22.04 remains open"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "runtime_source_commit": "f595ab1d0e264f43fa1655bf8119e1dcbc78b4b0",
+  "scope": "software_failure_diagnostics",
+  "participant_admission": false,
+  "native_visit_complete": false,
+  "timing_qualification": false,
+  "editmode_unique_corrected_passes": 157,
+  "editmode_skips": 0,
+  "runs": [
+    {"source_commit": "2248a7959a60d3e187302a7dc761fd208a3b62b2", "kind": "EditMode", "passed": 155, "failed": 1, "sha256": "58c13f94e24ed1e9f5bf7b02309f781d6776a1d425a0516308400d615585f882", "note": "Includes six passing contrast/placement cases; diagnostic null-token assertion failed."},
+    {"source_commit": "47e31ae36a56e7e39d083a1015dc7e5e90da3590", "kind": "EditMode", "passed": 156, "failed": 1, "sha256": "f26b428a20da17257c2e4abb8b003bb89c6e2f86049ffc5f66c7844e1c28cb07", "note": "150 engine/control and six existing closure cases passed; new audit test used an incompatible Windows read-sharing mode."},
+    {"source_commit": "f595ab1d0e264f43fa1655bf8119e1dcbc78b4b0", "kind": "EditMode", "passed": 7, "failed": 0, "sha256": "e82381f744f09a03242c15fd85ed114f2d16e28fb75e94de4fb85fd1d6954976", "note": "Focused actual host closure/audit rerun after test correction."},
+    {"source_commit": "f595ab1d0e264f43fa1655bf8119e1dcbc78b4b0", "kind": "PlayMode", "passed": 9, "failed": 0, "sha256": "77283bf4321b917cd0a9b91af45b8cf20f4ad42ed5f1bf150175c09b9213d149", "note": "Engine, teaching and menu lifecycle assemblies."}
+  ],
+  "retained_native_build008": {
+    "data_journal_sha256": "686c046182683e09d045ba1cb3e2d3373df5acce8c447111614471b82efe3f86",
+    "frame_events_sha256": "83426300ae884ff98bfed0876225335d4779427c575e85b11cf729d913eda65d",
+    "primary_code": "SESSION_CUE_GATE_REFUSED",
+    "secondary_code": "CONTROL_UNAVAILABLE",
+    "readiness_conjunct_known": false,
+    "adjacent_frame_record": "cancelled_before_window_summary_not_freeze"
+  }
+}

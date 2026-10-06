@@ -1,0 +1,246 @@
+{
+  "allocation_seed": "sha256:f9cba56f0cd0cec2427a11e22d601a7e1b7f929967745ec76e05628169e3188c",
+  "audience": "concealed",
+  "counts": {
+    "dyads": 8,
+    "spares": 0
+  },
+  "demo": true,
+  "design_table_sha256": "e40e865b29acbedc9f463ba87af420a0992eeb736d4162159808465de3198711",
+  "dyads": [
+    {
+      "bank_id": "bank-P001",
+      "block_id": "B-P-blk01",
+      "block_position": 1,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "active",
+          "slot_id": "B-P01-M1"
+        },
+        {
+          "member": 2,
+          "role": "yoked",
+          "slot_id": "B-P01-M2"
+        }
+      ],
+      "order": 1,
+      "profile_menu_order": [
+        "P1",
+        "P3",
+        "P2"
+      ],
+      "sq_arm": "SQ-2",
+      "structured_family": "Q",
+      "swap_w1_w4": false,
+      "unit_id": "B-P01"
+    },
+    {
+      "bank_id": "bank-P002",
+      "block_id": "B-P-blk01",
+      "block_position": 2,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "yoked",
+          "slot_id": "B-P02-M1"
+        },
+        {
+          "member": 2,
+          "role": "active",
+          "slot_id": "B-P02-M2"
+        }
+      ],
+      "order": 2,
+      "profile_menu_order": [
+        "P3",
+        "P2",
+        "P1"
+      ],
+      "sq_arm": "SQ-1",
+      "structured_family": "K",
+      "swap_w1_w4": true,
+      "unit_id": "B-P02"
+    },
+    {
+      "bank_id": "bank-P003",
+      "block_id": "B-P-blk01",
+      "block_position": 3,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "active",
+          "slot_id": "B-P03-M1"
+        },
+        {
+          "member": 2,
+          "role": "yoked",
+          "slot_id": "B-P03-M2"
+        }
+      ],
+      "order": 3,
+      "profile_menu_order": [
+        "P2",
+        "P1",
+        "P3"
+      ],
+      "sq_arm": "SQ-1",
+      "structured_family": "K",
+      "swap_w1_w4": false,
+      "unit_id": "B-P03"
+    },
+    {
+      "bank_id": "bank-P004",
+      "block_id": "B-P-blk01",
+      "block_position": 4,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "yoked",
+          "slot_id": "B-P04-M1"
+        },
+        {
+          "member": 2,
+          "role": "active",
+          "slot_id": "B-P04-M2"
+        }
+      ],
+      "order": 4,
+      "profile_menu_order": [
+        "P2",
+        "P3",
+        "P1"
+      ],
+      "sq_arm": "SQ-2",
+      "structured_family": "Q",
+      "swap_w1_w4": true,
+      "unit_id": "B-P04"
+    },
+    {
+      "bank_id": "bank-P005",
+      "block_id": "B-P-blk02",
+      "block_position": 1,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "yoked",
+          "slot_id": "B-P05-M1"
+        },
+        {
+          "member": 2,
+          "role": "active",
+          "slot_id": "B-P05-M2"
+        }
+      ],
+      "order": 5,
+      "profile_menu_order": [
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "sq_arm": "SQ-2",
+      "structured_family": "Q",
+      "swap_w1_w4": false,
+      "unit_id": "B-P05"
+    },
+    {
+      "bank_id": "bank-P006",
+      "block_id": "B-P-blk02",
+      "block_position": 2,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "yoked",
+          "slot_id": "B-P06-M1"
+        },
+        {
+          "member": 2,
+          "role": "active",
+          "slot_id": "B-P06-M2"
+        }
+      ],
+      "order": 6,
+      "profile_menu_order": [
+        "P3",
+        "P1",
+        "P2"
+      ],
+      "sq_arm": "SQ-1",
+      "structured_family": "K",
+      "swap_w1_w4": false,
+      "unit_id": "B-P06"
+    },
+    {
+      "bank_id": "bank-P007",
+      "block_id": "B-P-blk02",
+      "block_position": 3,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "active",
+          "slot_id": "B-P07-M1"
+        },
+        {
+          "member": 2,
+          "role": "yoked",
+          "slot_id": "B-P07-M2"
+        }
+      ],
+      "order": 7,
+      "profile_menu_order": [
+        "P2",
+        "P1",
+        "P3"
+      ],
+      "sq_arm": "SQ-2",
+      "structured_family": "Q",
+      "swap_w1_w4": true,
+      "unit_id": "B-P07"
+    },
+    {
+      "bank_id": "bank-P008",
+      "block_id": "B-P-blk02",
+      "block_position": 4,
+      "kind": "dyad",
+      "members": [
+        {
+          "member": 1,
+          "role": "active",
+          "slot_id": "B-P08-M1"
+        },
+        {
+          "member": 2,
+          "role": "yoked",
+          "slot_id": "B-P08-M2"
+        }
+      ],
+      "order": 8,
+      "profile_menu_order": [
+        "P1",
+        "P3",
+        "P2"
+      ],
+      "sq_arm": "SQ-1",
+      "structured_family": "K",
+      "swap_w1_w4": true,
+      "unit_id": "B-P08"
+    }
+  ],
+  "format": "av-schedules/b-dyads",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "list_sha256": "6d26efefd48fdbabe5d0dbb3cb14bfe1c0dadffa4a1c2b1a6edfce25d22e9bcb",
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "study": "B"
+}

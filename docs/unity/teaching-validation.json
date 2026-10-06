@@ -1,0 +1,94 @@
+{
+  "status": "DEVELOPMENT_ONLY",
+  "source_revision": "369b99b",
+  "unity_editor": "6000.6.0f1",
+  "methodology_verified": false,
+  "participant_content_reviewed": false,
+  "apparatus_qualified": false,
+  "edit_mode": {
+    "passed": 122,
+    "failed": 0,
+    "skipped": 0,
+    "result_sha256": "1a92a27292e76ce179ceae5e06536f962fb4ed8b18b6df94743545ad9196b005"
+  },
+  "edit_mode_scope": {
+    "teaching": 49,
+    "session_engine": 57,
+    "private_control_freshness": 16
+  },
+  "play_mode": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "result_sha256": "3e32c96fe12b3c328b99695d74f18819200bea866d6de9dd31380763b1aa0500"
+  },
+  "play_mode_limits": "Uninstalled real host refusal and frame-driven simulated-clock timeline; no semantic audio or HMD timing measurement.",
+  "producer_integration": {
+    "demo_only": true,
+    "study_b_combinations": 1536,
+    "grammar_registry_sha256": "f017f3201cfdfcaa21fdbcccfc8f73a97eb1fb44b8a032f83a2baf1f3f1d1132"
+  },
+  "variant_diff": {
+    "test": "AcousticVocab.Teaching.Tests.LessonTimelineTests.VariantsHaveIdenticalNonHighlightEvents",
+    "synthetic_clock": true,
+    "non_highlight_event_sequences_equal": true,
+    "aligned_highlight_events": 8,
+    "dictionary_highlight_events": 0,
+    "hardware_timing_measured": false
+  },
+  "mock_counts": {
+    "A": {
+      "atomic_plays": 48,
+      "phrase_plays": 108
+    },
+    "B_V1": {
+      "atomic_plays": 24,
+      "phrase_plays": 24
+    },
+    "B_V2": {
+      "atomic_plays": 12,
+      "phrase_plays": 36
+    },
+    "B_V3": {
+      "atomic_plays": 12,
+      "phrase_plays": 48
+    }
+  },
+  "native_builds": {
+    "windows": {
+      "source_revision": "369b99b60aeb0b355b32b6e36f86f24a26ee5257",
+      "result": "Succeeded",
+      "errors": 0,
+      "total_bytes": 158174077,
+      "build_manifest_sha256": "95e31c12450c99d24774a4ef35dddf9b72a2d95984be7f65e79ad9d59ffe5b39",
+      "main_binary_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
+      "main_binary_bytes": 667136,
+      "scene": "Teaching: actual G1/state renderer, response panel and audio; uninstalled and concealed until admission",
+      "device_execution": false
+    },
+    "android": {
+      "source_revision": "369b99b60aeb0b355b32b6e36f86f24a26ee5257",
+      "result": "Succeeded",
+      "errors": 0,
+      "total_bytes": 778497014,
+      "build_manifest_sha256": "5dff22947602c0212cb9f3105f5e17fcc66d733c0cd7cfc84116079b25ac7f7c",
+      "main_binary_sha256": "61d86a0850d81f2c84f3db30386bb80e4e7d61a937c8d69618df2c398fbf019b",
+      "main_binary_bytes": 55345554,
+      "scene": "Teaching: actual G1/state renderer, response panel and audio; uninstalled and concealed until admission",
+      "device_execution": false,
+      "zip_crc_passed": true,
+      "il2cpp_abis": [
+        "arm64-v8a"
+      ],
+      "loader_factory_dictionary_cleanup_aot_present": true
+    }
+  },
+  "pending": [
+    "Reviewed methodology and frozen lesson/feedback text and images",
+    "Actual private-control listener and Unity reset/health round trip",
+    "Typed lesson-event adapter to the final exposure ledger",
+    "Participant session admission and lazy block-factory multiplexer",
+    "Qualified acoustic route and on-device highlight/visibility timing",
+    "Recordings of aligned and dictionary variants on the headset"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "demo": true,
+  "format": "av-schedules/package-hashes",
+  "format_version": 1,
+  "packages": {
+    "B-P01": "418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8",
+    "B-P02": "94ff64bd6b45d57647dcbc083a77ff6efa5e552e1417474ab07fab248700497b",
+    "B-P03": "659f76c561dfaa62cc4d8050c82636ca24ea2294ea8b2afeaf495f4072c3204a",
+    "B-P04": "542e793c6653210503239131a6664eaf5e502c48b9896f0422df643ade59821d",
+    "B-P05": "9dab04fde977f9f97f1868940acee76a0ef9c976073cd81ec820c667754bb188",
+    "B-P06": "17393ec463b7fa154c1ce7e114b6feddaf80f1116b5a78d5abb419e067e46faf",
+    "B-P07": "37e2a18bb04a028f3c192f689b1dee0d078130959fc4d8a7958bd4ca92cb8140",
+    "B-P08": "63b8212f9181c3042f416a49eb2b8406ded95096d066fa0f7aa821a928066651"
+  },
+  "placeholder": true,
+  "set": "pilot",
+  "study": "B"
+}

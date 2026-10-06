@@ -1,0 +1,30 @@
+{
+  "run": "rendered-600",
+  "source": "offscreen_isaac_camera",
+  "width": 1280,
+  "height": 720,
+  "harness_commit": "4bfa941",
+  "binaries": "retained in ignored local evidence because LFS service rejects uploads",
+  "files": [
+    {
+      "name": "pose-default.png",
+      "bytes": 142545,
+      "sha256": "6667e3c173d055241759d737085f12739a5cfec30441aa8badae25b5ccea8f27"
+    },
+    {
+      "name": "pose-joint_20_75pct.png",
+      "bytes": 140951,
+      "sha256": "3c7915297cf7c45891834fd36462b66b46997743b8e070046105fe4aa6e26862"
+    },
+    {
+      "name": "pose-spread_4.png",
+      "bytes": 136201,
+      "sha256": "10ad1d876c4b8be395c082e6be4472ad0ea2c6f82b9c31f8d629ca1530fd7fba"
+    },
+    {
+      "name": "robot.png",
+      "bytes": 138667,
+      "sha256": "b3ae1a37112ea40f255784e0bf13498896aa80b49b2d5c526f9331f6a4f6fbbf"
+    }
+  ]
+}

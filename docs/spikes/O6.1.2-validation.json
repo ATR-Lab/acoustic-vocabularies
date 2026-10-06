@@ -1,0 +1,67 @@
+{
+  "schema_version": "0.1.0",
+  "status": "software_preparation_only",
+  "python": "3.12.14",
+  "tests": {
+    "synthetic_verifier_cases": 40,
+    "schema_test_cases": 1,
+    "combined_suite_before_final_export_placeholder_checks_passed": 40,
+    "final_complete_matrix_and_csv_case_passed": 1,
+    "final_profile_cases_passed": 5,
+    "fixtures_are_synthetic": true
+  },
+  "schemas_checked": 34,
+  "registered_synthetic_examples": 8,
+  "source_files": {
+    "tools/view_leakage.py": "442c73981099549fe8afd1a23ae5569bf5f9a55c2b62e1f54291ea483d3a0305",
+    "tools/leakage_png.py": "9f0fdc12cbf6b6a419e69987316cdabfca7ef942cd0239a264b16550579ba415",
+    "tests/test_view_leakage.py": "24348ee94d21226d84bb3f4317b8771939cb1d50137c2f5bcdf91d073004fbe0"
+  },
+  "historical_acknowledgment_decode_check": {
+    "existing_png_files": 8,
+    "size_pixels": [
+      1024,
+      512
+    ],
+    "pairwise_comparisons": 28,
+    "all_decoded_channels_equal": true,
+    "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d",
+    "decoded_channels_sha256": "a588a23a33d6943e40380dc68fffe9053680ed53d7aaf88d7cda409fff50df0b",
+    "provenance": "Existing O5.5.3 controlled-clock Unity acknowledgment renderer; references docs/unity/assessment-validation.json. No new Unity run.",
+    "full_scene": false,
+    "headset": false
+  },
+  "required_complete_capture": {
+    "legal_commands": 32,
+    "poses": 5,
+    "captures": 160,
+    "pairwise_comparisons": 2480,
+    "actual_matrix_performed": false,
+    "native_capture_driver_integrated": false,
+    "independent_code_review_signed": false,
+    "g3_signed": false,
+    "participant_ready": false
+  },
+  "pending": [
+    "Actual protected-scene/headset or independently approved capture-source matrix",
+    "Capture driver and visibly-applied-state alignment verification",
+    "Independent review of every hidden-tuple read path and closure of findings",
+    "Independent plan predeclaration custody and source qualification",
+    "Robot appearance outside registered workcell accessor and natural head motion",
+    "Acoustic routing measurement and unavailable external methodology reconciliation"
+  ],
+  "bounded_source_review": {
+    "review_type": "separate_agent_read_only_engineering_review_not_issue_signoff",
+    "finding": "The initial parser permitted one pose and a 255-channel tolerance, which could produce a vacuous successful screen.",
+    "resolution": "Current profile requires the five named, measurably distinct poses and exactly zero channel tolerance. Placeholder build/scene/panel pins are refused.",
+    "regressions": [
+      "single pose refused",
+      "different IDs with equivalent head poses refused",
+      "channel tolerance255 refused",
+      "channel tolerance1 refused",
+      "unconfigured build pin refused"
+    ],
+    "focused_profile_tests_passed": 5,
+    "independent_code_path_signoff": false
+  }
+}

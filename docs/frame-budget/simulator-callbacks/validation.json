@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "build_commit": "637a9e283a56aafc0b42b243cba76cd24d22742e",
+  "build_id": "frame-probe-002",
+  "runtime": "Meta XR Simulator v205.0",
+  "editor": "6000.6.0f1",
+  "source": "recorded_Isaac_snapshot",
+  "observations": "actual_application_onBeforeRender_callbacks",
+  "headset_photon_timestamps": false,
+  "study_audio_used": false,
+  "physical_qualification": false,
+  "live_mirroring_36_trial_block": false,
+  "legibility_or_comfort_qualified": false,
+  "station_rate_frozen": false,
+  "original_private_config_absence_restored": true,
+  "runs": [
+    {
+      "run": "zero-001",
+      "requested_stall_ms": 0,
+      "runtime_reported_hz": 72.0,
+      "application_callbacks": 827,
+      "window_frames": 649,
+      "within_1_5x_count": 649,
+      "maximum_ms": 18.079699999994773,
+      "capture_complete": true,
+      "fault_codes": [],
+      "csv_sha256": "666cfc97ad03aaa60eebbc323a4215d102f21af2b6d5fc17acf06ec704c688e9",
+      "preview_png_sha256": "9b0f9af4db550df2aa0ba757435a2df0f4b86a044d29b74451db43461ccae9bd",
+      "native_exit_code": null
+    },
+    {
+      "run": "stall200-001",
+      "requested_stall_ms": 200,
+      "runtime_reported_hz": 72.0,
+      "application_callbacks": 517,
+      "window_frames": 398,
+      "within_1_5x_count": 243,
+      "maximum_ms": 242.72330000000147,
+      "capture_complete": true,
+      "fault_codes": [],
+      "csv_sha256": "85a7a12848f0dc914fed1563684d544bf04d9cddf63c73985ef5e24e3d1b6e80",
+      "preview_png_sha256": "9b0f9af4db550df2aa0ba757435a2df0f4b86a044d29b74451db43461ccae9bd",
+      "native_exit_code": 0
+    },
+    {
+      "run": "stall300-001",
+      "requested_stall_ms": 300,
+      "runtime_reported_hz": 72.0,
+      "application_callbacks": 798,
+      "window_frames": 626,
+      "within_1_5x_count": 625,
+      "maximum_ms": 333.28979999999865,
+      "capture_complete": true,
+      "fault_codes": [
+        "FRAME_FREEZE"
+      ],
+      "csv_sha256": "1a946899b4383e0a4386e33c61d133894c1cb9b2ef0beefbf571f0686af77128",
+      "preview_png_sha256": "9b0f9af4db550df2aa0ba757435a2df0f4b86a044d29b74451db43461ccae9bd",
+      "native_exit_code": 0
+    }
+  ],
+  "limitations": [
+    "Window lengths are engineering probe values, not a study block.",
+    "The injected delay is a requested main-thread sleep; full observed interval also contains rendering and OS scheduling time.",
+    "CPU/GPU timing columns are delayed Unity metrics and may be unavailable.",
+    "A short baseline and injected runs do not qualify the selected station topology or full-session load.",
+    "Preview images show the panel occluding the robot and small text at the captured wide field of view; physical legibility remains pending.",
+    "Baseline process disappearance was observed but native exit code was not retained. Injected runs retain native exit code zero."
+  ]
+}

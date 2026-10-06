@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "experiment_qualification": false,
+  "default_handle_cache_enabled": false,
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "runtime_usd_version": [
+    0,
+    24,
+    5
+  ],
+  "bindings": {
+    "usd_version": [
+      0,
+      24,
+      5
+    ],
+    "usd_notices": {
+      "ObjectsChanged": true,
+      "StageEditTargetChanged": true,
+      "LayerMutingChanged": true
+    },
+    "sdf_notices": {
+      "LayerDidReplaceContent": true,
+      "LayerDidReloadContent": true,
+      "LayerIdentifierDidChange": true,
+      "LayerInfoDidChange": true,
+      "LayerMutenessChanged": true
+    },
+    "objects_changed_fields": true,
+    "global_notice_registration": true,
+    "layer_muteness_path": true
+  },
+  "structural": {
+    "cached_mutations_rejected": 20,
+    "cached_mutations_required": 20,
+    "cached_noops_verified": 2,
+    "cached_noops_required": 2,
+    "round_trip_cache_modes": [
+      false,
+      true
+    ],
+    "uncached_comparison": {
+      "scope": "new uncached reader; not the original frozen baseline",
+      "rejected_mutation_cases": 18,
+      "verified_noop_cases": 2,
+      "nonrejecting_or_failed_cases": [
+        "mute_unmute",
+        "edit_target_restore"
+      ],
+      "qualification_claim": false
+    },
+    "initial_cached_mutations_rejected": 18,
+    "initial_cases_required": 20,
+    "initial_nonrejections_reclassified_only_after_actual_noop_proof": [
+      "root_import_same_content",
+      "session_import_same_content"
+    ],
+    "guard_changed_during_validation": false
+  },
+  "profile": {
+    "qualification": false,
+    "source_kind": "live",
+    "phases": [
+      {
+        "name": "unprotected-none",
+        "baseline_steps_s": 80.88181785354557,
+        "cache_steps_s": 95.34660383323144,
+        "relative_change": 0.17883853706005426,
+        "baseline_gc_max_ms": 0.204705,
+        "cache_gc_max_ms": 0.173249,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 1.885345,
+            "after": 1.8562284999999998
+          },
+          "physics_step": {
+            "before": 5.2030525,
+            "after": 5.1045295
+          },
+          "objects_public_read": {
+            "before": 9.629585,
+            "after": 6.483209
+          },
+          "encode_build": {
+            "before": 2.932305,
+            "after": 2.938705
+          }
+        }
+      },
+      {
+        "name": "unprotected-thread",
+        "baseline_steps_s": 68.75601320863146,
+        "cache_steps_s": 84.47103506494439,
+        "relative_change": 0.22856214493745708,
+        "baseline_gc_max_ms": 0.272834,
+        "cache_gc_max_ms": 1.622884,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 2.2414509999999996,
+            "after": 1.893259
+          },
+          "physics_step": {
+            "before": 5.1686125,
+            "after": 5.1433835000000006
+          },
+          "objects_public_read": {
+            "before": 9.682878,
+            "after": 6.515901
+          },
+          "encode_build": {
+            "before": 2.932989,
+            "after": 2.945242
+          }
+        }
+      },
+      {
+        "name": "unprotected-process",
+        "baseline_steps_s": 79.49019864427443,
+        "cache_steps_s": 93.8297254847703,
+        "relative_change": 0.18039364707926442,
+        "baseline_gc_max_ms": 0.148946,
+        "cache_gc_max_ms": 0.138091,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 1.905497,
+            "after": 1.8618275
+          },
+          "physics_step": {
+            "before": 5.1310135,
+            "after": 5.115930499999999
+          },
+          "objects_public_read": {
+            "before": 9.67576,
+            "after": 6.50424
+          },
+          "encode_build": {
+            "before": 2.936947,
+            "after": 2.933633
+          }
+        }
+      },
+      {
+        "name": "protected-none",
+        "baseline_steps_s": 40.97986395988025,
+        "cache_steps_s": 44.875102116213824,
+        "relative_change": 0.09505249114899605,
+        "baseline_gc_max_ms": 348.500073,
+        "cache_gc_max_ms": 351.319198,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 1.810063,
+            "after": 1.8139155
+          },
+          "physics_step": {
+            "before": 5.311755,
+            "after": 5.251226000000001
+          },
+          "write_root": {
+            "before": 0.514562,
+            "after": 0.513989
+          },
+          "write_joints": {
+            "before": 0.2492905,
+            "after": 0.2500345
+          },
+          "kinematic_forward": {
+            "before": 0.32701199999999997,
+            "after": 0.324773
+          },
+          "objects_full_read": {
+            "before": 16.388294000000002,
+            "after": 11.878595
+          },
+          "environment_read": {
+            "before": 0.4033735,
+            "after": 0.510652
+          },
+          "full_read": {
+            "before": 17.1528845,
+            "after": 12.770201499999999
+          },
+          "neutral_verify": {
+            "before": 4.6994635,
+            "after": 4.799834000000001
+          },
+          "encode_build": {
+            "before": 2.9599539999999998,
+            "after": 2.9963464999999996
+          }
+        }
+      },
+      {
+        "name": "protected-process",
+        "baseline_steps_s": 41.59618135501406,
+        "cache_steps_s": 45.454216305020246,
+        "relative_change": 0.09274973866179503,
+        "baseline_gc_max_ms": 0.189917,
+        "cache_gc_max_ms": 0.192801,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 1.817631,
+            "after": 1.8147354999999998
+          },
+          "physics_step": {
+            "before": 5.3655605,
+            "after": 5.2796755
+          },
+          "write_root": {
+            "before": 0.5182955,
+            "after": 0.5120750000000001
+          },
+          "write_joints": {
+            "before": 0.2486755,
+            "after": 0.247073
+          },
+          "kinematic_forward": {
+            "before": 0.3317515,
+            "after": 0.32508400000000004
+          },
+          "objects_full_read": {
+            "before": 16.4435955,
+            "after": 11.883381
+          },
+          "environment_read": {
+            "before": 0.40664999999999996,
+            "after": 0.510093
+          },
+          "full_read": {
+            "before": 17.222273,
+            "after": 12.753015
+          },
+          "neutral_verify": {
+            "before": 4.698848,
+            "after": 4.785358
+          },
+          "encode_build": {
+            "before": 2.9546200000000002,
+            "after": 2.981757
+          }
+        }
+      },
+      {
+        "name": "profile-protected",
+        "baseline_steps_s": 37.07262141637946,
+        "cache_steps_s": 42.4020687205299,
+        "relative_change": 0.1437569586540155,
+        "baseline_gc_max_ms": 0.136508,
+        "cache_gc_max_ms": 0.141394,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 1.8753145,
+            "after": 1.8584975
+          },
+          "physics_step": {
+            "before": 5.294741999999999,
+            "after": 5.1930265
+          },
+          "write_root": {
+            "before": 0.5458035,
+            "after": 0.534727
+          },
+          "write_joints": {
+            "before": 0.26767399999999997,
+            "after": 0.264991
+          },
+          "kinematic_forward": {
+            "before": 0.334563,
+            "after": 0.32831750000000004
+          },
+          "objects_full_read": {
+            "before": 18.913927,
+            "after": 12.541468
+          },
+          "environment_read": {
+            "before": 0.414778,
+            "after": 0.51737
+          },
+          "full_read": {
+            "before": 19.704633,
+            "after": 13.442496
+          },
+          "neutral_verify": {
+            "before": 6.91532,
+            "after": 6.916198
+          },
+          "encode_build": {
+            "before": 4.303371,
+            "after": 4.234932
+          }
+        }
+      },
+      {
+        "name": "profile-thread",
+        "baseline_steps_s": 55.102531127400376,
+        "cache_steps_s": 67.00248026610797,
+        "relative_change": 0.21596011826016115,
+        "baseline_gc_max_ms": 0.160657,
+        "cache_gc_max_ms": 0.152604,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 2.562184,
+            "after": 2.019252
+          },
+          "physics_step": {
+            "before": 5.1909115,
+            "after": 5.182561
+          },
+          "objects_public_read": {
+            "before": 11.237838499999999,
+            "after": 6.868535
+          },
+          "encode_build": {
+            "before": 4.308958,
+            "after": 4.254928
+          }
+        }
+      },
+      {
+        "name": "profile-process",
+        "baseline_steps_s": 65.75813176709573,
+        "cache_steps_s": 84.01997568391423,
+        "relative_change": 0.2777123288949095,
+        "baseline_gc_max_ms": 0.229124,
+        "cache_gc_max_ms": 0.158391,
+        "fault": null,
+        "timer_median_ms": {
+          "write_targets": {
+            "before": 2.014724,
+            "after": 2.0366400000000002
+          },
+          "physics_step": {
+            "before": 5.2091435,
+            "after": 5.152279
+          },
+          "objects_public_read": {
+            "before": 11.180366,
+            "after": 6.875587
+          },
+          "encode_build": {
+            "before": 4.311012,
+            "after": 4.292049
+          }
+        }
+      }
+    ],
+    "gc_unchanged": true,
+    "actuator_flushes_unchanged": true,
+    "neutral_thresholds_unchanged": true,
+    "new_full_hour_run": false
+  },
+  "runtime_source_sha256": {
+    "isaac/workcell/state.py": "3ac28df70e4fdc3cef68ebea4966cb1b8b69bd2de59ea16b5e90e23e18a72ee3",
+    "isaac/workcell/cache_guard.py": "574bac2e162b764aba9bef824c28613b29addd9f67da8a01a9b6ada86d9cf88b",
+    "isaac/workcell/build_usd.py": "c8c036e1699e3bd5a2842f1c5c56812aa0d43edd3abe6c81dea4ba80647a69ac",
+    "isaac/workcell/run_scene.py": "d69c61de9f8fa973dab35e010bf7ea8fef12c711c6c6970ad02207334e50ee5f",
+    "profile_workcell.py": "21e2730b129b4614a1883fca2dab63f84e1d79a3b43a5f212e9b47542583e47f",
+    "tests/isaac/usd_cache_tamper_check.py": "a559eed14560f0a9846c9154d13d5d5e132046031ea97a26b34d0edff7025f7d"
+  },
+  "tracked_source_lf_sha256": {
+    "isaac/workcell/state.py": "6f6ec66b38d169fa288201d07a5d84620330f25e0c5a3df68c3a7872d73f5b2a",
+    "isaac/workcell/cache_guard.py": "574bac2e162b764aba9bef824c28613b29addd9f67da8a01a9b6ada86d9cf88b",
+    "isaac/workcell/build_usd.py": "c8c036e1699e3bd5a2842f1c5c56812aa0d43edd3abe6c81dea4ba80647a69ac",
+    "tests/isaac/usd_cache_tamper_check.py": "4d2c7cc927fad6b175c71c4991b39c1115d9a5ee06ff8f948d6bce502b19a484"
+  },
+  "evidence_sha256": {
+    "initial_tamper": "4162538ed70428a0c232c2acd7e0ac5a1fcbc82642c74335878de7d2e6dc31d4",
+    "noop_probe": "7518d5b45d48c41fca251bdb6cc91757c6d1123728bf8bceb531557356dfdff2",
+    "final_tamper": "5b7e9caebf0d890b2a97986cbde15c5427eadfae4c7e08ce78d4395c51a3dbf3",
+    "round_trip": "364f7550ad2ffcf0916ab2a91d14ad5d7e019a3b86dfd3e484f1b119b9ef4b23",
+    "profile_before": "9ffa9733e77127ce9059c269645acbadf065a4f6e127957584d05e5c7c422e88",
+    "profile_after": "d5c8cefa4c1fdb242d026ef3bbc60103d6b4c07f4195c7f9a93b28fb2b97c2be",
+    "profile_after_reset_events": "fa1bb6a17426f0f5759bffdee3fef31d6e90471e961795e0166e8801d1f5ddec",
+    "scene_runner_summary": "f5812c400e1ffebbf9050c0b0388f6e0728fc5fb140c09f37d00b20461a6736c"
+  },
+  "limitations": [
+    "Bounded unpaced diagnostic phases with timing/profiling overhead; not an acceptance run",
+    "Protected throughput remains below 60 physics steps per host second",
+    "A generation-2 GC pause of 351.319198 ms persists; no GC disabling or tuning",
+    "The new uncached reader tightens notice/value validation and is not the original frozen baseline",
+    "Line-ending-normalized tracked source hashes are provided separately from exact deployed bytes"
+  ]
+}
