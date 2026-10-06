@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "needs_operator_run",
+  "build_sha256": null,
+  "station_config_sha256": null,
+  "package_sha256": null,
+  "route_measurement_sha256": null,
+  "physical_headset": null,
+  "scheduled_device_plays": null,
+  "confirmed_device_plays": null,
+  "forced_underrun_fault": null,
+  "preload_bytes": null,
+  "device_memory_headroom_bytes": null,
+  "calibration_six_play_sequence": null,
+  "gain_restored_second_launch": null,
+  "loopback_csv_sha256": null,
+  "earphone_trace_sha256": null,
+  "screen_recording_sha256": null,
+  "operator_review": null
+}

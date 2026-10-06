@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "status": "engineering_validation_physical_provisioning_pending",
+  "runtime_commit": "d8b28a74a7e617597102f18901c9d5edb11d2220",
+  "editor": "6000.6.0f1",
+  "tests": {
+    "unity_edit_mode_total": 47,
+    "unity_edit_mode_passed": 47,
+    "xml_sha256": "e6eb638f99e3830325bb9f973d5653bb55f5d35e1ec931f6dd111d2c72a83212",
+    "python_passed": 41,
+    "synthetic_provisioning_cases": 29,
+    "scope": "Parser, exact artifact identity, rejection paths, monotonic startup gate and component lifecycle tests; not physical headset observations"
+  },
+  "startup_settling_seconds": 0.25,
+  "startup_interval_status": "engineering value; delayed origin notifications restart settling; later recenter remains a latched fault",
+  "adb_observation": {
+    "connected_authorized": 0,
+    "unauthorized": 0,
+    "offline": 0,
+    "identifiers": "suppressed"
+  },
+  "builds": [
+    {
+      "target": "Windows",
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "provisioning-link-002",
+        "commit_sha": "d8b28a74a7e617597102f18901c9d5edb11d2220",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "StandaloneWindows64",
+        "dirty_source": false,
+        "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+        "development_only": true
+      },
+      "entry_file": {
+        "path": "experiment.exe",
+        "bytes": 667136,
+        "sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d"
+      },
+      "unity_reported_total_bytes": 157860757,
+      "raw_manifest_sha256": "3f039aa3e05460722ca9830d132b188f19218ba161667a5f7ef015ff7bbd4dec",
+      "canonical_manifest_sha256": "7a6f4a615e9e25a6f5af8687189ce7174f0190f15f56e6896ed78a3fefbb6247"
+    },
+    {
+      "target": "Android",
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "build_identity": {
+        "schema_version": 1,
+        "build_id": "provisioning-quest-001",
+        "commit_sha": "001fb472d8d316b37f7ea3a68af03631c227a967",
+        "protocol_version": "engineering-pending-review",
+        "editor_version": "6000.6.0f1",
+        "target": "Android",
+        "dirty_source": false,
+        "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+        "development_only": true
+      },
+      "entry_file": {
+        "path": "experiment.apk",
+        "bytes": 54438320,
+        "sha256": "b9681eca09e32b50007f86d28872ccf7d27d738013399a67759bd7d0fb076dcd"
+      },
+      "unity_reported_total_bytes": 752552201,
+      "raw_manifest_sha256": "4017dd1feb7f03c4b8be58d33e9c408b80616d9c70edb62a9e0565deda9fab6b",
+      "canonical_manifest_sha256": "6f2f9bad04963fd737a94e414ad6cb43816442eba9e00c7a02622aa4a7e68115"
+    }
+  ],
+  "android": {
+    "zip_crc": "passed",
+    "arm64_il2cpp": true,
+    "internet_permission": true,
+    "debuggable": false,
+    "manifest_observation": "aapt2 badging: INTERNET present, native-code arm64-v8a, application-debuggable absent (default false)"
+  },
+  "ci": "Local native builds validated; hosted runner/license guard remains unconfigured, self-hosted build job skipped",
+  "pending": [
+    "Lab account and developer mode per physical unit",
+    "OS baseline and deferral, notification suppression, boundary, volume persistence and sleep settings",
+    "CI release deployment to each station and spare",
+    "Physical system-menu focus fault and proposed 30-minute prompt-free idle run",
+    "Route-specific measured battery duration, approved buffer/threshold and charging rota",
+    "Common procedures reconciliation and apparatus owner sign-off"
+  ],
+  "notes": [
+    "Build wrapper change after Windows build waits only for the launched editor native exit, preserving result and artifact verification.",
+    "Intermediate Windows run provisioning-link-001 excluded: source changed during invocation; its raw evidence is preserved privately.",
+    "Public examples contain no real serial, station address, account, participant information or measured battery values."
+  ]
+}

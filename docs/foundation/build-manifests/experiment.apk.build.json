@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "foundation-quest-003",
+    "commit_sha": "f7e430183797bacdc3e2dfeb2c25094f4bda5989",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 43.8210396,
+  "total_bytes": 681113815,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 36901782,
+      "sha256": "5874f5ca1d9d5131055494431762619f779d338b361ef2cae36ee3012f691d6e"
+    }
+  ]
+}

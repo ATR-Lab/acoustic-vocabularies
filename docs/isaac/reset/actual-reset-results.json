@@ -1,0 +1,59 @@
+{
+  "source": "loaded_isaac_articulation_and_workcell",
+  "cycles_requested": 1000,
+  "cycles_completed": 1000,
+  "all_cycles_passed": true,
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "joint_count": 43,
+  "object_count": 60,
+  "forward_frames_per_reset": 1,
+  "physics_integration_during_reset": false,
+  "max_deviation": {
+    "joint_rad": 0.0,
+    "position_m": 1.192092895533904e-07,
+    "orientation_rad": 0.0,
+    "linear_velocity_m_s": 0.0,
+    "angular_velocity_rad_s": 0.0,
+    "environment_absolute": 0.0
+  },
+  "coverage": {
+    "all_joint_positions_and_velocities": true,
+    "all_object_poses_velocities_flags_and_discrete_states": true,
+    "all_material_colors_roughness_and_light_colors_intensities": true,
+    "all_observed_rigid_body_frames_verified": true,
+    "root_perturbation": false
+  },
+  "elapsed_ms_including_log": {
+    "median": 140.561926,
+    "p95": 145.538787,
+    "max": 557.44491
+  },
+  "locked_joint_injection_rejected": true,
+  "explicit_recovery_ok": true,
+  "methodology_review_complete": false,
+  "gaze_neutrality_review_complete": false,
+  "hashes": {
+    "neutral-observer.png": "f875b9c56f59a17fa13a7ec4e85a8d34bf1a44e1faff05c5dc6d6f8364870f2c",
+    "neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reset-cycles.csv": "29df2b19d653549e60112e7f03b4832c490606fad0cfea087ec3b5986e81bf11",
+    "reset-events.jsonl": "755abd2a5995e527183e735468665a24f3a05b4892aaac9c9f6be006b32e4a62"
+  },
+  "measured_date": "2026-10-04",
+  "source_revisions": {
+    "reset": "f319440",
+    "workcell": "8802e2e"
+  },
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "terminal_events_verified": 1002,
+  "observer_render_inspected": true,
+  "public_csv_sha256": "c5f12b3f992b1c9b597a5c809530bad376da3e5086cd64ecca0f97dbc621932b",
+  "public_csv_transformation": "Only CRLF to LF normalization; numeric rows unchanged.",
+  "limitations": [
+    "Appearance coverage is limited to the registered workcell materials/lights; robot MDL shaders and per-mesh visibility are outside the accessor guard.",
+    "Kinematic forward verification without physics integration during reset; protected advancing hold is tested separately.",
+    "Root is restored and verified but not randomized because this is the fixed-base asset.",
+    "Observer render was inspected; private methodology, gaze/hand neutrality sign-off and pilot thresholds remain pending.",
+    "The cached verification-age accessor is included in this measured source revision."
+  ]
+}

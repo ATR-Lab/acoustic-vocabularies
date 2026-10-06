@@ -1,0 +1,13 @@
+{
+  "status": "needs_operator_run",
+  "speech_list_sha256": null,
+  "manifest_sha256": null,
+  "synthesis_evidence_sha256": null,
+  "listening_review_sha256": null,
+  "all_64_wording_checks_passed": null,
+  "all_64_clarity_checks_passed": null,
+  "balanced_eight_match_stored_schedule": null,
+  "final_stage_guard_recording_sha256": null,
+  "route_measurement_sha256": null,
+  "apparatus_freeze_approved": false
+}
