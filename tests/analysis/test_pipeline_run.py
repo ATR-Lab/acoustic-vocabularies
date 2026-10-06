@@ -315,7 +315,9 @@ def test_full_size_end_to_end_with_lme4_within_30_minutes(tmp_path):
         validator("glmm-log.schema.json").validate(doc)
         assert doc["engine"] is not None and doc["attempts"][0]["status"] != "skipped"
         steps = ", ".join(
-            f"{a['rung']}={a['status']}(singular={a['singular']})" for a in doc["attempts"]
+            f"{a['rung']}={a['status']}(converged={a['converged']}, singular={a['singular']}"
+            f"{', ' + '; '.join(a['messages'])[:300] if a['status'] == 'failed' else ''})"
+            for a in doc["attempts"]
         )
         ladders.append(f"{model}: {steps}; final {doc['final_rung']}")
     # Evidence in the CI log (the r job uploads no artifact).

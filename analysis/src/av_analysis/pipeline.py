@@ -118,7 +118,8 @@ def describe_t(label: str, t: TResult, units: str, wide: TResult | None = None) 
     text = f"{label}: {t.mean * 100:.2f} pp (95% CI {t.low * 100:.2f} to {t.high * 100:.2f}"
     if wide is not None and wide.low is not None and wide.high is not None:
         text += f"; 97.5% CI {wide.low * 100:.2f} to {wide.high * 100:.2f}"
-    return text + f"; t({t.df}) = {tval}, p = {t.p:.4f}; {t.n} {units})."
+    ptext = "p < 0.0001" if t.p < 0.0001 else f"p = {t.p:.4f}"
+    return text + f"; t({t.df}) = {tval}, {ptext}; {t.n} {units})."
 
 
 # ---------------------------------------------------------------------------------------
