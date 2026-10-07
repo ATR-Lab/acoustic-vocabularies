@@ -1,0 +1,132 @@
+# Golden-file and cross-machine determinism tests (#12; sound/docs/golden.md).
+# Every runner recomputes the golden set from tests/golden/manifest.json and writes its
+# digests; the compare job fails if any OS or CPU architecture differs. The guard job
+# fails a pull request that changes an existing golden hash without a version bump.
+name: Sound goldens
+
+on:
+  pull_request:
+    paths:
+      - "sound/**"
+      - "tests/golden/**"
+      - ".github/workflows/sound-golden.yml"
+      - ".gitattributes"
+  push:
+    branches: [main]
+    paths:
+      - "sound/**"
+      - "tests/golden/**"
+      - ".github/workflows/sound-golden.yml"
+      - ".gitattributes"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sound-golden-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Must list every matrix label below; the compare job fails if one is missing.
+  GOLDEN_RUNNERS: linux-x86_64,linux-arm64,macos-arm64,macos-x86_64,windows-x86_64,windows-arm64
+
+jobs:
+  golden:
+    name: golden (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: linux-x86_64, os: ubuntu-latest, python: cpython-3.11.15-linux-x86_64-gnu }
+          - { label: linux-arm64, os: ubuntu-24.04-arm, python: cpython-3.11.15-linux-aarch64-gnu }
+          - { label: macos-arm64, os: macos-latest, python: cpython-3.11.15-macos-aarch64-none }
+          - { label: macos-x86_64, os: macos-15-intel, python: cpython-3.11.15-macos-x86_64-none }
+          - { label: windows-x86_64, os: windows-latest, python: cpython-3.11.15-windows-x86_64-none }
+          - { label: windows-arm64, os: windows-11-arm, python: cpython-3.11.15-windows-aarch64-none }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      # The same uv-managed CPython build on every runner, native to the CPU (uv would
+      # otherwise run x86_64 Python under emulation on Windows arm64).
+      UV_PYTHON: ${{ matrix.python }}
+      UV_PYTHON_PREFERENCE: only-managed
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: sound/uv.lock
+      - name: Install (Python 3.11, numpy and all dependencies from uv.lock)
+        run: uv sync --project sound --locked
+      - name: Golden tests (reproduce, render twice, one-sample change, store round trip)
+        run: uv run --project sound pytest --import-mode=importlib -p no:cacheprovider -rs tests/golden
+      - name: Golden digests and WAVs
+        if: success() || failure()
+        run: >
+          uv run --project sound python sound/tools/make_goldens.py --check --summary
+          --runner "${{ matrix.label }}"
+          --digest-out "$RUNNER_TEMP/golden-digest/${{ matrix.label }}.json"
+          --wav-dir "$RUNNER_TEMP/golden-wav" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload the digest record
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-digest-${{ matrix.label }}
+          path: ${{ runner.temp }}/golden-digest/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Upload the golden WAVs for inspection (synthetic only; never committed)
+        if: matrix.label == 'linux-x86_64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-wav
+          path: ${{ runner.temp }}/golden-wav/
+          retention-days: 14
+          if-no-files-found: error
+
+  compare:
+    name: golden compare (all runners)
+    needs: golden
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: golden-digest-*
+          path: golden-digests
+          merge-multiple: true
+      - name: Compare golden digests across OS and CPU architecture
+        run: >
+          python3 sound/tools/compare_golden_digests.py golden-digests
+          --expect "$GOLDEN_RUNNERS" --manifest tests/golden/manifest.json
+          | tee -a "$GITHUB_STEP_SUMMARY"
+
+  guard:
+    name: golden version guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Changed golden hashes need a version bump
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 sound/tools/check_golden_bump.py "origin/$BASE_REF" | tee -a "$GITHUB_STEP_SUMMARY"

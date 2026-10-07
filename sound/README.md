@@ -38,7 +38,8 @@ Nothing needs the network at runtime.
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, example package (`build_example_package.py`) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`) |
+| `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
 ## API
 
@@ -75,6 +76,7 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `StoreEntry`, `BookInfo`, `VerifyReport`, `VerifyIssue` | A committed atom (an `AtomAudioLike`; `.reference()`), book facts, `verify` result |
 | `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError`, `StoreLocked` | Store errors (`.code`); overwrite and frozen attempts are logged |
 | `persistence_violations(before, after)`, `snapshot_digest(snapshot)` | Growth check (old entries unchanged) and one publishable hash per book |
+| `av_sound.golden`: `build_manifest()`, `verify_manifest(manifest)`, `compute_items(specs)`, `check_wav_dir(items, dir)`, `write_wavs(items, dir)`, `GOLDEN_RECIPES` | Golden set and its checks ([`docs/golden.md`](docs/golden.md)) |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
 | `build_package(store, book_id, out_dir, *, expected_head=None) -> PackageResult` | Study A package of a frozen store book: 16 atom WAVs, 18 trained-message WAVs, `answers.json`, `audio.json`, `manifest.json`; held-out messages as hashes only ([`package-format.md`](../docs/interfaces/package-format.md)) |
 | `build_dyad_package(bank, out_dir) -> PackageResult` | Study B package of a dyad bank (PROVISIONAL input `av_sound.dyad_bank.DyadBank`): 192 option WAVs, hashes of all 1,536 option combinations |
@@ -119,7 +121,11 @@ assert result.codes == ("E_EVENT_SHORT",)  # first event 1,760 samples (36.7 ms)
 change to rendered bytes bumps it in the same pull request and regenerates
 `testvectors/` with `uv run --project sound python sound/tools/make_testvectors.py` and
 `uv run --project sound python sound/tools/make_composition_vectors.py`, and rewrites the
-reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`.
+reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`
+and the golden manifest with `uv run --project sound python sound/tools/make_goldens.py`.
+The golden guard in CI fails a changed golden hash without the version bump
+([`docs/golden.md`](docs/golden.md)).
 A code change that leaves the bytes unchanged still changes `renderer_hash`: regenerate
 the vectors to update the pins and say why in the pull request.
-CI renders the vectors on Linux, macOS and Windows and fails on any hash change.
+CI renders the vectors on Linux, macOS and Windows, and the golden set also on arm64
+Linux and Windows and x86_64 macOS, and fails on any hash change.
