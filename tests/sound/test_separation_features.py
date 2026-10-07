@@ -28,8 +28,10 @@ from av_sound import (
     Profile,
     Recipe,
     Reference,
+    ReservedEntry,
     distance,
     features,
+    file_sha256,
     parse_threshold,
     render,
     separated,
@@ -40,6 +42,7 @@ from av_sound.features import as_features, format_fraction, separation_limit
 from av_sound.recipe import AMPLITUDES, GAPS_MS, PITCHES, RHYTHM_WEIGHTS, TOTAL_MS
 
 validate_mod = importlib.import_module("av_sound.validate")
+reserved_mod = importlib.import_module("av_sound.reserved")
 BOUNDARY = (
     Path(__file__).resolve().parents[2] / "sound" / "testvectors" / "validator" / "boundary.json"
 )
@@ -241,6 +244,37 @@ def test_validate_decides_the_exact_boundary(monkeypatch):
     assert result.codes == ("E_SEPARATION",)
 
 
+def _reserved_entry(recipe: Recipe, profile: Profile) -> ReservedEntry:
+    """A synthetic reserved entry with its own waveform, so only the feature check applies."""
+    r = render(recipe, profile)
+    return ReservedEntry(
+        id="reserved-demo",
+        kind="other",
+        profile=profile,
+        n_samples=r.n_samples,
+        pcm_sha256=r.pcm_sha256,
+        file_sha256=file_sha256(r),
+        recipe=recipe,
+        description="synthetic test entry",
+    )
+
+
+def test_reserved_feature_boundary_at_0_10_is_exact(monkeypatch):
+    """E_RESERVED: distance exactly 0.10 to a reserved recipe passes; just below fails."""
+    reserved_recipe = Recipe(900, (0, 0, 0), (1, 2, 3), (20, 20), (0.6, 0.8, 1.0))
+    candidate = Recipe(900, (1, 0, 0), (1, 2, 3), (20, 20), (0.6, 0.8, 1.0))
+    vectors = {reserved_recipe: ZERO, candidate: TENTH}
+    monkeypatch.setattr(validate_mod, "features", lambda r: vectors[r])
+    monkeypatch.setattr(reserved_mod, "features", lambda r: vectors[r])
+    entry = _reserved_entry(reserved_recipe, Profile.P1)
+    assert entry.features == ZERO
+    result = validate(candidate, Profile.P1, (), reserved=[entry], threshold="0.10")
+    assert result.ok
+    vectors[candidate] = (Fraction(1, 10) - Fraction(1, 10**12), *TENTH[1:])
+    result = validate(candidate, Profile.P1, (), reserved=[entry], threshold="0.10")
+    assert result.codes == ("E_RESERVED",)
+
+
 @functools.cache
 def _achievable_sums() -> tuple[frozenset[Fraction], list[Fraction]]:
     """Exact squared sums between domain recipes, as P (weights) and R (other fields).
@@ -329,6 +363,16 @@ def test_boundary_fixture(pair):
     result = validate(candidate, profile, committed, reserved=(), threshold=threshold)
     assert list(result.codes) == pair["codes"]
     assert result.ok is pair["separated"]
+
+
+@pytest.mark.parametrize("pair", _boundary_pairs(), ids=lambda p: p["name"])
+def test_reserved_feature_boundary_fixture(pair):
+    """Same boundary as separation, with the reference as a reserved recipe entry."""
+    profile = Profile(pair["profile"])
+    entry = _reserved_entry(Recipe.from_dict(pair["reference"]), profile)
+    candidate = Recipe.from_dict(pair["candidate"])
+    result = validate(candidate, profile, (), reserved=[entry], threshold=pair["threshold"])
+    assert result.codes == (() if pair["separated"] else ("E_RESERVED",))
 
 
 def test_boundary_fixtures_cover_both_sides_at_every_threshold():

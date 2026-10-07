@@ -73,6 +73,7 @@ from av_sound.grammar import (
 from av_sound.renderer import RENDERER_VERSION, render
 from av_sound.store import (
     SEMANTIC_LABELS,
+    BookInfo,
     StoreError,
     VocabularyStore,
     canonical_json,
@@ -97,6 +98,10 @@ PERMUTATION_FORMAT: Final = "av-schedules/permutation"
 PERMUTATION_FORMAT_VERSION: Final = 2
 VISIT_SCHEDULE_FORMAT: Final = "av-schedules/visit-schedule"
 VISIT_SCHEDULE_FORMAT_VERSION: Final = 1
+PACKAGE_HASHES_FORMAT: Final = "av-schedules/package-hashes"
+PACKAGE_HASHES_FORMAT_VERSION: Final = 1
+"""Run-sheet input of #32 (`schedules/schema/package-hashes.schema.json`)."""
+SETS: Final[tuple[str, ...]] = ("pilot", "confirmatory")
 
 MANIFEST: Final = "manifest.json"
 ANSWERS: Final = "answers.json"
@@ -189,6 +194,13 @@ MIN_FORBIDDEN_LENGTH: Final = 6
 _GAP_BYTES: Final = bytes(2 * GAP_SAMPLES)
 _NONZERO: Final = re.compile(rb"[^\x00]")
 _TOKEN: Final = re.compile(r"[A-Za-z0-9]+")
+_SHA256: Final = re.compile(r"[0-9a-f]{64}")
+_RUN_SHEET_KEYS: Final[Mapping[str, re.Pattern[str]]] = {
+    "A": re.compile(r"BK-([PC])-[BCFGHJKMNPQRTVWXY4-9]{6}"),
+    "B": re.compile(r"B-([PCS])[0-9]{2}"),
+}
+"""Study A book IDs of the learner-facing slot list (#31); Study B dyad slot IDs."""
+_SET_OF_PREFIX: Final[Mapping[str, str]] = {"P": "pilot", "C": "confirmatory", "S": "confirmatory"}
 _SCHEDULE_REL: Final = re.compile(
     r"(A-[PC][0-9]{2}-L[0-9]{2}/D[07]|B-[PCS][0-9]{2}-M[12]/(?:V[123]|W[14]))\.json"
 )
@@ -610,6 +622,34 @@ def _finish(stage: Path, manifest: dict[str, Any], forbidden: Iterable[str]) -> 
 # Builders
 
 
+def _frozen_book(
+    store: VocabularyStore, book_id: str, expected_head: str | None
+) -> tuple[BookInfo, str]:
+    """Book facts and the frozen head (chain head of the `freeze` record) of a packageable
+    book; raises `PackageError(E_BOOK)` otherwise."""
+    info = store.book(book_id, expected_head=expected_head)
+    if info.void:
+        raise PackageError(E_BOOK, f"book {book_id} is void (superseded); never package it")
+    if info.kind not in ("study", "synthetic"):
+        raise PackageError(E_BOOK, f"book {book_id} is a {info.kind} book, not a learner book")
+    if not info.frozen:
+        raise PackageError(E_BOOK, f"book {book_id} is not frozen; freeze it before packaging")
+    if info.n_entries != len(ATOM_IDS):
+        raise PackageError(E_BOOK, f"book {book_id} has {info.n_entries} atoms, not 16")
+    if not (_SHA256.fullmatch(info.renderer_hash) and _SHA256.fullmatch(info.validator_hash)):
+        raise PackageError(E_BOOK, f"book {book_id} records no renderer or validator hash")
+    records = store.records(book_id, expected_head=expected_head)
+    freeze = next((r for r in records if r["event"] == "freeze"), None)
+    if freeze is None:  # pragma: no cover - a closed book that is not void has a freeze
+        raise PackageError(E_BOOK, f"book {book_id} has no freeze record")
+    frozen_head = _sha256(canonical_json(freeze))
+    if expected_head is not None and expected_head != frozen_head:
+        raise PackageError(
+            E_BOOK, f"book {book_id}: expected_head is not the chain head of its freeze record"
+        )
+    return info, frozen_head
+
+
 def build_package(
     store: VocabularyStore,
     book_id: str,
@@ -620,44 +660,33 @@ def build_package(
 ) -> PackageResult:
     """Build the Study A package of one frozen store book into `out_dir`.
 
-    The book must be frozen, not void, have all 16 atoms with meanings and pass
-    `store.verify(book_id, rerender=rerender)` anchored on its frozen head: the chain head
-    of its `freeze` record, which the manifest records (`book.frozen_head`) and which
-    `expected_head`, when given (the head `freeze()` returned), must equal. Later log
-    lines (rejected commits to the frozen book) do not change the package. `kind`
-    `study` gives a participant package, `synthetic` a DEMO package, and `fallback` is
-    refused. `out_dir` must not exist or be empty; a study package cannot be written
-    inside this repository (`E_POLICY`). Writes 16 atom WAVs, the 18 trained-message
+    The book must be frozen (a `freeze` record), not void, have all 16 atoms with
+    meanings and pass `store.verify(book_id, rerender=rerender)`. Every store read is
+    anchored on the frozen head: the chain head of the `freeze` record, which the
+    manifest records (`book.frozen_head`, with the book's `renderer_hash` and
+    `validator_hash`) and which `expected_head`, when given (the head `freeze()`
+    returned), must equal. Later log lines (rejected commits to the frozen book) do not
+    change the package; a later `void` does, and is refused. `kind` `study` gives a
+    participant package, `synthetic` a DEMO package, and `fallback` is refused.
+
+    `out_dir` must not exist or be empty; a study package cannot be written inside this
+    repository (`E_POLICY`). Writes 16 atom WAVs, the 18 trained-message
     WAVs (`compose_message`), `answers.json`, `audio.json` (composite hash and length of
     all 32 messages; held-out ones from `composite_hash` only) and `manifest.json`, then
     runs `load_package` and `scan_package` (with the book's `source` values as forbidden
     strings) and returns the package hash. The same book gives the same bytes.
     """
     try:
-        info = store.book(book_id)
+        info, frozen_head = _frozen_book(store, book_id, expected_head)
+        report = store.verify(book_id, rerender=rerender, expected_head=frozen_head)
+        if not report.ok:
+            raise PackageError(
+                E_BOOK, f"book {book_id} failed store verification: {', '.join(report.codes)}"
+            )
+        entries = {e.atom_id: e for e in store.list(book_id, expected_head=frozen_head)}
+        snapshot = store.snapshot_hashes(book_id, expected_head=frozen_head)
     except StoreError as err:
         raise PackageError(E_BOOK, f"book {book_id}: {err}") from err
-    if info.kind not in ("study", "synthetic"):
-        raise PackageError(E_BOOK, f"book {book_id} is a {info.kind} book, not a learner book")
-    if not info.frozen:
-        raise PackageError(E_BOOK, f"book {book_id} is not frozen; freeze it before packaging")
-    if info.n_entries != len(ATOM_IDS):
-        raise PackageError(E_BOOK, f"book {book_id} has {info.n_entries} atoms, not 16")
-    records = store.records(book_id)
-    if any(r["event"] == "void" for r in records):
-        raise PackageError(E_BOOK, f"book {book_id} is void (superseded); never package it")
-    freeze = next(r for r in records if r["event"] == "freeze")
-    frozen_head = _sha256(canonical_json(freeze))
-    if expected_head is not None and expected_head != frozen_head:
-        raise PackageError(
-            E_BOOK, f"book {book_id}: expected_head is not the chain head of its freeze record"
-        )
-    report = store.verify(book_id, rerender=rerender, expected_head=frozen_head)
-    if not report.ok:
-        raise PackageError(
-            E_BOOK, f"book {book_id} failed store verification: {', '.join(report.codes)}"
-        )
-    entries = {e.atom_id: e for e in store.list(book_id)}
     labels: dict[str, str] = {}
     for atom in ATOM_IDS:
         label = entries[atom].semantic_label
@@ -729,12 +758,18 @@ def build_package(
             "profile": profile,
             "book": {
                 "frozen_head": frozen_head,
-                "snapshot_sha256": snapshot_digest(store.snapshot_hashes(book_id)),
+                "snapshot_sha256": snapshot_digest(snapshot),
+                "renderer_hash": info.renderer_hash,
+                "validator_hash": info.validator_hash,
             },
         }
         manifest = _manifest_doc("A", book_id, demo, writer.files, extra)
         sources = sorted({e.source for e in entries.values()})
         leak = _finish(stage, manifest, sources)
+        try:  # the book must still be the same, unvoided book after the build
+            _frozen_book(store, book_id, frozen_head)
+        except StoreError as err:  # pragma: no cover - concurrent damage to the store
+            raise PackageError(E_BOOK, f"book {book_id}: {err}") from err
     return PackageResult(target, manifest["package_sha256"], manifest, leak)
 
 
@@ -1298,6 +1333,99 @@ def seal(
     if not report.ok:  # pragma: no cover - inputs were checked above
         raise PackageError(E_LEAK, f"leak scan failed after sealing: {report.findings[0]}")
     return str(manifest["package_sha256"])
+
+
+# ---------------------------------------------------------------------------
+# Package-hash mapping for the run sheets (#32)
+
+
+def package_hashes(
+    packages: Iterable[str | os.PathLike[str] | LoadedPackage],
+    *,
+    set_name: str,
+    keys: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """The package-hash mapping the run-sheet generator (#32) reads to fill `hash_check`.
+
+    Matches `schedules/schema/package-hashes.schema.json` (format
+    `av-schedules/package-hashes` version 1): `{format, format_version, study, set, demo,
+    placeholder: false, packages: {key: package_sha256}}`. Every package is verified with
+    `load_package` first; all must be of one study and one DEMO status. Keys:
+
+    - Study A: the book ID of the learner-facing slot list (`BK-C-7QX4MN`). By default the
+      package ID; `keys` maps a package ID to its slot-list book ID (needed for DEMO
+      books, whose IDs start with `DEMO-`).
+    - Study B: the dyad slot ID (`B-C01`, spare `B-S01`): by default the `unit_id` of the
+      sealed `permutation.json`, else the package ID; `keys` may name it.
+
+    A key must fit its study's pattern and its P/C/S prefix the set; a sealed
+    permutation's `set` must equal `set_name`; keys must be unique. Raises
+    `PackageError(E_INPUT)`.
+    """
+    if set_name not in SETS:
+        raise PackageError(E_INPUT, f"set must be one of {SETS}, got {set_name!r}")
+    loaded = [p if isinstance(p, LoadedPackage) else load_package(p) for p in packages]
+    if not loaded:
+        raise PackageError(E_INPUT, "package_hashes needs at least one package")
+    studies = {p.study for p in loaded}
+    demos = {p.demo for p in loaded}
+    if len(studies) != 1 or len(demos) != 1:
+        raise PackageError(E_INPUT, "all packages of a mapping share one study and DEMO status")
+    study = loaded[0].study
+    names = dict(keys or {})
+    mapping: dict[str, str] = {}
+    for pkg in loaded:
+        unit = pkg.permutation["unit_id"] if pkg.permutation is not None else None
+        if pkg.permutation is not None and pkg.permutation["set"] != set_name:
+            raise PackageError(
+                E_INPUT, f"{pkg.package_id}: sealed for the {pkg.permutation['set']} set"
+            )
+        default = unit if study == "B" and unit is not None else pkg.package_id
+        key = names.get(pkg.package_id, default)
+        match = _RUN_SHEET_KEYS[study].fullmatch(key)
+        if match is None:
+            raise PackageError(
+                E_INPUT,
+                f"{pkg.package_id}: key {key!r} is not a Study {study} run-sheet key "
+                f"({_RUN_SHEET_KEYS[study].pattern}); pass keys={{package_id: key}}",
+            )
+        if _SET_OF_PREFIX[match.group(1)] != set_name:
+            raise PackageError(E_INPUT, f"{key} does not belong to the {set_name} set")
+        if study == "B" and unit is not None and key != unit:
+            raise PackageError(E_INPUT, f"{pkg.package_id}: key {key} but sealed for {unit}")
+        if key in mapping:
+            raise PackageError(E_INPUT, f"two packages for {key}")
+        mapping[key] = pkg.package_sha256
+    return {
+        "format": PACKAGE_HASHES_FORMAT,
+        "format_version": PACKAGE_HASHES_FORMAT_VERSION,
+        "study": study,
+        "set": set_name,
+        "demo": demos.pop(),
+        "placeholder": False,
+        "packages": {key: mapping[key] for key in sorted(mapping)},
+    }
+
+
+def write_package_hashes(doc: Mapping[str, Any], path: str | os.PathLike[str]) -> str:
+    """Write a `package_hashes()` mapping (repository JSON) and return its SHA-256.
+
+    Name it `<set>-package-hashes.json` next to the package manifests. A non-DEMO mapping
+    cannot be written inside this repository (`E_POLICY`): it belongs with the packages
+    in restricted storage.
+    """
+    target = Path(path)
+    repo = _repo_root()
+    if doc.get("demo") is not True and repo is not None:
+        resolved = target.resolve()
+        if repo in resolved.parents:
+            raise PackageError(
+                E_POLICY, "a study package-hash mapping stays outside the repository"
+            )
+    data = _json_bytes(dict(doc))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return _sha256(data)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,8 @@
+# Local run outputs. Pilot, confirmatory and practice runs are refused inside any git
+# work tree (av_generation.rundir); DEMO/synthetic runs may be written here but only
+# their small summaries and hashes are committed (generation/runs/<run_id>/).
+out/
+runs/*/logs/
+runs/*/store/
+runs/*/audio/
+runs/*/banks/

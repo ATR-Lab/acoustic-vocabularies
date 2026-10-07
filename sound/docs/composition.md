@@ -14,7 +14,8 @@ Python composer is the reference implementation; the test vectors in
 
 - A message has one action atom and one referent atom, in that order.
 - Both atoms come from the same book, the same family (K or Q) and the same
-  profile (P1, P2 or P3).
+  profile (P1, P2 or P3). The reference composer checks the book when both atoms
+  carry a `book_id` (`E_BOOK_MISMATCH`).
 - Atom IDs: `K-a1` to `K-a4` and `K-r1` to `K-r4`, the same for `Q`. A message ID
   names its two atoms: `K-a2-r3` is action `K-a2` then referent `K-r3`.
 - A book has 2 x 4 x 4 = **32 legal messages**.
@@ -31,9 +32,9 @@ same for both families. Rows are action indices, columns are referent indices:
 | a4 | H-V3 | Train V3 | Train V3 | H-W4 |
 
 That gives 9 trained and 7 held-out messages per family: **18 trained and 14
-held-out** per book. `av_sound.grammar` encodes this matrix. It is the
-composer's default held-out table until the curriculum generator (#29) supplies
-the status table.
+held-out** per book. `av_sound.grammar` encodes this matrix. Its 14
+held-out IDs are the composer's fixed held-out set (section 4). The curriculum
+generator (#29) encodes the same matrix.
 
 ## 2. Bytes of a message
 
@@ -90,9 +91,13 @@ dictionary or practice (Protocol constants).
 A refusal logs a warning on the `av_sound.composer` logger and calls the
 optional `audit` callback with an event (`event`, `operation`, `message_id`,
 `action_id`, `referent_id`) before it raises. The check happens before any
-sample is read. The default held-out set is the 14 IDs of the fixed matrix; the
-`heldout=` argument replaces it with a status table (for example a Study B
-visit table from #29).
+sample is read.
+
+The 14 held-out IDs of the fixed matrix are **always** refused. They are the
+same in every unit; only the visit at which each is tested changes (#29). The
+`heldout=` argument can **add** IDs to the refused set (for example a message
+whose wave is not taught yet). It can never remove one: an empty table still
+refuses all 14. The Python API has no way to compose a held-out message.
 
 ## 5. Test vectors
 
@@ -124,9 +129,11 @@ Build both parts, compose them, and compare `action_pcm_sha256`,
    `OUT/DEMO-Pn/messages/<message_id>.wav` (the 18 trained messages per book).
    Never commit these files. Check each atom file against `file_sha256`.
 3. Compose all 32 messages of each book from the atom files and compare each
-   result with `composite_sha256`. The held-out hashes of synthetic books are
-   test data, so a test may compose them. Compare each trained result with the
-   data payload of the matching message WAV.
+   result with `composite_sha256`. The app's runtime composer must build
+   held-out messages at test time (section 6), and these synthetic books are
+   test data, so its tests may compose them. The Python composer never does;
+   its held-out values come from `composite_hash`. Compare each trained result
+   with the data payload of the matching message WAV.
 
 ## 6. Open decision: playback of a held-out message at test time
 

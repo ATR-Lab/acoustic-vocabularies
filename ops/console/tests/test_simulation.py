@@ -10,7 +10,7 @@ from av_schedules.planning import RUN_SHEET_COLUMNS, TEMPLATE_SHA256, RUN_SHEET_
 from av_schedules.run_sheets import run_sheet_csv
 from ops.console.core import Audit, Console, ConsoleFault, digest, encoded
 from ops.console.server import demo_catalog, make_server
-from ops.console.simulation import load_catalog
+from ops.console.simulation import _mock_path, load_catalog
 from ops.console.transport import DemoEngine
 from tools.prepare_joined_engineering import PreparationError
 
@@ -110,3 +110,11 @@ def test_native_simulation_banner_is_independent_of_fake_demo_transport(tmp_path
         assert "package_sha256" not in value and "capability" not in value
     finally:
         server.shutdown(); server.server_close(); worker.join()
+
+
+def test_mock_path_needs_its_own_private_directory(tmp_path):
+    # On macOS tmp_path is under the system /private; that must not count as private.
+    with pytest.raises(ConsoleFault, match="simulation_path_required"):
+        _mock_path(str(tmp_path / "simulation-test-public" / "join.json"))
+    accepted = tmp_path / ".local" / "simulation-test-console" / "join.json"
+    assert _mock_path(str(accepted)) == accepted

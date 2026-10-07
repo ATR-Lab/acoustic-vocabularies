@@ -88,7 +88,7 @@ Feature metric (Study A protocol §3.2), for the listening tool (#23) and report
 | `parse_threshold(value)`, `load_separation_threshold(path=None)` | Exact threshold (`"0.10"` -> 1/10) |
 
 Reserved signals: `load_reserved_registry(path=None) -> ReservedRegistry`
-(`registry_version`, `renderer_version`, `entries`), `ReservedEntry` (`id`, `kind`,
+(`registry_version`, `renderer_version`, `entries`, optional `asset_spec_version`), `ReservedEntry` (`id`, `kind`,
 `profile`, `n_samples`, `pcm_sha256`, `file_sha256`, `recipe`, `description`).
 Format: `sound/schema/reserved-registry.schema.json`. Details:
 [`sound/docs/validator.md`](../../sound/docs/validator.md).
@@ -108,8 +108,9 @@ class AtomAudioLike(Protocol):            # e.g. a store entry (#11)
     profile: Profile | str
     pcm: bytes                            # int16 LE mono
 
-AtomAudio(atom_id: str, profile: Profile | str, pcm: bytes)
-AtomAudio.from_rendered(atom_id: str, rendered: Rendered) -> AtomAudio
+AtomAudio(atom_id: str, profile: Profile | str, pcm: bytes, *, book_id: str | None = None)
+AtomAudio.from_rendered(atom_id: str, rendered: Rendered, *,
+                        book_id: str | None = None) -> AtomAudio
 
 compose_message(action: AtomAudioLike, referent: AtomAudioLike, *,
                 heldout: Iterable[str] | None = None,
@@ -124,21 +125,23 @@ write_message_wav(message: Message, path: str | os.PathLike[str], *,
 
 - `Message`: `message_id`, `profile`, `action_id`, `referent_id`,
   `action_samples`, `referent_samples`, `action_pcm_sha256`,
-  `referent_pcm_sha256`, `pcm`, `pcm_sha256`, `n_samples`, `.duration_s`,
-  `.referent_onset`.
+  `referent_pcm_sha256`, `pcm`, `pcm_sha256`, `n_samples`, `book_id`
+  (`None` unless an atom carries one), `.duration_s`, `.referent_onset`.
 - `compose_message` checks, in order: action then referent (`E_ROLE_ORDER`), one
   family (`E_FAMILY_MISMATCH`), not held out (`HeldOutMessageError`, code
-  `E_HELDOUT`), one profile (`E_PROFILE_MISMATCH`), motif length 21,600, 28,800,
-  36,000 or 43,200 samples (`E_MOTIF_LENGTH`). All are `CompositionError`
-  (a `ValueError`) with `.code`.
-- Held-out guard: `heldout` is the set of held-out message IDs (curriculum status
-  table, #29). The default is the 14 held-out IDs of the fixed matrix
-  (`av_sound.grammar.HELDOUT_MESSAGE_IDS`). A refusal reads no samples, writes
-  nothing, logs a warning on logger `av_sound.composer` and calls `audit` with
+  `E_HELDOUT`), one profile (`E_PROFILE_MISMATCH`), one book when both atoms
+  expose `book_id` (`E_BOOK_MISMATCH`), motif length 21,600, 28,800, 36,000 or
+  43,200 samples (`E_MOTIF_LENGTH`). All are `CompositionError` (a `ValueError`)
+  with `.code`.
+- Held-out guard: the 14 held-out IDs of the fixed matrix
+  (`av_sound.grammar.HELDOUT_MESSAGE_IDS`) are always refused. `heldout` adds
+  message IDs to that set and can never remove one (`heldout=()` still refuses
+  all 14). A refusal reads no samples, writes nothing, logs a warning on logger
+  `av_sound.composer` and calls `audit` with
   `{event, operation, message_id, action_id, referent_id}`.
-- `composite_hash` has the same structural checks but is allowed for held-out
-  messages. It hashes incrementally and returns only the lowercase hex digest
-  (the expected hash in a package's `audio.json`, #13).
+- `composite_hash` has the same role, family, profile, book and length checks,
+  but it is allowed for held-out messages. It hashes incrementally and returns
+  only the lowercase hex digest (the expected hash in a package's `audio.json`, #13).
 - `message_length` uses metadata only and never renders: each argument is a
   `total_ms` int, a `Recipe` or recipe dict, or an object with `n_samples`,
   `recipe` or `pcm` (checked in that order).
@@ -194,49 +197,74 @@ build_reserved_registry() -> ReservedRegistry        # what sound/reserved/regis
 
 ## Vocabulary store (#11)
 
-Append-only store of committed atoms: format, verification and storage policy in
-[`sound/docs/store.md`](../../sound/docs/store.md); log record format
+Append-only store of committed atoms: format, anchors, verification and storage
+policy in [`sound/docs/store.md`](../../sound/docs/store.md); log record format
 `sound/schema/store-record.schema.json`. Entries can be added, never changed; there
 is no update and no delete.
 
 ```python
 VocabularyStore(root: str | os.PathLike[str], *,
                 clock: Callable[[], datetime] | None = None,        # default: UTC now
-                reserved: ReservedRegistry | Iterable[ReservedEntry] | None = None)
+                reserved: ReservedRegistry | Iterable[ReservedEntry] | None = None,
+                lock_timeout: float = 60.0)
 .create_book(book_id: str, profile: Profile | str, *, kind: str = "study",
              threshold: Fraction | Decimal | int | str | None = None) -> str   # chain head
 .commit(book_id: str, atom_id: str, semantic_label: str | None,
         recipe: Recipe | Mapping[str, Any] | str | bytes, *, source: str,
         profile: Profile | str | None = None, pcm_sha256: str | None = None,
-        references: Iterable[Reference] | None = None) -> tuple[StoreEntry, str]
-.get(book_id, atom_id) -> StoreEntry
-.list(book_id) -> list[StoreEntry]                    # commit order
+        references: Iterable[Reference] | None = None,
+        expected_head: str | None = None) -> tuple[StoreEntry, str]
+.get(book_id, atom_id, *, expected_head=None) -> StoreEntry
+.list(book_id, *, expected_head=None) -> list[StoreEntry]             # commit order
 .verify(book_id, *, rerender: bool = True, expected_head: str | None = None) -> VerifyReport
-.snapshot_hashes(book_id) -> dict[str, str]           # {atom_id: pcm_sha256}, commit order
-.snapshot(book_id) -> dict[str, dict[str, Any]]       # + recipe_sha256, profile, semantic_label
-.freeze(book_id) -> str                               # chain head; idempotent
-.books() -> list[str]; .book(book_id) -> BookInfo; .head(book_id) -> str
-.records(book_id) -> list[dict[str, Any]]             # decoded log records
+.snapshot_hashes(book_id, *, expected_head=None) -> dict[str, str]    # {atom_id: pcm_sha256}
+.snapshot(book_id, *, expected_head=None) -> dict[str, dict[str, Any]]
+.freeze(book_id, *, expected_head=None) -> str        # chain head; idempotent
+.void(book_id, *, cause: str, reason: str, superseded_by: str | None = None,
+      expected_head=None) -> str                       # chain head
+.recover_torn_tail(book_id, *, reason: str) -> str    # chain head
+.books(*, void: bool | None = None) -> list[str]
+.book(book_id, *, expected_head=None) -> BookInfo; .head(book_id) -> str
+.records(book_id, *, expected_head=None) -> list[dict[str, Any]]
 persistence_violations(before, after) -> tuple[str, ...]
 snapshot_digest(snapshot) -> str
+av_sound.store.validator_code_hash() -> str
 ```
 
-- Layout: `blobs/<pcm_sha256>.wav` (canonical WAV, written once, read-only) and
+- Layout: `blobs/<pcm_sha256>.wav` (canonical WAV, written once, read-only),
   `books/<book_id>/log.jsonl` (one canonical JSON record per line; `seq`,
-  `prev_sha256`, `record_sha256`). The chain head is the SHA-256 of the last line.
+  `prev_sha256`, `record_sha256`), write-once `FROZEN` and `VOID` markers and a
+  `.lock` file. The chain head is the SHA-256 of the last line.
 - Events: `create_book`, `commit`, `recommit_noop`, `overwrite_rejected`,
-  `commit_rejected_frozen`, `freeze`.
-- `kind`: `study`, `fallback` (#15; entries have `semantic_label=None`) or
-  `synthetic` (IDs `DEMO-...`). Study and fallback books cannot be created inside the
-  repository working tree (`E_POLICY`). Book IDs: 3-64 letters, digits and inner
-  hyphens; no `A1`/`A2`/`A3` token or method word.
-- `commit` order of checks: frozen book -> log `commit_rejected_frozen`, raise
-  `BookFrozen`; committed atom -> identical recipe, profile, waveform and label logs
-  `recommit_noop` and returns the existing entry, anything else logs
-  `overwrite_rejected` and raises `OverwriteRejected` (`.reasons` from `profile`,
-  `recipe`, `semantic_label`, `waveform`); new atom -> `validate()` against the
-  book's entries in commit order (+ `references`) with the book's threshold and the
-  reserved signals; failure raises `CommitRejected(result)` and logs nothing.
+  `commit_rejected_frozen`, `freeze`, `void`, `deviation`.
+- **Anchors are mandatory for consumers.** The chain cannot show lines removed from
+  the end of an open book, or a log rewritten with fresh hashes. Record the chain
+  heads that `create_book`, `commit`, `freeze` and `void` return outside the store
+  and pass the last one as `expected_head` (#20 batch log; #13 package manifest;
+  #33/#78 checks). A head that is no longer a line of the log fails every call
+  (`StoreIntegrityError`, `E_ANCHOR`). Who records what: `sound/docs/store.md` §4.
+- Concurrency: every operation holds an OS lock on the book (threads and processes
+  on one host); `StoreLocked` after `lock_timeout`; `E_CONCURRENT` if the log
+  changed under a writer that ignored the lock.
+- `kind`: `study`, `fallback` (#15; entries have `semantic_label=None`; the 64-recipe
+  bank is not a book) or `synthetic` (IDs `DEMO-...`). Study and fallback books
+  cannot be created inside any git work tree or this repository (`E_POLICY`). Book
+  IDs: 3-64 letters, digits and inner hyphens, matched exactly (case included);
+  no `A1`/`A2`/`A3` token or method word.
+- A book records its threshold (a finite decimal), renderer and validator versions,
+  `renderer_hash` and `validator_hash`; a new commit under other code raises
+  `E_VERSION`.
+- `commit` order of checks: frozen or void book -> log `commit_rejected_frozen`,
+  raise `BookFrozen` (`.void`); committed atom -> identical recipe, profile,
+  waveform and label logs `recommit_noop` and returns the existing entry, anything
+  else logs `overwrite_rejected` and raises `OverwriteRejected` (`.reasons` from
+  `profile`, `recipe`, `semantic_label`, `waveform`); new atom -> `validate()`
+  against the book's entries in commit order (+ `references`) with the book's
+  threshold and the reserved signals; failure raises `CommitRejected(result)` and
+  logs nothing.
+- `void(cause=...)`: `failed_generation` (whole-book fallback substitution),
+  `batch_rebuild` or `other`; `reason` carries the deviation ID. A void book is
+  closed; `book().void`, `books(void=...)`.
 - `semantic_label` must be an ontology label of the atom's family and role
   (`av_sound.store.SEMANTIC_LABELS`), unique in the book (`E_LABEL`).
 - `profile=` and `pcm_sha256=` are assertions: for a new atom a mismatch raises
@@ -246,23 +274,99 @@ snapshot_digest(snapshot) -> str
   `n_samples`, `renderer_version`, `validator_version`, `threshold`, `source`,
   `timestamp`, `commit_index` (the nearest-reference atom index), `seq`;
   `.reference()` -> `Reference(atom_id, ...)`. It satisfies `AtomAudioLike`.
+- `BookInfo`: `book_id`, `profile`, `kind`, `threshold`, `renderer_version`,
+  `validator_version`, `created`, `n_entries`, `n_records`, `frozen` (true when
+  frozen or void), `chain_head`, `void`, `renderer_hash`, `validator_hash`.
 - Errors (`StoreError` with `.code`): `InvalidIdentifier` (`E_IDENTIFIER`),
-  `NotFound`, `BookExists`, `CommitRejected` (`.result`), `OverwriteRejected`
-  (`.record`, `.chain_head`), `BookFrozen` (`.record`, `.chain_head`),
-  `StoreIntegrityError` (`.issues`), and `StoreError` with `E_POLICY`, `E_VERSION`,
-  `E_PROFILE`, `E_LABEL`, `E_WAVEFORM`.
-- Every read and write first checks the chain, the records and the blobs, and refuses
-  a damaged book (`StoreIntegrityError`). `VerifyReport`: `ok`, `issues`
-  (`VerifyIssue(code, message, seq, atom_id)`), `codes`, `n_records`, `n_entries`,
-  `frozen`, `chain_head`, `rerendered`, `anchored_seq`. Removing lines from the end is
-  detected only with `expected_head`: callers record the chain heads that `commit`
-  and `freeze` return (#20 batch log; release manifest).
+  `NotFound`, `BookExists`, `StoreLocked` (`E_LOCKED`), `CommitRejected`
+  (`.result`), `OverwriteRejected` (`.record`, `.chain_head`), `BookFrozen`
+  (`.record`, `.chain_head`, `.void`), `StoreIntegrityError` (`.issues`), and
+  `StoreError` with `E_POLICY`, `E_VERSION`, `E_PROFILE`, `E_LABEL`, `E_WAVEFORM`,
+  `E_VOID`, `E_CONCURRENT`, `E_RECOVERY`. `create_book` raises `ValueError` for a
+  threshold without a finite decimal form.
+- Every read and write first checks the chain, the records, the markers and the
+  blobs, and refuses a damaged book (`StoreIntegrityError`). `VerifyReport`: `ok`,
+  `issues` (`VerifyIssue(code, message, seq, atom_id)`), `codes`, `n_records`,
+  `n_entries`, `frozen`, `void`, `chain_head`, `rerendered`, `anchored_seq`.
 - Publish only chain heads and `snapshot_digest` values of study books, never
   per-atom hashes (the recipe domain can be enumerated).
 
+## Golden manifest (#12)
+
+[`tests/golden/manifest.json`](../../tests/golden/manifest.json) locks the bytes of 61
+synthetic recipes x 3 profiles, the synthetic books' atoms and 96 messages, the seven
+nonlexical assets and a store round trip per book (337 items). CI recomputes it on
+Linux, macOS and Windows, x86_64 and arm64, and fails if any runner differs. Format,
+coverage and the version rules: [`sound/docs/golden.md`](../../sound/docs/golden.md).
+
+```python
+from av_sound import golden
+golden.verify_manifest(golden.load_manifest(path)) -> list[Mismatch]  # [] = all reproduce
+golden.build_manifest() -> dict[str, Any]                             # from the definitions
+golden.compute_items(specs) -> list[GoldenItem]                       # .id, .inputs, .outputs, .pcm
+golden.check_wav_dir(items, wav_dir, *, require_all=False) -> list[Mismatch]
+golden.write_wavs(items, out_dir) -> int; golden.digests(items) -> dict[str, str]
+```
+
+- For #13: the package builder may rely on identical bytes across machines while the
+  `Sound goldens` workflow is green; `renderer_version` and `renderer_hash` in the
+  manifest name the renderer it was checked with.
+- For #25: the manifest is part of the renderer freeze. At G4, `RENDERER_VERSION`
+  becomes `1.0.0`, the manifest is regenerated in that pull request, and the guard
+  (`sound/tools/check_golden_bump.py`) blocks later changes without a bump.
+- Changing an existing item needs an increase of a governing version field
+  (`renderer_version`; plus `asset_spec_version` for nonlexical items and
+  `validator_version` or `store_record_version` for store items) and a reviewer note.
+  Store items may also change with `renderer_hash` or `validator_hash` (recorded by
+  every book), so a byte-neutral code change only moves the store chain heads.
+
 ## Fallback (#15)
 
-*Pending.* The pull request for #15 adds its section here: `scan_fallback()`.
+Frozen fallback banks (64 recipes per profile) and fallback books (16 atoms per
+profile) for Study A protocol §3.7. Construction, stream, hashes and storage:
+[`sound/docs/fallback.md`](../../sound/docs/fallback.md). Formats:
+`sound/schema/fallback-manifest.schema.json`, `sound/schema/fallback-scan.schema.json`.
+
+```python
+build_fallback(seed: str, *, threshold=None, reserved=None) -> FallbackSet
+load_fallback(source: Mapping | str | os.PathLike) -> FallbackSet      # checks hashes; no render
+verify_fallback(fallback, *, reserved=None) -> tuple[str, ...]         # re-render + re-check; () = ok
+scan_fallback(bank: FallbackBank,
+              book_entries: Iterable[Reference | StoreEntry],          # the book, commit order
+              *, used: Iterable[int] = (),                             # bank indices used in this book
+              threshold=None, reserved=None) -> ScanResult
+freeze_fallback_books(store: VocabularyStore, fset: FallbackSet) -> tuple[FrozenFallbackBook, ...]
+fallback_bank_hash(manifest: Mapping) -> str
+```
+
+- `FallbackSet`: `.bank(profile) -> FallbackBank`, `.book(profile) -> FallbackBook`,
+  `.manifest()`, `.fallback_bank_hash`, `.summary()` (counts and digests only),
+  `.build_log()` (every draw and its codes), `seed_fingerprint`, `demo_seed`,
+  `threshold`, `reserved_sha256`.
+- `FallbackBank` (64 `BankEntry`: `index`, `draw`, `recipe`, `pcm_sha256`,
+  `file_sha256`, `.source` = `fallback-bank-P1-07`, `.reference()`; `.bank_sha256`).
+  `FallbackBook` (16 `BookAtom` in `ATOM_IDS` order: `atom_id`, `position`, `recipe`,
+  hashes, `.source` = `fallback-book-P1-K-a1`; `.book_sha256` = store snapshot digest,
+  `.recipes()`, `.references()`).
+- `scan_fallback` returns the lowest-index unused bank recipe that passes
+  `validate()` against the book (book threshold, reserved signals). `ScanResult`:
+  `selected` (`BankEntry` or `None`), `index`, `exhausted` (no recipe passes:
+  substitute `fset.book(profile)` and flag `failed_generation`), `log` (`ScanStep`:
+  `index`, `recipe_sha256`, `pcm_sha256`, `outcome` `used`/`rejected`/`selected`,
+  `codes`, `messages`), `validation` (the passing `ValidationResult`), `to_dict()`
+  (the scan record, logged apart from the 12 slots). The scan changes nothing. On
+  `exhausted`, commit the fallback book's atoms to a new book and
+  `store.void(failed_book, cause="failed_generation", ..., superseded_by=new_book)`.
+- Commit a selected recipe with `store.commit(book_id, atom_id, label, sel.recipe,
+  source=sel.source, pcm_sha256=sel.pcm_sha256)`.
+- Errors: `FallbackError` with `.code` `E_SEED`, `E_EXHAUSTED`, `E_MANIFEST`,
+  `E_VERSION`, `E_STALE` (a bank recipe no longer renders to its recorded waveform),
+  `E_POLICY`, `E_EXISTS`.
+- Seeds: `DEMO-...` seeds are public examples. Every other seed has at least 32
+  characters and stays in restricted storage with the outputs. Publish only
+  `fallback_bank_hash` (apparatus manifest, G4).
+- Tool: `sound/tools/build_fallback.py (--seed-file P | --demo-seed DEMO-x)
+  [--threshold T] [--out DIR] [--manifest P] [--check P]`.
 
 ## Packages (#13)
 
@@ -281,6 +385,8 @@ scan_package(package_dir, *, forbidden_strings: Iterable[str] = ()) -> LeakRepor
 novel_by_visit(study: str, swap_w1_w4: bool) -> dict[str, list[str]]
 permutation_matrix(doc: Mapping[str, Any]) -> dict[str, tuple[tuple[str, ...], ...]]
 package_sha256(manifest: Mapping[str, Any]) -> str
+package_hashes(packages, *, set_name: str, keys: Mapping[str, str] | None = None) -> dict
+write_package_hashes(doc: Mapping[str, Any], path) -> str
 ```
 
 - A package: 16 atom WAVs, the 18 trained-message WAVs (`compose_message`),
@@ -290,10 +396,14 @@ package_sha256(manifest: Mapping[str, Any]) -> str
   (`options/<profile>/<atom_id>-<rank>.wav`), the wave manifest and the composite hash of
   all 1,536 option combinations; no message WAVs.
 - `build_package` needs a frozen, non-void `study` or `synthetic` store book with 16
-  labelled atoms that passes `store.verify` anchored on the head of its `freeze` record
-  (`manifest.book.frozen_head`; `expected_head` must equal it); it refuses `fallback`
-  books (`E_BOOK`) and study packages inside the repository (`E_POLICY`). Same book,
-  same bytes and hash.
+  labelled atoms that passes `store.verify`. Every store read is anchored
+  (`expected_head=`) on the head of its `freeze` record, which the manifest records with
+  the book's `renderer_hash` and `validator_hash` (`book.frozen_head`; a given
+  `expected_head` must equal it). It refuses void books, `fallback` books (`E_BOOK`) and
+  study packages inside the repository (`E_POLICY`). Same book, same bytes and hash.
+- `package_hashes(packages, *, set_name, keys=None)` and `write_package_hashes(doc, path)`:
+  the run-sheet mapping of #32 (`av-schedules/package-hashes`; A keys = slot-list book
+  IDs, B keys = dyad slot IDs); tool `sound/tools/package_hashes.py`.
 - `seal()` adds `permutation.json` (#29; `demo: true` only for DEMO packages, cells
   equal to `av_sound.grammar.MATRIX`), `allocation.json` (`{"swap_w1_w4": bool}` plus B
   `structured_family`) and `schedules/<person_id>/<visit>.json` (#30), checks them

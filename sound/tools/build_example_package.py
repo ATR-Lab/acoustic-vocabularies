@@ -16,9 +16,11 @@ same on every platform.
 `--out DIR` writes the complete package, WAVs included, to `DIR/package-demo`; with
 `--dyad` it also writes the synthetic dyad package `DIR/dyad-demo` (`synthetic_dyad_bank`
 with the B-C01 meanings, sealed with the B-C01 permutation, schedules of member M1 and
-`{"swap_w1_w4": True, "structured_family": "Q"}`). `--check` rebuilds the Study A example
-and exits 1 if its JSON files differ from `sound/examples/package-demo/`; `--write`
-rewrites them. Only the JSON files are committed: WAV files never enter git.
+`{"swap_w1_w4": True, "structured_family": "Q"}`), plus the run-sheet package-hash
+mappings `DIR/A-confirmatory-package-hashes.json` and `DIR/B-...` (#32). `--check`
+rebuilds the Study A example and exits 1 if its JSON files differ from
+`sound/examples/package-demo/`; `--write` rewrites them. Only the JSON files are
+committed: WAV files never enter git.
 """
 
 from __future__ import annotations
@@ -41,8 +43,10 @@ from av_sound.package import (
     build_dyad_package,
     build_package,
     load_package,
+    package_hashes,
     scan_package,
     seal,
+    write_package_hashes,
 )
 from av_sound.synthetic import synthetic_recipes
 
@@ -55,6 +59,8 @@ BOOK_ID = "DEMO-BOOK-P1"
 BANK_ID = "DEMO-DYAD-01"
 A_ALLOCATION = {"swap_w1_w4": False}
 B_ALLOCATION = {"swap_w1_w4": True, "structured_family": "Q"}
+A_KEY = {BOOK_ID: "BK-C-B4K7QX"}
+"""A slot-list book ID for the DEMO book in the run-sheet mapping (DEMO only)."""
 COMMITTED = ("allocation.json", "answers.json", "audio.json", "manifest.json", "permutation.json")
 """The JSON files of the example that are committed (no WAVs)."""
 START = datetime(2026, 1, 1, tzinfo=UTC)
@@ -159,9 +165,14 @@ def main() -> int:
     if args.out is not None:
         build_a_example(args.out / "package-demo")
         print(summary(args.out / "package-demo"))
+        a_map = package_hashes([args.out / "package-demo"], set_name="confirmatory", keys=A_KEY)
+        write_package_hashes(a_map, args.out / "A-confirmatory-package-hashes.json")
         if args.dyad:
             build_b_example(args.out / "dyad-demo")
             print(summary(args.out / "dyad-demo"))
+            b_map = package_hashes([args.out / "dyad-demo"], set_name="confirmatory")
+            write_package_hashes(b_map, args.out / "B-confirmatory-package-hashes.json")
+        print("- run-sheet package-hash mappings (#32): A-/B-confirmatory-package-hashes.json")
         return 0
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "package-demo"

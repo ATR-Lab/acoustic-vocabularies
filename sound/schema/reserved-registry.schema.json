@@ -16,6 +16,11 @@
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
     },
+    "asset_spec_version": {
+      "description": "Optional. Version of the nonlexical asset definitions (av_sound.nonlexical.ASSET_SPEC_VERSION) that produced the entries; it changes whenever an asset's design or bytes change.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
     "entries": {
       "type": "array",
       "items": { "$ref": "#/$defs/entry" }

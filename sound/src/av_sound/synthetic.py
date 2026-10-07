@@ -89,9 +89,10 @@ def synthetic_recipes(profile: Profile | str) -> dict[str, Recipe]:
 
 
 def synthetic_book(profile: Profile | str) -> dict[str, AtomAudio]:
-    """Atom ID -> rendered atom for the synthetic book of `profile`."""
+    """Atom ID -> rendered atom (with `book_id`) for the synthetic book of `profile`."""
     profile = Profile(profile)
+    book_id = synthetic_book_id(profile)
     return {
-        atom: AtomAudio.from_rendered(atom, render(recipe, profile))
+        atom: AtomAudio.from_rendered(atom, render(recipe, profile), book_id=book_id)
         for atom, recipe in synthetic_recipes(profile).items()
     }

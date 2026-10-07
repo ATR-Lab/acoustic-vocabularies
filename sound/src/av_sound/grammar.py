@@ -10,8 +10,9 @@ IDs follow the planning curriculum: atom `K-a1`, `Q-r3`; message `K-a1-r2`.
 Semantic labels are permuted onto matrix indices per unit (O4.4.1, #29), so the IDs
 here carry indices only, never meanings.
 
-The matrix is the composer's default held-out status table until the curriculum
-generator (#29) supplies one; the schedules package encodes the same matrix.
+The 14 held-out IDs of the matrix are the composer's fixed held-out set: the same in
+every unit (only the test visit changes), so callers can add to it but never remove
+from it. The schedules package (#29) encodes the same matrix.
 """
 
 from __future__ import annotations

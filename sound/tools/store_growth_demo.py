@@ -18,8 +18,11 @@ the book with re-rendering.
 
 The clock is fixed (1 s per record from 2026-01-01T00:00:00Z) and the reserved set is
 empty, so the log bytes and chain heads are identical on every platform. `--write`
-stores them in sound/testvectors/store/growth.json; tests/sound/test_store.py
-recomputes them in CI on Linux, macOS and Windows. Never commit store directories or
+stores them in sound/testvectors/store/growth.json and refreshes the example line in
+sound/docs/store.md; tests/sound/test_store.py recomputes them in CI on Linux, macOS
+and Windows. Line 0 of each book carries renderer_hash and validator_hash, so any
+code change to the renderer or validator modules needs `--write` (for example after a
+restack onto a changed base). Never commit store directories or
 WAV files.
 """
 
@@ -47,6 +50,7 @@ from av_sound.store import (
 from av_sound.synthetic import synthetic_book_id, synthetic_recipes
 
 OUT = Path(__file__).resolve().parents[1] / "testvectors" / "store" / "growth.json"
+DOC = Path(__file__).resolve().parents[1] / "docs" / "store.md"
 FORMAT_VERSION = "1.0.0"
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -147,6 +151,7 @@ def run_book(root: Path, profile: Profile) -> dict[str, Any]:
     )
     report = store.verify(book, rerender=True, expected_head=create_head)
     log = store.log_path(book).read_bytes()
+    first_line = log.split(b"\n", 1)[0].decode("ascii")
     return {
         "book_id": book,
         "profile": profile.value,
@@ -163,6 +168,7 @@ def run_book(root: Path, profile: Profile) -> dict[str, Any]:
         "n_records": report.n_records,
         "final_head": report.chain_head,
         "log_bytes": len(log),
+        "create_line": first_line,
     }
 
 
@@ -266,27 +272,45 @@ def serialize(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+def document(data: dict[str, Any], doc: str) -> str:
+    """`sound/docs/store.md` with its example (line 0 of DEMO-P1 and its hash) updated."""
+    book = data["books"][0]
+    lines = doc.split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith('{"book_id":"DEMO-P1","event":"create_book"'):
+            lines[i] = book["create_line"]
+        elif line.startswith("`") and line.endswith("` (`create_head` in"):
+            lines[i] = f"`{book['create_head']}` (`create_head` in"
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("--write", action="store_true", help=f"rewrite {OUT.name}")
-    group.add_argument("--check", action="store_true", help="exit 1 if the vectors drifted")
+    group.add_argument(
+        "--write", action="store_true", help=f"rewrite {OUT.name} and the example in {DOC.name}"
+    )
+    group.add_argument(
+        "--check", action="store_true", help="exit 1 if the vectors or the example drifted"
+    )
     parser.add_argument("--full", action="store_true", help="print full hashes")
     args = parser.parse_args(argv)
     data = build()
     text = serialize(data)
+    doc = DOC.read_text(encoding="utf-8")
     if args.write:
         OUT.parent.mkdir(parents=True, exist_ok=True)
-        with open(OUT, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text)
-        print(f"wrote {OUT}")
+        for path, content in ((OUT, text), (DOC, document(data, doc))):
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(content)
+            print(f"wrote {path}")
         return 0
     if args.check:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
-        if current != text:
-            print(f"{OUT} differs from a fresh build", file=sys.stderr)
+        if current != text or document(data, doc) != doc:
+            print(f"{OUT} or the example in {DOC} differs from a fresh build", file=sys.stderr)
             return 1
-        print(f"{OUT} is up to date")
+        print(f"{OUT} and the example in {DOC.name} are up to date")
         return 0
     sys.stdout.write(markdown(data, full=args.full))
     return 0

@@ -1,0 +1,46 @@
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P001 (DEMO-bank-P001 v1.0.0)
+bank DEMO-bank-P001: complete; bank hash c1dda112b9df75c68a18dfbfeea35fe3164001544ed55fa272e55c41e3484864
+attempts 1, slots 249, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P002 (DEMO-bank-P002 v1.0.0)
+bank DEMO-bank-P002: complete; bank hash de22085891d5c86f82485f0f834fa919477d81169127c46bac779d2815ac3bdf
+attempts 1, slots 242, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P003 (DEMO-bank-P003 v1.0.0)
+bank DEMO-bank-P003: complete; bank hash 97c2d08291f36811795a91297307229b6f0fe0c00236770cfbff8ede93fed26e
+attempts 2, slots 301, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P004 (DEMO-bank-P004 v1.0.0)
+bank DEMO-bank-P004: complete; bank hash 7dfa66786b1b6589cb153ee40595aa1aab3236d058c3d1ba7a7a0baa8b873df0
+attempts 1, slots 248, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P005 (DEMO-bank-P005 v1.0.0)
+bank DEMO-bank-P005: complete; bank hash 16238b694a55702eda4da59f927428f91d7363a669ef7ffdc47e5e6a6d7fe564
+attempts 1, slots 236, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P006 (DEMO-bank-P006 v1.0.0)
+bank DEMO-bank-P006: unavailable; bank hash f6a74b0cbba2b36abc1fe2f3763ee3ed2ca8fd4179e2d8647c5b92048786a166
+attempts 4, slots 517, options 0, pairs {'P1': 0, 'P2': 0, 'P3': 0}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks-S1/banks/DEMO-bank-P006 (DEMO-bank-P006 v1.1.0)
+bank DEMO-bank-P006: complete; bank hash 404bb382714129ffb783c7618ba41005bfdadeacd64be996dd9acd27e93c81cc
+attempts 1, slots 260, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P007 (DEMO-bank-P007 v1.0.0)
+bank DEMO-bank-P007: complete; bank hash 2afabd61aa4a295f4f994be78f6a31e324b0d9d7992d29965dcafa789f98c7c8
+attempts 1, slots 255, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+== runs/DEMO-pilot-banks/banks/DEMO-bank-P008 (DEMO-bank-P008 v1.0.0)
+bank DEMO-bank-P008: complete; bank hash 0b2c0c58fff8e7986fb1884a2540431b9f26b25b04e4f99b4d8e7095c03067da
+attempts 1, slots 257, options 192, pairs {'P1': 1920, 'P2': 1920, 'P3': 1920}, failed pairs {'P1': 0, 'P2': 0, 'P3': 0}, amendments 0
+OK
+
+verified 9 banks: 9 OK, 0 FAILED

@@ -91,11 +91,16 @@ class ReservedEntry:
 
 @dataclass(frozen=True, slots=True)
 class ReservedRegistry:
-    """The decoded registry file. Entry IDs are unique."""
+    """The decoded registry file. Entry IDs are unique.
+
+    `asset_spec_version` is the version of the nonlexical asset definitions (#14) that
+    produced the entries; it is optional in the file and `None` when absent.
+    """
 
     registry_version: int
     renderer_version: str
     entries: tuple[ReservedEntry, ...]
+    asset_spec_version: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "entries", tuple(self.entries))
@@ -121,15 +126,19 @@ class ReservedRegistry:
             registry_version=data["registry_version"],
             renderer_version=data["renderer_version"],
             entries=tuple(ReservedEntry.from_dict(e) for e in data["entries"]),
+            asset_spec_version=data.get("asset_spec_version"),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """The registry JSON object."""
-        return {
+        """The registry JSON object (`asset_spec_version` only when set)."""
+        out: dict[str, Any] = {
             "registry_version": self.registry_version,
             "renderer_version": self.renderer_version,
             "entries": [e.to_dict() for e in self.entries],
         }
+        if self.asset_spec_version is not None:
+            out["asset_spec_version"] = self.asset_spec_version
+        return out
 
 
 @lru_cache(maxsize=8)

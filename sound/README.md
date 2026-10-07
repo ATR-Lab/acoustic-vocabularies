@@ -27,6 +27,7 @@ Nothing needs the network at runtime.
 | `src/av_sound/` | The package |
 | `schema/recipe.schema.json` | Recipe contract (enum-only JSON Schema) |
 | `schema/store-record.schema.json` | One line of a vocabulary-store log ([`docs/store.md`](docs/store.md)) |
+| `schema/fallback-manifest.schema.json`, `schema/fallback-scan.schema.json` | Fallback banks and books manifest; bank scan record ([`docs/fallback.md`](docs/fallback.md)) |
 | `schema/validation-result.schema.json`, `schema/reserved-registry.schema.json`, `schema/validator-config.schema.json` | Validator result, reserved registry and validator config formats |
 | `schema/package.schema.json` | Learner and dyad package format: `manifest.json`, `answers.json`, `audio.json`, `allocation.json` ([`package-format.md`](../docs/interfaces/package-format.md)) |
 | `schema/provisional-bank.schema.json` | PROVISIONAL Study B bank input of the dyad package builder (until #26) |
@@ -38,7 +39,10 @@ Nothing needs the network at runtime.
 | `testvectors/composition/vectors.json` | Atom and composite message hashes for three synthetic books |
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, example package (`build_example_package.py`) |
+| `testvectors/fallback/demo-manifest.json` | Fallback banks and books from the public seed `DEMO-fallback-v1` (example, not study material) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`), example package (`build_example_package.py`), run-sheet package hashes (`package_hashes.py`) |
+| `demo/macos/` | Native macOS demo app that drives the engine through a JSON-lines bridge ([`README.md`](demo/macos/README.md)) |
+| `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
 ## API
 
@@ -65,22 +69,29 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `load_reserved_registry()`, `ReservedRegistry`, `ReservedEntry` | Reserved signals (`E_RESERVED`) |
 | `nonlexical_assets()`, `nonlexical_asset(id)`, `calibration_example(profile)` -> `NonlexicalAsset` | Calibration examples (96,000 samples per profile), READY cue and grammar clicks; `.pcm`, `.pcm_sha256`, `.file_sha256`, `.segments`, levels ([`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `build_reserved_registry()`, `CALIBRATION_SAMPLES` | The registry `reserved/registry.json` must equal; 96,000 |
-| `AtomAudio(atom_id, profile, pcm)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` also works |
-| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; refuses held-out IDs (`HeldOutMessageError`) and mixed profiles, families or roles (`CompositionError`) |
+| `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
+| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
 | `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
 | `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |
 | `GAP_SAMPLES`, `MIN_MESSAGE_SAMPLES`, `MAX_MESSAGE_SAMPLES` | 9,600; 52,800; 96,000 |
-| `VocabularyStore(root, *, clock=None, reserved=None)` | Append-only store: `create_book`, `commit`, `get`, `list`, `verify`, `snapshot_hashes`, `snapshot`, `freeze`; no update or delete ([`docs/store.md`](docs/store.md)) |
+| `VocabularyStore(root, *, clock=None, reserved=None, lock_timeout=60.0)` | Append-only store: `create_book`, `commit`, `get`, `list`, `verify`, `snapshot_hashes`, `snapshot`, `freeze`, `void`, `recover_torn_tail`; no update or delete; readers and `commit` take `expected_head=` anchors ([`docs/store.md`](docs/store.md)) |
 | `StoreEntry`, `BookInfo`, `VerifyReport`, `VerifyIssue` | A committed atom (an `AtomAudioLike`; `.reference()`), book facts, `verify` result |
-| `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError` | Store errors (`.code`); overwrite and frozen attempts are logged |
+| `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError`, `StoreLocked` | Store errors (`.code`); overwrite and frozen attempts are logged |
 | `persistence_violations(before, after)`, `snapshot_digest(snapshot)` | Growth check (old entries unchanged) and one publishable hash per book |
+| `build_fallback(seed, *, threshold=None, reserved=None) -> FallbackSet` | Banks (64) and books (16) for P1-P3 from a seed; `.bank(p)`, `.book(p)`, `.manifest()`, `.fallback_bank_hash` ([`docs/fallback.md`](docs/fallback.md)) |
+| `scan_fallback(bank, book_entries, *, used=(), threshold=None, reserved=None) -> ScanResult` | First unused bank recipe that passes the book's checks, or `None` (whole-book fallback); `.log`, `.to_dict()` |
+| `load_fallback(path_or_dict)`, `verify_fallback(...)`, `fallback_bank_hash(manifest)` | Read a manifest; re-render and re-check it; the apparatus-manifest hash |
+| `freeze_fallback_books(store, fset)` -> `FrozenFallbackBook`s | Fallback books into frozen store books of kind `fallback` (restricted storage only) |
+| `FallbackBank`, `FallbackBook`, `BankEntry`, `BookAtom`, `ScanStep`, `FallbackError`, `BANK_SIZE` | Values and errors (`.code`) of `av_sound.fallback` |
+| `av_sound.golden`: `build_manifest()`, `verify_manifest(manifest)`, `compute_items(specs)`, `check_wav_dir(items, dir)`, `write_wavs(items, dir)`, `GOLDEN_RECIPES` | Golden set and its checks ([`docs/golden.md`](docs/golden.md)) |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
 | `build_package(store, book_id, out_dir, *, expected_head=None) -> PackageResult` | Study A package of a frozen store book: 16 atom WAVs, 18 trained-message WAVs, `answers.json`, `audio.json`, `manifest.json`; held-out messages as hashes only ([`package-format.md`](../docs/interfaces/package-format.md)) |
 | `build_dyad_package(bank, out_dir) -> PackageResult` | Study B package of a dyad bank (PROVISIONAL input `av_sound.dyad_bank.DyadBank`): 192 option WAVs, hashes of all 1,536 option combinations |
 | `seal(package_dir, *, permutation=None, schedules=None, allocation_extras=None) -> str` | Adds `permutation.json` (#29), `schedules/` (#30) and `allocation.json`, checks them, returns the new package hash |
 | `load_package(package_dir, *, expected_package_sha256=None) -> LoadedPackage` | Verifies a package as the app will; raises `PackageIntegrityError` (`E_HASH_MISMATCH`, `E_FILE_MISSING`, `E_FILE_EXTRA`, ...) |
 | `scan_package(package_dir, *, forbidden_strings=()) -> LeakReport` | Leak scan: held-out audio, unlisted message audio, method labels, designer IDs, method words, `source` keys |
+| `av_sound.package.package_hashes(packages, *, set_name, keys=None)`, `write_package_hashes(doc, path)` | Run-sheet package-hash mapping (#32, `av-schedules/package-hashes`); tool `tools/package_hashes.py` |
 | `PackageError`, `PackageResult`, `LeakReport`, `DyadBank` | Package errors (`.code`, `.problems`), build result, scan report, provisional bank |
 
 ```python
@@ -119,7 +130,11 @@ assert result.codes == ("E_EVENT_SHORT",)  # first event 1,760 samples (36.7 ms)
 change to rendered bytes bumps it in the same pull request and regenerates
 `testvectors/` with `uv run --project sound python sound/tools/make_testvectors.py` and
 `uv run --project sound python sound/tools/make_composition_vectors.py`, and rewrites the
-reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`.
+reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`
+and the golden manifest with `uv run --project sound python sound/tools/make_goldens.py`.
+The golden guard in CI fails a changed golden hash without the version bump
+([`docs/golden.md`](docs/golden.md)).
 A code change that leaves the bytes unchanged still changes `renderer_hash`: regenerate
 the vectors to update the pins and say why in the pull request.
-CI renders the vectors on Linux, macOS and Windows and fails on any hash change.
+CI renders the vectors on Linux, macOS and Windows, and the golden set also on arm64
+Linux and Windows and x86_64 macOS, and fails on any hash change.

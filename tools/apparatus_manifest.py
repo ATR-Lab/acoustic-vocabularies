@@ -287,7 +287,8 @@ def verify(manifest_path, manifest_sha256):
 
 def write_new(path, value, *, private=True):
     target = local_path(path)
-    if private and not any(p.lower() in {".local", "private", "local-data"} for p in target.parent.parts):
+    # Skip the root and first level: on macOS every temp path resolves under the system /private.
+    if private and not any(p.lower() in {".local", "private", "local-data"} for p in target.parent.parts[2:]):
         fail("PRIVATE_OUTPUT_REQUIRED")
     inspect_path(target, missing_leaf=True)
     # Caller must provision a private local parent directory. Never replace evidence.

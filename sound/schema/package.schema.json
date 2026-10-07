@@ -45,12 +45,14 @@
       "$ref": "#/$defs/profile"
     },
     "book": {
-      "description": "Study A: the frozen store book the package was built from (sound/docs/store.md). frozen_head is the chain head of the book's freeze record (the SHA-256 of that log line, the value freeze() returns); snapshot_sha256 is snapshot_digest({atom_id: pcm_sha256}).",
+      "description": "Study A: the frozen store book the package was built from (sound/docs/store.md). frozen_head is the chain head of the book's freeze record (the SHA-256 of that log line, the value freeze() returns); snapshot_sha256 is snapshot_digest({atom_id: pcm_sha256}); renderer_hash and validator_hash are the code hashes the book records.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["frozen_head", "snapshot_sha256"],
+      "required": ["frozen_head", "snapshot_sha256", "renderer_hash", "validator_hash"],
       "properties": {
         "frozen_head": { "$ref": "#/$defs/sha256" },
+        "renderer_hash": { "$ref": "#/$defs/sha256" },
+        "validator_hash": { "$ref": "#/$defs/sha256" },
         "snapshot_sha256": { "$ref": "#/$defs/sha256" }
       }
     },

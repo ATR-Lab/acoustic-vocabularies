@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/dry-run-plan.schema.json",
+  "title": "Synthetic dry-run plan",
+  "description": "dry-run-plan.json of a synthetic dry run (#22): the cases injected before the run, which the log-completeness check compares with the logs. zero_eligible atoms are forced by bot raters rating the book's rating slots unacceptable (force_unacceptable_slots, from BatchConfig.rating_slot_ids); expect bank means a fallback_bank commit, book a failed scan and whole-book substitution. appointments is the run's scope; fallback_bank single_recipe is the whole-book run's bank (every entry is the profile bank's recipe 0); designer_think_ms and mock_llm_latency_ms are the bot designer's think time per slot and the mock server's latency (clock ms); token_count_cap_ms is the A3 token-count cap of an accelerated run (null: the client's default); p_comfort_acceptable is the bot raters' probability of an acceptable comfort rating (association and distinguishability are uniform on 1-7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "appointments",
+    "batch_id",
+    "clock",
+    "clock_speed",
+    "designer_invalid_slots",
+    "designer_think_ms",
+    "designer_timeout_slots",
+    "fallback_bank",
+    "force_unacceptable_slots",
+    "format",
+    "format_version",
+    "mock_llm_latency_ms",
+    "p_comfort_acceptable",
+    "run_id",
+    "token_count_cap_ms",
+    "zero_eligible"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/dry-run-plan"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id",
+      "pattern": "^DEMO-"
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id",
+      "pattern": "^DEMO-"
+    },
+    "clock": {
+      "enum": [
+        "real",
+        "scaled"
+      ]
+    },
+    "clock_speed": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "zero_eligible": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "atom_id",
+          "book_id",
+          "expect"
+        ],
+        "properties": {
+          "book_id": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          },
+          "atom_id": {
+            "$ref": "common.schema.json#/$defs/atom_id"
+          },
+          "expect": {
+            "enum": [
+              "bank",
+              "book"
+            ]
+          }
+        }
+      }
+    },
+    "force_unacceptable_slots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/rating_slot_id"
+      }
+    },
+    "designer_invalid_slots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/proposal_slot_id"
+      }
+    },
+    "designer_timeout_slots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/proposal_slot_id"
+      }
+    },
+    "appointments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4
+      }
+    },
+    "fallback_bank": {
+      "enum": [
+        "demo",
+        "single_recipe"
+      ]
+    },
+    "designer_think_ms": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 40000
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mock_llm_latency_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "token_count_cap_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "p_comfort_acceptable": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

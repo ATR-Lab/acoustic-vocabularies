@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/slot-refusal.schema.json",
+  "title": "Refused slot or attempt request",
+  "description": "A request the ledger or bank builder refused without consuming anything: a 13th slot for one cap key, a 5th Study B attempt, a slot ID used twice or a closed slot (#17, #19, #26).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cap_key",
+    "detail",
+    "method",
+    "reason",
+    "record",
+    "record_version",
+    "requested",
+    "run_id",
+    "study",
+    "t_ms",
+    "used"
+  ],
+  "properties": {
+    "record": {
+      "const": "slot_refusal"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "study": {
+      "$ref": "common.schema.json#/$defs/study"
+    },
+    "method": {
+      "$ref": "common.schema.json#/$defs/method"
+    },
+    "cap_key": {
+      "type": "string",
+      "pattern": "^(A\\|[A-Za-z0-9-]+\\|[KQ]-[ar][1-4]|B\\|[A-Za-z0-9-]+\\|[1-4]\\|P[1-3]\\|[KQ]-[ar][1-4]|B\\|[A-Za-z0-9-]+)$"
+    },
+    "reason": {
+      "enum": [
+        "slot_cap",
+        "attempt_cap",
+        "slot_reused",
+        "slot_closed"
+      ]
+    },
+    "requested": {
+      "type": "string",
+      "pattern": "^[!-~]{1,128}$"
+    },
+    "used": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "detail": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

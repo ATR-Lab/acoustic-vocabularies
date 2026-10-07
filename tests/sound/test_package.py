@@ -651,9 +651,13 @@ def test_build_refuses_unsuitable_books(tmp_path: Path):
             with pytest.raises(PackageError) as err:
                 build_package(store, book, tmp_path / "out")
             assert err.value.code == "E_BOOK" and text in str(err.value), book
+        before_freeze = store.head("DEMO-OPEN")  # a line of the log, not the freeze record
         store.freeze("DEMO-OPEN")
         with pytest.raises(PackageError) as err:
             build_package(store, "DEMO-OPEN", tmp_path / "out", expected_head="0" * 64)
+        assert err.value.code == "E_BOOK" and "E_ANCHOR" in str(err.value)
+        with pytest.raises(PackageError) as err:
+            build_package(store, "DEMO-OPEN", tmp_path / "out", expected_head=before_freeze)
         assert err.value.code == "E_BOOK" and "freeze record" in str(err.value)
         assert not (tmp_path / "out").exists()
         (tmp_path / "busy").mkdir()
@@ -689,16 +693,28 @@ def test_package_records_the_frozen_head_and_ignores_later_log_lines(tmp_path: P
         make_writable(tmp_path)
 
 
-def test_build_refuses_a_void_book(a_books: dict[str, Any], tmp_path: Path, monkeypatch: Any):
-    """Superseded books get a `void` event in the store (#11); never package them."""
-    entry = a_books["P2"]
-    store: VocabularyStore = entry["store"]
-    records = store.records(entry["book"])
-    void = {**records[-1], "event": "void"}
-    monkeypatch.setattr(store, "records", lambda book_id: [*records, void])
-    with pytest.raises(PackageError) as err:
-        build_package(store, entry["book"], tmp_path / "out")
-    assert err.value.code == "E_BOOK" and "void" in str(err.value)
+def test_build_refuses_void_books(tmp_path: Path):
+    """Superseded books get a real `void` event in the store (#11); never package them."""
+    store = VocabularyStore(tmp_path / "store", clock=tool.fixed_clock(), reserved=())
+    recipes = synthetic_recipes(Profile.P3)
+    heads = {}
+    for book in ("DEMO-VOID-FROZEN", "DEMO-VOID-OPEN"):
+        store.create_book(book, Profile.P3, kind="synthetic")
+        for atom in ATOM_IDS:
+            store.commit(book, atom, A_LABELS[atom], recipes[atom], source="s-" + atom)
+    heads["DEMO-VOID-FROZEN"] = store.freeze("DEMO-VOID-FROZEN")
+    try:
+        before = build_package(store, "DEMO-VOID-FROZEN", tmp_path / "before")
+        assert before.manifest["book"]["frozen_head"] == heads["DEMO-VOID-FROZEN"]
+        for book in ("DEMO-VOID-FROZEN", "DEMO-VOID-OPEN"):
+            store.void(book, cause="failed_generation", reason="DEMO-DEV-001 test")
+            assert store.book(book).void
+            with pytest.raises(PackageError) as err:
+                build_package(store, book, tmp_path / f"after-{book}")
+            assert err.value.code == "E_BOOK" and "void" in str(err.value)
+            assert not (tmp_path / f"after-{book}").exists()
+    finally:
+        make_writable(tmp_path)
 
 
 def test_build_refuses_a_damaged_store_book(a_books: dict[str, Any], tmp_path: Path):
@@ -1393,6 +1409,11 @@ def test_example_tool_check_and_out(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert "DEMO-BOOK-P1" in out and "DEMO-DYAD-01" in out
     assert "message WAVs: 18 trained, 0 held out" in out
     assert "combinations checked (hash and length, no playback): 1536" in out
+    validator = run_sheet_validator()
+    for study, key in (("A", "BK-C-B4K7QX"), ("B", "B-C01")):
+        mapping = read_json(tmp_path / f"{study}-confirmatory-package-hashes.json")
+        assert list(validator.iter_errors(mapping)) == []
+        assert list(mapping["packages"]) == [key]
     monkeypatch.setattr(tool, "EXAMPLE", tmp_path / "copy")
     monkeypatch.setattr("sys.argv", ["x", "--check"])
     assert tool.main() == 1
@@ -1400,3 +1421,137 @@ def test_example_tool_check_and_out(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert tool.main() == 0
     monkeypatch.setattr("sys.argv", ["x", "--check"])
     assert tool.main() == 0
+
+
+# --- Package-hash mapping for the run sheets (#32) ---------------------------------------
+
+RUN_SHEET_SCHEMA = (
+    REPO / "tests" / "sound" / "fixtures" / "run-sheets" / "package-hashes.schema.json"
+)
+A_KEYS = {
+    "DEMO-BOOK-P1": "BK-P-B4K7QX",
+    "DEMO-BOOK-P2": "BK-P-C9MN5T",
+    "DEMO-BOOK-P3": "BK-P-WY6RHJ",
+}
+A_KEYS_P = ("P1", "P2", "P3")
+
+
+def run_sheet_validator() -> Any:
+    from jsonschema import Draft202012Validator
+
+    schema = read_json(RUN_SHEET_SCHEMA)
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
+
+
+def test_package_hashes_match_the_run_sheet_schema(a_books: dict[str, Any]):
+    paths = [a_books[p]["result"].path for p in ("P3", "P1", "P2")]
+    doc = package_mod.package_hashes(paths, set_name="pilot", keys=A_KEYS)
+    assert list(run_sheet_validator().iter_errors(doc)) == []
+    assert (doc["format"], doc["format_version"], doc["study"], doc["set"]) == (
+        "av-schedules/package-hashes",
+        1,
+        "A",
+        "pilot",
+    )
+    assert doc["demo"] is True and doc["placeholder"] is False
+    expected = {A_KEYS[f"DEMO-BOOK-{p}"]: a_books[p]["result"].package_sha256 for p in A_KEYS_P}
+    assert doc["packages"] == expected and list(doc["packages"]) == sorted(expected)
+
+
+def test_package_hashes_for_dyads_use_the_sealed_slot(pkg_b: Path, dyad: dict[str, Any]):
+    with pytest.raises(PackageError) as err:  # unsealed DEMO bank: no slot ID yet
+        package_mod.package_hashes([dyad["result"].path], set_name="confirmatory")
+    assert err.value.code == "E_INPUT"
+    spare = package_mod.package_hashes(
+        [dyad["result"].path], set_name="confirmatory", keys={"DEMO-DYAD-01": "B-S03"}
+    )
+    assert spare["packages"] == {"B-S03": dyad["result"].package_sha256}
+    sealed = seal(pkg_b, permutation=B_UNIT / "permutation.json")
+    doc = package_mod.package_hashes([load_package(pkg_b)], set_name="confirmatory")
+    assert doc["packages"] == {"B-C01": sealed}
+    assert list(run_sheet_validator().iter_errors(doc)) == []
+    with pytest.raises(PackageError) as err:
+        package_mod.package_hashes([pkg_b], set_name="pilot")
+    assert "confirmatory set" in str(err.value)
+    with pytest.raises(PackageError) as err:
+        package_mod.package_hashes([pkg_b], set_name="confirmatory", keys={"DEMO-DYAD-01": "B-C02"})
+    assert "sealed for B-C01" in str(err.value)
+
+
+@pytest.mark.parametrize(
+    ("keys", "set_name", "text"),
+    [
+        ({}, "pilot", "not a Study A run-sheet key"),
+        ({**A_KEYS, "DEMO-BOOK-P1": "BK-C-B4K7QX"}, "pilot", "does not belong to the pilot set"),
+        ({**A_KEYS, "DEMO-BOOK-P2": "BK-P-B4K7QX"}, "pilot", "two packages"),
+        ({**A_KEYS, "DEMO-BOOK-P3": "BK-P-AAAAAA"}, "pilot", "not a Study A run-sheet key"),
+        (A_KEYS, "main", "set must be one of"),
+    ],
+)
+def test_package_hashes_refuse_bad_keys(
+    a_books: dict[str, Any], keys: dict[str, str], set_name: str, text: str
+):
+    paths = [a_books[p]["result"].path for p in A_KEYS_P]
+    with pytest.raises(PackageError) as err:
+        package_mod.package_hashes(paths, set_name=set_name, keys=keys)
+    assert err.value.code == "E_INPUT" and text in str(err.value)
+
+
+def test_package_hashes_refuse_mixed_inputs(
+    a_books: dict[str, Any],
+    dyad: dict[str, Any],
+    pkg_a: Path,
+    study_store: tuple[VocabularyStore, str],
+    tmp_path: Path,
+):
+    a1 = a_books["P1"]["result"].path
+    for packages in ([], [a1, dyad["result"].path]):
+        with pytest.raises(PackageError) as err:
+            package_mod.package_hashes(packages, set_name="pilot", keys=A_KEYS)
+        assert err.value.code == "E_INPUT"
+    store, book = study_store
+    real = build_package(store, book, tmp_path / "real")
+    with pytest.raises(PackageError) as err:
+        package_mod.package_hashes([a1, real.path], set_name="pilot", keys=A_KEYS)
+    assert "DEMO status" in str(err.value)
+    seal(pkg_a, permutation=A_UNIT / "permutation.json")  # A-C01 is a confirmatory batch
+    with pytest.raises(PackageError) as err:
+        package_mod.package_hashes([pkg_a], set_name="pilot", keys=A_KEYS)
+    assert "confirmatory set" in str(err.value)
+    with pytest.raises(PackageIntegrityError):
+        flip_byte(pkg_a / "answers.json")
+        package_mod.package_hashes([pkg_a], set_name="confirmatory", keys=A_KEYS)
+
+
+def test_write_package_hashes(a_books: dict[str, Any], tmp_path: Path):
+    doc = package_mod.package_hashes([a_books["P1"]["result"].path], set_name="pilot", keys=A_KEYS)
+    out = tmp_path / "A" / "pilot-package-hashes.json"
+    digest = package_mod.write_package_hashes(doc, out)
+    assert digest == hashlib.sha256(out.read_bytes()).hexdigest()
+    assert read_json(out) == doc and out.read_bytes().endswith(b"}\n")
+    real = {**doc, "demo": False}
+    target = REPO / "sound" / "examples" / "never-written.json"
+    with pytest.raises(PackageError) as err:
+        package_mod.write_package_hashes(real, target)
+    assert err.value.code == "E_POLICY" and not target.exists()
+    assert package_mod.write_package_hashes(real, tmp_path / "real.json")
+
+
+def test_package_hashes_tool(a_books: dict[str, Any], tmp_path: Path, capsys: Any):
+    spec = importlib.util.spec_from_file_location(
+        "package_hashes_tool", SOUND / "tools" / "package_hashes.py"
+    )
+    assert spec is not None and spec.loader is not None
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    out = tmp_path / "pilot-package-hashes.json"
+    args = [str(a_books[p]["result"].path) for p in A_KEYS_P]
+    keys = [arg for k, v in A_KEYS.items() for arg in ("--key", f"{k}={v}")]
+    assert cli.main([*args, "--set", "pilot", *keys, "--out", str(out)]) == 0
+    assert "3 packages" in capsys.readouterr().out
+    assert list(run_sheet_validator().iter_errors(read_json(out))) == []
+    assert cli.main([*args, "--set", "pilot", "--out", str(out)]) == 1
+    assert "E_INPUT" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        cli.main([*args, "--set", "pilot", "--key", "nokey", "--out", str(out)])

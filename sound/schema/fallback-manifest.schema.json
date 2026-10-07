@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/fallback-manifest.schema.json",
+  "title": "Fallback banks and books manifest",
+  "description": "Three fallback banks (64 recipes each) and three 16-atom fallback books (P1, P2, P3) built from one seed (av_sound.fallback, sound/docs/fallback.md; Study A protocol §3.7). fallback_bank_hash is the SHA-256 of the compact canonical JSON (sorted keys, separators ',' and ':', ASCII) of this object without the fallback_bank_hash field. A manifest built from a restricted seed lists study recipes and stays in restricted storage; only fallback_bank_hash is published. Manifests with seed_kind 'demo' are public examples.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "builder_version",
+    "stream",
+    "seed_kind",
+    "demo_seed",
+    "seed_fingerprint",
+    "threshold",
+    "renderer_version",
+    "validator_version",
+    "reserved_sha256",
+    "bank_size",
+    "profiles",
+    "fallback_bank_hash"
+  ],
+  "properties": {
+    "manifest_version": { "const": 1 },
+    "builder_version": { "$ref": "#/$defs/version" },
+    "stream": {
+      "description": "Key prefix of the SHA-256 counter stream.",
+      "const": "av-sound/fallback/v1"
+    },
+    "seed_kind": {
+      "description": "demo: a public DEMO- seed (example only); restricted: a seed kept in restricted storage.",
+      "enum": ["demo", "restricted"]
+    },
+    "demo_seed": {
+      "description": "The seed of a demo build; null for a restricted seed.",
+      "oneOf": [
+        { "type": "string", "pattern": "^DEMO-[A-Za-z0-9._-]{0,123}$" },
+        { "type": "null" }
+      ]
+    },
+    "seed_fingerprint": {
+      "description": "SHA-256 of 'av-sound/fallback/seed/v1|<seed>' (ASCII).",
+      "$ref": "#/$defs/sha256"
+    },
+    "threshold": {
+      "description": "Separation threshold as exact decimal text, e.g. '0.1'.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+    },
+    "renderer_version": { "$ref": "#/$defs/version" },
+    "validator_version": { "$ref": "#/$defs/version" },
+    "reserved_sha256": {
+      "description": "SHA-256 of the compact canonical JSON list of the reserved entries used (the store's reserved_sha256).",
+      "$ref": "#/$defs/sha256"
+    },
+    "bank_size": { "const": 64 },
+    "profiles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/profile" }
+    },
+    "fallback_bank_hash": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "draw": {
+      "description": "Index of the draw in its stream (0-based).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "bank", "book"],
+      "properties": {
+        "profile": { "enum": ["P1", "P2", "P3"] },
+        "bank": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bank_sha256", "draws", "entries"],
+          "properties": {
+            "bank_sha256": {
+              "description": "SHA-256 of the compact canonical JSON {\"entries\": [[recipe_sha256, pcm_sha256], ...], \"profile\": P}.",
+              "$ref": "#/$defs/sha256"
+            },
+            "draws": { "type": "integer", "minimum": 64 },
+            "entries": {
+              "description": "Bank order = acceptance order; index 0 is scanned first.",
+              "type": "array",
+              "minItems": 64,
+              "maxItems": 64,
+              "items": { "$ref": "#/$defs/bank_entry" }
+            }
+          }
+        },
+        "book": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["book_sha256", "draws", "atoms"],
+          "properties": {
+            "book_sha256": {
+              "description": "snapshot_digest({atom_id: pcm_sha256}): the snapshot_sha256 of the frozen store book.",
+              "$ref": "#/$defs/sha256"
+            },
+            "draws": { "type": "integer", "minimum": 16 },
+            "atoms": {
+              "description": "Stored order: the j-th accepted recipe is atom K-a1, K-a2, ..., Q-r4.",
+              "type": "array",
+              "minItems": 16,
+              "maxItems": 16,
+              "items": { "$ref": "#/$defs/book_atom" }
+            }
+          }
+        }
+      }
+    },
+    "bank_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "draw", "recipe", "recipe_sha256", "pcm_sha256", "file_sha256"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0, "maximum": 63 },
+        "draw": { "$ref": "#/$defs/draw" },
+        "recipe": { "$ref": "recipe.schema.json" },
+        "recipe_sha256": { "$ref": "#/$defs/sha256" },
+        "pcm_sha256": { "$ref": "#/$defs/sha256" },
+        "file_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "book_atom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["atom_id", "position", "draw", "recipe", "recipe_sha256", "pcm_sha256", "file_sha256"],
+      "properties": {
+        "atom_id": { "type": "string", "pattern": "^(K|Q)-[ar][1-4]$" },
+        "position": { "type": "integer", "minimum": 0, "maximum": 15 },
+        "draw": { "$ref": "#/$defs/draw" },
+        "recipe": { "$ref": "recipe.schema.json" },
+        "recipe_sha256": { "$ref": "#/$defs/sha256" },
+        "pcm_sha256": { "$ref": "#/$defs/sha256" },
+        "file_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

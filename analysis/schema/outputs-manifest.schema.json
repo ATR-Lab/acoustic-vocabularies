@@ -1,0 +1,121 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/outputs-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SHA-256 of every output file of an area and of the inputs it was computed from. The analysis report (#34) cites the manifest hash; data locks archive it.",
+  "properties": {
+    "analyzer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "av-analysis"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "area": {
+      "enum": [
+        "reconciled",
+        "derived",
+        "estimates",
+        "monitoring"
+      ]
+    },
+    "data_kind": {
+      "description": "Watermark (paths).",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "files": {
+      "description": "Output files, relative to the area.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "description": "POSIX path relative to the folder or data root.",
+            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "format": {
+      "const": "av-analysis/outputs-manifest"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "inputs": {
+      "description": "Input files, relative to the data root.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "description": "POSIX path relative to the folder or data root.",
+            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "seeds": {
+      "description": "Seed labels used by the outputs (seeds module).",
+      "items": {
+        "pattern": "^[A-Za-z0-9._:-]+$",
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "data_kind",
+    "area",
+    "analyzer",
+    "seeds",
+    "inputs",
+    "files"
+  ],
+  "title": "Outputs manifest (<area>/manifest.json)",
+  "type": "object"
+}
