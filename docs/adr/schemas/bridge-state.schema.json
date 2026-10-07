@@ -1,30 +1,165 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/schemas/bridge-state.schema.json",
-  "title": "Phase 1 public scene state",
+  "$comment": "ADR-002 mirror of isaac/publisher/state-v2.schema.json (shipped public state v2). Edit the shipped schema and re-copy; tests/test_adr_contracts.py fails on any difference other than this comment.",
+  "title": "Public Isaac workcell state v2 (engineering contract)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "kind", "source_kind", "session_id", "seq", "host_monotonic_ns", "sim_time", "sim_step", "joint_names", "joint_positions", "objects"],
+  "required": [
+    "version",
+    "kind",
+    "source_kind",
+    "station_id",
+    "scene_sha256",
+    "reset_snapshot_sha256",
+    "session_id",
+    "seq",
+    "host_monotonic_ns",
+    "sim_time",
+    "sim_step",
+    "joint_names",
+    "joint_positions",
+    "objects"
+  ],
   "properties": {
-    "version": {"const": 1},
-    "kind": {"const": "state"},
-    "source_kind": {"enum": ["live", "synthetic"]},
-    "session_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
-    "seq": {"type": "integer", "minimum": 0},
-    "host_monotonic_ns": {"type": "string", "pattern": "^[0-9]+$"},
-    "sim_time": {"type": "number", "minimum": 0},
-    "sim_step": {"type": "integer", "minimum": 0},
-    "joint_names": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-    "joint_positions": {"type": "array", "minItems": 1, "items": {"type": "number"}},
+    "version": {
+      "const": 2,
+      "type": "integer"
+    },
+    "kind": {
+      "const": "state"
+    },
+    "source_kind": {
+      "enum": [
+        "live",
+        "synthetic"
+      ]
+    },
+    "station_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "scene_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reset_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "host_monotonic_ns": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "sim_time": {
+      "type": "number",
+      "minimum": 0
+    },
+    "sim_step": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "joint_names": {
+      "type": "array",
+      "minItems": 43,
+      "maxItems": 43,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_/.-]{0,95}$"
+      }
+    },
+    "joint_positions": {
+      "type": "array",
+      "minItems": 43,
+      "maxItems": 43,
+      "items": {
+        "type": "number"
+      }
+    },
     "objects": {
       "type": "array",
+      "minItems": 1,
       "items": {
-        "type": "object", "additionalProperties": false,
-        "required": ["id", "position_m", "rotation_xyzw"],
-        "properties": {
-          "id": {"type": "string", "pattern": "^placeholder_[A-Za-z0-9_-]+$"},
-          "position_m": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
-          "rotation_xyzw": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}}
+        "$ref": "#/$defs/object"
+      }
+    }
+  },
+  "$defs": {
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "position_m",
+        "rotation_xyzw",
+        "visible",
+        "enabled",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_/.-]{0,95}$"
+        },
+        "position_m": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation_xyzw": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number"
+          }
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "card_face": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "arrow_angle_rad": {
+              "type": "number",
+              "minimum": -6.283185307179586,
+              "maximum": 6.283185307179586
+            },
+            "lid_open_fraction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "tag_attached": {
+              "type": "boolean"
+            },
+            "location": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_/.-]{0,95}$"
+            }
+          }
         }
       }
     }
