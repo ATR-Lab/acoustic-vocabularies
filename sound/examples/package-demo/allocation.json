@@ -1,0 +1,21 @@
+{
+  "format": "av-sound/package-allocation",
+  "format_version": 1,
+  "novel_by_visit": {
+    "D0": [
+      "K-a1-r4",
+      "K-a3-r2",
+      "Q-a1-r4",
+      "Q-a3-r2"
+    ],
+    "D7": [
+      "K-a2-r1",
+      "K-a4-r4",
+      "Q-a2-r1",
+      "Q-a4-r4"
+    ]
+  },
+  "package_id": "DEMO-BOOK-P1",
+  "study": "A",
+  "swap_w1_w4": false
+}

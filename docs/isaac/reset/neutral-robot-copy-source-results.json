@@ -1,0 +1,450 @@
+{
+  "scope": "actual_G1_source_only_copy_comparison",
+  "version": 1,
+  "phase_order": [
+    "A",
+    "B",
+    "B",
+    "A"
+  ],
+  "full_service_seconds": 40,
+  "window_definition": "First retained publication timestamp +10 seconds through last actual publication; not a claimed exact30s exposure.",
+  "exact_first_last_projection_equal_all_phases": true,
+  "joints": 43,
+  "objects": 60,
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "observer_enabled": false,
+  "same_iteration_enabled": false,
+  "handle_cache_enabled": false,
+  "qualified": false,
+  "gc_timing_observed": false,
+  "limitations": [
+    "No client/transport/native/participant qualification",
+    "GC policy unchanged; no callback trace, so specific stalls cannot be attributed to GC",
+    "Warm-up exclusion is separate analysis and does not remove failures from complete service evidence",
+    "Fresh processes retain startup/order/GPU load variability; four short phases do not prove long-run reliability"
+  ],
+  "baseline_commit": "a90f6517443a0871fdfcbab404e1802c52908f7b",
+  "candidate_commit": "8c30ae7be7bf30653179b4da30200ad83eb45f8c",
+  "executed_runtime_delta": [
+    "isaac/reset/manager.py",
+    "isaac/commands/dispatcher.py"
+  ],
+  "archived_changes": [
+    "docs/isaac/reset/neutral-robot-copy-results.json",
+    "docs/isaac/reset/neutral-robot-copy.md",
+    "isaac/commands/dispatcher.py",
+    "isaac/reset/manager.py",
+    "isaac/reset/neutral_copy_benchmark.py",
+    "tests/isaac/test_neutral_robot_hold.py"
+  ],
+  "source_archives": {
+    "A": {
+      "file": "A.tar",
+      "sha256": "58c002e6d16419e396fef6a1c0ccd4d8e61d20823bcb4567c29518f0e48aa6d3"
+    },
+    "B": {
+      "file": "B.tar",
+      "sha256": "d12af2fe589377c91fb4879840c593adb86bc0d4ac743d34e678213de8ab5736"
+    }
+  },
+  "source_manifest_sha256": "7d3aa476ba4b31b6c6eb6debb71841c1808956d54367bdfe2a7fdbd93a3ab5f1",
+  "source_only": true,
+  "private_controls_sent": 0,
+  "public_receivers": 0,
+  "approved_image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "gc_configuration_changed": false,
+  "physics_flush_or_neutral_policy_changed": false,
+  "raw_archive_sha256": "ffa742bcdb0ba6f4724d13ffc0b97a27081929be05aa9e571ff5641412c2b2f2",
+  "local_verified_analysis_sha256": "1a2e0a8dc40d747c8427a1aa9df56f60077a31989fdc3125a9d0dd8be81ea7f3",
+  "driver_sha256": "64b36f8df68eca047d142144eac4909a28b0822d8fc01381c3f85e14816a287a",
+  "analyzer_sha256": "64d29362836f026e386ac564b6501410efbeba2962fbe11a65fec571bdb9c4f4",
+  "resource_cleanup": {
+    "owned_containers_removed": true,
+    "driver_failure": null,
+    "unrelated_workloads_preserved": true
+  },
+  "phases": [
+    {
+      "phase": "1-A",
+      "full": {
+        "frames": 632,
+        "observed_span_seconds": 39.994599349,
+        "frames_s_intervals": 15.777130169345655,
+        "steps_s_intervals": 15.777130169345655,
+        "interval_ms": {
+          "count": 631,
+          "min": 60.590426,
+          "median": 62.093889,
+          "p95": 69.073904,
+          "max": 379.705054
+        },
+        "serialize_ms": {
+          "count": 632,
+          "min": 22.818596,
+          "median": 23.727739,
+          "p95": 24.857666,
+          "max": 342.002837
+        },
+        "handoff_ms": {
+          "count": 632,
+          "min": 0.02861,
+          "median": 0.032719,
+          "p95": 0.041688,
+          "max": 0.097486
+        },
+        "missed_deadlines": 570,
+        "gaps_gt_250ms": 1
+      },
+      "post_warmup": {
+        "frames": 478,
+        "observed_span_seconds": 29.938912577,
+        "frames_s_intervals": 15.932442394933414,
+        "steps_s_intervals": 15.932442394933414,
+        "interval_ms": {
+          "count": 477,
+          "min": 60.590426,
+          "median": 62.080413,
+          "p95": 67.381967,
+          "max": 76.878781
+        },
+        "serialize_ms": {
+          "count": 478,
+          "min": 22.818596,
+          "median": 23.720395,
+          "p95": 24.778128,
+          "max": 27.291857
+        },
+        "handoff_ms": {
+          "count": 478,
+          "min": 0.02861,
+          "median": 0.0326575,
+          "p95": 0.040266,
+          "max": 0.055284
+        },
+        "missed_deadlines": 422,
+        "gaps_gt_250ms": 0
+      },
+      "post_warmup_physics": {
+        "fully_contained_intervals": 29,
+        "steps": 471,
+        "mean_step_ms": 5.604454016985138,
+        "max_step_ms": 7.845964
+      },
+      "whole_service_steps_s": 15.775373863279107,
+      "complete_timing_screen_passed": false,
+      "complete_service": {
+        "elapsed_seconds": 40.062441973,
+        "physics_steps": 632,
+        "frames": 632,
+        "missed_deadlines": 570,
+        "fault": null,
+        "cleanup_errors": [],
+        "end_reason": "duration",
+        "service_completed": true,
+        "native_visit_completed": false
+      },
+      "artifact_hashes": {
+        "joined-e2e/commands.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "joined-e2e/initial-reset.json": "c399f37b1ae940705e01a5751833cedb53875e7d1f69c82f05cc6fbaff4164d0",
+        "joined-e2e/physics-steps.jsonl": "089057c12e1afaead21c4a47514d5396825c3a0b268b0934b5cff87a65808613",
+        "joined-e2e/publish.csv": "acf1b2c75962d90c66d99973835939bb447e37db375151928f6f27ffbd93a8c6",
+        "joined-e2e/ready.json": "b307e0c52d45f2c541daaa84bb5b50fdb8a39924b63a0d55ad1a11445a0b8277",
+        "joined-e2e/sample-first.json": "a26e56b1d33297b575b13820a9e1322b473b118c7187d58988a56b9b349aa3e0",
+        "joined-e2e/sample-last.json": "f091a16d3babd7e2873db5f0477518f8d216a0123469c6d88b3e9f9db5193546",
+        "joined-e2e/summary.json": "b6309bd1b07c85e2f6a91c1448f9da696cade6d7d1a9b12e83b873f69a1dc18f",
+        "reset-check/neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "reset-check/summary.json": "ce165ef46fe5a132b61df67c466d73513012e0a2c54dd95eaa7fa6ab3219bf70"
+      },
+      "process_exit": 0,
+      "utc_launch": "2026-10-06T01:15:06Z",
+      "utc_exit": "2026-10-06T01:16:16Z"
+    },
+    {
+      "phase": "2-B",
+      "full": {
+        "frames": 673,
+        "observed_span_seconds": 39.9580295,
+        "frames_s_intervals": 16.81764612541767,
+        "steps_s_intervals": 16.81764612541767,
+        "interval_ms": {
+          "count": 672,
+          "min": 55.962628,
+          "median": 58.1375965,
+          "p95": 63.697794,
+          "max": 451.625718
+        },
+        "serialize_ms": {
+          "count": 673,
+          "min": 22.764921,
+          "median": 23.751778,
+          "p95": 25.600761,
+          "max": 418.033347
+        },
+        "handoff_ms": {
+          "count": 673,
+          "min": 0.028537,
+          "median": 0.032188,
+          "p95": 0.039933,
+          "max": 0.11601
+        },
+        "missed_deadlines": 527,
+        "gaps_gt_250ms": 1
+      },
+      "post_warmup": {
+        "frames": 510,
+        "observed_span_seconds": 29.912678168,
+        "frames_s_intervals": 17.01619618080598,
+        "steps_s_intervals": 17.01619618080598,
+        "interval_ms": {
+          "count": 509,
+          "min": 56.519625,
+          "median": 58.127971,
+          "p95": 62.927147,
+          "max": 73.922186
+        },
+        "serialize_ms": {
+          "count": 510,
+          "min": 23.092416,
+          "median": 23.7619855,
+          "p95": 25.333317,
+          "max": 28.114842
+        },
+        "handoff_ms": {
+          "count": 510,
+          "min": 0.028641,
+          "median": 0.0320845,
+          "p95": 0.038082,
+          "max": 0.072642
+        },
+        "missed_deadlines": 389,
+        "gaps_gt_250ms": 0
+      },
+      "post_warmup_physics": {
+        "fully_contained_intervals": 28,
+        "steps": 494,
+        "mean_step_ms": 5.656574910931174,
+        "max_step_ms": 7.023193
+      },
+      "whole_service_steps_s": 16.815530201324435,
+      "complete_timing_screen_passed": false,
+      "complete_service": {
+        "elapsed_seconds": 40.022526316,
+        "physics_steps": 673,
+        "frames": 673,
+        "missed_deadlines": 527,
+        "fault": null,
+        "cleanup_errors": [],
+        "end_reason": "duration",
+        "service_completed": true,
+        "native_visit_completed": false
+      },
+      "artifact_hashes": {
+        "joined-e2e/commands.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "joined-e2e/initial-reset.json": "c6918f0e415c971d0f0b75bfb0b6328c06d2e9dc7a868bda9bd4d446cea72e19",
+        "joined-e2e/physics-steps.jsonl": "0baf70d59d889d3e6fbd591f35683d0100afe2d50e8bf3162c601a80619c58ef",
+        "joined-e2e/publish.csv": "92aa7cece9770041dcf27da9643c66287c9a11b183e336c25238eaf2fc79c481",
+        "joined-e2e/ready.json": "8f8713b38899c7949311518fbe1349b7b9724146d2217394adfbd8581969e2f5",
+        "joined-e2e/sample-first.json": "b7dba849f78bb8a2922a922c8722ac879de4028f156651b0b7f916d2c0332f5d",
+        "joined-e2e/sample-last.json": "0a858a515f3012eaea5657e5211a64906fb8e84db830477ad89e894b29c91dd7",
+        "joined-e2e/summary.json": "bc5993181a6e2b2611ea533711891a103b0a6d8e1bbb26f069b70c17ae44090d",
+        "reset-check/neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "reset-check/summary.json": "7b061498e363bbfac64b5eb44ab42db13017e24ee247a1ca17bb3ad26d1cdbf5"
+      },
+      "process_exit": 0,
+      "utc_launch": "2026-10-06T01:16:16Z",
+      "utc_exit": "2026-10-06T01:17:25Z"
+    },
+    {
+      "phase": "3-B",
+      "full": {
+        "frames": 674,
+        "observed_span_seconds": 39.940430039,
+        "frames_s_intervals": 16.85009398603987,
+        "steps_s_intervals": 16.85009398603987,
+        "interval_ms": {
+          "count": 673,
+          "min": 56.783009,
+          "median": 58.213255,
+          "p95": 62.002557,
+          "max": 432.386337
+        },
+        "serialize_ms": {
+          "count": 674,
+          "min": 23.244922,
+          "median": 23.829151500000002,
+          "p95": 24.711494,
+          "max": 398.467951
+        },
+        "handoff_ms": {
+          "count": 674,
+          "min": 0.026697,
+          "median": 0.031187,
+          "p95": 0.037101,
+          "max": 0.055565
+        },
+        "missed_deadlines": 526,
+        "gaps_gt_250ms": 1
+      },
+      "post_warmup": {
+        "frames": 510,
+        "observed_span_seconds": 29.881936712,
+        "frames_s_intervals": 17.033701828154786,
+        "steps_s_intervals": 17.033701828154786,
+        "interval_ms": {
+          "count": 509,
+          "min": 56.783009,
+          "median": 58.160825,
+          "p95": 61.748943,
+          "max": 74.625767
+        },
+        "serialize_ms": {
+          "count": 510,
+          "min": 23.244922,
+          "median": 23.8206225,
+          "p95": 24.64311,
+          "max": 27.261366
+        },
+        "handoff_ms": {
+          "count": 510,
+          "min": 0.026697,
+          "median": 0.030906999999999997,
+          "p95": 0.03599,
+          "max": 0.050568
+        },
+        "missed_deadlines": 388,
+        "gaps_gt_250ms": 0
+      },
+      "post_warmup_physics": {
+        "fully_contained_intervals": 28,
+        "steps": 494,
+        "mean_step_ms": 5.62176828340081,
+        "max_step_ms": 7.66834
+      },
+      "whole_service_steps_s": 16.848045797695132,
+      "complete_timing_screen_passed": false,
+      "complete_service": {
+        "elapsed_seconds": 40.004639594,
+        "physics_steps": 674,
+        "frames": 674,
+        "missed_deadlines": 526,
+        "fault": null,
+        "cleanup_errors": [],
+        "end_reason": "duration",
+        "service_completed": true,
+        "native_visit_completed": false
+      },
+      "artifact_hashes": {
+        "joined-e2e/commands.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "joined-e2e/initial-reset.json": "4f8f44849c00197b34079dbb158469dc7a130b706c264fdf2abc0c8c738fabc1",
+        "joined-e2e/physics-steps.jsonl": "2983097e7ffdf76babc4d31e70446520b26cbfb660af280f462caf6a2d319342",
+        "joined-e2e/publish.csv": "795590f5cf7c6cff59c65fea0ecce3801c30edd36ae0cafed8aac11a4b0f7151",
+        "joined-e2e/ready.json": "070f3d24bcf372be554c63cb7f8d860030c9dc34c3cf8985818e0b8f8af2ec4f",
+        "joined-e2e/sample-first.json": "5b948c26180fa614a75439acd480b16a69cbe3fd53c75c1a7f9278639a1df610",
+        "joined-e2e/sample-last.json": "b956c8b93fdac9240b366037d46842a9b114b9a8b617fd5a94b57c4baaba2092",
+        "joined-e2e/summary.json": "a99aa76dc4699da7e1e1292b050d853b40e535c64381770b62c2f2cffe954a81",
+        "reset-check/neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "reset-check/summary.json": "d1e0595337dfb866836274edad68445ddd8c11a194612c20f20d6caabed87f4d"
+      },
+      "process_exit": 0,
+      "utc_launch": "2026-10-06T01:17:25Z",
+      "utc_exit": "2026-10-06T01:18:34Z"
+    },
+    {
+      "phase": "4-A",
+      "full": {
+        "frames": 620,
+        "observed_span_seconds": 39.966431116,
+        "frames_s_intervals": 15.487997870097338,
+        "steps_s_intervals": 15.487997870097338,
+        "interval_ms": {
+          "count": 619,
+          "min": 60.343208,
+          "median": 61.814159,
+          "p95": 76.806316,
+          "max": 400.015148
+        },
+        "serialize_ms": {
+          "count": 620,
+          "min": 22.870723,
+          "median": 23.565162,
+          "p95": 25.936554,
+          "max": 362.971224
+        },
+        "handoff_ms": {
+          "count": 620,
+          "min": 0.026066,
+          "median": 0.030657,
+          "p95": 0.043811,
+          "max": 0.110867
+        },
+        "missed_deadlines": 581,
+        "gaps_gt_250ms": 1
+      },
+      "post_warmup": {
+        "frames": 465,
+        "observed_span_seconds": 29.931196295,
+        "frames_s_intervals": 15.502220339836905,
+        "steps_s_intervals": 15.502220339836905,
+        "interval_ms": {
+          "count": 464,
+          "min": 60.343208,
+          "median": 61.834807999999995,
+          "p95": 81.178395,
+          "max": 124.744988
+        },
+        "serialize_ms": {
+          "count": 465,
+          "min": 22.93544,
+          "median": 23.591141,
+          "p95": 27.806682,
+          "max": 49.37561
+        },
+        "handoff_ms": {
+          "count": 465,
+          "min": 0.026066,
+          "median": 0.030785,
+          "p95": 0.044524,
+          "max": 0.110867
+        },
+        "missed_deadlines": 435,
+        "gaps_gt_250ms": 0
+      },
+      "post_warmup_physics": {
+        "fully_contained_intervals": 28,
+        "steps": 449,
+        "mean_step_ms": 5.670104271714922,
+        "max_step_ms": 12.00631
+      },
+      "whole_service_steps_s": 15.487349573948672,
+      "complete_timing_screen_passed": false,
+      "complete_service": {
+        "elapsed_seconds": 40.032672927,
+        "physics_steps": 620,
+        "frames": 620,
+        "missed_deadlines": 581,
+        "fault": null,
+        "cleanup_errors": [],
+        "end_reason": "duration",
+        "service_completed": true,
+        "native_visit_completed": false
+      },
+      "artifact_hashes": {
+        "joined-e2e/commands.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "joined-e2e/initial-reset.json": "0e65bb59c76e47028259528d99e4b7195513aa5c315b18f395c9d1fd2da50b72",
+        "joined-e2e/physics-steps.jsonl": "f89dab93535dac49b1a8d515368c30272a09b94b430dcfea362712ed79d3197e",
+        "joined-e2e/publish.csv": "d07859b81b9effc33c631701887906dd30a1d071414486606d14e55dee033c7f",
+        "joined-e2e/ready.json": "a2f9f67a465d9358490468b1f93bf93721c7749f669d3932c67f14cf2a661615",
+        "joined-e2e/sample-first.json": "fa6c03d99959165f89181e6a337c1b7fe95c88c4f9a85bf2b548196877c6ec77",
+        "joined-e2e/sample-last.json": "17e6e5baecf4db31e0498140646726772feeabfdabbba32f8b109b9447be678e",
+        "joined-e2e/summary.json": "0063c4d58ffd0726d0a149a9d3ed4b00b7d7606b58761df93c815eee62b9ca20",
+        "reset-check/neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "reset-check/summary.json": "f8d1b32226e56519972999eaf2aec9efd0d513a2b6d2c882023cd95ddf4b86dd"
+      },
+      "process_exit": 0,
+      "utc_launch": "2026-10-06T01:18:34Z",
+      "utc_exit": "2026-10-06T01:19:43Z"
+    }
+  ]
+}

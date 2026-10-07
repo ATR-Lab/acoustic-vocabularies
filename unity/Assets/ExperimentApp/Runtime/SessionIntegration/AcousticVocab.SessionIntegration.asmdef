@@ -1,0 +1,25 @@
+{
+  "name": "AcousticVocab.SessionIntegration",
+  "references": [
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.OperatorConsole",
+    "AcousticVocab.DataLogging",
+    "AcousticVocab.Assessment",
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateSources",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.SelectionMenus",
+    "AcousticVocab.Soak",
+    "AcousticVocab.Orientation",
+    "UnityEngine.UI"
+  ],
+  "autoReferenced": true,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ]
+}

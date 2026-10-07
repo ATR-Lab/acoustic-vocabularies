@@ -1,0 +1,361 @@
+{
+  "appointments": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "audit": {
+    "files": {
+      "masked/book-DEMO-BK-7QX4-atoms.csv": "52d6a8a95dc1937786e1ea33438d1e49e3d475d7b247373b61aa64df63f05f27",
+      "masked/book-DEMO-BK-7QX4-slots.csv": "596041b87f10c7406aa15a675b700c80199f8238440e767cd84091b8cb6e2636",
+      "masked/book-DEMO-BK-H9TC-atoms.csv": "12d10b2b82a4b633fc0e9a75e35243d0734ec9f172d8bb5b0f13688554f1475a",
+      "masked/book-DEMO-BK-H9TC-slots.csv": "ae0d0e37ccee4a34a3f57c7824658e9cb4d90a096b7c4ae2f7046cc5a74dce38",
+      "masked/book-DEMO-BK-M2RW-atoms.csv": "a7714d9c76745dd7796ad9c4f26da401e1b12f121f2de40b3e13e15cf0e4e346",
+      "masked/book-DEMO-BK-M2RW-slots.csv": "7cb4a6d6194b176a60e47370b583744f63ca5c9d9f5745f39d32cb99b399c814",
+      "masked/books.csv": "41eba0b7b30a8ab75911aff5ea15807d59d66ae7ae109210568124f3078412a7",
+      "masked/summary.json": "35abcf3b11aaf8fa522b9b13fad2f482716978e59488de2f383d00b29f9b2301",
+      "masked/summary.md": "53a14163e0dafc3ae8c58fb2e471bad2093f1358adfdcccc48e7157b5705c0e3",
+      "unmasked/book-DEMO-BK-7QX4-atoms.csv": "e9aebd1e094fffab1969dc91b83c60c18ebee44ad74a3b9ccb78c9bbaae829a9",
+      "unmasked/book-DEMO-BK-7QX4-slots.csv": "53baed8976d034f24b2e8119097a2f228fe418a251484cd87553f0da8768c074",
+      "unmasked/book-DEMO-BK-H9TC-atoms.csv": "88160fd0abbedc5d92f31d2827fba6756b446ef16ba6bc80e7d845d48c9dbda8",
+      "unmasked/book-DEMO-BK-H9TC-slots.csv": "6bc40a6df84e88dd5da3bf4bad9221b1dcc82f0da81f3ed09d2acb5f5d09dd33",
+      "unmasked/book-DEMO-BK-M2RW-atoms.csv": "62358b032296d87cc1b2db9bc34b552223b51c859c0357f583f508ace72c2f64",
+      "unmasked/book-DEMO-BK-M2RW-slots.csv": "4a5fefe6371be5582f9b4ab90ebc2c68bc5b32351f7bc31f8dee2f2f4fcb087a",
+      "unmasked/books.csv": "81f2792b28e9d57d2eef05c7d83d8d240fdf2807b8f416d263ff31776fad48aa",
+      "unmasked/summary.json": "4d3c4ce17a2dee6b4a41a5217f34855883f9fb158d4b3a9438142171bafff678",
+      "unmasked/summary.md": "96ecbc84845ca2f6eadb66772676f21a8bb76b8528161a7dd7996c002cf30e15"
+    },
+    "notes": [],
+    "ok": true,
+    "problems": []
+  },
+  "batch_id": "DEMO-DRY-P01",
+  "bundle": {
+    "bytes": 2971136,
+    "files": 89,
+    "name": "DEMO-dry-run-book-01-bundle.tar.gz",
+    "sha256": "c3fb6e653885a832bdad35a91bd7f62a6f6529f4ab0e752a935653d85fab01be"
+  },
+  "clock": "scaled",
+  "clock_speed": 50.0,
+  "code": {
+    "av_generation": "0.1.0",
+    "renderer_hash": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d",
+    "validator_hash": "fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650"
+  },
+  "completeness": {
+    "counts": {
+      "book_substitutions": 1,
+      "commit_records": 49,
+      "commits_final": 48,
+      "commits_final_DEMO-BK-7QX4": 16,
+      "commits_final_DEMO-BK-H9TC": 16,
+      "commits_final_DEMO-BK-M2RW": 16,
+      "commits_with_store_sha256": 48,
+      "decision_records": 192,
+      "designer_invalid_injected": 8,
+      "designer_timeout_injected": 8,
+      "fallback_bank_commits": 1,
+      "fallback_injected": 2,
+      "fallback_scans": 2,
+      "manifest_files": 70,
+      "message_plays": 0,
+      "non_atom_plays": 0,
+      "play_records": 3128,
+      "rating_missing": 0,
+      "rating_placeholders": 195,
+      "rating_records_R01": 576,
+      "rating_records_R02": 576,
+      "rating_records_R03": 576,
+      "rating_records_other": 0,
+      "run_closed": 1,
+      "slot_ids_repeated": 0,
+      "slot_records": 576,
+      "slot_records_A1": 192,
+      "slot_records_A2": 192,
+      "slot_records_A3": 192,
+      "slots_replenished": 0,
+      "slots_without_status": 0,
+      "startup_events": 4,
+      "timing_events": 3486
+    },
+    "ok": true,
+    "problems": []
+  },
+  "config_sha256": "e0ffaf4912895bf5edd373077b54aff794e82161e242d6c16e9bd1a948ca53b8",
+  "designer_think_ms": [
+    10000,
+    35000
+  ],
+  "documents": {
+    "config.json": "dee11ea25107a27d985c2897cff1a0189301fa2bf3eaeb122e36abfe8a7cac6e",
+    "dry-run-plan.json": "cb6c1462516dda6d12ef7b77cacab1846117ab84715bcd10bcb64dbf1b3f2efd",
+    "generation-config.json": "05983bc7451b434ebe422df3b39c29a580a0c53aec1f3a5fa0a508ccbb2fefa7",
+    "run-manifest.json": "f5a3fcb495751feac301a97bd1f7368611501906aaeeb84698f858039b33e10b"
+  },
+  "driver": {
+    "elapsed_real_s": 334.0,
+    "llm": "mock",
+    "run_id": "DEMO-dry-run-book-01",
+    "sessions": [
+      {
+        "appointment": 1,
+        "designer": {
+          "late": 0,
+          "plays": 40,
+          "submitted": {
+            "event_too_short": 4,
+            "invalid_json": 2,
+            "valid": 40
+          },
+          "think_ms": 1011203
+        },
+        "real_s": 82.1,
+        "stations": {
+          "S1": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 227,
+            "ratings_accepted": 129,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S2": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 227,
+            "ratings_accepted": 129,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S3": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 227,
+            "ratings_accepted": 129,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          }
+        }
+      },
+      {
+        "appointment": 2,
+        "designer": {
+          "late": 0,
+          "plays": 39,
+          "submitted": {
+            "event_too_short": 4,
+            "invalid_json": 2,
+            "separation_fail": 1,
+            "valid": 39
+          },
+          "think_ms": 934932
+        },
+        "real_s": 80.9,
+        "stations": {
+          "S1": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 264,
+            "ratings_accepted": 132,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S2": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 264,
+            "ratings_accepted": 132,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S3": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 264,
+            "ratings_accepted": 132,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          }
+        }
+      },
+      {
+        "appointment": 3,
+        "designer": {
+          "late": 0,
+          "plays": 39,
+          "submitted": {
+            "event_too_short": 5,
+            "invalid_json": 2,
+            "valid": 39
+          },
+          "think_ms": 965999
+        },
+        "real_s": 82.0,
+        "stations": {
+          "S1": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 250,
+            "ratings_accepted": 125,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S2": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 250,
+            "ratings_accepted": 125,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S3": {
+            "end_reason": "appointment_complete",
+            "missing": 0,
+            "plays": 250,
+            "ratings_accepted": 125,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          }
+        }
+      },
+      {
+        "appointment": 4,
+        "designer": {
+          "late": 0,
+          "plays": 37,
+          "submitted": {
+            "event_too_short": 7,
+            "invalid_json": 2,
+            "valid": 37
+          },
+          "think_ms": 1054725
+        },
+        "real_s": 84.4,
+        "stations": {
+          "S1": {
+            "end_reason": "batch_complete",
+            "missing": 0,
+            "plays": 250,
+            "ratings_accepted": 125,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S2": {
+            "end_reason": "batch_complete",
+            "missing": 0,
+            "plays": 250,
+            "ratings_accepted": 125,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          },
+          "S3": {
+            "end_reason": "batch_complete",
+            "missing": 0,
+            "plays": 250,
+            "ratings_accepted": 125,
+            "ratings_refused": {},
+            "reconnects": 0,
+            "slots": 144
+          }
+        }
+      }
+    ],
+    "startup_ms": {
+      "llm": 6897,
+      "renderer": 108
+    }
+  },
+  "evidence_files": {
+    "audit-books.csv": "81f2792b28e9d57d2eef05c7d83d8d240fdf2807b8f416d263ff31776fad48aa",
+    "audit-summary.md": "96ecbc84845ca2f6eadb66772676f21a8bb76b8528161a7dd7996c002cf30e15",
+    "completeness.txt": "c2563eb2a7264bb413f6be557aca1a0c5209603baddec2e3a34938cb78958c26",
+    "hand-tally.csv": "0d25a1242a079723e4ad406a5d514446514b054158472188f9228cffe424ef93",
+    "tally-comparison.csv": "3949399c8db09bdc32bf0a2679e5b66aaebca034ca33e813b5de86f134b31337",
+    "timing-summary.json": "76cc7a598dcf010986069c78f039986b917d49677a9357bc9114a166b14b126d",
+    "timing.csv": "8a0c0dc0857f17204654d15812a88dc330acbce496990a7a2560f208231274a3"
+  },
+  "fallback_bank": "single_recipe",
+  "format": "av-generation/dry-run-evidence",
+  "format_version": 1,
+  "generation_config_sha256": "a5e74608b9c026de9425de347417964313ee3071a31a197e1d19f74939a1cf66",
+  "kind": "synthetic",
+  "label": "synthetic",
+  "logs": {
+    "logs/commits.jsonl": "6edc93155c2cac44b6059f559d1ee3ac970e19e46f6b18b87486004b2c04a321",
+    "logs/decisions.jsonl": "0e1f095f95db4c43fb6405d97d189b8c97e4002da9ed2a28238c02ebb3fe7f1f",
+    "logs/fallback-scans.jsonl": "874fa5a444ce4f6ddaba4145523d879d843bcb16c3f91b89c5067ce9aee40c45",
+    "logs/llm-requests.jsonl": "09fb243dec3909ec334aaac370c9e63fa7e29e53a51f3fa392b854ed4cc698bd",
+    "logs/plays.jsonl": "129dd848181581451191dcecf82a315a997bd92046db457a5ad7e7518fec4661",
+    "logs/ratings.jsonl": "42fc164c530b2da310b1476bf14ad1ae8003e8ef74aa10deeac49d1ca0803346",
+    "logs/slots.jsonl": "34d7a37072c601c370532befd9b40bd4d256becb00614bd28c38caa8c4fe0198",
+    "logs/timing.jsonl": "6eb1f15652439f7abe72f07610c5ccc532cdd8c6bc2161c9a7943fdfef571ecd"
+  },
+  "machine": {
+    "cpu_count": 14,
+    "machine": "arm64",
+    "os": "Darwin",
+    "os_release": "27.2.0",
+    "python": "3.11.15"
+  },
+  "mock_llm_latency_ms": 3000,
+  "purpose": "dry_run",
+  "run_closed": true,
+  "run_id": "DEMO-dry-run-book-01",
+  "tally": {
+    "all_match": true,
+    "hand_tally_match": true,
+    "hand_tally_rows": 75,
+    "rows": 86
+  },
+  "timing": {
+    "appointment_booking_ms": 5400000,
+    "appointment_limit_ms": 4800000,
+    "appointment_ok": true,
+    "appointment_within_booking": true,
+    "appointments": 4,
+    "atom_limit_ms": 1200000,
+    "atom_ok": true,
+    "atoms": 16,
+    "clock": "scaled",
+    "clock_speed": 50.0,
+    "max_appointment": 4,
+    "max_appointment_ms": 4111786,
+    "max_atom": "Q-r4",
+    "max_atom_ms": 1047263,
+    "max_proposal_window_ms": 99975,
+    "max_round": "Q-r4 r3",
+    "max_round_ms": 282430,
+    "mean_atom_ms": 1012191,
+    "mean_round_ms": 252389,
+    "rounds": 64,
+    "startup_ms": {
+      "llm": 6897,
+      "renderer": 108
+    }
+  },
+  "zero_eligible": [
+    {
+      "atom_id": "Q-a2",
+      "book_id": "DEMO-BK-H9TC",
+      "expect": "bank"
+    },
+    {
+      "atom_id": "K-a4",
+      "book_id": "DEMO-BK-H9TC",
+      "expect": "book"
+    }
+  ]
+}

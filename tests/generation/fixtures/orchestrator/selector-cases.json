@@ -1,0 +1,97 @@
+{
+  "description": "Hand-computed selector fixtures (#20; Study A protocol 3.3). A rating is [association, distinguishability, comfort] or null (missing); distinguishability is ignored and fixed at 4 when first_atom is true. Candidates are listed out of slot order on purpose. Expected scores are exact fractions.",
+  "cases": [
+    {
+      "name": "three acceptable ratings: mean of (a + d) / 2",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 1, "valid": true, "ratings": [[5, 3, "acceptable"], [6, 4, "acceptable"], [7, 2, "acceptable"]]}
+      ],
+      "expected": {"incumbent": 1, "score": "9/2", "eligible": [true], "scores": ["9/2"], "flagged": [false]}
+    },
+    {
+      "name": "one of three comfort-acceptable ratings is ineligible, even with the top score",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 1, "valid": true, "ratings": [[7, 7, "acceptable"], [7, 7, "unacceptable"], [7, 7, "unacceptable"]]},
+        {"slot_index": 2, "valid": true, "ratings": [[3, 3, "acceptable"], [4, 2, "acceptable"], [1, 1, "unacceptable"]]}
+      ],
+      "expected": {"incumbent": 2, "score": "7/3", "eligible": [false, true], "scores": ["7", "7/3"], "flagged": [false, false]}
+    },
+    {
+      "name": "equal scores: the lowest submission slot wins",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 3, "valid": true, "ratings": [[2, 6, "acceptable"], [6, 2, "acceptable"], [4, 4, "acceptable"]]},
+        {"slot_index": 1, "valid": true, "ratings": [[5, 3, "acceptable"], [3, 5, "acceptable"], [4, 4, "unacceptable"]]},
+        {"slot_index": 2, "valid": true, "ratings": [[4, 4, "acceptable"], [4, 4, "acceptable"], [4, 4, "acceptable"]]}
+      ],
+      "expected": {"incumbent": 1, "score": "4", "eligible": [true, true, true], "scores": ["4", "4", "4"], "flagged": [false, false, false]}
+    },
+    {
+      "name": "a later round with an equal score does not replace the incumbent",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 7, "valid": true, "ratings": [[5, 5, "acceptable"], [6, 4, "acceptable"], [4, 6, "acceptable"]]},
+        {"slot_index": 2, "valid": true, "ratings": [[5, 5, "acceptable"], [5, 5, "acceptable"], [5, 5, "unacceptable"]]}
+      ],
+      "expected": {"incumbent": 2, "score": "5", "eligible": [true, true], "scores": ["5", "5"], "flagged": [false, false]}
+    },
+    {
+      "name": "a later round with a higher score replaces the incumbent",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 2, "valid": true, "ratings": [[5, 5, "acceptable"], [5, 5, "acceptable"], [5, 5, "acceptable"]]},
+        {"slot_index": 10, "valid": true, "ratings": [[6, 5, "acceptable"], [6, 5, "acceptable"], [5, 6, "acceptable"]]}
+      ],
+      "expected": {"incumbent": 10, "score": "11/2", "eligible": [true, true], "scores": ["5", "11/2"], "flagged": [false, false]}
+    },
+    {
+      "name": "first atom: distinguishability is fixed at 4 whatever the record holds",
+      "first_atom": true,
+      "candidates": [
+        {"slot_index": 1, "valid": true, "ratings": [[6, 4, "acceptable"], [2, 7, "acceptable"], [7, 1, "unacceptable"]]},
+        {"slot_index": 2, "valid": true, "ratings": [[4, 4, "acceptable"], [4, 4, "acceptable"], [4, 4, "acceptable"]]}
+      ],
+      "expected": {"incumbent": 1, "score": "9/2", "eligible": [true, true], "scores": ["9/2", "4"], "flagged": [false, false]}
+    },
+    {
+      "name": "a missing rating: score from two raters, flagged; missing comfort is not acceptable",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 1, "valid": true, "ratings": [[6, 6, "acceptable"], [4, 4, "acceptable"], null]},
+        {"slot_index": 2, "valid": true, "ratings": [[7, 7, "acceptable"], [7, 7, "unacceptable"], null]}
+      ],
+      "expected": {"incumbent": 1, "score": "5", "eligible": [true, false], "scores": ["5", "7"], "flagged": [true, true]}
+    },
+    {
+      "name": "an invalid candidate (placeholder) is never eligible",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 1, "valid": false, "ratings": []},
+        {"slot_index": 2, "valid": true, "ratings": [[2, 2, "acceptable"], [2, 2, "acceptable"], [1, 1, "unacceptable"]]}
+      ],
+      "expected": {"incumbent": 2, "score": "5/3", "eligible": [false, true], "scores": [null, "5/3"], "flagged": [false, false]}
+    },
+    {
+      "name": "no eligible candidate after 12 slots: no incumbent (bank scan follows)",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 4, "valid": true, "ratings": [[7, 7, "unacceptable"], [7, 7, "unacceptable"], [7, 7, "acceptable"]]},
+        {"slot_index": 9, "valid": false, "ratings": []},
+        {"slot_index": 12, "valid": true, "ratings": [null, null, null]}
+      ],
+      "expected": {"incumbent": null, "score": null, "eligible": [false, false, false], "scores": ["7", null, null], "flagged": [false, false, true]}
+    },
+    {
+      "name": "exact sixths: equal 7/6 scores tie to the lowest slot",
+      "first_atom": false,
+      "candidates": [
+        {"slot_index": 6, "valid": true, "ratings": [[1, 1, "acceptable"], [1, 1, "acceptable"], [1, 2, "acceptable"]]},
+        {"slot_index": 5, "valid": true, "ratings": [[2, 1, "acceptable"], [1, 1, "acceptable"], [1, 1, "acceptable"]]},
+        {"slot_index": 8, "valid": true, "ratings": [[1, 1, "acceptable"], [1, 1, "acceptable"], [1, 1, "acceptable"]]}
+      ],
+      "expected": {"incumbent": 5, "score": "7/6", "eligible": [true, true, true], "scores": ["7/6", "7/6", "1"], "flagged": [false, false, false]}
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Pinned R environment for the supporting GLMMs (#34). One record, Key: value.
+# R: exact R version (CI: r-lib/actions/setup-r r-version, checked by the tests).
+# Snapshot: Posit Package Manager CRAN snapshot date; install.R installs every package
+# (and its dependencies) from that dated snapshot, check_pins.R verifies the versions.
+R: 4.6.1
+Snapshot: 2026-09-01
+Matrix: 1.7-6
+jsonlite: 2.0.0
+lme4: 2.0-6

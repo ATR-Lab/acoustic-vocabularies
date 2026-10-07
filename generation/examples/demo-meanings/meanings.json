@@ -1,0 +1,24 @@
+{
+  "demo": true,
+  "format": "av-generation/meanings",
+  "format_version": 1,
+  "meanings": {
+    "A": "DEMO placeholder meaning for A (synthetic text, not a study text)",
+    "ADD_ONE": "DEMO placeholder meaning for ADD_ONE (synthetic text, not a study text)",
+    "ALIGN_ARROW": "DEMO placeholder meaning for ALIGN_ARROW (synthetic text, not a study text)",
+    "B": "DEMO placeholder meaning for B (synthetic text, not a study text)",
+    "C": "DEMO placeholder meaning for C (synthetic text, not a study text)",
+    "CLOSE": "DEMO placeholder meaning for CLOSE (synthetic text, not a study text)",
+    "D": "DEMO placeholder meaning for D (synthetic text, not a study text)",
+    "E": "DEMO placeholder meaning for E (synthetic text, not a study text)",
+    "F": "DEMO placeholder meaning for F (synthetic text, not a study text)",
+    "FLIP_CARD": "DEMO placeholder meaning for FLIP_CARD (synthetic text, not a study text)",
+    "G": "DEMO placeholder meaning for G (synthetic text, not a study text)",
+    "H": "DEMO placeholder meaning for H (synthetic text, not a study text)",
+    "QUARANTINE": "DEMO placeholder meaning for QUARANTINE (synthetic text, not a study text)",
+    "REMOVE_ONE": "DEMO placeholder meaning for REMOVE_ONE (synthetic text, not a study text)",
+    "SCAN": "DEMO placeholder meaning for SCAN (synthetic text, not a study text)",
+    "TAG": "DEMO placeholder meaning for TAG (synthetic text, not a study text)"
+  },
+  "name": "DEMO-meanings-01"
+}

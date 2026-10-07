@@ -1,0 +1,582 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/slot-record.schema.json",
+  "title": "Slot ledger record",
+  "description": "Exactly one record per consumed proposal slot of A1, A2, A3 or the Study B bank builder, whatever the outcome (#17; Study A protocol §3.3, Study B protocol §4). Every outcome consumes the slot. validator_codes lists every failing validator reason code (av_sound REASON_CODES order); outcome is chosen by av_generation.outcomes. Times are run-clock milliseconds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "a2",
+    "atom_id",
+    "attempt",
+    "bank_id",
+    "batch_id",
+    "book_id",
+    "design_ms",
+    "designer_id",
+    "file_sha256",
+    "latency_ms",
+    "llm_status",
+    "method",
+    "outcome",
+    "pcm_sha256",
+    "practice",
+    "profile",
+    "prompt_sha256",
+    "raw_output",
+    "recipe",
+    "recipe_sha256",
+    "record",
+    "record_version",
+    "round",
+    "run_id",
+    "schema_sha256",
+    "seed",
+    "seed_key",
+    "slot",
+    "slot_id",
+    "slot_index",
+    "study",
+    "t_ms",
+    "t_open_ms",
+    "tokens_in",
+    "tokens_out",
+    "validator_codes",
+    "validator_messages"
+  ],
+  "properties": {
+    "record": {
+      "const": "slot"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "study": {
+      "$ref": "common.schema.json#/$defs/study"
+    },
+    "method": {
+      "$ref": "common.schema.json#/$defs/method"
+    },
+    "slot_id": {
+      "$ref": "common.schema.json#/$defs/slot_id"
+    },
+    "profile": {
+      "$ref": "common.schema.json#/$defs/profile"
+    },
+    "atom_id": {
+      "$ref": "common.schema.json#/$defs/atom_id"
+    },
+    "slot": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "slot_index": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "outcome": {
+      "$ref": "common.schema.json#/$defs/outcome"
+    },
+    "t_open_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "batch_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "book_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/book_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bank_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "round": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "practice": {
+      "type": "boolean"
+    },
+    "designer_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/coded_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "seed_key": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/seed_key"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "seed": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/seed"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "prompt_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "llm_status": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/llm_status"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tokens_in": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tokens_out": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latency_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "design_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "raw_output": {
+      "oneOf": [
+        {
+          "type": "string",
+          "maxLength": 65536
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recipe": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/recipe"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recipe_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "validator_codes": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/validator_code"
+      },
+      "uniqueItems": true
+    },
+    "validator_messages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 400
+      }
+    },
+    "pcm_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "file_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "a2": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "mutations",
+            "parent_slot_id"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "uniform",
+                "mutation"
+              ]
+            },
+            "parent_slot_id": {
+              "oneOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/proposal_slot_id"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mutations": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "coordinate",
+                  "corrected",
+                  "original",
+                  "reflected",
+                  "result",
+                  "step"
+                ],
+                "properties": {
+                  "coordinate": {
+                    "$ref": "common.schema.json#/$defs/coordinate"
+                  },
+                  "original": {
+                    "$ref": "common.schema.json#/$defs/value"
+                  },
+                  "step": {
+                    "type": "integer",
+                    "minimum": -3,
+                    "maximum": 3,
+                    "not": {
+                      "const": 0
+                    }
+                  },
+                  "reflected": {
+                    "$ref": "common.schema.json#/$defs/value"
+                  },
+                  "result": {
+                    "$ref": "common.schema.json#/$defs/value"
+                  },
+                  "corrected": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "study": {
+            "const": "A"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "method": {
+            "$ref": "common.schema.json#/$defs/study_a_method"
+          },
+          "slot_id": {
+            "$ref": "common.schema.json#/$defs/proposal_slot_id"
+          },
+          "batch_id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "book_id": {
+            "$ref": "common.schema.json#/$defs/book_id"
+          },
+          "round": {
+            "type": "integer"
+          },
+          "slot": {
+            "maximum": 3
+          },
+          "bank_id": {
+            "type": "null"
+          },
+          "attempt": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "study": {
+            "const": "B"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "method": {
+            "const": "B"
+          },
+          "slot_id": {
+            "$ref": "common.schema.json#/$defs/bank_slot_id"
+          },
+          "bank_id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "attempt": {
+            "type": "integer"
+          },
+          "batch_id": {
+            "type": "null"
+          },
+          "book_id": {
+            "type": "null"
+          },
+          "round": {
+            "type": "null"
+          },
+          "practice": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "method": {
+            "const": "A2"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "a2": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "mutations",
+              "parent_slot_id"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "uniform",
+                  "mutation"
+                ]
+              },
+              "parent_slot_id": {
+                "oneOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/proposal_slot_id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "mutations": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "coordinate",
+                    "corrected",
+                    "original",
+                    "reflected",
+                    "result",
+                    "step"
+                  ],
+                  "properties": {
+                    "coordinate": {
+                      "$ref": "common.schema.json#/$defs/coordinate"
+                    },
+                    "original": {
+                      "$ref": "common.schema.json#/$defs/value"
+                    },
+                    "step": {
+                      "type": "integer",
+                      "minimum": -3,
+                      "maximum": 3,
+                      "not": {
+                        "const": 0
+                      }
+                    },
+                    "reflected": {
+                      "$ref": "common.schema.json#/$defs/value"
+                    },
+                    "result": {
+                      "$ref": "common.schema.json#/$defs/value"
+                    },
+                    "corrected": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "a2": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "valid"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "recipe": {
+            "$ref": "common.schema.json#/$defs/recipe"
+          },
+          "recipe_sha256": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "pcm_sha256": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "validator_codes": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

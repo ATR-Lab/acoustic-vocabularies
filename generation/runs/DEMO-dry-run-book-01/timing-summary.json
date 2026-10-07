@@ -1,0 +1,26 @@
+{
+  "appointment_booking_ms": 5400000,
+  "appointment_limit_ms": 4800000,
+  "appointment_ok": true,
+  "appointment_within_booking": true,
+  "appointments": 4,
+  "atom_limit_ms": 1200000,
+  "atom_ok": true,
+  "atoms": 16,
+  "clock": "scaled",
+  "clock_speed": 50.0,
+  "max_appointment": 4,
+  "max_appointment_ms": 4111786,
+  "max_atom": "Q-r4",
+  "max_atom_ms": 1047263,
+  "max_proposal_window_ms": 99975,
+  "max_round": "Q-r4 r3",
+  "max_round_ms": 282430,
+  "mean_atom_ms": 1012191,
+  "mean_round_ms": 252389,
+  "rounds": 64,
+  "startup_ms": {
+    "llm": 6897,
+    "renderer": 108
+  }
+}

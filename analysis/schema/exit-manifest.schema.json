@@ -1,0 +1,146 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/exit-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SHA-256 and size of every raw file of a visit, saved when the session closes (Common procedures section 7: save and hash raw logs at exit). Check C1 compares the files with it. A documented projection of the data logger's export manifest (#72 ExportBundle; field map in docs/interfaces/analysis.md), written when an export is imported into a data root (agreement Pending, #72/#73); the synthetic log generator (#33) writes it with source null.",
+  "properties": {
+    "closed": {
+      "description": "interrupted: partial logs preserved after a stop or crash (an unacknowledged torn tail, or no visit_complete record).",
+      "enum": [
+        "complete",
+        "interrupted"
+      ]
+    },
+    "data_kind": {
+      "description": "Watermark (paths).",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "files": {
+      "description": "Every other file of the folder, sorted by path.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "description": "POSIX path relative to the folder or data root.",
+            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "format": {
+      "const": "av-analysis/exit-manifest"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "session_id": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": "string"
+    },
+    "source": {
+      "additionalProperties": false,
+      "description": "Projection of the station's ExportBundle manifest (#72, docs/data/README.md) this folder was imported from; null only for folders written by the synthetic generator. A REAL root requires it.",
+      "properties": {
+        "build_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "export_id": {
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "exposure_rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "format": {
+          "description": "ExportBundle schema_version (e.g. data-export-provisional-1).",
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "headers_qualified": {
+          "type": "boolean"
+        },
+        "manifest_sha256": {
+          "description": "SHA-256 of the original export manifest bytes (supplied out of band, as the producer requires to reopen an export).",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "protocol_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "record_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "trial_rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unacknowledged_torn_tail": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "format",
+        "export_id",
+        "manifest_sha256",
+        "protocol_version",
+        "build_sha256",
+        "headers_qualified",
+        "unacknowledged_torn_tail",
+        "record_count",
+        "trial_rows",
+        "exposure_rows"
+      ],
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "station_id": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "visit_id": {
+      "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "data_kind",
+    "visit_id",
+    "session_id",
+    "station_id",
+    "closed",
+    "source",
+    "files"
+  ],
+  "title": "Exit manifest of a raw visit folder (raw/<visit_id>/exit-manifest.json)",
+  "type": "object"
+}

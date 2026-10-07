@@ -1,0 +1,2234 @@
+{
+  "allocation_seed": "sha256:4ca709c932c03c69127bfc3b263c1cfab39ab7357ccf5e84d5ca87967960cbf8",
+  "audience": "learner-facing",
+  "counts": {
+    "batches": 18,
+    "slots": 216,
+    "slots_per_batch": 12,
+    "waves": 6
+  },
+  "demo": true,
+  "design_table_sha256": "8415393ab4b4908fc526b0c955c7950f36526266c0a29c386b29b053d55efb23",
+  "format": "av-schedules/a-slots",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "list_sha256": "fd0a3a966543e048ba07b92cda3c4e5688b438ca1b523c92f07246c2bb50dc1d",
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "slots": [
+    {
+      "book_id": "BK-C-7YRHVY",
+      "order": 1,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-C11-L01",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-KWKJXK",
+      "order": 2,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-C11-L02",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-KWKJXK",
+      "order": 3,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-C11-L03",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K7BBGB",
+      "order": 4,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-C11-L04",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7YRHVY",
+      "order": 5,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-C11-L05",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7YRHVY",
+      "order": 6,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-C11-L06",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7YRHVY",
+      "order": 7,
+      "profile": "P3",
+      "slot": "L07",
+      "slot_id": "A-C11-L07",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K7BBGB",
+      "order": 8,
+      "profile": "P3",
+      "slot": "L08",
+      "slot_id": "A-C11-L08",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K7BBGB",
+      "order": 9,
+      "profile": "P3",
+      "slot": "L09",
+      "slot_id": "A-C11-L09",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-KWKJXK",
+      "order": 10,
+      "profile": "P3",
+      "slot": "L10",
+      "slot_id": "A-C11-L10",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K7BBGB",
+      "order": 11,
+      "profile": "P3",
+      "slot": "L11",
+      "slot_id": "A-C11-L11",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-KWKJXK",
+      "order": 12,
+      "profile": "P3",
+      "slot": "L12",
+      "slot_id": "A-C11-L12",
+      "unit_id": "A-C11",
+      "wave": 1,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-WCBBQP",
+      "order": 13,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-C06-L01",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-NNWQBN",
+      "order": 14,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-C06-L02",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WCBBQP",
+      "order": 15,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-C06-L03",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-NNWQBN",
+      "order": 16,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-C06-L04",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQJ7WB",
+      "order": 17,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-C06-L05",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQJ7WB",
+      "order": 18,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-C06-L06",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-NNWQBN",
+      "order": 19,
+      "profile": "P2",
+      "slot": "L07",
+      "slot_id": "A-C06-L07",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WCBBQP",
+      "order": 20,
+      "profile": "P2",
+      "slot": "L08",
+      "slot_id": "A-C06-L08",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQJ7WB",
+      "order": 21,
+      "profile": "P2",
+      "slot": "L09",
+      "slot_id": "A-C06-L09",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WCBBQP",
+      "order": 22,
+      "profile": "P2",
+      "slot": "L10",
+      "slot_id": "A-C06-L10",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-NNWQBN",
+      "order": 23,
+      "profile": "P2",
+      "slot": "L11",
+      "slot_id": "A-C06-L11",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQJ7WB",
+      "order": 24,
+      "profile": "P2",
+      "slot": "L12",
+      "slot_id": "A-C06-L12",
+      "unit_id": "A-C06",
+      "wave": 1,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-5CT8XW",
+      "order": 25,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-C02-L01",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GHF6VR",
+      "order": 26,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-C02-L02",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-5CT8XW",
+      "order": 27,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-C02-L03",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9TBH4T",
+      "order": 28,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-C02-L04",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GHF6VR",
+      "order": 29,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-C02-L05",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GHF6VR",
+      "order": 30,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-C02-L06",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-5CT8XW",
+      "order": 31,
+      "profile": "P1",
+      "slot": "L07",
+      "slot_id": "A-C02-L07",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GHF6VR",
+      "order": 32,
+      "profile": "P1",
+      "slot": "L08",
+      "slot_id": "A-C02-L08",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9TBH4T",
+      "order": 33,
+      "profile": "P1",
+      "slot": "L09",
+      "slot_id": "A-C02-L09",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9TBH4T",
+      "order": 34,
+      "profile": "P1",
+      "slot": "L10",
+      "slot_id": "A-C02-L10",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9TBH4T",
+      "order": 35,
+      "profile": "P1",
+      "slot": "L11",
+      "slot_id": "A-C02-L11",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-5CT8XW",
+      "order": 36,
+      "profile": "P1",
+      "slot": "L12",
+      "slot_id": "A-C02-L12",
+      "unit_id": "A-C02",
+      "wave": 1,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-VNM5KC",
+      "order": 37,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-C14-L01",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7M696X",
+      "order": 38,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-C14-L02",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-VNM5KC",
+      "order": 39,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-C14-L03",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HCYQMB",
+      "order": 40,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-C14-L04",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HCYQMB",
+      "order": 41,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-C14-L05",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7M696X",
+      "order": 42,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-C14-L06",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7M696X",
+      "order": 43,
+      "profile": "P2",
+      "slot": "L07",
+      "slot_id": "A-C14-L07",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-VNM5KC",
+      "order": 44,
+      "profile": "P2",
+      "slot": "L08",
+      "slot_id": "A-C14-L08",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-VNM5KC",
+      "order": 45,
+      "profile": "P2",
+      "slot": "L09",
+      "slot_id": "A-C14-L09",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HCYQMB",
+      "order": 46,
+      "profile": "P2",
+      "slot": "L10",
+      "slot_id": "A-C14-L10",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HCYQMB",
+      "order": 47,
+      "profile": "P2",
+      "slot": "L11",
+      "slot_id": "A-C14-L11",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-7M696X",
+      "order": 48,
+      "profile": "P2",
+      "slot": "L12",
+      "slot_id": "A-C14-L12",
+      "unit_id": "A-C14",
+      "wave": 2,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-RHFH4Y",
+      "order": 49,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-C03-L01",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WRXF5G",
+      "order": 50,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-C03-L02",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WRXF5G",
+      "order": 51,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-C03-L03",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQX9BT",
+      "order": 52,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-C03-L04",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQX9BT",
+      "order": 53,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-C03-L05",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WRXF5G",
+      "order": 54,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-C03-L06",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RHFH4Y",
+      "order": 55,
+      "profile": "P1",
+      "slot": "L07",
+      "slot_id": "A-C03-L07",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQX9BT",
+      "order": 56,
+      "profile": "P1",
+      "slot": "L08",
+      "slot_id": "A-C03-L08",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WRXF5G",
+      "order": 57,
+      "profile": "P1",
+      "slot": "L09",
+      "slot_id": "A-C03-L09",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RHFH4Y",
+      "order": 58,
+      "profile": "P1",
+      "slot": "L10",
+      "slot_id": "A-C03-L10",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RHFH4Y",
+      "order": 59,
+      "profile": "P1",
+      "slot": "L11",
+      "slot_id": "A-C03-L11",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-RQX9BT",
+      "order": 60,
+      "profile": "P1",
+      "slot": "L12",
+      "slot_id": "A-C03-L12",
+      "unit_id": "A-C03",
+      "wave": 2,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-9RX6Y4",
+      "order": 61,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-C10-L01",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PCNB9J",
+      "order": 62,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-C10-L02",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PCNB9J",
+      "order": 63,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-C10-L03",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BXBGP6",
+      "order": 64,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-C10-L04",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PCNB9J",
+      "order": 65,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-C10-L05",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9RX6Y4",
+      "order": 66,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-C10-L06",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PCNB9J",
+      "order": 67,
+      "profile": "P3",
+      "slot": "L07",
+      "slot_id": "A-C10-L07",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BXBGP6",
+      "order": 68,
+      "profile": "P3",
+      "slot": "L08",
+      "slot_id": "A-C10-L08",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9RX6Y4",
+      "order": 69,
+      "profile": "P3",
+      "slot": "L09",
+      "slot_id": "A-C10-L09",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BXBGP6",
+      "order": 70,
+      "profile": "P3",
+      "slot": "L10",
+      "slot_id": "A-C10-L10",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BXBGP6",
+      "order": 71,
+      "profile": "P3",
+      "slot": "L11",
+      "slot_id": "A-C10-L11",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9RX6Y4",
+      "order": 72,
+      "profile": "P3",
+      "slot": "L12",
+      "slot_id": "A-C10-L12",
+      "unit_id": "A-C10",
+      "wave": 2,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-HC46HY",
+      "order": 73,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-C16-L01",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-6BF944",
+      "order": 74,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-C16-L02",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HC46HY",
+      "order": 75,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-C16-L03",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-6BF944",
+      "order": 76,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-C16-L04",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-PPTH8W",
+      "order": 77,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-C16-L05",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-PPTH8W",
+      "order": 78,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-C16-L06",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-6BF944",
+      "order": 79,
+      "profile": "P1",
+      "slot": "L07",
+      "slot_id": "A-C16-L07",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-PPTH8W",
+      "order": 80,
+      "profile": "P1",
+      "slot": "L08",
+      "slot_id": "A-C16-L08",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-PPTH8W",
+      "order": 81,
+      "profile": "P1",
+      "slot": "L09",
+      "slot_id": "A-C16-L09",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HC46HY",
+      "order": 82,
+      "profile": "P1",
+      "slot": "L10",
+      "slot_id": "A-C16-L10",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-6BF944",
+      "order": 83,
+      "profile": "P1",
+      "slot": "L11",
+      "slot_id": "A-C16-L11",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-HC46HY",
+      "order": 84,
+      "profile": "P1",
+      "slot": "L12",
+      "slot_id": "A-C16-L12",
+      "unit_id": "A-C16",
+      "wave": 3,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-6557V4",
+      "order": 85,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-C09-L01",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-7BKNFF",
+      "order": 86,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-C09-L02",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-7BKNFF",
+      "order": 87,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-C09-L03",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-6557V4",
+      "order": 88,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-C09-L04",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-XG8VWJ",
+      "order": 89,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-C09-L05",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-7BKNFF",
+      "order": 90,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-C09-L06",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-7BKNFF",
+      "order": 91,
+      "profile": "P3",
+      "slot": "L07",
+      "slot_id": "A-C09-L07",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-6557V4",
+      "order": 92,
+      "profile": "P3",
+      "slot": "L08",
+      "slot_id": "A-C09-L08",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-XG8VWJ",
+      "order": 93,
+      "profile": "P3",
+      "slot": "L09",
+      "slot_id": "A-C09-L09",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-XG8VWJ",
+      "order": 94,
+      "profile": "P3",
+      "slot": "L10",
+      "slot_id": "A-C09-L10",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-6557V4",
+      "order": 95,
+      "profile": "P3",
+      "slot": "L11",
+      "slot_id": "A-C09-L11",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-XG8VWJ",
+      "order": 96,
+      "profile": "P3",
+      "slot": "L12",
+      "slot_id": "A-C09-L12",
+      "unit_id": "A-C09",
+      "wave": 3,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-BKVBF9",
+      "order": 97,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-C07-L01",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-T4Q7PK",
+      "order": 98,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-C07-L02",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-T4Q7PK",
+      "order": 99,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-C07-L03",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BKVBF9",
+      "order": 100,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-C07-L04",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-T4Q7PK",
+      "order": 101,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-C07-L05",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-T4Q7PK",
+      "order": 102,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-C07-L06",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-J5X44F",
+      "order": 103,
+      "profile": "P2",
+      "slot": "L07",
+      "slot_id": "A-C07-L07",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BKVBF9",
+      "order": 104,
+      "profile": "P2",
+      "slot": "L08",
+      "slot_id": "A-C07-L08",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-J5X44F",
+      "order": 105,
+      "profile": "P2",
+      "slot": "L09",
+      "slot_id": "A-C07-L09",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-J5X44F",
+      "order": 106,
+      "profile": "P2",
+      "slot": "L10",
+      "slot_id": "A-C07-L10",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-J5X44F",
+      "order": 107,
+      "profile": "P2",
+      "slot": "L11",
+      "slot_id": "A-C07-L11",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-BKVBF9",
+      "order": 108,
+      "profile": "P2",
+      "slot": "L12",
+      "slot_id": "A-C07-L12",
+      "unit_id": "A-C07",
+      "wave": 3,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GXGC6T",
+      "order": 109,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-C01-L01",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-V54BM6",
+      "order": 110,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-C01-L02",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-GXGC6T",
+      "order": 111,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-C01-L03",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-V54BM6",
+      "order": 112,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-C01-L04",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-CBVP7N",
+      "order": 113,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-C01-L05",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-GXGC6T",
+      "order": 114,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-C01-L06",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-CBVP7N",
+      "order": 115,
+      "profile": "P1",
+      "slot": "L07",
+      "slot_id": "A-C01-L07",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-CBVP7N",
+      "order": 116,
+      "profile": "P1",
+      "slot": "L08",
+      "slot_id": "A-C01-L08",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-GXGC6T",
+      "order": 117,
+      "profile": "P1",
+      "slot": "L09",
+      "slot_id": "A-C01-L09",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-CBVP7N",
+      "order": 118,
+      "profile": "P1",
+      "slot": "L10",
+      "slot_id": "A-C01-L10",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-V54BM6",
+      "order": 119,
+      "profile": "P1",
+      "slot": "L11",
+      "slot_id": "A-C01-L11",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-V54BM6",
+      "order": 120,
+      "profile": "P1",
+      "slot": "L12",
+      "slot_id": "A-C01-L12",
+      "unit_id": "A-C01",
+      "wave": 4,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-MW5K5V",
+      "order": 121,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-C12-L01",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-46W5MX",
+      "order": 122,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-C12-L02",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-46W5MX",
+      "order": 123,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-C12-L03",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-8Q9T95",
+      "order": 124,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-C12-L04",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-46W5MX",
+      "order": 125,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-C12-L05",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-MW5K5V",
+      "order": 126,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-C12-L06",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-8Q9T95",
+      "order": 127,
+      "profile": "P3",
+      "slot": "L07",
+      "slot_id": "A-C12-L07",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-MW5K5V",
+      "order": 128,
+      "profile": "P3",
+      "slot": "L08",
+      "slot_id": "A-C12-L08",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-8Q9T95",
+      "order": 129,
+      "profile": "P3",
+      "slot": "L09",
+      "slot_id": "A-C12-L09",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-MW5K5V",
+      "order": 130,
+      "profile": "P3",
+      "slot": "L10",
+      "slot_id": "A-C12-L10",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-46W5MX",
+      "order": 131,
+      "profile": "P3",
+      "slot": "L11",
+      "slot_id": "A-C12-L11",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-8Q9T95",
+      "order": 132,
+      "profile": "P3",
+      "slot": "L12",
+      "slot_id": "A-C12-L12",
+      "unit_id": "A-C12",
+      "wave": 4,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-4RBM7Q",
+      "order": 133,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-C13-L01",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-4RBM7Q",
+      "order": 134,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-C13-L02",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PMCQMK",
+      "order": 135,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-C13-L03",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PMCQMK",
+      "order": 136,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-C13-L04",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-4RBM7Q",
+      "order": 137,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-C13-L05",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-HF5MHK",
+      "order": 138,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-C13-L06",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PMCQMK",
+      "order": 139,
+      "profile": "P2",
+      "slot": "L07",
+      "slot_id": "A-C13-L07",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-HF5MHK",
+      "order": 140,
+      "profile": "P2",
+      "slot": "L08",
+      "slot_id": "A-C13-L08",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-HF5MHK",
+      "order": 141,
+      "profile": "P2",
+      "slot": "L09",
+      "slot_id": "A-C13-L09",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-HF5MHK",
+      "order": 142,
+      "profile": "P2",
+      "slot": "L10",
+      "slot_id": "A-C13-L10",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-PMCQMK",
+      "order": 143,
+      "profile": "P2",
+      "slot": "L11",
+      "slot_id": "A-C13-L11",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-4RBM7Q",
+      "order": 144,
+      "profile": "P2",
+      "slot": "L12",
+      "slot_id": "A-C13-L12",
+      "unit_id": "A-C13",
+      "wave": 4,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-FPG9MR",
+      "order": 145,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-C05-L01",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-99BK5Y",
+      "order": 146,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-C05-L02",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-FPG9MR",
+      "order": 147,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-C05-L03",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-FPG9MR",
+      "order": 148,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-C05-L04",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K4WJVN",
+      "order": 149,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-C05-L05",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-99BK5Y",
+      "order": 150,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-C05-L06",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-99BK5Y",
+      "order": 151,
+      "profile": "P2",
+      "slot": "L07",
+      "slot_id": "A-C05-L07",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-99BK5Y",
+      "order": 152,
+      "profile": "P2",
+      "slot": "L08",
+      "slot_id": "A-C05-L08",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K4WJVN",
+      "order": 153,
+      "profile": "P2",
+      "slot": "L09",
+      "slot_id": "A-C05-L09",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K4WJVN",
+      "order": 154,
+      "profile": "P2",
+      "slot": "L10",
+      "slot_id": "A-C05-L10",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K4WJVN",
+      "order": 155,
+      "profile": "P2",
+      "slot": "L11",
+      "slot_id": "A-C05-L11",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-FPG9MR",
+      "order": 156,
+      "profile": "P2",
+      "slot": "L12",
+      "slot_id": "A-C05-L12",
+      "unit_id": "A-C05",
+      "wave": 5,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-GXF67C",
+      "order": 157,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-C15-L01",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-CTJ49M",
+      "order": 158,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-C15-L02",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-CTJ49M",
+      "order": 159,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-C15-L03",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WK94HY",
+      "order": 160,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-C15-L04",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-CTJ49M",
+      "order": 161,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-C15-L05",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WK94HY",
+      "order": 162,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-C15-L06",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-GXF67C",
+      "order": 163,
+      "profile": "P1",
+      "slot": "L07",
+      "slot_id": "A-C15-L07",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-CTJ49M",
+      "order": 164,
+      "profile": "P1",
+      "slot": "L08",
+      "slot_id": "A-C15-L08",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WK94HY",
+      "order": 165,
+      "profile": "P1",
+      "slot": "L09",
+      "slot_id": "A-C15-L09",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-GXF67C",
+      "order": 166,
+      "profile": "P1",
+      "slot": "L10",
+      "slot_id": "A-C15-L10",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-GXF67C",
+      "order": 167,
+      "profile": "P1",
+      "slot": "L11",
+      "slot_id": "A-C15-L11",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-WK94HY",
+      "order": 168,
+      "profile": "P1",
+      "slot": "L12",
+      "slot_id": "A-C15-L12",
+      "unit_id": "A-C15",
+      "wave": 5,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-9KVNX6",
+      "order": 169,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-C18-L01",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-FXX6PH",
+      "order": 170,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-C18-L02",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GH87TM",
+      "order": 171,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-C18-L03",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GH87TM",
+      "order": 172,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-C18-L04",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-FXX6PH",
+      "order": 173,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-C18-L05",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-FXX6PH",
+      "order": 174,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-C18-L06",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GH87TM",
+      "order": 175,
+      "profile": "P3",
+      "slot": "L07",
+      "slot_id": "A-C18-L07",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-GH87TM",
+      "order": 176,
+      "profile": "P3",
+      "slot": "L08",
+      "slot_id": "A-C18-L08",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-FXX6PH",
+      "order": 177,
+      "profile": "P3",
+      "slot": "L09",
+      "slot_id": "A-C18-L09",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9KVNX6",
+      "order": 178,
+      "profile": "P3",
+      "slot": "L10",
+      "slot_id": "A-C18-L10",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9KVNX6",
+      "order": 179,
+      "profile": "P3",
+      "slot": "L11",
+      "slot_id": "A-C18-L11",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-9KVNX6",
+      "order": 180,
+      "profile": "P3",
+      "slot": "L12",
+      "slot_id": "A-C18-L12",
+      "unit_id": "A-C18",
+      "wave": 5,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-K8RRPJ",
+      "order": 181,
+      "profile": "P3",
+      "slot": "L01",
+      "slot_id": "A-C17-L01",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-8WG9JF",
+      "order": 182,
+      "profile": "P3",
+      "slot": "L02",
+      "slot_id": "A-C17-L02",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-Q4JVHV",
+      "order": 183,
+      "profile": "P3",
+      "slot": "L03",
+      "slot_id": "A-C17-L03",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-8WG9JF",
+      "order": 184,
+      "profile": "P3",
+      "slot": "L04",
+      "slot_id": "A-C17-L04",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K8RRPJ",
+      "order": 185,
+      "profile": "P3",
+      "slot": "L05",
+      "slot_id": "A-C17-L05",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-Q4JVHV",
+      "order": 186,
+      "profile": "P3",
+      "slot": "L06",
+      "slot_id": "A-C17-L06",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-Q4JVHV",
+      "order": 187,
+      "profile": "P3",
+      "slot": "L07",
+      "slot_id": "A-C17-L07",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K8RRPJ",
+      "order": 188,
+      "profile": "P3",
+      "slot": "L08",
+      "slot_id": "A-C17-L08",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-Q4JVHV",
+      "order": 189,
+      "profile": "P3",
+      "slot": "L09",
+      "slot_id": "A-C17-L09",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-8WG9JF",
+      "order": 190,
+      "profile": "P3",
+      "slot": "L10",
+      "slot_id": "A-C17-L10",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-K8RRPJ",
+      "order": 191,
+      "profile": "P3",
+      "slot": "L11",
+      "slot_id": "A-C17-L11",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-8WG9JF",
+      "order": 192,
+      "profile": "P3",
+      "slot": "L12",
+      "slot_id": "A-C17-L12",
+      "unit_id": "A-C17",
+      "wave": 6,
+      "wave_position": 1
+    },
+    {
+      "book_id": "BK-C-FGFWWM",
+      "order": 193,
+      "profile": "P2",
+      "slot": "L01",
+      "slot_id": "A-C08-L01",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-M7F6PJ",
+      "order": 194,
+      "profile": "P2",
+      "slot": "L02",
+      "slot_id": "A-C08-L02",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-FGFWWM",
+      "order": 195,
+      "profile": "P2",
+      "slot": "L03",
+      "slot_id": "A-C08-L03",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-T57CNV",
+      "order": 196,
+      "profile": "P2",
+      "slot": "L04",
+      "slot_id": "A-C08-L04",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-M7F6PJ",
+      "order": 197,
+      "profile": "P2",
+      "slot": "L05",
+      "slot_id": "A-C08-L05",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-T57CNV",
+      "order": 198,
+      "profile": "P2",
+      "slot": "L06",
+      "slot_id": "A-C08-L06",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-M7F6PJ",
+      "order": 199,
+      "profile": "P2",
+      "slot": "L07",
+      "slot_id": "A-C08-L07",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-FGFWWM",
+      "order": 200,
+      "profile": "P2",
+      "slot": "L08",
+      "slot_id": "A-C08-L08",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-M7F6PJ",
+      "order": 201,
+      "profile": "P2",
+      "slot": "L09",
+      "slot_id": "A-C08-L09",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-FGFWWM",
+      "order": 202,
+      "profile": "P2",
+      "slot": "L10",
+      "slot_id": "A-C08-L10",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-T57CNV",
+      "order": 203,
+      "profile": "P2",
+      "slot": "L11",
+      "slot_id": "A-C08-L11",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-T57CNV",
+      "order": 204,
+      "profile": "P2",
+      "slot": "L12",
+      "slot_id": "A-C08-L12",
+      "unit_id": "A-C08",
+      "wave": 6,
+      "wave_position": 2
+    },
+    {
+      "book_id": "BK-C-4TBNFP",
+      "order": 205,
+      "profile": "P1",
+      "slot": "L01",
+      "slot_id": "A-C04-L01",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-RV5GXQ",
+      "order": 206,
+      "profile": "P1",
+      "slot": "L02",
+      "slot_id": "A-C04-L02",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-4TBNFP",
+      "order": 207,
+      "profile": "P1",
+      "slot": "L03",
+      "slot_id": "A-C04-L03",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-RV5GXQ",
+      "order": 208,
+      "profile": "P1",
+      "slot": "L04",
+      "slot_id": "A-C04-L04",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-RV5GXQ",
+      "order": 209,
+      "profile": "P1",
+      "slot": "L05",
+      "slot_id": "A-C04-L05",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-4TBNFP",
+      "order": 210,
+      "profile": "P1",
+      "slot": "L06",
+      "slot_id": "A-C04-L06",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-K9QPM9",
+      "order": 211,
+      "profile": "P1",
+      "slot": "L07",
+      "slot_id": "A-C04-L07",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-RV5GXQ",
+      "order": 212,
+      "profile": "P1",
+      "slot": "L08",
+      "slot_id": "A-C04-L08",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-K9QPM9",
+      "order": 213,
+      "profile": "P1",
+      "slot": "L09",
+      "slot_id": "A-C04-L09",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-4TBNFP",
+      "order": 214,
+      "profile": "P1",
+      "slot": "L10",
+      "slot_id": "A-C04-L10",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-K9QPM9",
+      "order": 215,
+      "profile": "P1",
+      "slot": "L11",
+      "slot_id": "A-C04-L11",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    },
+    {
+      "book_id": "BK-C-K9QPM9",
+      "order": 216,
+      "profile": "P1",
+      "slot": "L12",
+      "slot_id": "A-C04-L12",
+      "unit_id": "A-C04",
+      "wave": 6,
+      "wave_position": 3
+    }
+  ],
+  "study": "A",
+  "waves": [
+    {
+      "units": [
+        "A-C11",
+        "A-C06",
+        "A-C02"
+      ],
+      "wave": 1
+    },
+    {
+      "units": [
+        "A-C14",
+        "A-C03",
+        "A-C10"
+      ],
+      "wave": 2
+    },
+    {
+      "units": [
+        "A-C16",
+        "A-C09",
+        "A-C07"
+      ],
+      "wave": 3
+    },
+    {
+      "units": [
+        "A-C01",
+        "A-C12",
+        "A-C13"
+      ],
+      "wave": 4
+    },
+    {
+      "units": [
+        "A-C05",
+        "A-C15",
+        "A-C18"
+      ],
+      "wave": 5
+    },
+    {
+      "units": [
+        "A-C17",
+        "A-C08",
+        "A-C04"
+      ],
+      "wave": 6
+    }
+  ]
+}

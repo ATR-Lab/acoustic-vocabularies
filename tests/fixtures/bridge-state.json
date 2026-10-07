@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "kind": "state",
+  "source_kind": "synthetic",
+  "session_id": "00000000000000000000000000000000",
+  "seq": 1,
+  "host_monotonic_ns": "1000000000",
+  "sim_time": 0.016666666666666666,
+  "sim_step": 1,
+  "joint_names": ["engineering_joint_0", "engineering_joint_1"],
+  "joint_positions": [0.0, 0.1],
+  "objects": [{"id": "placeholder_0", "position_m": [0, 0, 0], "rotation_xyzw": [0, 0, 0, 1]}]
+}

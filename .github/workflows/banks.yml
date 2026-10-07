@@ -1,0 +1,71 @@
+name: Banks
+
+on:
+  pull_request:
+    paths:
+      - "banks/**"
+      - "tests/banks/**"
+      - "generation/**"
+      - "sound/**"
+      - "tests/generation/test_bank_manifest.py"
+      - ".github/workflows/banks.yml"
+  push:
+    # o4.3.1-bank-builder: runs the 3-OS matrix on the #26 branch before its PR exists
+    # (the orchestrator opens it after restacking); remove it once #26 is merged.
+    branches: [main, o4.3.1-bank-builder]
+    paths:
+      - "banks/**"
+      - "tests/banks/**"
+      - "generation/**"
+      - "sound/**"
+      - "tests/generation/test_bank_manifest.py"
+      - ".github/workflows/banks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: banks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: banks (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: banks/uv.lock
+      - name: Install (Python 3.11, locked; av-generation and av-sound from ../)
+        run: uv sync --project banks --locked
+      - name: Lint and format
+        run: |
+          uv run --project banks ruff check --config banks/pyproject.toml banks tests/banks
+          uv run --project banks ruff format --config banks/pyproject.toml --check banks tests/banks
+      - name: Type check
+        working-directory: banks
+        run: uv run mypy
+      - name: Tests
+        run: >
+          uv run --project banks pytest --import-mode=importlib -p no:cacheprovider
+          --timeout=300 tests/banks
+          --cov=av_banks --cov-config=banks/pyproject.toml --cov-report=term
+          --cov-fail-under=90
+      - name: Bank manifest schema tests (owned by #26, run under the generation fixtures)
+        run: >
+          uv run --project banks pytest --import-mode=importlib -p no:cacheprovider
+          --timeout=300 tests/generation/test_bank_manifest.py

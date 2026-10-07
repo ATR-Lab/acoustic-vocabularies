@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/threshold-trial.schema.json",
+  "title": "Listening trial record",
+  "description": "One same/different trial (#23): motif A, a gap, motif B, one response, no replay, no feedback. tryout marks internal team tryouts, which are not listener data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bin_center",
+    "distance",
+    "gap_ms",
+    "kind",
+    "listener_id",
+    "onset_first_ms",
+    "onset_second_ms",
+    "order",
+    "pair_id",
+    "profile",
+    "record",
+    "record_version",
+    "response",
+    "rt_ms",
+    "run_id",
+    "session_id",
+    "t_ms",
+    "trial_index",
+    "tryout"
+  ],
+  "properties": {
+    "record": {
+      "const": "threshold_trial"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "session_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "listener_id": {
+      "$ref": "common.schema.json#/$defs/coded_id"
+    },
+    "trial_index": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "pair_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$"
+    },
+    "profile": {
+      "$ref": "common.schema.json#/$defs/profile"
+    },
+    "kind": {
+      "enum": [
+        "different",
+        "same"
+      ]
+    },
+    "bin_center": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/decimal"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "distance": {
+      "type": "number",
+      "minimum": 0
+    },
+    "order": {
+      "enum": [
+        "AB",
+        "BA"
+      ]
+    },
+    "gap_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5000
+    },
+    "tryout": {
+      "type": "boolean"
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "response": {
+      "oneOf": [
+        {
+          "enum": [
+            "same",
+            "different"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rt_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "onset_first_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "onset_second_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

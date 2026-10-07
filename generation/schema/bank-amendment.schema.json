@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/bank-amendment.schema.json",
+  "title": "Study B bank amendment",
+  "description": "One line of a bank's amendments.jsonl (#26 amend; Study B protocol §4 reserve rule): the reserve (rank 4) of one cell replaces an unheard, uncommitted menu option before either partner hears that wave's menu, after a compatibility recheck against every retained option of a different atom. Lines are chained: prev_sha256 is the bank hash for seq 1 and the canonical SHA-256 of the previous line otherwise. At most one amendment per cell. The manifest and its bank hash never change; consumers apply the log with av_generation.bank_manifest.effective_menu.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "atom_id",
+    "bank_id",
+    "bank_sha256",
+    "date",
+    "prev_sha256",
+    "profile",
+    "reason",
+    "recheck",
+    "record",
+    "record_version",
+    "replaced_option_id",
+    "replaced_rank",
+    "replacement_option_id",
+    "seq"
+  ],
+  "properties": {
+    "record": {
+      "const": "bank_amendment"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "bank_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "bank_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 48
+    },
+    "prev_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "profile": {
+      "$ref": "common.schema.json#/$defs/profile"
+    },
+    "atom_id": {
+      "$ref": "common.schema.json#/$defs/atom_id"
+    },
+    "replaced_rank": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "replaced_option_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]{1,127}$"
+    },
+    "replacement_option_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]{1,127}$"
+    },
+    "recheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "pairs_checked",
+        "renderer_version",
+        "threshold",
+        "validator_version"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "pairs_checked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "threshold": {
+          "$ref": "common.schema.json#/$defs/decimal"
+        },
+        "renderer_version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "validator_version": {
+          "$ref": "common.schema.json#/$defs/version"
+        }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "pattern": "^[ -~]{1,200}$"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    }
+  }
+}

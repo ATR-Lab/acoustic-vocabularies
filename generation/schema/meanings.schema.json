@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/meanings.schema.json",
+  "title": "Meaning set",
+  "description": "The operational meaning text of each of the 16 semantic labels (av_generation.meanings): the one source for rater stations, the A1 screen and A3/B prompts. Real sets stay in restricted storage (hash committed); DEMO sets have DEMO- names. Hash: MeaningSet.sha256() (canonical JSON).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "demo",
+    "format",
+    "format_version",
+    "meanings",
+    "name"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/meanings"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "name": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "demo": {
+      "type": "boolean"
+    },
+    "meanings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "A",
+        "ADD_ONE",
+        "ALIGN_ARROW",
+        "B",
+        "C",
+        "CLOSE",
+        "D",
+        "E",
+        "F",
+        "FLIP_CARD",
+        "G",
+        "H",
+        "QUARANTINE",
+        "REMOVE_ONE",
+        "SCAN",
+        "TAG"
+      ],
+      "properties": {
+        "ADD_ONE": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "REMOVE_ONE": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "FLIP_CARD": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "ALIGN_ARROW": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "A": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "B": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "C": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "D": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "SCAN": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "TAG": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "CLOSE": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "QUARANTINE": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "E": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "F": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "G": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        },
+        "H": {
+          "$ref": "common.schema.json#/$defs/meaning_text"
+        }
+      }
+    }
+  }
+}

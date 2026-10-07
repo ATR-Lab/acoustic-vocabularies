@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/fallback-scan-record.schema.json",
+  "title": "Fallback bank scan record",
+  "description": "A bank scan for an atom with no eligible candidate after 12 slots, logged apart from the slots (#20; Study A protocol §3.7). scan is av_sound ScanResult.to_dict() (sound/schema/fallback-scan.schema.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "atom_id",
+    "batch_id",
+    "book_id",
+    "record",
+    "record_version",
+    "run_id",
+    "scan",
+    "t_ms"
+  ],
+  "properties": {
+    "record": {
+      "const": "fallback_scan"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "book_id": {
+      "$ref": "common.schema.json#/$defs/book_id"
+    },
+    "atom_id": {
+      "$ref": "common.schema.json#/$defs/atom_id"
+    },
+    "scan": {
+      "$ref": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/fallback-scan.schema.json"
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    }
+  }
+}

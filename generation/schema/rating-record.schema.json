@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/rating-record.schema.json",
+  "title": "Rating-slot record",
+  "description": "One rater's record for one 20-s rating slot (#20, #21; Study A protocol §3.3), including placeholders (invalid candidates, no rating) and missing ratings. Onsets are milliseconds after the slot start; rt_ms is submit time minus unlock time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "association",
+    "atom_id",
+    "batch_id",
+    "book_id",
+    "candidate_onset_ms",
+    "comfort",
+    "distinguishability",
+    "distinguishability_by_rule",
+    "first_atom",
+    "missing",
+    "placeholder",
+    "position",
+    "rater_id",
+    "rater_kind",
+    "rating_slot_id",
+    "reconnected",
+    "record",
+    "record_version",
+    "reference_onset_ms",
+    "round",
+    "rt_ms",
+    "run_id",
+    "slot_id",
+    "slot_start_ms",
+    "station",
+    "t_ms",
+    "unlock_ms"
+  ],
+  "properties": {
+    "record": {
+      "const": "rating"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "batch_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "book_id": {
+      "$ref": "common.schema.json#/$defs/book_id"
+    },
+    "atom_id": {
+      "$ref": "common.schema.json#/$defs/atom_id"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "position": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9
+    },
+    "rating_slot_id": {
+      "$ref": "common.schema.json#/$defs/rating_slot_id"
+    },
+    "slot_id": {
+      "$ref": "common.schema.json#/$defs/proposal_slot_id"
+    },
+    "rater_id": {
+      "$ref": "common.schema.json#/$defs/coded_id"
+    },
+    "station": {
+      "$ref": "common.schema.json#/$defs/station"
+    },
+    "rater_kind": {
+      "enum": [
+        "human",
+        "bot"
+      ]
+    },
+    "placeholder": {
+      "type": "boolean"
+    },
+    "first_atom": {
+      "type": "boolean"
+    },
+    "association": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "distinguishability": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "distinguishability_by_rule": {
+      "type": "boolean"
+    },
+    "comfort": {
+      "oneOf": [
+        {
+          "enum": [
+            "acceptable",
+            "unacceptable"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "missing": {
+      "type": "boolean"
+    },
+    "reconnected": {
+      "type": "boolean"
+    },
+    "slot_start_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "candidate_onset_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reference_onset_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unlock_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rt_ms": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "placeholder": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "association": {
+            "type": "null"
+          },
+          "distinguishability": {
+            "type": "null"
+          },
+          "comfort": {
+            "type": "null"
+          },
+          "missing": {
+            "const": false
+          },
+          "distinguishability_by_rule": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "distinguishability_by_rule": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "first_atom": {
+            "const": true
+          },
+          "distinguishability": {
+            "const": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "missing": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "association": {
+            "type": "null"
+          },
+          "distinguishability": {
+            "type": "null"
+          },
+          "distinguishability_by_rule": {
+            "const": false
+          },
+          "comfort": {
+            "type": "null"
+          },
+          "rt_ms": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

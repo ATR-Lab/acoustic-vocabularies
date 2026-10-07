@@ -5,7 +5,6 @@ registry is built from the verified layout/snapshot, never the next trial.
 """
 from __future__ import annotations
 
-import copy
 import json
 import math
 import re
@@ -108,6 +107,9 @@ def validate_frame(frame, registry: PublicRegistry):
     objects = frame["objects"]
     if not isinstance(objects, list) or len(objects) != len(registry.object_states):
         raise ValueError("Incomplete scene state")
+    # Registry authority is immutable for this frame. Rebuilding the same set
+    # once per object adds work without performing an additional value check.
+    anchors = registry.anchors
     for obj, (obj_id, keys) in zip(objects, registry.object_states):
         if not isinstance(obj, dict) or set(obj) != OBJECT_FIELDS or obj["id"] != obj_id:
             raise ValueError("Unregistered, missing or unordered object")
@@ -119,7 +121,7 @@ def validate_frame(frame, registry: PublicRegistry):
             raise ValueError("Visibility/enabled must be boolean")
         if not isinstance(obj["state"], dict) or tuple(sorted(obj["state"])) != keys:
             raise ValueError("Object visual-state contract mismatch")
-        visual_state(obj["state"], registry.anchors)
+        visual_state(obj["state"], anchors)
     return frame
 
 
@@ -154,8 +156,18 @@ class StateEncoder:
         objects = []
         for obj_id, _ in self.registry.object_states:
             source = object_state[obj_id]
-            objects.append({"id": obj_id, **{key: copy.deepcopy(source[key]) for key in
-                ("position_m", "rotation_xyzw", "visible", "enabled", "state")}})
+            # Accepted public leaves are scalar schema primitives. Detach the
+            # three containers explicitly; strict validation below still checks
+            # every value and rejects nested or unsupported visual data. Keep
+            # the original list/dict input contract (do not coerce tuples).
+            if (not isinstance(source["position_m"], list) or
+                    not isinstance(source["rotation_xyzw"], list) or
+                    not isinstance(source["state"], dict)):
+                raise ValueError("Invalid public object containers")
+            objects.append({"id": obj_id, "position_m": list(source["position_m"]),
+                            "rotation_xyzw": list(source["rotation_xyzw"]),
+                            "visible": source["visible"], "enabled": source["enabled"],
+                            "state": dict(source["state"])})
         frame = dict(version=2, kind="state", source_kind=self.source_kind,
                      station_id=self.registry.station_id, scene_sha256=self.registry.scene_sha256,
                      reset_snapshot_sha256=self.registry.reset_snapshot_sha256,

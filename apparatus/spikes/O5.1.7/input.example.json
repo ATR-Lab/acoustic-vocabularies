@@ -1,0 +1,8 @@
+{
+  "tester_code": "T01",
+  "use_left_hand": false,
+  "text_angle_deg": 0.6,
+  "panel_distance_m": 0.55,
+  "panel_height_m": 1.1,
+  "observer_height_m": 1.2
+}

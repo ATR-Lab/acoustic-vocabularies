@@ -1,0 +1,220 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "scope",
+    "participants",
+    "source_kind",
+    "capture_surface",
+    "station_id",
+    "build_sha256",
+    "scene_sha256",
+    "snapshot",
+    "image",
+    "poses",
+    "head_position_tolerance_m",
+    "head_orientation_tolerance_rad",
+    "state_tolerances",
+    "panel_state_sha256",
+    "max_state_arrival_age_ms"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "scope": {
+      "const": "engineering_provisional"
+    },
+    "participants": {
+      "const": false
+    },
+    "source_kind": {
+      "enum": [
+        "live",
+        "snapshot"
+      ]
+    },
+    "capture_surface": {
+      "enum": [
+        "headset",
+        "desktop_engineering"
+      ]
+    },
+    "station_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "build_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "scene_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height",
+        "max_channel_delta",
+        "minimum_unique_rgb_colors"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "max_channel_delta": {
+          "const": 0
+        },
+        "minimum_unique_rgb_colors": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 256
+        }
+      }
+    },
+    "poses": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "head_pose"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "center",
+              "yaw_left",
+              "yaw_right",
+              "pitch_up",
+              "pitch_down"
+            ]
+          },
+          "head_pose": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "position_m",
+              "rotation_xyzw"
+            ],
+            "properties": {
+              "position_m": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "rotation_xyzw": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "head_position_tolerance_m": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.001
+    },
+    "head_orientation_tolerance_rad": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.008726646259971648
+    },
+    "state_tolerances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "joint_rad",
+        "position_m",
+        "orientation_rad",
+        "linear_velocity_m_s",
+        "angular_velocity_rad_s",
+        "environment_absolute"
+      ],
+      "properties": {
+        "joint_rad": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.008726646259971648
+        },
+        "position_m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.001
+        },
+        "orientation_rad": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.008726646259971648
+        },
+        "linear_velocity_m_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1e-05
+        },
+        "angular_velocity_rad_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1e-05
+        },
+        "environment_absolute": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1e-07
+        }
+      }
+    },
+    "panel_state_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "max_state_arrival_age_ms": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 250
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Provisional exact-pixel five-view engineering profile. Runtime adds distinct-pose, quaternion, bounded pixel-product, pinned local-file and inventory validation."
+}

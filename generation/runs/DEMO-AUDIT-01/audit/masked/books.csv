@@ -1,0 +1,4 @@
+batch_id,book_id,profile,slots_total,slots_valid,slots_invalid,atoms_committed,atoms_selector,atoms_bank_fallback,atoms_book_fallback,failed_generation,nonfallback,wall_ms,rater_ms,candidate_diversity,committed_diversity,total_ms_450,total_ms_600,total_ms_750,total_ms_900,message_ms_min,message_ms_max,message_duration_violations
+DEMO-A-P01,DEMO-BK-7QX4,P1,192,153,39,16,0,0,16,1,0,16526647,11520000,0.485171,0.501525,8,1,1,6,1100,2000,0
+DEMO-A-P01,DEMO-BK-H9TC,P1,192,111,81,16,16,0,0,0,1,16526647,11520000,0.471744,0.474417,6,1,4,5,1100,2000,0
+DEMO-A-P01,DEMO-BK-M2RW,P1,192,139,53,16,15,1,0,0,0,16526647,11520000,0.472390,0.476551,4,3,3,6,1100,2000,0

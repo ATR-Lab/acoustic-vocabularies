@@ -1,0 +1,8 @@
+{
+  "archive_manifest_sha256": "53334961c4e56cb5c685c98d993c427a2020157d2ac5c103268555406607cfc0",
+  "archive_sha256": "e99ec03cfcc5aadb00662ffe385ac2261b0aeabce3ce95fdd42c35af069c7305",
+  "bytes": 108472027,
+  "check": "OK (register hashes equal the hashes recomputed from the files; archive intact and read-only; banks verify re-run)",
+  "n_files": 1627,
+  "register_sha256": "afbd8ae442efbdf2824d59e332f37848357fc3e90f34c5c46b5ed7d7c3da5c1d"
+}

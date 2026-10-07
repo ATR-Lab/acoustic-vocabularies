@@ -1,0 +1,533 @@
+{
+  "books": [
+    {
+      "book_id": "DEMO-P1",
+      "create_head": "e51009a7b56e00c3975708f8b4f1d04cd5431c49e85467ba696553989813ed13",
+      "create_line": "{\"book_id\":\"DEMO-P1\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P1\",\"record_sha256\":\"13d2e1a6d5d067cd43205f6fd6f7de8d67bf565c8f12a7b78514b57fc418edbd\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
+      "entries_unchanged_after_attempts": true,
+      "events": [
+        "create_book",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "recommit_noop",
+        "freeze",
+        "commit_rejected_frozen"
+      ],
+      "final_head": "973e04ceecd756a2138279225c2220eda9dee7d1e471b771aa2019328b5c09a5",
+      "freeze_head": "7411aadab2593f053811a9c3c59fbe3fa70c2f5acef68b44f41a04654d330d70",
+      "frozen_rejected": true,
+      "log_bytes": 20542,
+      "n_records": 24,
+      "noop_head": "66757cab8b800b44dd75a85ba79bd7895484cd65508ac3889f86267e3f8e2a30",
+      "overwrite_attempts": [
+        {
+          "attempt": "recipe",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "recipe",
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 17
+        },
+        {
+          "attempt": "waveform",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 18
+        },
+        {
+          "attempt": "profile",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "profile",
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 19
+        },
+        {
+          "attempt": "semantic_label",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "semantic_label"
+          ],
+          "rejected": true,
+          "seq": 20
+        }
+      ],
+      "profile": "P1",
+      "verify_codes": [],
+      "verify_ok": true,
+      "waves": [
+        {
+          "added": [
+            "K-a1",
+            "K-a2",
+            "K-r1",
+            "K-r2",
+            "Q-a1",
+            "Q-a2",
+            "Q-r1",
+            "Q-r2"
+          ],
+          "chain_head": "b78888c1295a4ab5f8b40cc5a361b2b3ec38f6b87f5a1fa0e7196fd44554b26f",
+          "n_entries": 8,
+          "old_entries": 0,
+          "old_unchanged": 0,
+          "snapshot": {
+            "K-a1": "909e93b54b06d45a69d70afa0a57b86344acd67556a35659a1dfa3a0c3a74db6",
+            "K-a2": "e2825152d01ba9f449181d2b3c8daf84fff98ac67f8f09407e8101a6785cbb82",
+            "K-r1": "b0b05e1a4ced73f1815b9cf67cd701979ccf9f9144163e489d946e63669c9134",
+            "K-r2": "92c237bd1f109281efc9c225b7817438629e4805d7bc607103ab1a7fb143fef8",
+            "Q-a1": "7ea76f81c992ec2996acca59e29ea3b1cbb9638942ba1898f0823225d313eca0",
+            "Q-a2": "dd23eb3a32b7e06659844460e81c0e3c0cea00fdc03b54172ed6139a5d3b345c",
+            "Q-r1": "5d5fae306dc6fc400f690f7d0b6b9a05f7bd15ece42b4fd6ecb4d35427855118",
+            "Q-r2": "0b0e9399634a3cfe8455a57dcc0c5a3e0cf947725dd71c7b7195358a25d7f67f"
+          },
+          "snapshot_sha256": "d065e2809a1801e22639506bf7bcf6ab8ff38a8c74bb606b43de468c621f29c4",
+          "violations": [],
+          "wave": 1
+        },
+        {
+          "added": [
+            "K-a3",
+            "K-r3",
+            "Q-a3",
+            "Q-r3"
+          ],
+          "chain_head": "3e0cbcb49f51f92f5718efc78ba2575cd98e945ca2b56a14595d8ba82e57ca38",
+          "n_entries": 12,
+          "old_entries": 8,
+          "old_unchanged": 8,
+          "snapshot": {
+            "K-a1": "909e93b54b06d45a69d70afa0a57b86344acd67556a35659a1dfa3a0c3a74db6",
+            "K-a2": "e2825152d01ba9f449181d2b3c8daf84fff98ac67f8f09407e8101a6785cbb82",
+            "K-a3": "31731dee9ce23d97a0c4801c58db8b244eb9e068f2f309b96e34b594b576875e",
+            "K-r1": "b0b05e1a4ced73f1815b9cf67cd701979ccf9f9144163e489d946e63669c9134",
+            "K-r2": "92c237bd1f109281efc9c225b7817438629e4805d7bc607103ab1a7fb143fef8",
+            "K-r3": "ba79bb204523db05b38c77e24291f3a741490b785fff187e26edb7d73a683705",
+            "Q-a1": "7ea76f81c992ec2996acca59e29ea3b1cbb9638942ba1898f0823225d313eca0",
+            "Q-a2": "dd23eb3a32b7e06659844460e81c0e3c0cea00fdc03b54172ed6139a5d3b345c",
+            "Q-a3": "be267a4c80aa7c3f024b0c8e1e3cff3c7da380ec4976f610cf34340bdcbfcd06",
+            "Q-r1": "5d5fae306dc6fc400f690f7d0b6b9a05f7bd15ece42b4fd6ecb4d35427855118",
+            "Q-r2": "0b0e9399634a3cfe8455a57dcc0c5a3e0cf947725dd71c7b7195358a25d7f67f",
+            "Q-r3": "b32511b830022a02b19c5721f53991bcca5b148b5a1029d06426f9536d5136ad"
+          },
+          "snapshot_sha256": "8babcbe05e4157edb49eb0afb7e46cde5e93a81e2876b87e07b76982b5f4572a",
+          "violations": [],
+          "wave": 2
+        },
+        {
+          "added": [
+            "K-a4",
+            "K-r4",
+            "Q-a4",
+            "Q-r4"
+          ],
+          "chain_head": "97cd624fda3fb5f274b52274b0ab7ee1244e23b09239764364a9a705eb807e62",
+          "n_entries": 16,
+          "old_entries": 12,
+          "old_unchanged": 12,
+          "snapshot": {
+            "K-a1": "909e93b54b06d45a69d70afa0a57b86344acd67556a35659a1dfa3a0c3a74db6",
+            "K-a2": "e2825152d01ba9f449181d2b3c8daf84fff98ac67f8f09407e8101a6785cbb82",
+            "K-a3": "31731dee9ce23d97a0c4801c58db8b244eb9e068f2f309b96e34b594b576875e",
+            "K-a4": "8819fcaaa21e9ff866c3a449adfbbb0db090432368b0b9d886fb974af029c54a",
+            "K-r1": "b0b05e1a4ced73f1815b9cf67cd701979ccf9f9144163e489d946e63669c9134",
+            "K-r2": "92c237bd1f109281efc9c225b7817438629e4805d7bc607103ab1a7fb143fef8",
+            "K-r3": "ba79bb204523db05b38c77e24291f3a741490b785fff187e26edb7d73a683705",
+            "K-r4": "a6ead7d973e140815086795029695d0b8819c554821316f966ea05d5fcc559e1",
+            "Q-a1": "7ea76f81c992ec2996acca59e29ea3b1cbb9638942ba1898f0823225d313eca0",
+            "Q-a2": "dd23eb3a32b7e06659844460e81c0e3c0cea00fdc03b54172ed6139a5d3b345c",
+            "Q-a3": "be267a4c80aa7c3f024b0c8e1e3cff3c7da380ec4976f610cf34340bdcbfcd06",
+            "Q-a4": "bc2bf70c8c8a8b85709951652c9ed32179131a442b653983bf3f95123efa5de6",
+            "Q-r1": "5d5fae306dc6fc400f690f7d0b6b9a05f7bd15ece42b4fd6ecb4d35427855118",
+            "Q-r2": "0b0e9399634a3cfe8455a57dcc0c5a3e0cf947725dd71c7b7195358a25d7f67f",
+            "Q-r3": "b32511b830022a02b19c5721f53991bcca5b148b5a1029d06426f9536d5136ad",
+            "Q-r4": "a8d5447b185c9b3035b8ebd3923ccf38fe9f25b60b29854c45993f183325c221"
+          },
+          "snapshot_sha256": "0d129feefe9543fa31b57e869c0511937ee3be276c1262edd4ad51bb683d01e6",
+          "violations": [],
+          "wave": 3
+        }
+      ]
+    },
+    {
+      "book_id": "DEMO-P2",
+      "create_head": "63e4edc1aa939222d0904161fcad1c3449fbf6e6e76c15204f19fc4c79931616",
+      "create_line": "{\"book_id\":\"DEMO-P2\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P2\",\"record_sha256\":\"eeebc36607edc6a18594483dacc98b1353efdfe6d1abff88108b481ce6e8d58a\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
+      "entries_unchanged_after_attempts": true,
+      "events": [
+        "create_book",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "recommit_noop",
+        "freeze",
+        "commit_rejected_frozen"
+      ],
+      "final_head": "373c8754f95374eec8bc425c5c21a865ac3a525b1cf3b2815d2aa1ec1b8938dd",
+      "freeze_head": "70ac5b5a2d9ef1354b698b98a8f58ab929ad78362fc9489fc4623a14595cbd42",
+      "frozen_rejected": true,
+      "log_bytes": 20546,
+      "n_records": 24,
+      "noop_head": "da84f08c150778f83d2d84b4e9e6e4946fbbcc4f4fba46e1b13f6c7e67e8f7db",
+      "overwrite_attempts": [
+        {
+          "attempt": "recipe",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "recipe",
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 17
+        },
+        {
+          "attempt": "waveform",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 18
+        },
+        {
+          "attempt": "profile",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "profile",
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 19
+        },
+        {
+          "attempt": "semantic_label",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "semantic_label"
+          ],
+          "rejected": true,
+          "seq": 20
+        }
+      ],
+      "profile": "P2",
+      "verify_codes": [],
+      "verify_ok": true,
+      "waves": [
+        {
+          "added": [
+            "K-a1",
+            "K-a2",
+            "K-r1",
+            "K-r2",
+            "Q-a1",
+            "Q-a2",
+            "Q-r1",
+            "Q-r2"
+          ],
+          "chain_head": "6ef399d0f1c1bf3b7ae6d240edb96d8cb1ae55ab0fd91fd85dc293f84a802cb5",
+          "n_entries": 8,
+          "old_entries": 0,
+          "old_unchanged": 0,
+          "snapshot": {
+            "K-a1": "03701c3b6783802bedee3e66e4fd9c3ceba11835a04f7289e88abc4f238f8d7b",
+            "K-a2": "3c20f6dbc5891e64aa771491d5f8773f30b406e123037f6bea9a7757b804557d",
+            "K-r1": "aeb7fef379f56badbb438fc1ebf23e508fe508553a6f77b63d5d64f7f56bde75",
+            "K-r2": "5eae7f4406f9011bdc255c4c0c9a4cace1a6a7d9daa1664b63e7c957fdc58e94",
+            "Q-a1": "6051251aba2440f3f567b09b10da5d15c66fa09ee8eef955ff309c98a8b90809",
+            "Q-a2": "1cf133145b0c1c1106e3cf6df3ece41ee3df690e79e852e746305f7de2ef2c27",
+            "Q-r1": "1ea2ccdd8b16924f1ded86639dbd33a32bb0ccd46b1412ed75ebf9fd98e5ffc5",
+            "Q-r2": "be4739725cea748793e1cc69a20ec9031bd26387fbd2d3792be75f2ffc5022f2"
+          },
+          "snapshot_sha256": "c3be57fe542510d7cd42303ac15807aa9332ba2cf400272c481bf862c62f3d0d",
+          "violations": [],
+          "wave": 1
+        },
+        {
+          "added": [
+            "K-a3",
+            "K-r3",
+            "Q-a3",
+            "Q-r3"
+          ],
+          "chain_head": "1756988f6cc9f305b026b2471a8bbf11c3b288f9dcec3a7d381918750245cae9",
+          "n_entries": 12,
+          "old_entries": 8,
+          "old_unchanged": 8,
+          "snapshot": {
+            "K-a1": "03701c3b6783802bedee3e66e4fd9c3ceba11835a04f7289e88abc4f238f8d7b",
+            "K-a2": "3c20f6dbc5891e64aa771491d5f8773f30b406e123037f6bea9a7757b804557d",
+            "K-a3": "2e0a65fb660b2731cafcdb5de987838185ca6a1f35238291a6ca915435d820c8",
+            "K-r1": "aeb7fef379f56badbb438fc1ebf23e508fe508553a6f77b63d5d64f7f56bde75",
+            "K-r2": "5eae7f4406f9011bdc255c4c0c9a4cace1a6a7d9daa1664b63e7c957fdc58e94",
+            "K-r3": "ad5551bc9fb3d7f968edd1d384701c14158ef03e2b467bcc3cda20b8e533098b",
+            "Q-a1": "6051251aba2440f3f567b09b10da5d15c66fa09ee8eef955ff309c98a8b90809",
+            "Q-a2": "1cf133145b0c1c1106e3cf6df3ece41ee3df690e79e852e746305f7de2ef2c27",
+            "Q-a3": "303edf3af8e3af4917f4a2ffc9210cacaf7c11a98df320b2d41cc504d86a3679",
+            "Q-r1": "1ea2ccdd8b16924f1ded86639dbd33a32bb0ccd46b1412ed75ebf9fd98e5ffc5",
+            "Q-r2": "be4739725cea748793e1cc69a20ec9031bd26387fbd2d3792be75f2ffc5022f2",
+            "Q-r3": "f7d297688053a8ae7bdbbb9043601499d2cb76cac735691b905798ad2ff77cc1"
+          },
+          "snapshot_sha256": "70eacf37ef408d4d588c7ce8a09d8e1beef6865361685d95f6308e480b0bfcec",
+          "violations": [],
+          "wave": 2
+        },
+        {
+          "added": [
+            "K-a4",
+            "K-r4",
+            "Q-a4",
+            "Q-r4"
+          ],
+          "chain_head": "f24926b62e3b1e89df4f3537eb8f4533fe65ae58710fddb8e2419cc01a48f2da",
+          "n_entries": 16,
+          "old_entries": 12,
+          "old_unchanged": 12,
+          "snapshot": {
+            "K-a1": "03701c3b6783802bedee3e66e4fd9c3ceba11835a04f7289e88abc4f238f8d7b",
+            "K-a2": "3c20f6dbc5891e64aa771491d5f8773f30b406e123037f6bea9a7757b804557d",
+            "K-a3": "2e0a65fb660b2731cafcdb5de987838185ca6a1f35238291a6ca915435d820c8",
+            "K-a4": "65e826c08ff25a838f4744eeb9de9b2d8fd46876ee6464b01e4c701949f39b7e",
+            "K-r1": "aeb7fef379f56badbb438fc1ebf23e508fe508553a6f77b63d5d64f7f56bde75",
+            "K-r2": "5eae7f4406f9011bdc255c4c0c9a4cace1a6a7d9daa1664b63e7c957fdc58e94",
+            "K-r3": "ad5551bc9fb3d7f968edd1d384701c14158ef03e2b467bcc3cda20b8e533098b",
+            "K-r4": "d18728c95bd10394f22cbf39b6b8a5b86b1dfb2aef0a3e415b2bdd72a2bf98ac",
+            "Q-a1": "6051251aba2440f3f567b09b10da5d15c66fa09ee8eef955ff309c98a8b90809",
+            "Q-a2": "1cf133145b0c1c1106e3cf6df3ece41ee3df690e79e852e746305f7de2ef2c27",
+            "Q-a3": "303edf3af8e3af4917f4a2ffc9210cacaf7c11a98df320b2d41cc504d86a3679",
+            "Q-a4": "7d0aecb394e38463448199805ee140145af77d1edc7bfab36eea9598d1e2d93a",
+            "Q-r1": "1ea2ccdd8b16924f1ded86639dbd33a32bb0ccd46b1412ed75ebf9fd98e5ffc5",
+            "Q-r2": "be4739725cea748793e1cc69a20ec9031bd26387fbd2d3792be75f2ffc5022f2",
+            "Q-r3": "f7d297688053a8ae7bdbbb9043601499d2cb76cac735691b905798ad2ff77cc1",
+            "Q-r4": "e5569c92be9b6dfd397a93ba15b57208d6c9f371756c5585eca6f523d81700a4"
+          },
+          "snapshot_sha256": "65340e5204c97c12a6aa7967d94bf368b3ef838181ca28a1f3d264fa4240cc8e",
+          "violations": [],
+          "wave": 3
+        }
+      ]
+    },
+    {
+      "book_id": "DEMO-P3",
+      "create_head": "8cfe149921e70dd553c79a69d4e795abc854d43891cb885bd343f368d0be276a",
+      "create_line": "{\"book_id\":\"DEMO-P3\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P3\",\"record_sha256\":\"5651ac8507eb1c3a25d5a4b3e53c490b3a7c9c4344d877bee3f017a304b0a5b5\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
+      "entries_unchanged_after_attempts": true,
+      "events": [
+        "create_book",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "commit",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "overwrite_rejected",
+        "recommit_noop",
+        "freeze",
+        "commit_rejected_frozen"
+      ],
+      "final_head": "a5151554dee56b5122dde003f535c3410a7a5e1c7bb384443fce4752935e3eb6",
+      "freeze_head": "771f60f1d9e7a481c6c4e722edcd8e825378d081e6b2957365553aec7f5778da",
+      "frozen_rejected": true,
+      "log_bytes": 20547,
+      "n_records": 24,
+      "noop_head": "1876337780894e11b7b9e3cef5045184eccb1a17069a044ea5874854eba22dba",
+      "overwrite_attempts": [
+        {
+          "attempt": "recipe",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "recipe",
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 17
+        },
+        {
+          "attempt": "waveform",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 18
+        },
+        {
+          "attempt": "profile",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "profile",
+            "waveform"
+          ],
+          "rejected": true,
+          "seq": 19
+        },
+        {
+          "attempt": "semantic_label",
+          "logged_event": "overwrite_rejected",
+          "reasons": [
+            "semantic_label"
+          ],
+          "rejected": true,
+          "seq": 20
+        }
+      ],
+      "profile": "P3",
+      "verify_codes": [],
+      "verify_ok": true,
+      "waves": [
+        {
+          "added": [
+            "K-a1",
+            "K-a2",
+            "K-r1",
+            "K-r2",
+            "Q-a1",
+            "Q-a2",
+            "Q-r1",
+            "Q-r2"
+          ],
+          "chain_head": "6feb0522730b72c5b83c944b28f4f4e5f1c2433a4a3b4498194b1fc48d47ed4d",
+          "n_entries": 8,
+          "old_entries": 0,
+          "old_unchanged": 0,
+          "snapshot": {
+            "K-a1": "5fbf2cefd31fcae54a6e3686d56ffd906f4d8493de5699d3d1fc0c30874f4237",
+            "K-a2": "3ba67eabfc69f1712cac3fc8a3c707fa609117e33ebf5dc26413c088b86297eb",
+            "K-r1": "c23170aa56e120b89bc2c51a9c253daaaf1d88805187b7023414d926bcd5a12e",
+            "K-r2": "16e5a8ed052b59a1143df3128e203dffc9bff0329807ac3cd362dbec50fd60cc",
+            "Q-a1": "852c2ba52b386d81ee4c2edad961264e4c53cc34e0caeb810befce27b5545876",
+            "Q-a2": "bb305e752bbbc1b23bfc9b486a900c79cce613dc25903fae3aad618db5416963",
+            "Q-r1": "712dc64e6b354e0854e022028f11fb7c43edd94c2cdc45d172e33b03dbc6beed",
+            "Q-r2": "a66b821c41f0ae41f3cb2d3b05cf00468376af8b8a4a197a281efbbcbf28d2ca"
+          },
+          "snapshot_sha256": "fb33573f3c9cc23783181652d51e68ff8a29cd0fd4d362cfb9e2f8c97596a015",
+          "violations": [],
+          "wave": 1
+        },
+        {
+          "added": [
+            "K-a3",
+            "K-r3",
+            "Q-a3",
+            "Q-r3"
+          ],
+          "chain_head": "edaaf22d48169c94c33b4ba79fa8ad346d7401fb89e689e12ac90fed73e3020d",
+          "n_entries": 12,
+          "old_entries": 8,
+          "old_unchanged": 8,
+          "snapshot": {
+            "K-a1": "5fbf2cefd31fcae54a6e3686d56ffd906f4d8493de5699d3d1fc0c30874f4237",
+            "K-a2": "3ba67eabfc69f1712cac3fc8a3c707fa609117e33ebf5dc26413c088b86297eb",
+            "K-a3": "6f922f55e3cdcf9daa57341d84378de3e014b7ec86d7ea1f2859a4d495fb7606",
+            "K-r1": "c23170aa56e120b89bc2c51a9c253daaaf1d88805187b7023414d926bcd5a12e",
+            "K-r2": "16e5a8ed052b59a1143df3128e203dffc9bff0329807ac3cd362dbec50fd60cc",
+            "K-r3": "a2f457224a11ec0f282dba27b620674dec91b542ab5df5adf52bae468a39f4f9",
+            "Q-a1": "852c2ba52b386d81ee4c2edad961264e4c53cc34e0caeb810befce27b5545876",
+            "Q-a2": "bb305e752bbbc1b23bfc9b486a900c79cce613dc25903fae3aad618db5416963",
+            "Q-a3": "d2ca2d92835dc914a7bf8a5bd0be40db7617ccbe2275152450b6fc7b9945272c",
+            "Q-r1": "712dc64e6b354e0854e022028f11fb7c43edd94c2cdc45d172e33b03dbc6beed",
+            "Q-r2": "a66b821c41f0ae41f3cb2d3b05cf00468376af8b8a4a197a281efbbcbf28d2ca",
+            "Q-r3": "eaab0bd9670b104fb3c50a9443450daf67596003931bf4ba16684feb831750f1"
+          },
+          "snapshot_sha256": "ee6c1f3d3480936f3a5b9b70c0391dd1e31c1aba00e32ce9a869144f52ffd124",
+          "violations": [],
+          "wave": 2
+        },
+        {
+          "added": [
+            "K-a4",
+            "K-r4",
+            "Q-a4",
+            "Q-r4"
+          ],
+          "chain_head": "2423fb9aaca5d85d279837c07db83aa601b0597bdc02a4c417ec161330dec41f",
+          "n_entries": 16,
+          "old_entries": 12,
+          "old_unchanged": 12,
+          "snapshot": {
+            "K-a1": "5fbf2cefd31fcae54a6e3686d56ffd906f4d8493de5699d3d1fc0c30874f4237",
+            "K-a2": "3ba67eabfc69f1712cac3fc8a3c707fa609117e33ebf5dc26413c088b86297eb",
+            "K-a3": "6f922f55e3cdcf9daa57341d84378de3e014b7ec86d7ea1f2859a4d495fb7606",
+            "K-a4": "5523c00b3f369264cb9c3f7d20accf7dc51023df7c5034bc342580ca4f2e8a10",
+            "K-r1": "c23170aa56e120b89bc2c51a9c253daaaf1d88805187b7023414d926bcd5a12e",
+            "K-r2": "16e5a8ed052b59a1143df3128e203dffc9bff0329807ac3cd362dbec50fd60cc",
+            "K-r3": "a2f457224a11ec0f282dba27b620674dec91b542ab5df5adf52bae468a39f4f9",
+            "K-r4": "0bc1e5cab9513dbc573c7dfcbdd1173aa3acee265295aeb28a33b778abfa4cef",
+            "Q-a1": "852c2ba52b386d81ee4c2edad961264e4c53cc34e0caeb810befce27b5545876",
+            "Q-a2": "bb305e752bbbc1b23bfc9b486a900c79cce613dc25903fae3aad618db5416963",
+            "Q-a3": "d2ca2d92835dc914a7bf8a5bd0be40db7617ccbe2275152450b6fc7b9945272c",
+            "Q-a4": "45cb1bc544d80ff396738e85a5817ab970f9f8f36da077c20dfa6bd6a86bbafa",
+            "Q-r1": "712dc64e6b354e0854e022028f11fb7c43edd94c2cdc45d172e33b03dbc6beed",
+            "Q-r2": "a66b821c41f0ae41f3cb2d3b05cf00468376af8b8a4a197a281efbbcbf28d2ca",
+            "Q-r3": "eaab0bd9670b104fb3c50a9443450daf67596003931bf4ba16684feb831750f1",
+            "Q-r4": "e2e646343b0d74d6d0f48f1ca07b3ef2fa3d3287091c5ed83e2d800ea428df30"
+          },
+          "snapshot_sha256": "9490f0a05d1b07a66df53321b6001f38c4c8c149b80f80b295237c1c411daf9c",
+          "violations": [],
+          "wave": 3
+        }
+      ]
+    }
+  ],
+  "clock": "2026-01-01T00:00:00.000Z, +1 s per record",
+  "description": "Synthetic Study B growth 8 -> 12 -> 16 in the vocabulary store (sound/tools/store_growth_demo.py). DEMO books only; not study material.",
+  "format_version": "1.0.0",
+  "renderer_version": "0.1.0",
+  "reserved": "none",
+  "synthetic": true,
+  "validator_version": "0.1.0"
+}

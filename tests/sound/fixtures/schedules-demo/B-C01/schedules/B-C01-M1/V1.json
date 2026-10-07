@@ -1,0 +1,1000 @@
+{
+  "assessment": {
+    "assessment_seconds": 156,
+    "atomic": 8,
+    "extra_after_protected": 0,
+    "novel_once": 2,
+    "post_trained": 4,
+    "pre_old_trained": 0
+  },
+  "blocks": [
+    {
+      "block": "profile_menu",
+      "expected_count": 1,
+      "items": [
+        {
+          "atom_id": null,
+          "intended": null,
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 1,
+          "presentation": null,
+          "slot_s": 60,
+          "speech_id": null,
+          "trained_status": "nonsemantic",
+          "trial_id": "B-C01-M1-V1-PM-01",
+          "trial_type": "profile_menu"
+        }
+      ],
+      "order_source": "fixed",
+      "passes": 1,
+      "phase": "selection",
+      "position": 1,
+      "seconds": 60,
+      "seed": null,
+      "seed_tokens": null,
+      "shared_by": "dyad",
+      "slot_s": 60,
+      "validity": null
+    },
+    {
+      "block": "atom_menus",
+      "expected_count": 8,
+      "items": [
+        {
+          "atom_id": "Q-r2",
+          "intended": {
+            "atom_id": "Q-r2",
+            "family": "Q",
+            "index": 2,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "F"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 1,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-01",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "K-r1",
+          "intended": {
+            "atom_id": "K-r1",
+            "family": "K",
+            "index": 1,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "C"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 2,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-02",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "Q-a2",
+          "intended": {
+            "atom_id": "Q-a2",
+            "family": "Q",
+            "index": 2,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "SCAN"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 3,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-03",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "K-a1",
+          "intended": {
+            "atom_id": "K-a1",
+            "family": "K",
+            "index": 1,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "FLIP_CARD"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 4,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-04",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "Q-r1",
+          "intended": {
+            "atom_id": "Q-r1",
+            "family": "Q",
+            "index": 1,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "E"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 5,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-05",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "K-r2",
+          "intended": {
+            "atom_id": "K-r2",
+            "family": "K",
+            "index": 2,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "B"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 6,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-06",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "Q-a1",
+          "intended": {
+            "atom_id": "Q-a1",
+            "family": "Q",
+            "index": 1,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "TAG"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 7,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-07",
+          "trial_type": "atom_menu"
+        },
+        {
+          "atom_id": "K-a2",
+          "intended": {
+            "atom_id": "K-a2",
+            "family": "K",
+            "index": 2,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "ALIGN_ARROW"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 8,
+          "position": 8,
+          "presentation": null,
+          "slot_s": 45,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AM-08",
+          "trial_type": "atom_menu"
+        }
+      ],
+      "order_source": "stored",
+      "passes": 1,
+      "phase": "selection",
+      "position": 2,
+      "seconds": 360,
+      "seed": null,
+      "seed_tokens": null,
+      "shared_by": "dyad",
+      "slot_s": 45,
+      "validity": null
+    },
+    {
+      "block": "atomic_lessons",
+      "expected_count": 8,
+      "items": [
+        {
+          "atom_id": "Q-r2",
+          "intended": {
+            "atom_id": "Q-r2",
+            "family": "Q",
+            "index": 2,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "F"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 1,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-01",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "K-r1",
+          "intended": {
+            "atom_id": "K-r1",
+            "family": "K",
+            "index": 1,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "C"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 2,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-02",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "Q-a2",
+          "intended": {
+            "atom_id": "Q-a2",
+            "family": "Q",
+            "index": 2,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "SCAN"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 3,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-03",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "K-a1",
+          "intended": {
+            "atom_id": "K-a1",
+            "family": "K",
+            "index": 1,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "FLIP_CARD"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 4,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-04",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "Q-r1",
+          "intended": {
+            "atom_id": "Q-r1",
+            "family": "Q",
+            "index": 1,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "E"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 5,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-05",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "K-r2",
+          "intended": {
+            "atom_id": "K-r2",
+            "family": "K",
+            "index": 2,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "B"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 6,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-06",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "Q-a1",
+          "intended": {
+            "atom_id": "Q-a1",
+            "family": "Q",
+            "index": 1,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "TAG"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 7,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-07",
+          "trial_type": "atomic_lesson"
+        },
+        {
+          "atom_id": "K-a2",
+          "intended": {
+            "atom_id": "K-a2",
+            "family": "K",
+            "index": 2,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "ALIGN_ARROW"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 3,
+          "position": 8,
+          "presentation": null,
+          "slot_s": 20,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AL-08",
+          "trial_type": "atomic_lesson"
+        }
+      ],
+      "order_source": "stored",
+      "passes": 1,
+      "phase": "teaching",
+      "position": 3,
+      "seconds": 160,
+      "seed": null,
+      "seed_tokens": null,
+      "shared_by": "dyad",
+      "slot_s": 20,
+      "validity": null
+    },
+    {
+      "block": "message_lessons",
+      "expected_count": 8,
+      "items": [
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a1-r1",
+            "referent_index": 1,
+            "semantic_action": "TAG",
+            "semantic_referent": "E"
+          },
+          "message_id": "Q-a1-r1",
+          "pass": 1,
+          "plays": 3,
+          "position": 1,
+          "presentation": "structured",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-01",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a1-r1",
+            "referent_index": 1,
+            "semantic_action": "FLIP_CARD",
+            "semantic_referent": "C"
+          },
+          "message_id": "K-a1-r1",
+          "pass": 1,
+          "plays": 3,
+          "position": 2,
+          "presentation": "dictionary",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-02",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 2,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a2-r2",
+            "referent_index": 2,
+            "semantic_action": "SCAN",
+            "semantic_referent": "F"
+          },
+          "message_id": "Q-a2-r2",
+          "pass": 1,
+          "plays": 3,
+          "position": 3,
+          "presentation": "structured",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-03",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 2,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a2-r2",
+            "referent_index": 2,
+            "semantic_action": "ALIGN_ARROW",
+            "semantic_referent": "B"
+          },
+          "message_id": "K-a2-r2",
+          "pass": 1,
+          "plays": 3,
+          "position": 4,
+          "presentation": "dictionary",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-04",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a1-r1",
+            "referent_index": 1,
+            "semantic_action": "FLIP_CARD",
+            "semantic_referent": "C"
+          },
+          "message_id": "K-a1-r1",
+          "pass": 2,
+          "plays": 3,
+          "position": 5,
+          "presentation": "dictionary",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-05",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 2,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a2-r2",
+            "referent_index": 2,
+            "semantic_action": "SCAN",
+            "semantic_referent": "F"
+          },
+          "message_id": "Q-a2-r2",
+          "pass": 2,
+          "plays": 3,
+          "position": 6,
+          "presentation": "structured",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-06",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 2,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a2-r2",
+            "referent_index": 2,
+            "semantic_action": "ALIGN_ARROW",
+            "semantic_referent": "B"
+          },
+          "message_id": "K-a2-r2",
+          "pass": 2,
+          "plays": 3,
+          "position": 7,
+          "presentation": "dictionary",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-07",
+          "trial_type": "message_lesson"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a1-r1",
+            "referent_index": 1,
+            "semantic_action": "TAG",
+            "semantic_referent": "E"
+          },
+          "message_id": "Q-a1-r1",
+          "pass": 2,
+          "plays": 3,
+          "position": 8,
+          "presentation": "structured",
+          "slot_s": 24,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-ML-08",
+          "trial_type": "message_lesson"
+        }
+      ],
+      "order_source": "seeded",
+      "passes": 2,
+      "phase": "teaching",
+      "position": 4,
+      "seconds": 192,
+      "seed": "3cf9920d5ba35c2c117be181689d3408ddcf4e8c86bd093e1ad2ba3d5b838141",
+      "seed_tokens": [
+        "B",
+        "B-C01",
+        "B-C01",
+        "V1",
+        "message_lessons"
+      ],
+      "shared_by": "dyad",
+      "slot_s": 24,
+      "validity": null
+    },
+    {
+      "block": "trained",
+      "expected_count": 4,
+      "items": [
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a1-r1",
+            "referent_index": 1,
+            "semantic_action": "TAG",
+            "semantic_referent": "E"
+          },
+          "message_id": "Q-a1-r1",
+          "pass": 1,
+          "plays": 1,
+          "position": 1,
+          "presentation": null,
+          "slot_s": 14,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-TR-01",
+          "trial_type": "trained"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a1-r1",
+            "referent_index": 1,
+            "semantic_action": "FLIP_CARD",
+            "semantic_referent": "C"
+          },
+          "message_id": "K-a1-r1",
+          "pass": 1,
+          "plays": 1,
+          "position": 2,
+          "presentation": null,
+          "slot_s": 14,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-TR-02",
+          "trial_type": "trained"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 2,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a2-r2",
+            "referent_index": 2,
+            "semantic_action": "ALIGN_ARROW",
+            "semantic_referent": "B"
+          },
+          "message_id": "K-a2-r2",
+          "pass": 1,
+          "plays": 1,
+          "position": 3,
+          "presentation": null,
+          "slot_s": 14,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-TR-03",
+          "trial_type": "trained"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 2,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a2-r2",
+            "referent_index": 2,
+            "semantic_action": "SCAN",
+            "semantic_referent": "F"
+          },
+          "message_id": "Q-a2-r2",
+          "pass": 1,
+          "plays": 1,
+          "position": 4,
+          "presentation": null,
+          "slot_s": 14,
+          "speech_id": null,
+          "trained_status": "trained",
+          "trial_id": "B-C01-M1-V1-TR-04",
+          "trial_type": "trained"
+        }
+      ],
+      "order_source": "seeded",
+      "passes": 1,
+      "phase": "protected",
+      "position": 5,
+      "seconds": 56,
+      "seed": "a3b2a9028935bbd9482f178ef27a83ad9e48d37ab5e1b13ce1fd09f08c2cfd27",
+      "seed_tokens": [
+        "B",
+        "B-C01",
+        "B-C01-M1",
+        "V1",
+        "trained"
+      ],
+      "shared_by": "person",
+      "slot_s": 14,
+      "validity": null
+    },
+    {
+      "block": "novel",
+      "expected_count": 2,
+      "items": [
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "K",
+            "kind": "message",
+            "message_id": "K-a1-r2",
+            "referent_index": 2,
+            "semantic_action": "FLIP_CARD",
+            "semantic_referent": "B"
+          },
+          "message_id": "K-a1-r2",
+          "pass": 1,
+          "plays": 1,
+          "position": 1,
+          "presentation": null,
+          "slot_s": 14,
+          "speech_id": null,
+          "trained_status": "heldout",
+          "trial_id": "B-C01-M1-V1-NV-01",
+          "trial_type": "novel"
+        },
+        {
+          "atom_id": null,
+          "intended": {
+            "action_index": 1,
+            "family": "Q",
+            "kind": "message",
+            "message_id": "Q-a1-r2",
+            "referent_index": 2,
+            "semantic_action": "TAG",
+            "semantic_referent": "F"
+          },
+          "message_id": "Q-a1-r2",
+          "pass": 1,
+          "plays": 1,
+          "position": 2,
+          "presentation": null,
+          "slot_s": 14,
+          "speech_id": null,
+          "trained_status": "heldout",
+          "trial_id": "B-C01-M1-V1-NV-02",
+          "trial_type": "novel"
+        }
+      ],
+      "order_source": "seeded",
+      "passes": 1,
+      "phase": "protected",
+      "position": 6,
+      "seconds": 28,
+      "seed": "19480d565f8a076177b039e449e76252453868492c4f8dc0789f3f629b457857",
+      "seed_tokens": [
+        "B",
+        "B-C01",
+        "B-C01-M1",
+        "V1",
+        "novel"
+      ],
+      "shared_by": "person",
+      "slot_s": 14,
+      "validity": null
+    },
+    {
+      "block": "atomic",
+      "expected_count": 8,
+      "items": [
+        {
+          "atom_id": "Q-a2",
+          "intended": {
+            "atom_id": "Q-a2",
+            "family": "Q",
+            "index": 2,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "SCAN"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 1,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-01",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "K-r2",
+          "intended": {
+            "atom_id": "K-r2",
+            "family": "K",
+            "index": 2,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "B"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 2,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-02",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "K-r1",
+          "intended": {
+            "atom_id": "K-r1",
+            "family": "K",
+            "index": 1,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "C"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 3,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-03",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "Q-r2",
+          "intended": {
+            "atom_id": "Q-r2",
+            "family": "Q",
+            "index": 2,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "F"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 4,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-04",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "K-a1",
+          "intended": {
+            "atom_id": "K-a1",
+            "family": "K",
+            "index": 1,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "FLIP_CARD"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 5,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-05",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "K-a2",
+          "intended": {
+            "atom_id": "K-a2",
+            "family": "K",
+            "index": 2,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "ALIGN_ARROW"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 6,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-06",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "Q-a1",
+          "intended": {
+            "atom_id": "Q-a1",
+            "family": "Q",
+            "index": 1,
+            "kind": "atom",
+            "role": "action",
+            "semantic_label": "TAG"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 7,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-07",
+          "trial_type": "atomic"
+        },
+        {
+          "atom_id": "Q-r1",
+          "intended": {
+            "atom_id": "Q-r1",
+            "family": "Q",
+            "index": 1,
+            "kind": "atom",
+            "role": "referent",
+            "semantic_label": "E"
+          },
+          "message_id": null,
+          "pass": 1,
+          "plays": 1,
+          "position": 8,
+          "presentation": null,
+          "slot_s": 9,
+          "speech_id": null,
+          "trained_status": "atom",
+          "trial_id": "B-C01-M1-V1-AT-08",
+          "trial_type": "atomic"
+        }
+      ],
+      "order_source": "seeded",
+      "passes": 1,
+      "phase": "protected",
+      "position": 7,
+      "seconds": 72,
+      "seed": "b7c5cccac8a6d4eb94e460c5d7170b4ef0f2b20c53cf14b86f9bdb1e8d3fb2ee",
+      "seed_tokens": [
+        "B",
+        "B-C01",
+        "B-C01-M1",
+        "V1",
+        "atomic"
+      ],
+      "shared_by": "person",
+      "slot_s": 9,
+      "validity": null
+    }
+  ],
+  "demo": true,
+  "dictionary_messages": [
+    "K-a1-r1",
+    "K-a2-r2",
+    "Q-a1-r1",
+    "Q-a2-r2"
+  ],
+  "family_first": "Q",
+  "format": "av-schedules/visit-schedule",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "hidden_answer": true,
+  "permutation_json_sha256": "5563e86ecb39a9eb2ab4dc5ed39b42093bab6459b8c0612f132d7f7d64a322c7",
+  "person_id": "B-C01-M1",
+  "person_slot": "M1",
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "study": "B",
+  "swap_w1_w4": true,
+  "unit_id": "B-C01",
+  "unit_kind": "dyad",
+  "visit": "V1",
+  "wave": 1
+}

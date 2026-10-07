@@ -260,18 +260,19 @@ class CommandDispatcher:
                 self.active = None
                 self._complete(active["job"], False, "EXECUTION_FAILED")
 
-    def after_physics_step(self):
+    def after_physics_step(self, *, capture=None):
         """Explicit robot-only kinematic hold; object/appearance drift is a fault."""
         self._thread()
         if self.mode == "test" or self.stopped or self.neutral_hold or self.paused:
             if self.hold_robot is None:
                 self.fault = "HOLD_NOT_CONFIGURED"
                 return False
-            wanted = self.paused_robot if self.paused and not self.neutral_hold and self.mode != "test" and not self.stopped else self.reset_manager.neutral_state["robot"]
+            wanted = self.paused_robot if self.paused and not self.neutral_hold and self.mode != "test" and not self.stopped else self.reset_manager.neutral_robot_state
             try:
                 self.hold_robot(wanted)
                 if self.mode == "test" or self.stopped or self.neutral_hold:
-                    result = self.reset_manager.verify_current()
+                    result = (self.reset_manager.verify_current() if capture is None else
+                              self.reset_manager.verify_current(capture=capture))
                     if not result["reset_ok"]:
                         self.fault = "NEUTRAL_DIVERGED"
                         return False

@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import PurePosixPath
 
-BINARY_SUFFIXES = {".stl", ".obj", ".usd", ".usda", ".usdc", ".usdz", ".glb", ".fbx", ".blend", ".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".exr", ".hdr", ".psd", ".wav", ".mp3", ".ogg", ".flac", ".mp4", ".zip", ".pdf"}
+BINARY_SUFFIXES = {".stl", ".obj", ".avmesh", ".usd", ".usda", ".usdc", ".usdz", ".glb", ".fbx", ".blend", ".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".exr", ".hdr", ".psd", ".wav", ".mp3", ".ogg", ".flac", ".mp4", ".zip", ".pdf"}
 PRIVATE_DIRS = {"participant-data", "participants", "study-material", "codebooks", "learner-packages", "candidate-banks", "allocation-lists", "confirmatory-seeds", "private", "local-data", "raw-results", "recordings", "external-assets", ".local"}
 SECRET_PATTERNS = [
     re.compile(rb"gh[pousr]_" + rb"[A-Za-z0-9]{30,}"),

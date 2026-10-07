@@ -1,0 +1,564 @@
+{
+  "atom_order": [
+    "Q-r2",
+    "K-r2",
+    "Q-a4",
+    "K-a4",
+    "Q-r1",
+    "K-r1",
+    "Q-a2",
+    "K-a3",
+    "Q-r4",
+    "K-r4",
+    "Q-a1",
+    "K-a2",
+    "Q-r3",
+    "K-r3",
+    "Q-a3",
+    "K-a1"
+  ],
+  "atoms": [
+    {
+      "atom_id": "K-a1",
+      "family": "K",
+      "index": 1,
+      "matrix_wave": 1,
+      "order_position": 16,
+      "role": "action",
+      "semantic_label": "REMOVE_ONE"
+    },
+    {
+      "atom_id": "K-a2",
+      "family": "K",
+      "index": 2,
+      "matrix_wave": 1,
+      "order_position": 12,
+      "role": "action",
+      "semantic_label": "ALIGN_ARROW"
+    },
+    {
+      "atom_id": "K-a3",
+      "family": "K",
+      "index": 3,
+      "matrix_wave": 2,
+      "order_position": 8,
+      "role": "action",
+      "semantic_label": "FLIP_CARD"
+    },
+    {
+      "atom_id": "K-a4",
+      "family": "K",
+      "index": 4,
+      "matrix_wave": 3,
+      "order_position": 4,
+      "role": "action",
+      "semantic_label": "ADD_ONE"
+    },
+    {
+      "atom_id": "K-r1",
+      "family": "K",
+      "index": 1,
+      "matrix_wave": 1,
+      "order_position": 6,
+      "role": "referent",
+      "semantic_label": "A"
+    },
+    {
+      "atom_id": "K-r2",
+      "family": "K",
+      "index": 2,
+      "matrix_wave": 1,
+      "order_position": 2,
+      "role": "referent",
+      "semantic_label": "D"
+    },
+    {
+      "atom_id": "K-r3",
+      "family": "K",
+      "index": 3,
+      "matrix_wave": 2,
+      "order_position": 14,
+      "role": "referent",
+      "semantic_label": "C"
+    },
+    {
+      "atom_id": "K-r4",
+      "family": "K",
+      "index": 4,
+      "matrix_wave": 3,
+      "order_position": 10,
+      "role": "referent",
+      "semantic_label": "B"
+    },
+    {
+      "atom_id": "Q-a1",
+      "family": "Q",
+      "index": 1,
+      "matrix_wave": 1,
+      "order_position": 11,
+      "role": "action",
+      "semantic_label": "CLOSE"
+    },
+    {
+      "atom_id": "Q-a2",
+      "family": "Q",
+      "index": 2,
+      "matrix_wave": 1,
+      "order_position": 7,
+      "role": "action",
+      "semantic_label": "QUARANTINE"
+    },
+    {
+      "atom_id": "Q-a3",
+      "family": "Q",
+      "index": 3,
+      "matrix_wave": 2,
+      "order_position": 15,
+      "role": "action",
+      "semantic_label": "TAG"
+    },
+    {
+      "atom_id": "Q-a4",
+      "family": "Q",
+      "index": 4,
+      "matrix_wave": 3,
+      "order_position": 3,
+      "role": "action",
+      "semantic_label": "SCAN"
+    },
+    {
+      "atom_id": "Q-r1",
+      "family": "Q",
+      "index": 1,
+      "matrix_wave": 1,
+      "order_position": 5,
+      "role": "referent",
+      "semantic_label": "F"
+    },
+    {
+      "atom_id": "Q-r2",
+      "family": "Q",
+      "index": 2,
+      "matrix_wave": 1,
+      "order_position": 1,
+      "role": "referent",
+      "semantic_label": "E"
+    },
+    {
+      "atom_id": "Q-r3",
+      "family": "Q",
+      "index": 3,
+      "matrix_wave": 2,
+      "order_position": 13,
+      "role": "referent",
+      "semantic_label": "H"
+    },
+    {
+      "atom_id": "Q-r4",
+      "family": "Q",
+      "index": 4,
+      "matrix_wave": 3,
+      "order_position": 9,
+      "role": "referent",
+      "semantic_label": "G"
+    }
+  ],
+  "demo": true,
+  "family_first": "Q",
+  "format": "av-schedules/permutation",
+  "format_version": 2,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "labels": {
+    "K": {
+      "action": [
+        "REMOVE_ONE",
+        "ALIGN_ARROW",
+        "FLIP_CARD",
+        "ADD_ONE"
+      ],
+      "referent": [
+        "A",
+        "D",
+        "C",
+        "B"
+      ]
+    },
+    "Q": {
+      "action": [
+        "CLOSE",
+        "QUARANTINE",
+        "TAG",
+        "SCAN"
+      ],
+      "referent": [
+        "F",
+        "E",
+        "H",
+        "G"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "action_atom": "K-a1",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a1-r1",
+      "referent_atom": "K-r1",
+      "semantic_action": "REMOVE_ONE",
+      "semantic_referent": "A",
+      "status": "trained",
+      "training_wave": 1
+    },
+    {
+      "action_atom": "K-a1",
+      "family": "K",
+      "heldout_set": "H-V1",
+      "message_id": "K-a1-r2",
+      "referent_atom": "K-r2",
+      "semantic_action": "REMOVE_ONE",
+      "semantic_referent": "D",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "K-a1",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a1-r3",
+      "referent_atom": "K-r3",
+      "semantic_action": "REMOVE_ONE",
+      "semantic_referent": "C",
+      "status": "trained",
+      "training_wave": 2
+    },
+    {
+      "action_atom": "K-a1",
+      "family": "K",
+      "heldout_set": "H-W1",
+      "message_id": "K-a1-r4",
+      "referent_atom": "K-r4",
+      "semantic_action": "REMOVE_ONE",
+      "semantic_referent": "B",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "K-a2",
+      "family": "K",
+      "heldout_set": "H-W4",
+      "message_id": "K-a2-r1",
+      "referent_atom": "K-r1",
+      "semantic_action": "ALIGN_ARROW",
+      "semantic_referent": "A",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "K-a2",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a2-r2",
+      "referent_atom": "K-r2",
+      "semantic_action": "ALIGN_ARROW",
+      "semantic_referent": "D",
+      "status": "trained",
+      "training_wave": 1
+    },
+    {
+      "action_atom": "K-a2",
+      "family": "K",
+      "heldout_set": "H-V2",
+      "message_id": "K-a2-r3",
+      "referent_atom": "K-r3",
+      "semantic_action": "ALIGN_ARROW",
+      "semantic_referent": "C",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "K-a2",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a2-r4",
+      "referent_atom": "K-r4",
+      "semantic_action": "ALIGN_ARROW",
+      "semantic_referent": "B",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "K-a3",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a3-r1",
+      "referent_atom": "K-r1",
+      "semantic_action": "FLIP_CARD",
+      "semantic_referent": "A",
+      "status": "trained",
+      "training_wave": 2
+    },
+    {
+      "action_atom": "K-a3",
+      "family": "K",
+      "heldout_set": "H-W1",
+      "message_id": "K-a3-r2",
+      "referent_atom": "K-r2",
+      "semantic_action": "FLIP_CARD",
+      "semantic_referent": "D",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "K-a3",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a3-r3",
+      "referent_atom": "K-r3",
+      "semantic_action": "FLIP_CARD",
+      "semantic_referent": "C",
+      "status": "trained",
+      "training_wave": 2
+    },
+    {
+      "action_atom": "K-a3",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a3-r4",
+      "referent_atom": "K-r4",
+      "semantic_action": "FLIP_CARD",
+      "semantic_referent": "B",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "K-a4",
+      "family": "K",
+      "heldout_set": "H-V3",
+      "message_id": "K-a4-r1",
+      "referent_atom": "K-r1",
+      "semantic_action": "ADD_ONE",
+      "semantic_referent": "A",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "K-a4",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a4-r2",
+      "referent_atom": "K-r2",
+      "semantic_action": "ADD_ONE",
+      "semantic_referent": "D",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "K-a4",
+      "family": "K",
+      "heldout_set": null,
+      "message_id": "K-a4-r3",
+      "referent_atom": "K-r3",
+      "semantic_action": "ADD_ONE",
+      "semantic_referent": "C",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "K-a4",
+      "family": "K",
+      "heldout_set": "H-W4",
+      "message_id": "K-a4-r4",
+      "referent_atom": "K-r4",
+      "semantic_action": "ADD_ONE",
+      "semantic_referent": "B",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a1",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a1-r1",
+      "referent_atom": "Q-r1",
+      "semantic_action": "CLOSE",
+      "semantic_referent": "F",
+      "status": "trained",
+      "training_wave": 1
+    },
+    {
+      "action_atom": "Q-a1",
+      "family": "Q",
+      "heldout_set": "H-V1",
+      "message_id": "Q-a1-r2",
+      "referent_atom": "Q-r2",
+      "semantic_action": "CLOSE",
+      "semantic_referent": "E",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a1",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a1-r3",
+      "referent_atom": "Q-r3",
+      "semantic_action": "CLOSE",
+      "semantic_referent": "H",
+      "status": "trained",
+      "training_wave": 2
+    },
+    {
+      "action_atom": "Q-a1",
+      "family": "Q",
+      "heldout_set": "H-W1",
+      "message_id": "Q-a1-r4",
+      "referent_atom": "Q-r4",
+      "semantic_action": "CLOSE",
+      "semantic_referent": "G",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a2",
+      "family": "Q",
+      "heldout_set": "H-W4",
+      "message_id": "Q-a2-r1",
+      "referent_atom": "Q-r1",
+      "semantic_action": "QUARANTINE",
+      "semantic_referent": "F",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a2",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a2-r2",
+      "referent_atom": "Q-r2",
+      "semantic_action": "QUARANTINE",
+      "semantic_referent": "E",
+      "status": "trained",
+      "training_wave": 1
+    },
+    {
+      "action_atom": "Q-a2",
+      "family": "Q",
+      "heldout_set": "H-V2",
+      "message_id": "Q-a2-r3",
+      "referent_atom": "Q-r3",
+      "semantic_action": "QUARANTINE",
+      "semantic_referent": "H",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a2",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a2-r4",
+      "referent_atom": "Q-r4",
+      "semantic_action": "QUARANTINE",
+      "semantic_referent": "G",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "Q-a3",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a3-r1",
+      "referent_atom": "Q-r1",
+      "semantic_action": "TAG",
+      "semantic_referent": "F",
+      "status": "trained",
+      "training_wave": 2
+    },
+    {
+      "action_atom": "Q-a3",
+      "family": "Q",
+      "heldout_set": "H-W1",
+      "message_id": "Q-a3-r2",
+      "referent_atom": "Q-r2",
+      "semantic_action": "TAG",
+      "semantic_referent": "E",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a3",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a3-r3",
+      "referent_atom": "Q-r3",
+      "semantic_action": "TAG",
+      "semantic_referent": "H",
+      "status": "trained",
+      "training_wave": 2
+    },
+    {
+      "action_atom": "Q-a3",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a3-r4",
+      "referent_atom": "Q-r4",
+      "semantic_action": "TAG",
+      "semantic_referent": "G",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "Q-a4",
+      "family": "Q",
+      "heldout_set": "H-V3",
+      "message_id": "Q-a4-r1",
+      "referent_atom": "Q-r1",
+      "semantic_action": "SCAN",
+      "semantic_referent": "F",
+      "status": "heldout",
+      "training_wave": null
+    },
+    {
+      "action_atom": "Q-a4",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a4-r2",
+      "referent_atom": "Q-r2",
+      "semantic_action": "SCAN",
+      "semantic_referent": "E",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "Q-a4",
+      "family": "Q",
+      "heldout_set": null,
+      "message_id": "Q-a4-r3",
+      "referent_atom": "Q-r3",
+      "semantic_action": "SCAN",
+      "semantic_referent": "H",
+      "status": "trained",
+      "training_wave": 3
+    },
+    {
+      "action_atom": "Q-a4",
+      "family": "Q",
+      "heldout_set": "H-W4",
+      "message_id": "Q-a4-r4",
+      "referent_atom": "Q-r4",
+      "semantic_action": "SCAN",
+      "semantic_referent": "G",
+      "status": "heldout",
+      "training_wave": null
+    }
+  ],
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "shared_by": "batch",
+  "study": "A",
+  "unit_id": "A-C01",
+  "unit_kind": "batch"
+}

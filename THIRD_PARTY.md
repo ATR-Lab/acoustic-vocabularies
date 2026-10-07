@@ -16,3 +16,11 @@ Use `python tools/fetch-asset.py --url <immutable-https-url> --sha256 <reviewed-
 --output external-assets/<file>` only after reviewing the source/license. It
 refuses missing hashes, mutable revisions, overwrites and outputs outside the
 ignored asset directory. This is intentionally not a bulk download of USDs.
+
+# Unitree G1 URDF display source
+
+The #46 source URDF and its BSD-3-Clause license are recorded under
+`unity/Assets/ThirdParty/Unitree/G1/`. Mesh downloads use revision and SHA-256 pins
+from that directory and stay in ignored external-assets while LFS is unavailable.
+This approval does not extend to Isaac USD assets from a different distribution.
+

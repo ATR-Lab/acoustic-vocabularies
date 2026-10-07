@@ -23,7 +23,11 @@ from .transport import WebSocketTransport
 
 def run_disconnect_check(adapter, layout, snapshot_path, output, *, expected_snapshot_sha256,
                          phase_seconds=30., station_id='station-01', socket_path='/tmp/av-disconnect.sock',
-                         joint_csv=None):
+                         joint_csv=None, collector_mode='thread'):
+    if collector_mode not in ('thread', 'process'):
+        raise ValueError('Explicit thread or process diagnostic collector required')
+    from .process_collector import ProcessCollector
+    collector_factory=LocalCollector if collector_mode=='thread' else ProcessCollector
     if type(phase_seconds) not in (int, float) or not math.isfinite(phase_seconds) or phase_seconds < 10:
         raise ValueError('At least ten seconds per diagnostic phase')
     snapshot=load_snapshot(snapshot_path,expected_snapshot_sha256)
@@ -49,7 +53,7 @@ def run_disconnect_check(adapter, layout, snapshot_path, output, *, expected_sna
         try:
             for phase in (1,3):
                 if wait_to(phase*phase_seconds):break
-                current=LocalCollector(Path(socket_path),registry)
+                current=collector_factory(Path(socket_path),registry)
                 client_events.append(dict(phase=names[phase],event='connected',host_mono_ns=time.monotonic_ns()))
                 wait_to((phase+1)*phase_seconds)
                 current.close()
@@ -97,7 +101,7 @@ def run_disconnect_check(adapter, layout, snapshot_path, output, *, expected_sna
     completed=failure is None and not errors and (end-start)/1e9>=phase_seconds*4
     actual_connections=all(any(event['phase']==name and event['event']=='disconnected' and event.get('received',0)>0
                                for event in client_events) for name in ('connected','reconnected'))
-    summary=dict(source_kind='live',phase_seconds_requested=phase_seconds,elapsed_s=(end-start)/1e9,
+    summary=dict(source_kind='live',collector_mode=collector_mode,phase_seconds_requested=phase_seconds,elapsed_s=(end-start)/1e9,
         completed=completed,failure=failure,phases=phases,
         comparisons=comparisons,client_events=client_events,client_errors=errors,
         no_main_loop_wait_for_client=True,unpaced_simulation=True,public_publish_rate_hz=30,protected_mode=False,

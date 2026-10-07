@@ -6,6 +6,7 @@
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
+.utmp/
 [Mm]emoryCaptures/
 .vs/
 *.csproj
@@ -18,6 +19,18 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+# Vocabulary store layouts (sound/docs/store.md): never commit a store
+**/books/*/log.jsonl
+**/books/*/FROZEN
+**/books/*/VOID
+**/books/*/.lock
+**/blobs/*.wav
+**/blobs/quarantine/
+*.partial
 .venv/
 venv/
 node_modules/
