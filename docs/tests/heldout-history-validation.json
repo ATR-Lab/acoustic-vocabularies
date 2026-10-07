@@ -1,21 +1,34 @@
 {
   "version": 1,
   "scope": "retained_software_history_validation",
-  "source_commit": "5f3c9613034c064f362e769e68e0bc673febf534",
+  "source_commit": "89e134c428fc9c26ef72bc7dae2cdee495056181",
   "source_files_sha256_basis": "Git blob bytes at source_commit; working-tree line endings may differ",
   "source_files_sha256": {
-    "tools/mock_visit/holdouts.py": "9a49d10ebb019e5ec0994cb35b6996b029780f31fecd38568432038d304ce1f3",
-    "tests/test_mock_visit_holdouts.py": "5160093dc0ca7059c71d5558493bdd83836c473844f5878dc8a91c7d84c5a8bf",
-    "tools/mock_visit/HOLDOUT_HISTORY.md": "6f3a0c6810e0d78defe84886f89fd1d806c0f5370c163410bd53c9a41831efb8"
+    "tools/mock_visit/holdouts.py": "2b32a03f50cebdb1dde2994fe779dcf6693d40c5a0626938097656f093ec8cea",
+    "tests/test_mock_visit_holdouts.py": "3fb3a0465c79ebf24d30f9fca86b882483aaefd06028e8702ec669c8d1889476",
+    "tools/mock_visit/HOLDOUT_HISTORY.md": "9d25e9591d06d0f8dc81d1a3b4ea47b6c48de69ecd3835f93e0d5e43568a81a3"
   },
   "python": {
-    "command": "python -m pytest -q tests/test_mock_visit*.py",
+    "command": "python -m pytest -q tests/test_mock_visit*.py (files listed explicitly on Windows)",
+    "cases": 161,
+    "passed": 159,
+    "failed": 0,
+    "skipped": 2,
+    "skipped_reasons": [
+      "Optional existing sealed producer packages (AV_HOLDOUT_PACKAGE_FIXTURES not set on this host)",
+      "Actual C# producer export not supplied"
+    ],
+    "duration_seconds": 49.58,
+    "scanner_cases": 26,
+    "sealed_producer_package_fixture_enabled": false,
+    "retained_csharp_orientation_fixture_enabled": false,
+    "regression_checked_against_previous_scanner": "test_permit_consumes_phrase_so_failed_run_cannot_hide_replay fails at 3e07968 and passes at source_commit"
+  },
+  "previous_checkpoint": {
+    "source_commit": "5f3c9613034c064f362e769e68e0bc673febf534",
     "cases": 154,
     "passed": 154,
-    "failed": 0,
     "skipped": 0,
-    "duration_seconds": 37.23,
-    "new_scanner_cases": 19,
     "sealed_producer_package_fixture_enabled": true,
     "retained_csharp_orientation_fixture_enabled": true,
     "xml_sha256": "d7245e3e9d29fc6e7dce4518a3af387228b892f3fd455478ba734c74b86e7c29",
@@ -77,23 +90,30 @@
         }
       ]
     },
-    "claim": "Offline scan of previously finalized artifacts; no new native run or complete-history evidence"
+    "produced_by_source_commit": "5f3c9613034c064f362e769e68e0bc673febf534",
+    "rerun_with_source_commit": false,
+    "claim": "Offline scan of previously finalized artifacts by the first scanner revision; not re-run with the revised consumption and ledger checks; no new native run or complete-history evidence"
   },
   "schema_validation": {
-    "schemas": 45,
+    "schemas": 89,
     "synthetic_examples": 14,
     "passed": true,
-    "raw_log_sha256": "668f606820d8cd56d187c1662e91c6f6bb83ee8f1616e767032f5f1027b240b7"
+    "command": "python tools/validate_schemas.py"
   },
   "review_resolutions": [
     "Grammar and study audio IDs share immutable session/channel ownership; cross-visit grammar reuse and both cross-channel graft directions are rejected.",
     "No retained audio is a nonpassing incomplete history, never an absence proof.",
-    "Unknown PCM is rejected rather than treated as clear."
+    "Unknown PCM is rejected rather than treated as clear.",
+    "Durable novel cue intent consumes a heldout phrase before any request row; a failed run that stopped after the permit followed by a replay is refused (HOLDOUT_CONSUMED_PHRASE_REPLAY, CLI exit 2).",
+    "Pinned menu-ledger and joined lesson PCM hashes are checked against the heldout index (HOLDOUT_LEDGER_CONTAMINATION).",
+    "verify_history and the CLI are exercised over synthetic on-disk plans for role, person, package and artifact binding and reserved WAV PCM checks; malformed CSV input exits 2."
   ],
   "limits": [
     "Supplied-record integrity does not establish that all earlier runs were retained.",
     "The actual prefix is incomplete; no complete native A or B history is claimed.",
     "Synthetic positive histories and adversarial fixtures are software contract tests only.",
+    "On-disk verify_history tests stub reconcile, export_bundle and package parsing; those are covered by their own tests, not by this record.",
+    "The sealed producer package and C# export fixtures were not available on the host that ran source_commit, so those two cases were skipped there.",
     "No acoustic onset, audibility, physical headset, human review, private methodology or participant admission qualification.",
     "Initial fixture-path and null-auxiliary-path test failures remain retained privately; final results above are the corrected source checkpoint."
   ],
