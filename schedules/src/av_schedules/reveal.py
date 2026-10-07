@@ -21,8 +21,10 @@ Each log line is canonical JSON (sorted keys, no spaces) with ``line``, ``event`
 ``at``, ``staff``, ``list_sha256`` and ``prev_sha256`` (SHA-256 of the previous line's
 bytes; 64 zeros for the first), so edits and truncation are detected on load.
 
-This is a stub: it assumes one console process per log and a trusted file system. The
-file-format agreement with the console owner (#73) is pending.
+This low-level compatibility policy is not an admission authority: it assumes one
+process per log and a trusted file system. Operator entry must use
+``admission.DurableRevealLog`` and the pinned receipt handoff, which add verified
+orientation evidence, OS serialization, fsync and independently retained heads.
 """
 
 from __future__ import annotations
@@ -83,6 +85,8 @@ class RevealLog:
         self._study: str = doc["study"]
         self._set: str = doc["set"]
         self._list_sha256: str = doc["list_sha256"]
+        self._seed_label: str = doc["seed_label"]
+        self._demo: bool = doc["demo"]
         self._log_path = log_path
         self._clock = clock
         self._entries: list[dict[str, Any]] = []
@@ -124,6 +128,21 @@ class RevealLog:
     def revealed(self) -> list[dict[str, Any]]:
         """Entries revealed so far, in reveal order, with participant IDs bound."""
         return copy.deepcopy(self._reveals)
+
+    def matches_source(
+        self, *, study: str, set_name: str, demo: bool, seed_label: str, list_sha256: str
+    ) -> bool:
+        """Bind a configured visit without exposing private source labels in UI DTOs.
+
+        The caller independently pins the authorized list hash alongside its
+        run-sheet manifest hash. Study/set IDs alone can repeat across seeds.
+        """
+        return (
+            type(demo) is bool
+            and type(self._demo) is bool
+            and (study, set_name, demo, seed_label, list_sha256)
+            == (self._study, self._set, self._demo, self._seed_label, self._list_sha256)
+        )
 
     def pending(self) -> list[str]:
         """Eligibility record IDs logged but not yet used by a reveal."""

@@ -1,0 +1,41 @@
+name: Apparatus manifest collector
+on:
+  pull_request:
+    paths:
+      - 'tools/apparatus_manifest.py'
+      - 'apparatus/schemas/*manifest*.schema.json'
+      - 'apparatus/examples/*manifest*.json'
+      - 'tests/test_apparatus_manifest.py'
+      - 'tests/schema-fixtures.json'
+      - '.github/workflows/apparatus-manifest.yml'
+      - 'requirements-dev.txt'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/apparatus_manifest.py'
+      - 'apparatus/schemas/*manifest*.schema.json'
+      - 'apparatus/examples/*manifest*.json'
+      - 'tests/test_apparatus_manifest.py'
+      - 'tests/schema-fixtures.json'
+      - '.github/workflows/apparatus-manifest.yml'
+      - 'requirements-dev.txt'
+permissions:
+  contents: read
+jobs:
+  collector:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest tests/test_apparatus_manifest.py tests/test_schemas.py -q

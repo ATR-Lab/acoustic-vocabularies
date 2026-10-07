@@ -1,0 +1,935 @@
+{
+  "status": "engineering_editor_preview_not_headset_legibility",
+  "width": 1920,
+  "height": 1080,
+  "captures": [
+    {
+      "file": "full-empty.png",
+      "sha256": "775165b235605a7387efa0734a06aa5b21704ccfb7cc11f42dc975ded16a0abf",
+      "mode": "FullMessage",
+      "role": "Command",
+      "selected": false,
+      "active_button_labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "Commit",
+        "Don't know",
+        ""
+      ],
+      "glyph_metrics": [
+        {
+          "label": "A",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.00705948938,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "B",
+          "scale": 0.101175055,
+          "local_height": 0.111718759,
+          "world_height": 0.011303152,
+          "world_width": 0.00677872868,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "C",
+          "scale": 0.09723316,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627677,
+          "world_width": 0.007000788,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "D",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.007586317,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "E",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.00727058249,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "F",
+          "scale": 0.10445217,
+          "local_height": 0.111718759,
+          "world_height": 0.011669267,
+          "world_width": 0.006371583,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "G",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.007829844,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "H",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.007813164,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    },
+    {
+      "file": "full-selected.png",
+      "sha256": "61ae0be08b2e70ee66bc72c05ee3584c2a96fc76a189d0f85fb63580127b6fc5",
+      "mode": "FullMessage",
+      "role": "Command",
+      "selected": true,
+      "active_button_labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "ADD ONE",
+        "REMOVE ONE",
+        "FLIP CARD",
+        "ALIGN ARROW",
+        "Commit",
+        "Don't know",
+        ""
+      ],
+      "glyph_metrics": [
+        {
+          "label": "A",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.00705948938,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "B",
+          "scale": 0.101175055,
+          "local_height": 0.111718759,
+          "world_height": 0.011303152,
+          "world_width": 0.00677872868,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "C",
+          "scale": 0.09723316,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627677,
+          "world_width": 0.007000788,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "D",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.007586317,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "E",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.00727058249,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "F",
+          "scale": 0.10445217,
+          "local_height": 0.111718759,
+          "world_height": 0.011669267,
+          "world_width": 0.006371583,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "G",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.007829844,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "H",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.007813164,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "ADD ONE",
+          "scale": 0.108248547,
+          "local_height": 0.111718759,
+          "world_height": 0.0120933931,
+          "world_width": 0.04936134,
+          "ink_height_m": 0.008335139,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "REMOVE ONE",
+          "scale": 0.104491055,
+          "local_height": 0.111718759,
+          "world_height": 0.0116736107,
+          "world_width": 0.07094943,
+          "ink_height_m": 0.008045811,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "FLIP CARD",
+          "scale": 0.104491055,
+          "local_height": 0.111718759,
+          "world_height": 0.0116736107,
+          "world_width": 0.05464882,
+          "ink_height_m": 0.008045811,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "ALIGN ARROW",
+          "scale": 0.108248562,
+          "local_height": 0.111718759,
+          "world_height": 0.012093395,
+          "world_width": 0.07707298,
+          "ink_height_m": 0.00833514,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    },
+    {
+      "file": "atomic-action.png",
+      "sha256": "7f33d3186e7733c47b3bc185ec4e8f78331f5158ca6d7a11008d29fd23a88a66",
+      "mode": "AtomicProbe",
+      "role": "Action",
+      "selected": false,
+      "active_button_labels": [
+        "ADD ONE",
+        "REMOVE ONE",
+        "FLIP CARD",
+        "ALIGN ARROW",
+        "SCAN",
+        "TAG",
+        "CLOSE",
+        "QUARANTINE",
+        "Commit",
+        "Don't know",
+        "Action"
+      ],
+      "glyph_metrics": [
+        {
+          "label": "ADD ONE",
+          "scale": 0.101260349,
+          "local_height": 0.111718759,
+          "world_height": 0.01131268,
+          "world_width": 0.0461747237,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "REMOVE ONE",
+          "scale": 0.09723317,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627686,
+          "world_width": 0.06602132,
+          "ink_height_m": 0.007486954,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "FLIP CARD",
+          "scale": 0.09723317,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627686,
+          "world_width": 0.0508529469,
+          "ink_height_m": 0.007486954,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "ALIGN ARROW",
+          "scale": 0.101260357,
+          "local_height": 0.111718759,
+          "world_height": 0.0113126813,
+          "world_width": 0.072097376,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "SCAN",
+          "scale": 0.10428825,
+          "local_height": 0.111718759,
+          "world_height": 0.0116509534,
+          "world_width": 0.0289921369,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "TAG",
+          "scale": 0.1003826,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146195,
+          "world_width": 0.0206788182,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "CLOSE",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.03413009,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "QUARANTINE",
+          "scale": 0.09913822,
+          "local_height": 0.111718759,
+          "world_height": 0.0110755991,
+          "world_width": 0.06503467,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Action",
+          "scale": 0.09544748,
+          "local_height": 0.111718759,
+          "world_height": 0.0106632737,
+          "world_width": 0.0266298484,
+          "ink_height_m": 0.007254009,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    },
+    {
+      "file": "atomic-target.png",
+      "sha256": "5ebadd363544b560b6127a643271a8f806f0a5c87a4bdbbd2322861bf961d951",
+      "mode": "AtomicProbe",
+      "role": "Target",
+      "selected": false,
+      "active_button_labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "Commit",
+        "Don't know",
+        "Target"
+      ],
+      "glyph_metrics": [
+        {
+          "label": "A",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.00705948938,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "B",
+          "scale": 0.101175055,
+          "local_height": 0.111718759,
+          "world_height": 0.011303152,
+          "world_width": 0.00677872868,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "C",
+          "scale": 0.09723316,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627677,
+          "world_width": 0.007000788,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "D",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.007586317,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "E",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.00727058249,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "F",
+          "scale": 0.10445217,
+          "local_height": 0.111718759,
+          "world_height": 0.011669267,
+          "world_width": 0.006371583,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "G",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.007829844,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "H",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.007813164,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Target",
+          "scale": 0.07762152,
+          "local_height": 0.111718759,
+          "world_height": 0.00867178,
+          "world_width": 0.0219131522,
+          "ink_height_m": 0.00725400867,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    },
+    {
+      "file": "lesson-atomic.png",
+      "sha256": "b84c1e785ef23312aaa4958b2c1065ca8c11af9744046e99f1dde746e1889507",
+      "mode": "LessonAtomic",
+      "role": "Action",
+      "selected": false,
+      "active_button_labels": [
+        "ADD ONE",
+        "REMOVE ONE",
+        "FLIP CARD",
+        "ALIGN ARROW",
+        "SCAN",
+        "TAG",
+        "CLOSE",
+        "QUARANTINE",
+        "Commit",
+        "Don't know",
+        "Action"
+      ],
+      "glyph_metrics": [
+        {
+          "label": "ADD ONE",
+          "scale": 0.101260349,
+          "local_height": 0.111718759,
+          "world_height": 0.01131268,
+          "world_width": 0.0461747237,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "REMOVE ONE",
+          "scale": 0.09723317,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627686,
+          "world_width": 0.06602132,
+          "ink_height_m": 0.007486954,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "FLIP CARD",
+          "scale": 0.09723317,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627686,
+          "world_width": 0.0508529469,
+          "ink_height_m": 0.007486954,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "ALIGN ARROW",
+          "scale": 0.101260357,
+          "local_height": 0.111718759,
+          "world_height": 0.0113126813,
+          "world_width": 0.072097376,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "SCAN",
+          "scale": 0.10428825,
+          "local_height": 0.111718759,
+          "world_height": 0.0116509534,
+          "world_width": 0.0289921369,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "TAG",
+          "scale": 0.1003826,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146195,
+          "world_width": 0.0206788182,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "CLOSE",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.03413009,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "QUARANTINE",
+          "scale": 0.09913822,
+          "local_height": 0.111718759,
+          "world_height": 0.0110755991,
+          "world_width": 0.06503467,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Action",
+          "scale": 0.09544748,
+          "local_height": 0.111718759,
+          "world_height": 0.0106632737,
+          "world_width": 0.0266298484,
+          "ink_height_m": 0.007254009,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    },
+    {
+      "file": "lesson-message.png",
+      "sha256": "e6581ea55e039f77af1ab92fa8a9a56502550e6258a09d04a7596b475c4cfd86",
+      "mode": "LessonMessage",
+      "role": "Command",
+      "selected": false,
+      "active_button_labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "Commit",
+        "Don't know",
+        ""
+      ],
+      "glyph_metrics": [
+        {
+          "label": "A",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.00705948938,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "B",
+          "scale": 0.101175055,
+          "local_height": 0.111718759,
+          "world_height": 0.011303152,
+          "world_width": 0.00677872868,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "C",
+          "scale": 0.09723316,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627677,
+          "world_width": 0.007000788,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "D",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.007586317,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "E",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.00727058249,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "F",
+          "scale": 0.10445217,
+          "local_height": 0.111718759,
+          "world_height": 0.011669267,
+          "world_width": 0.006371583,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "G",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.007829844,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "H",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.007813164,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    },
+    {
+      "file": "practice.png",
+      "sha256": "e6581ea55e039f77af1ab92fa8a9a56502550e6258a09d04a7596b475c4cfd86",
+      "mode": "Practice",
+      "role": "Command",
+      "selected": false,
+      "active_button_labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "Commit",
+        "Don't know",
+        ""
+      ],
+      "glyph_metrics": [
+        {
+          "label": "A",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.00705948938,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "B",
+          "scale": 0.101175055,
+          "local_height": 0.111718759,
+          "world_height": 0.011303152,
+          "world_width": 0.00677872868,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "C",
+          "scale": 0.09723316,
+          "local_height": 0.111718759,
+          "world_height": 0.0108627677,
+          "world_width": 0.007000788,
+          "ink_height_m": 0.00748695433,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "D",
+          "scale": 0.105365507,
+          "local_height": 0.111718759,
+          "world_height": 0.0117713036,
+          "world_width": 0.007586317,
+          "ink_height_m": 0.0077970475,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "E",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.00727058249,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "F",
+          "scale": 0.10445217,
+          "local_height": 0.111718759,
+          "world_height": 0.011669267,
+          "world_width": 0.006371583,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "G",
+          "scale": 0.100382619,
+          "local_height": 0.111718759,
+          "world_height": 0.0112146214,
+          "world_width": 0.007829844,
+          "ink_height_m": 0.00772946142,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "H",
+          "scale": 0.108516157,
+          "local_height": 0.111718759,
+          "world_height": 0.01212329,
+          "world_width": 0.007813164,
+          "ink_height_m": 0.008030196,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Commit",
+          "scale": 0.110811457,
+          "local_height": 0.111718759,
+          "world_height": 0.012379718,
+          "world_width": 0.03811914,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        },
+        {
+          "label": "Don't know",
+          "scale": 0.1122695,
+          "local_height": 0.111718759,
+          "world_height": 0.0125426091,
+          "world_width": 0.0553488657,
+          "ink_height_m": 0.008532482,
+          "font_size": 100,
+          "character_size": 0.01
+        }
+      ]
+    }
+  ]
+}

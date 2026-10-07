@@ -1,0 +1,6 @@
+{
+  "name": "AcousticVocab.SessionEngine",
+  "references": ["AcousticVocab.StudyAudio"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"]
+}

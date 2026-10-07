@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "provisioning-quest-001",
+    "commit_sha": "001fb472d8d316b37f7ea3a68af03631c227a967",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "7d77678071af6d8ff591bd5f24397a2f1e76401f3841ddf9db0baa5c144585d4",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 130.6889172,
+  "total_bytes": 752552201,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 54438320,
+      "sha256": "b9681eca09e32b50007f86d28872ccf7d27d738013399a67759bd7d0fb076dcd"
+    }
+  ]
+}

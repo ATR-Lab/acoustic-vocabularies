@@ -1,0 +1,166 @@
+{
+  "pair_count": 32,
+  "pairs": [
+    {
+      "action": "ADD_ONE",
+      "possible": true,
+      "target": "tray_A"
+    },
+    {
+      "action": "REMOVE_ONE",
+      "possible": true,
+      "target": "tray_A"
+    },
+    {
+      "action": "FLIP_CARD",
+      "possible": true,
+      "target": "tray_A"
+    },
+    {
+      "action": "ALIGN_ARROW",
+      "possible": true,
+      "target": "tray_A"
+    },
+    {
+      "action": "ADD_ONE",
+      "possible": true,
+      "target": "tray_B"
+    },
+    {
+      "action": "REMOVE_ONE",
+      "possible": true,
+      "target": "tray_B"
+    },
+    {
+      "action": "FLIP_CARD",
+      "possible": true,
+      "target": "tray_B"
+    },
+    {
+      "action": "ALIGN_ARROW",
+      "possible": true,
+      "target": "tray_B"
+    },
+    {
+      "action": "ADD_ONE",
+      "possible": true,
+      "target": "tray_C"
+    },
+    {
+      "action": "REMOVE_ONE",
+      "possible": true,
+      "target": "tray_C"
+    },
+    {
+      "action": "FLIP_CARD",
+      "possible": true,
+      "target": "tray_C"
+    },
+    {
+      "action": "ALIGN_ARROW",
+      "possible": true,
+      "target": "tray_C"
+    },
+    {
+      "action": "ADD_ONE",
+      "possible": true,
+      "target": "tray_D"
+    },
+    {
+      "action": "REMOVE_ONE",
+      "possible": true,
+      "target": "tray_D"
+    },
+    {
+      "action": "FLIP_CARD",
+      "possible": true,
+      "target": "tray_D"
+    },
+    {
+      "action": "ALIGN_ARROW",
+      "possible": true,
+      "target": "tray_D"
+    },
+    {
+      "action": "SCAN",
+      "possible": true,
+      "target": "container_E"
+    },
+    {
+      "action": "TAG",
+      "possible": true,
+      "target": "container_E"
+    },
+    {
+      "action": "CLOSE",
+      "possible": true,
+      "target": "container_E"
+    },
+    {
+      "action": "QUARANTINE",
+      "possible": true,
+      "target": "container_E"
+    },
+    {
+      "action": "SCAN",
+      "possible": true,
+      "target": "container_F"
+    },
+    {
+      "action": "TAG",
+      "possible": true,
+      "target": "container_F"
+    },
+    {
+      "action": "CLOSE",
+      "possible": true,
+      "target": "container_F"
+    },
+    {
+      "action": "QUARANTINE",
+      "possible": true,
+      "target": "container_F"
+    },
+    {
+      "action": "SCAN",
+      "possible": true,
+      "target": "container_G"
+    },
+    {
+      "action": "TAG",
+      "possible": true,
+      "target": "container_G"
+    },
+    {
+      "action": "CLOSE",
+      "possible": true,
+      "target": "container_G"
+    },
+    {
+      "action": "QUARANTINE",
+      "possible": true,
+      "target": "container_G"
+    },
+    {
+      "action": "SCAN",
+      "possible": true,
+      "target": "container_H"
+    },
+    {
+      "action": "TAG",
+      "possible": true,
+      "target": "container_H"
+    },
+    {
+      "action": "CLOSE",
+      "possible": true,
+      "target": "container_H"
+    },
+    {
+      "action": "QUARANTINE",
+      "possible": true,
+      "target": "container_H"
+    }
+  ],
+  "possible_count": 32
+}

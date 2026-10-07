@@ -1,0 +1,180 @@
+{
+  "analyzer": {
+    "name": "av-analysis",
+    "version": "0.1.0"
+  },
+  "checks": [
+    {
+      "check": "C1",
+      "discrepancies": 0,
+      "name": "raw-integrity",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C2",
+      "discrepancies": 0,
+      "name": "counts",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C3",
+      "discrepancies": 0,
+      "name": "waveform-hashes",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C4",
+      "discrepancies": 0,
+      "name": "exposure",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C5",
+      "discrepancies": 0,
+      "name": "growth",
+      "status": "not_applicable",
+      "unresolved": 0
+    },
+    {
+      "check": "C6",
+      "discrepancies": 0,
+      "name": "yoked-ledger",
+      "status": "not_applicable",
+      "unresolved": 0
+    },
+    {
+      "check": "C7",
+      "discrepancies": 0,
+      "name": "windows",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C8",
+      "discrepancies": 0,
+      "name": "deviation-links",
+      "status": "pass",
+      "unresolved": 0
+    }
+  ],
+  "data_kind": "SYNTHETIC",
+  "discrepancies": [],
+  "format": "av-analysis/reconciliation",
+  "format_version": 1,
+  "inputs": [
+    {
+      "bytes": 16332,
+      "path": "inputs/packages/BK-P-47Q4PQ/audio.json",
+      "sha256": "cc2a9930d1acc4eb9416d92fe749be56de765adeb3b4235e5b0b9a8057f4f93b"
+    },
+    {
+      "bytes": 5771,
+      "path": "inputs/packages/BK-P-47Q4PQ/manifest.json",
+      "sha256": "e821c6bbae7e718a85b6308af4ddbedd689c50be8a253609ade375c3a11f3cfa"
+    },
+    {
+      "bytes": 867,
+      "path": "inputs/reveal/A-pilot.jsonl",
+      "sha256": "74f72e7d54e37242cd2367e39aec279eb134eefdfc38998758de6693e5294dbf"
+    },
+    {
+      "bytes": 550,
+      "path": "inputs/schedules/A/A-P01/run-sheets/A-P01-L01/D7.csv",
+      "sha256": "35f7fa5f85cd630110273808fae7f04f94c19f8ad4ce86407e221b6cea8ed67c"
+    },
+    {
+      "bytes": 69733,
+      "path": "inputs/schedules/A/A-P01/schedules/A-P01-L01/D0.json",
+      "sha256": "c2704f2647cc44f7a87ffb742bf539dbf9d3c03dc86a1aeec68b27bd8b3c27f4"
+    },
+    {
+      "bytes": 47533,
+      "path": "inputs/schedules/A/A-P01/schedules/A-P01-L01/D7.json",
+      "sha256": "6b0cb3b7e5aa8fd2e89c4f8535b496b0252d639193da0cb47a6074e645970605"
+    },
+    {
+      "bytes": 946,
+      "path": "inputs/schedules/A/pilot-package-hashes.json",
+      "sha256": "40e88ebd0040946f2149eaacd556a5d9839f93445836705fb43d5b7085a62a4d"
+    },
+    {
+      "bytes": 4463,
+      "path": "inputs/schedules/A/pilot-slots.json",
+      "sha256": "7ec4abd0f73b19d4b9a4106d6e9e95d94900999d161796e3deaa6eaa205bcf2b"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/A-P01-L01-D0/deviations.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    },
+    {
+      "bytes": 868,
+      "path": "raw/A-P01-L01-D0/exit-manifest.json",
+      "sha256": "65b568826fb7ff79f310c498d163e4c4af46311d6c04676ad05f572c805f272f"
+    },
+    {
+      "bytes": 52901,
+      "path": "raw/A-P01-L01-D0/exposure-ledger.csv",
+      "sha256": "f344782a4ffbd39dcedc4e9475b780dad6926373f35b974c2f346b6d3d7fbe11"
+    },
+    {
+      "bytes": 35449,
+      "path": "raw/A-P01-L01-D0/trial-log.csv",
+      "sha256": "7c74df614a5b9feb3af4d487fcb8448f71fa89ef0c682ae29e513835b6f34a1d"
+    },
+    {
+      "bytes": 971,
+      "path": "raw/A-P01-L01-D0/visit-run-sheet.csv",
+      "sha256": "0017313d3a43fff56968efb6752c8696f4def3f4db10f59faa4bca586ece6f8f"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/A-P01-L01-D7/deviations.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    },
+    {
+      "bytes": 868,
+      "path": "raw/A-P01-L01-D7/exit-manifest.json",
+      "sha256": "7b0361f0c37c57e28c13a251017ef47c32dd5eb4ea4ab844cb81e98a338cf618"
+    },
+    {
+      "bytes": 15688,
+      "path": "raw/A-P01-L01-D7/exposure-ledger.csv",
+      "sha256": "fbd6b51e4ad1ccbaf3084b115ec8793564dc542c216931eb77328921e4bc28ca"
+    },
+    {
+      "bytes": 23683,
+      "path": "raw/A-P01-L01-D7/trial-log.csv",
+      "sha256": "8cc57f134b960f654da1470372eba54a70b1231dd7462dee67bd35b771894465"
+    },
+    {
+      "bytes": 793,
+      "path": "raw/A-P01-L01-D7/visit-run-sheet.csv",
+      "sha256": "3b5106a0222daa279f03ff3e4532ed6a3350e0a138a10f60adfea1525f4c1546"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/deviations-log.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    }
+  ],
+  "person_id": "A-P01-L01",
+  "raw_unchanged": true,
+  "session_id": "SYNTHETIC-64941a84d6d7f998",
+  "set": "pilot",
+  "station_id": "SYNTHETIC-ST1",
+  "study": "A",
+  "summary": {
+    "discrepancies": 0,
+    "status": "pass",
+    "suspension_events": [],
+    "unresolved": 0
+  },
+  "unit_id": "A-P01",
+  "visit": "D7",
+  "visit_id": "A-P01-L01-D7"
+}

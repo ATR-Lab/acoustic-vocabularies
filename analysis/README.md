@@ -12,7 +12,7 @@ dependency on `../schedules`). Architecture, module ownership and rules:
 | Part | Issue | Status |
 | --- | --- | --- |
 | Shared contracts: log templates, vocabularies, checks and codes, windows, table specs, schemas, data roots and watermark, masking | skeleton | implemented |
-| Reconciliation: loaders, checks C1-C8, exposure ledger, reconciled and derived tables, synthetic logs | #33 | interfaces |
+| Reconciliation: loaders, checks C1-C8, exposure ledger, reconciled and derived tables, synthetic logs, fault injection ([guide](docs/reconciliation.md)) | #33 | implemented |
 | Analysis pipeline: scoring, estimators, bootstraps, GLMMs (R), bounds, tipping points, simulation, section 9 report | #34 | interfaces (ladder log, report order and R pins implemented) |
 | Integrity dashboard: column allowlist, panels, red alerts, static HTML and metrics JSON, synthetic demo tables | #35 | implemented |
 
@@ -48,7 +48,7 @@ uv run --project analysis av-analysis dashboard --root <dir>
 | `masking` | `forbidden_reason(field, policy)`, `forbidden_columns()`, `forbidden_keys()` | skeleton |
 | `fileio`, `seeds` | canonical bytes and hashes; `rng(*labels)` | skeleton |
 | `cli` | `av-analysis` commands; `refresh` runs `REFRESH_STEPS` (reconcile, derive, dashboard) | skeleton |
-| `loaders`, `references`, `reconcile`, `ledger`, `derive`, `synthetic_logs` | reconciliation | #33 |
+| `loaders`, `references`, `reconcile`, `reconcile_checks`, `ledger`, `derive`, `synthetic_inputs`, `synthetic_logs` | reconciliation | #33 |
 | `scoring`, `unmask`, `estimators`, `missingness`, `glmm`, `rbridge`, `simulate`, `report`, `pipeline` | analysis pipeline | #34 |
 | `monitoring`, `monitoring_metrics`, `monitoring_html`, `monitoring_demo` | integrity dashboard: `allowlist()`, `load_monitoring_data()`, `render()`, `write_dashboard()`, `build_document()`, `demo_tables()` | #35 |
 
