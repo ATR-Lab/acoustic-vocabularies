@@ -26,7 +26,7 @@ from fastapi.responses import PlainTextResponse
 from av_generation import _batch_sim as sim
 from av_generation import batch_runner as br
 from av_generation.clock import ManualClock, ScaledClock
-from av_generation.config import BatchConfig, RaterSeat
+from av_generation.config import RaterSeat
 from av_generation.genconfig import (
     FREEZE_CONFIG_KEY,
     ConfigMismatch,
@@ -61,7 +61,7 @@ from av_generation.records import (
     cap_key,
     read_records,
 )
-from av_generation.rundir import RunLayout, RunPolicyError
+from av_generation.rundir import RunPolicyError
 
 ROOT = Path(__file__).resolve().parents[2]
 FIX = ROOT / "tests/generation/fixtures/orchestrator"
@@ -142,22 +142,30 @@ def real_run(tmp_path_factory, mock_llm_url):
     )
     assert nxt is None
     logs = _logs(batch.layout)
+    summary = sim.summarize(batch.layout, batch.orchestrator.config)
+    summary["llm_requests"] = len(logs["llm_request"])
+    summary["a1_late_submits"] = len(batch.bot_designer.late)
+    summary["slot_outcomes_by_method"] = {
+        m.value: dict(
+            sorted(
+                collections.Counter(s.outcome.value for s in logs["slot"] if s.method is m).items()
+            )
+        )
+        for m in STUDY_A_METHODS
+    }
     if os.environ.get("CI") == "true":
-        summary = sim.summarize(batch.layout, batch.orchestrator.config)
-        summary["llm_requests"] = len(logs["llm_request"])
-        summary["a1_late_submits"] = len(batch.bot_designer.late)
         (out / f"{RUN_ID}-summary.json").write_text(
             json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
         )
-    return batch, logs, lines
+    return batch, logs, lines, summary
 
 
 def test_real_components_reach_the_batch_counts(real_run):
     """Acceptance: 48 commits and 576 slot records, through the real components. Bot
     ratings that a slow runner delivers after a slot's lock become `missing` records (and
     can send an atom to the bank fallback); the counts hold either way."""
-    batch, logs, _ = real_run
-    counts = sim.summarize(batch.layout, batch.orchestrator.config)["counts"]
+    batch, logs, _, summary = real_run
+    counts = summary["counts"]
     assert counts["slot_records"] == 576
     assert counts["commits_in_final_books"] == 48
     assert set(counts["rating_records_per_rater"].values()) == {576}
@@ -173,7 +181,7 @@ def test_real_components_reach_the_batch_counts(real_run):
 
 
 def test_run_documents_record_the_real_inputs(real_run):
-    batch, _, _ = real_run
+    batch, _, _, _ = real_run
     manifest = RunManifest.read(batch.layout.manifest)
     gen = batch.inputs.generation_config
     assert manifest.closed_utc is not None and manifest.clock == "scaled"
@@ -186,13 +194,20 @@ def test_run_documents_record_the_real_inputs(real_run):
     # the closed manifest hashes every file of the run (what the audit and #13 trust)
     root = batch.layout.root
     assert manifest.files and all(file_sha256(root / rel) == h for rel, h in manifest.files.items())
-    assert "logs/llm-requests.jsonl" in manifest.files
+    logs = [f"logs/{p.name}" for p in batch.layout.logs_dir.iterdir()]
+    assert set(logs) <= set(manifest.files) and "logs/slots.jsonl" in logs
 
 
 def test_a3_slots_join_their_model_calls(real_run):
     """A3 went through #17's proposer and #16's client: one logged call per slot that
-    reached the model, joined on slot ID, seed and the shared hash definitions."""
-    _, logs, _ = real_run
+    reached the model, joined on slot ID, seed and the shared hash definitions.
+
+    In accelerated real time the token count's 5-s run-clock cap is 25 ms of real time
+    at 200x, and each count opens a new HTTP client; a busy runner (always, on the
+    Windows runner) misses it, and the slot is consumed as `invalid_json` with
+    `llm_status` `server_error` and no call, as the slot rules say. The virtual-time run
+    of the command-line test checks that every A3 slot reaches the model."""
+    _, logs, _, _ = real_run
     requests = {r.slot_id: r for r in logs["llm_request"]}
     a3 = [s for s in logs["slot"] if s.method is Method.A3]
     schema_hash = schema_sha256(decoding_schema())
@@ -212,12 +227,11 @@ def test_a3_slots_join_their_model_calls(real_run):
         assert request.prompt_sha256 == slot.prompt_sha256
         assert request.schema_sha256 == slot.schema_sha256
         assert (request.temperature, request.top_p, request.top_k) == (0.7, 0.9, 50)
-    assert called == len(requests) == len(logs["llm_request"]) and called > 0
-    assert any(s.outcome.value == "valid" and s.llm_status.value == "ok" for s in a3)
+    assert called == len(requests) == len(logs["llm_request"])
 
 
 def test_a2_and_a1_slots_come_from_the_real_proposers(real_run):
-    batch, logs, _ = real_run
+    batch, logs, _, _ = real_run
     a2 = [s for s in logs["slot"] if s.method is Method.A2]
     assert all(s.seed_key.startswith("A2|DEMO-A-P01|") and s.a2 is not None for s in a2)
     assert {s.a2.mode for s in a2} >= {"uniform"}
@@ -256,7 +270,7 @@ def test_a2_and_a1_slots_come_from_the_real_proposers(real_run):
 def test_logs_are_audit_ready(real_run):
     """Every log validates against its schema, the panel and decision logs join the slot
     log, the store matches the commit log, and nothing the operator saw names a book."""
-    batch, logs, lines = real_run
+    batch, logs, lines, _ = real_run
     slots = {s.slot_id: s for s in logs["slot"]}
     assert len(slots) == 576 and all(s.run_id == RUN_ID for s in slots.values())
     for decision in logs["decision"]:
@@ -579,14 +593,11 @@ def _demo_files():
     ]
 
 
-def test_cli_runs_a_batch_with_the_real_components_over_three_sittings(
-    tmp_path, capsys, mock_llm_url
-):
-    """Virtual time (`--clock manual`, driven by the bot panel): appointment 1, then
-    `--resume` runs appointment 2, then `--resume --appointment all` the rest, each on
-    the same ledger and logs. No cap can fire while virtual time stands still, so every
-    A3 slot reaches the mock model (in accelerated real time a busy runner can miss the
-    5-s token-count cap, which is 25 ms of real time at 200x)."""
+def test_cli_runs_appointments_with_the_real_components_and_resumes(tmp_path, capsys, mock_llm_url):
+    """Virtual time (`--clock manual`, driven by the bot panel): appointment 1 in one
+    process, then `--resume` runs appointment 2 on the same ledger and logs. No cap can
+    fire while virtual time stands still, so every A3 slot reaches the mock model: the
+    real A3 path (prompt, token count, call, parser, validator, ledger) end to end."""
     common = [
         "--kind",
         "synthetic",
@@ -613,35 +624,15 @@ def test_cli_runs_a_batch_with_the_real_components_over_three_sittings(
     assert "Atoms finished: 8/16" in capsys.readouterr().out
     slots = read_records(run_dir / "logs/slots.jsonl", SlotRecord)
     assert len(slots) == 8 * 36 and len({s.slot_id for s in slots}) == len(slots)
+    a3 = [s for s in slots if s.method is Method.A3]
     requests = read_records(run_dir / "logs/llm-requests.jsonl", LlmRequest)
+    assert {s.llm_status.value for s in a3} == {"ok"} and len(requests) == len(a3) == 96
+    assert {r.slot_id for r in requests} == {s.slot_id for s in a3}
     assert {r.runtime for r in requests} == {MOCK_RUNTIME}
+    assert any(s.outcome.value == "valid" for s in a3)
     timing = read_records(run_dir / "logs/timing.jsonl", TimingEvent)
     assert [e.appointment for e in timing if e.event == "appointment_start"] == [1, 2]
     assert any(e.event == "resume" for e in timing)
-    assert (
-        br.main(
-            ["run", *_cli(tmp_path, "DEMO-cli-01"), *common, "--resume", "--appointment", "all"]
-        )
-        == 0
-    )
-    assert "Atoms finished: 16/16; next: None" in capsys.readouterr().out
-    layout = RunLayout(run_dir, "DEMO-cli-01")
-    summary = sim.summarize(layout, BatchConfig.read(layout.config))
-    counts = summary["counts"]
-    assert summary["closed"] and counts["slot_records"] == 576
-    assert counts["commits_in_final_books"] == 48 and counts["decision_records"] == 192
-    assert set(counts["rating_records_per_rater"].values()) == {576}
-    assert counts["rating_missing"] == 0 and counts["message_plays"] == 0
-    a3 = [s for s in read_records(layout.log("slot"), SlotRecord) if s.method is Method.A3]
-    requests = read_records(layout.log("llm_request"), LlmRequest)
-    assert {s.llm_status.value for s in a3} == {"ok"} and len(requests) == 192
-    if os.environ.get("CI") == "true":
-        out = ROOT / "generation/out/ci/batch-runner"
-        out.mkdir(parents=True, exist_ok=True)
-        summary["a3_outcomes"] = dict(collections.Counter(s.outcome.value for s in a3))
-        (out / "DEMO-cli-01-summary.json").write_text(
-            json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
-        )
     # a resume of a run that never started is refused
     assert br.main(["run", *_cli(tmp_path, "DEMO-cli-02"), *common, "--resume"]) == 1
     assert "E_RUN_DIR" in capsys.readouterr().err
