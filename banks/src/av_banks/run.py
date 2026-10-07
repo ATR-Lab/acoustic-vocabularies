@@ -15,6 +15,13 @@ set, meanings and decoding schema), creates the run directory under the public/r
 policy (`rundir.create_run_dir`: pilot and confirmatory runs are refused inside a git
 work tree), builds the banks (`parallel_banks` at a time, each with `workers` profile
 streams) and closes the run manifest with the SHA-256 of every file.
+
+`read_freeze_manifest` reads the G4 freeze manifest file of a run; for confirmatory banks
+it runs #25's freeze guard (`freeze.load_freeze_manifest(path, require_frozen=True)`), so
+`banks build` never starts a confirmatory bank from a checkout that differs from the
+frozen manifest. A caller of `build_banks` passes it the manifest read this way (the
+confirmatory campaign of #28 reads it through its own `freeze_check.load_freeze`, which
+runs the same guard).
 """
 
 from __future__ import annotations
@@ -28,9 +35,10 @@ from typing import Any, Final, Literal
 
 import av_generation
 from av_generation.clock import Clock, ScaledClock, SystemClock, utc_text
+from av_generation.freeze import FreezeError, load_freeze_manifest
 from av_generation.genconfig import GenerationConfig, check_run_config
 from av_generation.ids import PUBLIC_RUN_KINDS, RunKind, Study
-from av_generation.jsonio import file_sha256
+from av_generation.jsonio import file_sha256, read_json
 from av_generation.records import RecordWriter, RunCode, RunManifest, TimingEvent
 from av_generation.rundir import RunLayout, create_run_dir, relative_files
 
@@ -46,6 +54,10 @@ from av_banks.builder import (
 from av_banks.proposer import SlotProposer
 
 E_RUN: Final = "E_RUN"
+E_FREEZE_GUARD: Final = "E_FREEZE_GUARD"
+"""A confirmatory bank run whose freeze manifest file does not pass the G4 freeze guard of
+#25 (`read_freeze_manifest`); the message carries the freeze code (`E_GUARD`, `E_STATUS`,
+`E_MANIFEST`, `E_INPUT`) and every difference."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +91,32 @@ def run_kind(specs: Sequence[BankSpec], kind: RunKind | str | None = None) -> Ru
     return result
 
 
+def read_freeze_manifest(
+    path: str | os.PathLike[str], *, kind: RunKind | str
+) -> tuple[dict[str, Any], str]:
+    """The G4 freeze manifest file of a bank run of `kind` and its file SHA-256 (the run
+    manifest's `freeze_manifest_sha256`), read before anything is created.
+
+    Confirmatory runs read it through #25's freeze guard,
+    `freeze.load_freeze_manifest(path, require_frozen=True)`: the file is a valid frozen
+    manifest, and the running code and the committed files of this checkout equal every
+    frozen value (`freeze.freeze_differences`). Any refusal is
+    `BankBuildError(E_FREEZE_GUARD)`. `build_banks` then compares its config hash
+    (`genconfig.check_run_config`). Other runs need no frozen manifest and skip the guard:
+    the file is read as it is, and `build_banks` compares its config hash only.
+    """
+    if RunKind(kind) is RunKind.CONFIRMATORY:
+        try:
+            loaded = load_freeze_manifest(path, require_frozen=True)
+        except FreezeError as err:
+            raise BankBuildError(E_FREEZE_GUARD, f"refused by the G4 freeze guard: {err}") from err
+        return loaded.manifest, loaded.sha256
+    manifest = read_json(path)
+    if not isinstance(manifest, dict):
+        raise BankBuildError(E_RUN, f"{Path(path).name}: a freeze manifest is a JSON object")
+    return manifest, file_sha256(path)
+
+
 def build_banks(
     specs: Sequence[BankSpec],
     *,
@@ -100,7 +138,10 @@ def build_banks(
 
     `proposer` is the `SlotProposer` all banks share, or a factory called with the new
     run's layout (so the model client can log to `logs/llm-requests.jsonl`). Bank IDs
-    must be unique. The run ends with the run manifest's `files`.
+    must be unique. The run ends with the run manifest's `files`. A confirmatory run's
+    `freeze_manifest` and `freeze_manifest_sha256` come from `read_freeze_manifest` (the
+    G4 freeze guard of #25) or from #28's `freeze_check.load_freeze`, which runs the same
+    guard.
     """
     if not specs:
         raise BankBuildError(E_RUN, "nothing to build")

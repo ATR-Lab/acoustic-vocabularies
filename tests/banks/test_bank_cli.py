@@ -5,18 +5,26 @@ import shutil
 from pathlib import Path
 
 import pytest
+from av_generation import freeze as g4
+from av_generation import genconfig as gc
 from av_generation.clock import ManualClock
-from av_generation.jsonio import file_sha256, read_json
+from av_generation.jsonio import document_text, file_sha256, read_json, schema_sha256
+from av_generation.llm_manifest import manifest_sha256
+from av_generation.prompts import default_prompt_set_dir, load_prompt_set
 from av_generation.records import RunManifest, TimingEvent, read_records
 from av_generation.rundir import RunPolicyError
+from av_sound import load_fallback
 
 import av_banks.cli as cli
 from av_banks.builder import BankBuildError, bank_spec
 from av_banks.layout import BankLayout
 from av_banks.manifest import manifest_from_files
 from av_banks.permutation import load_permutation
-from av_banks.run import build_banks, clock_kind
+from av_banks.proposer import LlmSlotProposer
+from av_banks.run import E_FREEZE_GUARD, build_banks, clock_kind, read_freeze_manifest
 from av_banks.verify import verify_bank
+
+DEMO_FALLBACK = "sound/testvectors/fallback/demo-manifest.json"
 
 
 def _run(kit, tmp_path, specs, **kwargs):
@@ -253,3 +261,166 @@ def test_cli_build_checks_the_prompt_inputs_before_the_run(kit, tmp_path, monkey
     schema_path.write_text(json.dumps(kit.decoding_schema), "utf-8")
     factory = cli.make_proposer(cli._parser().parse_args(args), kit.config)
     assert callable(factory)
+
+
+# -- the G4 freeze guard (#25) for confirmatory banks ------------------------
+
+# Synthetic values of the G4 items recorded on the GPU host or by people (test only).
+_RECORDED_BY_KIND = {
+    "sha256": "1" * 64,
+    "sha256_map": {"test": "2" * 64},
+    "revision": "3" * 40,
+    "text": "test value",
+    "decimal": "0.10",
+    "integer": 16_896,
+    "number": 1.0,
+    "object": {"test": True},
+}
+_SIGNOFF = tuple(
+    {
+        "role": role,
+        "date": "2027-01-25",
+        "reference": f"https://github.com/ATR-Lab/acoustic-vocabularies/issues/25#test-{role}",
+    }
+    for role in ("owner", "advisor")
+)
+
+
+def _freezable_config(kit):
+    """A real (non-DEMO) generation config of the committed prompt set (#17), decoding
+    schema and LLM manifest (#16), the DEMO meanings and the DEMO fallback set: a config
+    #25's builder can freeze in this checkout. Returns it with its prompt set."""
+    prompt_set = load_prompt_set(default_prompt_set_dir(), meanings=kit.meanings)
+    config = gc.build_generation_config(
+        "frozen-1-0",
+        llm_manifest_sha256=manifest_sha256(),
+        decoding_schema_sha256=schema_sha256(kit.decoding_schema),
+        prompts=prompt_set.hashes(),
+        meanings_sha256=kit.meanings.sha256(),
+        separation_threshold=kit.THRESHOLD,
+        fallback=gc.fallback_pins(load_fallback(kit.root / DEMO_FALLBACK)),
+    )
+    return config, prompt_set
+
+
+def _freeze_file(kit, path, config, *, status="frozen"):
+    """A G4 freeze manifest of `config` built from this checkout by #25's own builder
+    (synthetic recorded values, except those the committed LLM manifest records; test
+    sign-off links, roles only), written to `path`."""
+    recorded = {
+        s.key: g4.FreezeValue(_RECORDED_BY_KIND[s.kind], "test value")
+        for s in g4.ITEM_SPECS
+        if s.guard == "recorded"
+    }
+    recorded.update(
+        (key, value)
+        for key, value in g4.committed_values().items()
+        if g4.SPECS[key].guard == "recorded"
+    )
+    values = g4.freeze_values(recorded, config, load_fallback(kit.root / DEMO_FALLBACK))
+    frozen = status == "frozen"
+    manifest = g4.build_freeze_manifest(
+        values,
+        status=status,
+        repo_commit="0123456789abcdef0123456789abcdef01234567" if frozen else None,
+        tag="generation-freeze-v1.0" if frozen else None,
+        signoff=_SIGNOFF if frozen else (),
+    )
+    path.write_text(document_text(manifest), encoding="utf-8", newline="\n")
+    return path
+
+
+def test_read_freeze_manifest_guards_confirmatory_runs_only(kit, tmp_path, monkeypatch):
+    config, _ = _freezable_config(kit)
+    frozen = _freeze_file(kit, tmp_path / "FREEZE-v1.0.json", config)
+    draft = _freeze_file(kit, tmp_path / "FREEZE-v1.0.draft.json", config, status="draft")
+    doc, digest = read_freeze_manifest(frozen, kind="confirmatory")
+    assert doc == read_json(frozen) and digest == file_sha256(frozen)
+    with pytest.raises(BankBuildError) as err:
+        read_freeze_manifest(draft, kind="confirmatory")
+    assert err.value.code == E_FREEZE_GUARD and f"{g4.E_STATUS}: " in str(err.value)
+    # pilot runs need no frozen manifest and skip the guard; the config hash is compared
+    assert read_freeze_manifest(draft, kind="pilot") == (read_json(draft), file_sha256(draft))
+    (tmp_path / "list.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(BankBuildError, match="E_RUN: list.json: a freeze manifest"):
+        read_freeze_manifest(tmp_path / "list.json", kind="pilot")
+    edited = dict(g4.generation_code_digests(), **{"banks/src/av_banks/builder.py": "e" * 64})
+    monkeypatch.setattr(g4, "generation_code_digests", lambda **_: edited)
+    with pytest.raises(BankBuildError) as err:
+        read_freeze_manifest(frozen, kind="confirmatory")
+    assert err.value.code == E_FREEZE_GUARD
+    assert f"{g4.E_GUARD}: the running code or the repository differs" in str(err.value)
+    assert read_freeze_manifest(frozen, kind="pilot")[0] == doc
+
+
+def test_cli_build_runs_the_g4_freeze_guard_for_confirmatory_banks(
+    kit, tmp_path, monkeypatch, capsys
+):
+    """`banks build` of a confirmatory bank starts only on a frozen G4 manifest that
+    passes #25's freeze guard against this checkout and pins the build's config; it is
+    refused before anything is created otherwise."""
+    config, prompt_set = _freezable_config(kit)
+    config_path = tmp_path / "generation-config.json"
+    config.write(config_path)
+    schema_path = tmp_path / "decoding-schema.json"
+    schema_path.write_text(json.dumps(kit.decoding_schema), encoding="utf-8")
+    frozen = _freeze_file(kit, tmp_path / "FREEZE-v1.0.json", config)
+    draft = _freeze_file(kit, tmp_path / "FREEZE-v1.0.draft.json", config, status="draft")
+    doc = read_json(kit.DEMO_UNIT)
+    doc.update(demo=False, set="confirmatory", unit_id="B-C01", seed_label="sha256:" + "7" * 64)
+    unit = tmp_path / "B-C01" / "permutation.json"
+    unit.parent.mkdir()
+    unit.write_text(json.dumps(doc), encoding="utf-8")
+    script = kit.script(kit.all_kind("valid"))
+
+    def make_proposer(args, config):
+        return LlmSlotProposer(
+            script.client(),
+            prompt_set,
+            kit.decoding_schema,
+            prompt_builder=kit.dump_prompt,
+            parser=kit.strict_parser,
+            threshold=config.separation_threshold,
+        )
+
+    real_build = cli.build_banks
+
+    def build_with_memory_ledger(specs, **kwargs):
+        return real_build(specs, ledger_factory=kit.Ledger, fsync=False, **kwargs)
+
+    monkeypatch.setattr(cli, "make_proposer", make_proposer)
+    monkeypatch.setattr(cli, "build_banks", build_with_memory_ledger)
+    args = [
+        "build",
+        "--bank-id", "bank-C001",
+        "--permutation", str(unit),
+        "--runs-root", str(tmp_path / "runs"),
+        "--run-id", "C-banks-01",
+        "--generation-config", str(config_path),
+        "--meanings", str(kit.root / "generation/examples/demo-meanings"),
+        "--prompts", str(default_prompt_set_dir()),
+        "--decoding-schema", str(schema_path),
+        "--llm-url", "http://127.0.0.1:9",
+    ]  # fmt: skip
+    assert cli.main(args) == 2
+    assert "E_FREEZE_MISSING" in capsys.readouterr().err
+    assert cli.main([*args, "--freeze-manifest", str(draft)]) == 2
+    err = capsys.readouterr().err
+    assert f"{E_FREEZE_GUARD}: refused by the G4 freeze guard: {g4.E_STATUS}" in err
+    digests = g4.generation_code_digests()
+    edited = dict(digests, **{"banks/src/av_banks/builder.py": "e" * 64})
+    monkeypatch.setattr(g4, "generation_code_digests", lambda **_: edited)
+    assert cli.main([*args, "--freeze-manifest", str(frozen)]) == 2
+    err = capsys.readouterr().err
+    assert f"{E_FREEZE_GUARD}: refused by the G4 freeze guard: {g4.E_GUARD}" in err
+    assert "changed: banks/src/av_banks/builder.py" in err
+    assert not (tmp_path / "runs").exists()
+    monkeypatch.setattr(g4, "generation_code_digests", lambda **_: digests)
+    assert cli.main([*args, "--freeze-manifest", str(frozen)]) == 0
+    bank = json.loads(capsys.readouterr().out)["banks"][0]
+    assert bank["status"] == "complete"
+    run = RunManifest.read(tmp_path / "runs/C-banks-01/run-manifest.json")
+    assert run.kind.value == "confirmatory"
+    assert run.freeze_manifest_sha256 == file_sha256(frozen)
+    assert run.generation_config_sha256 == config.frozen_sha256()
+    assert verify_bank(Path(bank["bank_dir"])).ok

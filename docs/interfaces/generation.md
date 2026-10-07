@@ -419,8 +419,10 @@ main, `bank-C065`..`bank-C072` spares, or `DEMO-`), bound to its unit by a fixed
 (`av_banks.permutation.expected_unit_id`: `bank-C012` -> `B-C12`, `bank-C066` -> `B-S02`)
 and read through the unit's package-safe `permutation.json` (`labels`, `atom_order` =
 traversal order; never `<set>-dyads.json`); the generation config (threshold, pins, budgets;
-confirmatory banks also the `frozen` G4 manifest); the B prompt set, meaning set and
-decoding schema (hashes equal to the config's); the #16 client.
+confirmatory banks also the `frozen` G4 manifest, read through #25's freeze guard by
+`av_banks.run.read_freeze_manifest(path, kind="confirmatory")`: `E_FREEZE_GUARD` when this
+checkout differs from it); the B prompt set, meaning set and decoding schema (hashes equal
+to the config's); the #16 client.
 
 **Build** (`banks build`, `av_banks.run.build_banks`, `builder.BankBuilder`). Attempts
 1..4; per profile P1..P3 and atom in the stored order, slots 1..12 of the cell: ledger

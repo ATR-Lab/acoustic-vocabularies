@@ -23,7 +23,7 @@ every candidate.
 | `generation-config.json` | generation config (`genconfig`) | separation threshold, code pins, budgets; its hash is the bank's `generation_config_sha256` |
 | Meaning set, B prompt set, decoding schema | #17 (`generation/prompts/`), `meanings`, #16 (`sound/schema/recipe.schema.json`, unchanged) | the prompt and the model call; the meaning-set hash, the B prompt hash (`prompts.b_sha256`) and the decoding-schema hash must equal the config's |
 | LLM endpoint | #16 (pinned vLLM server on the LLM host) | one call per slot |
-| Freeze manifest | #25 (G4) | confirmatory banks only: its `config.frozen_sha256` must equal the config hash |
+| Freeze manifest | #25 (G4) | confirmatory banks only: the file passes #25's freeze guard (`freeze.load_freeze_manifest(path, require_frozen=True)`: frozen, and this checkout's code and committed files equal every frozen value) and its `config.frozen_sha256` equals the config hash |
 
 The builder never reads `<set>-dyads.json` or any other allocation list. The bank ID is
 bound to its unit by the fixed sequence rule (`permutation.expected_unit_id`): `bank-P007`
@@ -33,10 +33,16 @@ unit; a DEMO bank refuses a non-DEMO unit.
 
 ## 2. What one build does
 
-Before slot 1: `genconfig.check_run_config` (running code equals the config; demo
-configs only for DEMO banks; confirmatory banks need the `frozen` G4 manifest with the
-same config hash), the proposer's input hashes (B prompt set, meaning set, decoding
-schema) against the config, and the bank directory must not exist.
+Before slot 1: for confirmatory banks, the G4 freeze guard of #25 on the manifest file
+(`run.read_freeze_manifest(path, kind="confirmatory")`, which `banks build` calls before
+anything else: `freeze.load_freeze_manifest(path, require_frozen=True)`; any refusal is
+`E_FREEZE_GUARD`, its message carrying the freeze code, `E_GUARD` for a checkout that
+differs from the frozen manifest, and every difference); `genconfig.check_run_config`
+(running code equals the config; demo configs only for DEMO banks; confirmatory banks
+need the `frozen` G4 manifest with the same config hash); the proposer's input hashes
+(B prompt set, meaning set, decoding schema) against the config; and the bank directory
+must not exist. Pilot and DEMO banks need no freeze manifest and skip the guard; a
+manifest given to them is compared by config hash only.
 
 Attempts 1..4, each independently seeded. Within an attempt, for each profile P1, P2, P3
 and each atom in `atom_order`, slots 1..12 of the cell (`builder.AttemptRun.run_slot`):
@@ -206,9 +212,9 @@ uv run --project banks banks hash <bank dir>
 ```
 
 Repeat `--bank-id`/`--permutation` pairs to build several banks in one run
-(`--parallel-banks N`). Confirmatory builds add `--freeze-manifest`. `build` prints a JSON
-summary and exits 0 (all complete), 3 (a bank is unavailable) or 2 (refused). `verify`
-exits 0 or 1.
+(`--parallel-banks N`). Confirmatory builds add `--freeze-manifest`, which must pass the
+G4 freeze guard (section 2). `build` prints a JSON summary and exits 0 (all complete), 3
+(a bank is unavailable) or 2 (refused). `verify` exits 0 or 1.
 
 ## 7. Python API
 
@@ -216,7 +222,7 @@ exits 0 or 1.
 | --- | --- |
 | `builder` | `bank_spec(bank_id, permutation, *, bank_version="1.0.0", seed_namespace=None) -> BankSpec`; `BankBuilder(spec, bank_dir, *, config, proposer, clock, run_id, kind=None, freeze_manifest=None, ledger_factory=slot_ledger, workers=1, reserved=None, fsync=True)` with `.check()`, `.open()`, `.run_attempt(n) -> AttemptSummary`, `.build() -> BuildResult`; `AttemptRun(builder, attempt).run_slot(profile, atom) -> SlotRecord`; `default_seed_namespace`, `seed_namespace_error(bank_id, bank_version, namespace) -> str | None`; `BankBuildError` (`E_EXISTS`, `E_ORDER`, `E_SPEC`, `E_INTERNAL`); `LedgerLike`, `LedgerFactory` |
 | `proposer` | `SlotProposer` protocol (`check_config(config)`, `propose(cell, *, seed_key, slot_id) -> Proposal`); `LlmSlotProposer(client, prompt_set, decoding_schema, *, prompt_builder=build_b_prompt, parser=parse_output, threshold=None)` (the CLI passes the config threshold to the prompt builder); `check_prompt_inputs`, `b_prompt_sha256(prompt_set)` (#17's `b_sha256`); `Proposal`; `ProposerConfigError` |
-| `run` | `build_banks(specs, *, runs_root, run_id, config, proposer, clock, kind=None, freeze_manifest=None, freeze_manifest_sha256=None, llm_runtime=None, workers=3, parallel_banks=1, ledger_factory=slot_ledger) -> RunResult` |
+| `run` | `build_banks(specs, *, runs_root, run_id, config, proposer, clock, kind=None, freeze_manifest=None, freeze_manifest_sha256=None, llm_runtime=None, workers=3, parallel_banks=1, ledger_factory=slot_ledger) -> RunResult`; `read_freeze_manifest(path, *, kind) -> (manifest, file SHA-256)` (the G4 freeze guard for confirmatory runs; pass both to `build_banks`); `run_kind(specs, kind=None)`; `E_RUN`, `E_FREEZE_GUARD` |
 | `manifest` | `BankManifest` (typed `bank-manifest`; `.read`, `.write`, `.bank_sha256()`, `.cell()`, `.menu(amendments)`), `read_manifest`, `read_amendments`, `manifest_from_files`, `AttemptSummary` (`attempt.json`), `to_dyad_bank(manifest) -> av_sound.dyad_bank.DyadBank` |
 | `verify` | `verify_bank(bank_dir) -> VerifyReport` (`ok`, `problems`, `bank_sha256`, `pairs_checked`, ...); `check_pairs`, `check_against`; `PAIRS_PER_PROFILE = 1920` |
 | `amend` | `amend_bank(bank_dir, *, profile, atom_id, rank, reason, unheard_confirmed, date=None) -> AmendResult`; `AmendError` (`E_HEARD`, `E_BANK`, `E_CELL`, `E_RECHECK`, `E_INPUT`) |
