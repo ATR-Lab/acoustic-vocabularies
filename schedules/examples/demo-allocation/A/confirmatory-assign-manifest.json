@@ -1,0 +1,75 @@
+{
+  "allocation_seed": "sha256:4ca709c932c03c69127bfc3b263c1cfab39ab7357ccf5e84d5ca87967960cbf8",
+  "balance_max_abs_deviation": {
+    "batch_method": {
+      "unit=A-C01": "0",
+      "unit=A-C02": "0",
+      "unit=A-C03": "0",
+      "unit=A-C04": "0",
+      "unit=A-C05": "0",
+      "unit=A-C06": "0",
+      "unit=A-C07": "0",
+      "unit=A-C08": "0",
+      "unit=A-C09": "0",
+      "unit=A-C10": "0",
+      "unit=A-C11": "0",
+      "unit=A-C12": "0",
+      "unit=A-C13": "0",
+      "unit=A-C14": "0",
+      "unit=A-C15": "0",
+      "unit=A-C16": "0",
+      "unit=A-C17": "0",
+      "unit=A-C18": "0"
+    },
+    "slot_method": {
+      "all": "5"
+    },
+    "wave_designer": {
+      "wave=1": "0",
+      "wave=2": "0",
+      "wave=3": "0",
+      "wave=4": "0",
+      "wave=5": "0",
+      "wave=6": "0"
+    },
+    "wave_position_profile": {
+      "all": "0"
+    },
+    "wave_profile": {
+      "wave=1": "0",
+      "wave=2": "0",
+      "wave=3": "0",
+      "wave=4": "0",
+      "wave=5": "0",
+      "wave=6": "0"
+    },
+    "wave_swap_w1_w4": {
+      "wave=1": "0.5",
+      "wave=2": "0.5",
+      "wave=3": "0.5",
+      "wave=4": "0.5",
+      "wave=5": "0.5",
+      "wave=6": "0.5"
+    }
+  },
+  "demo": true,
+  "design_table_sha256": "8415393ab4b4908fc526b0c955c7950f36526266c0a29c386b29b053d55efb23",
+  "files": {
+    "confirmatory-assign-balance.csv": "9a420f6fbd3b5fc80135bb21f20f8c5a4ecb93e440183687cef3f95b5bff0de5",
+    "confirmatory-book-key.json": "73a6dae578a29c69a7fdd703cefbd3319981cc28cd88326b010904f1fd142243",
+    "confirmatory-slots.json": "71d6b07ea3b391cd6f639ab00f40c32981c03167ecfac88871bbb26a8d991f28"
+  },
+  "format": "av-schedules/assign-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "lists": {
+    "confirmatory-book-key.json": "87af9983196049352c779773ea4a260911f1b3cc621d385066f8e06c8a6a9f7a",
+    "confirmatory-slots.json": "fd0a3a966543e048ba07b92cda3c4e5688b438ca1b523c92f07246c2bb50dc1d"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "study": "A"
+}

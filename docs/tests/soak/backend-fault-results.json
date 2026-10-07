@@ -1,0 +1,203 @@
+{
+  "scope": "actual_isaac_backend_receiver_fault_diagnostic",
+  "participant": false,
+  "qualification": false,
+  "native_visit_completed": false,
+  "issues": [
+    "58",
+    "81"
+  ],
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "runtime": {
+    "isaac_sim": "5.1.0",
+    "isaac_lab": "2.3.1",
+    "python": "3.11",
+    "websockets": "12.0",
+    "network": "none",
+    "public_transport": "private Unix socket",
+    "private_transport": "private Unix socket",
+    "same_iteration_candidate": false
+  },
+  "attempts": [
+    {
+      "attempt": "001",
+      "driver_summary_sha256": "8d0d61e511ffca9ee9839f651d48594b8ce390287421903d40274a0fe0acc6a4",
+      "service_summary_sha256": "326f30f268a47195d50e903c2dbb89d1b27a1c296a84da5358fed75eb8ad5a83",
+      "artifact_hashes_verified": 16,
+      "driver_completed": false,
+      "driver_fault": "TypeError: run_fault_check.<locals>.event() got multiple values for argument 'name'",
+      "driver_elapsed_seconds": 0.452041409,
+      "checks": {
+        "final_stop_reset_ok": true
+      },
+      "service_elapsed_seconds": 35.819747215,
+      "source_frames": 567,
+      "source_physics_steps": 568,
+      "source_missed_deadlines": 504,
+      "source_fault": null,
+      "source_cleanup_errors": [],
+      "source_end_reason": "private_stop",
+      "command_reasons": [
+        "STOPPED"
+      ],
+      "reset_journal_events": 2,
+      "command_rtt_ms": [
+        97.372236
+      ],
+      "receivers": [
+        {
+          "name": "receiver-before",
+          "frames": 1,
+          "first_seq": 566,
+          "last_seq": 566,
+          "sequence_gaps": 0,
+          "max_arrival_gap_ms": null,
+          "gaps_over_250ms": 0,
+          "max_deviation": {
+            "joint_rad": 0.0,
+            "position_m": 0.0,
+            "orientation_rad": 0.0
+          }
+        }
+      ],
+      "source_revision": "b277aee9795314b4c46d37f1522c28193cf9eecf",
+      "source_archive_sha256": "d26192cf228d59ae0bb22df0fea1058cfe4d32c3cde580771d3aa52bca982684",
+      "evidence_archive_sha256": "c92475385d837acbc561973be6dbec811dcae5095f50228a88e212da14668d27",
+      "container_exit_code": 0,
+      "owned_container_removed": true,
+      "owned_sockets_removed": true,
+      "source_frames_per_second": 15.829257437153581,
+      "driver_artifact_sha256": {
+        "timeline.jsonl": "c8a95c669339f5951bd58c979de3579683fc04e55f882810269e2919b1681cbc",
+        "receiver-before/first.json": "8a8101985af9144f1bdb41ae8011e45e3a7e1536d340b60778403414580790d0",
+        "receiver-before/arrivals.jsonl": "83dfb2a3e6f4e50d3b7f7286087cfcf1dcd640c350b067d34fcb5ceb918f4265",
+        "receiver-before/stop": "6c45cb72a36e63d522aa54ed8adbd7a29a989474f2f77e0458af8800564ef3cb",
+        "receiver-before/stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "receiver-before/connected.json": "772caa34e4b962157cd023603e87c7aafc352f0c6eb1235b1a38eeae987702d3",
+        "receiver-before/terminal.json": "2c45135ec0a302b28ba3af704d3c3bb0a341f2413c212954c54d0ac90d7f671f",
+        "receiver-before/config.json": "c3ab6a463d067209d68897345f327e4ffc02a4baffb8811e850204d36985114d",
+        "receiver-before/last.json": "8a8101985af9144f1bdb41ae8011e45e3a7e1536d340b60778403414580790d0"
+      }
+    },
+    {
+      "attempt": "002",
+      "driver_summary_sha256": "b3ecd97fece9387620d80782a75691b578ef697d17d486d6ffbb522eadf79d45",
+      "service_summary_sha256": "f1b1e2e23ab1c0ca8be5185775295d117c85b62abfad2bd033a22d098620532f",
+      "artifact_hashes_verified": 21,
+      "driver_completed": true,
+      "driver_fault": null,
+      "driver_elapsed_seconds": 60.187981202,
+      "checks": {
+        "receiver_before_durable_frames": 148,
+        "source_continued_without_receiver": true,
+        "reconnect_progression": true,
+        "reset_executed_once_despite_ack_discard": true,
+        "reset_journal_counts": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "protected_probe_rejected": true,
+        "receiver_after_durable_frames": 622,
+        "reconnected_receiver_complete": true,
+        "final_stop_reset_ok": true
+      },
+      "service_elapsed_seconds": 60.498780888,
+      "source_frames": 939,
+      "source_physics_steps": 940,
+      "source_missed_deadlines": 873,
+      "source_fault": null,
+      "source_cleanup_errors": [],
+      "source_end_reason": "private_stop",
+      "command_reasons": [
+        "PAUSED_AT_SAFE_POINT",
+        "RESET_COMPLETE",
+        "RESET_COMPLETE",
+        "REQUEST_ID_CONFLICT",
+        "PROTECTED_TARGET_COMMAND",
+        "RESUMED_EXPLICITLY",
+        "STOPPED"
+      ],
+      "reset_journal_events": 3,
+      "command_rtt_ms": [
+        70.362023,
+        31.463212,
+        31.385451,
+        31.159473,
+        33.765366,
+        93.476865
+      ],
+      "receivers": [
+        {
+          "name": "receiver-before",
+          "frames": 148,
+          "first_seq": 7,
+          "last_seq": 154,
+          "sequence_gaps": 0,
+          "max_arrival_gap_ms": 451.407415,
+          "gaps_over_250ms": 1,
+          "max_deviation": {
+            "joint_rad": 0.0,
+            "position_m": 0.0,
+            "orientation_rad": 0.0
+          }
+        },
+        {
+          "name": "receiver-after",
+          "frames": 622,
+          "first_seq": 316,
+          "last_seq": 937,
+          "sequence_gaps": 0,
+          "max_arrival_gap_ms": 122.866661,
+          "gaps_over_250ms": 0,
+          "max_deviation": {
+            "joint_rad": 0.0,
+            "position_m": 0.0,
+            "orientation_rad": 0.0
+          }
+        }
+      ],
+      "source_revision": "20f0327f5fa9957b948c86e97417295f8131954a",
+      "source_archive_sha256": "6e5cde8047879062151864689a1db42721c4c22ff9cd301ec966ef7e551f6f90",
+      "evidence_archive_sha256": "526628f514cc0dee215d3de8c420cf5b5f3479f15bbd538a620536098c665d28",
+      "container_exit_code": 0,
+      "owned_container_removed": true,
+      "owned_sockets_removed": true,
+      "source_frames_per_second": 15.52097391414133,
+      "driver_artifact_sha256": {
+        "timeline.jsonl": "60d58f6c6bf3d570b8979fc387bcd54d02089cf18d233e9732c5c26284b1450a",
+        "receiver-before/first.json": "11e298721d031eb203638de7ad9d6e5f3fe351881822e2b6fed886961fbbf5c3",
+        "receiver-before/arrivals.jsonl": "eaffed8996e93ea80c4b5edee838176b5feff24c96003eaacdd115971a2000be",
+        "receiver-before/stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "receiver-before/connected.json": "fb825e8a2aa0a5c948810e4e1d3def79e9b208d69df41afca74c40041fbba7fe",
+        "receiver-before/config.json": "ea6670edf931c0e54dc7b76714385790123a5d92a0a00d57e9e40855ef5ed41e",
+        "receiver-after/first.json": "44394c655fefa0700412fae2b6af8bd27412c23ef6710916eef9f0d969f05be8",
+        "receiver-after/arrivals.jsonl": "e65e2ea2d17fcf4e3601ccfb61d9accac92e3e1a97cb3ba97f2a122a09df60fd",
+        "receiver-after/stop": "6c45cb72a36e63d522aa54ed8adbd7a29a989474f2f77e0458af8800564ef3cb",
+        "receiver-after/stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "receiver-after/connected.json": "a7db32d4255ef569a19f9e35db3ed462ceda16dad8757ae43e1394539fb08d0e",
+        "receiver-after/terminal.json": "67abc6833ed320344cedc8ac361de30aa95b811aae264c001605d731c7574146",
+        "receiver-after/config.json": "ea6670edf931c0e54dc7b76714385790123a5d92a0a00d57e9e40855ef5ed41e",
+        "receiver-after/last.json": "03dfd96986511cc2e21503ff34f5fa934dabbf7257f3f98288070692eb57e414"
+      },
+      "admitted_remaining_lease_seconds": 89.75918587
+    }
+  ],
+  "acceptance": {
+    "bounded_receiver_recovery_sequence": "PASS on attempt002 only",
+    "timing_screen": "FAIL",
+    "native_visit": "NOT_ESTABLISHED",
+    "eight_hour_multistation_soak": "NOT_ESTABLISHED",
+    "participant_admission": false
+  },
+  "limitations": [
+    "Explicit supervisor pause, not Unity automatic pause-before-exposure.",
+    "Owned receiver process killed; no simulator restart, physical station power, Wi-Fi or uplink fault.",
+    "Reset acknowledgement deliberately not consumed by the application; no packet-loss claim.",
+    "No audio-ledger, novel-cue replay, acoustic, clock, headset or participant qualification.",
+    "Existing full source neutral and semantic guards retained; no production default changed."
+  ]
+}

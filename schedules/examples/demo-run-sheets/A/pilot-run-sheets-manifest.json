@@ -1,0 +1,118 @@
+{
+  "checks": {
+    "findings": 0,
+    "schedules": 36
+  },
+  "demo": true,
+  "files": {
+    "A-P01/run-sheets/A-P01-L01/D0.csv": "116cfcaefbf39cdad3253e233297be0441b1ef6fa67dc78fd9319c76fcb3bbfa",
+    "A-P01/run-sheets/A-P01-L01/D7.csv": "4ef99870e7cc6170cb6f92735814239ae3772272de70e7838f55bed619296058",
+    "A-P01/run-sheets/A-P01-L02/D0.csv": "36851c48d7ec9b07c0867e9382f7cbfbe5d90017322fd9668b54c0b222bb2216",
+    "A-P01/run-sheets/A-P01-L02/D7.csv": "167499dd6df88fa8f1ecf52e82a44731af73b4ddce364266e6be250442e7a08b",
+    "A-P01/run-sheets/A-P01-L03/D0.csv": "b5b27c507a7e3043d25e88ac6ab75aaad43f2745030841ca3149feac299720a1",
+    "A-P01/run-sheets/A-P01-L03/D7.csv": "32dab907a22a2e943a167dcf081b4fe9f9c983d60d625eb85e8e942e9d30c8c8",
+    "A-P01/run-sheets/A-P01-L04/D0.csv": "de501a86e9057cb6b2a79ee03099f74981e5e64aa832fb2bce0ba284443bdf5d",
+    "A-P01/run-sheets/A-P01-L04/D7.csv": "8c460540aec3c3a8015ef06af285414e059969ba64dca9858d6c0411319d0f65",
+    "A-P01/run-sheets/A-P01-L05/D0.csv": "4dbb751415672900de002666280aeae9e29cdb6859a8f4865b111184fc432d5a",
+    "A-P01/run-sheets/A-P01-L05/D7.csv": "c99212fcacea3904c64486b5d190b57d30754a53d825f07e72b7f1198367e82d",
+    "A-P01/run-sheets/A-P01-L06/D0.csv": "2cebafb7263685c14fb5f31d2ffee01756b6de961a2df824727f3e7098665204",
+    "A-P01/run-sheets/A-P01-L06/D7.csv": "3ae7dfc9354354565552dc5de5f11cd693f75fb576ab26b9eef0ee3ead441df5",
+    "A-P02/run-sheets/A-P02-L01/D0.csv": "0fc1324ebf494a2893ed5e57b43f5b9450c8b498485d2ebbe7012819c5c8c76e",
+    "A-P02/run-sheets/A-P02-L01/D7.csv": "835c3512071ad240a974a13c952e8ea7cc422fd718c4fda32699a83ec32dc421",
+    "A-P02/run-sheets/A-P02-L02/D0.csv": "b5991d1d7dd3cf6f8ebd05bf50042a7c76df636f18b2040ad8e706c3e4f4601c",
+    "A-P02/run-sheets/A-P02-L02/D7.csv": "a8c5cdff2d1474402b883bab425e61308ce1be5c46da87cf1bb6846a4e80da51",
+    "A-P02/run-sheets/A-P02-L03/D0.csv": "35fb9f7b243c0099da7c54ff6048e17d442ee8953777dfae57721b7809ff8951",
+    "A-P02/run-sheets/A-P02-L03/D7.csv": "77bf9cdf6c66863463a212c0c3de288eeb800b207e1c55ca22cb5066902e3a34",
+    "A-P02/run-sheets/A-P02-L04/D0.csv": "cdb3086fe0137fe5b7f789205d8aedad4ee0aa8d3eb6f1a775c9a771ae24cd73",
+    "A-P02/run-sheets/A-P02-L04/D7.csv": "3910a66cdeaef6cd1851617c2b05faa555fe09d1135f11e126b5e2769e029c61",
+    "A-P02/run-sheets/A-P02-L05/D0.csv": "77a1e4c22cea529c87686c1466b667db65171c03a11664a9ba367eb2e621742a",
+    "A-P02/run-sheets/A-P02-L05/D7.csv": "d38640f6ef861e16fb6749faac47e7895ab3b2e83cd5fccc5126b7ebb0fb6502",
+    "A-P02/run-sheets/A-P02-L06/D0.csv": "e7dc293704cbbd88e2baacb7270e4bccd9beeba9d3ec1c3ede9aacb9a08a29af",
+    "A-P02/run-sheets/A-P02-L06/D7.csv": "df60b5c2a66bba65ac0d08c6ec3251aff748f575d4a1dde1ddf03adef29dc324",
+    "A-P03/run-sheets/A-P03-L01/D0.csv": "9a28830c78d01301805ade15af9efb2d2ed8fc909c0073a5adf87b6e25cdc1e2",
+    "A-P03/run-sheets/A-P03-L01/D7.csv": "38b04f1bdf94ccbce7d1deeb870add91f8cecd30eb84eae7e6eb730408894760",
+    "A-P03/run-sheets/A-P03-L02/D0.csv": "f070196063a4f0841aef9b2ad07bc4c519365082ba1aa799c68abe858ccc22fb",
+    "A-P03/run-sheets/A-P03-L02/D7.csv": "aa2c041e3d458c6dc282daa5f5698f0a420d10de4fb40c86195d5e18e8b59f20",
+    "A-P03/run-sheets/A-P03-L03/D0.csv": "cb437ccae7fd08f351bd91273aced6e68ebb4e1db91a1899d08cf4986f00c861",
+    "A-P03/run-sheets/A-P03-L03/D7.csv": "fd21a8959ff7df637b68537487103b505ac4cebe4890c13ce06d9667ed0b4c66",
+    "A-P03/run-sheets/A-P03-L04/D0.csv": "3cad92284266772b8b9605c7ac7d5001b46ba46f1e7638bcf824e2d8ac6c5c6d",
+    "A-P03/run-sheets/A-P03-L04/D7.csv": "e382d838341eaf12d73239c283250a6490bd0cc86425e4e369a1c58cdfceb01f",
+    "A-P03/run-sheets/A-P03-L05/D0.csv": "d4c0f950c0a9a7323581710ddfdbfc0eb2223b42cdada36a2ddafa35cb01d9f3",
+    "A-P03/run-sheets/A-P03-L05/D7.csv": "10b5771f8b9778e58f5d245d29b2692f93af7d12b273d0ad0440eb418839ff1d",
+    "A-P03/run-sheets/A-P03-L06/D0.csv": "8374ddeb32e001a42581b124114bf80ad41df004ed2b60990e12810751c95c64",
+    "A-P03/run-sheets/A-P03-L06/D7.csv": "8dcdcc33cd444dfe1c5eebd2c498a527e31dbda3f876df427c0ba17f647bc727",
+    "pilot-package-hashes.json": "b08a47142fccfb2249dc9665d24b07986c012919fc6ed71be70a0f2ce9bf1f6c"
+  },
+  "format": "av-schedules/run-sheets-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "package_hashes": {
+    "demo": true,
+    "packages": 9,
+    "placeholder": true,
+    "sha256": "b08a47142fccfb2249dc9665d24b07986c012919fc6ed71be70a0f2ce9bf1f6c"
+  },
+  "persons": 18,
+  "schedules_manifest_sha256": "00c38b1be610d81a7393f0a0de8afc0f6805ff67e3e59a4f4dc5e9c2e3c79a1d",
+  "screening_booked_minutes": null,
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "A",
+  "template": {
+    "columns": [
+      "participant_id",
+      "visit",
+      "block",
+      "expected_count",
+      "actual_count",
+      "start_time",
+      "end_time",
+      "comfort_check",
+      "phone_locked",
+      "hash_check",
+      "deviations",
+      "operator_signoff"
+    ],
+    "name": "visit-run-sheet-template.csv",
+    "prefilled": [
+      "participant_id",
+      "visit",
+      "block",
+      "expected_count",
+      "hash_check"
+    ],
+    "sha256": "b0bd19bf23f8b676429ef5d1d54321d3773a227fdc6e996287d19a7865947a46"
+  },
+  "units": [
+    "A-P01",
+    "A-P02",
+    "A-P03"
+  ],
+  "visits": {
+    "D0": {
+      "blocks": [
+        "atomic_lessons",
+        "message_lessons",
+        "trained",
+        "novel",
+        "atomic"
+      ],
+      "booked_minutes": 75,
+      "scheduled_seconds": 1888
+    },
+    "D7": {
+      "blocks": [
+        "trained",
+        "novel",
+        "atomic",
+        "validity"
+      ],
+      "booked_minutes": 30,
+      "scheduled_seconds": 928
+    }
+  }
+}

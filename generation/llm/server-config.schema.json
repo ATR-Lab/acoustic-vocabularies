@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/llm/server-config.schema.json",
+  "title": "LLM server configuration",
+  "description": "The pinned vLLM server configuration (av_generation.llm_server, #16). It names the LLM manifest by file SHA-256; the launcher refuses to start when the config, the manifest, the installed runtime or the model directory disagree. The model directory, bind address and port are given on the LLM host at launch; nothing here is a host path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dtype",
+    "engine_seed",
+    "format",
+    "format_version",
+    "generation_config",
+    "gpu_memory_utilization",
+    "host",
+    "load_format",
+    "manifest_sha256",
+    "max_model_len",
+    "name",
+    "port",
+    "served_model_name",
+    "startup_timeout_s",
+    "structured_outputs_backend",
+    "tensor_parallel_size"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/llm-server-config"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "served_model_name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    },
+    "host": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9.:-]{1,64}$"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "dtype": {
+      "enum": [
+        "bfloat16"
+      ]
+    },
+    "max_model_len": {
+      "type": "integer",
+      "minimum": 16896
+    },
+    "generation_config": {
+      "const": "vllm"
+    },
+    "structured_outputs_backend": {
+      "enum": [
+        "guidance",
+        "outlines",
+        "xgrammar"
+      ]
+    },
+    "engine_seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "load_format": {
+      "const": "safetensors"
+    },
+    "gpu_memory_utilization": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "tensor_parallel_size": {
+      "const": 1
+    },
+    "startup_timeout_s": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600
+    }
+  }
+}

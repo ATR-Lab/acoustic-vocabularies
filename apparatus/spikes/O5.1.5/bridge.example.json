@@ -1,0 +1,15 @@
+{
+  "uri": "ws://127.0.0.1:8765",
+  "candidate": "custom",
+  "ros_client": "ros-sharp",
+  "diagnostic_apply": false,
+  "topology": "UNSET",
+  "run_kind": "steady-state",
+  "rate_hz": 30,
+  "duration_s": 1800,
+  "canonical_joint_names": [],
+  "clock_drift_bound_ppm": -1,
+  "clock_bound_evidence": "",
+  "max_echo_age_s": 2,
+  "warmup_timeout_s": 30
+}
