@@ -1,0 +1,60 @@
+{
+  "allocation_seed": "sha256:4ca709c932c03c69127bfc3b263c1cfab39ab7357ccf5e84d5ca87967960cbf8",
+  "balance_max_abs_deviation": {
+    "member1_role": {
+      "all+spares:SQ-1:swap_w1_w4=0": "0",
+      "all+spares:SQ-1:swap_w1_w4=1": "0",
+      "all+spares:SQ-2:swap_w1_w4=0": "0",
+      "all+spares:SQ-2:swap_w1_w4=1": "0",
+      "all:SQ-1:swap_w1_w4=0": "0",
+      "all:SQ-1:swap_w1_w4=1": "0",
+      "all:SQ-2:swap_w1_w4=0": "0",
+      "all:SQ-2:swap_w1_w4=1": "0",
+      "spares:SQ-1:swap_w1_w4=0": "0",
+      "spares:SQ-1:swap_w1_w4=1": "0",
+      "spares:SQ-2:swap_w1_w4=0": "0",
+      "spares:SQ-2:swap_w1_w4=1": "0"
+    },
+    "menu_order": {
+      "all": "0.6667",
+      "all+spares": "0",
+      "spares": "0.6667"
+    },
+    "menu_position": {
+      "all": "0.6667",
+      "all+spares": "0",
+      "spares": "0.6667"
+    },
+    "sq_arm": {
+      "all": "0",
+      "all+spares": "0",
+      "spares": "0"
+    },
+    "swap_w1_w4": {
+      "all+spares:SQ-1": "0",
+      "all+spares:SQ-2": "0",
+      "all:SQ-1": "0",
+      "all:SQ-2": "0",
+      "spares:SQ-1": "0",
+      "spares:SQ-2": "0"
+    }
+  },
+  "demo": true,
+  "design_table_sha256": "aee66455c422737ab6a58398344c04fc84f5444fe0f9ebd83ff29f75719723fa",
+  "files": {
+    "confirmatory-assign-balance.csv": "5be71b45fe259f4be7bb2051b37ee231c0075aac77574922c566c88ae3102564",
+    "confirmatory-dyads.json": "9235e1cde4acd8f6fa0ed48d652416ce46ef7303de1f07a980a188fb7cf55b31"
+  },
+  "format": "av-schedules/assign-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "lists": {
+    "confirmatory-dyads.json": "67eead6160bbad87b6e322bea1f6e5c06b411c062f430e823b8915f51fd7da7b"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "study": "B"
+}

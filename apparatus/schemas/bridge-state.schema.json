@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/bridge-state.schema.json",
+  "title": "Phase 1 public scene state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "kind", "source_kind", "session_id", "seq", "host_monotonic_ns", "sim_time", "sim_step", "joint_names", "joint_positions", "objects"],
+  "properties": {
+    "version": {"const": 1},
+    "kind": {"const": "state"},
+    "source_kind": {"enum": ["live", "synthetic"]},
+    "session_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+    "seq": {"type": "integer", "minimum": 0},
+    "host_monotonic_ns": {"type": "string", "pattern": "^[0-9]+$"},
+    "sim_time": {"type": "number", "minimum": 0},
+    "sim_step": {"type": "integer", "minimum": 0},
+    "joint_names": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "joint_positions": {"type": "array", "minItems": 1, "items": {"type": "number"}},
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "position_m", "rotation_xyzw"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^placeholder_[A-Za-z0-9_-]+$"},
+          "position_m": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+          "rotation_xyzw": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "example_only_pending_operator",
+  "protocol_version": "engineering-pending-review",
+  "apparatus_version": "pending",
+  "booking_minutes": 75,
+  "buffer_minutes": null,
+  "agreed_start_min_percent": null,
+  "station_unit_ids": [
+    "unit-example"
+  ],
+  "spare_unit_id": "spare-example",
+  "measured_runtime_record": null,
+  "qualified_for_sessions": false,
+  "notes": [
+    "75 minutes is the issue planning duration, not a claim about measured runtime.",
+    "Set buffer and any start threshold only after route-specific operator measurements.",
+    "No value is copied into a runtime configuration automatically."
+  ]
+}

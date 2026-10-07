@@ -1,0 +1,29 @@
+name: Repository checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  repository-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Public repository guard and LFS pointers
+        run: python tools/repo_guard.py
+      - name: Validate schemas and synthetic examples
+        run: python tools/validate_schemas.py
+      - name: Python tests
+        run: |
+          python tools/generate-fixtures.py
+          python -m pytest

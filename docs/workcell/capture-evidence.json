@@ -1,0 +1,924 @@
+{
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "objects": [
+    {
+      "id": "container_E",
+      "label": "",
+      "position_unity_m": [
+        -0.075,
+        0.875,
+        0.115
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_E/code",
+      "label": "E001",
+      "position_unity_m": [
+        -0.075,
+        0.965,
+        0.164
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_E/lid",
+      "label": "",
+      "position_unity_m": [
+        -0.075,
+        0.9125,
+        0.0675
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_E/tag",
+      "label": "",
+      "position_unity_m": [
+        -0.075,
+        0.84,
+        0.18
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_F",
+      "label": "",
+      "position_unity_m": [
+        -0.285,
+        0.875,
+        0.115
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_F/code",
+      "label": "F001",
+      "position_unity_m": [
+        -0.285,
+        0.965,
+        0.164
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_F/lid",
+      "label": "",
+      "position_unity_m": [
+        -0.285,
+        0.9125,
+        0.0675
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_F/tag",
+      "label": "",
+      "position_unity_m": [
+        -0.285,
+        0.84,
+        0.18
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_G",
+      "label": "",
+      "position_unity_m": [
+        -0.075,
+        0.875,
+        0.3
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_G/code",
+      "label": "G001",
+      "position_unity_m": [
+        -0.075,
+        0.965,
+        0.349
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_G/lid",
+      "label": "",
+      "position_unity_m": [
+        -0.075,
+        0.9125,
+        0.2525
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_G/tag",
+      "label": "",
+      "position_unity_m": [
+        -0.075,
+        0.84,
+        0.365
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_H",
+      "label": "",
+      "position_unity_m": [
+        -0.285,
+        0.875,
+        0.3
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_H/code",
+      "label": "H001",
+      "position_unity_m": [
+        -0.285,
+        0.965,
+        0.349
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_H/lid",
+      "label": "",
+      "position_unity_m": [
+        -0.285,
+        0.9125,
+        0.2525
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "container_H/tag",
+      "label": "",
+      "position_unity_m": [
+        -0.285,
+        0.84,
+        0.365
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "quarantine_E",
+      "label": "E",
+      "position_unity_m": [
+        -0.18,
+        0.837,
+        0.115
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "quarantine_F",
+      "label": "F",
+      "position_unity_m": [
+        -0.39,
+        0.837,
+        0.115
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "quarantine_G",
+      "label": "G",
+      "position_unity_m": [
+        -0.18,
+        0.837,
+        0.3
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "quarantine_H",
+      "label": "H",
+      "position_unity_m": [
+        -0.39,
+        0.837,
+        0.3
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "return_cup",
+      "label": "RETURN",
+      "position_unity_m": [
+        -0.405,
+        0.856,
+        0.045
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_0",
+      "label": "",
+      "position_unity_m": [
+        0.419,
+        0.842,
+        0.031
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_1",
+      "label": "",
+      "position_unity_m": [
+        0.419,
+        0.842,
+        0.059
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_10",
+      "label": "",
+      "position_unity_m": [
+        0.391,
+        0.854,
+        0.031
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_11",
+      "label": "",
+      "position_unity_m": [
+        0.391,
+        0.854,
+        0.059
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_2",
+      "label": "",
+      "position_unity_m": [
+        0.391,
+        0.842,
+        0.031
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_3",
+      "label": "",
+      "position_unity_m": [
+        0.391,
+        0.842,
+        0.059
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_4",
+      "label": "",
+      "position_unity_m": [
+        0.419,
+        0.848,
+        0.031
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_5",
+      "label": "",
+      "position_unity_m": [
+        0.419,
+        0.848,
+        0.059
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_6",
+      "label": "",
+      "position_unity_m": [
+        0.391,
+        0.848,
+        0.031
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_7",
+      "label": "",
+      "position_unity_m": [
+        0.391,
+        0.848,
+        0.059
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_8",
+      "label": "",
+      "position_unity_m": [
+        0.419,
+        0.854,
+        0.031
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply/washer_9",
+      "label": "",
+      "position_unity_m": [
+        0.419,
+        0.854,
+        0.059
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "supply_cup",
+      "label": "SUPPLY",
+      "position_unity_m": [
+        0.405,
+        0.856,
+        0.045
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "surface_left",
+      "label": "",
+      "position_unity_m": [
+        0.225,
+        0.815,
+        0.2175
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "surface_right",
+      "label": "",
+      "position_unity_m": [
+        -0.225,
+        0.815,
+        0.2175
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_A",
+      "label": "A",
+      "position_unity_m": [
+        0.105,
+        0.851,
+        0.115
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_A/arrow",
+      "label": "",
+      "position_unity_m": [
+        0.07,
+        0.872,
+        0.067
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_A/card",
+      "label": "",
+      "position_unity_m": [
+        0.14,
+        0.871,
+        0.067
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_A/washer_0",
+      "label": "",
+      "position_unity_m": [
+        0.149,
+        0.871,
+        0.16
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_A/washer_1",
+      "label": "",
+      "position_unity_m": [
+        0.105,
+        0.871,
+        0.16
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_A/washer_2",
+      "label": "",
+      "position_unity_m": [
+        0.061,
+        0.871,
+        0.16
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_B",
+      "label": "B",
+      "position_unity_m": [
+        0.295,
+        0.851,
+        0.115
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_B/arrow",
+      "label": "",
+      "position_unity_m": [
+        0.26,
+        0.872,
+        0.067
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_B/card",
+      "label": "",
+      "position_unity_m": [
+        0.33,
+        0.871,
+        0.067
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_B/washer_0",
+      "label": "",
+      "position_unity_m": [
+        0.339,
+        0.871,
+        0.16
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_B/washer_1",
+      "label": "",
+      "position_unity_m": [
+        0.295,
+        0.871,
+        0.16
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_B/washer_2",
+      "label": "",
+      "position_unity_m": [
+        0.251,
+        0.871,
+        0.16
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_C",
+      "label": "C",
+      "position_unity_m": [
+        0.105,
+        0.851,
+        0.3
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_C/arrow",
+      "label": "",
+      "position_unity_m": [
+        0.07,
+        0.872,
+        0.252
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_C/card",
+      "label": "",
+      "position_unity_m": [
+        0.14,
+        0.871,
+        0.252
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_C/washer_0",
+      "label": "",
+      "position_unity_m": [
+        0.149,
+        0.871,
+        0.345
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_C/washer_1",
+      "label": "",
+      "position_unity_m": [
+        0.105,
+        0.871,
+        0.345
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_C/washer_2",
+      "label": "",
+      "position_unity_m": [
+        0.061,
+        0.871,
+        0.345
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_D",
+      "label": "D",
+      "position_unity_m": [
+        0.295,
+        0.851,
+        0.3
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_D/arrow",
+      "label": "",
+      "position_unity_m": [
+        0.26,
+        0.872,
+        0.252
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_D/card",
+      "label": "",
+      "position_unity_m": [
+        0.33,
+        0.871,
+        0.252
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_D/washer_0",
+      "label": "",
+      "position_unity_m": [
+        0.339,
+        0.871,
+        0.345
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_D/washer_1",
+      "label": "",
+      "position_unity_m": [
+        0.295,
+        0.871,
+        0.345
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "id": "tray_D/washer_2",
+      "label": "",
+      "position_unity_m": [
+        0.251,
+        0.871,
+        0.345
+      ],
+      "rotation_unity_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "camera": {
+    "focal_length_mm": 24.0,
+    "height": 1440,
+    "horizontal_aperture_mm": 36.0,
+    "look_at_m": [
+      0.15,
+      0.0,
+      0.96
+    ],
+    "position_m": [
+      1.45,
+      0.0,
+      1.5
+    ],
+    "status": "provisional_not_ADR_accepted",
+    "up_axis": "Z",
+    "width": 2560
+  },
+  "image_sha256": "3c1014be4e2df1089dc52816340e099f70ef6d16e9833124e8758fa1a25bc4cd"
+}

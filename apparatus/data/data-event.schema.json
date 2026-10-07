@@ -1,0 +1,2587 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sequence",
+    "event_id",
+    "clock_epoch",
+    "host_mono_ms",
+    "identity",
+    "event_type",
+    "opportunity_id",
+    "attempt_id",
+    "audio_request_id",
+    "previous_sha256",
+    "payload",
+    "sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "data-events-provisional-1"
+      ]
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+    },
+    "clock_epoch": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+    },
+    "host_mono_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "coded_id",
+        "visit_id",
+        "station_id",
+        "protocol_version",
+        "build_sha256"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+        },
+        "coded_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+        },
+        "visit_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+        },
+        "station_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+        },
+        "protocol_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+        },
+        "build_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+        }
+      }
+    },
+    "event_type": {
+      "enum": [
+        "session",
+        "opportunity",
+        "audio_request",
+        "audio_observation",
+        "audio_evidence",
+        "panel_process",
+        "panel_response",
+        "device",
+        "gain",
+        "choice",
+        "deviation_reference",
+        "visit_exit",
+        "recovery",
+        "assessment_stage",
+        "grammar_stage",
+        "lesson"
+      ]
+    },
+    "opportunity_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "audio_request_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "previous_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:acoustic-vocab:data-events-provisional-1",
+  "title": "Provisional closed data journal event; not a protocol template qualification",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "session"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event",
+              "clock_epoch",
+              "schedule_sha256",
+              "trial_id",
+              "retry_of",
+              "block_index",
+              "item_index",
+              "host_mono_ms",
+              "scheduled_onset_mono_ms",
+              "state",
+              "audible_status",
+              "exposure_consumed",
+              "reset_ok",
+              "focus_ok",
+              "technical_fault_code",
+              "response_code",
+              "evidence_sha256",
+              "opportunity_id",
+              "audio_request_ids"
+            ],
+            "properties": {
+              "event": {
+                "enum": [
+                  "operator_resume",
+                  "visit_complete",
+                  "state_before",
+                  "state_after",
+                  "onset_evidence",
+                  "response",
+                  "pause_requested",
+                  "stop_requested",
+                  "item_fault",
+                  "retry_queued",
+                  "boundary_late",
+                  "session_stopped",
+                  "session_paused",
+                  "novel_buffer_authorized"
+                ]
+              },
+              "clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "trial_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "retry_of": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "block_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "item_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "host_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "scheduled_onset_mono_ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "Loaded",
+                      "Ready",
+                      "CueRequested",
+                      "ResponseOpen",
+                      "Closed",
+                      "Reset",
+                      "Done"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "audible_status": {
+                "enum": [
+                  "NotRequested",
+                  "Uncertain",
+                  "ConfirmedAudible",
+                  "ConfirmedNoOnset",
+                  "NoCue"
+                ]
+              },
+              "exposure_consumed": {
+                "type": "boolean"
+              },
+              "reset_ok": {
+                "type": "boolean"
+              },
+              "focus_ok": {
+                "type": "boolean"
+              },
+              "technical_fault_code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,63}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_code": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "commit",
+                      "dont_know",
+                      "timeout"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "evidence_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "opportunity_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "audio_request_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                },
+                "maxItems": 8,
+                "uniqueItems": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "opportunity"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "role",
+              "method_masked",
+              "schedule_sha256"
+            ],
+            "properties": {
+              "role": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "method_masked": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_request"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "request_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onset_uncertainty_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count",
+                  "simulation_test",
+                  "software_output_estimate_mono_ms",
+                  "software_output_uncertainty_ms"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "request_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
+                    "type": "null"
+                  },
+                  "onset_uncertainty_ms": {
+                    "type": "null"
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "simulation_test": {
+                    "const": true
+                  },
+                  "software_output_estimate_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "software_output_uncertainty_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_observation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "request_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onset_uncertainty_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "audio_id",
+                  "waveform_sha256",
+                  "pcm_sha256",
+                  "action_pcm_sha256",
+                  "referent_pcm_sha256",
+                  "observed_mono_ms",
+                  "request_mono_ms",
+                  "scheduled_mono_ms",
+                  "scheduled_dsp_s",
+                  "onset_estimate_mono_ms",
+                  "onset_uncertainty_ms",
+                  "first_callback_dsp_s",
+                  "delivered_samples",
+                  "callback_count",
+                  "simulation_test",
+                  "software_output_estimate_mono_ms",
+                  "software_output_uncertainty_ms"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  "audio_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  "waveform_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pcm_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  "action_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referent_pcm_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "request_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scheduled_dsp_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "onset_estimate_mono_ms": {
+                    "type": "null"
+                  },
+                  "onset_uncertainty_ms": {
+                    "type": "null"
+                  },
+                  "first_callback_dsp_s": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "delivered_samples": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "callback_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "simulation_test": {
+                    "const": true
+                  },
+                  "software_output_estimate_mono_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "software_output_uncertainty_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_evidence"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "audible_status",
+              "evidence_sha256",
+              "evidence_kind",
+              "observed_mono_ms"
+            ],
+            "properties": {
+              "audible_status": {
+                "enum": [
+                  "confirmed_audible",
+                  "confirmed_no_onset",
+                  "uncertain"
+                ]
+              },
+              "evidence_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "evidence_kind": {
+                "enum": [
+                  "acoustic_measurement",
+                  "trusted_delivery_evidence"
+                ]
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "panel_process"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "observed_mono_ms",
+              "mode",
+              "role",
+              "input",
+              "selected_target",
+              "selected_action",
+              "response_code",
+              "response_target",
+              "response_action"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "mode": {
+                "enum": [
+                  "FullMessage",
+                  "AtomicProbe",
+                  "LessonAtomic",
+                  "LessonMessage",
+                  "Practice"
+                ]
+              },
+              "role": {
+                "enum": [
+                  "Command",
+                  "Action",
+                  "Target"
+                ]
+              },
+              "input": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "selected_target": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "selected_action": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_code": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "commit",
+                      "dont_know",
+                      "timeout"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_target": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_action": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "panel_response"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "observed_mono_ms",
+              "mode",
+              "role",
+              "input",
+              "selected_target",
+              "selected_action",
+              "response_code",
+              "response_target",
+              "response_action"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "mode": {
+                "enum": [
+                  "FullMessage",
+                  "AtomicProbe",
+                  "LessonAtomic",
+                  "LessonMessage",
+                  "Practice"
+                ]
+              },
+              "role": {
+                "enum": [
+                  "Command",
+                  "Action",
+                  "Target"
+                ]
+              },
+              "input": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "selected_target": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "selected_action": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_code": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "commit",
+                      "dont_know",
+                      "timeout"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_target": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_action": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "device"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "observed_mono_ms",
+              "value",
+              "duration_ms",
+              "code"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "headset",
+                  "input",
+                  "focus",
+                  "reset",
+                  "pause",
+                  "frame_freeze",
+                  "controller_exception"
+                ]
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "duration_ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "gain"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "old_gain",
+              "new_gain",
+              "observed_mono_ms",
+              "reason"
+            ],
+            "properties": {
+              "old_gain": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              },
+              "new_gain": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "reason": {
+                "enum": [
+                  "comfort"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "choice"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "candidate_id",
+              "accepted_or_rejected",
+              "yoked_source_event_id",
+              "pause_ms",
+              "matching_deviation_id"
+            ],
+            "properties": {
+              "candidate_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "accepted_or_rejected": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "pending"
+                ]
+              },
+              "yoked_source_event_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pause_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "matching_deviation_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "deviation_reference"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "deviation_id",
+              "signed_log_sha256",
+              "observed_mono_ms"
+            ],
+            "properties": {
+              "deviation_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "signed_log_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "visit_exit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "recovery"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "preserved_tails"
+            ],
+            "properties": {
+              "preserved_tails": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "segment",
+                    "tail_offset",
+                    "tail_sha256",
+                    "segment_sha256"
+                  ],
+                  "properties": {
+                    "segment": {
+                      "type": "string",
+                      "pattern": "^events-[0-9]{4}\\.local\\.jsonl$(?![\\s\\S])"
+                    },
+                    "tail_offset": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "tail_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                    },
+                    "segment_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_request"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_observation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_evidence"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "choice"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "panel_process"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "panel_response"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "deviation_reference"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "audio_request"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "code": {
+                "const": "AUDIO_REQUESTED"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "panel_process"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "response_code": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "panel_response"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "response_code": {
+                "enum": [
+                  "commit",
+                  "dont_know",
+                  "timeout"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "assessment_stage"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_kind",
+              "schedule_sha256",
+              "host_mono_ms",
+              "clock_epoch",
+              "stage",
+              "item_id",
+              "value",
+              "outcome_code"
+            ],
+            "properties": {
+              "event_kind": {
+                "enum": [
+                  "forms_started",
+                  "rating",
+                  "forms_completed",
+                  "optional_started",
+                  "optional_help",
+                  "optional_execution"
+                ]
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "host_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "stage": {
+                "enum": [
+                  "forms",
+                  "post_w4_optional"
+                ]
+              },
+              "item_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "value": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "outcome_code": {
+                "enum": [
+                  null,
+                  "requested",
+                  "completed",
+                  "failed",
+                  "cancelled"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "forms_started",
+                        "forms_completed"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "forms"
+                    },
+                    "item_id": {
+                      "type": "null"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "optional_started"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "post_w4_optional"
+                    },
+                    "item_id": {
+                      "type": "null"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "rating"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "forms"
+                    },
+                    "item_id": {
+                      "enum": [
+                        "difficulty",
+                        "pleasantness",
+                        "usability",
+                        "ownership",
+                        "preference_fit",
+                        "influence",
+                        "mental_demand"
+                      ]
+                    },
+                    "value": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10
+                    },
+                    "outcome_code": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "const": "rating"
+                    },
+                    "item_id": {
+                      "not": {
+                        "const": "mental_demand"
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 7
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "optional_help"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "post_w4_optional"
+                    },
+                    "item_id": {
+                      "type": "string",
+                      "pattern": "^[KQ]-[ar][1-4]$(?![\\s\\S])"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "enum": [
+                        "requested",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_kind": {
+                      "enum": [
+                        "optional_execution"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "stage": {
+                      "const": "post_w4_optional"
+                    },
+                    "item_id": {
+                      "type": "string",
+                      "pattern": "^execute_([A-D]_(ADD_ONE|REMOVE_ONE|FLIP_CARD|ALIGN_ARROW)|[E-H]_(SCAN|TAG|CLOSE|QUARANTINE))$(?![\\s\\S])"
+                    },
+                    "value": {
+                      "type": "null"
+                    },
+                    "outcome_code": {
+                      "enum": [
+                        "requested",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "opportunity_id": {
+            "type": "null"
+          },
+          "attempt_id": {
+            "type": "null"
+          },
+          "audio_request_id": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "grammar_stage"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "opportunity_id": {
+            "type": "null"
+          },
+          "attempt_id": {
+            "type": "null"
+          },
+          "audio_request_id": {
+            "type": "null"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "schedule_sha256",
+              "registry_sha256",
+              "review_sha256",
+              "clock_epoch",
+              "host_mono_ms",
+              "kind",
+              "phase",
+              "audio_request_id",
+              "operator_command",
+              "audio"
+            ],
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "registry_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "host_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "kind": {
+                "enum": [
+                  "started",
+                  "request",
+                  "audio",
+                  "completed",
+                  "finished",
+                  "interrupted"
+                ]
+              },
+              "phase": {
+                "enum": [
+                  null,
+                  "ready",
+                  "clicks"
+                ]
+              },
+              "audio_request_id": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                  }
+                ]
+              },
+              "operator_command": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "session_nonce",
+                      "request_id",
+                      "sequence"
+                    ],
+                    "properties": {
+                      "session_nonce": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                      },
+                      "request_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                      },
+                      "sequence": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "audio": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "properties": {
+                      "code": {
+                        "const": "AUDIO_REQUESTED"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "request",
+                        "audio",
+                        "completed"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "ready",
+                        "clicks"
+                      ]
+                    },
+                    "audio_request_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "phase": {
+                      "type": "null"
+                    },
+                    "audio_request_id": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "started"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "operator_command": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "session_nonce",
+                        "request_id",
+                        "sequence"
+                      ],
+                      "properties": {
+                        "session_nonce": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                        },
+                        "sequence": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "operator_command": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "audio"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "audio": {
+                      "properties": {
+                        "code": {
+                          "const": "AUDIO_REQUESTED"
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "audio": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "lesson"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "schema_version": {
+                "const": "lesson-events-provisional-1"
+              },
+              "schedule_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "package_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "session_clock_epoch": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "lesson_type": {
+                "enum": [
+                  "atomic_lesson",
+                  "message_lesson"
+                ]
+              },
+              "slot_start_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "audio_request_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                },
+                "minItems": 3,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              "kind": {
+                "enum": [
+                  "play_request",
+                  "onset_authority",
+                  "play_complete",
+                  "display_request",
+                  "display_start",
+                  "display_end",
+                  "retrieval_opportunity",
+                  "retrieval_result",
+                  "highlight_request",
+                  "highlight",
+                  "lesson_end",
+                  "lesson_interrupted"
+                ]
+              },
+              "attempt_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "opportunity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "audio_request_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "presentation_index": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "observed_mono_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "expected_mono_ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "meaning_display_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "feedback_content_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "highlight": {
+                "enum": [
+                  null,
+                  "none",
+                  "action",
+                  "target"
+                ]
+              },
+              "pcm_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "action_pcm_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "referent_pcm_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "schema_version",
+              "schedule_sha256",
+              "package_sha256",
+              "session_clock_epoch",
+              "lesson_type",
+              "slot_start_mono_ms",
+              "audio_request_ids",
+              "kind",
+              "attempt_id",
+              "opportunity_id",
+              "audio_request_id",
+              "presentation_index",
+              "observed_mono_ms",
+              "expected_mono_ms",
+              "meaning_display_id",
+              "feedback_content_id",
+              "highlight",
+              "pcm_sha256",
+              "action_pcm_sha256",
+              "referent_pcm_sha256"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "play_request",
+                        "onset_authority",
+                        "play_complete"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "audio_request_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+                    },
+                    "presentation_index": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "audio_request_id": {
+                      "type": "null"
+                    },
+                    "presentation_index": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "lesson_type": {
+                      "const": "atomic_lesson"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "action_pcm_sha256": {
+                      "type": "null"
+                    },
+                    "referent_pcm_sha256": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "action_pcm_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                    },
+                    "referent_pcm_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "highlight",
+                        "highlight_request"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "highlight": {
+                      "enum": [
+                        "none",
+                        "action",
+                        "target"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "highlight": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "retrieval_result"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "feedback_content_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "play_request",
+                        "onset_authority",
+                        "display_start",
+                        "display_end",
+                        "retrieval_opportunity",
+                        "lesson_end",
+                        "lesson_interrupted"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "expected_mono_ms": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          },
+          "opportunity_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+          }
+        }
+      }
+    }
+  ]
+}
