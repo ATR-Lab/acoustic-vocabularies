@@ -1,9 +1,14 @@
-"""Bounded actual G1 preflight, executions, replay and explicit following resets."""
+"""Bounded actual G1 preflight, executions, replay and explicit following resets.
+
+Recording uses the fixed sim-step schedule in ``recording``: no host sleeps
+or deadlines enter the capture, so host contention cannot change a recorded
+duration. Every recording must span the identical 600 physics steps, or the
+suite is refused (``recording_complete=false`` plus ``schedule-validation.json``).
+"""
 from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
-import time
 import traceback
 import uuid
 
@@ -14,9 +19,44 @@ from isaac.commands.hold import make_robot_hold
 from isaac.publisher.protocol import PublicRegistry, StateEncoder
 from .backend import IsaacMotionBackend
 from .planner import compile_plan
-from .recording import TrajectoryWriter, read_trajectory, write_json
-from .runtime import DemoLibrary, SAMPLE_HZ, SAMPLE_COUNT, NOMINAL_DURATION_SECONDS, compare_objects
+from .grip_geometry import path_clearance
+from .recording import (TrajectoryWriter, read_trajectory, write_json, record_fixed_schedule,
+                        validate_suite, SCHEDULE)
+from .runtime import (DemoLibrary, SAMPLE_COUNT, NOMINAL_DURATION_SECONDS, PHYSICS_DT_SECONDS,
+                      compare_objects)
 from .semantics import ORIENTATION_PAIRS
+
+HAND_LINK_PREFIX = 'right_hand_'
+
+
+def collect_cup_frames(library, adapter, plan, action, target):
+    """Unpaced pass: actual right-hand link frames at every supply-cup corridor sample.
+
+    The rows feed ``python -m isaac.demos.grip_geometry`` (pinned-mesh screen)
+    and the declared-envelope check on actual palm poses. Not timing evidence.
+    """
+    corridor = plan['cup_corridor']
+    measured_rows, palms = [], []
+    iterator = library(action, target)
+    for index in range(SAMPLE_COUNT):
+        next(iterator)
+        u = index/(SAMPLE_COUNT-1)
+        measured = adapter.read_state()
+        frames = {k: v for k, v in measured['frames'].items() if k.startswith(HAND_LINK_PREFIX)}
+        palm = frames['right_hand_palm_link']
+        carried = measured['objects'][plan['primary']] if corridor['attach'] <= u <= plan['release'] else None
+        palms.append(dict(sample=index, u=u, palm=(palm['position_m'], palm['rotation_xyzw']),
+                          carried=None if carried is None else (carried['position_m'], carried['rotation_xyzw'])))
+        measured_rows.append(dict(sample=index, frames=frames, washer=measured['objects'][plan['primary']]))
+    try: next(iterator)
+    except StopIteration: pass
+    # Declared envelope on actual palm poses; any outside-pad-posture sample
+    # whose reach sphere meets the cup is left to the pinned-mesh screen.
+    declared = path_clearance(corridor, palms, strict_reach=False)
+    near = {row['sample'] for row in declared['uncertified']}
+    rows = [row for row, item in zip(measured_rows, palms)
+            if corridor['enter'] <= item['u'] <= corridor['exit'] or row['sample'] in near]
+    return rows, declared
 
 
 def run_demo_check(manager, layout, output, *, preflight_only=False, capture_image=None):
@@ -62,13 +102,21 @@ def run_demo_check(manager, layout, output, *, preflight_only=False, capture_ima
             control_session_id=dispatcher.control_session_id, request_id=uuid.uuid4().hex,
             command=name, args=args or {})), 'local-main-thread')
 
-    def physics():
-        # Exactly two 60 Hz physics steps per 30 Hz command sample. Motion then
-        # overwrites articulation state kinematically before independent readback.
-        for _ in range(2):
-            adapter.robot.write_data_to_sim()
-            adapter.sim.step(render=False)
-            adapter.robot.update(adapter.sim.get_physics_dt())
+    def physics_step():
+        # One 60 Hz physics step; the schedule calls exactly two per 30 Hz
+        # sample. Motion then overwrites articulation state kinematically
+        # before independent readback.
+        adapter.robot.write_data_to_sim()
+        adapter.sim.step(render=False)
+        adapter.robot.update(adapter.sim.get_physics_dt())
+
+    # Index keys stay unchanged; schedule evidence is a separate private file.
+    measured_dt = float(adapter.sim.get_physics_dt())
+    validation = dict(SCHEDULE, measured_physics_dt_seconds=measured_dt, suite=None, refusal=None)
+    if abs(measured_dt-PHYSICS_DT_SECONDS) > 1e-9:
+        validation['refusal'] = 'Simulator physics dt %.12g differs from the fixed recording schedule' % measured_dt
+        write_json(output/'schedule-validation.json', validation)
+        raise RuntimeError(validation['refusal'])
 
     try:
         before = hashlib.sha256(json.dumps(adapter.read_state(), sort_keys=True).encode()).hexdigest()
@@ -80,6 +128,7 @@ def run_demo_check(manager, layout, output, *, preflight_only=False, capture_ima
         if before != after or any(row['reason'] != 'PROTECTED_TARGET_COMMAND' for row in rejects):
             raise RuntimeError('Protected real-factory gate failed')
         submit('set_mode', dict(mode='teaching')).result()
+        cup_records = []
         items = [('orientation', a, t) for a, t in ORIENTATION_PAIRS]+[('execution', a, t) for a, t in sorted(LEGAL_PAIRS)]
         for number, (group, action, target) in enumerate(items):
             initial_reset = submit('reset').result()
@@ -88,26 +137,16 @@ def run_demo_check(manager, layout, output, *, preflight_only=False, capture_ima
             name = f'{number:03d}.ndjson'
             writer, encoder = TrajectoryWriter(output/name, registry), StateEncoder(registry)
             future = submit('demo', dict(action=action, target=target))
-            started = time.monotonic()
             completed = False
             error = None
             try:
-                for index in range(SAMPLE_COUNT):
-                    deadline = started+index/SAMPLE_HZ
-                    remaining = deadline-time.monotonic()
-                    if remaining > 0:
-                        time.sleep(remaining)
-                    physics()
-                    dispatcher.advance()
-                    if future.done():
-                        raise RuntimeError('Demo ended before its fixed sample count: '+future.result()['reason'])
-                    writer.append(encoder.build(backend.positions(), adapter.accessors.read_public_state(),
-                                                float(adapter.sim.current_time), index+1))
-                # The last sample normally lands at 299/30 s. Hold that state
-                # through the nominal10 s boundary without inventing samples.
-                remaining = started+NOMINAL_DURATION_SECONDS-time.monotonic()
-                if remaining > 0:
-                    time.sleep(remaining)
+                # 300 samples x exactly 2 physics steps; sim_step is the
+                # demo-relative step count checked by the writer. No host
+                # deadline or sleep: the recorded duration is 600 steps.
+                record_fixed_schedule(writer, encoder, physics_step=physics_step,
+                    advance=dispatcher.advance, finished=future.done,
+                    sample=lambda: (backend.positions(), adapter.accessors.read_public_state(),
+                                    adapter.sim.current_time))
                 dispatcher.advance()  # Terminal check after the last actual sample.
                 completed = future.result()['accepted'] and library.last_result['execution_ok']
             except Exception:
@@ -148,9 +187,32 @@ def run_demo_check(manager, layout, output, *, preflight_only=False, capture_ima
                 try: next(iterator)
                 except StopIteration: pass
                 submit('reset').result()
-        summary['recording_complete'] = len(summary['rows']) == 40 and all(
-            row['capture']['capture_complete'] and row['capture']['timing_ok'] and row['reset_ok'] and row['replay_end_state_ok']
+            # Separate unpaced pass: actual link frames inside the supply-cup
+            # corridor for the offline pinned-mesh screen. Not timing evidence.
+            if completed and 'cup_corridor' in plans[(action, target)]:
+                record_cup = dict(number=number, group=group, action=action, target=target, error=None)
+                try:
+                    frames, declared = collect_cup_frames(library, adapter, plans[(action, target)], action, target)
+                    name_cup = f'cup-clearance-{number:03d}.private.json'
+                    write_json(output/name_cup, dict(kind='actual_PhysX_right_hand_frames_supply_cup_corridor',
+                        action=action, target=target, corridor=plans[(action, target)]['cup_corridor'], rows=frames))
+                    record_cup.update(file=name_cup, sha256=hashlib.sha256((output/name_cup).read_bytes()).hexdigest(),
+                                      declared_envelope_on_actual_palm=declared)
+                except Exception:
+                    record_cup['error'] = traceback.format_exc()
+                cup_records.append(record_cup)
+                write_json(output/'cup-clearance.json', dict(collision_reviewed=False, mesh_screen_pending=True,
+                                                            rows=cup_records))
+                submit('reset').result()
+        rows_ok = len(summary['rows']) == 40 and all(
+            row['capture']['capture_complete'] and row['capture']['schedule_ok'] and row['reset_ok'] and row['replay_end_state_ok']
             for row in summary['rows'])
+        try:
+            validation['suite'] = validate_suite([row['capture'] for row in summary['rows']])
+        except ValueError as refusal:
+            validation['refusal'] = str(refusal)
+        write_json(output/'schedule-validation.json', validation)
+        summary['recording_complete'] = bool(rows_ok and validation['refusal'] is None)
         summary['joint_names_sha256'] = hashlib.sha256(('\n'.join(backend.names)+'\n').encode()).hexdigest()
         summary['station_id'] = registry.station_id
         summary['nominal_duration_seconds'] = NOMINAL_DURATION_SECONDS

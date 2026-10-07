@@ -2,20 +2,43 @@
 
 The virtual grip is an engineering palm offset, with a side grip for cards.
 It is rigidly coupled to actual palm readback, but does not assert fingertip contact.
+
+ADD_ONE uses a supply-cup corridor instead of the earlier thumb/middle pinch,
+which put distal links inside the 4 mm cup walls. One straight middle finger
+descends vertically to the top washer's ring with every other hand link above
+the rim; posture and orientation stay fixed until the finger is back above the
+rim. The declared envelope in ``grip_geometry`` must keep the declared margin
+from every wall at every corridor keyframe and straight segment, or the plan
+is refused. The attachment remains kinematic: no grasp force is claimed.
 """
 from copy import deepcopy
 import math
 
 from .geometry import add, compose, relative, pose, mul, inverse, axis_angle, rotate
+from .grip_geometry import pad_posture, require_planned_clearance, supply_cup_corridor
 from .semantics import consequence
+
+
+WASHER_YAWS = (0., math.pi/2, -math.pi/2, math.pi, math.pi/4, -math.pi/4, 3*math.pi/4, -3*math.pi/4)
+CUP_PALM_YAWS = (0., math.pi/2, -math.pi/2, math.pi)
+# Corridor timing (fraction of the fixed 300-sample demo).
+CUP_ENTER, CUP_CONTACT, CUP_ATTACHED_DWELL, CUP_EXIT = .06, .20, .24, .38
 
 
 def compile_plan(backend, layout, neutral, action, target):
     errors = []
-    variants = [(offset, roll, 0.) for offset in (-.075, .075) for roll in (-math.pi/2, 0., math.pi/2, -math.pi/4, math.pi/4)] if action == "FLIP_CARD" else ([(None, None, yaw) for yaw in (0., math.pi/2, -math.pi/2, math.pi, math.pi/4, -math.pi/4, 3*math.pi/4, -3*math.pi/4)] if action in ("ADD_ONE", "REMOVE_ONE") else [(None, None, 0.)])
-    for offset, roll, yaw, prefer_destination in [(*v, prefer) for prefer in ((False, True) if action == "ADD_ONE" else (False,)) for v in variants]:
+    if action == 'FLIP_CARD':
+        variants = [dict(card_offset=offset, card_roll=roll) for offset in (-.075, .075)
+                    for roll in (-math.pi/2, 0., math.pi/2, -math.pi/4, math.pi/4)]
+    elif action == 'ADD_ONE':
+        variants = [dict(washer_yaw=yaw, palm_yaw=palm) for palm in CUP_PALM_YAWS for yaw in WASHER_YAWS]
+    elif action == 'REMOVE_ONE':
+        variants = [dict(washer_yaw=yaw) for yaw in WASHER_YAWS]
+    else:
+        variants = [dict()]
+    for variant in variants:
         try:
-            plan = _compile_one(backend, layout, neutral, action, target, offset, roll, yaw, prefer_destination)
+            plan = _compile_one(backend, layout, neutral, action, target, **variant)
             plan["prior_planning_failures"] = errors
             return plan
         except ValueError as error:
@@ -23,7 +46,8 @@ def compile_plan(backend, layout, neutral, action, target):
     raise ValueError("All bounded grip/keyframe variants failed: "+"; ".join(errors))
 
 
-def _compile_one(backend, layout, neutral, action, target, card_offset, card_roll, washer_yaw, prefer_destination):
+def _compile_one(backend, layout, neutral, action, target, card_offset=None, card_roll=None,
+                 washer_yaw=0., palm_yaw=0.):
     plan = consequence(layout, neutral, action, target)
     initial = list(backend.neutral['joint_positions_rad'])
     primary, expected = plan['primary'], plan['expected']
@@ -34,42 +58,68 @@ def _compile_one(backend, layout, neutral, action, target, card_offset, card_rol
     knots, attachments = [(0., initial)], []
     q = initial
 
-    def move(u, hand, position, orientation=None, closed=0., local_point=None):
+    def move(u, hand, position, orientation=None, closed=0., local_point=None, posture=None):
         nonlocal q
-        q = backend.fingers(q, hand, closed)
+        q = backend.fingers(q, hand, closed) if posture is None else posture(q)
         q, actual = backend.solve(q, hand, position, orientation, label=f'{action}/{target}/{u}', local_point=local_point)
         knots.append((u, list(q)))
         return actual
 
+    def carry(u, hand, object_pose, offset, closed=1., posture=None):
+        # palm * grip = object, hence palm = object * inverse(grip).
+        iq = inverse(offset[1])
+        inverted = (rotate(iq, [-x for x in offset[0]]), iq)
+        wanted = compose(object_pose, inverted)
+        if u not in (.64, .70):
+            return move(u, hand, object_pose[0], closed=closed, local_point=offset[0], posture=posture)
+        return move(u, hand, wanted[0], wanted[1], closed, posture=posture)
+
     original = pose(neutral[primary])
     destination = pose(expected[primary])
     plan['kind'] = 'carry' if plan['carried_group'] or action == 'FLIP_CARD' else 'contact'
-    if plan['kind'] == 'carry':
+    if action == 'ADD_ONE':
+        # Supply-cup corridor: fixed fingers-down orientation and pad posture
+        # from entry above the rim, down to the washer ring and back out.
+        corridor = supply_cup_corridor(layout, neutral, primary, palm_yaw)
+        orientation, tip = corridor['orientation_xyzw'], corridor['tip_local_m']
+        pick, heights = corridor['pick_m'], corridor['tip_heights_m']
+        pad = lambda value: pad_posture(backend.names, value, side)
+        corridor_knots = []
+        for k, z in enumerate(heights):
+            u = CUP_ENTER+(CUP_CONTACT-CUP_ENTER)*k/(len(heights)-1)
+            palm = move(u, side, [pick[0], pick[1], z], orientation, local_point=tip, posture=pad)
+            corridor_knots.append((u, palm))
+        grip = relative(palm, original)
+        lift = list(reversed(heights))
+        for k, z in enumerate(lift):
+            u = CUP_ATTACHED_DWELL+(CUP_EXIT-CUP_ATTACHED_DWELL)*k/(len(lift)-1)
+            palm = move(u, side, [pick[0], pick[1], z], orientation, local_point=tip, posture=pad)
+            corridor_knots.append((u, palm))
+        # The pad posture is held at every knot from entry through release (.70).
+        corridor.update(enter=CUP_ENTER, attach=CUP_CONTACT, exit=CUP_EXIT, pad_until=.70)
+        corridor['planned_clearance'] = require_planned_clearance(corridor, corridor_knots, grip)
+        attachments.append(dict(start=CUP_CONTACT, end=.70, side=side, relative_pose=grip))
+        carry(.50, side, (add(destination[0], [0, 0, .12]), destination[1]), grip, posture=pad)
+        carry(.64, side, destination, grip, posture=pad)
+        palm = backend.palm(side)
+        move(.70, side, palm[0], palm[1], posture=pad)  # No finger motion while attached.
+        plan['release'] = .70
+        plan.update(cup_corridor=corridor, pickup_kind='supply_cup_vertical_fingertip',
+                    pickup_orientation_source='fixed_fingers_down_supply_cup_corridor')
+        palm = backend.palm(side)
+        move(.82, side, add(palm[0], [0, 0, .06]))
+    elif plan['kind'] == 'carry':
         if action == 'FLIP_CARD':
             plan['carried_group'] = [primary]
             destination = (original[0], mul(original[1], axis_angle([1, 0, 0], math.pi)))
         pickup = add(original[0], [card_offset, 0., 0.] if action == 'FLIP_CARD' else [0., 0., .06])
         pickup_q = None if action != 'FLIP_CARD' else mul(axis_angle([1, 0, 0], card_roll), axis_angle([0, 1, 0], math.pi if card_offset > 0 else 0.))
-        if prefer_destination:
-            _, end_palm = backend.solve(initial, side, add(destination[0], [0., 0., .06]), label=f'{action}/{target}/destination_seed')
-            pickup_q = mul(mul(original[1], inverse(destination[1])), end_palm[1])
-            backend.write(initial)
-        plan['pickup_orientation_source'] = 'destination_position_solution' if prefer_destination else 'pickup_solution_or_card_side_grip'
+        plan['pickup_orientation_source'] = 'pickup_solution_or_card_side_grip'
         move(.10, side, add(pickup, [0., 0., .06]))
         palm = move(.20, side, pickup, pickup_q)
         grip = relative(palm, original)
         move(.24, side, pickup, palm[1], 1.)
         attachments.append(dict(start=.20, end=.70, side=side, relative_pose=grip))
-
-        def carry(u, hand, object_pose, offset, closed=1.):
-            # palm * grip = object, hence palm = object * inverse(grip).
-            iq = inverse(offset[1])
-            inverted = (rotate(iq, [-x for x in offset[0]]), iq)
-            wanted = compose(object_pose, inverted)
-            if u not in (.64, .70):
-                return move(u, hand, object_pose[0], closed=closed, local_point=offset[0])
-            return move(u, hand, wanted[0], wanted[1], closed)
-
         carry(.32, side, (add(original[0], [0, 0, .12]), original[1]), grip)
         if action == 'REMOVE_ONE':
             handoff_pose = ([.16, 0., 1.04], original[1])
@@ -140,7 +190,14 @@ def _compile_one(backend, layout, neutral, action, target, card_offset, card_rol
             plan[key] = tick(plan[key])
     if 'handoff' in plan:
         plan['handoff']['at'] = tick(plan['handoff']['at'])
+    if 'cup_corridor' in plan:
+        for key in ('enter', 'attach', 'exit', 'pad_until'):
+            plan['cup_corridor'][key] = tick(plan['cup_corridor'][key])
+        if [u for u, _ in knots] != sorted(set(u for u, _ in knots)):
+            raise ValueError('Corridor keyframes collapsed onto the same recorded sample')
     plan.update(knots=knots, attachments=attachments, joint_names=list(backend.names),
-                virtual_grip_offset_m=abs(card_offset) if action == 'FLIP_CARD' else .06, grasp_contact_validated=False, collision_reviewed=False)
+                virtual_grip_offset_m=(abs(card_offset) if action == 'FLIP_CARD' else
+                                       None if action == 'ADD_ONE' else .06),
+                grasp_contact_validated=False, collision_reviewed=False)
     backend.write(initial)
     return plan

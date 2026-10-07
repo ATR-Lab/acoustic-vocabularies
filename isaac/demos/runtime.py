@@ -9,6 +9,15 @@ from .geometry import (pose, compose, relative, sub, norm, angle, interpolate_kn
 SAMPLE_HZ = 30
 SAMPLE_COUNT = 300
 NOMINAL_DURATION_SECONDS = 10.
+# Fixed sim-step recording schedule (#56 maintainer decision, 2026-10). Every
+# recorded sample is exactly two 60 Hz physics steps, so all 40 recordings span
+# 600 steps by construction. Simulation time is never a playback clock.
+PHYSICS_STEPS_PER_SAMPLE = 2
+PHYSICS_DT_SECONDS = 1/60
+TOTAL_PHYSICS_STEPS = SAMPLE_COUNT*PHYSICS_STEPS_PER_SAMPLE
+if abs(TOTAL_PHYSICS_STEPS*PHYSICS_DT_SECONDS-NOMINAL_DURATION_SECONDS) > 1e-12 \
+        or abs(SAMPLE_HZ*PHYSICS_STEPS_PER_SAMPLE*PHYSICS_DT_SECONDS-1.) > 1e-12:
+    raise RuntimeError('Inconsistent fixed recording schedule constants')
 
 
 def compare_objects(actual, expected, *, position_tolerance=.0015, angle_tolerance=.012):

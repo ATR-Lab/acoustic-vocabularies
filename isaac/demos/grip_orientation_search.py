@@ -11,19 +11,8 @@ import math
 from pathlib import Path
 
 from .geometry import compose, pose
-from .grip_geometry import read_vertices
+from .grip_geometry import read_vertices, HAND_MESHES
 from .recording import write_json
-
-HAND_MESHES = {
-    'right_hand_index_0_link.STL': '12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d',
-    'right_hand_index_1_link.STL': 'c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d',
-    'right_hand_middle_0_link.STL': '12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d',
-    'right_hand_middle_1_link.STL': 'c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d',
-    'right_hand_palm_link.STL': '86c0b231cc44477d64a6493e5a427ba16617a00738112dd187c652675b086fb9',
-    'right_hand_thumb_0_link.STL': '544298d0ea1088f5b276a10cc6a6a9e533efdd91594955fdc956c46211d07f83',
-    'right_hand_thumb_1_link.STL': '0a9a820da8dd10f298778b714f1364216e8a5976f4fd3a05689ea26327d44bf6',
-    'right_hand_thumb_2_link.STL': '3f1bfb37668e8f61801c8d25f171fa1949e08666be86c67acad7e0079937cc45',
-}
 
 
 def search(summary, layout, mesh_directory, *, tilted):
