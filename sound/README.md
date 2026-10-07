@@ -41,6 +41,7 @@ Nothing needs the network at runtime.
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
 | `testvectors/fallback/demo-manifest.json` | Fallback banks and books from the public seed `DEMO-fallback-v1` (example, not study material) |
 | `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`), example package (`build_example_package.py`), run-sheet package hashes (`package_hashes.py`) |
+| `demo/macos/` | Native macOS demo app that drives the engine through a JSON-lines bridge ([`README.md`](demo/macos/README.md)) |
 | `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
 ## API
