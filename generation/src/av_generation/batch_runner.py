@@ -22,7 +22,7 @@ contract (`panel="bots"`). The accelerated tests and the dry run (#22) use them.
 
 Start checks: `check_batch_start` is the one function every batch run passes before
 anything is created (run ID, input pins, prompt/LLM/meaning hashes, the frozen-config rule
-of `genconfig.check_run_config`); the G4 freeze guard (#25) belongs there.
+of `genconfig.check_run_config` and, for confirmatory runs, the G4 freeze guard of #25).
 
 Command line (from the repository root):
 
@@ -62,6 +62,7 @@ from av_generation.a3 import A3Proposer
 from av_generation.clock import Clock, ManualClock, ScaledClock, SystemClock
 from av_generation.config import BatchConfig
 from av_generation.constants import APPOINTMENTS_PER_BATCH, ATOMS_PER_APPOINTMENT
+from av_generation.freeze import FreezeError, load_freeze_manifest
 from av_generation.genconfig import (
     GenerationConfig,
     build_generation_config,
@@ -134,6 +135,10 @@ E_MODE: Final = "E_MODE"
 E_LLM_SERVER: Final = "E_LLM_SERVER"
 E_RUN_DIR: Final = "E_RUN_DIR"
 E_STATIONS: Final = "E_STATIONS"
+E_FREEZE_GUARD: Final = "E_FREEZE_GUARD"
+"""A confirmatory batch without a G4 freeze manifest file that passes the freeze guard of
+#25 (`freeze.load_freeze_manifest(..., require_frozen=True)`); the message carries the
+freeze code (`E_GUARD`, `E_STATUS`, `E_MANIFEST`, `E_INPUT`) and every difference."""
 
 
 class RunnerError(RuntimeError):
@@ -281,12 +286,19 @@ def check_batch_start(
        (`E_INPUTS`). Simulated proposers run demo and synthetic batches only (`E_MODE`).
     4. `genconfig.check_run_config`: the running code and constants equal the config,
        demo configs run demo/synthetic runs only, and a confirmatory run needs the G4
-       freeze manifest with status `frozen` whose `config.frozen_sha256` equals the
-       config hash (`ConfigMismatch`).
+       freeze manifest (`E_FREEZE_MISSING`) with status `frozen` (`E_FREEZE_STATUS`)
+       whose `config.frozen_sha256` equals the config hash (`E_FREEZE_MISMATCH`), all
+       `ConfigMismatch`.
+    5. Confirmatory runs only, the G4 freeze guard (#25): the manifest file
+       `inputs.freeze_manifest_path` passes `freeze.load_freeze_manifest(path,
+       require_frozen=True)` (a valid frozen manifest, and the running code and the
+       committed files of this checkout equal every frozen value:
+       `freeze.freeze_differences`), and it is the manifest step 4 checked. Otherwise
+       `E_FREEZE_GUARD`, whose message carries the freeze code (`E_GUARD` for a changed
+       checkout) and every difference.
 
-    G4 freeze guard (#25): add the comparison of the running files with the frozen
-    manifest (`freeze.freeze_differences`, `inputs.freeze_manifest_path`) here, after
-    step 4, so a confirmatory batch refuses to start on any frozen item that changed.
+    Pilot, demo and synthetic runs need no freeze manifest and skip step 5; a manifest
+    given to them is checked by step 4 only (its config hash, not its status).
     """
     run_kind = RunKind(kind)
     gen = inputs.generation_config
@@ -313,6 +325,22 @@ def check_batch_start(
     elif run_kind not in PUBLIC_RUN_KINDS:
         raise RunnerError(E_MODE, "simulated proposers run demo and synthetic batches only")
     check_run_config(gen, kind=run_kind, freeze_manifest=inputs.freeze_manifest)
+    if run_kind is not RunKind.CONFIRMATORY:
+        return
+    if inputs.freeze_manifest_path is None:
+        raise RunnerError(
+            E_FREEZE_GUARD,
+            "a confirmatory batch needs the G4 freeze manifest file (--freeze-manifest)",
+        )
+    path = Path(inputs.freeze_manifest_path)
+    try:
+        loaded = load_freeze_manifest(path, require_frozen=True)
+    except FreezeError as err:
+        raise RunnerError(E_FREEZE_GUARD, f"refused by the G4 freeze guard: {err}") from err
+    if inputs.freeze_manifest is None or loaded.manifest != dict(inputs.freeze_manifest):
+        raise RunnerError(
+            E_FREEZE_GUARD, f"{path.name} is not the freeze manifest these inputs carry"
+        )
 
 
 def probe_llm_server(

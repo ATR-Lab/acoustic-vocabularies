@@ -300,14 +300,23 @@ API:
 | `serve_panel` | `(host, *, clock, bind="127.0.0.1", port=8765)` | Context manager yielding the panel server's base URL |
 | `wait_for_stations` | `(orchestrator, *, timeout_s=600, poll_s=0.1)` | Block until every seat has joined (`E_STATIONS`) |
 | `demo_generation_config` | `(config, meanings, fallback, *, prompt_set=None, llm_manifest_sha256=None)` | The DEMO generation config of a demo/synthetic run |
-| `BatchInputs`, `StudyBatch`, `RunnerError(code, message)`, `main(argv)` | | Codes `E_INPUTS`, `E_MODE`, `E_LLM_SERVER`, `E_RUN_DIR`, `E_STATIONS` |
+| `BatchInputs`, `StudyBatch`, `RunnerError(code, message)`, `main(argv)` | | Codes `E_INPUTS`, `E_MODE`, `E_LLM_SERVER`, `E_RUN_DIR`, `E_STATIONS`, `E_FREEZE_GUARD` |
 
 Start checks (`check_batch_start`), before anything is created: the run ID fits the kind;
 `check_batch_pins`; with real proposers the prompt set and its meaning set, the decoding
 schema and the LLM manifest hash to the generation config's values (`E_INPUTS`); then
 `genconfig.check_run_config` (running code = config; demo configs only for demo runs; a
-confirmatory run needs the `frozen` G4 manifest with the config's hash). The G4 freeze
-guard (#25) is added in this function.
+confirmatory run needs the `frozen` G4 manifest with the config's hash); then, for
+confirmatory runs only, the G4 freeze guard of #25 (`generation/docs/freeze.md` section 7).
+
+| Run kind | Freeze manifest | Refused with |
+| --- | --- | --- |
+| Confirmatory | Required (`--freeze-manifest`). `check_run_config` checks its status and config hash; then the file must pass `freeze.load_freeze_manifest(path, require_frozen=True)` (a valid frozen manifest, and the running code and committed files of this checkout equal every frozen value) and be the document `check_run_config` checked | `E_FREEZE_MISSING`, `E_FREEZE_STATUS`, `E_FREEZE_MISMATCH` (`ConfigMismatch`); `E_FREEZE_GUARD` (`RunnerError`, message `refused by the G4 freeze guard: E_GUARD: ...` with every difference, or the missing file) |
+| Pilot | Not needed; no freeze guard. A given manifest is compared by config hash only | `E_FREEZE_MISMATCH` |
+| Demo, synthetic | Not needed (demo config) | `E_CONFIG_KIND` for a real config |
+
+The guard runs in every process that starts the batch: `check`, `run` and each `run
+--resume` of a later appointment.
 
 Command line (from the repository root; inputs of real runs live in restricted storage):
 

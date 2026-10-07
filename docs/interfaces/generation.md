@@ -283,7 +283,7 @@ Guide and decisions: [`generation/docs/orchestrator.md`](../../generation/docs/o
 | `substitute_book_id(book_id)` | `<book>-FB`: store book of the frozen fallback book after a failed scan |
 | `check_batch_pins(config, generation_config, fallback, meanings, *, kind)` | The input pins and the set/kind rule (`E_CONFIG`, `E_KIND`), run by `Orchestrator` and the batch runner |
 | `batch_runner.load_batch_inputs(*, config, meanings, fallback, generation_config=None, prompts=None, llm_manifest=None, freeze_manifest=None, proposers="real") -> BatchInputs` | Reads a batch's inputs (committed prompt set and LLM manifest by default; a demo batch without a generation config gets `demo_generation_config`) |
-| `batch_runner.check_batch_start(inputs, *, kind, run_id, proposers="real")` | The one start check of every batch run, before anything is created: run ID, `check_batch_pins`, prompt-set / meaning / decoding-schema / LLM-manifest hashes against the generation config (`E_INPUTS`), stand-ins only for demo runs (`E_MODE`), `genconfig.check_run_config` (frozen G4 config for confirmatory runs). The G4 freeze guard (#25) goes here |
+| `batch_runner.check_batch_start(inputs, *, kind, run_id, proposers="real")` | The one start check of every batch run, before anything is created: run ID, `check_batch_pins`, prompt-set / meaning / decoding-schema / LLM-manifest hashes against the generation config (`E_INPUTS`), stand-ins only for demo runs (`E_MODE`), `genconfig.check_run_config` (frozen G4 config for confirmatory runs), then for confirmatory runs the G4 freeze guard of #25 (`freeze.load_freeze_manifest(path, require_frozen=True)` on `--freeze-manifest`; `E_FREEZE_GUARD`) |
 | `batch_runner.open_batch(inputs, run_dir, *, kind, clock, proposers="real", llm_url=None, a1_station=None, resume=False, purpose="batch", ...) -> StudyBatch` | Start checks, `probe_llm_server` (pinned model and vLLM version; #16's mock for demo runs only; `E_LLM_SERVER`), then the run directory and the real components: one `SlotLedger` shared by `a1.study_service`, `A2Proposer` and `A3Proposer` (with `OpenAICompatibleClient` logging to `llm-requests.jsonl`) |
 | `batch_runner.run_session(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, ...) -> str \| None` | Serves A1 (`a1.serve_a1`) and the panel (`batch_runner.serve_panel` -> `panel.create_panel_app`, port 8765), waits for every seat, finishes an interrupted atom (`resume`) and runs the appointment(s). Synthetic runs only: `panel="bots"`, `designer="bot"`, `proposers="sim"` |
 | `python -m av_generation.batch_runner check\|run ...` | Command line (`--run-dir`, `--kind`, inputs, `--llm-url`, `--a1-host`, `--panel-host`, `--appointment next\|all\|1..4`, `--resume`); exit 0 / 1 refused / 3 batch incomplete |
@@ -419,8 +419,10 @@ main, `bank-C065`..`bank-C072` spares, or `DEMO-`), bound to its unit by a fixed
 (`av_banks.permutation.expected_unit_id`: `bank-C012` -> `B-C12`, `bank-C066` -> `B-S02`)
 and read through the unit's package-safe `permutation.json` (`labels`, `atom_order` =
 traversal order; never `<set>-dyads.json`); the generation config (threshold, pins, budgets;
-confirmatory banks also the `frozen` G4 manifest); the B prompt set, meaning set and
-decoding schema (hashes equal to the config's); the #16 client.
+confirmatory banks also the `frozen` G4 manifest, read through #25's freeze guard by
+`av_banks.run.read_freeze_manifest(path, kind="confirmatory")`: `E_FREEZE_GUARD` when this
+checkout differs from it); the B prompt set, meaning set and decoding schema (hashes equal
+to the config's); the #16 client.
 
 **Build** (`banks build`, `av_banks.run.build_banks`, `builder.BankBuilder`). Attempts
 1..4; per profile P1..P3 and atom in the stored order, slots 1..12 of the cell: ledger

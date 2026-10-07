@@ -30,7 +30,7 @@ from typing import Any
 
 from av_generation.clock import SystemClock
 from av_generation.genconfig import GenerationConfig
-from av_generation.jsonio import file_sha256, read_json
+from av_generation.jsonio import read_json
 from av_generation.llm import OpenAICompatibleClient
 from av_generation.meanings import load_meanings
 from av_generation.prompts import load_prompt_set
@@ -42,7 +42,7 @@ from av_banks.builder import bank_spec
 from av_banks.manifest import read_manifest
 from av_banks.permutation import load_permutation
 from av_banks.proposer import LlmSlotProposer, SlotProposer, check_prompt_inputs
-from av_banks.run import build_banks
+from av_banks.run import build_banks, read_freeze_manifest, run_kind
 from av_banks.verify import verify_bank
 
 
@@ -129,9 +129,10 @@ def _build(args: argparse.Namespace) -> int:
     ]
     freeze = None
     freeze_sha = None
-    if args.freeze_manifest is not None:
-        freeze = read_json(args.freeze_manifest)
-        freeze_sha = file_sha256(args.freeze_manifest)
+    if args.freeze_manifest is not None:  # confirmatory banks: the G4 freeze guard (#25)
+        freeze, freeze_sha = read_freeze_manifest(
+            args.freeze_manifest, kind=run_kind(specs, args.kind)
+        )
     result = build_banks(
         specs,
         runs_root=args.runs_root,
