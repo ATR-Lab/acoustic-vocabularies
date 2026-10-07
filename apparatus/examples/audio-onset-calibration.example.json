@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "record_kind": "audio_onset_calibration",
+  "status": "provisional",
+  "evidence_kind": "synthetic_fixture",
+  "station_id": "EXAMPLE_STATION",
+  "route": "EXAMPLE_ROUTE",
+  "connection_mode": "wired_3_5mm_earphones",
+  "play_mode": "scheduled",
+  "app_build_id": "SYNTHETIC_NO_BUILD",
+  "output_device": "Synthetic fixture: no headset or earphones measured",
+  "capture_interface": "Synthetic fixture: generated WAV, no interface",
+  "capture_kind": "acoustic_coupler",
+  "app_sample_rate_hz": 48000,
+  "capture_sample_rate_hz": 48000,
+  "buffer_frames": 1024,
+  "buffer_count": 4,
+  "volume": {
+    "step": 7,
+    "max_step": 15
+  },
+  "full_scene_loaded": false,
+  "reference_field": "audio_request_mono_ms",
+  "measured_at": "2026-10-07T00:00:00Z",
+  "detector": {
+    "version": "onset-threshold/1",
+    "tool": "tools/onset_calibration.py",
+    "measure_channel": 0,
+    "reference_channel": 1,
+    "threshold_fs": 0.05,
+    "consecutive_samples": 3,
+    "quiet_pre_ms": 50.0,
+    "search_start_ms": 0.0,
+    "search_end_ms": 150.0,
+    "threshold_source": "Synthetic fixture: example value, not derived from a noise capture",
+    "quantile_method": "linear_interpolation_hyndman_fan_7"
+  },
+  "sync": {
+    "model": "affine_capture_s_from_host_ms/1",
+    "fit_n": 4,
+    "check_n": 4,
+    "slope": 1.000019998,
+    "intercept_s": -999.019998466,
+    "heldout_p95_ms": 0.00057,
+    "heldout_max_ms": 0.0006,
+    "external_bound_ms": 1.0,
+    "bound_ms": 1.0006,
+    "evidence": "Synthetic fixture: anchors generated on the ideal affine line; no instrument"
+  },
+  "plays": {
+    "requested": 200,
+    "matched": 200,
+    "missing": 0,
+    "clipped": 0,
+    "contaminated": 0,
+    "outside_capture": 0,
+    "coverage": {
+      "P1": {
+        "atom": 34,
+        "message": 33
+      },
+      "P2": {
+        "atom": 34,
+        "message": 33
+      },
+      "P3": {
+        "atom": 33,
+        "message": 33
+      }
+    }
+  },
+  "route_offset_ms": 37.348956,
+  "offset_sd_ms": 1.80399,
+  "residual_abs_p95_ms": 3.342959,
+  "residual_abs_max_ms": 5.341156,
+  "onset_uncertainty_ms": 4.343559,
+  "target": {
+    "rule": "onset-target/1",
+    "p95_limit_ms": 20,
+    "min_plays": 200,
+    "met": true
+  },
+  "loopback_reference": {
+    "channel": 1,
+    "matched": 200,
+    "median_delta_ms": 3.99992,
+    "delta_abs_deviation_p95_ms": 0.0
+  },
+  "inputs": {
+    "capture_wav_sha256": "2de1395317aa277990e5be7098e08713a08f193504bb5729381ddb1f21b8ebd4",
+    "events_csv_sha256": "a0b74d2dfd76401c55551109eacdc0520de0eb078c34edb813b279fe0bbc655e",
+    "sync_csv_sha256": "dee964051aa045a27ca867d54b8970a06b2676f696a2a2b552a1a9a6964c960e",
+    "settings_json_sha256": "fb08a1b436141a223fa4d737d1d94164798015db4a842ad7135cd8788546b91c"
+  },
+  "outputs": {
+    "plays_csv_sha256": "6a5d4aabd87321cf6fbb2ea0ac4c5789064c41b4236d5ff5a0006fbc99c6428a",
+    "histogram_csv_sha256": "4220d5038dcb2c570680324acb0a345948b5f49a1ae499ba2488b141dc3ec27a"
+  },
+  "response_time_qualification": null,
+  "review": null
+}
