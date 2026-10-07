@@ -14,8 +14,9 @@ Two steps per slot, so the cap is checked before any work is done:
    slot never reopens), each after logging a `SlotRefusal`; nothing is charged. The cap is
    checked first, so any request beyond the cap is refused as `slot_cap`. A3 and B reserve
    before `count_prompt_tokens` and `propose` (no model call beyond the cap; Study B
-   protocol §4), A2 before sampling, and A1 when the designer opens a slot (#19: "a 13th
-   slot request is refused").
+   protocol §4), A2 before sampling, and A1 when a slot opens (#19: slot 1 at the
+   round start, each next one when the previous closes; "a 13th slot request is
+   refused").
 2. `consume(record)` closes the ticket: `record.slot_id`, `cap_key`, `slot_index`,
    `study`, `method`, `run_id` and `t_open_ms` must match an open ticket, and the slot ID
    must name the record's book (or bank, attempt and profile), atom, round and slot (else
