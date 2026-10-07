@@ -8,6 +8,7 @@
     "schema_version",
     "record_type",
     "freeze_reference",
+    "freeze_status",
     "fields"
   ],
   "properties": {
@@ -24,6 +25,12 @@
       "maxLength": 512,
       "pattern": "^[^\\x00-\\x1f]+$"
     },
+    "freeze_status": {
+      "enum": [
+        "draft",
+        "frozen"
+      ]
+    },
     "fields": {
       "type": "object",
       "additionalProperties": false,
@@ -37,41 +44,125 @@
       ],
       "properties": {
         "model_id_provisional": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 512,
-          "pattern": "^[^\\x00-\\x1f]+$"
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\x00-\\x1f]+$"
+            },
+            {
+              "$ref": "#/$defs/pending"
+            }
+          ]
         },
         "model_revision": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 512,
-          "pattern": "^[^\\x00-\\x1f]+$"
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\x00-\\x1f]+$"
+            },
+            {
+              "$ref": "#/$defs/pending"
+            }
+          ]
         },
         "runtime_precision": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 512,
-          "pattern": "^[^\\x00-\\x1f]+$"
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\x00-\\x1f]+$"
+            },
+            {
+              "$ref": "#/$defs/pending"
+            }
+          ]
         },
         "prompt_hash": {
-          "$ref": "#/$defs/sha256"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "$ref": "#/$defs/pending"
+            }
+          ]
         },
         "fallback_bank_hash": {
-          "$ref": "#/$defs/sha256"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "$ref": "#/$defs/pending"
+            }
+          ]
         },
         "renderer_recipe_schema_hash": {
-          "$ref": "#/$defs/sha256"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "$ref": "#/$defs/pending"
+            }
+          ]
         }
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "freeze_status"
+        ],
+        "properties": {
+          "freeze_status": {
+            "const": "frozen"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
       "minLength": 64,
       "maxLength": 64
+    },
+    "pending": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "pending"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\x00-\\x1f]+$"
+        }
+      }
     }
   }
 }
