@@ -269,16 +269,48 @@ namespace AcousticVocab.SessionIntegration
         {if(data!=null&&!data.Closed)try{data.Append(DataObservations.Device(null,"focus",clock.NowMs,focused));}catch{Fail("JOIN_DATA_APPEND_FAILED");}if(!focused&&owner!=null)Fail("JOIN_FOCUS_LOST");}
         void OnApplicationPause(bool paused){if(paused&&owner!=null)Fail("JOIN_APPLICATION_PAUSED");}
         void OnDisable(){if(owner!=null)Fail("JOIN_HOST_DISABLED");Close();}
-        void OnDestroy()=>Close();
+        void OnDestroy(){Application.wantsToQuit-=WantsToQuit;Application.quitting-=OnQuitting;Close();}
+        // Single quit coordinator (#150). Teardown otherwise ran in incidental
+        // OnDisable/OnDestroy order while network and evidence workers could
+        // still complete IO during managed domain teardown. The order is the
+        // same disable fault and Close() as before, then source transport and
+        // journal, then one bounded total wait for tracked workers. It never
+        // blocks, delays or changes the process exit code.
+        void Awake(){Application.wantsToQuit+=WantsToQuit;Application.quitting+=OnQuitting;}
+        bool WantsToQuit(){ShutdownBreadcrumbs.Stage("quit_requested",new JObject{["status"]=StatusCode});return true;}
+        void OnQuitting()
+        {
+            try{ShutdownBreadcrumbs.Open(Path.Combine(Application.persistentDataPath,"operator-logs"));}catch{ShutdownBreadcrumbs.Stage("breadcrumb_file_unavailable");}
+            CoordinateQuit("application_quitting");
+        }
+        QuitCoordinator quit;
+        internal IReadOnlyList<WorkerOutcome> CoordinateQuit(string trigger)
+        {
+            if(quit!=null)return Array.Empty<WorkerOutcome>();
+            quit=new QuitCoordinator(WorkerLedger.Process,QuitCoordinator.DefaultWorkerBudgetMs,ShutdownBreadcrumbs.Stage);
+            quit.Add("joined_close",()=>{if(owner!=null)Fail("JOIN_HOST_DISABLED");Close();ShutdownBreadcrumbs.Stage("joined_status",new JObject{["status"]=StatusCode});});
+            quit.Add("state_source_shutdown",()=>{if(source!=null)source.ShutdownForQuit();});
+            return quit.Run(trigger);
+        }
         void Close()
         {
             if(closed)return;closed=true;Exception first=null;
-            var cleanup=new Action[]{()=>mailbox?.Dispose(),()=>staged?.Dispose(),()=>owner?.Dispose(),()=>{if(installedFrames)frames.FinishCapture();},()=>visit.Dispose()};
+            // Each step leaves a flushed native-log breadcrumb before and after
+            // it runs, so a later native fault can be placed after the last one.
+            static Action Step(string name,Action run)=>()=>
+            {
+                ShutdownBreadcrumbs.Stage("close_step_begin",new JObject{["step"]=name});bool succeeded=false;
+                try{run();succeeded=true;}finally{ShutdownBreadcrumbs.Stage("close_step_end",new JObject{["step"]=name,["succeeded"]=succeeded});}
+            };
+            var cleanup=new Action[]{Step("mailbox",()=>mailbox?.Dispose()),Step("staged_modules",()=>staged?.Dispose()),Step("session_owner",()=>owner?.Dispose()),
+                Step("frame_capture",()=>{if(installedFrames)frames.FinishCapture();}),Step("visit_resources",()=>visit.Dispose())};
             if(simulationClosure!=null)
             {
+                ShutdownBreadcrumbs.Stage("simulation_closure_begin",new JObject{["status"]=StatusCode});
                 string result=simulationClosure.Finish(StatusCode,
                     ()=>audit?.Write("module",new JObject{["kind"]="native_run_end",["status"]=StatusCode,["complete"]=false,["scope"]="SIMULATION_TEST",["participant_admission"]=false}),
                     cleanup);
+                ShutdownBreadcrumbs.Stage("simulation_closure_end",new JObject{["status"]=result});
                 Report(result);return;
             }
             foreach(Action action in cleanup)try{action();}catch(Exception e){first??=e;}

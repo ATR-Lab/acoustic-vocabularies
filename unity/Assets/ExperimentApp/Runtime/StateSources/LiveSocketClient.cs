@@ -6,6 +6,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AcousticVocab.Foundation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -26,16 +27,22 @@ namespace AcousticVocab.StateSources
         readonly ConcurrentDictionary<double,byte> echoes=new ConcurrentDictionary<double,byte>();
         readonly CancellationTokenSource lifetime=new CancellationTokenSource();
         readonly Task worker;
-        ClientWebSocket socket;
+        readonly Func<WebSocket> socketFactory;
+        WebSocket socket;
         int queued, dropped, totalDropped, epoch, processedEpoch, disposed;
         public int DroppedMessages => Volatile.Read(ref totalDropped);
         public static double Now => (double)Stopwatch.GetTimestamp()/Stopwatch.Frequency;
         public LiveSocketClient(string uri,SceneRegistry expected,LiveIsaacSource destination,SourceClock sourceClock=null)
-            :this(uri,expected,destination,sourceClock,()=>Now,(raw,registry)=>StateParser.Parse(raw,registry),true){}
+            :this(uri,expected,destination,sourceClock,()=>Now,(raw,registry)=>StateParser.Parse(raw,registry),()=>new ClientWebSocket(),WorkerLedger.Process){}
         // Deterministic tests exercise the real bounded queue without opening
         // a socket. Production always uses the same Stopwatch as receipt stamps.
         internal LiveSocketClient(string uri,SceneRegistry expected,LiveIsaacSource destination,SourceClock sourceClock,
             Func<double> processingClock,Func<string,SceneRegistry,SceneFrame> parseFrame,bool connect)
+            :this(uri,expected,destination,sourceClock,processingClock,parseFrame,connect?()=>new ClientWebSocket():(Func<WebSocket>)null,connect?WorkerLedger.Process:null){}
+        // Socket seam for the real worker loop. Only a ClientWebSocket is
+        // connected here; a supplied socket is already open. Null starts none.
+        internal LiveSocketClient(string uri,SceneRegistry expected,LiveIsaacSource destination,SourceClock sourceClock,
+            Func<double> processingClock,Func<string,SceneRegistry,SceneFrame> parseFrame,Func<WebSocket> socketFactory,WorkerLedger ledger)
         {
             if(!Uri.TryCreate(uri,UriKind.Absolute,out endpoint) || (endpoint.Scheme!="ws" && endpoint.Scheme!="wss") ||
                 endpoint.UserInfo.Length!=0 || endpoint.Fragment.Length!=0 || endpoint.AbsolutePath!="/state")
@@ -43,8 +50,11 @@ namespace AcousticVocab.StateSources
             registry=expected; source=destination; clock=sourceClock;
             this.processingClock=processingClock??throw new ArgumentNullException(nameof(processingClock));
             this.parseFrame=parseFrame??throw new ArgumentNullException(nameof(parseFrame));
-            worker=connect?Task.Run(Run):Task.CompletedTask;
+            this.socketFactory=socketFactory;
+            worker=socketFactory!=null?Task.Run(Run):Task.CompletedTask;
+            if(socketFactory!=null) ledger?.Track("public_state_socket",worker);
         }
+        internal Task Worker=>worker;
         internal void ReceiveRaw(string raw,double received,int arrivalEpoch=1)=>Offer(new Arrival { Raw=raw,Received=received,Epoch=arrivalEpoch });
         internal void ReceiveFault(string fault,double received,int arrivalEpoch=1)=>Offer(new Arrival { Fault=fault,Received=received,Epoch=arrivalEpoch });
         void Offer(Arrival arrival)
@@ -58,16 +68,18 @@ namespace AcousticVocab.StateSources
             while(!lifetime.IsCancellationRequested)
             {
                 int current=Interlocked.Increment(ref epoch);
-                using var client=new ClientWebSocket();
-                socket=client;
+                WebSocket client=null;
                 using var connection=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
                 try
                 {
-                    using(var connect=CancellationTokenSource.CreateLinkedTokenSource(connection.Token))
-                    {
-                        connect.CancelAfter(TimeSpan.FromSeconds(10));
-                        await client.ConnectAsync(endpoint,connect.Token);
-                    }
+                    client=socketFactory();
+                    socket=client;
+                    if(client is ClientWebSocket native)
+                        using(var connect=CancellationTokenSource.CreateLinkedTokenSource(connection.Token))
+                        {
+                            connect.CancelAfter(TimeSpan.FromSeconds(10));
+                            await native.ConnectAsync(endpoint,connect.Token);
+                        }
                     echoes.Clear();
                     Offer(new Arrival { Fault="STATE_TRANSPORT_CONNECTED",Received=Now,Epoch=current });
                     var sender=SendEchoes(client,connection.Token);
@@ -96,13 +108,15 @@ namespace AcousticVocab.StateSources
                 }
                 catch(Exception) when(!lifetime.IsCancellationRequested)
                 { Offer(new Arrival { Fault="STATE_TRANSPORT_DISCONNECTED",Received=Now,Epoch=current }); }
-                catch(OperationCanceledException) { }
-                finally { socket=null; }
+                // After owner cancellation, Abort may surface as a socket error
+                // instead of cancellation; either way the worker ends cleanly.
+                catch(Exception) { }
+                finally { socket=null; client?.Dispose(); }
                 if(!lifetime.IsCancellationRequested)
                     try { await Task.Delay(1000,lifetime.Token); } catch(OperationCanceledException) { }
             }
         }
-        async Task SendEchoes(ClientWebSocket client,CancellationToken cancellation)
+        async Task SendEchoes(WebSocket client,CancellationToken cancellation)
         {
             while(!cancellation.IsCancellationRequested)
             {
@@ -167,6 +181,7 @@ namespace AcousticVocab.StateSources
             socket?.Abort();
             // No Unity-thread wait on a network operation. Observe completion in
             // the continuation so a worker failure cannot become unobserved.
+            // Only the quit coordinator bounds a wait for it (WorkerLedger).
             _=worker.ContinueWith(task => { _=task.Exception; lifetime.Dispose(); },TaskScheduler.Default);
         }
     }

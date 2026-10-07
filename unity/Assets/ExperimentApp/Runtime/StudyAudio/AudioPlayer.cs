@@ -191,7 +191,13 @@ namespace AcousticVocab.StudyAudio
         void OnApplicationPause(bool paused) { if(paused && configured) Abort("AUDIO_APPLICATION_PAUSED"); }
         void OnApplicationFocus(bool focused) { if(!focused && configured) Abort("AUDIO_FOCUS_LOST"); }
         void OnDisable() { if(configured) Abort("AUDIO_COMPONENT_DISABLED"); }
-        void ClearPrepared() { foreach(var item in prepared.Values) if(item.Clip!=null) Destroy(item.Clip);prepared.Clear();EstimatedPreloadBytes=0; }
+        // Release the source's reference before destroying any clip, so the
+        // audio thread never sees a destroyed clip still assigned at teardown.
+        void ClearPrepared()
+        {
+            if(output!=null) { output.Stop();output.clip=null; }
+            foreach(var item in prepared.Values) if(item.Clip!=null) Destroy(item.Clip);prepared.Clear();EstimatedPreloadBytes=0;
+        }
         void OnDestroy() { AudioSettings.OnAudioConfigurationChanged-=OnAudioConfigurationChanged;Abort("AUDIO_SHUTDOWN");ClearPrepared(); }
     }
 }
