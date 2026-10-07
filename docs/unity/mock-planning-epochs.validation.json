@@ -1,0 +1,69 @@
+{
+  "scope": "retired_unplayed_planning_epoch_reconciliation",
+  "runtime_changed": false,
+  "new_native_visit_executed_by_this_change": false,
+  "synthetic_tests": {
+    "passed": 116,
+    "failed": 0,
+    "skipped": 0,
+    "junit_sha256": "80569a6993569f32cc36b4bebe09c317af05aa56a6aadbeac23684fd1c36c7fc"
+  },
+  "regressions": [
+    "Explicit ordered operator resume, fresh audio IDs and no cue intent or exposure are required for retirement.",
+    "Multiple cancelled planning contexts are retained in order with zero attributed overlap and an independently unique final summary.",
+    "Missing, duplicated, reordered, changed-clock, started and wrongly attributed frame histories are refused.",
+    "A long physical render interval spanning registration retains its full timing-failure gap when only its overlap belongs to the current window.",
+    "Record-level unconsumed recovery under a changed engine epoch remains incomplete; cross-epoch frame joins require independent provenance.",
+    "Only the original null-content pre-start menu interruption may bind to a retired context; play/display/selection, wrong deviation ID, duplicate and reordered rows refuse."
+  ],
+  "retained_native": {
+    "scope": "SIMULATION_TEST",
+    "native_source_commit": "4ddd7f65d2f7648fe7a60ec5e3d853659996646f",
+    "manifest_sha256": "b850549387299b815cc65dd1950eaec18b027566e6b0de6fab3db6594726d435",
+    "report_sha256": "30cf229680e6a6925c7edde0c1bd5269fe0e08735e7757ba66026a1fbf6475dd",
+    "frame_manifest_sha256": "6e5a0f3296d4a9c174eecd03baa22ace1df80460ea7665ef4d32a4fc4ea2a43c",
+    "menu_journal_sha256": "c0deb2e48e4009beb1b77956578b7a4f303190132426286d7d1a3b6cbd407f8f",
+    "original_analyzer_rejection": "MOCK_FRAME_SUMMARY",
+    "intermediate_frame_only_fix_rejection": "MOCK_MENU_ANCHOR",
+    "integrity_verified": true,
+    "software_reconciliation_complete": false,
+    "process_exit": 0,
+    "retired_unplayed_contexts": 1,
+    "final_attempt_summaries": 1,
+    "raw_attributed_intervals": 0,
+    "completed_opportunities": 0,
+    "requested_plays": 0,
+    "selection_count": 0,
+    "fault_codes": [
+      "FRAME_ATTEMPT_INTERRUPTED",
+      "MENU_LEDGER_UNAVAILABLE",
+      "OPERATOR_ADAPTER_FAILED",
+      "SESSION_CUE_GATE_REFUSED",
+      "SESSION_JOIN_DISPOSED"
+    ],
+    "incomplete_reasons": [
+      "ACTUAL_DISPLAY_TRACE_MISSING",
+      "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+      "FORMS_DISPLAY_TRACE_INCOMPLETE",
+      "FORMS_INCOMPLETE",
+      "FRAME_CAPTURE_INCOMPLETE",
+      "FRAME_FAULT_PRESENT",
+      "GRAMMAR_COMPLETION_MISSING",
+      "MENU_ATTEMPT_COVERAGE_INCOMPLETE",
+      "MENU_EVENTS_INCOMPLETE",
+      "MENU_LEDGER_UNSEALED",
+      "MENU_RETIRED_PLANNING_INTERRUPTION",
+      "MENU_SEAL_MISSING",
+      "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+      "NATIVE_RUN_END_INCOMPLETE",
+      "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+      "SCHEDULED_PLAYS_INCOMPLETE",
+      "STORE_FINAL_WAVE_INCOMPLETE",
+      "VISIT_COMPLETE_RECORD_MISSING"
+    ]
+  },
+  "raw_artifacts_modified": false,
+  "participant_qualified": false,
+  "acoustic_onset_qualified": false,
+  "issue81_accepted": false
+}

@@ -1,0 +1,14 @@
+{
+  "isaac_joints": 43,
+  "unity_driven_joints": 43,
+  "name_matched": 43,
+  "unmapped_isaac": [],
+  "unmapped_unity": [],
+  "left_hand": 7,
+  "right_hand": 7,
+  "pose_verification": "92_poses_passed_proposed_tolerance",
+  "identity_sign_offset": "verified_on_recorded_poses",
+  "verification_isaac_pose_sha256": "e658c275074b90378e75958f8db36916b7bb1961bc227c458fb5f6914d60aea3",
+  "canonical_map_encoding": "UTF-8 without BOM, LF newlines, observed Isaac index order",
+  "canonical_map_sha256": "1d6a3129b2dc3747284043d43b1ecd33bbaae6003874a5a01f63711b3a7b686e"
+}

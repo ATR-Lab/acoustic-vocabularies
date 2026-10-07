@@ -1,0 +1,1646 @@
+{
+  "a2_algorithm": "a2-mutation-search/1 (PCG64 raw draws, exact rejection)",
+  "description": "A2 proposals of a fixed DEMO scenario (tests/generation/test_a2_search.py, fixture_scenario); synthetic data only",
+  "records_sha256": "6e2770229275b6b40a942078be7eeb3f6410c3ffee0bd596e04e866924baf918",
+  "slots": [
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "c0c5becdb4588691cf15d59c67e66d510ad9ab7459de8eacfa7e5aa1afb6156e",
+      "recipe": "{\"amplitudes\":[0.6,0.6,1.0],\"gaps_ms\":[40,20],\"pitches\":[-5,-3,1],\"rhythm_weights\":[1,1,4],\"total_ms\":450}",
+      "seed": 6708549189742407406,
+      "seed_key": "A2|DEMO-A-P01|K-a1|1|1",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r1s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "dbeeb964c3a1631e68f833a37cbd02e26e426864fb55f8042541696ddf2bec5c",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,60],\"pitches\":[-2,-4,4],\"rhythm_weights\":[2,3,4],\"total_ms\":450}",
+      "seed": 2247744958101408916,
+      "seed_key": "A2|DEMO-A-P01|K-a1|1|2",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r1s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "65e96be1211e64419edef36fdb39f5f6b32c9a01b11a20a93836130003aca4a4",
+      "recipe": "{\"amplitudes\":[1.0,0.6,0.6],\"gaps_ms\":[40,20],\"pitches\":[6,4,0],\"rhythm_weights\":[4,3,1],\"total_ms\":750}",
+      "seed": 15132764783987157773,
+      "seed_key": "A2|DEMO-A-P01|K-a1|1|3",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r1s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_3",
+          4,
+          -3,
+          1,
+          1,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r1s2",
+      "pcm_sha256": "bc270d21e82e482624ed78d15abacd91be7f5e3a0c8023d38380eed9399a70c3",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,60],\"pitches\":[-2,-4,1],\"rhythm_weights\":[2,3,4],\"total_ms\":450}",
+      "seed": 3182385036490845833,
+      "seed_key": "A2|DEMO-A-P01|K-a1|2|1",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r2s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          -2,
+          -3,
+          -5,
+          -5,
+          false
+        ],
+        [
+          "rhythm_weight_2",
+          3,
+          1,
+          4,
+          4,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r1s2",
+      "pcm_sha256": "179d6cece1bb7cd211c06bedbb080fb8956fa100fdfc383272826c0ef69bbba7",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,60],\"pitches\":[-5,-4,4],\"rhythm_weights\":[2,4,4],\"total_ms\":450}",
+      "seed": 10031534959127703719,
+      "seed_key": "A2|DEMO-A-P01|K-a1|2|2",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          3,
+          1,
+          4,
+          4,
+          false
+        ],
+        [
+          "amplitude_1",
+          0.8,
+          1,
+          1.0,
+          1.0,
+          false
+        ],
+        [
+          "amplitude_3",
+          0.6,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r1s2",
+      "pcm_sha256": "b7201fb41062ea93fb021245d09137afeafcc71df7a2d9b6ec58d4350f3d81ed",
+      "recipe": "{\"amplitudes\":[1.0,0.6,0.8],\"gaps_ms\":[60,60],\"pitches\":[-2,-4,4],\"rhythm_weights\":[2,4,4],\"total_ms\":450}",
+      "seed": 16011245210286394154,
+      "seed_key": "A2|DEMO-A-P01|K-a1|2|3",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r2s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "total_ms",
+          450,
+          1,
+          600,
+          600,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "pcm_sha256": "ced838fd04fd0187633d9d63eb783876ebbae8ba0da0cba2b8664c313801a9d7",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,60],\"pitches\":[-5,-4,4],\"rhythm_weights\":[2,4,4],\"total_ms\":600}",
+      "seed": 12288892255059119285,
+      "seed_key": "A2|DEMO-A-P01|K-a1|3|1",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r3s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          4,
+          -1,
+          3,
+          3,
+          false
+        ],
+        [
+          "rhythm_weight_3",
+          4,
+          -1,
+          3,
+          3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "pcm_sha256": "b812f59be63c63125d7f79e25ca0b4580dfae028a46161032391cf33c0d7b779",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,60],\"pitches\":[-5,-4,4],\"rhythm_weights\":[2,3,3],\"total_ms\":450}",
+      "seed": 15443506454445119656,
+      "seed_key": "A2|DEMO-A-P01|K-a1|3|2",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r3s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "gap_2",
+          60,
+          -1,
+          40,
+          40,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.6,
+          1,
+          0.8,
+          0.8,
+          false
+        ],
+        [
+          "amplitude_3",
+          0.6,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "pcm_sha256": "c2d7bb20ea96bb1b4418586aaa3fb18c95fc69f042af96b123fda6e4b6265997",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[60,40],\"pitches\":[-5,-4,4],\"rhythm_weights\":[2,4,4],\"total_ms\":450}",
+      "seed": 7882466627391612808,
+      "seed_key": "A2|DEMO-A-P01|K-a1|3|3",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r3s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -4,
+          3,
+          -1,
+          -1,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "pcm_sha256": "26063e71728149aec90406120d8c53692d88369eebece87a05eb999a3f1e6dc9",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,60],\"pitches\":[-5,-1,4],\"rhythm_weights\":[2,4,4],\"total_ms\":450}",
+      "seed": 10252681554154875412,
+      "seed_key": "A2|DEMO-A-P01|K-a1|4|1",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r4s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          -5,
+          3,
+          -2,
+          -2,
+          false
+        ],
+        [
+          "gap_2",
+          60,
+          1,
+          40,
+          40,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "pcm_sha256": "4afcc58af7cdf49e13965a7de842bfffd2e0c6e429bfa2bae321321d807b044f",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.6],\"gaps_ms\":[60,40],\"pitches\":[-2,-4,4],\"rhythm_weights\":[2,4,4],\"total_ms\":450}",
+      "seed": 531669376188002368,
+      "seed_key": "A2|DEMO-A-P01|K-a1|4|2",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r4s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          -5,
+          -1,
+          -6,
+          -6,
+          false
+        ],
+        [
+          "gap_1",
+          60,
+          1,
+          40,
+          40,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.6,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-a1.r2s2",
+      "pcm_sha256": "f4085db42445e269054457e9a6e245124f8d0cdf4a4df4d5a2db79f9c9ac215e",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.6],\"gaps_ms\":[40,60],\"pitches\":[-6,-4,4],\"rhythm_weights\":[2,4,4],\"total_ms\":450}",
+      "seed": 17370699033700329125,
+      "seed_key": "A2|DEMO-A-P01|K-a1|4|3",
+      "slot_id": "DEMO-BK-H9TC.K-a1.r4s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "event_too_short",
+      "parent_slot_id": null,
+      "pcm_sha256": "a97502ffa2fa323fabd7062e2c9dcd3c2ce33b3b81beeae2dfcdc8b8a2e74c54",
+      "recipe": "{\"amplitudes\":[0.6,1.0,1.0],\"gaps_ms\":[20,40],\"pitches\":[-4,4,4],\"rhythm_weights\":[4,4,1],\"total_ms\":450}",
+      "seed": 10655603942459724183,
+      "seed_key": "A2|DEMO-A-P01|K-r2|1|1",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r1s1",
+      "validator_codes": [
+        "E_EVENT_SHORT"
+      ]
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "bf6063c40994ac6bcce04652a6b81e264c88c061f117d491b38e7c50ae8a3e9f",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[20,60],\"pitches\":[0,-1,3],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 1802740170006656843,
+      "seed_key": "A2|DEMO-A-P01|K-r2|1|2",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "845f7b8fcd98d013b5a8b50dc3e6df8e71fe4983197a3b29ed241319535958a8",
+      "recipe": "{\"amplitudes\":[1.0,0.6,0.6],\"gaps_ms\":[20,20],\"pitches\":[-6,3,0],\"rhythm_weights\":[4,2,1],\"total_ms\":750}",
+      "seed": 6520777024344835698,
+      "seed_key": "A2|DEMO-A-P01|K-r2|1|3",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r1s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          0,
+          1,
+          1,
+          1,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "0f7fe764756ba5e92ae1332fc67ffe02b2a27f77a92f505e35ae4287c62c4272",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[20,60],\"pitches\":[1,-1,3],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 17962992928163184995,
+      "seed_key": "A2|DEMO-A-P01|K-r2|2|1",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r2s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          0,
+          1,
+          1,
+          1,
+          false
+        ],
+        [
+          "pitch_3",
+          3,
+          2,
+          5,
+          5,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "172aeaf4f3c79d5bb8c9df881dea47afdc6c91b84977dff501b04cf5794737bd",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[20,60],\"pitches\":[1,-1,5],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 8138074456989920832,
+      "seed_key": "A2|DEMO-A-P01|K-r2|2|2",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r2s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -1,
+          2,
+          1,
+          1,
+          false
+        ],
+        [
+          "rhythm_weight_3",
+          3,
+          1,
+          4,
+          4,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.6,
+          1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "34208472e64b26927389c0b4d51f96788b2ab2a85852b0d4fdc3cebb7496ed01",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[20,60],\"pitches\":[0,1,3],\"rhythm_weights\":[2,4,4],\"total_ms\":600}",
+      "seed": 14304768019662191483,
+      "seed_key": "A2|DEMO-A-P01|K-r2|2|3",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r2s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "gap_2",
+          60,
+          1,
+          40,
+          40,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "7f1455982db999d1b9445ebac131cd784ef9174b0eeae005397ffc764d2aff80",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[20,40],\"pitches\":[0,-1,3],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 4533528914748244399,
+      "seed_key": "A2|DEMO-A-P01|K-r2|3|1",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r3s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "gap_1",
+          20,
+          1,
+          40,
+          40,
+          false
+        ],
+        [
+          "amplitude_1",
+          0.8,
+          1,
+          1.0,
+          1.0,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "74cc5066dcfe748acabf1f9dc1f6e369034524d62f2fe2f2b031992a4f1238e1",
+      "recipe": "{\"amplitudes\":[1.0,0.6,0.8],\"gaps_ms\":[40,60],\"pitches\":[0,-1,3],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 15420419758985068071,
+      "seed_key": "A2|DEMO-A-P01|K-r2|3|2",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r3s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          0,
+          3,
+          3,
+          3,
+          false
+        ],
+        [
+          "rhythm_weight_1",
+          2,
+          1,
+          3,
+          3,
+          false
+        ],
+        [
+          "amplitude_3",
+          0.8,
+          1,
+          1.0,
+          1.0,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "e506e3b72c951f84b4b7a59d994d49f89976557f41fe3c4886944070a2dc4188",
+      "recipe": "{\"amplitudes\":[0.8,0.6,1.0],\"gaps_ms\":[20,60],\"pitches\":[3,-1,3],\"rhythm_weights\":[3,4,3],\"total_ms\":600}",
+      "seed": 3058044408814306666,
+      "seed_key": "A2|DEMO-A-P01|K-r2|3|3",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r3s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          4,
+          -1,
+          3,
+          3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "355bf53a008a7041c73b5c5bb46c7539f3ac92c087516c659adfbc8c7440f49d",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[20,60],\"pitches\":[0,-1,3],\"rhythm_weights\":[2,3,3],\"total_ms\":600}",
+      "seed": 6562225673596070055,
+      "seed_key": "A2|DEMO-A-P01|K-r2|4|1",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r4s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -1,
+          3,
+          2,
+          2,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.6,
+          1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "de66f06fafa56f3a1d2997115893a96f301b67f987231791e06e81382a10904b",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[20,60],\"pitches\":[0,2,3],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 15384619005929970275,
+      "seed_key": "A2|DEMO-A-P01|K-r2|4|2",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r4s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -1,
+          -2,
+          -3,
+          -3,
+          false
+        ],
+        [
+          "amplitude_1",
+          0.8,
+          1,
+          1.0,
+          1.0,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.6,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.K-r2.r1s2",
+      "pcm_sha256": "de6713fdc7abd00c93d14aeeb7fc8d2c81446dda7f10eb7b04c595a392fbd2c0",
+      "recipe": "{\"amplitudes\":[1.0,0.8,0.8],\"gaps_ms\":[20,60],\"pitches\":[0,-3,3],\"rhythm_weights\":[2,4,3],\"total_ms\":600}",
+      "seed": 17254423922032298090,
+      "seed_key": "A2|DEMO-A-P01|K-r2|4|3",
+      "slot_id": "DEMO-BK-H9TC.K-r2.r4s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "09ad5fe379b14f7e085002ee3e1a68c645239cfcfd7f369ae2ce8f3e203671cb",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[20,40],\"pitches\":[-5,5,2],\"rhythm_weights\":[1,3,1],\"total_ms\":450}",
+      "seed": 2454553594809446643,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|1|1",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r1s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "3dde6f71b58d2fa95c08d49f3eb6976312feca4b0764d581821c9c448a8528c4",
+      "recipe": "{\"amplitudes\":[1.0,1.0,0.8],\"gaps_ms\":[20,40],\"pitches\":[2,-4,-5],\"rhythm_weights\":[3,2,2],\"total_ms\":600}",
+      "seed": 14841605652871735459,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|1|2",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r1s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "event_too_short",
+      "parent_slot_id": null,
+      "pcm_sha256": "0751f79c7de028ebeef56a52b2293885d21b12b410cf1db257a9364933accdaf",
+      "recipe": "{\"amplitudes\":[0.8,0.8,1.0],\"gaps_ms\":[60,60],\"pitches\":[-4,-4,6],\"rhythm_weights\":[4,1,3],\"total_ms\":450}",
+      "seed": 2259045899679833956,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|1|3",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r1s3",
+      "validator_codes": [
+        "E_EVENT_SHORT"
+      ]
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "61b228fca82f193eb95b903250f042c3e4c2cb2cb65b26f2a34c97ea08774aa4",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[60,60],\"pitches\":[6,-6,6],\"rhythm_weights\":[3,1,3],\"total_ms\":750}",
+      "seed": 5685470045914383701,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|2|1",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "event_too_short",
+      "parent_slot_id": null,
+      "pcm_sha256": "ecae7b264772c284a2c33b021b952f3ab0e22047bb1dd3896dc61e5f5835c728",
+      "recipe": "{\"amplitudes\":[1.0,0.6,0.8],\"gaps_ms\":[20,40],\"pitches\":[-1,-4,-1],\"rhythm_weights\":[2,1,4],\"total_ms\":450}",
+      "seed": 13523906262153726240,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|2|2",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r2s2",
+      "validator_codes": [
+        "E_EVENT_SHORT"
+      ]
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "a2487e7db61d1fb97acfbd4ffb8e4b1d2a7d04e9efbd646895a8e520fbdf51e7",
+      "recipe": "{\"amplitudes\":[0.8,0.6,1.0],\"gaps_ms\":[20,60],\"pitches\":[1,-6,4],\"rhythm_weights\":[1,1,2],\"total_ms\":750}",
+      "seed": 15261692519313314775,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|2|3",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r2s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -6,
+          -3,
+          -3,
+          -3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "pcm_sha256": "993146fde0cd6920ed220a451e7b69f16a9f591169fd0e3ee6cb1b0cd68141c1",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[60,60],\"pitches\":[6,-3,6],\"rhythm_weights\":[3,1,3],\"total_ms\":750}",
+      "seed": 16376583552234194569,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|3|1",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r3s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          6,
+          2,
+          4,
+          4,
+          false
+        ],
+        [
+          "rhythm_weight_2",
+          1,
+          -1,
+          2,
+          2,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "pcm_sha256": "2ce41f929436db265172122ad3c6f9b738546a38b4c24f8f52054afae5fd0fec",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[60,60],\"pitches\":[4,-6,6],\"rhythm_weights\":[3,2,3],\"total_ms\":750}",
+      "seed": 3557555669231954289,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|3|2",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r3s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          6,
+          1,
+          5,
+          5,
+          false
+        ],
+        [
+          "rhythm_weight_1",
+          3,
+          1,
+          4,
+          4,
+          false
+        ],
+        [
+          "rhythm_weight_3",
+          3,
+          1,
+          4,
+          4,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "pcm_sha256": "0151376899bdb00d7adf67153a6b2b614b8224f7cb36321cc8d27bedff85983e",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[60,60],\"pitches\":[5,-6,6],\"rhythm_weights\":[4,1,4],\"total_ms\":750}",
+      "seed": 11888424519349846141,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|3|3",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r3s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_3",
+          6,
+          3,
+          3,
+          3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "pcm_sha256": "fa105d88da0a08564e71ce6541e1a70b5f670dd15e058e7c8d14f6c3c884eb12",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[60,60],\"pitches\":[6,-6,3],\"rhythm_weights\":[3,1,3],\"total_ms\":750}",
+      "seed": 17642582373838973447,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|4|1",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r4s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -6,
+          -2,
+          -4,
+          -4,
+          false
+        ],
+        [
+          "gap_2",
+          60,
+          -1,
+          40,
+          40,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "pcm_sha256": "9318ef8050f3a995492cf48868faf7259ef07adb75c95ac1ab0781a0ec58919a",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[60,40],\"pitches\":[6,-4,6],\"rhythm_weights\":[3,1,3],\"total_ms\":750}",
+      "seed": 13039551617852418995,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|4|2",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r4s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_3",
+          3,
+          1,
+          4,
+          4,
+          false
+        ],
+        [
+          "gap_2",
+          60,
+          1,
+          40,
+          40,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.6,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-H9TC.Q-a3.r2s1",
+      "pcm_sha256": "b770a162e9969ce581bde78476ac6ea007b88ed0edd9e768abc31109593a1f05",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[60,40],\"pitches\":[6,-6,6],\"rhythm_weights\":[3,1,4],\"total_ms\":750}",
+      "seed": 1417178024709810423,
+      "seed_key": "A2|DEMO-A-P01|Q-a3|4|3",
+      "slot_id": "DEMO-BK-H9TC.Q-a3.r4s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "34291220dd76bce8278cdbe8b79eadca01819b5c2758afdc26aa5b588bf95ffb",
+      "recipe": "{\"amplitudes\":[1.0,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[1,1,2],\"total_ms\":750}",
+      "seed": 10574741570828251745,
+      "seed_key": "A2|DEMO-A-C02|K-a1|1|1",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r1s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "event_too_short",
+      "parent_slot_id": null,
+      "pcm_sha256": "3237b5bc1c092b865a56428cb5549bf5f55cfad5a2e34def897b62e40e811a13",
+      "recipe": "{\"amplitudes\":[0.8,0.6,1.0],\"gaps_ms\":[40,60],\"pitches\":[0,3,-2],\"rhythm_weights\":[4,1,4],\"total_ms\":600}",
+      "seed": 12084972100614878590,
+      "seed_key": "A2|DEMO-A-C02|K-a1|1|2",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r1s2",
+      "validator_codes": [
+        "E_EVENT_SHORT"
+      ]
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "29d80f992056bc5ffe29f70f4d539c81a890ee58d1c687e6778665ac2556dc11",
+      "recipe": "{\"amplitudes\":[0.8,0.6,0.8],\"gaps_ms\":[20,20],\"pitches\":[2,5,4],\"rhythm_weights\":[2,2,4],\"total_ms\":600}",
+      "seed": 11947329602894398004,
+      "seed_key": "A2|DEMO-A-C02|K-a1|1|3",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r1s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "total_ms",
+          750,
+          1,
+          900,
+          900,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r1s1",
+      "pcm_sha256": "704061dd1b6747294f0699a03601e2c2502c406e2977324528784bec29182d2c",
+      "recipe": "{\"amplitudes\":[1.0,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[1,1,2],\"total_ms\":900}",
+      "seed": 4993330278924084811,
+      "seed_key": "A2|DEMO-A-C02|K-a1|2|1",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r2s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          1,
+          1,
+          2,
+          2,
+          false
+        ],
+        [
+          "amplitude_1",
+          1.0,
+          1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r1s1",
+      "pcm_sha256": "786b860731c8790106b0f67369c8f55fc48ba1ac8e44c4cb604f8a0ba2876375",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[1,2,2],\"total_ms\":750}",
+      "seed": 12351231270575327006,
+      "seed_key": "A2|DEMO-A-C02|K-a1|2|2",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          -5,
+          1,
+          -4,
+          -4,
+          false
+        ],
+        [
+          "rhythm_weight_1",
+          1,
+          -1,
+          2,
+          2,
+          false
+        ],
+        [
+          "rhythm_weight_3",
+          2,
+          1,
+          3,
+          3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r1s1",
+      "pcm_sha256": "65cb8c1e584b46a8ab5ca2dd3e4ad58f441e5f00daafa7578609d32c62943ce6",
+      "recipe": "{\"amplitudes\":[1.0,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-4,-1,-2],\"rhythm_weights\":[2,1,3],\"total_ms\":750}",
+      "seed": 4913528069397614131,
+      "seed_key": "A2|DEMO-A-C02|K-a1|2|3",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r2s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          2,
+          1,
+          3,
+          3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "pcm_sha256": "fbecd3e3dbafef94f70cfe816ec89ae6e4633b89a707fd64260671a93076ed6b",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[1,3,2],\"total_ms\":750}",
+      "seed": 4714471488469956494,
+      "seed_key": "A2|DEMO-A-C02|K-a1|3|1",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r3s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          -5,
+          3,
+          -2,
+          -2,
+          false
+        ],
+        [
+          "rhythm_weight_2",
+          2,
+          -1,
+          1,
+          1,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "pcm_sha256": "2232db691fa66585defde18a76b55e633ef0fc31fc68e06e9eef20638344d614",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-2,-1,-2],\"rhythm_weights\":[1,1,2],\"total_ms\":750}",
+      "seed": 47062237730768927,
+      "seed_key": "A2|DEMO-A-C02|K-a1|3|2",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r3s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -1,
+          -1,
+          -2,
+          -2,
+          false
+        ],
+        [
+          "gap_1",
+          40,
+          1,
+          60,
+          60,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.8,
+          1,
+          1.0,
+          1.0,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "pcm_sha256": "3561047ca0068e57b7357c60655e9f44284b8c5116e9accf6148128babfbf323",
+      "recipe": "{\"amplitudes\":[0.8,1.0,0.6],\"gaps_ms\":[60,40],\"pitches\":[-5,-2,-2],\"rhythm_weights\":[1,2,2],\"total_ms\":750}",
+      "seed": 8365162181814707710,
+      "seed_key": "A2|DEMO-A-C02|K-a1|3|3",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r3s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          2,
+          1,
+          3,
+          3,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "pcm_sha256": "fbecd3e3dbafef94f70cfe816ec89ae6e4633b89a707fd64260671a93076ed6b",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[1,3,2],\"total_ms\":750}",
+      "seed": 7720291992413101852,
+      "seed_key": "A2|DEMO-A-C02|K-a1|4|1",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r4s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "total_ms",
+          750,
+          -1,
+          600,
+          600,
+          false
+        ],
+        [
+          "amplitude_1",
+          0.8,
+          -1,
+          0.6,
+          0.6,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "pcm_sha256": "7e052db09249a514fc81fddd07f4d9639eaa5fc606af63a1b8422fc1f7a8c200",
+      "recipe": "{\"amplitudes\":[0.6,0.8,0.6],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[1,2,2],\"total_ms\":600}",
+      "seed": 4102522320619645825,
+      "seed_key": "A2|DEMO-A-C02|K-a1|4|2",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r4s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "total_ms",
+          750,
+          -1,
+          600,
+          600,
+          false
+        ],
+        [
+          "rhythm_weight_1",
+          1,
+          -1,
+          2,
+          2,
+          false
+        ],
+        [
+          "amplitude_3",
+          0.6,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-a1.r2s2",
+      "pcm_sha256": "631bb1ec922fec38b8cc83c6aa4013dd55b8cdbeaee2affdc9a3fae4111e7cc4",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[40,40],\"pitches\":[-5,-1,-2],\"rhythm_weights\":[2,2,2],\"total_ms\":600}",
+      "seed": 5136944806346496027,
+      "seed_key": "A2|DEMO-A-C02|K-a1|4|3",
+      "slot_id": "DEMO-BK-M2RW.K-a1.r4s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "6b2cbe2b36e7304f78a3a640908cf71bb1d364a7b4ca9c9b8aec0461ae0e5a75",
+      "recipe": "{\"amplitudes\":[1.0,0.8,0.6],\"gaps_ms\":[20,60],\"pitches\":[-1,-5,5],\"rhythm_weights\":[1,4,1],\"total_ms\":450}",
+      "seed": 17880728118235062676,
+      "seed_key": "A2|DEMO-A-C02|K-r2|1|1",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r1s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "c3187fd869fea6cf7e6e6ea99ff05bd0ea0499950d1bf2554b178b4f5c243cac",
+      "recipe": "{\"amplitudes\":[0.6,0.6,0.8],\"gaps_ms\":[40,20],\"pitches\":[1,-4,1],\"rhythm_weights\":[2,3,3],\"total_ms\":600}",
+      "seed": 17941302182905802763,
+      "seed_key": "A2|DEMO-A-C02|K-r2|1|2",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r1s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "47676b553dedf90cecab850a617ee627d5eb4d501b21d6853ab06194cea7d809",
+      "recipe": "{\"amplitudes\":[0.6,0.8,1.0],\"gaps_ms\":[60,20],\"pitches\":[2,-3,6],\"rhythm_weights\":[3,4,4],\"total_ms\":900}",
+      "seed": 18372745772217824983,
+      "seed_key": "A2|DEMO-A-C02|K-r2|1|3",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r1s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "0b8781639f4d79b5a550eb0e24708cc9ba194c5a48c72a47af1bdb2338097422",
+      "recipe": "{\"amplitudes\":[0.8,0.8,0.8],\"gaps_ms\":[60,20],\"pitches\":[6,1,-3],\"rhythm_weights\":[3,1,2],\"total_ms\":900}",
+      "seed": 1619632904542158917,
+      "seed_key": "A2|DEMO-A-C02|K-r2|2|1",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r2s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "event_too_short",
+      "parent_slot_id": null,
+      "pcm_sha256": "d5c70cebc403daac873eefd4de20a52748d0ed6419b0df3728988659ac77b281",
+      "recipe": "{\"amplitudes\":[1.0,0.6,1.0],\"gaps_ms\":[20,60],\"pitches\":[-3,-2,5],\"rhythm_weights\":[4,4,1],\"total_ms\":450}",
+      "seed": 504796651236014277,
+      "seed_key": "A2|DEMO-A-C02|K-r2|2|2",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r2s2",
+      "validator_codes": [
+        "E_EVENT_SHORT"
+      ]
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "adb315efe811d95bff236a947cd9c1933ff4ff21021df071361f27f2b28463da",
+      "recipe": "{\"amplitudes\":[1.0,1.0,1.0],\"gaps_ms\":[20,20],\"pitches\":[-3,2,-6],\"rhythm_weights\":[1,1,4],\"total_ms\":600}",
+      "seed": 12091255506880154952,
+      "seed_key": "A2|DEMO-A-C02|K-r2|2|3",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r2s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "0ef7904bd17dfb76a2b473ec900b87603c3dffbc7e34a9ae4baba4a27f089e90",
+      "recipe": "{\"amplitudes\":[0.6,1.0,0.8],\"gaps_ms\":[60,40],\"pitches\":[-3,-2,-2],\"rhythm_weights\":[1,2,2],\"total_ms\":900}",
+      "seed": 4214933958113245094,
+      "seed_key": "A2|DEMO-A-C02|K-r2|3|1",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r3s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "26614aaae629522c9c298994f2ed78cdeedb23f4ee7ea051e7efd146c10b873c",
+      "recipe": "{\"amplitudes\":[1.0,1.0,0.8],\"gaps_ms\":[20,20],\"pitches\":[4,-2,0],\"rhythm_weights\":[3,3,3],\"total_ms\":750}",
+      "seed": 10940976447260428584,
+      "seed_key": "A2|DEMO-A-C02|K-r2|3|2",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r3s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "256a431a9c8c29778fd74465b772d347d8b7feee1840467b1711ed438c04e8ec",
+      "recipe": "{\"amplitudes\":[0.8,1.0,1.0],\"gaps_ms\":[20,40],\"pitches\":[-3,-3,3],\"rhythm_weights\":[3,3,4],\"total_ms\":900}",
+      "seed": 10136799263992940040,
+      "seed_key": "A2|DEMO-A-C02|K-r2|3|3",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r3s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          3,
+          -1,
+          2,
+          2,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-r2.r3s3",
+      "pcm_sha256": "36fdd26e71d29a63b3f89cd2e05627510d768ea4fd5215955cf2e445115b2e33",
+      "recipe": "{\"amplitudes\":[0.8,1.0,1.0],\"gaps_ms\":[20,40],\"pitches\":[-3,-3,3],\"rhythm_weights\":[3,2,4],\"total_ms\":900}",
+      "seed": 4616180873750454212,
+      "seed_key": "A2|DEMO-A-C02|K-r2|4|1",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r4s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "amplitude_1",
+          0.8,
+          -1,
+          0.6,
+          0.6,
+          false
+        ],
+        [
+          "amplitude_2",
+          1.0,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-r2.r3s3",
+      "pcm_sha256": "4ad4ebb325aad43c4552bc774accb2938489fd6f99a8cf1cf136c3256cc57ce5",
+      "recipe": "{\"amplitudes\":[0.6,0.8,1.0],\"gaps_ms\":[20,40],\"pitches\":[-3,-3,3],\"rhythm_weights\":[3,3,4],\"total_ms\":900}",
+      "seed": 3232420448369009460,
+      "seed_key": "A2|DEMO-A-C02|K-r2|4|2",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r4s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_3",
+          3,
+          1,
+          4,
+          4,
+          false
+        ],
+        [
+          "rhythm_weight_3",
+          4,
+          -1,
+          3,
+          3,
+          false
+        ],
+        [
+          "amplitude_3",
+          1.0,
+          1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.K-r2.r3s3",
+      "pcm_sha256": "5574be0ff63736a70b1de5c6d6cd7257720928ee3ad58c3cc07887e46d48ed91",
+      "recipe": "{\"amplitudes\":[0.8,1.0,0.8],\"gaps_ms\":[20,40],\"pitches\":[-3,-3,4],\"rhythm_weights\":[3,3,3],\"total_ms\":900}",
+      "seed": 2955973895037570581,
+      "seed_key": "A2|DEMO-A-C02|K-r2|4|3",
+      "slot_id": "DEMO-BK-M2RW.K-r2.r4s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "83702f579600eee64210a39c17caf9ffd571f96ca6dc292726fc70bbca819591",
+      "recipe": "{\"amplitudes\":[0.8,1.0,1.0],\"gaps_ms\":[20,60],\"pitches\":[-1,-1,6],\"rhythm_weights\":[4,4,4],\"total_ms\":600}",
+      "seed": 15049431177638971088,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|1|1",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "6103ceeb0e27fce0bc452c055628ced858c866488f66a8ce3bbce4fffcc84142",
+      "recipe": "{\"amplitudes\":[1.0,1.0,0.8],\"gaps_ms\":[60,40],\"pitches\":[0,1,0],\"rhythm_weights\":[2,4,2],\"total_ms\":450}",
+      "seed": 10935512366219954105,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|1|2",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r1s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "uniform",
+      "mutations": [],
+      "outcome": "valid",
+      "parent_slot_id": null,
+      "pcm_sha256": "aacd9bb052cb671347dcbbc9dc67f5352936d3b72c757c0379a8702f9ff65f28",
+      "recipe": "{\"amplitudes\":[0.6,1.0,1.0],\"gaps_ms\":[20,20],\"pitches\":[0,0,2],\"rhythm_weights\":[3,4,2],\"total_ms\":600}",
+      "seed": 4221237717774977302,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|1|3",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r1s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "gap_1",
+          20,
+          1,
+          40,
+          40,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "pcm_sha256": "d550c2e20b521b0d90f21a0cb22b6d337a857fa41fd14684fc4c413c40cebb91",
+      "recipe": "{\"amplitudes\":[0.8,1.0,1.0],\"gaps_ms\":[40,60],\"pitches\":[-1,-1,6],\"rhythm_weights\":[4,4,4],\"total_ms\":600}",
+      "seed": 1406005923497180429,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|2|1",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r2s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_1",
+          4,
+          -1,
+          3,
+          3,
+          false
+        ],
+        [
+          "amplitude_3",
+          1.0,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "pcm_sha256": "712a0800f3d8def79d1f5dc199dae00538fc7063c71be7ba75cbd147eb375bdf",
+      "recipe": "{\"amplitudes\":[0.8,1.0,0.8],\"gaps_ms\":[20,60],\"pitches\":[-1,-1,6],\"rhythm_weights\":[3,4,4],\"total_ms\":600}",
+      "seed": 18002206934986551228,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|2|2",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r2s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_1",
+          -1,
+          2,
+          1,
+          1,
+          false
+        ],
+        [
+          "pitch_2",
+          -1,
+          1,
+          0,
+          0,
+          false
+        ],
+        [
+          "total_ms",
+          600,
+          -1,
+          450,
+          450,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "pcm_sha256": "13d5b463fac2270584b0d0e14bb36bae09389ec916d55497bfe3cb5856199b29",
+      "recipe": "{\"amplitudes\":[0.8,1.0,1.0],\"gaps_ms\":[20,60],\"pitches\":[1,0,6],\"rhythm_weights\":[4,4,4],\"total_ms\":450}",
+      "seed": 12158401149530750171,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|2|3",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r2s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "amplitude_3",
+          1.0,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "pcm_sha256": "ea42360073d98d95d85c735c3b54a9dd368e121f9c98dc3bee9da1ecb7e1b6a1",
+      "recipe": "{\"amplitudes\":[0.8,1.0,0.8],\"gaps_ms\":[20,60],\"pitches\":[-1,-1,6],\"rhythm_weights\":[4,4,4],\"total_ms\":600}",
+      "seed": 3752805835458339793,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|3|1",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r3s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "total_ms",
+          600,
+          1,
+          750,
+          750,
+          false
+        ],
+        [
+          "amplitude_2",
+          1.0,
+          1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "pcm_sha256": "4245c49853674c9d9e153dacf2d5726cd93d73c7b196a695fae940f653ceefd9",
+      "recipe": "{\"amplitudes\":[0.8,0.8,1.0],\"gaps_ms\":[20,60],\"pitches\":[-1,-1,6],\"rhythm_weights\":[4,4,4],\"total_ms\":750}",
+      "seed": 874573989891373467,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|3|2",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r3s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_3",
+          6,
+          3,
+          3,
+          3,
+          false
+        ],
+        [
+          "gap_2",
+          60,
+          1,
+          40,
+          40,
+          false
+        ],
+        [
+          "amplitude_2",
+          1.0,
+          -1,
+          0.8,
+          0.8,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r1s1",
+      "pcm_sha256": "5198fe06cbd3f4381b664102bd16bb5cc510be720f328a84117d868dd2094588",
+      "recipe": "{\"amplitudes\":[0.8,0.8,1.0],\"gaps_ms\":[20,40],\"pitches\":[-1,-1,3],\"rhythm_weights\":[4,4,4],\"total_ms\":600}",
+      "seed": 17573011603114919688,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|3|3",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r3s3",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_2",
+          -1,
+          -3,
+          -4,
+          -4,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r3s2",
+      "pcm_sha256": "c7343d06160b9a45658f4159048e9bc0294e3560c03100a57b8f5065e27ffb55",
+      "recipe": "{\"amplitudes\":[0.8,0.8,1.0],\"gaps_ms\":[20,60],\"pitches\":[-1,-4,6],\"rhythm_weights\":[4,4,4],\"total_ms\":750}",
+      "seed": 6584261656011430616,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|4|1",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r4s1",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "pitch_3",
+          6,
+          -1,
+          5,
+          5,
+          false
+        ],
+        [
+          "amplitude_2",
+          0.8,
+          1,
+          1.0,
+          1.0,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r3s2",
+      "pcm_sha256": "573d30546da776b46507cf2507b3a2c188c87abccee6e45e0fb1951bd831156e",
+      "recipe": "{\"amplitudes\":[0.8,1.0,1.0],\"gaps_ms\":[20,60],\"pitches\":[-1,-1,5],\"rhythm_weights\":[4,4,4],\"total_ms\":750}",
+      "seed": 13199424843951607854,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|4|2",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r4s2",
+      "validator_codes": []
+    },
+    {
+      "mode": "mutation",
+      "mutations": [
+        [
+          "rhythm_weight_2",
+          4,
+          1,
+          3,
+          3,
+          false
+        ],
+        [
+          "rhythm_weight_3",
+          4,
+          -1,
+          3,
+          3,
+          false
+        ],
+        [
+          "amplitude_1",
+          0.8,
+          -1,
+          0.6,
+          0.6,
+          false
+        ]
+      ],
+      "outcome": "valid",
+      "parent_slot_id": "DEMO-BK-M2RW.Q-a3.r3s2",
+      "pcm_sha256": "b0b2d8021cd44d5e95f6336e22e6c9a6eb5a96812940e64f07f4ff3864c67a0d",
+      "recipe": "{\"amplitudes\":[0.6,0.8,1.0],\"gaps_ms\":[20,60],\"pitches\":[-1,-1,6],\"rhythm_weights\":[4,3,3],\"total_ms\":750}",
+      "seed": 11570901111788854700,
+      "seed_key": "A2|DEMO-A-C02|Q-a3|4|3",
+      "slot_id": "DEMO-BK-M2RW.Q-a3.r4s3",
+      "validator_codes": []
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/b-dyads.schema.json",
+  "title": "Study B concealed dyad list (<set>-dyads.json)",
+  "description": "Every Study B dyad slot (main slots, then spares) with SQ arm, H-W1/H-W4 swap, roles by member slot, placeholder bank ID and V1 profile-menu order. Concealed until the reveal-next API reveals an entry after both partners' eligibility is logged. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "audience",
+    "generator",
+    "demo",
+    "seed_label",
+    "allocation_seed",
+    "study",
+    "set",
+    "design_table_sha256",
+    "counts",
+    "dyads",
+    "list_sha256"
+  ],
+  "properties": {
+    "format": {"const": "av-schedules/b-dyads"},
+    "format_version": {"const": 1},
+    "audience": {"const": "concealed"},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "av-schedules"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "demo": {"type": "boolean"},
+    "seed_label": {"type": "string", "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$"},
+    "allocation_seed": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "study": {"const": "B"},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "design_table_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the design table (<set>-design-table.csv) the list was built from."},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dyads", "spares"],
+      "properties": {
+        "dyads": {"type": "integer", "minimum": 1},
+        "spares": {"type": "integer", "minimum": 0}
+      }
+    },
+    "dyads": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dyad"}},
+    "list_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dyad": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id",
+        "kind",
+        "order",
+        "block_id",
+        "block_position",
+        "sq_arm",
+        "structured_family",
+        "swap_w1_w4",
+        "members",
+        "bank_id",
+        "profile_menu_order"
+      ],
+      "properties": {
+        "unit_id": {"type": "string", "pattern": "^B-[PCS][0-9]{2}$"},
+        "kind": {"enum": ["dyad", "spare"]},
+        "order": {"type": "integer", "minimum": 1, "description": "Design-table sequence; main slots are revealed in this order."},
+        "block_id": {"type": "string", "pattern": "^B-[PC]-blk[0-9]{2}$"},
+        "block_position": {"type": "integer", "minimum": 1, "maximum": 4},
+        "sq_arm": {"enum": ["SQ-1", "SQ-2"]},
+        "structured_family": {"enum": ["K", "Q"]},
+        "swap_w1_w4": {"type": "boolean"},
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot_id", "member", "role"],
+            "properties": {
+              "slot_id": {"type": "string", "pattern": "^B-[PCS][0-9]{2}-M[12]$"},
+              "member": {"enum": [1, 2], "description": "1 = partner who finished screening first."},
+              "role": {"enum": ["active", "yoked"]}
+            }
+          }
+        },
+        "bank_id": {"type": "string", "pattern": "^bank-[PC][0-9]{3}$", "description": "Placeholder bank ID by dyad-slot sequence until the bank register assigns real IDs."},
+        "profile_menu_order": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"enum": ["P1", "P2", "P3"]},
+          "description": "Stored V1 profile-menu presentation order; the first entry is the default if no choice is made."
+        }
+      }
+    }
+  }
+}

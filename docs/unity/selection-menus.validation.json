@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "runtime_commit": "b824e0896107de89530ea18a97fcb95f631d47e5",
+  "scope": "DEMO engineering software validation only",
+  "participant_ready": false,
+  "qualified_candidate_bank": false,
+  "acoustic_timing_qualified": false,
+  "headset_interaction_verified": false,
+  "headset_mailbox_transport_verified": false,
+  "joined_session_verified": false,
+  "tests": {
+    "editmode": {
+      "total": 278,
+      "passed": 278,
+      "failed": 0,
+      "skipped": 0,
+      "results_sha256": "e60324f4b0cb9e8f02f20db9de5e85a544f978ea0f50c1f5f415e3d6d803bd0a",
+      "log_sha256": "0518df09ced85079a0ad47301f53ec430414949ec828234194193131013ad281",
+      "assemblies": {
+        "AcousticVocab.ResponsePanel.Tests.dll": 63,
+        "AcousticVocab.SelectionMenus.Tests.dll": 43,
+        "AcousticVocab.SessionEngine.Tests.dll": 69,
+        "AcousticVocab.StudyAudio.Tests.dll": 54,
+        "AcousticVocab.Teaching.Tests.dll": 49
+      }
+    },
+    "playmode": {
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "results_sha256": "c174df3b0ff79e41b6cdd50d1656bdcfa9db40477478709a109d95f83fc8783f",
+      "log_sha256": "0b3f36e5900931a5ec3a386dd775e758832274bc7b0bd4f2d9144792fa43aba7"
+    },
+    "python_real_producer_store": {
+      "passed": 47,
+      "source_commit": "2c242280e31b8b8534d2e5dfd6128e2ce7c51488",
+      "scope": "actual synthetic producer and append-only vocabulary store"
+    }
+  },
+  "live_store_evidence": "../interfaces/menu-store-bridge.validation.json",
+  "ci": {
+    "unity_runner": "blocked_unprovisioned_licensed_runner",
+    "local_builds_do_not_satisfy_ci": true
+  },
+  "builds": {
+    "windows": {
+      "result": "Succeeded",
+      "errors": 0,
+      "build_id": "menus-b824e08-windows",
+      "clean_source": true,
+      "manifest_sha256": "640a01838615f9d3eb9a27c7ae8257810801788a6eb5b69b2cad29d7ecedbd2f",
+      "artifact_files": 198,
+      "artifact_bytes": 158273779,
+      "duration_seconds": 27.8886616,
+      "log_sha256": "81b82ebeffd56d3aa18c18b21aad55c438be8b7fa530141c7f18aec3575a28fd",
+      "backend": "Mono"
+    },
+    "android": {
+      "result": "Succeeded",
+      "errors": 0,
+      "build_id": "menus-b824e08-android",
+      "clean_source": true,
+      "manifest_sha256": "f17811fbd5a4420690f8e922584a0231a87144fa3e492492f05692cd1658f0c5",
+      "artifact_files": 1,
+      "artifact_bytes": 55459198,
+      "duration_seconds": 275.9664661,
+      "log_sha256": "e502906b5f29f7c081367f87e002102b398b984f408f32003c42931ca1226619",
+      "apk_sha256": "6f0ee18afb2f768b7486e8579cf864b82f6d02088b5fb74dc2787705dfd504f2",
+      "zip_crc_valid": true,
+      "abis": [
+        "arm64-v8a"
+      ],
+      "backend": "IL2CPP",
+      "internet_permission": true
+    }
+  },
+  "limitations": [
+    "Qualified #26 candidate bank and reviewed participant admission remain unavailable; DEMO-only path refuses participant use.",
+    "Controller/hand headset interaction and co-located mailbox deployment beyond desktop are unmeasured.",
+    "Software timing regression results do not measure acoustic onset; route timing, end-to-end active/yoked acoustic comparison, and drift checks require operator evidence.",
+    "Full scene/menu/audio/control joined session and exact methodology CSV export remain separate integration/qualification work.",
+    "Partial current-wave process reconstruction is deliberately refused; interrupted ledgers are retained and cannot seal as complete replay."
+  ]
+}

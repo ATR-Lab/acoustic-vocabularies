@@ -1,0 +1,69 @@
+{
+  "scope": "Actual isolated source and layered probe diagnostic; no native or timing qualification",
+  "qualification": false,
+  "participant": false,
+  "archive_sha256": "4f2bbe4328197fbd933094c44246da6a7e3662774427412532dbc7b0ae0ae81e",
+  "summary_sha256": "58c67a73b5b3617e63cfda88d8001bf5fed37909fb74a8099e4362ea3a62d85d",
+  "source_commit": "27e970315f09a31a3022e676dd0e4934fce310f3",
+  "source_exit": 0,
+  "elapsed_seconds": 1422.260207716,
+  "physics_steps": 22913,
+  "frames": 22913,
+  "missed_deadlines": 19753,
+  "command_events": 11,
+  "end_reason": "private_stop",
+  "fault": null,
+  "cleanup_errors": [],
+  "layered_probes": {
+    "unix": {
+      "raw_sha256": "6e64f0465de8f6134e31a0e56266f7c20ebc4c2b1102802e0165a6f954e9aad3",
+      "requests": 200,
+      "completed": 200,
+      "failed": 0,
+      "min_ms": 0.578722,
+      "median_ms": 9.471256499999999,
+      "max_ms": 25.007696,
+      "nodelay": []
+    },
+    "relay": {
+      "raw_sha256": "8ef1ee57ec6337b353220016467beb76721cea739f7120ff6b3e5c90589f991e",
+      "requests": 200,
+      "completed": 200,
+      "failed": 0,
+      "min_ms": 1.176651,
+      "median_ms": 10.412404500000001,
+      "max_ms": 24.647745,
+      "nodelay": [
+        0
+      ]
+    },
+    "windows": {
+      "raw_sha256": "7b064ec157b528391c0d4e262e8f13cd4a6dfc8e1dccd7582558a5be8e87fd66",
+      "requests": 200,
+      "completed": 197,
+      "failed": 3,
+      "min_ms": 5.3272,
+      "median_ms": 53.4977,
+      "max_ms": 198.8233,
+      "nodelay": [
+        0
+      ]
+    }
+  },
+  "request_deadline_ms": 200,
+  "requested_cadence_ms": 75,
+  "requests_per_path": 200,
+  "source_changed_between_paths": false,
+  "commands_sent_by_path_probes": 0,
+  "paths_run_sequentially": true,
+  "native_visit_completed": false,
+  "client": "Python standard-library WebSocket collector; not Unity/Mono",
+  "limitations": [
+    "Separate time windows; no controlled simultaneous routing comparison",
+    "Client TCP_NODELAY observed0 on both TCP screens; one sendall per complete probe frame",
+    "Source and Windows clocks are not qualified or directly aligned",
+    "No attribution of failures to Nagle, SSH, GIL, GC or network from this screen alone",
+    "Three forwarded probes exceeded the unchanged200ms deadline; no retries within a failed request",
+    "Source timing still fails; no throughput, soak, acoustic or participant qualification"
+  ]
+}
