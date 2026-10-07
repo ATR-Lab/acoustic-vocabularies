@@ -20,7 +20,7 @@
     "max_step": 15
   },
   "full_scene_loaded": false,
-  "reference_field": "audio_request_mono_ms",
+  "reference_field": "scheduled_onset_mono_ms",
   "measured_at": "2026-10-07T00:00:00Z",
   "detector": {
     "version": "onset-threshold/1",
@@ -88,9 +88,9 @@
   },
   "inputs": {
     "capture_wav_sha256": "2de1395317aa277990e5be7098e08713a08f193504bb5729381ddb1f21b8ebd4",
-    "events_csv_sha256": "a0b74d2dfd76401c55551109eacdc0520de0eb078c34edb813b279fe0bbc655e",
+    "events_csv_sha256": "655bb09305bc5f44709381b0297acfad96fe3d1914bd8478ea558936ef83e7b2",
     "sync_csv_sha256": "dee964051aa045a27ca867d54b8970a06b2676f696a2a2b552a1a9a6964c960e",
-    "settings_json_sha256": "fb08a1b436141a223fa4d737d1d94164798015db4a842ad7135cd8788546b91c"
+    "settings_json_sha256": "fcdfe345fe84cb385de5fa6dbc337c9f22e96a3688e96f57a5799c9012658b90"
   },
   "outputs": {
     "plays_csv_sha256": "6a5d4aabd87321cf6fbb2ea0ac4c5789064c41b4236d5ff5a0006fbc99c6428a",

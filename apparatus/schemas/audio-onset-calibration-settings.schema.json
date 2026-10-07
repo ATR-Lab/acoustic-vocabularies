@@ -96,10 +96,8 @@
       "type": "boolean"
     },
     "reference_field": {
-      "enum": [
-        "audio_request_mono_ms",
-        "scheduled_onset_mono_ms"
-      ]
+      "description": "Logged host time that offsets are measured from. Fixed to scheduled_onset_mono_ms: Unity's AudioTiming.Schedule starts output at the requested onset minus route_offset_ms and logs that start as scheduled_onset_mono_ms, so the onset estimate is that field plus the offset. audio_request_mono_ms is refused.",
+      "const": "scheduled_onset_mono_ms"
     },
     "measured_at": {
       "$ref": "#/$defs/timestamp"

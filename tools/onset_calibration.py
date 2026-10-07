@@ -20,6 +20,11 @@ Fixed rules (detector ``onset-threshold/1``, target ``onset-target/1``):
   ``[search_start - quiet_pre_ms, search_start)`` already crosses the threshold,
   ``outside_capture`` if its windows are not wholly inside the capture, else
   ``matched`` or ``missing``. Only matched plays contribute offsets.
+* The reference time ref_i is always the logged ``scheduled_onset_mono_ms``
+  (``reference_field`` is fixed by the schemas). Unity's ``AudioTiming.Schedule``
+  starts output at the requested onset minus ``route_offset_ms`` and logs that
+  start as ``scheduled_onset_mono_ms``, so the app's estimate is that field plus
+  the measured offset. ``audio_request_mono_ms`` is never a reference.
 * offset_i = onset_i - ref_i (host ms); route_offset_ms = median(offset);
   residual_i = offset_i - route_offset_ms; residual_abs_p95_ms is the type-7
   (linear interpolation) 95th percentile of |residual|.
@@ -57,6 +62,7 @@ TARGET_P95_MS = 20
 MIN_PLAYS = 200
 PROFILES = ("P1", "P2", "P3")
 KINDS = ("atom", "message")
+REFERENCE_FIELD = "scheduled_onset_mono_ms"  # maintainer decision for #80; see the runbook
 EVENT_COLUMNS = ["play_id", "stimulus_id", "profile", "stimulus_kind",
                  "audio_request_mono_ms", "scheduled_onset_mono_ms"]
 SYNC_COLUMNS = ["host_mono_ms", "capture_s", "role"]
@@ -158,6 +164,7 @@ def _csv_rows(data: bytes, columns, what):
 
 
 def load_events(data: bytes, reference_field):
+    require(reference_field == REFERENCE_FIELD, f"reference_field must be {REFERENCE_FIELD}")
     events, seen, previous = [], set(), -math.inf
     for index, row in enumerate(_csv_rows(data, EVENT_COLUMNS, "events"), start=2):
         require(ID.fullmatch(row["play_id"]), f"events line {index}: invalid play_id")
@@ -171,8 +178,8 @@ def load_events(data: bytes, reference_field):
         if row["scheduled_onset_mono_ms"] != "":
             scheduled = _number(row["scheduled_onset_mono_ms"], f"events line {index} scheduled_onset_mono_ms")
             require(scheduled >= request, f"events line {index}: scheduled onset precedes request")
-        reference = request if reference_field == "audio_request_mono_ms" else scheduled
-        require(reference is not None, f"events line {index}: {reference_field} is blank")
+        reference = scheduled
+        require(reference is not None, f"events line {index}: {REFERENCE_FIELD} is blank")
         require(reference > previous, f"events line {index}: reference times must strictly increase")
         previous = reference
         events.append({**row, "reference_mono_ms": reference})

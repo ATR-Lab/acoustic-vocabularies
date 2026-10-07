@@ -18,7 +18,7 @@
     "max_step": 15
   },
   "full_scene_loaded": false,
-  "reference_field": "audio_request_mono_ms",
+  "reference_field": "scheduled_onset_mono_ms",
   "measured_at": "2026-10-07T00:00:00Z",
   "sync": {
     "external_bound_ms": 1.0,

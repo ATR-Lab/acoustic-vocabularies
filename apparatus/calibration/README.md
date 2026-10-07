@@ -58,12 +58,15 @@ stored record against its schema and its output hashes.
   - `evidence_kind: physical_measurement`
   - `capture_kind: acoustic_coupler`
   - `full_scene_loaded: true`
+  - `play_mode: scheduled`
   - a `review` block
   - either `target.met: true` or a signed `response_time_qualification`
 - A qualified record applies only to its own station, route, connection mode,
   play mode, output device, buffer size and count, sample rate, volume step and
   app build. If any of these change, the record is invalid until the measurement
   is rerun. Keep superseded records; do not edit them in place.
-- The app derives `audio_onset_estimate_mono_ms` as reference time plus
-  `route_offset_ms`, and logs `onset_uncertainty_ms` from the current qualified
+- Every record uses `reference_field: scheduled_onset_mono_ms`; the schemas refuse
+  `audio_request_mono_ms`. The app derives `audio_onset_estimate_mono_ms` as
+  `scheduled_onset_mono_ms` plus `route_offset_ms`, matching Unity's
+  `AudioTiming.Schedule`. It logs `onset_uncertainty_ms` from the current qualified
   record. The Unity loader that reads these records is separate work.

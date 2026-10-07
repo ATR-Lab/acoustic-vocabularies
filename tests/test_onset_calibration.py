@@ -43,7 +43,11 @@ def capture_s(host_ms):
 
 def synth(n=200, offset_ms=37.5, jitter=96, seed=80, rate=48000, channels=2, loopback_lead_ms=4.0,
           dropped=(), clipped=(), noisy=(), width=2, silent=False):
-    """Return (wav, events, sync, injected offsets in host ms keyed by play_id)."""
+    """Return (wav, events, sync, injected offsets in host ms keyed by play_id).
+
+    Each ref is the logged scheduled_onset_mono_ms (the fixed reference); the
+    request is logged 200 ms earlier and plays no part in the offset.
+    """
     rng = random.Random(seed)
     refs = [HOST0 + 500 + 300 * i + 0.25 * (i % 4) for i in range(n)]
     frames = round(capture_s(refs[-1] + 1000) * rate)
@@ -59,7 +63,7 @@ def synth(n=200, offset_ms=37.5, jitter=96, seed=80, rate=48000, channels=2, loo
     for i, ref in enumerate(refs):
         play = f"play-{i:04d}"
         profile, kind = oc.PROFILES[i % 3], oc.KINDS[(i // 3) % 2]
-        rows.append([play, f"stim-{profile}-{kind}-{i % 4}", profile, kind, f"{ref:.2f}", f"{ref + 200:.2f}"])
+        rows.append([play, f"stim-{profile}-{kind}-{i % 4}", profile, kind, f"{ref - 200:.2f}", f"{ref:.2f}"])
         onset = round(capture_s(ref + offset_ms) * rate) + sum(rng.randint(-jitter, jitter) for _ in range(3))
         injected[play] = ((onset / rate - (1.0 - SLOPE * HOST0 / 1000)) / SLOPE * 1000) - ref
         if silent:
@@ -272,7 +276,7 @@ def mutate_events(text, line, column, value):
 
 @pytest.mark.parametrize("change, message", [
     (lambda e: mutate_events(e, 2, 0, "play-0000"), "duplicate play_id"),
-    (lambda e: mutate_events(e, 2, 4, "1000000.00"), "strictly increase"),
+    (lambda e: mutate_events(mutate_events(e, 2, 4, "1000000.00"), 2, 5, "1000000.00"), "strictly increase"),
     (lambda e: mutate_events(e, 1, 4, "nan"), "plain decimal"),
     (lambda e: mutate_events(e, 1, 4, "1e6"), "plain decimal"),
     (lambda e: mutate_events(e, 1, 2, "P4"), "profile"),
@@ -290,8 +294,27 @@ def test_malformed_events_refused(change, message):
 
 def test_blank_scheduled_reference_refused():
     wav, events, sync, _ = synth(n=4)
-    with pytest.raises(oc.CalibrationInputError, match="blank"):
-        run((wav, mutate_events(events, 1, 5, ""), sync, None), settings(reference_field="scheduled_onset_mono_ms"))
+    with pytest.raises(oc.CalibrationInputError, match="scheduled_onset_mono_ms is blank"):
+        run((wav, mutate_events(events, 1, 5, ""), sync, None))
+
+
+def test_reference_is_scheduled_onset_not_request():
+    """Maintainer decision (#80): offsets are measured from scheduled_onset_mono_ms."""
+    assert json.loads(SETTINGS_EXAMPLE.read_bytes())["reference_field"] == oc.REFERENCE_FIELD == "scheduled_onset_mono_ms"
+    with pytest.raises(oc.CalibrationInputError, match="settings invalid"):
+        run(synth(n=4), settings(reference_field="audio_request_mono_ms"))
+    with pytest.raises(oc.CalibrationInputError, match="reference_field must be"):
+        oc.load_events(synth(n=4)[1], "audio_request_mono_ms")
+    # Moving every request earlier leaves the offsets unchanged; moving the scheduled onset shifts them.
+    wav, events, sync, _ = synth(n=6)
+    rows = [r.split(",") for r in events.decode().splitlines()]
+    earlier = [rows[0]] + [r[:4] + [f"{float(r[4]) - 50:.2f}", r[5]] for r in rows[1:]]
+    base, _, _ = run((wav, events, sync, None))
+    moved, _, _ = run((wav, ("\n".join(",".join(r) for r in earlier) + "\n").encode(), sync, None))
+    assert moved["route_offset_ms"] == base["route_offset_ms"]
+    later = [rows[0]] + [r[:5] + [f"{float(r[5]) + 10:.2f}"] for r in rows[1:]]
+    shifted, _, _ = run((wav, ("\n".join(",".join(r) for r in later) + "\n").encode(), sync, None))
+    assert shifted["route_offset_ms"] == pytest.approx(base["route_offset_ms"] - 10, abs=1e-6)
 
 
 @pytest.mark.parametrize("changes, message", [
@@ -374,7 +397,8 @@ def test_schema_keeps_synthetic_records_provisional_and_gates_qualified():
     physical["evidence_kind"] = "physical_measurement"
     physical["full_scene_loaded"] = True
     assert VALIDATOR.is_valid(physical)
-    for key, value in (("review", None), ("capture_kind", "electrical_loopback"), ("full_scene_loaded", False)):
+    for key, value in (("review", None), ("capture_kind", "electrical_loopback"), ("full_scene_loaded", False),
+                       ("play_mode", "plain"), ("reference_field", "audio_request_mono_ms")):
         broken = deepcopy(physical)
         broken[key] = value
         assert not VALIDATOR.is_valid(broken), key
