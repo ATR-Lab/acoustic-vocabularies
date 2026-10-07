@@ -33,7 +33,7 @@ $repo = Split-Path $PSScriptRoot -Parent | Split-Path -Parent
 $mailbox = Join-Path $RunRoot 'mailbox'; $dataDir = Join-Path $RunRoot 'data'
 $target = 'MOCK-{0:D2}' -f $KillItem
 $log = Join-Path $RunRoot 'harness.log'
-function Note([string]$text) { $line = '{0} {1}' -f [DateTime]::UtcNow.ToString('o'), $text; Add-Content -LiteralPath $log -Value $line; Write-Output $line }
+function Note([string]$text) { $line = '{0} {1}' -f [DateTime]::UtcNow.ToString('o'), $text; Add-Content -LiteralPath $log -Value $line; Write-Host $line }
 
 function Start-Player([int]$n) {
     $arguments = @('-simulationTestConfig', ('"' + $Capability + '"'), '-simulationTestConfigSha256', $CapabilitySha256,
