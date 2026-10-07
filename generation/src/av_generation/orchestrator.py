@@ -39,7 +39,8 @@ with `BatchIncomplete`. The batch is rebuilt in a new run with `rebuild_batch_co
 Logs (`rundir.LOG_FILES`): `decision`, `commit`, `fallback_scan`, `timing`, and, as the
 panel session host (`panel_session`), `rating`, `play` and the panel timing events;
 `slot` records come from the proposers' ledger. Operator guide and decisions:
-`generation/docs/orchestrator.md`.
+`generation/docs/orchestrator.md`. A study batch is built from the real components and
+run by `av_generation.batch_runner` (`python -m av_generation.batch_runner run ...`).
 """
 
 from __future__ import annotations
@@ -139,6 +140,7 @@ __all__ = [
     "PANEL_ORDER_COLUMNS",
     "RatingSlotPlan",
     "build_batch_config",
+    "check_batch_pins",
     "check_permutation",
     "nearest_committed",
     "panel_aliases",
@@ -581,6 +583,46 @@ class ConsoleView:
 # The orchestrator
 
 
+_SET_KINDS: Final[Mapping[str, tuple[RunKind, ...]]] = {
+    "demo": (RunKind.DEMO, RunKind.SYNTHETIC),
+    "pilot": (RunKind.PILOT,),
+    "confirmatory": (RunKind.CONFIRMATORY,),
+}
+
+
+def check_batch_pins(
+    config: BatchConfig,
+    generation_config: GenerationConfig,
+    fallback: FallbackSet,
+    meanings: MeaningSet,
+    *,
+    kind: RunKind | str,
+) -> None:
+    """Refuse a batch whose inputs disagree (`Orchestrator` runs it before anything is
+    written; the batch runner before it creates the run directory).
+
+    The batch config, generation config, fallback set and meaning set must pin the same
+    separation threshold, fallback hashes and meaning-set hash (`E_CONFIG`), and the
+    batch's set must fit the run kind: demo -> demo/synthetic, pilot -> pilot,
+    confirmatory -> confirmatory (`E_KIND`)."""
+    problems = []
+    if generation_config.separation_threshold != config.threshold:
+        problems.append("generation config and batch config thresholds differ")
+    if parse_threshold(config.threshold) != fallback.threshold:
+        problems.append("the fallback set was built for another threshold")
+    if config.fallback_bank_hash != fallback.fallback_bank_hash:
+        problems.append("batch config fallback_bank_hash differs from the fallback set")
+    if generation_config.fallback != fallback_pins(fallback):
+        problems.append("generation config fallback pins differ from the fallback set")
+    if meanings.sha256() != generation_config.meanings_sha256:
+        problems.append("meaning set hash differs from the generation config")
+    if problems:
+        raise OrchestratorError(E_CONFIG, "; ".join(problems))
+    run_kind = RunKind(kind)
+    if run_kind not in _SET_KINDS[config.set]:
+        raise OrchestratorError(E_KIND, f"a {config.set} batch cannot run as {run_kind}")
+
+
 def _clock_kind(clock: Clock) -> tuple[str, float | None]:
     if isinstance(clock, ManualClock):
         return "manual", None
@@ -672,27 +714,7 @@ class Orchestrator:
     # ------------------------------------------------------------------ checks
 
     def _check_pins(self) -> None:
-        config, gen, fallback = self._config, self._gen, self._fallback
-        problems = []
-        if gen.separation_threshold != config.threshold:
-            problems.append("generation config and batch config thresholds differ")
-        if parse_threshold(config.threshold) != fallback.threshold:
-            problems.append("the fallback set was built for another threshold")
-        if config.fallback_bank_hash != fallback.fallback_bank_hash:
-            problems.append("batch config fallback_bank_hash differs from the fallback set")
-        if gen.fallback != fallback_pins(fallback):
-            problems.append("generation config fallback pins differ from the fallback set")
-        if self._meanings.sha256() != gen.meanings_sha256:
-            problems.append("meaning set hash differs from the generation config")
-        if problems:
-            raise OrchestratorError(E_CONFIG, "; ".join(problems))
-        allowed = {
-            "demo": (RunKind.DEMO, RunKind.SYNTHETIC),
-            "pilot": (RunKind.PILOT,),
-            "confirmatory": (RunKind.CONFIRMATORY,),
-        }[config.set]
-        if self._kind not in allowed:
-            raise OrchestratorError(E_KIND, f"a {config.set} batch cannot run as {self._kind}")
+        check_batch_pins(self._config, self._gen, self._fallback, self._meanings, kind=self._kind)
 
     @staticmethod
     def _check_proposers(proposers: Mapping[Method, RoundProposer]) -> dict[Method, RoundProposer]:

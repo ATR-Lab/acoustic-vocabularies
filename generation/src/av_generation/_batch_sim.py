@@ -1,11 +1,13 @@
 """Synthetic batch runs of the orchestrator (#20; private): simulated proposers, an
-in-process synthetic panel and the DEMO batch run used as #20's evidence.
+in-process synthetic panel, a bot designer for the real A1 app and the DEMO batch run
+used as #20's evidence.
 
 Nothing here is a study component. The real proposers are A1 (#19), A2 (#18) and A3
-(#17); the real stations and bot raters talk to the panel server (#21) over WebSockets.
-These stand-ins speak the same contracts (`proposers.RoundProposer`,
-`panel_session.PanelSessionHost`) so the orchestrator can be run end to end before the
-other issues land:
+(#17), wired by `batch_runner`; the real stations and bot raters talk to the panel
+server (#21) over WebSockets. These stand-ins speak the same contracts
+(`proposers.RoundProposer`, `panel_session.PanelSessionHost`, the A1 HTTP routes), so
+the orchestrator and the runner can be run end to end in tests, as evidence and in dry
+runs (`batch_runner` selects them for demo and synthetic runs only):
 
 - `SimProposer`: fills three slots per round with seeded uniform recipes (the A1 stand-in
   is a scripted "bot designer" with seed keys in the `A1` namespace; from round 2 the A2
@@ -18,6 +20,9 @@ other issues land:
   policy). With a `ManualClock` it drives the clock itself (event by event), so a whole
   batch runs in seconds and every record is deterministic; with a `ScaledClock` each seat
   runs in its own thread in accelerated real time.
+- `BotDesigner`: a scripted designer that works the real A1 web app over HTTP (state,
+  feedback, submit, one audio fetch per valid slot), with scripted invalid and skipped
+  slots.
 
 `python -m av_generation._batch_sim --out DIR --clock manual|scaled` runs one DEMO batch
 and prints its summary (counts and log digests).
@@ -36,6 +41,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final, Literal
 
+import httpx
 import numpy as np
 from av_sound._paths import data_root as sound_root
 from av_sound.fallback import FallbackSet, load_fallback
@@ -447,6 +453,121 @@ class SyntheticPanel:
 
 
 # ---------------------------------------------------------------------------
+# Bot designer: drives the real A1 web app (#19) over HTTP
+
+
+class BotDesigner:
+    """A scripted A1 designer that works the real A1 app over HTTP (synthetic runs).
+
+    It polls `GET /a1/api/state` and submits one recipe to every slot that opens: a
+    uniform recipe from `rng_for(bot_seed_key(run_id, designer_id, "recipe", slot_id))`,
+    `"{"` (an invalid submission) on `invalid_slots`, and nothing on `timeout_slots` (the
+    server's 40-s timer closes them). It reads each round's feedback once
+    (`GET /a1/api/feedback`) and plays each valid slot's audio once, as a designer does.
+    `page_url` is what `a1.serve_a1` yields. A submit that reaches the server after the
+    slot's deadline (a slow machine in accelerated time) is refused with
+    `E_SLOT_CLOSED` and counted in `late`; any other failure stops the bot and is raised
+    by `stop()`."""
+
+    def __init__(
+        self,
+        page_url: str,
+        *,
+        run_id: str,
+        designer_id: str,
+        invalid_slots: frozenset[str] = frozenset(),
+        timeout_slots: frozenset[str] = frozenset(),
+        play: bool = True,
+        poll_s: float = 0.003,
+    ) -> None:
+        base = page_url.rstrip("/")
+        self._base = base[: -len("/a1")] if base.endswith("/a1") else base
+        self._run_id = run_id
+        self._designer_id = designer_id
+        self._invalid = invalid_slots
+        self._timeouts = timeout_slots
+        self._play = play
+        self._poll_s = poll_s
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self.submitted: dict[str, str] = {}
+        """Slot ID -> outcome the server returned."""
+        self.late: list[str] = []
+        self.plays = 0
+        self.errors: list[BaseException] = []
+
+    def __enter__(self) -> BotDesigner:
+        return self.start()
+
+    def __exit__(self, *exc: object) -> None:
+        self.stop()
+
+    def start(self) -> BotDesigner:
+        self._thread = threading.Thread(target=self._guarded, name="bot-designer", daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=10)
+        if self.errors:
+            raise RuntimeError(f"bot designer failed: {self.errors[0]!r}") from self.errors[0]
+
+    def _guarded(self) -> None:
+        try:
+            self._loop()
+        except BaseException as err:  # noqa: BLE001 - reported by stop()
+            if not self._stop.is_set():
+                self.errors.append(err)
+
+    def _submission(self, slot_id: str) -> object:
+        if slot_id in self._invalid:
+            return "{"
+        key = bot_seed_key(self._run_id, self._designer_id, "recipe", slot_id)
+        return uniform_recipe(rng_for(key)).to_dict()
+
+    def _loop(self) -> None:
+        windows: set[tuple[str, int]] = set()
+        with httpx.Client(base_url=self._base, trust_env=False, timeout=10.0) as http:
+            while not self._stop.is_set():
+                state = http.get("/a1/api/state")
+                state.raise_for_status()
+                window = state.json().get("window")
+                if window and window["open"]:
+                    key = (window["atom_id"], window["round"])
+                    if key not in windows:
+                        windows.add(key)
+                        http.get("/a1/api/feedback").raise_for_status()
+                    for slot in window["slots"]:
+                        slot_id = slot["slot_id"]
+                        if slot["state"] != "open" or slot_id in self.submitted:
+                            continue
+                        if slot_id in self._timeouts:
+                            continue
+                        self._submit(http, slot_id)
+                self._stop.wait(self._poll_s)
+
+    def _submit(self, http: httpx.Client, slot_id: str) -> None:
+        response = http.post(
+            f"/a1/api/slots/{slot_id}/submit", json={"recipe": self._submission(slot_id)}
+        )
+        body = response.json()
+        if response.status_code == 409 and body["error"]["code"] == "E_SLOT_CLOSED":
+            self.submitted[slot_id] = "late"
+            self.late.append(slot_id)
+            return
+        response.raise_for_status()
+        self.submitted[slot_id] = body["outcome"]
+        audio = body.get("audio")
+        if self._play and audio is not None:
+            played = http.get(audio["url"])
+            if played.status_code != 410:  # 410: the token expired on a slow machine
+                played.raise_for_status()
+                self.plays += 1
+
+
+# ---------------------------------------------------------------------------
 # DEMO inputs and one synthetic batch
 
 
@@ -475,6 +596,28 @@ def demo_generation_config(
         separation_threshold=threshold,
         fallback=fallback_pins(fallback),
     )
+
+
+def sim_proposers(
+    config: BatchConfig,
+    slots: RecordWriter,
+    *,
+    clock: Clock,
+    p_failure: float = 0.05,
+    propose: Mapping[Method, ProposeFn] | None = None,
+) -> dict[Method, SimProposer]:
+    """The three simulated proposers of a batch, writing to the run's slot log."""
+    return {
+        method: SimProposer(
+            method,
+            slots,
+            clock=clock,
+            designer_id=config.book_of(Method.A1).designer_id if method is Method.A1 else None,
+            p_failure=p_failure,
+            propose=(propose or {}).get(method),
+        )
+        for method in (Method.A1, Method.A2, Method.A3)
+    }
 
 
 @dataclass
@@ -512,31 +655,9 @@ def make_sim_batch(
         if resume
         else create_run_dir(runs_root, run_id, kind)
     )
-    slots = RecordWriter(layout.log("slot"))
-    proposers = {
-        Method.A1: SimProposer(
-            Method.A1,
-            slots,
-            clock=clock,
-            designer_id=config.book_of(Method.A1).designer_id,
-            p_failure=p_failure,
-            propose=(propose or {}).get(Method.A1),
-        ),
-        Method.A2: SimProposer(
-            Method.A2,
-            slots,
-            clock=clock,
-            p_failure=p_failure,
-            propose=(propose or {}).get(Method.A2),
-        ),
-        Method.A3: SimProposer(
-            Method.A3,
-            slots,
-            clock=clock,
-            p_failure=p_failure,
-            propose=(propose or {}).get(Method.A3),
-        ),
-    }
+    proposers = sim_proposers(
+        config, RecordWriter(layout.log("slot")), clock=clock, p_failure=p_failure, propose=propose
+    )
     store = VocabularyStore(layout.store_dir, clock=clock.utc_now)
     orchestrator = Orchestrator(
         config,
