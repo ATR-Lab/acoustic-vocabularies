@@ -121,7 +121,10 @@
           "WINDOW_LATE",
           "VISIT_ORDER",
           "DEVIATION_MISSING",
-          "DEVIATION_UNKNOWN"
+          "DEVIATION_UNKNOWN",
+          "RESPONSE_EVENT_MISSING",
+          "TECHNICAL_FLAG_MISSING",
+          "PLAYBACK_STATUS_CONFLICT"
         ]
       },
       "type": "array"

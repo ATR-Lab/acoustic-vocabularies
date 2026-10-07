@@ -94,12 +94,23 @@ def test_refresh_runs_reconcile_derive_dashboard_and_skips_missing_steps(
     tmp_path, monkeypatch, capsys
 ):
     assert [step for step, _ in REFRESH_STEPS] == ["reconcile", "derive", "dashboard"]
-    # In the skeleton every step is an interface: all are skipped.
-    assert main(["refresh", "--root", str(tmp_path)]) == 3
-    assert capsys.readouterr().err.count("skipped") == 3
-
     calls = []
     real_build_parser = cli.build_parser
+
+    def unimplemented():
+        """build_parser whose refresh steps are all interfaces (as in the skeleton)."""
+        parser, handlers = real_build_parser()
+        for step, _ in REFRESH_STEPS:
+
+            def handler(args, step=step):
+                raise NotImplementedError(step)
+
+            handlers[step] = handler
+        return parser, handlers
+
+    monkeypatch.setattr(cli, "build_parser", unimplemented)
+    assert main(["refresh", "--root", str(tmp_path)]) == 3
+    assert capsys.readouterr().err.count("skipped") == 3
 
     def with_steps(codes):
         """build_parser whose refresh steps are fakes returning the given exit codes."""

@@ -1,0 +1,873 @@
+{
+  "analysis": [
+    {
+      "above_sum_sq": "26387/871200",
+      "below_sum_sq": "65617/2205000",
+      "exact_achievable": false,
+      "limit_sum_sq": "3/100",
+      "threshold": "0.05"
+    },
+    {
+      "above_sum_sq": "10589/88200",
+      "below_sum_sq": "10789/90000",
+      "exact_achievable": false,
+      "limit_sum_sq": "3/25",
+      "threshold": "0.10"
+    },
+    {
+      "above_sum_sq": "66233/352800",
+      "below_sum_sq": "8437/45000",
+      "exact_achievable": true,
+      "limit_sum_sq": "3/16",
+      "threshold": "0.125"
+    },
+    {
+      "above_sum_sq": "2978/11025",
+      "below_sum_sq": "2881409/10672200",
+      "exact_achievable": true,
+      "limit_sum_sq": "27/100",
+      "threshold": "0.15"
+    },
+    {
+      "above_sum_sq": "418207/871200",
+      "below_sum_sq": "7199/15000",
+      "exact_achievable": false,
+      "limit_sum_sq": "12/25",
+      "threshold": "0.20"
+    },
+    {
+      "above_sum_sq": "5401/7200",
+      "below_sum_sq": "67499/90000",
+      "exact_achievable": true,
+      "limit_sum_sq": "3/4",
+      "threshold": "0.25"
+    }
+  ],
+  "pairs": [
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -5,
+          -5
+        ],
+        "rhythm_weights": [
+          1,
+          3,
+          3
+        ],
+        "total_ms": 900
+      },
+      "codes": [
+        "E_SEPARATION"
+      ],
+      "distance": 0.049798156461853524,
+      "name": "t0.05-below",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          2,
+          2
+        ],
+        "total_ms": 900
+      },
+      "relation": "below",
+      "separated": false,
+      "sum_sq": "65617/2205000",
+      "threshold": "0.05"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -4
+        ],
+        "rhythm_weights": [
+          3,
+          4,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.05023951661482073,
+      "name": "t0.05-above",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          2,
+          3,
+          3
+        ],
+        "total_ms": 900
+      },
+      "relation": "above",
+      "separated": true,
+      "sum_sq": "26387/871200",
+      "threshold": "0.05"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -4,
+          -3
+        ],
+        "rhythm_weights": [
+          3,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [
+        "E_SEPARATION"
+      ],
+      "distance": 0.09994906110021652,
+      "name": "t0.10-below",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          2,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "relation": "below",
+      "separated": false,
+      "sum_sq": "10789/90000",
+      "threshold": "0.10"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -5,
+          -3
+        ],
+        "rhythm_weights": [
+          2,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.10002361777033947,
+      "name": "t0.10-above",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          3,
+          3
+        ],
+        "total_ms": 900
+      },
+      "relation": "above",
+      "separated": true,
+      "sum_sq": "10589/88200",
+      "threshold": "0.10"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -4
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          3
+        ],
+        "total_ms": 900
+      },
+      "codes": [
+        "E_SEPARATION"
+      ],
+      "distance": 0.12499629624142498,
+      "name": "t0.125-below",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          2
+        ],
+        "total_ms": 750
+      },
+      "relation": "below",
+      "separated": false,
+      "sum_sq": "8437/45000",
+      "threshold": "0.125"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -5,
+          -5,
+          -3
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          1
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.125,
+      "name": "t0.125-exact",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          1
+        ],
+        "total_ms": 750
+      },
+      "relation": "exact",
+      "separated": true,
+      "sum_sq": "3/16",
+      "threshold": "0.125"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -5,
+          -5,
+          -5
+        ],
+        "rhythm_weights": [
+          2,
+          3,
+          3
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.1250783956734652,
+      "name": "t0.125-above",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          3,
+          3
+        ],
+        "total_ms": 750
+      },
+      "relation": "above",
+      "separated": true,
+      "sum_sq": "66233/352800",
+      "threshold": "0.125"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -3,
+          -3
+        ],
+        "rhythm_weights": [
+          3,
+          4,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [
+        "E_SEPARATION"
+      ],
+      "distance": 0.14999778758969684,
+      "name": "t0.15-below",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          2,
+          2,
+          3
+        ],
+        "total_ms": 750
+      },
+      "relation": "below",
+      "separated": false,
+      "sum_sq": "2881409/10672200",
+      "threshold": "0.15"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          2,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.15,
+      "name": "t0.15-exact",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          2,
+          3
+        ],
+        "total_ms": 900
+      },
+      "relation": "exact",
+      "separated": true,
+      "sum_sq": "27/100",
+      "threshold": "0.15"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -5,
+          -5
+        ],
+        "rhythm_weights": [
+          2,
+          3,
+          2
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.1500314907735504,
+      "name": "t0.15-above",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          2
+        ],
+        "total_ms": 900
+      },
+      "relation": "above",
+      "separated": true,
+      "sum_sq": "2978/11025",
+      "threshold": "0.15"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -5,
+          -5
+        ],
+        "rhythm_weights": [
+          3,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [
+        "E_SEPARATION"
+      ],
+      "distance": 0.19998611062882454,
+      "name": "t0.20-below",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          1
+        ],
+        "total_ms": 600
+      },
+      "relation": "below",
+      "separated": false,
+      "sum_sq": "7199/15000",
+      "threshold": "0.20"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -4,
+          -3
+        ],
+        "rhythm_weights": [
+          4,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.20000741300923594,
+      "name": "t0.20-above",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          3,
+          4
+        ],
+        "total_ms": 750
+      },
+      "relation": "above",
+      "separated": true,
+      "sum_sq": "418207/871200",
+      "threshold": "0.20"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -5
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          3
+        ],
+        "total_ms": 900
+      },
+      "codes": [
+        "E_SEPARATION"
+      ],
+      "distance": 0.2499981481412894,
+      "name": "t0.25-below",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          2
+        ],
+        "total_ms": 600
+      },
+      "relation": "below",
+      "separated": false,
+      "sum_sq": "67499/90000",
+      "threshold": "0.25"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.8,
+          0.8,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          1
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.25,
+      "name": "t0.25-exact",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          1
+        ],
+        "total_ms": 900
+      },
+      "relation": "exact",
+      "separated": true,
+      "sum_sq": "3/4",
+      "threshold": "0.25"
+    },
+    {
+      "candidate": {
+        "amplitudes": [
+          0.6,
+          0.8,
+          0.8
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -5,
+          -5
+        ],
+        "rhythm_weights": [
+          1,
+          3,
+          4
+        ],
+        "total_ms": 900
+      },
+      "codes": [],
+      "distance": 0.25002314707657386,
+      "name": "t0.25-above",
+      "profile": "P2",
+      "reference": {
+        "amplitudes": [
+          0.6,
+          0.6,
+          0.6
+        ],
+        "gaps_ms": [
+          20,
+          20
+        ],
+        "pitches": [
+          -6,
+          -6,
+          -6
+        ],
+        "rhythm_weights": [
+          1,
+          1,
+          1
+        ],
+        "total_ms": 900
+      },
+      "relation": "above",
+      "separated": true,
+      "sum_sq": "5401/7200",
+      "threshold": "0.25"
+    }
+  ],
+  "renderer_version": "0.1.0",
+  "synthetic": true,
+  "validator_version": "0.1.0"
+}

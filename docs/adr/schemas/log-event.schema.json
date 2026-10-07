@@ -1,0 +1,22 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Proposed engineering-only log envelope; protocol templates pending",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","protocol_version","apparatus_version","session_id","event_seq","event_type","host_mono_ms","clock_id","payload"],
+  "properties":{
+    "schema_version":{"const":"0.1.0"},
+    "protocol_version":{"type":"string","minLength":1},
+    "apparatus_version":{"type":"string","minLength":1},
+    "session_id":{"type":"string","pattern":"^[a-f0-9]{32}$"},
+    "event_seq":{"type":"integer","minimum":0},
+    "event_type":{"enum":["engineering_fixture","state_fault"]},
+    "host_mono_ms":{"type":"number","minimum":0},
+    "clock_id":{"type":"string","minLength":1},
+    "sim_time":{"type":"number","minimum":0},
+    "payload":{"type":"object","additionalProperties":false,"required":["code"],"properties":{"code":{"enum":["fixture","stale_state"]}}}
+  },
+  "allOf":[
+    {"if":{"properties":{"event_type":{"const":"engineering_fixture"}}},"then":{"properties":{"payload":{"properties":{"code":{"const":"fixture"}}}}}},
+    {"if":{"properties":{"event_type":{"const":"state_fault"}}},"then":{"properties":{"payload":{"properties":{"code":{"const":"stale_state"}}}}}}
+  ]
+}

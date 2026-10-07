@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "protocol_version": null,
+  "app_build_sha256": null,
+  "console_commit": null,
+  "run_sheet_template_verified": null,
+  "deviation_template_verified": null,
+  "station_time_zone_verified": null,
+  "casting_mirroring_notifications_disabled": null,
+  "synthetic_a_visit_complete": null,
+  "synthetic_b_active_complete": null,
+  "synthetic_b_yoked_complete": null,
+  "operator_headset_capture_sha256": null,
+  "no_console_content_in_headset": null,
+  "pause_before_next_unplayed_slot": null,
+  "pause_after_onset_logged": null,
+  "bridge_fault_detection_ms": null,
+  "headset_fault_detection_ms": null,
+  "stall_300ms_detection_ms": null,
+  "reviewed": false
+}

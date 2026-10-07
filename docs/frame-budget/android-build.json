@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "frame-budget-final-001",
+    "commit_sha": "d6eb835fe965f2f357a6c36ca581d05ff38b63af",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 290.1726357,
+  "total_bytes": 786160080,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 55659118,
+      "sha256": "63cb6f5b93896d61f86898e225d1322298cfa19db783a7f2c0b2e99787a6e577"
+    }
+  ]
+}

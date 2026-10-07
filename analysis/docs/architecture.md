@@ -273,8 +273,9 @@ apparatus faults.
 
 - **Templates are the log format; values follow the producer.** Loaders accept the
   methodology template headers exactly, plus the listed extension columns
-  (`templates.EXTENSION_COLUMNS`: `pcm_sha256`). The provisional exports on main (ADR-007,
-  `data-csv-provisional-1`) use other headers; their values (`playback_status`,
+  (`templates.EXTENSION_COLUMNS`: `pcm_sha256`; exposure ledger also `trial_ref`, #33).
+  The provisional exports on main (ADR-007, `data-csv-provisional-1`) use other
+  headers; their values (`playback_status`,
   `audible_status`, `response_code`, `;`-joined uppercase `technical_fault_code`) are
   adopted in `vocab`, so the remaining adapter maps columns only: **Pending** (#72/#73
   with #33).
@@ -296,7 +297,8 @@ apparatus faults.
 - **Deviation links.** A discrepancy is resolved by a trial-log `deviation_id`, an
   exposure-ledger `matching_deviation_id`, or a deviation record whose `event_id` names
   the row, visit or person slot; later corrections go to the append-only
-  `raw/deviations-log.csv`.
+  `raw/deviations-log.csv`, whose records name their visit (a row as `<visit_id>/<row>`;
+  `reconciliation.md` section 6).
 - **Times** carry a UTC offset (section 6).
 - **Yoked timing** is read as: the yoked session starts after the active session ended
   and within 24 h of the active start (`windows.yoked_gap_ok`).

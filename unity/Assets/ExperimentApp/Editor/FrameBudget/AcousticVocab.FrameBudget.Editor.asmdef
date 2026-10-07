@@ -1,0 +1,16 @@
+{
+  "name": "AcousticVocab.FrameBudget.Editor",
+  "references": [
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.Assessment.Editor",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.ResponsePanel.Editor",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateIntegration.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

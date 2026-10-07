@@ -307,6 +307,35 @@ CODES: Final[tuple[Code, ...]] = (
         "A log row or link names a deviation_id that is not in the deviations log.",
         "Add the missing record or correct the reference through a correction deviation.",
     ),
+    # Appended by #33 (response events and technical flags, Study A protocol section 8;
+    # Common procedures sections 2 and 8).
+    Code(
+        "RESPONSE_EVENT_MISSING",
+        "C2",
+        "Response event missing",
+        "A delivered test trial has no response code (or a commit without its time) and no"
+        " missing-response fault code.",
+        "Recover the response event from the station journal; otherwise record a deviation"
+        " (the opportunity has no usable response log).",
+    ),
+    Code(
+        "TECHNICAL_FLAG_MISSING",
+        "C2",
+        "Technical flag missing",
+        "A trial whose cue was confirmed silent, of uncertain onset or never requested, or"
+        " with a presentation freeze over 250 ms or a failed neutral reset, has no"
+        " technical_fault_code.",
+        "Check the exporter's fault mapping; record a deviation that names the fault.",
+    ),
+    Code(
+        "PLAYBACK_STATUS_CONFLICT",
+        "C4",
+        "Playback status conflicts with the ledger",
+        "The trial-log playback_status claims more delivery (or less exposure) than the"
+        " audible_status of the trial's plays in the exposure ledger.",
+        "Verify delivery from the audio journal, never from a function returning success;"
+        " record a deviation (uncertain onset counts as consumed).",
+    ),
 )
 CODE_BY_ID: Final[dict[str, Code]] = {c.code: c for c in CODES}
 SUSPENSION_EVENTS: Final[dict[SuspensionEvent, tuple[str, ...]]] = {
