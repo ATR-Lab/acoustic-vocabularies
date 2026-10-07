@@ -155,10 +155,22 @@ namespace AcousticVocab.StateIntegration
             confirmedAtBoundary=false;
             snapshot.RestoreNeutral(LiveSocketClient.Now); renderer.Apply(snapshot.Neutral);
         }
+        // Quit-coordinator entry, while every Unity object still exists: the
+        // same disable fault as scene teardown, then transport cancellation and
+        // journal finalization. OnDestroy remains an idempotent fallback.
+        public void ShutdownForQuit()
+        {
+            if(source!=null && !failed) Fail("STATE_HOST_DISABLED");
+            socket?.Dispose(); CloseJournal();
+        }
+        void CloseJournal()
+        {
+            try { journal?.Dispose(); } catch(Exception) { Debug.LogError("STATE_SOURCE_FAULT STATE_LOG_NOT_FINALIZED"); }
+        }
         void OnDestroy()
         {
             socket?.Dispose(); if(source!=null) source.Event-=OnEvent;
-            try { journal?.Dispose(); } catch(Exception) { Debug.LogError("STATE_SOURCE_FAULT STATE_LOG_NOT_FINALIZED"); }
+            CloseJournal();
         }
         void OnDisable() { if(source!=null && !failed) Fail("STATE_HOST_DISABLED"); }
     }

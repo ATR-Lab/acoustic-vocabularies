@@ -67,6 +67,18 @@ namespace AcousticVocab.Tests.StudyAudio
             yield return null;Assert.That(player.Playing,Is.False);Assert.That(player.Ready,Is.False);
             Assert.That(events[events.Count-1].Code,Is.EqualTo("AUDIO_PATH_CHANGED"));
         }
+        [UnityTest] public IEnumerator ClearingPreparedClipsReleasesSourceReferenceBeforeDestroyingThem()
+        {
+            // Completion stops the source but leaves the finished clip assigned.
+            // The same clear path runs in OnDestroy; Destroy itself is deferred,
+            // so the reference must already be gone when clips are destroyed.
+            player.ScheduleCalibration("silence",AudioPlayer.Now+.25);var source=sourceObject.GetComponent<AudioSource>();
+            double deadline=AudioPlayer.Now+2;while(player.Playing&&AudioPlayer.Now<deadline)yield return null;
+            Assert.That(player.Playing,Is.False);Assert.That(source.clip,Is.Not.Null,"Precondition: finished clip is still assigned");
+            player.Preload(new Dictionary<string,PcmWave>{{"silence",SilentWave()}},1024*1024);
+            Assert.That(source.clip,Is.Null,"No clip pending destruction remains assigned to the source");Assert.That(player.Ready,Is.True);
+            yield return null;
+        }
         [UnityTest] public IEnumerator DisablingObserverStopsSeparateAudioSourceAndLatchesFault()
         {
             player.ScheduleCalibration("silence",AudioPlayer.Now+.3);player.enabled=false;

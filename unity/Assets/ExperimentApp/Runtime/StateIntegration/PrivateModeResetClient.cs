@@ -39,7 +39,8 @@ namespace AcousticVocab.StateIntegration
         readonly Action<JObject> persist;
         readonly Func<double> now;
         readonly Task worker;
-        ClientWebSocket socket;
+        readonly Func<WebSocket> socketFactory;
+        WebSocket socket;
         volatile bool failed;
         bool disposed,modeAcknowledged,pumping,requestPersisting;
         int queued;
@@ -50,15 +51,23 @@ namespace AcousticVocab.StateIntegration
         double probeSent=-1,probeSample=-1,commandReceived=-1,commandSample=-1;bool latestObservationWasProbe;
         readonly ControlHealthGate healthGate;
         public PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink)
-            :this(endpoint,independentlyPinnedControlSessionId,requiredMode,durableControlSink,()=>NowMs,true){}
+            :this(endpoint,independentlyPinnedControlSessionId,requiredMode,durableControlSink,()=>NowMs,()=>new ClientWebSocket(),WorkerLedger.Process){}
         // The deterministic transport boundary exercises the real receive queue
         // and persistence path without opening a network connection in tests.
         internal PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink,Func<double> monotonicClock,bool connect)
+            :this(endpoint,independentlyPinnedControlSessionId,requiredMode,durableControlSink,monotonicClock,connect?()=>new ClientWebSocket():(Func<WebSocket>)null,connect?WorkerLedger.Process:null){}
+        // Socket seam: tests script the transport under the real Run() worker,
+        // its catch and failure latch. Only a ClientWebSocket is connected here;
+        // a supplied socket is already open. A null factory starts no worker.
+        internal PrivateModeResetClient(string endpoint,string independentlyPinnedControlSessionId,string requiredMode,Action<JObject> durableControlSink,Func<double> monotonicClock,Func<WebSocket> socketFactory,WorkerLedger ledger)
         {
             Require(Uri.TryCreate(endpoint,UriKind.Absolute,out var uri)&&uri.Scheme=="ws"&&IPAddress.TryParse(uri.Host,out var ip)&&IPAddress.IsLoopback(ip)&&uri.AbsolutePath=="/commands"&&uri.Query.Length==0&&uri.Fragment.Length==0&&uri.UserInfo.Length==0,"CONTROL_ENDPOINT");
             Require(independentlyPinnedControlSessionId!=null&&Regex.IsMatch(independentlyPinnedControlSessionId,@"\A[0-9a-f]{32}\z"),"CONTROL_SESSION");
-            Require(requiredMode=="teaching"||requiredMode=="test","CONTROL_MODE_INVALID");mode=requiredMode;session=independentlyPinnedControlSessionId;persist=durableControlSink??throw new ArgumentNullException(nameof(durableControlSink));now=monotonicClock??throw new ArgumentNullException(nameof(monotonicClock));healthGate=new ControlHealthGate(session,mode,now);worker=connect?Task.Run(()=>Run(uri)):Task.CompletedTask;
+            Require(requiredMode=="teaching"||requiredMode=="test","CONTROL_MODE_INVALID");mode=requiredMode;session=independentlyPinnedControlSessionId;persist=durableControlSink??throw new ArgumentNullException(nameof(durableControlSink));now=monotonicClock??throw new ArgumentNullException(nameof(monotonicClock));healthGate=new ControlHealthGate(session,mode,now);
+            this.socketFactory=socketFactory;worker=socketFactory!=null?Task.Run(()=>Run(uri)):Task.CompletedTask;
+            if(socketFactory!=null)ledger?.Track("private_control_socket",worker);
         }
+        internal Task Worker=>worker;
         public bool ModeAcknowledged => !failed&&!disposed&&modeAcknowledged;
         public string RequiredMode => mode;
         // Exposure reads run on the owning main thread. A durable write or a
@@ -111,7 +120,9 @@ namespace AcousticVocab.StateIntegration
         }
         public void RequestMode(){Require(!modeAcknowledged&&!pending.Values.Contains("set_mode"),"CONTROL_MODE_PENDING");Request("set_mode");}
         public string RequestReset()=>Request("reset");
-        public void Interrupt(){RecordFailure("CONTROL_EXPLICIT_INTERRUPT","owner");healthGate.Invalidate();modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
+        public void Interrupt(){RecordFailure("CONTROL_EXPLICIT_INTERRUPT","owner");healthGate.Invalidate();modeAcknowledged=false;failed=true;CancelLifetime();socket?.Abort();}
+        // The token source is released only after the worker ends (Dispose).
+        void CancelLifetime(){try{lifetime.Cancel();}catch(ObjectDisposedException){}}
         void Phase(string value){lock(diagnosticLock){workerPhase=value;phaseStarted=now();}}
         void Completed(PrivateControlExchange.Reply reply){lock(diagnosticLock){lastSent=reply.Sent;lastReceived=reply.Received;}}
         void ExchangeFailed(string kind,string requestId,PrivateControlExchange.Failure failure)
@@ -167,13 +178,15 @@ namespace AcousticVocab.StateIntegration
         internal void ReceiveHealthProbe(string id,string raw,double sent,double received)=>Offer(new Arrival{Health=true,Id=id,Raw=raw,Sent=sent,Received=received});
         internal void ReceiveReply(string id,string raw,double sent,double received)=>Offer(new Arrival{Id=id,Raw=raw,Sent=sent,Received=received});
         void Offer(Arrival item)
-        {if(Interlocked.Increment(ref queued)>8){Interlocked.Decrement(ref queued);RecordFailure("CONTROL_ARRIVAL_CAPACITY","receive_queue");failed=true;lifetime.Cancel();return;}incoming.Enqueue(item);}
+        {if(Interlocked.Increment(ref queued)>8){Interlocked.Decrement(ref queued);RecordFailure("CONTROL_ARRIVAL_CAPACITY","receive_queue");failed=true;CancelLifetime();return;}incoming.Enqueue(item);}
         async Task Run(Uri endpoint)
         {
+            WebSocket client=null;
             try
             {
-                using var client=new ClientWebSocket();socket=client;Phase("connect");
-                using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)){timeout.CancelAfter(3000);await client.ConnectAsync(endpoint,timeout.Token);}
+                Phase("connect");client=socketFactory();socket=client;
+                if(client is ClientWebSocket native)
+                    using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)){timeout.CancelAfter(3000);await native.ConnectAsync(endpoint,timeout.Token);}
                 while(!lifetime.IsCancellationRequested)
                 {
                     if(outgoing.TryDequeue(out var raw))
@@ -195,8 +208,15 @@ namespace AcousticVocab.StateIntegration
                 }
             }
             catch(Exception error){if(!disposed){RecordFailure(FailureCode(error));failed=true;}}
-            finally{socket=null;}
+            finally{socket=null;client?.Dispose();}
         }
-        public void Dispose(){if(disposed)return;RecordFailure("CONTROL_DISPOSED","owner");disposed=true;failed=true;lifetime.Cancel();socket?.Abort();}
+        // Never waits on the owner's thread: cancellation and Abort release
+        // pending IO, and only the quit coordinator bounds a wait for this
+        // worker (WorkerLedger). The token source is freed once it has ended.
+        public void Dispose()
+        {
+            if(disposed)return;RecordFailure("CONTROL_DISPOSED","owner");disposed=true;failed=true;CancelLifetime();socket?.Abort();
+            _=worker.ContinueWith(task=>{_=task.Exception;lifetime.Dispose();},CancellationToken.None,TaskContinuationOptions.None,TaskScheduler.Default);
+        }
     }
 }
