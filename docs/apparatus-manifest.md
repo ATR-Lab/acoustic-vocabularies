@@ -71,14 +71,65 @@ even that explicitly requested summary before publishing it.
 `g4_freeze` is either unavailable with a reason or
 `{"status":"recorded","path":"g4.json","expected_sha256":"<independent-pin>"}`.
 The strict provisional handoff schema is
-`apparatus/schemas/g4-manifest-handoff.schema.json`. It contains a freeze reference
-and the exact six values `model_id_provisional`, `model_revision`,
-`runtime_precision`, `prompt_hash`, `fallback_bank_hash` and
-`renderer_recipe_schema_hash`. All six are copied verbatim, with the source file
-hash attached; callers cannot override any of them in ordinary fields. The
+`apparatus/schemas/g4-manifest-handoff.schema.json`. It contains a freeze reference,
+the freeze status (`draft` or `frozen`) and the exact six fields
+`model_id_provisional`, `model_revision`, `runtime_precision`, `prompt_hash`,
+`fallback_bank_hash` and `renderer_recipe_schema_hash`. Each field is its value or
+`{"status":"pending","reason":...}`; a `frozen` handoff may hold no pending field.
+Values are copied verbatim with the handoff file hash as their source: `g4:<sha256>`
+from a frozen handoff, `g4-draft:<sha256>` from a draft. Pending fields stay pending
+with their reason. Callers cannot override any of them in ordinary fields. The
 collector never recomputes generation hashes or creates a freeze record. A hash
-pin proves byte identity, not G4 sign-off. Reconcile this handoff with #25's
-actual reviewed record format before treating it as approved generation evidence.
+pin proves byte identity, not G4 sign-off: the public summary always reports
+`g4_approval_verified: false`, and approval is recorded on #25 only.
+
+### Converting the #25 freeze manifest
+
+The handoff is produced from the generation freeze manifest
+(`generation/FREEZE-v1.0.json` after G4, the committed `FREEZE-v1.0.draft.json`
+before it; format `av-generation/freeze-manifest`, `generation/docs/freeze.md`), never
+typed by hand:
+
+```text
+python tools/apparatus_manifest.py g4-handoff --freeze <absolute-freeze-manifest.json> --freeze-sha256 <raw-freeze-file-sha256> --output <absolute-new-handoff.json>
+```
+
+It prints the handoff SHA-256 (the raw output-file hash) to pin as
+`g4_freeze.expected_sha256`. The output holds only public generation values and is
+created exclusively, never overwritten. Before writing anything it checks the freeze
+manifest against its pin and itself:
+
+- the file hash equals `--freeze-sha256` (`HASH_MISMATCH`); the JSON is strict apart
+  from the `null` that marks pending freeze values, and has the freeze format
+  (`FREEZE_FORMAT_INVALID`);
+- it validates against `generation/schema/freeze-manifest.schema.json`
+  (`FREEZE_SCHEMA_INVALID`), which also enforces the frozen-status rules (commit, tag,
+  two sign-offs, no pending value);
+- every item's `sha256` follows the freeze hash rule: the value for hash items, the
+  canonical SHA-256 for objects and arrays, otherwise null (`FREEZE_ITEM_HASH_MISMATCH`);
+  item keys are unique (`FREEZE_ITEM_DUPLICATE`) and the items the handoff uses exist
+  (`FREEZE_ITEM_MISSING`) with the expected types (`FREEZE_VALUE_INVALID`);
+- the freeze's own `apparatus` block equals the values recomputed from its items,
+  including `prompt_hash` = canonical SHA-256 of `{a3_sha256, b_sha256}`
+  (`FREEZE_APPARATUS_MISMATCH`);
+- a frozen manifest is signed off by both the owner and the advisor
+  (`FREEZE_SIGNOFF_MISSING`).
+
+The freeze manifest has five apparatus fields (`av_generation.freeze.APPARATUS_FIELDS`);
+the handoff has six. `model_id_provisional` is reconciled from the freeze item
+`model.id` (the code-pinned `av_generation.constants.MODEL_ID`, guarded by the CI
+freeze guard), and once the frozen generation config (`config.document`) is recorded
+its `model` pin must match `model.id` and `model.revision` (`FREEZE_MODEL_CONFLICT`).
+A freeze value still pending in #25 becomes a pending handoff field whose reason
+names the freeze item and its fill-in source; nothing is invented. The handoff status
+mirrors the freeze manifest: a draft is never presented as frozen. These checks are an
+independent self-consistency check of the file; the full CI freeze guard against the
+running generation code remains `python -m av_generation.freeze check`.
+
+Schema change (#83): the handoff schema previously required six concrete values and
+had no status, so the current draft (three values pending until G4) could not be
+represented without inventing values. It now carries `freeze_status` and allows
+pending fields, but only in a draft.
 
 `release_candidate` may contain `status: recorded`, a local `repository`, exact
 `tag` and 40-digit `commit`; the tool resolves only `refs/tags/<tag>^{commit}`,
@@ -114,8 +165,18 @@ Windows, alongside registered synthetic schema fixtures. Linux covers symlink
 creation when the Windows account lacks that permission. These tests establish
 collector behavior, not station acceptance.
 
+The G4 chain is tested across modules: the committed freeze draft (real
+`av_generation.freeze` output) is converted by the CLI, pinned and collected, and
+tampered, forged-frozen, under-signed or incomplete freeze manifests are refused
+(`tests/test_apparatus_manifest.py`). A clearly labelled synthetic signed manifest
+exercises the `frozen` path; it is not a G4 record.
+`tests/generation/test_freeze_apparatus_handoff.py` builds a fresh draft from the
+running generation code, converts and collects it, and checks that the converter
+refuses the tampering the freeze checker refuses; it runs in the generation CI job.
+
 Still required: exact methodology-template reconciliation; #82 tagged candidate
 and binary provenance; per-station settings and complete dependency inventory;
-approved G4 handoff; actual acoustic onset and frame-rate records; representative
+G4 freeze (#25) and the handoff converted from it (today only the draft converts:
+`runtime_precision`, `prompt_hash` and `fallback_bank_hash` stay pending); actual acoustic onset and frame-rate records; representative
 rendered recording; review/reference IDs and independent manifest review. Issue
 #83 remains open after merging this tooling. No new apparatus v0.9 is declared.

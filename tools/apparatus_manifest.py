@@ -1,4 +1,5 @@
-"""Private provisional apparatus manifests. No device discovery or approval inference."""
+"""Private provisional apparatus manifests and the G4 freeze-manifest handoff converter.
+No device discovery or approval inference."""
 from __future__ import annotations
 
 import argparse
@@ -34,6 +35,21 @@ DERIVED_FIELDS = {
     "timing_validation_record": ("timing_validation", "path"),
     "schedule_sha256": ("schedules", "sha256"),
 }
+# G4 freeze manifest (#25, av_generation.freeze) -> handoff field. The freeze manifest's
+# own `apparatus` block holds five fields (freeze.APPARATUS_FIELDS); model_id_provisional
+# is reconciled from the code-pinned `model.id` item, prompt_hash from both prompt items.
+FREEZE_FORMAT = "av-generation/freeze-manifest"
+FREEZE_SCHEMAS = ("generation/schema/common.schema.json",
+                  "generation/schema/freeze-manifest.schema.json")
+FREEZE_ITEMS = {
+    "model_id_provisional": "model.id",
+    "model_revision": "model.revision",
+    "runtime_precision": "runtime.precision",
+    "fallback_bank_hash": "fallback.bank_hash",
+    "renderer_recipe_schema_hash": "renderer.recipe_schema_hash",
+}
+FREEZE_PROMPT_ITEMS = ("prompts.a3_sha256", "prompts.b_sha256")
+FREEZE_HASH_ITEMS = ("fallback.bank_hash", "renderer.recipe_schema_hash", *FREEZE_PROMPT_ITEMS)
 
 
 class ManifestFault(ValueError):
@@ -53,7 +69,8 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def strict_json(data):
+def strict_json(data, *, allow_null=False):
+    # allow_null is only for G4 freeze manifests, whose pending values are null.
     if len(data) > MAX_JSON:
         fail("JSON_TOO_LARGE")
     def pairs(items):
@@ -69,7 +86,7 @@ def strict_json(data):
         def walk(item, depth=0):
             if depth > 20:
                 fail("JSON_TOO_DEEP")
-            if item is None:
+            if item is None and not allow_null:
                 fail("NULL_FORBIDDEN")
             if isinstance(item, float) and not math.isfinite(item):
                 fail("NONFINITE_JSON")
@@ -201,14 +218,103 @@ def derive_fields(artifacts):
     return values
 
 
+def validate_freeze_schema(manifest):
+    from referencing import Registry, Resource
+    from referencing.jsonschema import DRAFT202012
+    schemas = [json.loads((ROOT / name).read_text(encoding="utf-8")) for name in FREEZE_SCHEMAS]
+    registry = Registry().with_resources(
+        (s["$id"], Resource.from_contents(s, DRAFT202012)) for s in schemas)
+    if next(Draft202012Validator(schemas[-1], registry=registry).iter_errors(manifest), None):
+        fail("FREEZE_SCHEMA_INVALID")
+
+
+def freeze_item_sha256_ok(value, sha):
+    # av_generation.freeze.item_sha256: hash items carry their own value, objects and
+    # arrays their canonical SHA-256, everything else (and pending values) null.
+    if isinstance(value, (dict, list)):
+        return sha == digest(canonical(value))
+    if isinstance(value, str) and sha is not None:
+        return sha == value
+    return sha is None
+
+
+def freeze_to_handoff(manifest, freeze_sha256, name):
+    """G4 freeze manifest -> g4-manifest-handoff record. Never upgrades a draft."""
+    validate_freeze_schema(manifest)
+    items = {}
+    for item in manifest["items"]:
+        if item["key"] in items:
+            fail("FREEZE_ITEM_DUPLICATE")
+        if not freeze_item_sha256_ok(item["value"], item["sha256"]):
+            fail("FREEZE_ITEM_HASH_MISMATCH")
+        items[item["key"]] = item
+    if any(key not in items for key in (*FREEZE_ITEMS.values(), *FREEZE_PROMPT_ITEMS)):
+        fail("FREEZE_ITEM_MISSING")
+    values = {key: item["value"] for key, item in items.items()}
+    for key in FREEZE_HASH_ITEMS:
+        if values[key] is not None and (items[key]["sha256"] != values[key]
+                                        or not re.fullmatch(r"[0-9a-f]{64}", str(values[key]))):
+            fail("FREEZE_ITEM_HASH_MISMATCH")
+    if not isinstance(values["model.id"], str) or not all(
+            values[key] is None or isinstance(values[key], str) for key in FREEZE_ITEMS.values()):
+        fail("FREEZE_VALUE_INVALID")
+    revision = values["model.revision"]
+    if revision is not None and not re.fullmatch(r"[0-9a-f]{40}", revision):
+        fail("FREEZE_VALUE_INVALID")
+    # Reconcile the model pin with the frozen generation config once it is recorded.
+    document = values.get("config.document")
+    if document is not None:
+        model = document.get("model") if isinstance(document, dict) else None
+        if not isinstance(model, dict) or (model.get("model_id"), model.get("revision")) != (
+                values["model.id"], values["model.revision"]):
+            fail("FREEZE_MODEL_CONFLICT")
+    # freeze.apparatus_values: one prompt hash over both prompt sets.
+    a3, b = (values[key] for key in FREEZE_PROMPT_ITEMS)
+    derived = {field: values[key] for field, key in FREEZE_ITEMS.items()}
+    derived["prompt_hash"] = (digest(canonical({"a3_sha256": a3, "b_sha256": b}))
+                              if None not in (a3, b) else None)
+    if manifest["apparatus"] != {k: v for k, v in derived.items() if k != "model_id_provisional"}:
+        fail("FREEZE_APPARATUS_MISMATCH")
+    status = manifest["status"]
+    if status == "frozen" and not {"owner", "advisor"} <= {s["role"] for s in manifest["signoff"]}:
+        fail("FREEZE_SIGNOFF_MISSING")
+    sources = dict(FREEZE_ITEMS)
+    sources["prompt_hash"] = next((k for k in FREEZE_PROMPT_ITEMS if values[k] is None), "")
+    fields = {}
+    for field in GENERATION_FIELDS:
+        if derived[field] is not None:
+            fields[field] = derived[field]
+            continue
+        key = sources[field]
+        reason = f"G4 not frozen (#25); freeze item {key} pending: {items[key]['source']}"
+        fields[field] = pending(re.sub(r"[\x00-\x1f]", " ", reason)[:512])
+    handoff = {"schema_version": 1, "record_type": "g4-generation-freeze-handoff",
+               "freeze_reference": f"{name} sha256:{freeze_sha256} status:{status} "
+                                   f"freeze_version:{manifest['freeze_version']}",
+               "freeze_status": status, "fields": fields}
+    validate(handoff, "g4-manifest-handoff.schema.json")
+    return handoff
+
+
+def read_freeze(raw, expected, base=None):
+    record, data = hash_file(raw, base, expected=expected, limit=MAX_JSON, retain=True)
+    manifest = strict_json(data, allow_null=True)
+    if not isinstance(manifest, dict) or manifest.get("format") != FREEZE_FORMAT:
+        fail("FREEZE_FORMAT_INVALID")
+    return freeze_to_handoff(manifest, record["sha256"], Path(record["path"]).name)
+
+
 def g4_fields(spec, base):
     if spec["status"] != "recorded":
         return copy.deepcopy(spec), {name: copy.deepcopy(spec) for name in GENERATION_FIELDS}
     record, value = read_pinned(spec["path"], spec["expected_sha256"], base)
     validate(value, "g4-manifest-handoff.schema.json")
+    # Draft provenance stays visible on every copied value; pending fields stay pending.
+    source = ("g4:" if value["freeze_status"] == "frozen" else "g4-draft:") + record["sha256"]
+    fields = {name: value["fields"][name] for name in GENERATION_FIELDS}
     return {"status": "recorded", "file": record}, {
-        name: recorded(copy.deepcopy(value["fields"][name]), "g4:" + record["sha256"])
-        for name in GENERATION_FIELDS}
+        name: recorded(field, source) if isinstance(field, str) else copy.deepcopy(field)
+        for name, field in fields.items()}
 
 
 def verify_release(spec, base):
@@ -321,9 +427,21 @@ def main(argv=None):
     check = commands.add_parser("verify")
     check.add_argument("--manifest", required=True)
     check.add_argument("--manifest-sha256", required=True)
+    handoff = commands.add_parser("g4-handoff", help="convert a pinned G4 freeze manifest")
+    handoff.add_argument("--freeze", required=True)
+    handoff.add_argument("--freeze-sha256", required=True)
+    handoff.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
-        if args.command == "collect":
+        if args.command == "g4-handoff":
+            record = read_freeze(args.freeze, args.freeze_sha256)
+            # Public generation values only; the output is still never overwritten.
+            write_new(args.output, record, private=False)
+            pending_count = sum(not isinstance(v, str) for v in record["fields"].values())
+            summary = {"handoff_sha256": digest(canonical(record)),
+                       "freeze_status": record["freeze_status"],
+                       "pending_fields": pending_count, "g4_approval_verified": False}
+        elif args.command == "collect":
             manifest = collect(args.config, args.config_sha256)
             write_new(args.output, manifest)
             summary = public_summary(manifest)

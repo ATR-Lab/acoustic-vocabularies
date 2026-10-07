@@ -241,8 +241,10 @@ a work copy of the commit to freeze. Keep restricted files outside the repositor
 8. **Commit and tag (human):** delete the draft, commit `FREEZE-v1.0.json`, create a signed
    tag (`git tag -s generation-freeze-v1.0`) and push. No test needs a change: the tests
    that read the committed draft skip once it is gone, the others build their own draft,
-   and `test_post_g4_layout_keeps_the_guard_green` checks this layout. Copy the five `apparatus` values
-   into the apparatus manifest. Record the tag and the manifest's file SHA-256 on #25.
+   and `test_post_g4_layout_keeps_the_guard_green` checks this layout. Hand the `apparatus`
+   values (plus `model.id` as `model_id_provisional`) to the apparatus manifest with
+   `python tools/apparatus_manifest.py g4-handoff` (docs/apparatus-manifest.md); do not copy
+   them by hand. Record the tag and the manifest's file SHA-256 on #25.
 9. **Runs:** confirmatory batches and banks use
    `python -m av_generation.freeze config generation/FREEZE-v1.0.json --out <run>/generation-config.json`
    (section 7).
