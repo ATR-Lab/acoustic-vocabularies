@@ -95,8 +95,9 @@ are runs of the #26 builder and add no `av_generation` module.
      parse; `validate()` against the book's committed references; `consume`.
    - A2 (#18): reserve; sample or mutate with `rng_for(a2_seed_key(...))`; validate;
      consume (the record carries `A2Detail`).
-   - A1 (#19): opening a slot reserves it (a 13th request is refused before anything is
-     designed or heard) and starts a 40-s server timer; submit validates, renders and
+   - A1 (#19): slots open back to back (slot 1 when the round starts, each next one
+     when the previous closes); opening a slot reserves it (a 13th request is refused
+     before anything is designed or heard) and starts a 40-s server timer; submit validates, renders and
      consumes; a valid recipe gets one single-use audio token (`play` events; a second
      play is `refused`). No submission: `timeout`.
 3. The panel plays 9 rating slots of 20 s in the order of `BatchConfig.panel.order`
