@@ -54,5 +54,13 @@
   {
     "schema": "apparatus/schemas/view-leakage-plan.schema.json",
     "instance": "apparatus/spikes/O6.1.2/capture-plan.example.json"
+  },
+  {
+    "schema": "apparatus/schemas/audio-onset-calibration-settings.schema.json",
+    "instance": "apparatus/examples/audio-onset-calibration-settings.example.json"
+  },
+  {
+    "schema": "apparatus/schemas/audio-onset-calibration.schema.json",
+    "instance": "apparatus/examples/audio-onset-calibration.example.json"
   }
 ]
