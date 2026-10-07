@@ -1,0 +1,41 @@
+{
+  "unity": "6000.6.0f1",
+  "files": [
+    {
+      "path": "unity/BridgeBenchmark.cs",
+      "sha256": "d4afe6d54959247b1d51e050aa23c30a49737ca1515bd2e10c83b478c06a48b3"
+    },
+    {
+      "path": "unity/BridgeValidation.cs",
+      "sha256": "daca4ceaa5157d89bf1efabc35fc20e1e735737c21e09fbf481adf9caadc4ed6"
+    },
+    {
+      "path": "unity/Editor/BridgeSelfChecks.cs",
+      "sha256": "0b6ba77039681a776ff61e404c89a03128139152507d54a2c2608d9dd8640c54"
+    },
+    {
+      "path": "unity-integration/BridgeDiagnosticCapture.cs",
+      "sha256": "0252c662ec7acfea684dbe73737f6339d499bda0e2b1f1b80fde86cd3d63d30e"
+    },
+    {
+      "path": "unity-integration/BridgeRobotAdapter.cs",
+      "sha256": "37ed97fff053e74f74e796d5fa7411d7daa32e0b4ea0b57b5456d8ee7988992d"
+    },
+    {
+      "path": "unity-rossharp/Editor/BridgeSpikeBuild.cs",
+      "sha256": "080051937abaa93bdafad8ddc1d7b249c8a0792c3d8522fe51ad0ee9b87109bb"
+    },
+    {
+      "path": "unity-rossharp/Editor/RosSharpSelfChecks.cs",
+      "sha256": "56752979ce8f6958725e444a644c86e1a37f9296c49a4d91081be3f683a31a93"
+    },
+    {
+      "path": "unity-rossharp/link.xml",
+      "sha256": "d964fd5a9671b7ad9ad0d8cd30e0b2a9c9d0d55980143ff8660fc2fe61c0a35b"
+    },
+    {
+      "path": "unity-rossharp/RosSharpBenchmarkTransport.cs",
+      "sha256": "f939ccbfbcf3f2d7d4dc533ec19ee899b0c4040a75ba855adcba2ea577e67e5d"
+    }
+  ]
+}

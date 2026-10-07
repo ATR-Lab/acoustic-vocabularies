@@ -1,0 +1,55 @@
+[project]
+name = "av-sound"
+version = "0.1.0"
+description = "Deterministic motif renderer, validator, composer and vocabulary store"
+readme = "README.md"
+requires-python = "==3.11.*"
+license = { text = "Proprietary; see repository README" }
+dependencies = [
+    "jsonschema>=4.26.0",
+    "numpy>=2.0,<3",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.100",
+    "mypy>=1.10",
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "types-jsonschema>=4.23",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/av_sound"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "ANN"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["ANN"]
+"**/tools/**" = ["ANN"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["av_sound"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["numpy.*"]
+follow_imports = "normal"
+
+[tool.coverage.run]
+source = ["av_sound"]
+branch = true

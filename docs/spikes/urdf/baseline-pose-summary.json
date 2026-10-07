@@ -1,0 +1,14 @@
+{
+  "poses": 92,
+  "compared_link_pose_pairs": 4876,
+  "max_position_error_mm": 12.2542428014025,
+  "max_orientation_error_deg": 179.99999985684147,
+  "missing_unity_links": [
+    "left_hand_camera_base_link",
+    "right_hand_camera_base_link"
+  ],
+  "unobserved_unity_links": [],
+  "all_observed_links_within_proposed_tolerance": false,
+  "full_urdf_link_coverage": false,
+  "tolerance_status": "proposed_5mm_1degree_pending_protocol_review"
+}
