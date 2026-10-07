@@ -173,9 +173,9 @@ with serve_a1(service, host="<lab interface>") as url:  # port 8741 (DEFAULT_POR
 `study_service` writes `play`, `timing` and `slot_refusal` records to the run's logs
 (`layout.log(...)`), takes the designer from the A1 book of `config` and refuses a
 practice batch or a ledger of another run (`test_study_service_serves_the_runs_shared_logs`).
-**Pending (#20):** no batch runner calls these yet (the orchestrator branch takes its
-proposers from the caller and has no study-batch command); until one does, a study
-session cannot be served.
+The batch runner (#20, `python -m av_generation.batch_runner run ... --a1-host <lab
+interface> --a1-station <kiosk station>`; `generation/docs/orchestrator.md` section 9)
+does exactly this for every batch with real proposers.
 
 Practice mode (training, O1.2.4) from the repository root:
 
