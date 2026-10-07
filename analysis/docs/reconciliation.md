@@ -23,6 +23,8 @@ Common procedures sections 6-8, Study A protocol section 8, Study B protocol sec
 | `av-analysis reconcile VISIT_ID... --root DIR` or `--all` | checks C1-C8, writes `reconciled/<visit_id>/reconciliation.json` | 0 every visit passes, 1 a visit fails, 2 refused input |
 | `av-analysis derive --root DIR` | writes the six tables and the two area manifests | 0, 2 refused (for example a report older than its inputs) |
 | `av-analysis refresh --root DIR` | operator sequence after a visit: `reconcile --all`, `derive`, `dashboard` (skeleton) | worst step code |
+| `av-analysis import-export VISIT_ID --root DIR --export DIR --export-manifest-sha256 HEX --run-sheet FILE --run-sheet-sha256 HEX --deviations FILE --deviations-sha256 HEX` | verifies a station ExportBundle and the console's run-sheet and deviation exports, then creates `raw/<visit_id>/` (section 3, "Importing a station export"; #81) | 0 written, 2 refused (nothing written) |
+| `av-analysis block-durations VISIT_ID --root DIR [--out FILE]` | per-block run-sheet durations against scheduled seconds and the visit against its booked minutes (#81) | 0, 2 refused |
 
 Raw files are opened read-only. `reconcile` hashes every raw file it reads before and
 after the run; the report's `raw_unchanged` is true only when nothing changed. Otherwise
@@ -41,6 +43,8 @@ record can resolve, and the visit fails (exit 1).
 | `derive` | the reconciled and derived tables, area manifests, the `derive` command |
 | `synthetic_inputs` | synthetic package JSON, package-hash mapping, Study B store history, reveal log |
 | `synthetic_logs` | synthetic raw logs for every visit type, fault injection, the fault suite, examples, the `synth-logs` command |
+| `export_import` | the column adapter (#81, #72, #73): `read_bundle` (manifest, file hashes, inventory, journal chain), `bind` (reveal-log binding), `map_trial_log`, `map_exposure_ledger`, `map_deviations`, `exit_manifest`, `write_plan` (exclusive create), the source of every template column (`TRIAL_SOURCES`, `EXPOSURE_SOURCES`, `DEVIATION_SOURCES`), the `import-export` command |
+| `block_durations` | block durations against the booking that `av_schedules.run_sheet_output` renders (`booking`, `compare`, `visit_report`), the `block-durations` command and its schema |
 
 ## 3. Inputs
 
@@ -50,12 +54,71 @@ record can resolve, and the visit fails (exit 1).
 `deviations.csv` (methodology template headers) and `exit-manifest.json`. The study-wide
 `raw/deviations-log.csv` holds later deviations and corrections.
 
-**Extension column `trial_ref` (proposal, Pending #72 adapter).** The exposure-ledger
-template has no column that links a play to its scheduled opportunity. The provisional
-export has one (`attempt_id`), so the exposure ledger may end with `pcm_sha256` and
-`trial_ref` (`templates.EXTENSION_COLUMNS`): the trial-log `trial_id` of the attempt that
-requested the play. Without it, plays cannot be counted per trial: C1 reports
-`RAW_FORMAT` and the play-count rules of C2 are skipped.
+**Extension column `trial_ref` (proposal).** The exposure-ledger template has no column
+that links a play to its scheduled opportunity. The provisional export has one
+(`attempt_id`), so the exposure ledger may end with `pcm_sha256` and `trial_ref`
+(`templates.EXTENSION_COLUMNS`): the trial-log `trial_id` of the attempt that requested
+the play. `import-export` writes both (below). Without `trial_ref`, plays cannot be
+counted per trial: C1 reports `RAW_FORMAT` and the play-count rules of C2 are skipped.
+
+### Importing a station export (#81)
+
+`export_import` turns one provisional station export into a raw visit folder. It runs
+before reconciliation and refuses (exit 2, `ExportRefused` with a code, nothing written)
+rather than guess:
+
+1. **Verify.** The ExportBundle manifest (`data-export-provisional-1`) must have the
+   SHA-256 supplied out of band; every listed file its size and SHA-256; the directory
+   exactly the listed files (`EXPORT_MANIFEST_HASH`, `EXPORT_FILE_HASH`,
+   `EXPORT_INVENTORY`). The journal segments must form one hash chain (each record hashed
+   without its final `sha256` member, sequence from 0, `previous_sha256` links, the
+   manifest identity on every record), with the manifest's record count and head hash, and
+   torn tails acknowledged by a `recovery` record unless the manifest says
+   `unacknowledged_torn_tail` (`EXPORT_JOURNAL_*`). Both CSVs carry the manifest identity
+   and row counts. The published sample layout (`docs/data/synthetic-visit`: the original
+   manifest, `public-manifest.json`, `events.jsonl`) is read too. The console run sheet and
+   deviation export need their SHA-256 values (`EXPORT_FILE_HASH`).
+2. **Columns.** The header contract and CSV headers must equal the provisional columns
+   (`PROVISIONAL_TRIAL_COLUMNS`, `PROVISIONAL_EXPOSURE_COLUMNS`, the same as
+   `apparatus/data/*.provisional.csv`), the run sheet the run-sheet template and the
+   deviation export the console's six columns; anything else is `EXPORT_COLUMNS`. Lesson
+   and assessment tables in a bundle have no mapping yet (`EXPORT_UNMAPPED_TABLE`).
+3. **Bind.** `VISIT_ID` must be the person slot the root's reveal log binds to the export's
+   `coded_id`, plus the export's visit; the run sheet must name that slot or coded ID and
+   visit (`EXPORT_VISIT_MISMATCH`, `EXPORT_IDENTITY_UNBOUND`). A SYNTHETIC root takes only
+   coded IDs with a synthetic marker; a REAL root refuses them, unqualified headers and
+   torn tails.
+4. **Map.** Each template column has one source (`TRIAL_SOURCES`, `EXPOSURE_SOURCES`,
+   `DEVIATION_SOURCES`): a provisional column copied unchanged (`attempt_id` -> `trial_id`
+   and `trial_ref`, `audio_request_id` -> `event_id`, `coded_id` -> `participant_id`,
+   `audio_onset_estimate_mono_ms` -> ledger `audio_onset_mono_ms`, console `staff_code` ->
+   `operator`, `note` -> `observed_problem`); the bound visit (`study`, `batch_id` or
+   `dyad_id`, ledger `wave`); derived from the verified export (`presentation_index` from
+   the attempt's ordered `audio_request_ids`; `pcm_sha256` from the journal's
+   `audio_request` record, on the trial log that of the first request; deviation
+   `category` from the console reason: `technical`, `procedure`, and `visit_window` or
+   `pair_window` -> `window`); or none, written empty. Without a producer source today:
+   trial `codebook_id`, `role`, families, `trial_type`, `message_id`, hidden answer,
+   `trained_status`, prior exposure counts, `scheduled_onset_mono_ms`, offsets,
+   `sim_time`, `commit_mono_ms`, scores, `feedback_shown`, `dictionary_available`,
+   `actual_delay_hours`; ledger `stage`, `atom_or_message_id`, `whole_phrase`, display
+   fields, `audio_offset_mono_ms`, `retrieval_opportunity`, feedback and choice; deviation
+   participant, unit, event, action, exposure, endpoint, resolution, reviewer. Values are
+   never repaired (for example `accepted_or_rejected` `pending`, console `yes` and
+   `ops-demo`): the loaders report them as `RAW_FORMAT`.
+5. **Write.** `raw/<visit_id>/` must not exist; files are created exclusively, flushed and
+   read back, the exit manifest last. The original bundle (`export/bundle/`, station
+   layout with `manifest.json`) and the console deviation export
+   (`export/console/deviations.provisional.csv`) are kept unchanged and listed in the exit
+   manifest; the run sheet is the console's bytes. The exit manifest is the projection of
+   `docs/interfaces/analysis.md`; `closed` is `interrupted` with an unacknowledged torn
+   tail or no `visit_complete` journal record.
+
+Only synthetic exports have been imported (tests: `tests/analysis/test_export_import.py`).
+The published samples verify as published but name visit `DEMO`, so the end-to-end test
+binds a re-chained copy to a `synth-logs` person slot: `reconcile` reads the folder with
+intact raw integrity and fails on content (null template columns, trials that are not the
+person's schedule), as expected for that fixture.
 
 ### Analysis-side value rules (Pending confirmation by #67, #72, #73)
 
@@ -343,7 +406,11 @@ collection until it is resolved, even when explained.
 ## 13. Decisions and open items
 
 - **Play-to-trial link.** The exposure ledger gains the extension column `trial_ref`
-  (section 3); proposal to #72 for the column adapter (`attempt_id`).
+  (section 3), written by `import-export` from the provisional `attempt_id` (#81).
+- **Column adapter (#81).** Template columns without a provisional source are written
+  empty and reported, never filled from the schedule (that would hide the mismatches C2
+  looks for); the console reason -> category map and the null columns await agreement
+  with #67, #72 and #73.
 - **Visit-level deviation records** resolve only codes whose category fits (section 6),
   so a general note cannot explain an unrelated hash mismatch.
 - **Study-wide log records are scoped to one visit** (section 6): a log record must name
@@ -370,5 +437,7 @@ collection until it is resolved, even when explained.
   speech commands (#71); per-atom recipe identity in the store (#70, #26); the append-only
   prefix of `raw/deviations-log.csv` across runs (data-lock manifests archive its hash);
   screening cases in `enrollment` (#73).
-- **Pending agreements:** the column adapter and values with #67, #72 and #73; the exit
-  manifest projection; a timing run on a lab laptop.
+- **Pending agreements:** the adapter's null columns, reason map and values with #67, #72
+  and #73; lesson and assessment tables; the exit manifest projection (implemented by
+  `import-export`, not yet agreed); a native export reconciled; a timing run on a lab
+  laptop.

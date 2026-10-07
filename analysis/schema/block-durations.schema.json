@@ -1,0 +1,192 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/block-durations.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Recorded run-sheet block durations against the scheduled slots and the booked visit minutes; null where a time was not recorded (never inferred).",
+  "properties": {
+    "blocks": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_count": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "actual_seconds": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "block": {
+            "type": "string"
+          },
+          "difference_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "end_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expected_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "in_run_sheet": {
+            "type": "boolean"
+          },
+          "scheduled_seconds": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slot_seconds": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "start_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block",
+          "in_run_sheet",
+          "expected_count",
+          "actual_count",
+          "slot_seconds",
+          "scheduled_seconds",
+          "start_time",
+          "end_time",
+          "actual_seconds",
+          "difference_seconds"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "data_kind": {
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "format": {
+      "const": "av-analysis/block-durations"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "run_sheet_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "study": {
+      "enum": [
+        "A",
+        "B"
+      ]
+    },
+    "visit": {
+      "enum": [
+        "D0",
+        "D7",
+        "V1",
+        "V2",
+        "V3",
+        "W1",
+        "W4"
+      ]
+    },
+    "visit_id": {
+      "type": "string"
+    },
+    "visit_totals": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_minutes": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "block_seconds": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "blocks_timed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "blocks_untimed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "booked_minutes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "overrun": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "overrun_minutes_allowed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scheduled_seconds": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "span_seconds": {
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "booked_minutes",
+        "scheduled_seconds",
+        "blocks_timed",
+        "blocks_untimed",
+        "block_seconds",
+        "span_seconds",
+        "actual_minutes",
+        "overrun_minutes_allowed",
+        "overrun"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "data_kind",
+    "visit_id",
+    "run_sheet_sha256",
+    "study",
+    "visit",
+    "blocks",
+    "visit_totals"
+  ],
+  "title": "Block durations against the booked visit length (#81)",
+  "type": "object"
+}

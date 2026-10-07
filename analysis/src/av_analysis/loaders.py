@@ -18,9 +18,10 @@ root refuses an exit manifest that says ``REAL``.
 
 The provisional station export (#72 ``data-csv-provisional-1``) uses other headers
 (``coded_id``, ``opportunity_id``/``attempt_id``, ...). Its values already follow
-``vocab``; the column adapter to the template headers (``attempt_id`` becomes the trial
-log's ``trial_id`` and the exposure ledger's ``trial_ref``) is **Pending** (#72/#73 with
-#33) and runs before files are placed in ``raw/``.
+``vocab``; the column adapter to the template headers (``export_import``, #81:
+``attempt_id`` becomes the trial log's ``trial_id`` and the exposure ledger's
+``trial_ref``) runs before files are placed in ``raw/``; its null columns await agreement
+with #72/#73.
 
 The study-wide deviations log is append-only by procedure. Its earlier prefix is not
 verified across runs here: data locks archive its SHA-256 in the output manifests
