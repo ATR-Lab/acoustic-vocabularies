@@ -1,0 +1,67 @@
+{
+  "schema_version": "0.1.0",
+  "status": "software_preparation_only",
+  "scope": "SIMULATION_TEST_capture_driver_synthetic_inputs",
+  "source_commit": "ffa46f23e07247182b4d13474bedcc0dbec79b85",
+  "unity_editor": "6000.6.0f1",
+  "python": "3.12.14",
+  "capture_run_performed": false,
+  "source_files": {
+    "unity/Assets/ExperimentApp/Runtime/ViewCapture/ViewCaptureDriver.cs": "d63ca07ec286156039137f4e2ea6ec1efdca4e741264328d8881e1acca98e9a9",
+    "unity/Assets/ExperimentApp/Runtime/ViewCapture/ViewCapturePlan.cs": "961be296236b315e5e6acd7bbf8ec7186b35320615002ec39b2c91baf9989bfe",
+    "unity/Assets/ExperimentApp/Runtime/ViewCapture/ViewCaptureOutput.cs": "b2d040bd0ebf5d5e1b0efeeaf3d90e08843adb3e76663a44c741e8485e5c4086",
+    "unity/Assets/ExperimentApp/Runtime/ViewCapture/ViewCaptureContracts.cs": "e50bc9ce8a7b8b0e5fe1e18fe3a85a9bbede19436559a78d5d27af1cb12d75a8",
+    "unity/Assets/ExperimentApp/Runtime/ViewCapture/UnityCapturePorts.cs": "06a6cd7d5fb64e18dc13c7f61a5032183d01b62a34c002abce78a144096a4d69",
+    "unity/Assets/ExperimentApp/Runtime/ViewCapture/ViewCaptureHost.cs": "4375ff13564919c8581fd4385056dd8512eaaa24404d7156e6e3a4e51df10c87",
+    "tools/view_capture_assemble.py": "5abcf81201105637c6c961bd7f9b5f4cf85ff398927f116e06e74e7be5886892",
+    "tools/view_leakage.py": "442c73981099549fe8afd1a23ae5569bf5f9a55c2b62e1f54291ea483d3a0305",
+    "tests/test_view_capture_assemble.py": "5e3379012ed6e5b9b6521e7e1ef96d9ede13ae4794e35f0a1410b6d98a6c0a78"
+  },
+  "unity_tests": {
+    "runner": "tools/build-unity.ps1 -Scene Workcell, clean tree at source_commit",
+    "baseline": {
+      "description": "Earlier runs of the unchanged 0aa8eeb tree in the same worktree",
+      "editmode": {"total": 874, "passed": 823, "failed": 18, "skipped": 33},
+      "playmode": {"total": 23, "passed": 23, "failed": 0, "skipped": 0}
+    },
+    "editmode": {"total": 911, "passed": 860, "failed": 18, "skipped": 33, "added_passed": 37,
+      "failed_set_identical_to_baseline": true, "skipped_set_identical_to_baseline": true,
+      "preexisting_failures": "PackageLoader/TeachingCatalog HASH_MISMATCH regression already on main; not touched here"},
+    "playmode": {"total": 26, "passed": 26, "failed": 0, "skipped": 0, "added_passed": 3},
+    "playmode_graphics_required": {"total": 2, "passed": 2, "failed": 0, "skipped": 0,
+      "added": "ViewCapturePlayTests.RenderedFramesAreNonblankAndPairIndependentPerPose"}
+  },
+  "windows_player_builds": {
+    "tree": "pre-commit working tree with runtime sources identical to source_commit",
+    "view_capture_scene_with_AV_SIMULATION_TEST": {"result": "Succeeded", "contains_AcousticVocab.ViewCapture.dll": true},
+    "ordinary_state_sources_scene": {"result": "Succeeded", "contains_AcousticVocab.ViewCapture.dll": false},
+    "launched": false
+  },
+  "python_tests": {
+    "at_source_commit": {"files": ["tests/test_view_leakage.py", "tests/test_view_capture_assemble.py"], "passed": 49, "skipped": 0,
+      "note": "includes the actual Unity EditMode synthetic export cross-check"},
+    "pre_commit_related": {"files": ["tests/test_view_leakage.py", "tests/test_view_capture_assemble.py", "tests/isaac/test_view_observations.py", "tests/test_schemas.py"],
+      "passed": 88, "skipped": 2, "skip_reasons": ["Unity export not supplied in that run", "Windows symlink privilege unavailable"]}
+  },
+  "unity_export_cross_check": {
+    "producer": "ViewCaptureTests.CompleteSyntheticMatrixMatchesVerifierManifestShape with AV_VIEW_CAPTURE_EXPORT",
+    "inputs_are_synthetic": true,
+    "png_encoder": "Unity Texture2D.EncodeToPNG (RGB24); not a camera render",
+    "assembler": "tools/view_capture_assemble.py",
+    "verifier": "tools/view_leakage.py",
+    "captures": 160,
+    "pairwise_comparisons": 2480,
+    "lock_rejections_verified": 32,
+    "screen_passed": true,
+    "recommendation": "HOLD",
+    "participant_ready": false
+  },
+  "required_complete_capture": {
+    "actual_matrix_performed": false,
+    "real_protected_trial_boundary_integrated": false,
+    "native_trial_boundary": "driver_only_no_session_engine_no_cue_audio",
+    "independent_code_review_signed": false,
+    "g3_signed": false,
+    "participant_ready": false
+  }
+}
