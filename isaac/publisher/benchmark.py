@@ -18,6 +18,7 @@ import time
 from isaac.reset.benchmark import durable
 from isaac.reset.snapshot import load_snapshot
 from .analyze import analyze
+from .pacing import GC_POLICIES, PACING_MODES, GcPolicy, run_paced_loop
 from .protocol import PublicRegistry, strict_loads, validate_frame
 from .runtime import StatePublisher
 from .transport import WebSocketTransport
@@ -85,15 +86,24 @@ class LocalCollector:
 
 def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snapshot_sha256,
                         seconds=3600, rate_hz=30, station_id="station-01", socket_path=None,
-                        joint_csv=None, collector_mode="thread"):
+                        joint_csv=None, collector_mode="thread", pacing="presample",
+                        gc_policy="freeze", gc_manual_interval=1800, spin_us=0):
     """Advance actual physics at 60 Hz and read/publish at 30 or 60 Hz.
 
     Explicitly an unprotected engineering rate run: gravity/actuator settling
     may occur. Protected neutral-hold verification belongs to the command lock
     integration. A short run can never produce a passing one-hour rate screen.
+
+    ``pacing="at_deadline", gc_policy="default"`` reproduces the loop used by
+    the recorded failed hours. The defaults pre-sample/encode before the
+    deadline and freeze the warm-up heap; see ``pacing`` and docs/isaac/publisher.md.
     """
     if collector_mode not in ("thread", "process"):
         raise ValueError("Explicit thread or process diagnostic collector required")
+    if pacing not in PACING_MODES or gc_policy not in GC_POLICIES:
+        raise ValueError("Unknown pacing mode or GC policy")
+    if type(spin_us) is not int or not 0 <= spin_us <= 2000:
+        raise ValueError("Bounded 0..2000 microsecond final spin required")
     from .process_collector import ProcessCollector
     collector_factory = LocalCollector if collector_mode == "thread" else ProcessCollector
     if type(seconds) not in (int, float) or not math.isfinite(seconds) or seconds <= 0:
@@ -115,7 +125,8 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
     start = end = time.monotonic_ns()
     steps = 0
     failure = None
-    processing_ms = []
+    loop_stats = {}
+    policy = GcPolicy(gc_policy, manual_interval=gc_manual_interval)
     try:
         def sample():
             if tuple(adapter.robot.joint_names) != registry.joint_names:
@@ -129,30 +140,28 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
         publisher = StatePublisher(registry, sample, transport, output/"publish.csv", rate_hz=rate_hz)
         transport.health_provider = publisher.health
         collector = collector_factory(socket_path, registry)
-        # Setup and connection latency are excluded; startup remains unqualified.
-        start = time.monotonic_ns()
-        publisher.epoch_ns = start
-        period_ns = 1_000_000_000/rate_hz
-        tick = 0
-        while time.monotonic_ns() - start < seconds*1e9:
-            began = time.monotonic_ns()
+
+        def advance():
+            nonlocal steps
             for _ in range(60//rate_hz):
                 adapter.robot.write_data_to_sim()
                 adapter.sim.step(render=False)
                 adapter.robot.update(adapter.sim.get_physics_dt())
                 steps += 1
-            physics_done = time.monotonic_ns()
-            deadline = start + int(tick*period_ns)
-            remaining = (deadline-time.monotonic_ns())/1e9
-            if remaining > 0:
-                time.sleep(remaining)
-            publishing_started = time.monotonic_ns()
-            frame = publisher.after_step(adapter.sim_time, steps)
-            processing_ms.append((physics_done-began + time.monotonic_ns()-publishing_started)/1e6)
-            if frame is None or publisher.fault or collector.error:
-                raise RuntimeError(publisher.fault or "PUBLISH_OR_COLLECTOR_FAILURE")
-            tick = max(tick+1, publisher.deadline_index)
-        end = time.monotonic_ns()
+            return adapter.sim_time, steps
+
+        def check():
+            if collector.error:
+                raise RuntimeError("PUBLISH_OR_COLLECTOR_FAILURE")
+
+        # Setup and connection latency are excluded; startup remains unqualified.
+        # The loop sets publisher.epoch_ns to its measured start.
+        try:
+            start, end, _ = run_paced_loop(publisher, advance, seconds=seconds, pacing=pacing,
+                                           gc_policy=policy, spin_ns=spin_us*1000, check=check,
+                                           stats=loop_stats)
+        finally:
+            start = publisher.epoch_ns
     except Exception as error:
         end = time.monotonic_ns()
         failure = type(error).__name__ + ": " + str(error)
@@ -178,10 +187,13 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
                     reset_snapshot_sha256=registry.reset_snapshot_sha256,
                     physics_steps=steps, physics_step_hz=60, protected_mode=False,
                     pacing="absolute_host_deadline; real physics integration; unprotected engineering run",
+                    pacing_mode=pacing, spin_us=spin_us, gc=policy.summary(),
+                    overrun_ticks=loop_stats.get("overrun_ticks"),
+                    wake_late_ms_max=loop_stats.get("wake_late_ms_max"),
                     local_received=collector.count if collector else 0,
                     local_sequence_gaps=collector.sequence_gaps if collector else 0,
                     validation="strict runtime contract for every frame; JSON Schema separately checked on retained samples",
-                    processing_ms_max=max(processing_ms, default=None))
+                    processing_ms_max=loop_stats.get("processing_ms_max") if loop_stats.get("ticks") else None)
     durable(output/"metadata.json", (json.dumps(metadata, indent=2, allow_nan=False)+"\n").encode())
     summary = analyze(output/"publish.csv", metadata)
     if collector:

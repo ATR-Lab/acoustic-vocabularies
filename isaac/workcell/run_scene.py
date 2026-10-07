@@ -38,6 +38,11 @@ def main():
     parser.add_argument('--capture',action='store_true')
     parser.add_argument('--integration-overlay',type=Path)
     parser.add_argument('--publisher-seconds',type=float,default=0.)
+    parser.add_argument('--publisher-pacing',choices=('presample','at_deadline'),default='presample',
+                        help='at_deadline reproduces the recorded hour loop')
+    parser.add_argument('--publisher-gc',choices=('freeze','default','freeze_manual'),default='freeze',
+                        help='default reproduces the recorded hour GC behavior')
+    parser.add_argument('--publisher-collector',choices=('thread','process'),default='thread')
     parser.add_argument('--command-check',action='store_true')
     parser.add_argument('--published-command-check',action='store_true')
     parser.add_argument('--disconnect-check',action='store_true')
@@ -177,7 +182,8 @@ def main():
             from isaac.publisher.benchmark import run_publisher_check
             publisher=run_publisher_check(adapter,layout,args.output/'reset-check/neutral_v1.json',
                 args.output/'publisher-check',expected_snapshot_sha256=reset['reset_snapshot_sha256'],
-                seconds=args.publisher_seconds,rate_hz=30,socket_path='/tmp/av-publisher52.sock')
+                seconds=args.publisher_seconds,rate_hz=30,socket_path='/tmp/av-publisher52.sock',
+                collector_mode=args.publisher_collector,pacing=args.publisher_pacing,gc_policy=args.publisher_gc)
         disconnect=None
         if args.disconnect_check:
             if reset is None: raise ValueError('Disconnect diagnostic requires actual reset snapshot')

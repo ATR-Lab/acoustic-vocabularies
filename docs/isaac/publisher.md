@@ -165,3 +165,200 @@ by about 1.8 ms on the measured full scene. Eight short paired phases still fail
 the unchanged timing screen, including a retained 389.889 ms generation-2 GC pause.
 The production handle cache remains off. This follow-up does not supersede the
 hour failures or qualify protected throughput.
+
+## Interval jitter reduction
+
+This section records a software change and **synthetic host-only** results. No
+Isaac run has used the change yet. Both recorded hour failures stand, and the
+p99 criterion is **not** claimed to pass.
+
+### Hypothesis from retained evidence
+
+The rate harness slept to each absolute deadline and then called `after_step`,
+which read the state, projected it and took the host stamp inside
+`StateEncoder.build`. Each stamp was therefore *deadline + wake-up + public
+readback + projection*, and each interval error was roughly the difference
+between consecutive readback durations. The retained unprotected stage timers
+show public readback at 11.2–11.6 ms median with 15.9–18.6 ms maxima, against
+5.2–5.3 ms physics and 2.4–2.6 ms actuator flush per step and about 1 ms of
+encoding. A tick is about 28 ms of work in a 33.3 ms period. A 3.33 ms limit
+on the 99th percentile is crossed by the ordinary spread of an 11 ms Python
+USD read, plus occasional overruns when physics and readback tails coincide.
+
+GC does not explain the hour p99. The p99 is set by about 1,080 of 108,000
+intervals, the hours' maximum gaps were 45.3 and 43.9 ms, and the recorded
+350–390 ms generation-2 pauses each collected only about 250 objects. Those
+pauses were traversals of the large live Kit/USD heap. They threaten the
+zero-missed-deadline and 250 ms gap conditions, and they can set p99 in a
+12-second phase. The in-process thread receiver adds GIL competition, which
+fits the first hour's 84 missed deadlines. The second hour's higher 6.07 ms
+p99 with zero misses fits larger readback variance under background load.
+The retained raw CSVs can test this directly: in the legacy loop each row's
+`serialize_ms` covers the readback, so interval error should track the change
+in `serialize_ms` between consecutive rows (see the rerun procedure).
+
+### Change
+
+- `pacing.py` holds integer absolute deadlines (`epoch + i·10⁹ // rate`,
+  without float accumulation) and `claim_deadline`, which publishes once for
+  the latest due tick and counts skipped ticks without catch-up bursts. It
+  also corrects an exact-nanosecond boundary case. `run_paced_loop` is now
+  the loop shared by `run_publisher_check` and the synthetic harness.
+- **Pre-sampled publication** (`pacing="presample"`, harness default):
+  physics, then sample, neutral check, projection, validation and JSON
+  encoding (`StatePublisher.prepare`), then sleep to the deadline, then
+  `publish_prepared` stamps and hands off. The simulator thread does not
+  step or write between sampling and stamping. `publish_prepared` latches a
+  fault if the simulation counters changed, so the published state is still
+  the current simulator state at the stamped instant. The stamp is spliced
+  into the pre-encoded payload. Output is byte-identical to `encode(frame)`
+  (randomized test) and to the legacy path at the same stamp. A prepared
+  frame consumes no sequence number until it is committed. The wire schema,
+  fields, validation, sequence and neutral-check semantics are unchanged.
+  `pacing="at_deadline"` reproduces the recorded loop. `after_step` is
+  unchanged for every other caller.
+- **GC policy** for the measured loop only (`gc_policy`, harness default
+  `freeze`). After warm-up and receiver connection, it runs one full
+  collection and then `gc.freeze()`. Later automatic generation-2 passes
+  traverse only objects that survived since the freeze, and automatic
+  collection stays on. Risk: cycles that become garbage among frozen objects
+  are not reclaimed until the policy stops. The policy unfreezes on exit
+  unless something else had frozen objects first. `freeze_manual` (opt-in)
+  also disables automatic generation-2 passes and runs `gc.collect(2)` right
+  after a publication every `gc_manual_interval` frames (default 1,800).
+  `default` keeps interpreter behavior. Every policy records per-generation
+  pause counts, totals and the 20 longest pauses in `metadata.json`.
+- The measured window now opens when the first tick's pre-deadline work is
+  done. Before, tick 0's deadline came before its own physics, so the next
+  several ticks started late. That transient is negligible in an hour but
+  can set p99 in a 12–20 s diagnostic. Every later deadline is absolute.
+- The publish log gains `deadline_lag_ms` (stamp minus scheduled tick). The
+  analyzer reports its median, p99 and maximum for attribution only; the
+  screen is unchanged. Metadata records `pacing_mode`, `gc`,
+  `overrun_ticks` and `wake_late_ms_max`. `spin_us` (0..2000, default 0)
+  optionally busy-waits the final microseconds of a sleep. It stays off on
+  Linux, where wake-up is about 0.06 ms and spinning holds the GIL.
+- `run_scene.py` exposes `--publisher-pacing`, `--publisher-gc` and
+  `--publisher-collector`.
+
+The guarded handle cache from #170 is **not** used. It would shorten readback
+(9.6 → 6.5 ms median in its profile) and add slack. With pre-sampling,
+readback duration no longer enters the stamp unless a tick overruns. The cache
+remains experimental, is wired only into the joined service, and is the next
+lever if the rerun shows overruns.
+
+### Synthetic host-only results (not qualification)
+
+`python -m isaac.publisher.host_timing` drives the production
+`StatePublisher` and `run_paced_loop` with a synthetic 43-joint/60-object
+source. The source's costs are assumptions calibrated to the retained medians:
+physics 7.3 ms/step + Exp(0.3); readback 11.0 ms + Exp(0.6); a 1% tail of
++2–6 ms on each; encoding 1 ms. All runs are `source_kind: synthetic`, so the
+analyzer cannot pass them. The [derived record](publisher/host-timing-synthetic.json)
+keeps parameters, normalized source hashes and raw-summary/CSV hashes.
+
+**Virtual-clock hour** (deterministic, same seed and cost sequence; 0.06 ms
++ Exp(0.02) modeled wake-up; excludes real GC and scheduling):
+
+| Pacing | p50 | p99 | p99.9 | max | Intervals > 3.333 ms | Deadline lag p99 |
+|---|---:|---:|---:|---:|---:|---:|
+| `at_deadline` (recorded loop) | 0.425 | **4.150** | 6.076 | 8.799 | 1,783 / 108,000 | 15.676 |
+| `presample` | 0.014 | **0.150** | 1.917 | 6.082 | 34 / 108,000 | 0.166 |
+
+Milliseconds. The model's legacy p99 of 4.15 ms is close to the first hour's
+measured 3.58 ms, which supports the hypothesis without proving it.
+Sensitivity (600 virtual seconds each) moves presample p99 to 1.477 ms with
+doubled readback jitter, 0.995 ms with a 3% tail, 1.949 ms at 8.3 ms/step and
+2.889 ms at 9.0 ms/step. As slack shrinks, overruns rather than readback
+spread set the tail, and pre-sampling cannot remove those.
+
+**Isolated GC pause probe** (this laptop, synthetic 1.5M-object live heap,
+600,000 surviving allocations): default policy, one automatic generation-2
+pause of 98.6 ms; `freeze`, automatic passes with 19.3 ms maximum,
+which scale with post-freeze survivors only; `freeze_manual`, no automatic
+pass, and an explicit safe-point collection of 27.8 ms. The publish path
+itself leaves 0.0 (legacy) and −0.003 (pre-sampled) net GC-tracked
+containers per frame (allocation probe, collection disabled), so frames do
+not feed generation 2.
+
+**Wall clock** (this laptop, Python 3.12, perf_counter clock, a validating
+in-process receiver thread, a 1.5M-object ballast heap, 60 s per run in ABBA
+order; another workload was running on the shared host):
+
+| Order | Configuration | p50 | p99 | max | Intervals > 3.333 ms | Missed | Deadline lag p99 |
+|---:|---|---:|---:|---:|---:|---:|---:|
+| 0 | legacy | 0.516 | 4.838 | 15.587 | 42 / 1,800 | 0 | 15.846 |
+| 1 | presample | 0.222 | 1.270 | 2.632 | 0 / 1,800 | 0 | 1.179 |
+| 2 | presample + freeze | 0.225 | 0.991 | 19.079 | 5 / 1,800 | 0 | 0.974 |
+| 3 | presample + freeze_manual | 0.218 | 1.415 | 8.576 | 6 / 1,800 | 0 | 1.294 |
+| 4 | presample + freeze_manual | 0.202 | 1.746 | 5.463 | 5 / 1,800 | 0 | 1.487 |
+| 5 | presample + freeze | 0.183 | 2.501 | 17.982 | 11 / 1,799 | 1 | 1.930 |
+| 6 | presample | 0.151 | 2.456 | 21.208 | 16 / 1,800 | 0 | 2.614 |
+| 7 | legacy | 0.552 | 5.127 | 21.231 | 58 / 1,800 | 0 | 16.709 |
+
+Pre-sampled runs had lower p99 than both legacy runs, but the spread between
+repeats of the same configuration is as large as the differences between
+policies. No automatic generation-2 pass occurred in any wall run, and sleep
+wake-ups reached 16.5 ms late. These runs show that pre-sampling removes the
+readback-driven lag (legacy lag p99 about 16 ms, the readback itself). They do
+not rank the GC policies or predict the Linux host. The in-process receiver
+recorded 1–3 mailbox replacements in most runs, consistent with the GIL
+competition expected from a thread receiver. An earlier run of the same
+loop under heavier load, before the final harness revision and not retained
+as evidence, was dominated by wake-ups up to 126 ms late.
+
+### Native rerun procedure (remote Linux host)
+
+Use the approved Isaac image, pinned assets, the canonical layout and the same
+scene runner flags as the recorded hours, so the scene hash
+`3b6e8f9a…119e` and the snapshot binding match. Keep `--network none`, a fresh
+ignored output directory and no competing task GPU workload. Record
+`nproc`, load average and the CPU governor before and after.
+
+1. Source check: in the repository's validation environment, run
+   `python -m pytest -q tests/isaac/test_publisher_pacing.py tests/isaac/test_publisher_schema.py tests/isaac/test_publisher_rate.py`.
+   Record the commit and the SHA-256 of `isaac/publisher/{pacing,runtime,protocol,benchmark,analyze}.py`.
+2. Optional host characterization with the image's Python (no Isaac):
+   `PYTHONPATH=/repo /isaac-sim/python.sh -m isaac.publisher.host_timing --output <ignored>/host-timing --seconds 60`.
+   Keep it as host timing, not qualification.
+3. Retained-evidence attribution: for each recorded hour's `publish.csv`,
+   compute the fraction of intervals over 3.333 ms whose error is within
+   0.5 ms of |Δ`serialize_ms`|:
+   ```python
+   import csv; r=list(csv.DictReader(open("publish.csv"))); t=[int(x["host_monotonic_ns"]) for x in r]; s=[float(x["serialize_ms"]) for x in r]
+   bad=[i for i in range(1,len(r)) if abs((t[i]-t[i-1])/1e6-1000/30)>1000/300]
+   print(len(bad), sum(abs(abs((t[i]-t[i-1])/1e6-1000/30)-abs(s[i]-s[i-1]))<.5 for i in bad)/max(1,len(bad)))
+   ```
+   A high fraction confirms readback variation; a low one points to overruns or scheduling.
+4. 20-second diagnostic, which must report `rate_screen: false`:
+   `run_scene.py … --reset-check --skip-reach --publisher-seconds 20 --publisher-collector process`.
+   The defaults are `--publisher-pacing presample --publisher-gc freeze`.
+   Check `deadline_lag_p99_ms`, `overrun_ticks`, `wake_late_ms_max` and `metadata.json → gc` before committing to the hour.
+5. Hour, in a fresh process with the same flags and `--publisher-seconds 3600`.
+   Retain the complete run whatever the outcome, and run the independent
+   `python -m isaac.publisher.analyze` recomputation and JSON Schema
+   validation of both samples as before.
+6. Optional bounded control in separate fresh processes:
+   `--publisher-pacing at_deadline --publisher-gc default` against the
+   defaults, in ABBA order, for 120 s each. It is engineering evidence only
+   and never replaces the hour.
+
+**What the rerun must show to pass the unchanged screen:** a completed live
+hour of at least 3,600 s, p99 absolute period error ≤ 3.333333 ms, zero
+missed deadlines, zero queue overwrites, no gap above 250 ms, every frame
+received with contiguous sequence and passing the runtime contract, and no
+publisher fault. Diagnostics should show `deadline_lag_p99_ms` well under
+1 ms. If it does not, ticks are overrunning: physics + readback + encoding
+exceeded the period, and readback cost (#170 cache) or physics cost is the
+next lever, not pacing. If GC pauses dominate `longest_pauses`, compare
+`freeze_manual` in a bounded run first. Do not relax a threshold, discard a
+failed run or infer an hour from a short run.
+
+Windows verification of this change: the 27 new pacing tests and the existing
+publisher, projection, binding, private-timing, view-observation,
+same-iteration and E2E service tests passed (224 passed, 2 platform skips). The
+full suite, after the normal fixture-generation step, reported 958 passed, 32
+explicit platform/dependency skips (websockets/Unix/symlink/locked-CI) and one
+failure. That failure, `test_local_release_tag_matches_exact_commit_and_detects_retarget`,
+needs `git` on `PATH` and passed when rerun with Git available. All 89 schemas
+and 14 synthetic examples validated.
