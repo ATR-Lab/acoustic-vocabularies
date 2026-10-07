@@ -193,8 +193,8 @@ def test_bank_id_set_guard():
 def tree(tmp_path):
     root = tmp_path / "tree"
     (root / "a" / "b").mkdir(parents=True)
-    (root / "a" / "b" / "x.jsonl").write_text('{"x": 1}\n', encoding="utf-8")
-    (root / "top.csv").write_text("h\n1\n", encoding="utf-8")
+    (root / "a" / "b" / "x.jsonl").write_bytes(b'{"x": 1}\n')  # bytes: no CRLF on Windows
+    (root / "top.csv").write_bytes(b"h\n1\n")
     yield root
     make_writable(root)
 
