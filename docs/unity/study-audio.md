@@ -11,6 +11,11 @@ mono, signed 16-bit, 48 kHz. The loader validates both Study A's 32 combinations
 and Study B's 1,536 profile/rank combinations without returning answer manifests,
 allocations or schedules through its public audio API. DEMO loading requires an
 explicit engineering opt-in. A post-load read rechecks the manifest/file tree.
+Study A's `book` record is closed to the four SHA-256 fields of
+[`package-format.md`](../interfaces/package-format.md) section 2 (`frozen_head`,
+`snapshot_sha256`, `renderer_hash`, `validator_hash`); a missing, extra or
+non-hash field is refused. The loader checks their form and their coverage by
+`package_sha256`; it cannot re-verify them against the store.
 
 `MessageComposer` concatenates verified action PCM, 9,600 zero samples and verified
 referent PCM. Stored trained phrases reproduce exactly; novel buffers are available

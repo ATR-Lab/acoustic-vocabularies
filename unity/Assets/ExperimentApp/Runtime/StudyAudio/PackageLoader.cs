@@ -144,7 +144,8 @@ namespace AcousticVocab.StudyAudio
             if(study=="A")
             {
                 PackageRules.Require(PackageRules.Profiles.Contains((string)manifest["profile"]));
-                PackageRules.Keys(manifest["book"],"frozen_head","snapshot_sha256");
+                // Closed per package.schema.json: all four are required SHA-256 values.
+                PackageRules.Keys(manifest["book"],"frozen_head","snapshot_sha256","renderer_hash","validator_hash");
                 foreach(var p in ((JObject)manifest["book"]).Properties()) PackageRules.Require(PackageRules.IsHash((string)p.Value));
             }
             else
