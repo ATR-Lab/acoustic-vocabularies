@@ -1,0 +1,153 @@
+{
+  "format": "av-generation/context-template",
+  "format_version": 1,
+  "mode": "B",
+  "sections": {
+    "checks": [
+      "the output is exactly one JSON object with the schema fields and allowed values",
+      "each event lasts at least 60 ms after the gaps are removed",
+      "no sample clips after normalization",
+      "no reserved signal",
+      "the waveform differs from every option retained for this atom",
+      "the feature distance to every retained option of another atom is at least task.separation_threshold"
+    ],
+    "codes": {
+      "E_CLIP": "a sample clips after normalization",
+      "E_DOMAIN": "a value is not an allowed value",
+      "E_DUPLICATE": "the waveform equals an existing motif",
+      "E_EVENT_SHORT": "an event is shorter than 60 ms",
+      "E_JSON": "the output is not exactly one JSON object",
+      "E_NONFINITE": "the waveform has non-finite samples",
+      "E_RESERVED": "the motif collides with a reserved signal",
+      "E_SCHEMA": "a field is missing, extra or of the wrong type",
+      "E_SEPARATION": "the feature distance to an existing motif is below the threshold"
+    },
+    "features": {
+      "distance": "sqrt(sum((x_j - y_j)^2) / 12)",
+      "normalization": {
+        "amplitude": "(a - 0.6) / 0.4",
+        "gap": "(g - 20) / 40",
+        "pitch": "(p + 6) / 12",
+        "proportion": "(w / sum(rhythm_weights) - 1/9) / (2/3 - 1/9)",
+        "total": "(total_ms - 450) / 450"
+      },
+      "order": [
+        "pitch_1",
+        "pitch_2",
+        "pitch_3",
+        "total",
+        "proportion_1",
+        "proportion_2",
+        "proportion_3",
+        "gap_1",
+        "gap_2",
+        "amplitude_1",
+        "amplitude_2",
+        "amplitude_3"
+      ]
+    },
+    "feedback_fields": {
+      "candidates": "earlier proposals for this atom and profile, with their checks",
+      "retained": "options already retained in this attempt and profile",
+      "same_atom": "retained for the current atom"
+    },
+    "grammar": {
+      "events_per_motif": 3,
+      "message": [
+        "action motif",
+        "200 ms silence",
+        "referent motif"
+      ]
+    },
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "amplitudes": {
+          "description": "Relative amplitude of each event.",
+          "items": {
+            "enum": [
+              0.6,
+              0.8,
+              1.0
+            ],
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "gaps_ms": {
+          "description": "Silence after event 1 and after event 2, in milliseconds.",
+          "items": {
+            "enum": [
+              20,
+              40,
+              60
+            ],
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "pitches": {
+          "description": "Semitone offset of each event from the profile base frequency.",
+          "items": {
+            "enum": [
+              -6,
+              -5,
+              -4,
+              -3,
+              -2,
+              -1,
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "type": "integer"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "rhythm_weights": {
+          "description": "Relative share of (total_ms - gaps) given to each event.",
+          "items": {
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "type": "integer"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "total_ms": {
+          "description": "Motif length in milliseconds, including both gaps.",
+          "enum": [
+            450,
+            600,
+            750,
+            900
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total_ms",
+        "pitches",
+        "rhythm_weights",
+        "gaps_ms",
+        "amplitudes"
+      ],
+      "type": "object"
+    }
+  }
+}

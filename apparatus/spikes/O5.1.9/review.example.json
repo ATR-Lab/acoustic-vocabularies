@@ -1,0 +1,12 @@
+{
+  "gate": "G1",
+  "status": "pending",
+  "adr_decisions": {"001":null,"002":null,"003":null,"004":null,"005":null,"006":null,"007":null},
+  "evidence_reviewed": [],
+  "protocol_version": null,
+  "version_pins_sha256": null,
+  "open_conditions": [],
+  "re_review_date": null,
+  "signoff_issue_links": [],
+  "phase_2_authorized": false
+}

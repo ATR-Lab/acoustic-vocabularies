@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/acoustic-vocab/station.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "allowed_client",
+    "allowed_uid",
+    "command_port",
+    "dds_domain_id",
+    "gpu_index",
+    "image_digest",
+    "ipc_mode",
+    "layout_sha256",
+    "logical_host",
+    "network_mode",
+    "publisher_hz",
+    "publisher_port",
+    "reset_snapshot_sha256",
+    "ros_domain_id",
+    "scene_sha256",
+    "source_revision",
+    "station_id",
+    "unitree_dds_enabled",
+    "version"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "station_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "logical_host": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "gpu_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63
+    },
+    "publisher_port": {
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    "command_port": {
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    "dds_domain_id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 232
+    },
+    "ros_domain_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 232
+    },
+    "allowed_client": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "ipv4"
+        },
+        {
+          "type": "string",
+          "format": "ipv6"
+        }
+      ]
+    },
+    "allowed_uid": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "scene_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reset_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "layout_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "image_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "publisher_hz": {
+      "type": "integer",
+      "enum": [
+        30,
+        60
+      ]
+    },
+    "network_mode": {
+      "const": "none"
+    },
+    "ipc_mode": {
+      "const": "private"
+    },
+    "unitree_dds_enabled": {
+      "const": false
+    }
+  },
+  "description": "Private station syntax. Python validator additionally enforces loopback peers, canonical bytes and fleet uniqueness."
+}

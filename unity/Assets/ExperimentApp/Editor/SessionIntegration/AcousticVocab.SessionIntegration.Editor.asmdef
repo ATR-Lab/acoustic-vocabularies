@@ -1,0 +1,19 @@
+{
+  "name": "AcousticVocab.SessionIntegration.Editor",
+  "references": [
+    "AcousticVocab.SessionIntegration",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.FrameBudget",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.ResponsePanel.Editor",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateIntegration.Editor",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.Orientation",
+    "AcousticVocab.Workcell"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

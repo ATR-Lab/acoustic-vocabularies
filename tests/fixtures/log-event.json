@@ -1,0 +1,1 @@
+{"schema_version":"0.1.0","protocol_version":"unverified-fixture","apparatus_version":"engineering-only","session_id":"00000000000000000000000000000000","event_seq":0,"event_type":"engineering_fixture","host_mono_ms":0,"clock_id":"fixture-clock","payload":{"code":"fixture"}}

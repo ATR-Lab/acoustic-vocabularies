@@ -1,0 +1,593 @@
+{
+  "apparatus": {
+    "fallback_bank_hash": null,
+    "model_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "prompt_hash": null,
+    "renderer_recipe_schema_hash": "936cd8b5f2754535a67d88bf35102de9f2a03804c576d2076cfb67724a21acd1",
+    "runtime_precision": null
+  },
+  "description": "DRAFT - NOT FROZEN. Example of the G4 generation freeze manifest (#25): code and repository values are computed from this commit and checked by the CI freeze guard; GPU-host, restricted-storage and human values are PENDING (null) with the command that fills them. Not signed off and not tagged: never use it for confirmatory runs. Format and procedure: generation/docs/freeze.md.",
+  "format": "av-generation/freeze-manifest",
+  "format_version": 1,
+  "freeze_version": "1.0",
+  "items": [
+    {
+      "category": "config",
+      "guard": "config",
+      "key": "config.frozen_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): GenerationConfig.frozen_sha256() of the frozen config (config.document); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "config",
+      "guard": "config",
+      "key": "config.document",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): the frozen generation config document (after the O6.2.2 threshold decision); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "renderer",
+      "guard": "code",
+      "key": "renderer.version",
+      "path": null,
+      "sha256": null,
+      "source": "av_sound.renderer.RENDERER_VERSION (renderer spec D10; 1.0.0 from G4 on)",
+      "value": "0.1.0"
+    },
+    {
+      "category": "renderer",
+      "guard": "code",
+      "key": "renderer.hash",
+      "path": null,
+      "sha256": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d",
+      "source": "av_sound.version.renderer_hash(): SHA-256 of the canonical renderer.implementation object (renderer spec D10)",
+      "value": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d"
+    },
+    {
+      "category": "renderer",
+      "guard": "code",
+      "key": "renderer.recipe_schema_hash",
+      "path": null,
+      "sha256": "936cd8b5f2754535a67d88bf35102de9f2a03804c576d2076cfb67724a21acd1",
+      "source": "av_sound.version.renderer_recipe_schema_hash(): SHA-256 of {recipe_schema_sha256, renderer_hash} (renderer spec D10; apparatus field renderer_recipe_schema_hash)",
+      "value": "936cd8b5f2754535a67d88bf35102de9f2a03804c576d2076cfb67724a21acd1"
+    },
+    {
+      "category": "renderer",
+      "guard": "code",
+      "key": "renderer.implementation",
+      "path": null,
+      "sha256": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d",
+      "source": "av_sound.version.renderer_manifest(): versions, byte-path constants (480/1440-sample attack/release envelope, RMS target 7336 LSB, full scale 32767, no limiter, 60-ms minimum event), table and code digests",
+      "value": {
+        "code": {
+          "renderer.py": "fb63db6b059df2c9f761b54a9109f23e2db94b48f8a03aa4f29d249f0cc3aad6",
+          "tables.py": "433ec23751c88f600c4d346cc9139a6c2b4e303d51018e0b3385c550fef08144",
+          "wav.py": "3de15191ee2d5f5a7eae17116ee776aeed9d73d0736f3e611af58763ca30bff1"
+        },
+        "constants": {
+          "attack_samples": 480,
+          "bits_per_sample": 16,
+          "env_q": 30,
+          "full_scale": 32767,
+          "gain_frac_bits": 32,
+          "harmonic_weights_x20": [
+            20,
+            3,
+            1
+          ],
+          "min_event_samples": 2880,
+          "phase_bits": 32,
+          "profile_f0_hz": {
+            "P1": 300,
+            "P2": 450,
+            "P3": 675
+          },
+          "release_samples": 1440,
+          "rms_target": 7336,
+          "sample_rate": 48000,
+          "sine_bits": 16,
+          "sine_q": 24,
+          "work_shift": 40
+        },
+        "renderer_version": "0.1.0",
+        "spec_version": "0.1.0",
+        "tables": {
+          "attack_int32le": "7fbc9783264314af81e078b6759a67170904a55f935f207f0ced7c50b3a3af34",
+          "increment_uint32le": "14864688cdbb9cacbd6f633485b15c902a7416f0e38a2b8c2616c5b809bdd5f0",
+          "release_int32le": "2b2b6c3486da35d3a73cacb83ae1d45bdc5ce9a2d7b7eaeb6cbfe4b36858d3ec",
+          "sine_int32le": "7507c6a534ec1b3bb8bd7e2650f4dad6e0d04adf3d0000cbb2472985b49d2b21"
+        }
+      }
+    },
+    {
+      "category": "renderer",
+      "guard": "file",
+      "key": "renderer.spec_sha256",
+      "path": "sound/docs/renderer-spec.md",
+      "sha256": "25bb0aaa8ffa48cb34e2847191a69c9a68e1b321471053f643d1c2e88c2b9cdb",
+      "source": "SHA-256 of sound/docs/renderer-spec.md, the implementation manifest of Study A protocol section 3.2: D1 sample rounding, D2 envelope, D6 normalization target, D7 limiter policy (none: overflow is rejected as E_CLIP)",
+      "value": "25bb0aaa8ffa48cb34e2847191a69c9a68e1b321471053f643d1c2e88c2b9cdb"
+    },
+    {
+      "category": "renderer",
+      "guard": "file",
+      "key": "renderer.golden_manifest_sha256",
+      "path": "tests/golden/manifest.json",
+      "sha256": "508bacd89f67b464ce087a9a2e9fdaf407363e2f27ba9977069a2aadb3251cfa",
+      "source": "SHA-256 of tests/golden/manifest.json: cross-machine golden hashes of renderer, composer, nonlexical assets and store (#12)",
+      "value": "508bacd89f67b464ce087a9a2e9fdaf407363e2f27ba9977069a2aadb3251cfa"
+    },
+    {
+      "category": "validator",
+      "guard": "code",
+      "key": "validator.version",
+      "path": null,
+      "sha256": null,
+      "source": "av_sound.validate.VALIDATOR_VERSION",
+      "value": "0.1.0"
+    },
+    {
+      "category": "validator",
+      "guard": "code",
+      "key": "validator.hash",
+      "path": null,
+      "sha256": "fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650",
+      "source": "av_sound.store.validator_code_hash(): validator version, code digests of the admissibility modules and the recipe schema digest",
+      "value": "fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650"
+    },
+    {
+      "category": "validator",
+      "guard": "file",
+      "key": "validator.reserved_sha256",
+      "path": "sound/reserved/registry.json",
+      "sha256": "d9869d6af3fb467bce77ea1330761b0544f820a66cdd999766ae94e55dd76932",
+      "source": "av_sound.fallback.reserved_digest of sound/reserved/registry.json (E_RESERVED; equals the store's and the fallback manifest's reserved_sha256)",
+      "value": "d9869d6af3fb467bce77ea1330761b0544f820a66cdd999766ae94e55dd76932"
+    },
+    {
+      "category": "separation",
+      "guard": "file",
+      "key": "separation.threshold",
+      "path": "sound/config/validator.json",
+      "sha256": null,
+      "source": "separation_threshold of sound/config/validator.json: one threshold for every method and Study B bank (Study A protocol section 3.2; kept or revised by O6.2.2)",
+      "value": "0.10"
+    },
+    {
+      "category": "separation",
+      "guard": "recorded",
+      "key": "separation.evidence_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (human): O6.2.2: SHA-256 of the separation-threshold summary of the listening tool (#23), kept in restricted storage, with the decision (0.10 kept or revised) on #25; then `python -m av_generation.freeze record <key> --value <json> --source <text>`",
+      "value": null
+    },
+    {
+      "category": "model",
+      "guard": "code",
+      "key": "model.id",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.MODEL_ID (Study A protocol section 3.6)",
+      "value": "Qwen/Qwen2.5-7B-Instruct"
+    },
+    {
+      "category": "model",
+      "guard": "code",
+      "key": "model.revision",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.MODEL_REVISION: pinned Hugging Face revision; the LLM manifest (#16) must match it",
+      "value": "a09a35458c702b33eeacc393d103063234e8bc28"
+    },
+    {
+      "category": "model",
+      "guard": "recorded",
+      "key": "model.tokenizer_revision",
+      "path": null,
+      "sha256": null,
+      "source": "Development-time Hugging Face metadata: tokenizer.json and tokenizer_config.json live in the model repository at the pinned revision. To confirm at G4 against the LLM manifest (#16)",
+      "value": "a09a35458c702b33eeacc393d103063234e8bc28"
+    },
+    {
+      "category": "model",
+      "guard": "recorded",
+      "key": "model.weights_sha256",
+      "path": null,
+      "sha256": "2eb5af888340e98670e9a73bc565bfaa941a337d240796f00a2f2c077d2f1b81",
+      "source": "Development-time Hugging Face API metadata at the pinned revision: file_set_sha256 of the LFS SHA-256 of the 4 model-0000k-of-00004.safetensors files. To confirm at G4 on the GPU host: python -m av_generation.freeze weights <model dir>",
+      "value": "2eb5af888340e98670e9a73bc565bfaa941a337d240796f00a2f2c077d2f1b81"
+    },
+    {
+      "category": "model",
+      "guard": "recorded",
+      "key": "model.license",
+      "path": null,
+      "sha256": null,
+      "source": "Development-time Hugging Face API metadata at the pinned revision (license tag and LICENSE file). To confirm at G4 against the LLM manifest (#16)",
+      "value": "apache-2.0"
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.vllm_version",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): `python -c \"import vllm; print(vllm.__version__)\"` in the server environment; then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.cuda_version",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): `python -c \"import torch; print(torch.version.cuda)\"` in the server environment; then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.driver_version",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): `nvidia-smi --query-gpu=driver_version --format=csv,noheader`; then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.gpu",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader`; then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.precision",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): dtype the server runs (planned bfloat16), from the LLM manifest and server log; then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.max_model_len",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): vLLM --max-model-len from the LLM manifest (at least 16896 = 16384 in + 512 out); then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.chat_template_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): SHA-256 of the chat template the server applies, from the LLM manifest (#16); then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "decoding",
+      "guard": "code",
+      "key": "decoding.temperature",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.FROZEN_DECODING.temperature (Study A protocol section 3.6)",
+      "value": 0.7
+    },
+    {
+      "category": "decoding",
+      "guard": "code",
+      "key": "decoding.top_p",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.FROZEN_DECODING.top_p (Study A protocol section 3.6)",
+      "value": 0.9
+    },
+    {
+      "category": "decoding",
+      "guard": "code",
+      "key": "decoding.top_k",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.FROZEN_DECODING.top_k (Study A protocol section 3.6)",
+      "value": 50
+    },
+    {
+      "category": "decoding",
+      "guard": "code",
+      "key": "decoding.repetition_penalty",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.FROZEN_DECODING.repetition_penalty (Study A protocol section 3.6)",
+      "value": 1.0
+    },
+    {
+      "category": "decoding",
+      "guard": "code",
+      "key": "decoding.max_tokens",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.FROZEN_DECODING.max_tokens (Study A protocol section 3.6)",
+      "value": 512
+    },
+    {
+      "category": "decoding",
+      "guard": "code",
+      "key": "decoding.max_input_tokens",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.constants.MAX_INPUT_TOKENS: longer prompts end as overflow_input without a model call (Study A protocol section 3.6)",
+      "value": 16384
+    },
+    {
+      "category": "decoding",
+      "guard": "recorded",
+      "key": "decoding.implementation",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (GPU host): structured-output path of the frozen runtime (response_format json_schema and its guided-decoding backend), as verified in development (#16); then `python -m av_generation.freeze record <key> --value <json> --source <text>` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "schema",
+      "guard": "config",
+      "key": "schema.decoding_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): jsonio.schema_sha256 of the decoding schema (#16, #17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "prompts",
+      "guard": "config",
+      "key": "prompts.a3_sha256",
+      "path": "generation/prompts/a3",
+      "sha256": null,
+      "source": "PENDING (G4): PromptSet.a3_sha256 (file-set hash of generation/prompts/a3, #17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "prompts",
+      "guard": "config",
+      "key": "prompts.b_sha256",
+      "path": "generation/prompts/b",
+      "sha256": null,
+      "source": "PENDING (G4): PromptSet.b_sha256 (file-set hash of generation/prompts/b, #17); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "meanings",
+      "guard": "config",
+      "key": "meanings.sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): MeaningSet.sha256() of the frozen meaning set (restricted storage); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "llm",
+      "guard": "config",
+      "key": "llm.manifest_sha256",
+      "path": "generation/llm/manifest.json",
+      "sha256": null,
+      "source": "PENDING (G4): file SHA-256 of the LLM manifest (#16); copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "seeds",
+      "guard": "code",
+      "key": "seeds.function",
+      "path": null,
+      "sha256": null,
+      "source": "av_generation.genconfig.SEED_FUNCTION: seeds.derive_seed = first 8 bytes of SHA-256 of the |-joined key, unsigned big-endian",
+      "value": "sha256-first8-be-unsigned-v1"
+    },
+    {
+      "category": "seeds",
+      "guard": "code",
+      "key": "seeds.namespaces",
+      "path": null,
+      "sha256": "9b2b1e13fc8c2bc05edd974c48dd05f7a88d248c0148eae97a34e965b5888eb5",
+      "source": "av_generation.seeds.SeedNamespace and the key formats of seeds.a*_seed_key and b_seed_key (generation/docs/architecture.md section 6)",
+      "value": {
+        "confirmatory_bank_ids": "bank-C[0-9]{3}",
+        "key_namespaces": [
+          "A1",
+          "A2",
+          "A3",
+          "B",
+          "BOT",
+          "PANEL",
+          "THRESHOLD"
+        ],
+        "other_keys": "PANEL|<set_ns>|..., BOT|<run>|..., THRESHOLD|<set>|...",
+        "pilot_bank_ids": "bank-P[0-9]{3}",
+        "study_a_batch_ns": "BatchConfig.seed_namespace: the batch ID (A-P01.. pilot, A-C01.. confirmatory) or a new namespace for a rebuilt batch",
+        "study_a_key": "<A1|A2|A3>|<batch_ns>|<atom>|<round>|<slot>",
+        "study_b_bank_ns": "bank manifest seed_namespace: the bank ID or a new namespace for every rebuild under a new bank_version",
+        "study_b_key": "B|<bank_ns>|<attempt>|<profile>|<atom>|<slot>"
+      }
+    },
+    {
+      "category": "seeds",
+      "guard": "code",
+      "key": "seeds.reference_digest",
+      "path": null,
+      "sha256": "e32e17ead756e71d93e2a724e7c8aaacf28ddb565ec51f41af3a3aa887c151f9",
+      "source": "av_generation.seeds.seeds_digest over freeze.reference_seed_keys() (2,880 keys under A-C01 and bank-C001): changes when the derivation changes",
+      "value": "e32e17ead756e71d93e2a724e7c8aaacf28ddb565ec51f41af3a3aa887c151f9"
+    },
+    {
+      "category": "budget",
+      "guard": "code",
+      "key": "budget.study_a",
+      "path": null,
+      "sha256": "946e2135d8dcd3096b2ba70c4be17c0edf62dac760bf1fc882d09e1bf2454996",
+      "source": "av_generation.constants (Study A protocol section 3.3): 4 rounds x 3 slots of 40 s, 20-s rating slots, 20 min per atom, 4 atoms per 90-min booking",
+      "value": {
+        "appointment_booking_ms": 5400000,
+        "appointment_budget_ms": 4800000,
+        "atom_budget_ms": 1200000,
+        "atoms_per_appointment": 4,
+        "proposal_window_ms": 120000,
+        "raters_per_panel": 3,
+        "rating_slot_ms": 20000,
+        "rating_slots_per_rater": 576,
+        "rating_slots_per_round": 9,
+        "rating_window_ms": 180000,
+        "reference_onset_ms": 2000,
+        "round_budget_ms": 300000,
+        "rounds_per_atom": 4,
+        "slot_cap_ms": 40000,
+        "slots_per_atom": 12,
+        "slots_per_batch": 576,
+        "slots_per_round": 3
+      }
+    },
+    {
+      "category": "budget",
+      "guard": "code",
+      "key": "budget.study_b",
+      "path": null,
+      "sha256": "9572d9d42d6b65d8a3e4563d663bfe5d29d30cc9e8a8387b77b59bd3e77970f5",
+      "source": "av_generation.constants and freeze.STUDY_B_RULES_TEXT (Study B protocol section 4): 12 slots per cell, 4 retained (3 shown + 1 reserve), 576 slots per attempt, 4 attempts; implemented by the bank builder (#26, in generation.code)",
+      "value": {
+        "attempts": "a cell without 4 retained options after its slots fails the attempt; the next attempt is independently seeded; the first complete attempt is used; no cells are mixed across attempts; after the last failed attempt the bank is unavailable",
+        "cells": 48,
+        "feedback": "meanings, schema and profile constraints, validation history and the retained options; no rater, participant or test feedback",
+        "max_attempts": 4,
+        "max_slots": 2304,
+        "menu": "retained options 1-3 are the displayed menu; option 4 is the reserve",
+        "options_per_cell": 4,
+        "reserve": "the reserve may replace an unusable unheard, uncommitted menu option only before either partner hears that wave's menu (recorded bank amendment, rechecked)",
+        "retention": "per cell, in slot order, retain the first 4 technically valid options whose waveform hashes are distinct in the cell and that pass the checks against every option retained for another atom under that profile",
+        "shown_options": 3,
+        "slot_cap_ms": 40000,
+        "slots": "invalid, duplicate, incompatible, timed-out and malformed proposals consume their slots; no corrective calls beyond the cap",
+        "slots_per_attempt": 576,
+        "slots_per_cell": 12,
+        "traversal": "the 16 atoms in the stored order under each of P1, P2 and P3"
+      }
+    },
+    {
+      "category": "a2",
+      "guard": "code",
+      "key": "a2.rules",
+      "path": null,
+      "sha256": "601b230bc7fef700743081fbbef01e0b1696e6eb473cae50dafaa393cff931e7",
+      "source": "av_generation.constants A2_PITCH_STEPS, A2_CHILD_MUTATIONS and freeze.A2_RULES_TEXT, implemented by av_generation.a2 (Study A protocol section 3.5)",
+      "value": {
+        "child_mutations": [
+          1,
+          2,
+          3
+        ],
+        "children": "child k of rounds 2-4 mutates k distinct coordinates drawn uniformly without replacement",
+        "index_step": "duration, rhythm weight, gap and amplitude move one index up or down with equal probability",
+        "parent": "highest-scoring eligible candidate seen so far; with none, the round is sampled as round 1",
+        "pitch_steps": [
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3
+        ],
+        "reflection": "reflect at the domain ends; a pitch reflected back to its original value takes the nearest legal inward one-semitone step (logged as corrected)",
+        "restarts": "none",
+        "round_1": "uniform: every coordinate drawn uniformly from its allowed values; invalid samples consume their slots (no rejection sampling)",
+        "stream": "one PCG64 stream per slot from A2|<batch_ns>|<atom>|<round>|<slot>"
+      }
+    },
+    {
+      "category": "selector",
+      "guard": "code",
+      "key": "selector.rules",
+      "path": null,
+      "sha256": "47d4b02dbed08a34d5f85f1ddf1f6941a0b63d9f88731199e8bf3d63aec31a25",
+      "source": "av_generation.constants MIN_ACCEPTABLE_COMFORT, FIRST_ATOM_DISTINGUISHABILITY and freeze.SELECTOR_RULES_TEXT, implemented by av_generation.selector and orchestrator (Study A protocol sections 3.3, 3.7)",
+      "value": {
+        "eligible": "technical checks pass and at least min_acceptable_comfort raters mark comfort acceptable",
+        "fallback": "no eligible candidate: first unused bank recipe that passes the book's checks; none passes: the whole fallback book replaces the book (failed generation, method label kept)",
+        "first_atom": "distinguishability fixed to first_atom_distinguishability (no reference)",
+        "first_atom_distinguishability": 4,
+        "incumbent": "highest score among the eligible candidates seen so far; committed after round 4",
+        "min_acceptable_comfort": 2,
+        "missing_comfort": "not_acceptable",
+        "nearest_reference_tie": "lowest committed atom index",
+        "raters": 3,
+        "score": "mean over raters of (association + distinguishability) / 2",
+        "tie": "lowest submission-slot number (slot_index 1..12)"
+      }
+    },
+    {
+      "category": "generation",
+      "guard": "code",
+      "key": "generation.code",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): code digests of the generation modules, computed by `python -m av_generation.freeze build`; left pending in the draft while the parallel generation issues add and change modules",
+      "value": null
+    },
+    {
+      "category": "fallback",
+      "guard": "config",
+      "key": "fallback.bank_hash",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): fallback_bank_hash of the restricted fallback build at the frozen threshold; copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "fallback",
+      "guard": "config",
+      "key": "fallback.books_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): book_sha256 of the P1, P2 and P3 fallback books of that build; copied from the frozen generation-config.json by `python -m av_generation.freeze build` (generation/docs/freeze.md section 6)",
+      "value": null
+    },
+    {
+      "category": "fallback",
+      "guard": "recorded",
+      "key": "fallback.banks_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4): bank_sha256 of the P1, P2 and P3 fallback banks (64 recipes each), filled by `python -m av_generation.freeze build --fallback <restricted manifest>` after re-rendering every recipe",
+      "value": null
+    },
+    {
+      "category": "pilot",
+      "guard": "recorded",
+      "key": "pilot.timing_review",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (human): O6.2.1 panel timing review: panel_sessions, pilot_books, max_atom_minutes, within_budget (20 min per atom) or bookings_extended, reference (issue link); then `python -m av_generation.freeze record <key> --value <json> --source <text>`",
+      "value": null
+    },
+    {
+      "category": "pilot",
+      "guard": "recorded",
+      "key": "pilot.audit_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (human): O6.2.1: {set: SHA-256} of the #24 audit tables of the pilot books; then `python -m av_generation.freeze record <key> --value <json> --source <text>`",
+      "value": null
+    }
+  ],
+  "protocol_version": "0.1",
+  "repo_commit": null,
+  "signoff": [],
+  "status": "draft",
+  "tag": null
+}

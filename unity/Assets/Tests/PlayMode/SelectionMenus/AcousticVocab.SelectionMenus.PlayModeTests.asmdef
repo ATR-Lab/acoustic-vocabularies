@@ -1,0 +1,5 @@
+{
+  "name": "AcousticVocab.SelectionMenus.PlayModeTests",
+  "references": ["AcousticVocab.SelectionMenus", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

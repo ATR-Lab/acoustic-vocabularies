@@ -1,0 +1,19 @@
+{
+  "demo": true,
+  "format": "av-schedules/package-hashes",
+  "format_version": 1,
+  "packages": {
+    "BK-P-6PG4NT": "39e2760469c4dae1bc74ce163c210603ba46ddfce48d041d6e0718b594f5249b",
+    "BK-P-8NJTRJ": "bf40508ee858828d36dd8d8846d77f1f6ee88808f7e2bf0e8dea7fc40cff8a2c",
+    "BK-P-G7FR5K": "883bbfa8844d3f6257acf3c9718bf892dc6250edd53463b5c64a37b2dd9f83b6",
+    "BK-P-GQPYGC": "9c4db6783e5ce3a072f7280af053311b99393d51dacbe48ec7c07bc52e70c6c8",
+    "BK-P-GWM557": "83439dc30bb998340c1947f4b8e1f805b7dd1d7dc91718463b3446dfffa32a49",
+    "BK-P-JX4WNY": "c5514b8003e12c75b92b6b2f2c934582783c6d66d3235d443e19dcf306545697",
+    "BK-P-M46K6Q": "9183c6c7a03c3d52e5d1a84c3897c749417f8f8c9c33da91d3f723c130f096e1",
+    "BK-P-TV655F": "d7a89dca6b3f211574cf2225d1d5b32f0c672862c8ad70adf31f39cd1a760941",
+    "BK-P-VWXK65": "54fde8fda3c84e286dc93e1a5f5dee6418c71707be3d726dc6a67a56d41c120a"
+  },
+  "placeholder": true,
+  "set": "pilot",
+  "study": "A"
+}

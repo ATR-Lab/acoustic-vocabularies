@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Private state-source provisioning",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "scene_sha256", "layout_sha256", "neutral_sha256", "neutral_file", "interpolation_delay_s", "clock"],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "scene_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "layout_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "neutral_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "neutral_file": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\\.json$", "not": {"pattern": "\\.\\."}},
+    "interpolation_delay_s": {"type": "number", "minimum": 0, "maximum": 0.2},
+    "clock": {
+      "type": "object", "additionalProperties": false,
+      "required": ["drift_bound_ppm", "max_echo_age_s", "evidence_sha256"],
+      "properties": {
+        "drift_bound_ppm": {"type": ["number", "null"], "minimum": 0},
+        "max_echo_age_s": {"type": "number", "exclusiveMinimum": 0, "maximum": 5},
+        "evidence_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      },
+      "oneOf": [
+        {"properties": {"drift_bound_ppm": {"type": "null"}, "evidence_sha256": {"type": "null"}}},
+        {"properties": {"drift_bound_ppm": {"type": "number"}, "evidence_sha256": {"type": "string"}}}
+      ]
+    }
+  }
+}
