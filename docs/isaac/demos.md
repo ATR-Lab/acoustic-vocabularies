@@ -44,12 +44,15 @@ logged reset. No result is a semantic response score.
 
 ## Fixed sample and fixed sim-step recording contract
 
-> **Status: software only, not yet re-recorded on Isaac.** The contract below
-> was implemented and unit-tested on Windows while the GPU host was unavailable.
-> The only actual evidence is still the retained suite described under
-> *Bounded grip repair diagnostic*: 4/40 captures passed the earlier host-span
-> timing screen and its index keeps `recording_complete=false`. Neither number
-> changes until the native procedure at the end of this page is run.
+> **Status: not yet recorded on Isaac.** The contract below was implemented and
+> unit-tested on Windows. The native procedure at the end of this page was
+> started at `d185b7c` on 2026-10-07 and stopped at its preflight: 31/32 pairs
+> were feasible (ADD_ONE/tray_D was not), so no fixed-schedule recording was
+> made (*Native run record* below). The fixed sim-step schedule has therefore
+> not been exercised on Isaac. The only actual recording evidence is still the
+> retained suite described under *Bounded grip repair diagnostic*: 4/40 captures
+> passed the earlier host-span timing screen and its index keeps
+> `recording_complete=false`.
 
 Orientation and execution both provisionally use **300 samples at 30 Hz** and a
 **10 s nominal display duration**. These are engineering choices, not approved
@@ -213,7 +216,7 @@ Reproduce the rejection screen in the approved NumPy environment using
 add `--tilted` for the 600-candidate contact-preserving screen. Positive vertex
 intersections reject a candidate; their absence would not establish clearance.
 
-## Supply-cup grasp plan (software only; not yet run on Isaac)
+## Supply-cup grasp plan (native preflight: tray_D infeasible; not yet recorded)
 
 The frozen layout leaves 2.5 mm between the outer supply washers and the cup's
 inner walls, and 3 mm between neighbouring washers. No lateral pinch of a supply
@@ -282,6 +285,25 @@ fingertip extent are declarations from the URDF chain and one pinned vertex,
 not measured mesh extents. Isaac interpolates joints between keyframes, so the
 actual swept path must be screened from measured frames (procedure below).
 
+**Native preflight (d185b7c, 2026-10-07).** Planned against actual PhysX
+Jacobians, ADD_ONE/tray_A, tray_B and tray_C compiled, including the declared
+clearance check. ADD_ONE/tray_D did not; all 32 variants (4 palm yaws x 8 washer
+yaws) were refused:
+
+| Palm yaw | First failing keyframe | Best residual (position / orientation) |
+|---|---|---|
+| 0 | u = 0.06, corridor entry | 4.89 mm / 0.0528 rad |
+| pi/2 | u = 0.64, full-pose placement on tray_D | 11.8 mm / 0.262 rad (8 washer yaws; worst 208 mm) |
+| -pi/2 | u = 0.06, corridor entry | 79.6 mm / 0.836 rad |
+| pi | u = 0.06, corridor entry | 215 mm / 1.29 rad |
+
+The limits are 0.5 mm and 0.008 rad. They were not changed. Under palm yaw pi/2,
+the corridor entry solved with a position residual of 0.499 mm, just inside the
+0.5 mm limit. The pickup corridor is reachable for this yaw, but placing the
+washer on tray_D with the pad posture held is not reachable. A repeat preflight
+gave a byte-identical `preflight.json`. Neither the margin nor the variant set
+was changed to obtain a pass.
+
 **Not covered:**
 
 - REMOVE_ONE's release into the return cup still uses the legacy virtual grip
@@ -290,7 +312,7 @@ actual swept path must be screened from measured frames (procedure below).
 - The retained pinch probe is unchanged failed evidence.
 - No layout change was made.
 
-## Native validation and re-record procedure (pending GPU host)
+## Native validation and re-record procedure (run 2026-10-07: stopped at step 2)
 
 Run this only when the shared Isaac host is free. Use the approved isolated
 runtime from `isaac/scenes/README.md`: pinned image, `--network none`, source
@@ -341,3 +363,31 @@ integration overlay is needed because `isaac.demos`, `isaac.reset` and
    hashes, and revisit the timing-screen and `recording_complete` statements.
 8. Update the Unity #62/#66 consumers to the new capture fields and
    sample-index host pacing before any orientation or fallback use.
+
+### Native run record (2026-10-07, d185b7c)
+
+The host was shared, not free. Other users' processes kept the GPU at 81-83%
+before launch, and at 76-99% (median 91%) during each run. They were not
+touched. Contention affects wall time only. The source was a `git archive` of
+`d185b7c42d79e09c832beda44307b35979ca81b9`, with its embedded commit id and all
+2059 files byte-verified on the host before each launch. The runtime was the
+approved rendered-cache image (`sha256:38495e05...`, Isaac Sim 5.1.0) with the
+isolation flags above. Both containers were removed after exit. Sanitized
+hashes are in `demo-diagnostics.json` under `native_validation_d185b7c`. Raw
+outputs stay private on the host.
+
+| Step | Outcome |
+|---|---|
+| 1. Source | `d185b7c` (archive; no `.git` in `/work`) |
+| 2. Preflight | **31/32 feasible: ADD_ONE/tray_D infeasible** (grasp-plan section above). 1000/1000 reset cycles and the planning reset passed; the scene and reset snapshot hashes were identical across both runs. A repeat run gave a byte-identical `preflight.json`. |
+| 3. Full suite | **Not run.** Step 2 requires 32/32, and `run_demo_check` refuses to record otherwise. |
+| 4. `schedule-validation.json` | Not produced. `identical_physics_steps`, `schedule_ok`, replay and reset counts: none. |
+| 5. `cup-clearance.json` | Not produced. |
+| 6. Pinned-mesh screen | Not run: no corridor frames. |
+| 7. Visual review | Not started (human). |
+
+`recording_complete` stays false. The retained suite (4/40 under the earlier
+host-span screen) is still the only recording evidence. The fixed sim-step
+schedule and the supply-cup corridor still need a native recording, and that
+waits until ADD_ONE/tray_D is resolved. This run does not change the plan, the
+margins or the IK limits.

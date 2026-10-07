@@ -206,11 +206,112 @@
     }
   },
   "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "native_validation_d185b7c": {
+    "attempts": [
+      {
+        "demo_check_summary_sha256": "ff1e7bbf50139e80326048f257e0e0b4a5ba88b1ef8b74f9d7c6c2e34dd4227c",
+        "exit_code": 0,
+        "feasible_pairs": 31,
+        "gpu_utilization_percent_during_run": {
+          "max": 99,
+          "mean": 89.8,
+          "median": 91,
+          "min": 76,
+          "samples_5s": 268
+        },
+        "planning_pairs": 32,
+        "planning_reset_ok": true,
+        "preflight_sha256": "5b70fd6586f9214cc8c3f09b3f09c6497b69037394d553e27db7d78c96377009",
+        "reset_cycles_passed": 1000,
+        "run": "preflight-001",
+        "run_seconds": 1343.9,
+        "step": 2
+      },
+      {
+        "demo_check_summary_sha256": "ff1e7bbf50139e80326048f257e0e0b4a5ba88b1ef8b74f9d7c6c2e34dd4227c",
+        "exit_code": 0,
+        "feasible_pairs": 31,
+        "gpu_utilization_percent_during_run": {
+          "max": 99,
+          "mean": 89.9,
+          "median": 91,
+          "min": 77,
+          "samples_5s": 271
+        },
+        "planning_pairs": 32,
+        "planning_reset_ok": true,
+        "preflight_sha256": "5b70fd6586f9214cc8c3f09b3f09c6497b69037394d553e27db7d78c96377009",
+        "reset_cycles_passed": 1000,
+        "run": "preflight-002 (repeat; byte-identical preflight.json)",
+        "run_seconds": 1356.6,
+        "step": 2
+      }
+    ],
+    "cup_clearance": "not produced: step 3 not run",
+    "date": "2026-10-07",
+    "full_suite_not_run_reason": "Procedure step 2 requires all 32 pairs feasible; run_demo_check also refuses to record unless all 32 plans compile.",
+    "full_suite_run": false,
+    "gpu_contention": "Shared host; other users' processes held the GPU at 81-83% utilization before launch. Preflight is unpaced; contention affects only wall time.",
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "infeasible_pairs": [
+      {
+        "limits": "position < 0.5 mm, constrained orientation < 0.008 rad (unchanged)",
+        "pair": "ADD_ONE/tray_D",
+        "variants_by_palm_yaw": [
+          {
+            "failed_keyframe_u": 0.06,
+            "orientation_residual_rad": 0.0528215,
+            "palm_yaw_rad": "0",
+            "position_residual_m": 0.00489204,
+            "washer_yaw_variants": 8
+          },
+          {
+            "best_orientation_residual_rad": 0.261546,
+            "best_position_residual_m": 0.011841,
+            "corridor_entry_position_residual_m": 0.000499,
+            "failed_keyframe_u": 0.64,
+            "keyframe": "full-pose placement on tray_D with the pad posture held",
+            "palm_yaw_rad": "pi/2",
+            "washer_yaw_variants": 8,
+            "worst_position_residual_m": 0.208099
+          },
+          {
+            "failed_keyframe_u": 0.06,
+            "orientation_residual_rad": 0.8364,
+            "palm_yaw_rad": "-pi/2",
+            "position_residual_m": 0.079624,
+            "washer_yaw_variants": 8
+          },
+          {
+            "failed_keyframe_u": 0.06,
+            "orientation_residual_rad": 1.2886,
+            "palm_yaw_rad": "pi",
+            "position_residual_m": 0.215474,
+            "washer_yaw_variants": 8
+          }
+        ],
+        "variants_tried": 32
+      }
+    ],
+    "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+    "mesh_screen": "not run: no corridor frames (step 3 not run)",
+    "private_evidence_archive_sha256": "d06b5da686550299cc37d13f2146a0a0f75a565bc5912641aa7257c7983272cc",
+    "procedure": "docs/isaac/demos.md, Native validation and re-record procedure",
+    "recording_complete": false,
+    "reset_snapshot_sha256": "4e3d9890560b0930eb1e542da33ff16f341a5517f0887ff3ce168fa81d68e85d",
+    "scene_sha256": "7a13f7b5d1de43c99fb6bb233ddbfaa12b4a254b0068aa638774034bb8652083",
+    "schedule_validation": "not produced: step 3 not run",
+    "source_archive_sha256": "6518b3c225cbe3acddf45f76263d6e172ad34cfc5b11dcf13ff9a50790d7ea4b",
+    "source_revision": "d185b7c42d79e09c832beda44307b35979ca81b9",
+    "source_transfer": "git archive of the exact commit; pax commit id and all 2059 files byte-verified on the host before each launch",
+    "visual_review": "not started (human step 7; nothing recorded)"
+  },
   "remaining": [
-    "Collision-aware pickup without cup wall penetration",
+    "ADD_ONE/tray_D: no supply-cup corridor variant reaches entry and tray_D placement within the IK limits (native preflight 31/32)",
+    "Collision-aware pickup without cup wall penetration (corridor plan not yet native-screened)",
     "Reachable corrected transfer and release for all actions",
     "Review full40 actual motions for visual intelligibility and collisions",
-    "Rerecord all40 under measured timing screen; do not time-compress failed captures",
+    "Re-record all40 on the fixed sim-step schedule (not yet run: preflight 31/32); do not time-compress failed captures",
     "Methodology/operator review"
   ],
   "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
