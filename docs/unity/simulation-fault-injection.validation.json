@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "change": "Simulation-only software hooks for the seven issue-81 fault scenarios, with faults.py plan/receipt/observation tooling",
+  "unity_editor": "6000.6.0f1",
+  "edit_mode": {
+    "total": 915,
+    "passed": 864,
+    "failed": 18,
+    "skipped": 33,
+    "baseline_origin_main": {"total": 874, "passed": 823, "failed": 18, "skipped": 33},
+    "failures_identical_to_baseline": "PackageLoaderTests 7 and TeachingCatalogTests 11 HASH_MISMATCH fixture failures addressed by open PR #201"
+  },
+  "play_mode": {
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "baseline_origin_main": {"total": 23, "passed": 23, "failed": 0}
+  },
+  "python": {
+    "focused": "tests/test_mock_visit_fault_harness.py 10 passed; tests/test_mock_visit_faults.py unchanged and passing",
+    "repository": {"passed": 941, "skipped": 32, "failed": 1, "failure": "tests/test_lfs_fixtures.py: LFS fixture tests/fixtures/triangle.stl not materialized in this worktree; unrelated to this change"}
+  },
+  "shared_fixtures": "tests/fixtures/simulation_faults: seven faults.py plans parsed by Unity and seven receipts that the Unity injector reproduces field for field (capability pin normalized) and the Python composer validates",
+  "native_run": false,
+  "physical_injection_verified": false,
+  "limitations": [
+    "No SIMULATION_TEST player was launched with a fault plan in this change; no native fault case is credited",
+    "Software focus-loss dispatch is not headset disconnection; faults.py keeps that cause unverified",
+    "Corrupted-read, refused-write and withheld-reset causes have no typed DataJournal cause row; faults.py reports those joins as unverified",
+    "Several faults are terminal in the joined host (fail closed and export), so operator recovery stays incomplete for those runs",
+    "The Python composer selects candidate rows only; faults.py remains the verifier"
+  ],
+  "issue81_accepted": false,
+  "participant_qualified": false,
+  "acoustic_qualified": false
+}

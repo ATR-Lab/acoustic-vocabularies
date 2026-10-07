@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "case_id": "corrupt-file-hash-01",
+  "scenario": "corrupt_file_hash",
+  "run_id": "fault-run-01",
+  "build_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "config_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "schedule_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "expected_native_codes": [
+    "HASH_MISMATCH"
+  ],
+  "planned_opportunity_id": "DEMO-novel-01",
+  "minimum_observation_ms": 5000
+}

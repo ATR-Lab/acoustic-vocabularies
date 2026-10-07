@@ -171,6 +171,64 @@ reset acknowledgment. It never grants `SourceFresh` remote-clock qualification.
 View events record native view commands and text hashes, not physical capture or
 legibility. Screen recordings and captures must be separately retained.
 
+## Software fault injection (SIMULATION_TEST only)
+
+The simulation player can cause one predeclared #81 fault per run. Every hook
+requires the loaded `SimulationTestAuthority`, which only the explicitly compiled
+`AV_SIMULATION_TEST` player (or the Editor test runner) can construct. Ordinary
+and participant players refuse `-simulationFaultPlan` with
+`JOIN_SIMULATION_BUILD_REQUIRED`. A hook only causes the fault: detection, fault
+codes, pause, reset, and recovery come from the ordinary application code, and
+nothing is relabelled afterwards.
+
+1. Before launch, write the plan with
+   `python -m tools.mock_visit.fault_harness plan --case-id <id> --scenario <name> --run-id <run> --build-manifest <experiment.exe.build.json> --build-manifest-sha256 <pin> --config <join.local.json> --config-sha256 <pin> --expected-code <CODE> [--expected-code ...] --opportunity <trial_id> --minimum-observation-ms <ms> --out <private plan.json>`.
+   The output is exactly the `faults.py` plan. Save the expected behaviour and the
+   printed raw SHA-256 independently before launch.
+2. Launch with the normal arguments plus
+   `-simulationFaultPlan <plan.json> -simulationFaultPlanSha256 <pin>`. The player
+   rechecks the pin, the exact plan fields, the loaded configuration and schedule
+   hashes, and that the planned opportunity exists in the schedule; any mismatch
+   fails startup with `JOIN_SIMULATION_FAULT_PLAN_INVALID`. The build inventory pin
+   is only checked later against the closed run manifest.
+3. At the planned point the player writes `simulation_fault`
+   `injection_requested`/`injection_resolved` rows to the joined journal, then a
+   create-new `simulation-fault-injection.local.json` receipt in the run's
+   `joined-<nonce>` evidence directory. The receipt records the case, plan pin,
+   hook, parameters, UTC request/observation times, Stopwatch times, the last
+   committed DataJournal row hash before the hook, and `applied`, `not_applied`
+   (with a refusal code) or `unknown`. A plan that is never reached, a missed
+   interval, or a close before resolution is recorded as such, never as applied.
+4. After the closed run manifest exists, compose the observation with
+   `python -m tools.mock_visit.fault_harness observe --plan <plan.json> --sha256 <pin> --receipt <receipt> --receipt-sha256 <pin> --manifest <mock-run.manifest.json> --manifest-sha256 <pin> --out <observation.json>`,
+   writing the observation outside the run root (for example its parent). It binds
+   the receipt to the manifest's configuration, capability and native-result
+   nonce, pins the receipt as the supporting artifact, and selects the earliest
+   candidate cause, detection, pause, reset, operator recovery and resume rows.
+   Absent edges stay null. Then run `python -m tools.mock_visit.faults` as in the
+   [fault evidence contract](../../tools/mock_visit/FAULT_EVIDENCE.md); it alone
+   decides order and completeness.
+
+| Scenario | Planned point | Hook (receipt `hook`) | Ordinary handling that must respond |
+|---|---|---|---|
+| `presentation_stall` | planned item `ResponseOpen` | `frame_capture_inject_stall`: the existing frame-capture stall hook blocks the main thread 400 ms; refused (`FRAME_INJECTION_REFUSED`) unless the pinned frame setup sets `engineering_stall_hook:true` | frame monitor `FRAME_FREEZE` device row, then the host fault path |
+| `audio_underrun` | planned item `CueRequested`/`ResponseOpen` with callbacks already observed | `audio_thread_stall`: the next audio callback of the delivering source blocks 500 ms | delivery/deadline check `AUDIO_UNDERRUN` audio observation |
+| `corrupt_file_hash` | armed when the visit runs; active only while the planned opportunity is current | `package_read_corruption`: one PCM byte (offset 44) of each package file read is flipped in memory before the ordinary hash check; the stored fixture is unchanged | package `HASH_MISMATCH` |
+| `missing_response_log` | planned item `ResponseOpen` | `data_journal_refuse_panel_response`: the next `panel_response` DataJournal append for that item fails before any byte is written | the ordinary append-failure latch; earlier rows are kept |
+| `failed_reset` | planned item `CueRequested` to `Closed` | `control_reset_reply_withheld`: the next actual reset reply is dropped at the receive queue as if lost, and is neither persisted nor accepted | pending command blocks exposure; `SESSION_RESET_DEADLINE_MISSED` and pause after the fixed slot |
+| `input_loss` | planned item `ResponseOpen` | `response_input_suppressed`: the configured controller/hand is treated as untracked for 3 s | panel `input_lost` latch, `FRAME_INTERFACE_UNAVAILABLE` input=false row, `SESSION_FOCUS_OR_INPUT_LOST` |
+| `headset_disconnect` | first running tick (null opportunity) or planned item after its cue | `application_focus_lost`: `OnApplicationFocus(false)` is delivered to every live component | each component's focus handler, including `JOIN_FOCUS_LOST` |
+
+Limits: these are simulator software injections. `faults.py` still reports focus
+loss as not proving headset disconnection, and corrupted-read, refused-write and
+withheld-reset causes as unverified source joins. In the joined host several
+faults are terminal (fail closed and export) rather than pause-and-resume; a run
+like that stays incomplete for operator recovery, which is the observed behaviour
+and is not faked. Plan `expected_native_codes` must list every code the run may
+emit, including secondary disposal codes. Use one plan per run, choose a
+corruption opportunity that is not the first item of a resumed block, and run
+the recovery steps through the normal console.
+
 ## Evidence and completion
 
 Retain the actual build inventory, raw input pins, OS/process result, console

@@ -13,6 +13,7 @@
     "AcousticVocab.DataLogging",
     "AcousticVocab.Orientation",
     "AcousticVocab.OperatorConsole",
+    "AcousticVocab.ResponsePanel",
     "Unity.ugui"
   ],
   "includePlatforms": [

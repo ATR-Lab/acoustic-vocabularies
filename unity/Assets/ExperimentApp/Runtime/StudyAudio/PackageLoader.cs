@@ -47,6 +47,16 @@ namespace AcousticVocab.StudyAudio
             PackageRules.Require(PackageRules.Profiles.Contains(selectedProfile) && actionRank>=1 && actionRank<=4);
             return selectedProfile+"/"+id+"/"+actionRank+(referentRank==0?"":"/"+referentRank);
         }
+        Func<bool> simulatedCorruption; Action<int> simulatedCorruptionApplied;
+        public const int SimulationCorruptedByteOffset=44; // First PCM byte after the canonical header.
+        // SIMULATION_TEST fault injection (#81): while the predicate holds, flip
+        // one PCM byte of each file read before its ordinary hash check. The
+        // stored fixture is never modified; the real HASH_MISMATCH path decides.
+        public void SimulationCorruptReads(AcousticVocab.Foundation.SimulationTestAuthority authority,Func<bool> whilePlanned,Action<int> applied)
+        {
+            if(authority==null||!AcousticVocab.Foundation.SimulationTestAuthority.CompiledCapability) throw new AudioFault("AUDIO_SIMULATION_AUTHORITY");
+            simulatedCorruption=whilePlanned; simulatedCorruptionApplied=whilePlanned==null?null:applied;
+        }
         PcmWave Read(string path)
         {
             try
@@ -56,6 +66,8 @@ namespace AcousticVocab.StudyAudio
                 PackageRules.CheckTree(directory,files.Keys);
                 PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"manifest.json",2*1024*1024))==manifestFileHash);
                 var spec=files[path]; byte[] bytes=PackageRules.Read(directory,path,spec.Length);
+                if(simulatedCorruption!=null && bytes.Length>SimulationCorruptedByteOffset && simulatedCorruption())
+                { bytes[SimulationCorruptedByteOffset]^=0x01; simulatedCorruptionApplied?.Invoke(SimulationCorruptedByteOffset); }
                 PackageRules.Require(bytes.LongLength==spec.Length && PcmWave.Hash(bytes)==spec.Hash);
                 return PcmWave.ParseCanonical(bytes);
             }

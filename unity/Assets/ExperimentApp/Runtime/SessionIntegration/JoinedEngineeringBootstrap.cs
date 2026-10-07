@@ -29,6 +29,7 @@ namespace AcousticVocab.SessionIntegration
         public Font font;public Shader unlitShader,dictionaryShader;
         public bool requirePreallocation;public bool simulationTestScene;
         SimulationTestAuthority simulation;TextMesh simulationWatermark;SimulationInputDriver simulationInputs;string sourceCommit;SimulationRunClosure simulationClosure;
+        SimulationFaultPlan faultPlan;SimulationFaultInjector faultInjector;
         AllocationJoinBinding allocation;string authorizedConfig,authorizedPin;
         internal void StartAllocated(AllocationJoinBinding binding,string configPath,string rawPin)
         {if(enabled||!requirePreallocation||allocation!=null||binding==null||attempted||assets!=null)throw new SessionFault("JOIN_ALLOCATION_ALREADY_CONSUMED");allocation=binding;authorizedConfig=configPath;authorizedPin=rawPin;enabled=true;}
@@ -73,7 +74,11 @@ namespace AcousticVocab.SessionIntegration
                 string simPath=Argument("-simulationTestConfig"),simPin=Argument("-simulationTestConfigSha256");
                 if(simulationTestScene){if(simPath==null||simPin==null||!SimulationTestAuthority.CompiledCapability)throw new SessionFault("JOIN_SIMULATION_CAPABILITY_REQUIRED");simulation=SimulationTestAuthority.Load(simPath,simPin,config.BuildId,config.ProtocolVersion);CreateSimulationWatermark();}
                 else if(simPath!=null||simPin!=null)throw new SessionFault("JOIN_SIMULATION_BUILD_REQUIRED");
+                string faultPath=Argument("-simulationFaultPlan"),faultPin=Argument("-simulationFaultPlanSha256");
+                if((faultPath!=null||faultPin!=null)&&simulation==null)throw new SessionFault("JOIN_SIMULATION_BUILD_REQUIRED");
                 assets=new JoinedVisitArtifacts(config,simulation);ValidateProvisioned();if(simulation!=null){source.EnableSimulationChecks(simulation);AudioPlayer.ConfigureSimulationDevice(simulation);}
+                if(faultPath!=null||faultPin!=null)
+                    faultPlan=SimulationFaultPlan.Load(simulation,faultPath,faultPin,config.ConfigSha256,assets.Schedule.Sha256,assets.Schedule.Blocks.SelectMany(b=>b.Items).Select(i=>i.TrialId));
                 if(allocation!=null&&assets.Menus!=null&&allocation.Role!=assets.Menus.Role)throw new SessionFault("JOIN_ALLOCATION_ROLE");
                 if(assets.MissingAuthority!=null)
                 {
@@ -159,7 +164,14 @@ namespace AcousticVocab.SessionIntegration
                     mailbox=new OperatorMailbox(config.Directory("operator_mailbox"),nonce,config.RequireFile("run_sheet_manifest").Sha256,owner.Engine,commands,Admission,Health,()=>clock.NowMs,stageBeforeResume:CommitOperatorResume,boundaryControl:_=>{if(grammarStage?.Running==true)grammarInterrupted=true;});
                     Report("JOIN_PREFLIGHT");
                 }
+                if(faultPlan!=null&&faultInjector==null)
+                    faultInjector=new SimulationFaultInjector(simulation,faultPlan,new NativeFaultTargets(simulation,frames,player,assets.Package,data,()=>activePreflight?.Control,panel),
+                        new EngineFaultView(owner.Engine),Path.Combine(evidenceRoot,SimulationFaultInjector.ReceiptName),nonce,()=>clock.NowMs,()=>DateTime.UtcNow,
+                        ()=>data.Records.Count==0?null:data.Records[data.Records.Count-1].Sha256,x=>audit.Write("simulation_fault",x));
                 store?.Pump();bool stageHold=HandleAssessmentBoundary();if(!stageHold)staged.Pump();mailbox.Tick(); // sole engine.Tick owner
+                // The planned SIMULATION_TEST hook only causes the fault; the
+                // ordinary handlers (possibly this host's own Fail) respond.
+                faultInjector?.Tick();if(closed||failed)return;
                 if(grammarInterrupted){Fail("JOIN_GRAMMAR_INTERRUPTED");return;}
                 simulationInputs?.Tick(clock.NowMs);
                 if(stageHold){staged.PumpPending();if(simulation!=null&&StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"&&Flag("-simulationQuitOnComplete")){Close();Application.Quit(StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"?0:1);}return;}
@@ -273,6 +285,7 @@ namespace AcousticVocab.SessionIntegration
         void Close()
         {
             if(closed)return;closed=true;Exception first=null;
+            try{faultInjector?.Close();}catch{} // Records an unresolved plan; never a success.
             var cleanup=new Action[]{()=>mailbox?.Dispose(),()=>staged?.Dispose(),()=>owner?.Dispose(),()=>{if(installedFrames)frames.FinishCapture();},()=>visit.Dispose()};
             if(simulationClosure!=null)
             {
@@ -413,6 +426,7 @@ namespace AcousticVocab.SessionIntegration
                 host.audit.Write("module",new JObject{["kind"]="commit",["block"]=block,["module"]=kind.ToString()});return preparedFactory;
             }
             internal JObject Diagnostic()=>control?.ReadinessDiagnostic(null);
+            internal PrivateModeResetClient Control=>control;
             ISlotContentFactory CreateFactory()
             {
                 var shared=host.owner.Shared;

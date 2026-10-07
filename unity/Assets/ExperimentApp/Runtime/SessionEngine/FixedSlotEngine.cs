@@ -32,6 +32,7 @@ namespace AcousticVocab.SessionEngine
         public SessionState Status { get; private set; }=SessionState.AwaitingOperator;
         public ItemState? CurrentState { get; private set; }
         public string CurrentTrialId => content==null?null:context.Item.TrialId;
+        public string CurrentOpportunityId => content==null?null:context.OpportunityId;
         public string CurrentBlock => blockIndex<schedule.Blocks.Count?schedule.Blocks[blockIndex].Name:null;
         public bool ExposureConsumed => content!=null && consumed;
         public int CompletedOpportunities => completed.Count;
