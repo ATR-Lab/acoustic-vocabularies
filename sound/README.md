@@ -71,9 +71,9 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
 | `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |
 | `GAP_SAMPLES`, `MIN_MESSAGE_SAMPLES`, `MAX_MESSAGE_SAMPLES` | 9,600; 52,800; 96,000 |
-| `VocabularyStore(root, *, clock=None, reserved=None)` | Append-only store: `create_book`, `commit`, `get`, `list`, `verify`, `snapshot_hashes`, `snapshot`, `freeze`; no update or delete ([`docs/store.md`](docs/store.md)) |
+| `VocabularyStore(root, *, clock=None, reserved=None, lock_timeout=60.0)` | Append-only store: `create_book`, `commit`, `get`, `list`, `verify`, `snapshot_hashes`, `snapshot`, `freeze`, `void`, `recover_torn_tail`; no update or delete; readers and `commit` take `expected_head=` anchors ([`docs/store.md`](docs/store.md)) |
 | `StoreEntry`, `BookInfo`, `VerifyReport`, `VerifyIssue` | A committed atom (an `AtomAudioLike`; `.reference()`), book facts, `verify` result |
-| `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError` | Store errors (`.code`); overwrite and frozen attempts are logged |
+| `StoreError`, `CommitRejected`, `OverwriteRejected`, `BookFrozen`, `StoreIntegrityError`, `StoreLocked` | Store errors (`.code`); overwrite and frozen attempts are logged |
 | `persistence_violations(before, after)`, `snapshot_digest(snapshot)` | Growth check (old entries unchanged) and one publishable hash per book |
 | `av_sound.grammar`, `av_sound.synthetic` | Atom and message IDs and the fixed matrix (18 trained, 14 held out); synthetic `DEMO-P1` .. `DEMO-P3` books |
 | `build_package(store, book_id, out_dir, *, expected_head=None) -> PackageResult` | Study A package of a frozen store book: 16 atom WAVs, 18 trained-message WAVs, `answers.json`, `audio.json`, `manifest.json`; held-out messages as hashes only ([`package-format.md`](../docs/interfaces/package-format.md)) |

@@ -2,15 +2,32 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/sound/schema/store-record.schema.json",
   "title": "Vocabulary store log record",
-  "description": "One line of a book's append-only event log books/<book_id>/log.jsonl (av_sound.store, sound/docs/store.md). Each line is the compact canonical JSON of one record (sorted keys, ASCII, no spaces) followed by one LF. seq is the 0-based line number. prev_sha256 is the SHA-256 of the previous line's bytes without its LF (64 zeros for line 0); the chain head is the SHA-256 of the last line. record_sha256 is the SHA-256 of the canonical JSON of the record without the record_sha256 field. The event field selects which fields are present.",
+  "description": "One line of a book's append-only event log books/<book_id>/log.jsonl (av_sound.store, sound/docs/store.md). Each line is the compact canonical JSON of one record (sorted keys, ASCII, no spaces) followed by one LF. seq is the 0-based line number. prev_sha256 is the SHA-256 of the previous line's bytes without its LF (64 zeros for line 0); the chain head is the SHA-256 of the last line. record_sha256 is the SHA-256 of the canonical JSON of the record without the record_sha256 field. The event field selects which fields are present. A frozen or void book also has a write-once FROZEN (and VOID) marker file naming its closing record.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["record_version", "seq", "prev_sha256", "record_sha256", "event", "book_id", "timestamp"],
+  "required": [
+    "record_version",
+    "seq",
+    "prev_sha256",
+    "record_sha256",
+    "event",
+    "book_id",
+    "timestamp"
+  ],
   "properties": {
-    "record_version": { "const": 1 },
-    "seq": { "type": "integer", "minimum": 0 },
-    "prev_sha256": { "$ref": "#/$defs/sha256" },
-    "record_sha256": { "$ref": "#/$defs/sha256" },
+    "record_version": {
+      "const": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "prev_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "record_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "event": {
       "enum": [
         "create_book",
@@ -18,34 +35,60 @@
         "recommit_noop",
         "overwrite_rejected",
         "commit_rejected_frozen",
-        "freeze"
+        "freeze",
+        "void",
+        "deviation"
       ]
     },
     "book_id": {
-      "description": "Anonymous book ID: 3 to 64 ASCII letters, digits and inner hyphens. Synthetic fixture books start with DEMO-.",
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]$"
+      "$ref": "#/$defs/book_id"
     },
     "timestamp": {
       "description": "UTC time of the append from the store's clock, ISO 8601 with milliseconds and Z.",
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
     },
-    "profile": { "$ref": "#/$defs/profile" },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
     "kind": {
       "description": "study: a Study A book or a Study B dyad book; fallback: a frozen fallback-book namespace (#15); synthetic: a DEMO fixture.",
-      "enum": ["study", "fallback", "synthetic"]
+      "enum": [
+        "study",
+        "fallback",
+        "synthetic"
+      ]
     },
-    "threshold": { "$ref": "#/$defs/threshold" },
-    "renderer_version": { "$ref": "#/$defs/version" },
-    "validator_version": { "$ref": "#/$defs/version" },
+    "threshold": {
+      "$ref": "#/$defs/threshold"
+    },
+    "renderer_version": {
+      "$ref": "#/$defs/version"
+    },
+    "validator_version": {
+      "$ref": "#/$defs/version"
+    },
     "atom_id": {
       "type": "string",
       "pattern": "^[KQ]-[ar][1-4]$"
     },
-    "family": { "enum": ["K", "Q"] },
-    "role": { "enum": ["action", "referent"] },
-    "matrix_index": { "type": "integer", "minimum": 1, "maximum": 4 },
+    "family": {
+      "enum": [
+        "K",
+        "Q"
+      ]
+    },
+    "role": {
+      "enum": [
+        "action",
+        "referent"
+      ]
+    },
+    "matrix_index": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
     "semantic_label": {
       "description": "Meaning bound to the atom (ontology label for its family and role); null only in a fallback book.",
       "enum": [
@@ -68,8 +111,12 @@
         null
       ]
     },
-    "recipe": { "$ref": "recipe.schema.json" },
-    "recipe_sha256": { "$ref": "#/$defs/sha256" },
+    "recipe": {
+      "$ref": "recipe.schema.json"
+    },
+    "recipe_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "pcm_sha256": {
       "description": "SHA-256 of the int16 LE samples; the blob is blobs/<pcm_sha256>.wav.",
       "$ref": "#/$defs/sha256"
@@ -80,7 +127,12 @@
     },
     "n_samples": {
       "type": "integer",
-      "enum": [21600, 28800, 36000, 43200]
+      "enum": [
+        21600,
+        28800,
+        36000,
+        43200
+      ]
     },
     "reserved_sha256": {
       "description": "SHA-256 of the compact canonical JSON list of the reserved entries the validator used.",
@@ -88,7 +140,14 @@
     },
     "extra_references_sha256": {
       "description": "SHA-256 of the compact canonical JSON list of extra references passed to commit ([ref_id, recipe_sha256, pcm_sha256] each, in order); null when none.",
-      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "source": {
       "description": "Opaque provenance: generated slot ID, fallback bank index or Study B option ID. Never copied into learner packages.",
@@ -110,39 +169,141 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "enum": ["profile", "recipe", "semantic_label", "waveform"] }
+      "items": {
+        "enum": [
+          "profile",
+          "recipe",
+          "semantic_label",
+          "waveform"
+        ]
+      }
     },
     "attempted_recipe": {
       "description": "Canonical attempted recipe; null if it did not parse.",
-      "oneOf": [{ "$ref": "recipe.schema.json" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "recipe.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "attempted_recipe_sha256": {
-      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "attempted_profile": { "$ref": "#/$defs/profile" },
+    "attempted_profile": {
+      "$ref": "#/$defs/profile"
+    },
     "attempted_pcm_sha256": {
       "description": "Waveform the caller asserted or the render of the attempted recipe; null if the recipe did not parse.",
-      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "attempted_semantic_label": {
-      "oneOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/label"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "freeze_seq": {
-      "description": "seq of the freeze record.",
+      "description": "seq of the record that closed the book (freeze or void).",
       "type": "integer",
       "minimum": 1
     },
-    "n_entries": { "type": "integer", "minimum": 0, "maximum": 16 },
+    "n_entries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16,
+      "description": "Committed entries when the book was frozen or voided."
+    },
     "snapshot_sha256": {
-      "description": "SHA-256 of the compact canonical JSON object {atom_id: pcm_sha256} of the book at freeze time.",
+      "description": "SHA-256 of the compact canonical JSON object {atom_id: pcm_sha256} of the book at freeze or void time.",
+      "$ref": "#/$defs/sha256"
+    },
+    "renderer_hash": {
+      "description": "av_sound.renderer_hash() of the code that created the book.",
+      "$ref": "#/$defs/sha256"
+    },
+    "validator_hash": {
+      "description": "av_sound.store.validator_code_hash() of the code that created the book.",
+      "$ref": "#/$defs/sha256"
+    },
+    "cause": {
+      "description": "Why a book is void: failed_generation (whole-book fallback substitution, Study A protocol §3.7), batch_rebuild (Study A protocol §3.3) or other.",
+      "enum": [
+        "failed_generation",
+        "batch_rebuild",
+        "other"
+      ]
+    },
+    "reason": {
+      "description": "Free text for a void or deviation record; include the deviation ID.",
+      "type": "string",
+      "pattern": "^[!-~]([ -~]{0,498}[!-~])?$"
+    },
+    "superseded_by": {
+      "description": "Book that replaces a void book, if any.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/book_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "deviation": {
+      "description": "Kind of repair: torn_tail_removed (bytes after the last LF of an interrupted append were removed).",
+      "enum": [
+        "torn_tail_removed"
+      ]
+    },
+    "removed_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "removed_sha256": {
+      "description": "SHA-256 of the removed bytes.",
       "$ref": "#/$defs/sha256"
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "event": { "const": "create_book" } } },
+      "if": {
+        "properties": {
+          "event": {
+            "const": "create_book"
+          }
+        }
+      },
       "then": {
-        "required": ["profile", "kind", "threshold", "renderer_version", "validator_version"],
+        "required": [
+          "profile",
+          "kind",
+          "threshold",
+          "renderer_version",
+          "validator_version",
+          "renderer_hash",
+          "validator_hash"
+        ],
         "propertyNames": {
           "enum": [
             "record_version",
@@ -156,13 +317,21 @@
             "kind",
             "threshold",
             "renderer_version",
-            "validator_version"
+            "validator_version",
+            "renderer_hash",
+            "validator_hash"
           ]
         }
       }
     },
     {
-      "if": { "properties": { "event": { "const": "commit" } } },
+      "if": {
+        "properties": {
+          "event": {
+            "const": "commit"
+          }
+        }
+      },
       "then": {
         "required": [
           "atom_id",
@@ -216,7 +385,13 @@
       }
     },
     {
-      "if": { "properties": { "event": { "const": "recommit_noop" } } },
+      "if": {
+        "properties": {
+          "event": {
+            "const": "recommit_noop"
+          }
+        }
+      },
       "then": {
         "required": [
           "atom_id",
@@ -248,7 +423,13 @@
       }
     },
     {
-      "if": { "properties": { "event": { "const": "overwrite_rejected" } } },
+      "if": {
+        "properties": {
+          "event": {
+            "const": "overwrite_rejected"
+          }
+        }
+      },
       "then": {
         "required": [
           "atom_id",
@@ -284,9 +465,20 @@
       }
     },
     {
-      "if": { "properties": { "event": { "const": "commit_rejected_frozen" } } },
+      "if": {
+        "properties": {
+          "event": {
+            "const": "commit_rejected_frozen"
+          }
+        }
+      },
       "then": {
-        "required": ["atom_id", "freeze_seq", "attempted_recipe_sha256", "source"],
+        "required": [
+          "atom_id",
+          "freeze_seq",
+          "attempted_recipe_sha256",
+          "source"
+        ],
         "propertyNames": {
           "enum": [
             "record_version",
@@ -305,9 +497,18 @@
       }
     },
     {
-      "if": { "properties": { "event": { "const": "freeze" } } },
+      "if": {
+        "properties": {
+          "event": {
+            "const": "freeze"
+          }
+        }
+      },
       "then": {
-        "required": ["n_entries", "snapshot_sha256"],
+        "required": [
+          "n_entries",
+          "snapshot_sha256"
+        ],
         "propertyNames": {
           "enum": [
             "record_version",
@@ -322,6 +523,72 @@
           ]
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "void"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "cause",
+          "reason",
+          "superseded_by",
+          "n_entries",
+          "snapshot_sha256"
+        ],
+        "propertyNames": {
+          "enum": [
+            "record_version",
+            "seq",
+            "prev_sha256",
+            "record_sha256",
+            "event",
+            "book_id",
+            "timestamp",
+            "cause",
+            "reason",
+            "superseded_by",
+            "n_entries",
+            "snapshot_sha256"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "deviation"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "deviation",
+          "removed_bytes",
+          "removed_sha256",
+          "reason"
+        ],
+        "propertyNames": {
+          "enum": [
+            "record_version",
+            "seq",
+            "prev_sha256",
+            "record_sha256",
+            "event",
+            "book_id",
+            "timestamp",
+            "deviation",
+            "removed_bytes",
+            "removed_sha256",
+            "reason"
+          ]
+        }
+      }
     }
   ],
   "$defs": {
@@ -329,11 +596,17 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "profile": { "enum": ["P1", "P2", "P3"] },
+    "profile": {
+      "enum": [
+        "P1",
+        "P2",
+        "P3"
+      ]
+    },
     "threshold": {
-      "description": "Separation threshold as exact text: a decimal such as \"0.1\" or a fraction \"p/q\".",
+      "description": "Separation threshold as exact decimal text, such as \"0.1\".",
       "type": "string",
-      "pattern": "^[0-9]+(\\.[0-9]+|/[1-9][0-9]*)?$"
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
     },
     "version": {
       "type": "string",
@@ -346,6 +619,11 @@
     "source": {
       "type": "string",
       "pattern": "^[!-~]{1,128}$"
+    },
+    "book_id": {
+      "description": "Anonymous book ID: 3 to 64 ASCII letters, digits and inner hyphens. Synthetic fixture books start with DEMO-.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]$"
     }
   }
 }

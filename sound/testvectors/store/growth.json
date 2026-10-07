@@ -2,7 +2,8 @@
   "books": [
     {
       "book_id": "DEMO-P1",
-      "create_head": "1a982f08e2d987f6cc8b346d52daeeac66cde790b4721bc2af183f0c66507966",
+      "create_head": "e51009a7b56e00c3975708f8b4f1d04cd5431c49e85467ba696553989813ed13",
+      "create_line": "{\"book_id\":\"DEMO-P1\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P1\",\"record_sha256\":\"13d2e1a6d5d067cd43205f6fd6f7de8d67bf565c8f12a7b78514b57fc418edbd\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -30,12 +31,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "4a385c93ca9617f5ca46ccc84da388287234df5da3da783d20a4a6eaca71dbf9",
-      "freeze_head": "fa802ad70897a9783d23b98273bdeaa157b3ac2f24a7b66207359e4742dbfb66",
+      "final_head": "973e04ceecd756a2138279225c2220eda9dee7d1e471b771aa2019328b5c09a5",
+      "freeze_head": "7411aadab2593f053811a9c3c59fbe3fa70c2f5acef68b44f41a04654d330d70",
       "frozen_rejected": true,
-      "log_bytes": 20375,
+      "log_bytes": 20542,
       "n_records": 24,
-      "noop_head": "d89b6a1885df1326d3646303a7e774e561513a5c0fab0431f4c06e41d1863546",
+      "noop_head": "66757cab8b800b44dd75a85ba79bd7895484cd65508ac3889f86267e3f8e2a30",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -91,7 +92,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "a6e1e3295eb4d7d17b59eb89f0bc1493674f7c296d4510835ce876b29ce7ab61",
+          "chain_head": "b78888c1295a4ab5f8b40cc5a361b2b3ec38f6b87f5a1fa0e7196fd44554b26f",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -116,7 +117,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "9712c52abfeefc1d66e13f37ceae3b1e467f2041e308cf08da0a1e8d35c67024",
+          "chain_head": "3e0cbcb49f51f92f5718efc78ba2575cd98e945ca2b56a14595d8ba82e57ca38",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -145,7 +146,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "4df55c6f0466735f6bdb3e50a94c20ae601b93c6a0af2b2448102cc3df6489ae",
+          "chain_head": "97cd624fda3fb5f274b52274b0ab7ee1244e23b09239764364a9a705eb807e62",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
@@ -175,7 +176,8 @@
     },
     {
       "book_id": "DEMO-P2",
-      "create_head": "01f4db3d647bd6781d50ff21abeabc17d2fd49785ecece81c4ed9a0355dc6405",
+      "create_head": "63e4edc1aa939222d0904161fcad1c3449fbf6e6e76c15204f19fc4c79931616",
+      "create_line": "{\"book_id\":\"DEMO-P2\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P2\",\"record_sha256\":\"eeebc36607edc6a18594483dacc98b1353efdfe6d1abff88108b481ce6e8d58a\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -203,12 +205,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "3a10fa824502383fe493b7d13eb05bdcaf0ec1c8131daebe2d177a141bd8c8c7",
-      "freeze_head": "5a4ec725efeb7a0a8f42ed0ef823e88db34fab37b3a42cba511b5f95ea65aa3e",
+      "final_head": "373c8754f95374eec8bc425c5c21a865ac3a525b1cf3b2815d2aa1ec1b8938dd",
+      "freeze_head": "70ac5b5a2d9ef1354b698b98a8f58ab929ad78362fc9489fc4623a14595cbd42",
       "frozen_rejected": true,
-      "log_bytes": 20379,
+      "log_bytes": 20546,
       "n_records": 24,
-      "noop_head": "b2598c87ec6c6cd2299e98e814da764b387417d4fced7c3fae000a38a1200a86",
+      "noop_head": "da84f08c150778f83d2d84b4e9e6e4946fbbcc4f4fba46e1b13f6c7e67e8f7db",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -264,7 +266,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "56b706bf082d4560d2cf0a8b0ece39c89b97a92ee9bf6c95e8fc0223e90098d7",
+          "chain_head": "6ef399d0f1c1bf3b7ae6d240edb96d8cb1ae55ab0fd91fd85dc293f84a802cb5",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -289,7 +291,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "7ff3b69ed93f76f71e57dbd1d980c60a5cf0ce9688f9c6f89551289db0bfcb4d",
+          "chain_head": "1756988f6cc9f305b026b2471a8bbf11c3b288f9dcec3a7d381918750245cae9",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -318,7 +320,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "6370cc6fbc23db3e9932fa11c042f5d90bc6602a8b0f61c28a9bb86cea64ca48",
+          "chain_head": "f24926b62e3b1e89df4f3537eb8f4533fe65ae58710fddb8e2419cc01a48f2da",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,
@@ -348,7 +350,8 @@
     },
     {
       "book_id": "DEMO-P3",
-      "create_head": "846b45a516e0d3da14f638e39967587ce582f41edbd95b56a649b31e9e3ae477",
+      "create_head": "8cfe149921e70dd553c79a69d4e795abc854d43891cb885bd343f368d0be276a",
+      "create_line": "{\"book_id\":\"DEMO-P3\",\"event\":\"create_book\",\"kind\":\"synthetic\",\"prev_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"profile\":\"P3\",\"record_sha256\":\"5651ac8507eb1c3a25d5a4b3e53c490b3a7c9c4344d877bee3f017a304b0a5b5\",\"record_version\":1,\"renderer_hash\":\"03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d\",\"renderer_version\":\"0.1.0\",\"seq\":0,\"threshold\":\"0.1\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"validator_hash\":\"fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650\",\"validator_version\":\"0.1.0\"}",
       "entries_unchanged_after_attempts": true,
       "events": [
         "create_book",
@@ -376,12 +379,12 @@
         "freeze",
         "commit_rejected_frozen"
       ],
-      "final_head": "4905d59bd8395769b71477b6f29a62f6efe530fb6d1d6014a56df7c65e493deb",
-      "freeze_head": "c7069ca32125cf5dd157604409ae015956252ad41231d9c1428d942f2f40d553",
+      "final_head": "a5151554dee56b5122dde003f535c3410a7a5e1c7bb384443fce4752935e3eb6",
+      "freeze_head": "771f60f1d9e7a481c6c4e722edcd8e825378d081e6b2957365553aec7f5778da",
       "frozen_rejected": true,
-      "log_bytes": 20380,
+      "log_bytes": 20547,
       "n_records": 24,
-      "noop_head": "ec89a8655a68d990f943736b8acf1a939d7e0222b52ed45deab77a4e893c27be",
+      "noop_head": "1876337780894e11b7b9e3cef5045184eccb1a17069a044ea5874854eba22dba",
       "overwrite_attempts": [
         {
           "attempt": "recipe",
@@ -437,7 +440,7 @@
             "Q-r1",
             "Q-r2"
           ],
-          "chain_head": "1a0ef636e8b329919822f30874448dcd8b4ad387c61dc3f76826aff1f881e187",
+          "chain_head": "6feb0522730b72c5b83c944b28f4f4e5f1c2433a4a3b4498194b1fc48d47ed4d",
           "n_entries": 8,
           "old_entries": 0,
           "old_unchanged": 0,
@@ -462,7 +465,7 @@
             "Q-a3",
             "Q-r3"
           ],
-          "chain_head": "6591bd98b5b66d9555f23cd31662ebcd6431770bcb32302ba612818780bee80b",
+          "chain_head": "edaaf22d48169c94c33b4ba79fa8ad346d7401fb89e689e12ac90fed73e3020d",
           "n_entries": 12,
           "old_entries": 8,
           "old_unchanged": 8,
@@ -491,7 +494,7 @@
             "Q-a4",
             "Q-r4"
           ],
-          "chain_head": "cf66ae65262eb21c96433f41ae0c34a72de4ade9d0f1ada5ef8431e98d3e94af",
+          "chain_head": "2423fb9aaca5d85d279837c07db83aa601b0597bdc02a4c417ec161330dec41f",
           "n_entries": 16,
           "old_entries": 12,
           "old_unchanged": 12,

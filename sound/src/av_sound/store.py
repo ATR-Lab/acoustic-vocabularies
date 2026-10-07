@@ -11,6 +11,9 @@ Layout under the store root (`sound/docs/store.md`):
 
     blobs/<pcm_sha256>.wav       canonical WAV (renderer spec D8), written once, read-only
     books/<book_id>/log.jsonl    append-only, hash-chained event log; one record per line
+    books/<book_id>/FROZEN       write-once marker of the record that closed the book
+    books/<book_id>/VOID         write-once marker of the void record
+    books/<book_id>/.lock        lock file (an OS lock is held on it during each operation)
 
 Every log line is the compact canonical JSON of one record
 (`sound/schema/store-record.schema.json`) and one LF. A record carries its line
@@ -18,25 +21,28 @@ number `seq`, the SHA-256 of the previous line (`prev_sha256`; 64 zeros for line
 and `record_sha256` (the SHA-256 of the record without that field). The chain head
 is the SHA-256 of the last line. Editing, deleting or reordering lines, or changing
 one byte of any line, breaks the chain or a record hash. Removing whole lines from
-the end leaves a valid shorter chain: compare with a chain head recorded elsewhere
-(`verify(expected_head=...)`).
+the end, or rewriting the whole log with fresh hashes, is detected only against a
+chain head recorded elsewhere: pass it as `expected_head`.
 
-Every operation reads the whole log and checks the chain, the records and the blobs
-first; a book with any integrity problem refuses reads and writes
-(`StoreIntegrityError`) and only `verify` reports on it. One process writes a store
-at a time.
+Every operation holds the book's lock, reads the whole log and checks the chain, the
+records, the markers and the blobs first. A book with any integrity problem refuses
+reads and writes (`StoreIntegrityError`); only `verify` reports on it.
 """
 
 from __future__ import annotations
 
 import builtins
 import contextlib
+import functools
 import hashlib
 import json
 import os
 import re
 import stat
-from collections.abc import Callable, Iterable, Mapping
+import sys
+import threading
+import time
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from fractions import Fraction
@@ -58,7 +64,29 @@ from av_sound.validate import (
     load_separation_threshold,
     validate,
 )
+from av_sound.version import code_digest, recipe_schema_sha256, renderer_hash
 from av_sound.wav import pcm_from_wav, wav_bytes
+
+if sys.platform == "win32":  # pragma: no cover - exercised by the Windows CI job
+    import msvcrt
+
+    def _try_lock(fd: int) -> None:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+
+    def _unlock(fd: int) -> None:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+
+else:  # pragma: no cover - exercised by the Linux and macOS CI jobs
+    import fcntl
+
+    def _try_lock(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def _unlock(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
 
 RECORD_VERSION: Final = 1
 """Version of the log record format (`store-record.schema.json`)."""
@@ -66,7 +94,11 @@ GENESIS_SHA256: Final = "0" * 64
 """`prev_sha256` of line 0."""
 BLOBS_DIR: Final = "blobs"
 BOOKS_DIR: Final = "books"
+QUARANTINE_DIR: Final = "quarantine"
 LOG_NAME: Final = "log.jsonl"
+LOCK_NAME: Final = ".lock"
+FROZEN_MARKER: Final = "FROZEN"
+VOID_MARKER: Final = "VOID"
 SCHEMA_NAME: Final = "store-record.schema.json"
 
 EVENTS: Final[tuple[str, ...]] = (
@@ -76,12 +108,26 @@ EVENTS: Final[tuple[str, ...]] = (
     "overwrite_rejected",
     "commit_rejected_frozen",
     "freeze",
+    "void",
+    "deviation",
 )
 BOOK_KINDS: Final[tuple[str, ...]] = ("study", "fallback", "synthetic")
 """`study`: a Study A book or a Study B dyad book; `fallback`: the frozen fallback-book
 namespace (#15), whose entries carry no meaning; `synthetic`: a DEMO fixture."""
+VOID_CAUSES: Final[tuple[str, ...]] = ("failed_generation", "batch_rebuild", "other")
+"""`failed_generation`: whole-book fallback substitution (Study A protocol §3.7);
+`batch_rebuild`: the batch is rebuilt with a new panel (Study A protocol §3.3)."""
+DEVIATIONS: Final[tuple[str, ...]] = ("torn_tail_removed",)
 SYNTHETIC_PREFIX: Final = "DEMO-"
 OVERWRITE_FIELDS: Final[tuple[str, ...]] = ("profile", "recipe", "semantic_label", "waveform")
+VALIDATOR_SOURCES: Final[tuple[str, ...]] = (
+    "validate.py",
+    "features.py",
+    "recipe.py",
+    "reserved.py",
+    "_schemas.py",
+)
+"""Modules whose code digests make up `validator_code_hash()`."""
 
 SEMANTIC_LABELS: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("K", "action"): ("ADD_ONE", "REMOVE_ONE", "FLIP_CARD", "ALIGN_ARROW"),
@@ -104,7 +150,11 @@ E_WAVEFORM: Final = "E_WAVEFORM"
 E_REJECTED: Final = "E_REJECTED"
 E_OVERWRITE: Final = "E_OVERWRITE"
 E_FROZEN: Final = "E_FROZEN"
+E_VOID: Final = "E_VOID"
 E_INTEGRITY: Final = "E_INTEGRITY"
+E_LOCKED: Final = "E_LOCKED"
+E_CONCURRENT: Final = "E_CONCURRENT"
+E_RECOVERY: Final = "E_RECOVERY"
 
 VERIFY_CODES: Final[tuple[str, ...]] = (
     "E_LOG_MISSING",
@@ -118,6 +168,7 @@ VERIFY_CODES: Final[tuple[str, ...]] = (
     "E_BOOK_ID",
     "E_EVENT",
     "E_RECORD",
+    "E_MARKER",
     "E_BLOB_MISSING",
     "E_BLOB_FORMAT",
     "E_BLOB_HASH",
@@ -131,9 +182,10 @@ VERIFY_CODES: Final[tuple[str, ...]] = (
 _BOOK_ID_RE: Final = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]")
 _LABEL_RE: Final = re.compile(r"[A-Z][A-Z0-9_]{0,31}")
 _SOURCE_RE: Final = re.compile(r"[!-~]{1,128}")
+_REASON_RE: Final = re.compile(r"[!-~](?:[ -~]{0,498}[!-~])?")
 _SHA256_RE: Final = re.compile(r"[0-9a-f]{64}")
 _WINDOWS_DEVICE_NAMES: Final = frozenset(
-    ["con", "prn", "aux", "nul"] + [f"{p}{i}" for p in ("com", "lpt") for i in range(1, 10)]
+    ["con", "prn", "aux", "nul"] + [f"{p}{i}" for p in ("com", "lpt") for i in range(10)]
 )
 _METHOD_TOKENS: Final = frozenset({"a1", "a2", "a3"})
 _METHOD_WORDS: Final[tuple[str, ...]] = (
@@ -149,6 +201,8 @@ _METHOD_WORDS: Final[tuple[str, ...]] = (
     "model",
     "method",
 )
+_O_BINARY: Final[int] = getattr(os, "O_BINARY", 0)
+_LOCK_POLL_S: Final = 0.002
 
 
 # ---------------------------------------------------------------------------
@@ -164,14 +218,14 @@ class StoreError(Exception):
 
 
 class InvalidIdentifier(StoreError, ValueError):
-    """A book ID, atom ID, semantic label, source or hash argument is malformed."""
+    """A book ID, atom ID, semantic label, source, reason or hash argument is malformed."""
 
     def __init__(self, message: str) -> None:
         super().__init__(E_IDENTIFIER, message)
 
 
 class NotFound(StoreError, LookupError):
-    """The book or the atom does not exist."""
+    """The book or the atom does not exist (book IDs match exactly, letter case included)."""
 
     def __init__(self, message: str) -> None:
         super().__init__(E_NOT_FOUND, message)
@@ -182,6 +236,14 @@ class BookExists(StoreError):
 
     def __init__(self, book_id: str) -> None:
         super().__init__(E_BOOK_EXISTS, f"book {book_id} already exists")
+        self.book_id = book_id
+
+
+class StoreLocked(StoreError):
+    """Another thread or process held the book's lock for longer than `lock_timeout`."""
+
+    def __init__(self, book_id: str, timeout: float) -> None:
+        super().__init__(E_LOCKED, f"book {book_id} is locked by another writer ({timeout} s)")
         self.book_id = book_id
 
 
@@ -222,13 +284,15 @@ class OverwriteRejected(StoreError):
 
 
 class BookFrozen(StoreError):
-    """The book is frozen; the attempt is logged as `commit_rejected_frozen`."""
+    """The book is frozen or void; the attempt is logged as `commit_rejected_frozen`."""
 
-    def __init__(self, book_id: str, record: dict[str, Any], head: str) -> None:
-        super().__init__(E_FROZEN, f"book {book_id} is frozen; commit rejected")
+    def __init__(self, book_id: str, record: dict[str, Any], head: str, *, void: bool) -> None:
+        state = "void" if void else "frozen"
+        super().__init__(E_FROZEN, f"book {book_id} is {state}; commit rejected")
         self.book_id = book_id
         self.record = record
         self.chain_head = head
+        self.void = void
 
 
 class StoreIntegrityError(StoreError):
@@ -295,7 +359,12 @@ class BookInfo:
     n_entries: int
     n_records: int
     frozen: bool
+    """True when the book accepts no commit: frozen or void."""
     chain_head: str
+    void: bool = False
+    """True after a `void` record (whole-book fallback substitution or batch rebuild)."""
+    renderer_hash: str = ""
+    validator_hash: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,6 +400,7 @@ class VerifyReport:
     rerendered: bool
     anchored_seq: int | None
     """Line whose hash equals `expected_head`, when one was given and found."""
+    void: bool = False
 
     @property
     def codes(self) -> tuple[str, ...]:
@@ -346,6 +416,7 @@ class VerifyReport:
             "n_records": self.n_records,
             "n_entries": self.n_entries,
             "frozen": self.frozen,
+            "void": self.void,
             "chain_head": self.chain_head,
             "rerendered": self.rerendered,
             "anchored_seq": self.anchored_seq,
@@ -393,15 +464,42 @@ def persistence_violations(before: Mapping[str, Any], after: Mapping[str, Any]) 
     return tuple(problems)
 
 
+@functools.cache
+def validator_code_hash() -> str:
+    """SHA-256 of the validator version, the code digests of `VALIDATOR_SOURCES` and the
+    recipe schema digest: everything besides the renderer that decides admissibility.
+
+    Recorded per book with `renderer_hash()`; a commit under other code fails
+    (`E_VERSION`).
+    """
+    pkg = Path(__file__).resolve().parent
+    return _sha256(
+        canonical_json(
+            {
+                "validator_version": VALIDATOR_VERSION,
+                "code": {name: code_digest(pkg / name) for name in VALIDATOR_SOURCES},
+                "recipe_schema_sha256": recipe_schema_sha256(),
+            }
+        )
+    )
+
+
+@functools.cache
+def _code_hashes() -> tuple[str, str]:
+    """`(renderer_hash(), validator_code_hash())` of the running code."""
+    return renderer_hash(), validator_code_hash()
+
+
 def check_book_id(book_id: str) -> str:
     """Return `book_id` if it is an acceptable anonymous book ID, else raise
     `InvalidIdentifier`.
 
     3 to 64 ASCII letters, digits and inner hyphens (portable directory names). Windows
-    device names are refused. As a cheap guard against leaking the method into a
-    learner-facing field, a hyphen-separated token equal to A1, A2 or A3, or containing a
-    method word (hand, human, design, optim, evolution, genetic, transformer, llm, gpt,
-    model, method), is refused. Anonymity still depends on how IDs are generated (#20).
+    device names (CON, PRN, AUX, NUL, COM0-9, LPT0-9) are refused. As a cheap guard
+    against leaking the method into a learner-facing field, a hyphen-separated token
+    equal to A1, A2 or A3, or containing a method word (hand, human, design, optim,
+    evolution, genetic, transformer, llm, gpt, model, method), is refused. Anonymity
+    still depends on how IDs are generated (#20).
     """
     if not isinstance(book_id, str) or not _BOOK_ID_RE.fullmatch(book_id):
         raise InvalidIdentifier(
@@ -436,6 +534,14 @@ def _check_source(source: str) -> None:
     if not isinstance(source, str) or not _SOURCE_RE.fullmatch(source):
         raise InvalidIdentifier(
             f"source {source!r} must be 1-128 printable ASCII characters without spaces"
+        )
+
+
+def _check_reason(reason: str) -> None:
+    if not isinstance(reason, str) or not _REASON_RE.fullmatch(reason):
+        raise InvalidIdentifier(
+            "reason must be 1-500 printable ASCII characters without leading or trailing "
+            "spaces (include the deviation ID)"
         )
 
 
@@ -495,7 +601,7 @@ def _set_read_only(path: Path, read_only: bool) -> None:
 
 
 def _fsync_dir(path: Path) -> None:
-    if os.name != "posix":  # pragma: no cover - directories cannot be opened on Windows
+    if sys.platform == "win32":  # pragma: no cover - directories cannot be opened on Windows
         return
     fd = os.open(path, os.O_RDONLY)
     try:
@@ -511,15 +617,23 @@ def _write_new(path: Path, data: bytes, mode: str) -> None:
         os.fsync(f.fileno())
 
 
-def _publish(partial: Path, final: Path, data: bytes) -> None:
-    """Give `partial` the name `final` without ever replacing an existing file."""
-    with contextlib.suppress(FileExistsError):  # an identical blob was written first
+def _publish(partial: Path, final: Path) -> None:
+    """Give `partial` (already synced) the name `final`.
+
+    A hard link is atomic and never replaces a file. Without hard links, a rename is
+    atomic too; it may replace a file only with identical bytes, because a blob's bytes
+    are a function of its name. Either way no reader ever sees a partial blob.
+    """
+    try:
+        os.link(partial, final)
+    except FileExistsError:
+        return  # published by another writer; the caller compares the bytes
+    except OSError:  # no hard links on this file system
         try:
-            os.link(partial, final)  # atomic; fails if `final` exists
-        except FileExistsError:
-            raise
-        except OSError:  # no hard links on this file system: exclusive create
-            _write_new(final, data, "xb")
+            os.replace(partial, final)
+        except PermissionError:  # Windows: a read-only blob is already in place
+            if not final.exists():
+                raise
 
 
 def _repo_root() -> Path | None:
@@ -529,12 +643,37 @@ def _repo_root() -> Path | None:
         return None
 
 
+def _git_work_tree(path: Path) -> Path | None:
+    """The nearest of `path` and its parents that contains `.git` (a directory, or a
+    file for worktrees and submodules). Fails closed: any error other than "not found"
+    raises `StoreError(E_POLICY)`."""
+    for parent in (path, *path.parents):
+        try:
+            (parent / ".git").stat()
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+        except OSError as err:
+            raise StoreError(
+                E_POLICY, f"cannot check {parent} for a git work tree ({err}); refusing"
+            ) from err
+        return parent
+    return None
+
+
 def _reserved_digest(entries: Iterable[ReservedEntry]) -> str:
     return _sha256(canonical_json([e.to_dict() for e in entries]))
 
 
 def _references_digest(refs: tuple[Reference, ...]) -> str:
     return _sha256(canonical_json([[r.ref_id, r.recipe.sha256(), r.pcm_sha256] for r in refs]))
+
+
+def _marker_bytes(book_id: str, event: str, seq: int, line_sha256: str) -> bytes:
+    """Content of a FROZEN or VOID marker: the record it stands for."""
+    return (
+        canonical_json({"book_id": book_id, "event": event, "line_sha256": line_sha256, "seq": seq})
+        + b"\n"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -556,29 +695,49 @@ class _State:
     threshold: Fraction = Fraction(0)
     renderer_version: str = ""
     validator_version: str = ""
+    renderer_hash: str = ""
+    validator_hash: str = ""
     created: str = ""
     entries: dict[str, _Committed] = field(default_factory=dict)
     labels: dict[str, str] = field(default_factory=dict)
-    frozen_seq: int | None = None
+    closed_seq: int | None = None
+    """Line of the record that closed the book (`freeze` or `void`)."""
+    closing_event: str = ""
+    void_seq: int | None = None
     n_records: int = 0
+    n_bytes: int = 0
+    """Size of the complete lines (the file size when there is no torn tail)."""
+    torn_tail: bytes | None = None
     head: str = GENESIS_SHA256
     line_hashes: list[str] = field(default_factory=list)
     records: list[dict[str, Any]] = field(default_factory=list)
     pcm: dict[str, bytes] = field(default_factory=dict)
     issues: list[VerifyIssue] = field(default_factory=list)
+    missing_markers: list[VerifyIssue] = field(default_factory=list)
 
     def issue(
         self, code: str, message: str, seq: int | None = None, atom_id: str | None = None
-    ) -> None:
-        self.issues.append(VerifyIssue(code, message, seq, atom_id))
+    ) -> VerifyIssue:
+        item = VerifyIssue(code, message, seq, atom_id)
+        self.issues.append(item)
+        return item
 
     def snapshot(self) -> dict[str, str]:
         return {a: c.record["pcm_sha256"] for a, c in self.entries.items()}
 
+    def anchor(self, expected_head: str | None) -> int | None:
+        """Line whose hash is `expected_head`; adds `E_ANCHOR` if there is none."""
+        if expected_head is None:
+            return None
+        if expected_head in self.line_hashes:
+            return self.line_hashes.index(expected_head)
+        self.issue("E_ANCHOR", "the expected chain head is not a line of this log")
+        return None
+
 
 class _Scanner:
-    """Reads one book's log and checks lines, chain, records and blobs (and optionally
-    re-renders and re-validates every entry)."""
+    """Reads one book's log and checks lines, chain, records, markers and blobs (and
+    optionally re-renders and re-validates every entry)."""
 
     def __init__(self, store: VocabularyStore, book_id: str, *, rerender: bool) -> None:
         self.store = store
@@ -589,15 +748,15 @@ class _Scanner:
 
     def run(self) -> _State:
         st = self.state
-        path = self.store.log_path(st.book_id)
-        try:
-            data = path.read_bytes()
-        except FileNotFoundError:
+        if not self.store._exists(st.book_id):
             st.issue("E_LOG_MISSING", f"{BOOKS_DIR}/{st.book_id}/{LOG_NAME} does not exist")
             return st
+        data = self.store.log_path(st.book_id).read_bytes()
         lines = data.split(b"\n")
         tail = lines.pop()
+        st.n_bytes = len(data) - len(tail)
         if tail:
+            st.torn_tail = tail
             st.issue(
                 "E_LOG_TORN",
                 f"line {len(lines)} has no terminating LF (truncated or interrupted write)",
@@ -607,6 +766,7 @@ class _Scanner:
             st.issue("E_EVENT", "the log is empty (no create_book record)")
         for seq, line in enumerate(lines):
             self._line(seq, line)
+        self._markers()
         return st
 
     def _line(self, seq: int, line: bytes) -> None:
@@ -663,18 +823,20 @@ class _Scanner:
             st.issue("E_EVENT", "line 0 must be a create_book record", seq)
         if event == "create_book":
             self._create(seq, obj)
-        elif st.profile is None:
+            return
+        if st.profile is None:
             st.issue("E_EVENT", f"{event} before create_book", seq)
-        elif event == "commit":
-            self._commit(seq, obj)
-        elif event == "recommit_noop":
-            self._noop(seq, obj)
-        elif event == "overwrite_rejected":
-            self._overwrite(seq, obj)
-        elif event == "commit_rejected_frozen":
-            self._frozen(seq, obj)
-        else:
-            self._freeze(seq, obj)
+            return
+        handlers: dict[str, Callable[[int, dict[str, Any]], None]] = {
+            "commit": self._commit,
+            "recommit_noop": self._noop,
+            "overwrite_rejected": self._overwrite,
+            "commit_rejected_frozen": self._frozen,
+            "freeze": self._freeze,
+            "void": self._void,
+            "deviation": self._deviation,
+        }
+        handlers[event](seq, obj)
 
     # -- events -------------------------------------------------------------
 
@@ -688,6 +850,8 @@ class _Scanner:
         st.threshold = parse_threshold(rec["threshold"])
         st.renderer_version = rec["renderer_version"]
         st.validator_version = rec["validator_version"]
+        st.renderer_hash = rec["renderer_hash"]
+        st.validator_hash = rec["validator_hash"]
         st.created = rec["timestamp"]
         if (rec["kind"] == "synthetic") != rec["book_id"].startswith(SYNTHETIC_PREFIX):
             st.issue("E_RECORD", "synthetic books, and only they, start with DEMO-", seq)
@@ -695,8 +859,8 @@ class _Scanner:
     def _commit(self, seq: int, rec: dict[str, Any]) -> None:
         st = self.state
         atom_id = rec["atom_id"]
-        if st.frozen_seq is not None:
-            st.issue("E_EVENT", "commit after freeze", seq, atom_id)
+        if st.closed_seq is not None:
+            st.issue("E_EVENT", f"commit after {st.closing_event}", seq, atom_id)
         if atom_id in st.entries:
             st.issue("E_EVENT", "second commit record for a committed atom", seq, atom_id)
             return
@@ -768,10 +932,13 @@ class _Scanner:
             return None
         if rec["original_seq"] != committed.seq:
             st.issue(
-                "E_RECORD", "original_seq is not the atom's commit record", seq, rec["atom_id"]
+                "E_RECORD",
+                "original_seq is not the atom's commit record",
+                seq,
+                rec["atom_id"],
             )
-        if st.frozen_seq is not None:
-            st.issue("E_EVENT", f"{rec['event']} after freeze", seq, rec["atom_id"])
+        if st.closed_seq is not None:
+            st.issue("E_EVENT", f"{rec['event']} after {st.closing_event}", seq, rec["atom_id"])
         return committed
 
     def _noop(self, seq: int, rec: dict[str, Any]) -> None:
@@ -814,21 +981,73 @@ class _Scanner:
 
     def _frozen(self, seq: int, rec: dict[str, Any]) -> None:
         st = self.state
-        if st.frozen_seq is None:
+        if st.closed_seq is None:
             st.issue("E_EVENT", "commit_rejected_frozen in a book that is not frozen", seq)
-        elif rec["freeze_seq"] != st.frozen_seq:
-            st.issue("E_RECORD", "freeze_seq is not the freeze record", seq)
+        elif rec["freeze_seq"] != st.closed_seq:
+            st.issue("E_RECORD", "freeze_seq is not the record that closed the book", seq)
 
-    def _freeze(self, seq: int, rec: dict[str, Any]) -> None:
+    def _close(self, seq: int, rec: dict[str, Any]) -> None:
         st = self.state
-        if st.frozen_seq is not None:
-            st.issue("E_EVENT", "second freeze record", seq)
-            return
-        st.frozen_seq = seq
+        if st.closed_seq is None:
+            st.closed_seq = seq
+            st.closing_event = rec["event"]
         if rec["n_entries"] != len(st.entries):
             st.issue("E_RECORD", f"n_entries {rec['n_entries']} is not {len(st.entries)}", seq)
         if rec["snapshot_sha256"] != snapshot_digest(st.snapshot()):
             st.issue("E_RECORD", "snapshot_sha256 does not match the committed entries", seq)
+
+    def _freeze(self, seq: int, rec: dict[str, Any]) -> None:
+        st = self.state
+        if st.closed_seq is not None:
+            st.issue("E_EVENT", f"freeze after {st.closing_event}", seq)
+            return
+        self._close(seq, rec)
+
+    def _void(self, seq: int, rec: dict[str, Any]) -> None:
+        st = self.state
+        if st.void_seq is not None:
+            st.issue("E_EVENT", "second void record", seq)
+            return
+        st.void_seq = seq
+        if rec["superseded_by"] == st.book_id:
+            st.issue("E_RECORD", "a book cannot supersede itself", seq)
+        self._close(seq, rec)
+
+    def _deviation(self, seq: int, rec: dict[str, Any]) -> None:
+        """A recorded repair (`recover_torn_tail`); the schema checks its fields."""
+
+    # -- markers ------------------------------------------------------------
+
+    def _markers(self) -> None:
+        st = self.state
+        book_dir = self.store.book_dir(st.book_id)
+        expected = {
+            FROZEN_MARKER: (st.closing_event, st.closed_seq),
+            VOID_MARKER: ("void", st.void_seq),
+        }
+        for name, (event, seq) in expected.items():
+            path = book_dir / name
+            try:
+                data: bytes | None = path.read_bytes()
+            except FileNotFoundError:
+                data = None
+            if seq is None:
+                if data is not None:
+                    st.issue(
+                        "E_MARKER",
+                        f"{name} marker exists but the log has no matching record "
+                        "(lines removed from the end?)",
+                    )
+            elif data is None:
+                st.missing_markers.append(
+                    st.issue(
+                        "E_MARKER",
+                        f"{name} marker is missing (interrupted {event}; freeze() completes it)",
+                        seq,
+                    )
+                )
+            elif data != _marker_bytes(st.book_id, event, seq, st.line_hashes[seq]):
+                st.issue("E_MARKER", f"{name} marker does not match line {seq}", seq)
 
     # -- blobs --------------------------------------------------------------
 
@@ -891,9 +1110,14 @@ class VocabularyStore:
       Only the `timestamp` field uses it.
     - `reserved`: reserved signals for the validator; `None` loads
       `sound/reserved/registry.json` at each commit.
+    - `lock_timeout`: seconds to wait for a book's lock before `StoreLocked`.
 
-    Study books (`kind="study"` or `"fallback"`) cannot be created inside this
-    repository's working tree: they belong in restricted storage (`sound/docs/store.md`).
+    Every operation on a book holds an OS lock on `books/<book_id>/.lock` (`flock` on
+    POSIX, `msvcrt.locking` on Windows), so threads and processes on one host are
+    serialized. The OS releases the lock when a process dies: there is no stale lock.
+
+    Study books (`kind="study"` or `"fallback"`) cannot be created inside any git work
+    tree or this repository: they belong in restricted storage (`sound/docs/store.md`).
     """
 
     def __init__(
@@ -902,6 +1126,7 @@ class VocabularyStore:
         *,
         clock: Callable[[], datetime] | None = None,
         reserved: ReservedRegistry | Iterable[ReservedEntry] | None = None,
+        lock_timeout: float = 60.0,
     ) -> None:
         self._root = Path(root)
         self._clock = clock if clock is not None else _utc_now
@@ -909,6 +1134,7 @@ class VocabularyStore:
             self._reserved: ReservedRegistry | tuple[ReservedEntry, ...] | None = reserved
         else:
             self._reserved = tuple(reserved)
+        self._lock_timeout = lock_timeout
 
     @property
     def root(self) -> Path:
@@ -926,18 +1152,78 @@ class VocabularyStore:
         _check_sha256("pcm_sha256", pcm_sha256)
         return self._root / BLOBS_DIR / f"{pcm_sha256}.wav"
 
-    # -- reading ------------------------------------------------------------
+    # -- locking and loading ------------------------------------------------
+
+    def _book_names(self) -> builtins.list[str]:
+        try:
+            return os.listdir(self._root / BOOKS_DIR)
+        except FileNotFoundError:
+            return []
+
+    def _exists(self, book_id: str) -> bool:
+        """The book directory exists with exactly this name (letter case included) and
+        has a log, on every platform."""
+        return book_id in self._book_names() and self.log_path(book_id).is_file()
+
+    @contextlib.contextmanager
+    def _lock(self, book_id: str, *, write: bool = True) -> Iterator[None]:
+        path = self.book_dir(book_id) / LOCK_NAME
+        try:
+            fd = os.open(path, os.O_RDWR | os.O_CREAT | _O_BINARY, 0o644)
+        except OSError:
+            if write:
+                raise
+            try:  # a read-only copy of a store (for example an audit medium)
+                fd = os.open(path, os.O_RDONLY | _O_BINARY)
+            except OSError:
+                yield  # no lock file and none can be made: nothing can write here either
+                return
+        try:
+            deadline = time.monotonic() + self._lock_timeout
+            while True:
+                try:
+                    _try_lock(fd)
+                    break
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise StoreLocked(book_id, self._lock_timeout) from None
+                    time.sleep(_LOCK_POLL_S)
+            try:
+                yield
+            finally:
+                _unlock(fd)
+        finally:
+            os.close(fd)
+
+    def _require(self, book_id: str) -> None:
+        check_book_id(book_id)
+        if not self._exists(book_id):
+            raise NotFound(f"no book {book_id} in {self._root}")
 
     def _scan(self, book_id: str, *, rerender: bool = False) -> _State:
         return _Scanner(self, check_book_id(book_id), rerender=rerender).run()
 
-    def _load(self, book_id: str) -> _State:
-        if not self.log_path(book_id).is_file():
-            raise NotFound(f"no book {book_id} in {self._root}")
+    def _load(
+        self, book_id: str, *, expected_head: str | None = None, repair_markers: bool = False
+    ) -> _State:
+        """Scan under the caller's lock; raise unless the book is intact."""
+        if expected_head is not None:
+            _check_sha256("expected_head", expected_head)
         state = self._scan(book_id)
-        if state.issues:
-            raise StoreIntegrityError(book_id, tuple(state.issues))
+        state.anchor(expected_head)
+        issues = [
+            i
+            for i in state.issues
+            if not (repair_markers and any(i is m for m in state.missing_markers))
+        ]
+        if issues:
+            raise StoreIntegrityError(book_id, tuple(issues))
         return state
+
+    def _read(self, book_id: str, expected_head: str | None) -> _State:
+        self._require(book_id)
+        with self._lock(book_id, write=False):
+            return self._load(book_id, expected_head=expected_head)
 
     def _entry(self, state: _State, atom_id: str) -> StoreEntry:
         committed = state.entries[atom_id]
@@ -964,16 +1250,21 @@ class VocabularyStore:
             seq=committed.seq,
         )
 
-    def books(self) -> builtins.list[str]:
-        """Book IDs in this store, sorted."""
-        books = self._root / BOOKS_DIR
-        if not books.is_dir():
-            return []
-        return sorted(p.name for p in books.iterdir() if (p / LOG_NAME).is_file())
+    # -- reading ------------------------------------------------------------
 
-    def book(self, book_id: str) -> BookInfo:
+    def books(self, *, void: bool | None = None) -> builtins.list[str]:
+        """Book IDs in this store, sorted. `void=False` lists only books that are not
+        void, `void=True` only void books (each book is checked; a damaged book raises)."""
+        names = sorted(
+            n for n in self._book_names() if (self._root / BOOKS_DIR / n / LOG_NAME).is_file()
+        )
+        if void is None:
+            return names
+        return [n for n in names if self.book(n).void == void]
+
+    def book(self, book_id: str, *, expected_head: str | None = None) -> BookInfo:
         """Book-level facts. Raises `NotFound` or `StoreIntegrityError`."""
-        state = self._load(book_id)
+        state = self._read(book_id, expected_head)
         assert state.profile is not None
         return BookInfo(
             book_id=book_id,
@@ -985,34 +1276,50 @@ class VocabularyStore:
             created=state.created,
             n_entries=len(state.entries),
             n_records=state.n_records,
-            frozen=state.frozen_seq is not None,
+            frozen=state.closed_seq is not None,
             chain_head=state.head,
+            void=state.void_seq is not None,
+            renderer_hash=state.renderer_hash,
+            validator_hash=state.validator_hash,
         )
 
     def head(self, book_id: str) -> str:
         """The chain head: SHA-256 of the book's last log line."""
-        return self._load(book_id).head
+        return self._read(book_id, None).head
 
-    def get(self, book_id: str, atom_id: str) -> StoreEntry:
-        """The committed entry of `atom_id`, with its waveform read from the blob."""
+    def get(self, book_id: str, atom_id: str, *, expected_head: str | None = None) -> StoreEntry:
+        """The committed entry of `atom_id`, with its waveform read from the blob.
+
+        `expected_head`: a chain head recorded earlier; the read fails (`E_ANCHOR`)
+        unless it is still a line of the log. The same holds for every reader below.
+        """
         _atom(atom_id)
-        state = self._load(book_id)
+        state = self._read(book_id, expected_head)
         if atom_id not in state.entries:
             raise NotFound(f"{atom_id} is not committed in book {book_id}")
         return self._entry(state, atom_id)
 
-    def records(self, book_id: str) -> builtins.list[dict[str, Any]]:
+    def list(self, book_id: str, *, expected_head: str | None = None) -> builtins.list[StoreEntry]:
+        """Every committed entry in commit order (`commit_index` 0, 1, ...)."""
+        state = self._read(book_id, expected_head)
+        return [self._entry(state, a) for a in state.entries]
+
+    def records(
+        self, book_id: str, *, expected_head: str | None = None
+    ) -> builtins.list[dict[str, Any]]:
         """Every log record in order (for reconciliation, #33, and audits, #78)."""
-        return self._load(book_id).records
+        return self._read(book_id, expected_head).records
 
-    def snapshot_hashes(self, book_id: str) -> dict[str, str]:
+    def snapshot_hashes(self, book_id: str, *, expected_head: str | None = None) -> dict[str, str]:
         """`{atom_id: pcm_sha256}` in commit order."""
-        return self._load(book_id).snapshot()
+        return self._read(book_id, expected_head).snapshot()
 
-    def snapshot(self, book_id: str) -> dict[str, dict[str, Any]]:
+    def snapshot(
+        self, book_id: str, *, expected_head: str | None = None
+    ) -> dict[str, dict[str, Any]]:
         """Per atom, in commit order: `recipe_sha256`, `pcm_sha256`, `profile` and
         `semantic_label`, the four things that must never change (Study B protocol §4)."""
-        state = self._load(book_id)
+        state = self._read(book_id, expected_head)
         keys = ("recipe_sha256", "pcm_sha256", "profile", "semantic_label")
         return {a: {k: c.record[k] for k in keys} for a, c in state.entries.items()}
 
@@ -1022,22 +1329,23 @@ class VocabularyStore:
         """Check the whole book; never raises for integrity problems.
 
         Recomputes every line hash, the chain, `seq`, every record hash, the record
-        consistency (atom fields, versions, labels, event order), every blob (exists,
-        canonical WAV, `pcm_sha256`, `file_sha256`) and, with `rerender`, re-renders
-        each recipe, compares the waveform hash and re-runs the validator against the
-        earlier entries (book threshold, no reserved signals). With `expected_head` (a
-        chain head recorded elsewhere), a log whose lines no longer include that head
-        fails (`E_ANCHOR`): this detects lines removed from the end.
+        consistency (atom fields, versions, labels, event order), the FROZEN and VOID
+        markers, every blob (exists, canonical WAV, `pcm_sha256`, `file_sha256`) and,
+        with `rerender`, re-renders each recipe, compares the waveform hash and re-runs
+        the validator against the earlier entries (book threshold, no reserved signals).
+        With `expected_head` (a chain head recorded elsewhere), a log whose lines no
+        longer include that head fails (`E_ANCHOR`): this detects lines removed from the
+        end and logs rewritten with fresh hashes.
         """
+        check_book_id(book_id)
         if expected_head is not None:
             _check_sha256("expected_head", expected_head)
-        state = self._scan(book_id, rerender=rerender)
-        anchored: int | None = None
-        if expected_head is not None:
-            if expected_head in state.line_hashes:
-                anchored = state.line_hashes.index(expected_head)
-            else:
-                state.issue("E_ANCHOR", "the expected chain head is not a line of this log")
+        lock = (
+            self._lock(book_id, write=False) if self._exists(book_id) else contextlib.nullcontext()
+        )
+        with lock:
+            state = self._scan(book_id, rerender=rerender)
+        anchored = state.anchor(expected_head)
         issues = tuple(state.issues)
         return VerifyReport(
             book_id=book_id,
@@ -1045,10 +1353,11 @@ class VocabularyStore:
             issues=issues,
             n_records=state.n_records,
             n_entries=len(state.entries),
-            frozen=state.frozen_seq is not None,
+            frozen=state.closed_seq is not None,
             chain_head=state.line_hashes[-1] if state.line_hashes else None,
             rerendered=rerender,
             anchored_seq=anchored,
+            void=state.void_seq is not None,
         )
 
     # -- writing ------------------------------------------------------------
@@ -1057,6 +1366,11 @@ class VocabularyStore:
         return _format_timestamp(self._clock())
 
     def _append(self, state: _State, fields: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
+        """Append one record under the caller's lock and update `state`.
+
+        A failed write (for example a full disk) is undone: the log is truncated back
+        to its previous size, so the book stays intact.
+        """
         record: dict[str, Any] = dict(fields)
         record.update(
             record_version=RECORD_VERSION,
@@ -1071,43 +1385,106 @@ class VocabularyStore:
             raise AssertionError(f"store record does not match its schema: {errors}")
         line = canonical_json(record)
         path = self.log_path(state.book_id)
-        mode = "xb" if state.n_records == 0 else "ab"  # "xb": never a second create_book
-        if mode == "ab":
+        if state.n_records == 0:
+            try:
+                _write_new(path, line + b"\n", "xb")  # exclusive: never a second create_book
+            except FileExistsError:  # pragma: no cover - create_book checked under the lock
+                raise
+            except BaseException:
+                with contextlib.suppress(OSError):
+                    path.unlink()
+                raise
+            _fsync_dir(path.parent)
+        else:
+            size = path.stat().st_size
+            if size != state.n_bytes:
+                raise StoreError(
+                    E_CONCURRENT,
+                    f"the log of {state.book_id} changed since it was read "
+                    f"({size} bytes, expected {state.n_bytes}); nothing was appended",
+                )
             _set_read_only(path, False)
-        try:
-            _write_new(path, line + b"\n", mode)
-        finally:
-            if path.exists():
+            try:
+                _write_new(path, line + b"\n", "ab")
+            except BaseException:
+                with contextlib.suppress(OSError):
+                    os.truncate(path, size)
+                raise
+            finally:
                 _set_read_only(path, True)
-        return record, _sha256(line)
+        _set_read_only(path, True)
+        head = _sha256(line)
+        state.n_records += 1
+        state.n_bytes += len(line) + 1
+        state.head = head
+        state.line_hashes.append(head)
+        return record, head
+
+    def _write_marker(self, state: _State, name: str, event: str, seq: int) -> None:
+        """Write a FROZEN or VOID marker once (exclusive create, synced, read-only)."""
+        path = self.book_dir(state.book_id) / name
+        data = _marker_bytes(state.book_id, event, seq, state.line_hashes[seq])
+        try:
+            _write_new(path, data, "xb")
+        except FileExistsError:  # pragma: no cover - `_load` already compared existing markers
+            if path.read_bytes() != data:
+                issue = VerifyIssue("E_MARKER", f"{name} marker does not match line {seq}", seq)
+                raise StoreIntegrityError(state.book_id, (issue,)) from None
+        _fsync_dir(path.parent)
+        _set_read_only(path, True)
+
+    def _complete_markers(self, state: _State) -> None:
+        if state.closed_seq is not None:
+            self._write_marker(state, FROZEN_MARKER, state.closing_event, state.closed_seq)
+        if state.void_seq is not None:
+            self._write_marker(state, VOID_MARKER, "void", state.void_seq)
+        state.missing_markers.clear()
+
+    def _quarantine(self, final: Path, existing: bytes) -> None:
+        """Move a blob that does not hash to its name to `blobs/quarantine/` (kept for
+        the audit). No intact book can reference it."""
+        target = final.parent / QUARANTINE_DIR / f"{final.name}.{_sha256(existing)}"
+        target.parent.mkdir(exist_ok=True)
+        with contextlib.suppress(FileNotFoundError):  # another writer moved it first
+            _set_read_only(final, False)
+            if target.exists():
+                final.unlink()
+            else:
+                os.replace(final, target)
+                _set_read_only(target, True)
 
     def _put_blob(self, book_id: str, pcm: bytes) -> tuple[str, str]:
         """Write `blobs/<pcm_sha256>.wav` once; return `(pcm_sha256, file_sha256)`.
 
-        The file is written to `<name>.partial`, synced, then published with a hard
-        link, which is atomic and never replaces an existing file. File systems without
-        hard links fall back to an exclusive create. If the blob exists, its bytes must
-        be identical. Blobs are made read-only.
+        The bytes go to a private `<name>.<pid>-<thread>.partial` file, are synced, then
+        published atomically (`_publish`). An existing blob with identical bytes is
+        kept; one with other bytes cannot be referenced by an intact book (it does not
+        hash to its name), so it is quarantined and replaced. Blobs are read-only.
         """
         data = wav_bytes(pcm)
         pcm_hash = _sha256(pcm)
         final = self.blob_path(pcm_hash)
         final.parent.mkdir(parents=True, exist_ok=True)
-        if not final.exists():
-            partial = final.with_name(final.name + ".partial")
-            if partial.exists():  # left over from an interrupted write; never referenced
+        try:
+            existing: bytes | None = final.read_bytes()
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and existing != data:
+            self._quarantine(final, existing)
+            existing = None
+        if existing is None:
+            partial = final.with_name(f"{final.name}.{os.getpid()}-{threading.get_ident()}.partial")
+            if partial.exists():  # left over from an interrupted write of this thread id
                 _set_read_only(partial, False)
                 partial.unlink()
             _write_new(partial, data, "xb")
             try:
-                _publish(partial, final, data)
+                _publish(partial, final)
             finally:
                 partial.unlink(missing_ok=True)
             _fsync_dir(final.parent)
-        if final.read_bytes() != data:
-            issue = VerifyIssue(
-                "E_BLOB_HASH", f"{BLOBS_DIR}/{final.name} exists with different bytes"
-            )
+        if final.read_bytes() != data:  # pragma: no cover - only with a concurrent tamperer
+            issue = VerifyIssue("E_BLOB_HASH", f"{BLOBS_DIR}/{final.name} has other bytes")
             raise StoreIntegrityError(book_id, (issue,))
         _set_read_only(final, True)
         return pcm_hash, _sha256(data)
@@ -1116,6 +1493,19 @@ class VocabularyStore:
         reserved = self._reserved if self._reserved is not None else load_reserved_registry()
         entries = reserved.entries if isinstance(reserved, ReservedRegistry) else reserved
         return reserved, _reserved_digest(entries)
+
+    def _check_location(self, kind: str) -> None:
+        if kind == "synthetic":
+            return
+        root = self._root.resolve()
+        repo = _repo_root()
+        tree = _git_work_tree(root)
+        if tree is not None or (repo is not None and (root == repo or repo in root.parents)):
+            raise StoreError(
+                E_POLICY,
+                "study and fallback books live in restricted storage outside every git "
+                f"work tree (store root {root} is inside {tree or repo}; sound/docs/store.md)",
+            )
 
     def create_book(
         self,
@@ -1128,9 +1518,11 @@ class VocabularyStore:
         """Create an empty book and return its chain head.
 
         `threshold=None` uses the configured separation threshold
-        (`sound/config/validator.json`); every commit to the book uses the book's
-        threshold, renderer and validator. Synthetic books (`kind="synthetic"`) and only
-        they have IDs starting with `DEMO-`.
+        (`sound/config/validator.json`). The threshold must have a finite decimal form
+        (`"0.10"`, `Fraction(1, 8)`), else `ValueError`. Every commit to the book uses
+        the book's threshold, renderer and validator (versions and code hashes).
+        Synthetic books (`kind="synthetic"`) and only they have IDs starting with
+        `DEMO-`.
         """
         check_book_id(book_id)
         prof = _profile(profile)
@@ -1140,40 +1532,39 @@ class VocabularyStore:
             raise StoreError(
                 E_POLICY, "synthetic books, and only they, have IDs starting with DEMO-"
             )
-        repo = _repo_root()
-        if kind != "synthetic" and repo is not None:
-            root = self._root.resolve()
-            if root == repo or repo in root.parents:
-                raise StoreError(
-                    E_POLICY,
-                    "study and fallback books live in restricted storage outside the "
-                    "repository (sound/docs/store.md)",
-                )
+        self._check_location(kind)
         limit = load_separation_threshold() if threshold is None else parse_threshold(threshold)
-        books = self._root / BOOKS_DIR
-        if books.is_dir():
-            for existing in books.iterdir():
-                if (
-                    existing.name.casefold() == book_id.casefold()
-                    and (existing / LOG_NAME).exists()
-                ):
-                    raise BookExists(book_id)  # also case variants: portable to Windows and macOS
-        self.book_dir(book_id).mkdir(parents=True, exist_ok=True)
-        state = _State(book_id)
-        try:
+        text = format_fraction(limit)
+        if "/" in text:
+            raise ValueError(
+                f"threshold {text} has no finite decimal form; use a decimal such as '0.10'"
+            )
+        for existing in self._book_names():
+            if (
+                existing.casefold() == book_id.casefold()
+                and (self._root / BOOKS_DIR / existing / LOG_NAME).exists()
+            ):
+                raise BookExists(book_id)  # also case variants: portable to Windows and macOS
+        book_dir = self.book_dir(book_id)
+        book_dir.mkdir(parents=True, exist_ok=True)
+        _fsync_dir(book_dir.parent)
+        rhash, vhash = _code_hashes()
+        with self._lock(book_id):
+            if self.log_path(book_id).exists():  # pragma: no cover - a concurrent create_book
+                raise BookExists(book_id)
             _, head = self._append(
-                state,
+                _State(book_id),
                 {
                     "event": "create_book",
                     "profile": prof.value,
                     "kind": kind,
-                    "threshold": format_fraction(limit),
+                    "threshold": text,
                     "renderer_version": RENDERER_VERSION,
                     "validator_version": VALIDATOR_VERSION,
+                    "renderer_hash": rhash,
+                    "validator_hash": vhash,
                 },
             )
-        except FileExistsError as err:  # pragma: no cover - another writer created it first
-            raise BookExists(book_id) from err
         return head
 
     def commit(
@@ -1187,6 +1578,7 @@ class VocabularyStore:
         profile: Profile | str | None = None,
         pcm_sha256: str | None = None,
         references: Iterable[Reference] | None = None,
+        expected_head: str | None = None,
     ) -> tuple[StoreEntry, str]:
         """Commit one atom; return the stored entry and the new chain head.
 
@@ -1199,8 +1591,10 @@ class VocabularyStore:
           rendered waveform must match them.
         - `references`: extra validator references checked in addition to the book's
           committed entries (e.g. Study B retained options of other atoms, #26).
+        - `expected_head`: the chain head the caller recorded last; the commit fails
+          (`StoreIntegrityError`, `E_ANCHOR`) unless it is still a line of the log.
 
-        Order of checks: a frozen book logs `commit_rejected_frozen` and raises
+        Order of checks: a frozen or void book logs `commit_rejected_frozen` and raises
         `BookFrozen`. A committed atom logs `recommit_noop` and returns the existing
         entry when recipe, profile, waveform and label are identical, else logs
         `overwrite_rejected` and raises `OverwriteRejected`. A new atom is validated
@@ -1214,22 +1608,43 @@ class VocabularyStore:
         if pcm_sha256 is not None:
             _check_sha256("pcm_sha256", pcm_sha256)
         wanted = None if profile is None else _profile(profile)
-        state = self._load(book_id)
+        extra = tuple(references) if references is not None else ()
+        self._require(book_id)
+        with self._lock(book_id):
+            state = self._load(book_id, expected_head=expected_head)
+            head = self._commit_locked(
+                state, atom, semantic_label, recipe, source, wanted, pcm_sha256, extra
+            )
+            state = self._load(book_id)
+            return self._entry(state, atom.atom_id), head
+
+    def _commit_locked(
+        self,
+        state: _State,
+        atom: AtomRef,
+        semantic_label: str | None,
+        recipe: Recipe | Mapping[str, Any] | str | bytes,
+        source: str,
+        wanted: Profile | None,
+        pcm_sha256: str | None,
+        extra: tuple[Reference, ...],
+    ) -> str:
+        book_id, atom_id = state.book_id, atom.atom_id
         assert state.profile is not None
         parsed = _parse_recipe(recipe)
 
-        if state.frozen_seq is not None:
+        if state.closed_seq is not None:
             record, head = self._append(
                 state,
                 {
                     "event": "commit_rejected_frozen",
                     "atom_id": atom_id,
-                    "freeze_seq": state.frozen_seq,
+                    "freeze_seq": state.closed_seq,
                     "attempted_recipe_sha256": None if parsed is None else parsed.sha256(),
                     "source": source,
                 },
             )
-            raise BookFrozen(book_id, record, head)
+            raise BookFrozen(book_id, record, head, void=state.void_seq is not None)
 
         committed = state.entries.get(atom_id)
         if committed is not None:
@@ -1259,7 +1674,7 @@ class VocabularyStore:
                         "source": source,
                     },
                 )
-                return self._entry(state, atom_id), head
+                return head
             record, head = self._append(
                 state,
                 {
@@ -1277,15 +1692,18 @@ class VocabularyStore:
             )
             raise OverwriteRejected(book_id, atom_id, reasons, record, head)
 
+        rhash, vhash = _code_hashes()
         for name, book_value, current in (
-            ("renderer", state.renderer_version, RENDERER_VERSION),
-            ("validator", state.validator_version, VALIDATOR_VERSION),
+            ("renderer version", state.renderer_version, RENDERER_VERSION),
+            ("validator version", state.validator_version, VALIDATOR_VERSION),
+            ("renderer_hash", state.renderer_hash, rhash),
+            ("validator code hash", state.validator_hash, vhash),
         ):
             if book_value != current:
                 raise StoreError(
                     E_VERSION,
-                    f"book {book_id} was created with {name} {book_value}; "
-                    f"this is {name} {current}",
+                    f"book {book_id} was created with {name} {book_value}; the running "
+                    f"code has {current}. Start a new book.",
                 )
         if wanted is not None and wanted != state.profile:
             raise StoreError(E_PROFILE, f"book {book_id} uses profile {state.profile.value}")
@@ -1305,7 +1723,6 @@ class VocabularyStore:
                 E_LABEL, f"{semantic_label} is already bound to {state.labels[semantic_label]}"
             )
 
-        extra = tuple(references) if references is not None else ()
         refs = tuple(self._entry(state, a).reference() for a in state.entries) + extra
         reserved, reserved_sha = self._reserved_entries()
         result = validate(
@@ -1349,28 +1766,122 @@ class VocabularyStore:
                 "commit_index": len(state.entries),
             },
         )
-        return self.get(book_id, atom_id), head
-
-    def freeze(self, book_id: str) -> str:
-        """Freeze the book (no further commits) and return the chain head.
-
-        The `freeze` record carries the number of entries and the snapshot digest.
-        Freezing a frozen book changes nothing and returns the current head.
-        """
-        state = self._load(book_id)
-        if state.frozen_seq is not None:
-            return state.head
-        _, head = self._append(
-            state,
-            {
-                "event": "freeze",
-                "n_entries": len(state.entries),
-                "snapshot_sha256": snapshot_digest(state.snapshot()),
-            },
-        )
         return head
 
-    def list(self, book_id: str) -> builtins.list[StoreEntry]:
-        """Every committed entry in commit order (`commit_index` 0, 1, ...)."""
-        state = self._load(book_id)
-        return [self._entry(state, a) for a in state.entries]
+    def freeze(self, book_id: str, *, expected_head: str | None = None) -> str:
+        """Freeze the book (no further commits) and return the chain head.
+
+        Appends a `freeze` record (number of entries and snapshot digest), then writes
+        the write-once `FROZEN` marker that names that record, so removing the record
+        is detected. Freezing a frozen or void book appends nothing; it completes a
+        marker that an interrupted freeze or void left missing.
+        """
+        self._require(book_id)
+        with self._lock(book_id):
+            state = self._load(book_id, expected_head=expected_head, repair_markers=True)
+            if state.closed_seq is not None:
+                self._complete_markers(state)
+                return state.head
+            record, head = self._append(
+                state,
+                {
+                    "event": "freeze",
+                    "n_entries": len(state.entries),
+                    "snapshot_sha256": snapshot_digest(state.snapshot()),
+                },
+            )
+            state.closed_seq, state.closing_event = record["seq"], "freeze"
+            self._write_marker(state, FROZEN_MARKER, "freeze", record["seq"])
+            return head
+
+    def void(
+        self,
+        book_id: str,
+        *,
+        cause: str,
+        reason: str,
+        superseded_by: str | None = None,
+        expected_head: str | None = None,
+    ) -> str:
+        """Mark the book void and return the chain head. Nothing is deleted.
+
+        Use it when a whole book is replaced: whole-book fallback substitution
+        (`cause="failed_generation"`, Study A protocol §3.7) or a batch rebuilt with a
+        new panel (`cause="batch_rebuild"`, §3.3). `reason` is free text (include the
+        deviation ID); `superseded_by` names the replacing book, if any. A void book
+        accepts no commit (`BookFrozen`, logged) and `books(void=False)` leaves it out.
+        Writes the `VOID` marker (and the `FROZEN` marker if the book was open).
+        A second `void` raises `StoreError(E_VOID)`.
+        """
+        if cause not in VOID_CAUSES:
+            raise InvalidIdentifier(f"cause {cause!r} is not one of {VOID_CAUSES}")
+        _check_reason(reason)
+        if superseded_by is not None and check_book_id(superseded_by) == book_id:
+            raise InvalidIdentifier("a book cannot supersede itself")
+        self._require(book_id)
+        with self._lock(book_id):
+            state = self._load(book_id, expected_head=expected_head, repair_markers=True)
+            self._complete_markers(state)
+            if state.void_seq is not None:
+                raise StoreError(E_VOID, f"book {book_id} is already void")
+            record, head = self._append(
+                state,
+                {
+                    "event": "void",
+                    "cause": cause,
+                    "reason": reason,
+                    "superseded_by": superseded_by,
+                    "n_entries": len(state.entries),
+                    "snapshot_sha256": snapshot_digest(state.snapshot()),
+                },
+            )
+            state.void_seq = record["seq"]
+            if state.closed_seq is None:
+                state.closed_seq, state.closing_event = record["seq"], "void"
+            self._complete_markers(state)
+            return head
+
+    def recover_torn_tail(self, book_id: str, *, reason: str) -> str:
+        """Remove an incomplete final line left by an interrupted append; return the head.
+
+        Only bytes after the last LF are removed: no hash covers them, so no record is
+        lost. A `deviation` record (`torn_tail_removed`, the number of bytes, their
+        SHA-256 and `reason`) is appended. Any other integrity problem raises
+        `StoreIntegrityError`; a log without a torn tail raises `StoreError(E_RECOVERY)`.
+        """
+        _check_reason(reason)
+        self._require(book_id)
+        with self._lock(book_id):
+            state = self._scan(book_id)
+            tail = state.torn_tail
+            if tail is None:
+                raise StoreError(E_RECOVERY, f"the log of {book_id} has no incomplete final line")
+            others = tuple(
+                i for i in state.issues if i.code != "E_LOG_TORN" or i.seq != state.n_records
+            )
+            if others:
+                raise StoreIntegrityError(book_id, others)
+            if state.n_records == 0:
+                raise StoreError(
+                    E_RECOVERY,
+                    f"the log of {book_id} has no complete line; the book was never created "
+                    "(record a deviation and remove the book directory)",
+                )
+            path = self.log_path(book_id)
+            _set_read_only(path, False)
+            try:
+                os.truncate(path, state.n_bytes)
+            finally:
+                _set_read_only(path, True)
+            state.torn_tail = None
+            _, head = self._append(
+                state,
+                {
+                    "event": "deviation",
+                    "deviation": "torn_tail_removed",
+                    "removed_bytes": len(tail),
+                    "removed_sha256": _sha256(tail),
+                    "reason": reason,
+                },
+            )
+            return head
