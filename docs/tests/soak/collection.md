@@ -1,6 +1,6 @@
 # Native soak collection
 
-The monitor and collection tools record facts; they do not grant participant admission. Use fresh ignored/private directories. No tool below installs software, launches Isaac, changes a network, injects a fault, or resumes a paused exposure. The actual joined host must retain its existing package, review, calibration, schedule and source gates. A missing authority can produce truthful paused observations; it cannot become a completed teaching/protected run.
+The monitor and collection tools record facts; they do not grant participant admission. Use fresh ignored/private directories. No tool below installs software, launches Isaac, changes a network, injects a fault by itself, or resumes a paused exposure. The actual joined host must retain its existing package, review, calibration, schedule and source gates. A missing authority can produce truthful paused observations; it cannot become a completed teaching/protected run.
 
 ## Unity binding
 
@@ -64,8 +64,45 @@ python -m isaac.soak.host --pid SOURCE_PID --gpu-index 0 --steps private/step-tr
 
 It checks PID start ticks and command-byte hash every sample, rejecting PID reuse. RAM is whole-host used memory plus separate process RSS; VRAM is whole selected-device memory, including unrelated workloads. It reads only the named PID and `nvidia-smi`; it never stops another process. The step column is the maximum measured duration in the latest complete aggregate, not an interpolated or estimated simulator rate. Missing/stale step traces and subprocess failures preserve partial output. A synthetic sampler test must use `--source-kind synthetic_diagnostic`. Host-relative coverage and Unity coverage remain separate until their retained run windows are reviewed.
 
+## Synthetic schedule driver
+
+`isaac.soak.driver` generates and runs the per-station non-study schedule. The schedule is the canonical JSON output of a seeded generator: alternating teaching and protected blocks, a `set_mode` at each block start, a `reset` before every trial, legal-pair demos only in teaching blocks, a dummy response and a `demo` lock probe in every protected trial, and optional planned fault slots in protected blocks after the first. `load_schedule` accepts only the exact bytes that the generator reproduces for the pinned hash, then reruns an independent gate (demos only in teaching mode, probes and responses only in test mode, a fresh reset before every trial, a probe in every protected block, at least two seconds between commands and at most twenty commands per minute). Put that hash in the Unity monitor plan's `schedule_sha256`.
+
+```text
+python -m isaac.soak.driver schedule --station-id station-01 --seed SEED --seconds 28800 --fault-types isaac_crash,wifi_drop,uplink_disconnect --output PRIVATE/station-01/schedule.json
+python -m isaac.soak.driver validate PRIVATE/station-01/schedule.json --sha256 SCHEDULE_SHA256
+python -m isaac.soak.driver run --schedule PRIVATE/station-01/schedule.json --sha256 SCHEDULE_SHA256 --control-session-id SESSION --endpoint ws://127.0.0.1:PORT/commands --output PRIVATE/station-01/driver
+```
+
+`validate` prints the number of commands. The dispatcher never evicts an idempotency entry, so the station's `cache_size` must exceed that count or admission faults with `IDEMPOTENCY_CAPACITY` partway through the run. With the default 300-second blocks and 20-second trials, an eight-hour schedule has about 2,800 commands; the dispatcher default of 1,024 is too small.
+
+The runner uses one private WebSocket on a loopback TCP endpoint or a Unix socket and a separately pinned control session. It sends one request at a time with its own pacing. Late steps never burst. Each `command_intent` row is fsynced before its send; the verbatim reply follows as `command_reply` with send/receive monotonic nanoseconds. Replies must have the exact private-reply shape, the same request ID, a known reason, `duplicate:false`, consistent `reset_ok` and the pinned health session. Anything else is a `REPLY_REFUSED` halt. A transport error or timeout is a `TRANSPORT_ERROR` halt. No request is retried or replayed. A well-formed reply that the schedule did not expect, such as an accepted or non-protected lock-probe rejection, a failed reset, or `DEMO_NOT_IMPLEMENTED` without `--allow-missing-demo-content`, is first forwarded to Unity and then halts as `UNEXPECTED_OUTCOME`. Its failure still reaches the analyzer. The driver also refuses a demo unless the last acknowledged backend mode is teaching, and a lock probe unless it is test.
+
+`driver-journal.jsonl` and `unity-inputs.jsonl` are append-only SHA-256 chains over exact compact rows. The Unity input feed carries `block_begin`, `trial` (with its fresh reset request ID), `dummy_response`, `fault_marker` and `command_ack` (verbatim reply and its hash) rows. It is the schedule input that the joined Unity host consumes. A process restart resumes only with `--resume`. It refuses a torn tail, a completed journal, a diverged feed or an unrecovered fault. It records each unanswered request as `interrupted_exchange` without sending it again, records the skipped steps, and restarts at the next block boundary with that block's mode command.
+
+Fault slots are inert (`fault_slot_not_injected`) unless `--authorize-fault-injection --fault-hook operator-file` are both given. The built-in hook writes `operator/fault-request-<id>.json` and waits for an operator-written `fault-done-<id>.json` with `{"version":1,"fault_id":...,"fault_type":...,"performed":true}`. The driver never kills a process or changes a network itself. After the hook returns, it waits for `operator/recovery-<id>.json` with `{"version":1,"fault_id":...,"control_session_id":...,"operator_initiated":true}`, reconnects, probes health, sends one recovery reset bound to the fault, and continues at the next fresh trial or block. It never resumes an exposure. That remains an operator action in Unity.
+
+## Command/data normalization
+
+`isaac.soak.normalize` joins the station plan, retained Unity native journal, pinned schedule, one or more durable private command logs, the driver journal, the Unity input feed and the hash-chained data journal into the analyzer's `events.jsonl`, plus a `normalization.json` summary. Every fact uses the `t_s` of the native Unity row that observed it. The joined host must call `SoakCaptureHost.Observe` with exactly these payloads:
+
+| Native kind | Payload | Normalized fact and independent join |
+|---|---|---|
+| `reset_receipt` | `input_seq`, `request_id`, `reply_sha256` | `reset`: feed `command_ack`, driver reply bytes and exactly one durable reset or `set_mode` test terminal event; `reset_ok` from that event; the active Unity-observed fault, if any |
+| `lock_probe_receipt` | same | `lock_probe`: block and ID from the latest native `context` row, which must be protected; `rejected` only for `PROTECTED_TARGET_COMMAND` in test mode |
+| `fault_injection` | `input_seq`, `fault_id`, `last_committed_data_sha256` | `fault`: feed `fault_marker` and the driver's `fault_intent` type |
+| `durable_record` | `data_event_id`, `data_sha256`, `reset_request_id` | data session `response` → `record_commit`; `state_before` → `trial_begin` bound to a Unity-placed reset; `session_paused` → `pause` of the active fault |
+| `cue_observation` | `data_event_id`, `data_sha256` | data session `onset_evidence` → `exposure` and `cue_playback` (cue = original trial of a retry; audible = consumed exposure or confirmed audible; a retry is treated as unheard) |
+| `operator_resume` | `fault_id`, `data_event_id`, `data_sha256`, `reset_request_id`, `last_committed_data_sha256` | data session `operator_resume` → operator-initiated `resume` of the active fault after a successful placed reset |
+
+```text
+python -m isaac.soak.normalize --plan station-plan.json --plan-sha256 PLAN_SHA256 --native soak-native.jsonl --schedule schedule.json --command-log command.native --driver-journal driver-journal.jsonl --unity-inputs unity-inputs.jsonl --data-journal data.jsonl --output PRIVATE/station-01/normalized
+```
+
+Repeat `--command-log` for each service restart. Unknown native kinds, malformed payloads, duplicate receipts, unmatched hashes, tampered chains and protected receipts outside a protected context are refused. Refusal also covers a driver exchange that differs from the durable command record, an accepted test-mode demo anywhere in a command log, a failing probe or failed reset with no Unity receipt, and a driver fault absent from the Unity journal. A rejected probe or successful reset that Unity never received is counted as unplaced and is not invented. The summary always says `NO_GO` and `analysis_required`; only the analyzer applies the criteria.
+
 ## Remaining full-soak integration
 
-The real engine must execute approved non-study schedule inputs, log each fresh reset and protected lock probe, and bind the Unity receipt time to the exact backend request/reply. A complete normalizer must independently join private command log records and durable #72 data/audio records before emitting trial, exposure, fault, recovery and cue-retention facts. Do not derive them from a generic observation payload or engine label. The present receiver-only adapter deliberately omits those facts.
+The joined Unity host still has to consume `unity-inputs.jsonl`: set its block context, run trials and dummy responses through the real engine, and log the receipts and data references above through `Observe`. That binding and its native validation are not implemented here. Until then, an actual run produces receiver-only facts and normalization or analysis returns `NO_GO`. The analyzer manifest is still assembled by hand from the normalized events, resources and hashed native sources.
 
 Physical crash/Wi-Fi/uplink injections, explicit operator recovery resume, headset battery/thermal capture, eight-hour multi-station overlap, native-log review, and signed G2 remain unperformed. Qualifying motion content and passing publisher timing remain separate blockers. The newest actual backend reset/lock verification is recorded in the #53/#55 derivatives dated 2026-10-05; the contemporaneous twenty-second publisher screen still fails timing. No longer run is implied by these tools or their synthetic tests.
