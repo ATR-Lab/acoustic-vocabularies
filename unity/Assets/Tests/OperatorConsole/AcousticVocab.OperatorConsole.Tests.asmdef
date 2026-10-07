@@ -1,0 +1,8 @@
+{
+  "name": "AcousticVocab.OperatorConsole.Tests",
+  "references": ["AcousticVocab.OperatorConsole", "AcousticVocab.SessionEngine", "AcousticVocab.StudyAudio"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
+}

@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/visit-schedule.schema.json",
+  "title": "Visit schedule (one person, one visit)",
+  "description": "HIDDEN-ANSWER MATERIAL: every item carries the private intended tuple (semantic action and referent, matrix indices), so schedule files belong to the trusted task queue, never to a participant-visible or operator-visible display. One file per person and visit (Study A: D0, D7; Study B: V1, V2, V3, W1, W4). Blocks run in array order; items run in array order within a block on fixed slots. Written by av_schedules (#30); consumed by the session engine (#67), the package builder's schedules/ slot (#13) and the run sheets (#32). See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "generator",
+    "hidden_answer",
+    "demo",
+    "seed_label",
+    "study",
+    "set",
+    "unit_id",
+    "unit_kind",
+    "person_id",
+    "person_slot",
+    "visit",
+    "wave",
+    "swap_w1_w4",
+    "family_first",
+    "permutation_json_sha256",
+    "assessment",
+    "dictionary_messages",
+    "blocks"
+  ],
+  "properties": {
+    "format": {"const": "av-schedules/visit-schedule"},
+    "format_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "av-schedules"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "hidden_answer": {
+      "const": true,
+      "description": "Marks the file as hidden-answer material (private intended tuples)."
+    },
+    "demo": {
+      "type": "boolean",
+      "description": "True when generated from a public DEMO- seed; such schedules must never be used with participants."
+    },
+    "seed_label": {
+      "type": "string",
+      "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$",
+      "description": "The DEMO- seed itself, or sha256:<SHA-256 of the private master seed>."
+    },
+    "study": {"enum": ["A", "B"]},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "unit_id": {"type": "string", "pattern": "^(A-[PC][0-9]{2}|B-[PCS][0-9]{2})$"},
+    "unit_kind": {"enum": ["batch", "dyad", "spare"]},
+    "person_id": {
+      "type": "string",
+      "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}|B-[PCS][0-9]{2}-M[12])$",
+      "description": "Person slot: Study A learner slot <unit>-L01..L12 (pilot L01..L06); Study B dyad member slot <unit>-M1 or -M2. Methods and roles are assigned to slots by the allocation lists (#31)."
+    },
+    "person_slot": {"type": "string", "pattern": "^(L[0-9]{2}|M[12])$"},
+    "visit": {"enum": ["D0", "D7", "V1", "V2", "V3", "W1", "W4"]},
+    "wave": {
+      "enum": [1, 2, 3],
+      "description": "Inventory wave available at this visit (Study A: 3)."
+    },
+    "swap_w1_w4": {"type": "boolean"},
+    "family_first": {"$ref": "#/$defs/family"},
+    "permutation_json_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256 of the unit's permutation.json (#29) the schedule was built from."
+    },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "This visit's row of planning assessment-schedule.csv: pre-old and protected counts, their fixed slot seconds and the validity trials after the protected blocks.",
+      "required": [
+        "pre_old_trained",
+        "post_trained",
+        "novel_once",
+        "atomic",
+        "assessment_seconds",
+        "extra_after_protected"
+      ],
+      "properties": {
+        "pre_old_trained": {"type": "integer", "minimum": 0},
+        "post_trained": {"type": "integer", "minimum": 0},
+        "novel_once": {"type": "integer", "minimum": 0},
+        "atomic": {"type": "integer", "minimum": 0},
+        "assessment_seconds": {"type": "integer", "minimum": 0},
+        "extra_after_protected": {"type": "integer", "minimum": 0}
+      }
+    },
+    "dictionary_messages": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/message_id"},
+      "description": "Complete messages allowed in teaching or dictionary views up to this visit (the cumulative trained set). A held-out message never appears here."
+    },
+    "blocks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/block"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "family": {"enum": ["K", "Q"]},
+    "message_id": {"type": "string", "pattern": "^[KQ]-a[1-4]-r[1-4]$"},
+    "atom_id": {"type": "string", "pattern": "^[KQ]-[ar][1-4]$"},
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "block",
+        "position",
+        "phase",
+        "expected_count",
+        "passes",
+        "slot_s",
+        "seconds",
+        "shared_by",
+        "order_source",
+        "seed",
+        "seed_tokens",
+        "validity",
+        "items"
+      ],
+      "properties": {
+        "block": {
+          "enum": [
+            "profile_menu",
+            "atom_menus",
+            "atomic_lessons",
+            "message_lessons",
+            "pre_old",
+            "trained",
+            "novel",
+            "atomic",
+            "validity"
+          ]
+        },
+        "position": {"type": "integer", "minimum": 1, "description": "1-based block position in the visit."},
+        "phase": {
+          "enum": ["selection", "teaching", "pre_test", "protected", "validity"],
+          "description": "selection: profile and atom menus; teaching: lessons; pre_test: pre-teaching old-item probe; protected: trained -> novel -> atomic battery; validity: final task-validity block. No feedback in pre_test, protected and validity."
+        },
+        "expected_count": {"type": "integer", "minimum": 1},
+        "passes": {"enum": [1, 2], "description": "Items of pass 1 all precede pass 2; each pass holds every item of the block's set once."},
+        "slot_s": {"enum": [9, 14, 20, 24, 45, 60]},
+        "seconds": {"type": "integer", "minimum": 1, "description": "expected_count x slot_s."},
+        "shared_by": {
+          "enum": ["person", "batch", "dyad"],
+          "description": "person: order drawn for this person; batch / dyad: identical in every schedule of the unit (Study A atom order; Study B menus and lessons, matched for the yoked partner)."
+        },
+        "order_source": {
+          "enum": ["seeded", "stored", "fixed"],
+          "description": "seeded: drawn from 'seed'; stored: the unit's stored atom order from permutation.json (A atom_order, B wave_atom_order); fixed: a single item."
+        },
+        "seed": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}],
+          "description": "Seeded blocks: sha256 of the master seed and seed_tokens joined by '|', i.e. sha256(\"{master}|{study}|{unit_id}|{person}|{visit}|{block}\"); null for stored or fixed orders."
+        },
+        "seed_tokens": {
+          "oneOf": [
+            {
+              "type": "array",
+              "prefixItems": [
+                {"enum": ["A", "B"]},
+                {"type": "string", "pattern": "^(A-[PC][0-9]{2}|B-[PCS][0-9]{2})$"},
+                {"type": "string", "pattern": "^(A-[PC][0-9]{2}(-L[0-9]{2})?|B-[PCS][0-9]{2}(-M[12])?)$"},
+                {"enum": ["D0", "D7", "V1", "V2", "V3", "W1", "W4"]},
+                {"type": "string", "pattern": "^[a-z_]+$"}
+              ],
+              "items": false,
+              "minItems": 5
+            },
+            {"type": "null"}
+          ],
+          "description": "[study, unit_id, person, visit, block]; the person token is the unit ID for blocks shared by the unit (batch or dyad)."
+        },
+        "validity": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["no_cue_targets", "speech_list_seed", "speech_list_sha256"],
+              "properties": {
+                "no_cue_targets": {
+                  "type": "array",
+                  "minItems": 8,
+                  "maxItems": 8,
+                  "items": {"$ref": "#/$defs/message_id"},
+                  "description": "No-cue targets in draw order: uniform with replacement over the 32 legal commands (repeats allowed)."
+                },
+                "speech_list_seed": {"$ref": "#/$defs/sha256"},
+                "speech_list_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of <set>-speech-list.json."}
+              }
+            },
+            {"type": "null"}
+          ]
+        },
+        "items": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/item"}}
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trial_id",
+        "position",
+        "trial_type",
+        "pass",
+        "slot_s",
+        "plays",
+        "message_id",
+        "atom_id",
+        "speech_id",
+        "trained_status",
+        "presentation",
+        "intended"
+      ],
+      "properties": {
+        "trial_id": {
+          "type": "string",
+          "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}|B-[PCS][0-9]{2}-M[12])-(D0|D7|V1|V2|V3|W1|W4)-(PM|AM|AL|ML|PO|TR|NV|AT|VA)-[0-9]{2}$",
+          "description": "<person_id>-<visit>-<block code>-<position>; unique across all schedules. A retry gets a new ID from the session engine with retry_of set."
+        },
+        "position": {"type": "integer", "minimum": 1},
+        "trial_type": {
+          "enum": [
+            "profile_menu",
+            "atom_menu",
+            "atomic_lesson",
+            "message_lesson",
+            "pre_old",
+            "trained",
+            "novel",
+            "atomic",
+            "no_cue",
+            "speech"
+          ]
+        },
+        "pass": {"enum": [1, 2]},
+        "slot_s": {"enum": [9, 14, 20, 24, 45, 60]},
+        "plays": {"type": "integer", "minimum": 0, "description": "Scheduled audio plays: lessons 3, menus 8, test and speech trials 1, no-cue 0."},
+        "message_id": {
+          "oneOf": [{"$ref": "#/$defs/message_id"}, {"type": "null"}],
+          "description": "Complete message whose audio is played (lessons, pre-old, trained, novel); null otherwise."
+        },
+        "atom_id": {
+          "oneOf": [{"$ref": "#/$defs/atom_id"}, {"type": "null"}],
+          "description": "Atom whose audio (or menu candidates) is played (atom menus, atomic lessons, atomic probes); null otherwise."
+        },
+        "speech_id": {
+          "oneOf": [{"type": "string", "pattern": "^[KQ]-[A-Z_]+-[A-H]$"}, {"type": "null"}],
+          "description": "Speech command of the frozen speech list (speech trials); null otherwise."
+        },
+        "trained_status": {
+          "enum": ["trained", "heldout", "atom", "nonsemantic", "validity"],
+          "description": "trained / heldout: matrix status of the played message; atom; nonsemantic: profile menu; validity: no-cue and speech controls."
+        },
+        "presentation": {
+          "oneOf": [{"enum": ["structured", "dictionary"]}, {"type": "null"}],
+          "description": "Whole-message lessons only: structured (temporal alignment; all of Study A) or dictionary (Study B dictionary family)."
+        },
+        "intended": {
+          "oneOf": [
+            {"$ref": "#/$defs/intended_message"},
+            {"$ref": "#/$defs/intended_atom"},
+            {"type": "null"}
+          ],
+          "description": "PRIVATE intended tuple (hidden answer). For no-cue trials the private target command; null for the profile menu."
+        }
+      }
+    },
+    "intended_message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "family",
+        "message_id",
+        "action_index",
+        "referent_index",
+        "semantic_action",
+        "semantic_referent"
+      ],
+      "properties": {
+        "kind": {"const": "message"},
+        "family": {"$ref": "#/$defs/family"},
+        "message_id": {"$ref": "#/$defs/message_id"},
+        "action_index": {"type": "integer", "minimum": 1, "maximum": 4},
+        "referent_index": {"type": "integer", "minimum": 1, "maximum": 4},
+        "semantic_action": {"enum": ["ADD_ONE", "REMOVE_ONE", "FLIP_CARD", "ALIGN_ARROW", "SCAN", "TAG", "CLOSE", "QUARANTINE"]},
+        "semantic_referent": {"enum": ["A", "B", "C", "D", "E", "F", "G", "H"]}
+      }
+    },
+    "intended_atom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "family", "atom_id", "role", "index", "semantic_label"],
+      "properties": {
+        "kind": {"const": "atom"},
+        "family": {"$ref": "#/$defs/family"},
+        "atom_id": {"$ref": "#/$defs/atom_id"},
+        "role": {"enum": ["action", "referent"]},
+        "index": {"type": "integer", "minimum": 1, "maximum": 4},
+        "semantic_label": {"enum": ["ADD_ONE", "REMOVE_ONE", "FLIP_CARD", "ALIGN_ARROW", "SCAN", "TAG", "CLOSE", "QUARANTINE", "A", "B", "C", "D", "E", "F", "G", "H"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "issue": 59,
+  "source_commit": "f7e430183797bacdc3e2dfeb2c25094f4bda5989",
+  "status": "development_foundation_verified_locally_not_gate_qualified",
+  "editor": "6000.6.0f1",
+  "tests": {
+    "edit_mode": {
+      "source_commit": "a48d2c42dacb41975e0046e9c3ac54a3c610aa2f",
+      "result": "Passed",
+      "total": 29,
+      "passed": 29,
+      "failed": 0,
+      "raw_xml_sha256": "0ba26b32b21d0bce24d0b73b3332531a65e52b535861b3f17b6423d8f48f3d55",
+      "framework": "1.8.0 builtin",
+      "nunit": "2.1.0 builtin"
+    },
+    "repository_pytest": {
+      "passed": 12
+    },
+    "schema_validation": {
+      "schemas": 2,
+      "synthetic_examples": 2
+    },
+    "deployment_mock": {
+      "result": "passed",
+      "adb_operations": 7,
+      "hardware_used": false
+    },
+    "missing_config_windows_player": {
+      "result": "fault_observed",
+      "station_id": "unprovisioned",
+      "build_id": "foundation-link-001",
+      "source_commit": "a48d2c42dacb41975e0046e9c3ac54a3c610aa2f",
+      "reason": "station_config_unreadable",
+      "verification": "headless startup fault log plus neutral scene/source guard; no headset view qualification",
+      "raw_operator_log_sha256": "ce577073257b5ef12772465451c111bac83952d1c7a016104ba319852c46431a",
+      "cleanup": "own test player stopped after bounded log observation"
+    },
+    "deliberate_compile_error": {
+      "status": "not_run",
+      "reason": "automatic approval review rejected the local probe/cleanup command",
+      "returned_reason": "blocked by policy"
+    }
+  },
+  "builds": [
+    {
+      "build_id": "foundation-link-002",
+      "target": "Windows",
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "file_count": 190,
+      "file_bytes_total": 104491765,
+      "primary_artifact_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
+      "primary_artifact_bytes": 667136,
+      "build_manifest_public_path": "docs/foundation/build-manifests/experiment.exe.build.json",
+      "raw_manifest_sha256": "9681ca0078dcc849f85a2d9ce9a475796051a22c174451e5996870b9f7f36e0f"
+    },
+    {
+      "build_id": "foundation-quest-003",
+      "target": "Android",
+      "result": "Succeeded",
+      "errors": 0,
+      "development_build": false,
+      "file_count": 1,
+      "file_bytes_total": 36901782,
+      "primary_artifact_sha256": "5874f5ca1d9d5131055494431762619f779d338b361ef2cae36ee3012f691d6e",
+      "primary_artifact_bytes": 36901782,
+      "build_manifest_public_path": "docs/foundation/build-manifests/experiment.apk.build.json",
+      "raw_manifest_sha256": "b564bb84480f2739d39e5608c56a8a08f262fac6c1a7f323c6e2dd9ec0b935fe",
+      "apk_zip_crc": "passed",
+      "android_permission_internet": true,
+      "android_debuggable_attribute": "absent (platform default false)"
+    }
+  ],
+  "ci": {
+    "run_url": "https://github.com/ATR-Lab/acoustic-vocabularies/actions/runs/37246060265",
+    "configuration_job": "failed as designed: no licensed runner, variables, or license secret configured",
+    "quest_and_tests_job": "skipped after configuration failure",
+    "qualification": "pending"
+  },
+  "headset": {
+    "adb_authorized_devices": 0,
+    "deployment": "pending",
+    "ten_relaunch_reference_check": "pending",
+    "human_comfort_and_legibility": "pending"
+  },
+  "decisions": {
+    "topology": "both standalone Quest and Windows Link configured, selection provisional",
+    "protocol": "engineering-pending-review; methodology/final study version absent",
+    "observer": "world-up yaw-only restore; natural tracked pitch/roll preserved",
+    "meta_xr_core_v207": "not installed; approved existing Meta OpenXR used",
+    "adr_007": "engineering header contract only; final acceptance pending"
+  }
+}

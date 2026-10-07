@@ -1,0 +1,867 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/menu-store-bridge.schema.json",
+  "title": "DEMO-only private menu/store bridge v1",
+  "$defs": {
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "unit_id",
+        "book_id",
+        "bank_sha256",
+        "package_sha256",
+        "demo_only",
+        "bank_path",
+        "bank_file_sha256",
+        "package_path",
+        "store_root"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "bank_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "package_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "demo_only": {
+          "const": true
+        },
+        "bank_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bank_file_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "package_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store_root": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "unit_id",
+        "book_id",
+        "bank_sha256",
+        "package_sha256",
+        "request_id",
+        "operation",
+        "expected_head",
+        "expected_snapshot_sha256",
+        "profile",
+        "menu_key",
+        "rank"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "bank_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "package_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "operation": {
+          "enum": [
+            "profile",
+            "atom",
+            "verify"
+          ]
+        },
+        "expected_head": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "profile": {
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            null
+          ]
+        },
+        "menu_key": {
+          "anyOf": [
+            {
+              "const": "profile"
+            },
+            {
+              "enum": [
+                "K-a1",
+                "K-a2",
+                "K-a3",
+                "K-a4",
+                "K-r1",
+                "K-r2",
+                "K-r3",
+                "K-r4",
+                "Q-a1",
+                "Q-a2",
+                "Q-a3",
+                "Q-a4",
+                "Q-r1",
+                "Q-r2",
+                "Q-r3",
+                "Q-r4"
+              ]
+            },
+            {
+              "const": "verify"
+            }
+          ]
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "operation": {
+              "const": "profile"
+            },
+            "menu_key": {
+              "const": "profile"
+            },
+            "rank": {
+              "type": "null"
+            },
+            "profile": {
+              "enum": [
+                "P1",
+                "P2",
+                "P3"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "atom"
+            },
+            "menu_key": {
+              "enum": [
+                "K-a1",
+                "K-a2",
+                "K-a3",
+                "K-a4",
+                "K-r1",
+                "K-r2",
+                "K-r3",
+                "K-r4",
+                "Q-a1",
+                "Q-a2",
+                "Q-a3",
+                "Q-a4",
+                "Q-r1",
+                "Q-r2",
+                "Q-r3",
+                "Q-r4"
+              ]
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "profile": {
+              "enum": [
+                "P1",
+                "P2",
+                "P3"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "verify"
+            },
+            "menu_key": {
+              "const": "verify"
+            },
+            "rank": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "unit_id",
+        "book_id",
+        "bank_sha256",
+        "package_sha256",
+        "request_id",
+        "operation",
+        "profile",
+        "menu_key",
+        "rank",
+        "request_sha256",
+        "config_sha256",
+        "status",
+        "accepted",
+        "reason",
+        "before_head",
+        "after_head",
+        "before_snapshot_sha256",
+        "after_snapshot_sha256",
+        "pcm_sha256",
+        "file_sha256",
+        "source_kind",
+        "participant_ready",
+        "receipt_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "bank_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "package_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "operation": {
+          "enum": [
+            "profile",
+            "atom"
+          ]
+        },
+        "profile": {
+          "enum": [
+            "P1",
+            "P2",
+            "P3"
+          ]
+        },
+        "menu_key": {
+          "anyOf": [
+            {
+              "const": "profile"
+            },
+            {
+              "enum": [
+                "K-a1",
+                "K-a2",
+                "K-a3",
+                "K-a4",
+                "K-r1",
+                "K-r2",
+                "K-r3",
+                "K-r4",
+                "Q-a1",
+                "Q-a2",
+                "Q-a3",
+                "Q-a4",
+                "Q-r1",
+                "Q-r2",
+                "Q-r3",
+                "Q-r4"
+              ]
+            }
+          ]
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "profile_selected",
+            "committed",
+            "rejected"
+          ]
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "reason": {
+          "enum": [
+            null,
+            "E_REJECTED"
+          ]
+        },
+        "before_head": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after_head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "before_snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "after_snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "pcm_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "file_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_kind": {
+          "const": "synthetic"
+        },
+        "participant_ready": {
+          "const": false
+        },
+        "receipt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "operation": {
+              "const": "profile"
+            },
+            "status": {
+              "const": "profile_selected"
+            },
+            "menu_key": {
+              "const": "profile"
+            },
+            "rank": {
+              "type": "null"
+            },
+            "accepted": {
+              "const": true
+            },
+            "reason": {
+              "type": "null"
+            },
+            "pcm_sha256": {
+              "type": "null"
+            },
+            "file_sha256": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "atom"
+            },
+            "status": {
+              "const": "committed"
+            },
+            "menu_key": {
+              "enum": [
+                "K-a1",
+                "K-a2",
+                "K-a3",
+                "K-a4",
+                "K-r1",
+                "K-r2",
+                "K-r3",
+                "K-r4",
+                "Q-a1",
+                "Q-a2",
+                "Q-a3",
+                "Q-a4",
+                "Q-r1",
+                "Q-r2",
+                "Q-r3",
+                "Q-r4"
+              ]
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "accepted": {
+              "const": true
+            },
+            "reason": {
+              "type": "null"
+            },
+            "pcm_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "file_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "atom"
+            },
+            "status": {
+              "const": "rejected"
+            },
+            "menu_key": {
+              "enum": [
+                "K-a1",
+                "K-a2",
+                "K-a3",
+                "K-a4",
+                "K-r1",
+                "K-r2",
+                "K-r3",
+                "K-r4",
+                "Q-a1",
+                "Q-a2",
+                "Q-a3",
+                "Q-a4",
+                "Q-r1",
+                "Q-r2",
+                "Q-r3",
+                "Q-r4"
+              ]
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "accepted": {
+              "const": false
+            },
+            "reason": {
+              "const": "E_REJECTED"
+            },
+            "pcm_sha256": {
+              "type": "null"
+            },
+            "file_sha256": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "verified_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "unit_id",
+        "book_id",
+        "bank_sha256",
+        "package_sha256",
+        "config_sha256",
+        "profile",
+        "book_head",
+        "snapshot_sha256",
+        "journal_head",
+        "source_kind",
+        "participant_ready",
+        "entries",
+        "manifest_sha256",
+        "profile_selection_receipt_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^DEMO-[A-Za-z0-9-]{1,58}$"
+        },
+        "bank_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "package_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "enum": [
+                "P1",
+                "P2",
+                "P3"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "book_head": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "journal_head": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_kind": {
+          "const": "synthetic"
+        },
+        "participant_ready": {
+          "const": false
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "atom_id",
+              "profile",
+              "rank",
+              "pcm_sha256",
+              "file_sha256",
+              "selection_receipt_sha256"
+            ],
+            "properties": {
+              "atom_id": {
+                "enum": [
+                  "K-a1",
+                  "K-a2",
+                  "K-a3",
+                  "K-a4",
+                  "K-r1",
+                  "K-r2",
+                  "K-r3",
+                  "K-r4",
+                  "Q-a1",
+                  "Q-a2",
+                  "Q-a3",
+                  "Q-a4",
+                  "Q-r1",
+                  "Q-r2",
+                  "Q-r3",
+                  "Q-r4"
+                ]
+              },
+              "profile": {
+                "enum": [
+                  "P1",
+                  "P2",
+                  "P3"
+                ]
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "pcm_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "file_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "selection_receipt_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "profile_selection_receipt_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "profile": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "profile_selection_receipt_sha256": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "profile_selection_receipt_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mailbox_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/receipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/verified_snapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            }
+          ]
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "request_id",
+        "request_sha256",
+        "config_sha256",
+        "receipt",
+        "snapshot",
+        "error",
+        "response_sha256"
+      ],
+      "oneOf": [
+        {
+          "properties": {
+            "error": {
+              "type": "null"
+            },
+            "snapshot": {
+              "$ref": "#/$defs/verified_snapshot"
+            }
+          }
+        },
+        {
+          "properties": {
+            "error": {
+              "type": "string"
+            },
+            "receipt": {
+              "type": "null"
+            },
+            "snapshot": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/config"
+    },
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/receipt"
+    },
+    {
+      "$ref": "#/$defs/verified_snapshot"
+    },
+    {
+      "$ref": "#/$defs/mailbox_response"
+    }
+  ]
+}

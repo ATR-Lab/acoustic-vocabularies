@@ -1,0 +1,91 @@
+name: Schedules
+
+on:
+  pull_request:
+    paths:
+      - "schedules/**"
+      - "tests/schedules/**"
+      - ".github/workflows/schedules.yml"
+  push:
+    branches: [main]
+    paths:
+      - "schedules/**"
+      - "tests/schedules/**"
+      - ".github/workflows/schedules.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schedules-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: schedules (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: schedules/uv.lock
+      - name: Install (Python 3.11, locked)
+        run: uv sync --project schedules --locked
+      - name: Lint and format
+        run: |
+          uv run --project schedules ruff check --config schedules/pyproject.toml schedules tests/schedules
+          uv run --project schedules ruff format --config schedules/pyproject.toml --check schedules tests/schedules
+      - name: Type check
+        working-directory: schedules
+        run: uv run mypy
+      - name: Preserve formatter and type diagnostics after a failed check
+        if: failure()
+        run: |
+          uv run --project schedules ruff check --config schedules/pyproject.toml --fix schedules/src/av_schedules/admission.py schedules/src/av_schedules/admission_io.py schedules/src/av_schedules/admission_cli.py tests/schedules/test_admission.py || true
+          uv run --project schedules ruff format --config schedules/pyproject.toml schedules/src/av_schedules/admission.py schedules/src/av_schedules/admission_io.py schedules/src/av_schedules/admission_cli.py tests/schedules/test_admission.py
+          git diff -- schedules/src/av_schedules/admission.py schedules/src/av_schedules/admission_io.py schedules/src/av_schedules/admission_cli.py tests/schedules/test_admission.py > "$RUNNER_TEMP/schedules-lint.patch"
+          (cd schedules && uv run mypy) || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: schedules-check-diagnostics-${{ matrix.os }}
+          path: ${{ runner.temp }}/schedules-lint.patch
+          if-no-files-found: ignore
+      - name: Tests
+        run: >
+          uv run --project schedules pytest --import-mode=importlib -p no:cacheprovider tests/schedules
+          --cov=av_schedules --cov-report=term --cov-fail-under=90
+      - name: Schedule checks report (DEMO pilot and confirmatory sets)
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          uv run --project schedules python -m av_schedules check --demo-seed DEMO-ci-checks \
+            --study both --set both --demo-placeholder-hashes | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: DEMO determinism fingerprint
+        run: |
+          uv run --project schedules python - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import hashlib, platform, sys
+          from av_schedules import __version__
+          from av_schedules.output import EXAMPLE_DEMO_SEED, demo_example_files
+          files = demo_example_files()
+          joined = "".join(f"{k}:{hashlib.sha256(v).hexdigest()}\n" for k, v in sorted(files.items()))
+          print(f"### Schedules on {platform.system()} {platform.machine()}")
+          print(f"- Python {sys.version.split()[0]}, av-schedules {__version__}, seed `{EXAMPLE_DEMO_SEED}`")
+          print(f"- DEMO example digest `{hashlib.sha256(joined.encode()).hexdigest()}` ({len(files)} files)")
+          from av_schedules.run_sheet_output import run_sheet_example_files
+          sheets = run_sheet_example_files()
+          joined = "".join(f"{k}:{hashlib.sha256(v).hexdigest()}\n" for k, v in sorted(sheets.items()))
+          print(f"- DEMO run-sheet digest `{hashlib.sha256(joined.encode()).hexdigest()}` ({len(sheets)} files)")
+          EOF

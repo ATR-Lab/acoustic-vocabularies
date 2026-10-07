@@ -1,0 +1,11 @@
+{
+  "completed": true,
+  "elapsed_seconds": 600.0121428580023,
+  "steps": 25446,
+  "captured_pose_ids": [
+    "default",
+    "joint_20_75pct",
+    "spread_4"
+  ],
+  "screenshot_requires_visual_review": true
+}

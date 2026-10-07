@@ -1,0 +1,109 @@
+{
+  "allocation_seed": "sha256:f9cba56f0cd0cec2427a11e22d601a7e1b7f929967745ec76e05628169e3188c",
+  "audience": "restricted",
+  "books": [
+    {
+      "book_id": "BK-P-TV655F",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-P01-L05",
+        "A-P01-L06"
+      ],
+      "unit_id": "A-P01"
+    },
+    {
+      "book_id": "BK-P-GWM557",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-P01-L02",
+        "A-P01-L04"
+      ],
+      "unit_id": "A-P01"
+    },
+    {
+      "book_id": "BK-P-G7FR5K",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-P01-L01",
+        "A-P01-L03"
+      ],
+      "unit_id": "A-P01"
+    },
+    {
+      "book_id": "BK-P-VWXK65",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-P02-L04",
+        "A-P02-L05"
+      ],
+      "unit_id": "A-P02"
+    },
+    {
+      "book_id": "BK-P-JX4WNY",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-P02-L01",
+        "A-P02-L03"
+      ],
+      "unit_id": "A-P02"
+    },
+    {
+      "book_id": "BK-P-6PG4NT",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-P02-L02",
+        "A-P02-L06"
+      ],
+      "unit_id": "A-P02"
+    },
+    {
+      "book_id": "BK-P-M46K6Q",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-P03-L02",
+        "A-P03-L03"
+      ],
+      "unit_id": "A-P03"
+    },
+    {
+      "book_id": "BK-P-GQPYGC",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-P03-L04",
+        "A-P03-L05"
+      ],
+      "unit_id": "A-P03"
+    },
+    {
+      "book_id": "BK-P-8NJTRJ",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-P03-L01",
+        "A-P03-L06"
+      ],
+      "unit_id": "A-P03"
+    }
+  ],
+  "demo": true,
+  "design_table_sha256": "95bb0adfcbd189330bcf77a7d6f32a549a2123c065266c04783986494feb58d4",
+  "format": "av-schedules/a-book-key",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "list_sha256": "d2891f3a9c2a5c9a8927e97e9306ead7f22364fdec14608111740f48a785deb4",
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "slots_list_sha256": "9fd1ae7da1080b3b3c075972ea4860f859df984bae141bb0226f88eb9120edae",
+  "study": "A"
+}

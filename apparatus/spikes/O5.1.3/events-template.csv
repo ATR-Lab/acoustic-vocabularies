@@ -1,0 +1,4 @@
+operator_action,operator_host_seconds,application_focus_callback,application_pause_callback,user_presence_change,openxr_session_state_change,input_device_event,xr_display_running_change,recovery_seconds,observation
+headset_removal,,,,,,,,,
+headset_sleep,,,,,,,,,
+link_disconnect,,,,,,,,,
