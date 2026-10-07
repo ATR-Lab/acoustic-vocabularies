@@ -1,0 +1,24 @@
+{
+  "demo": true,
+  "format": "av-generation/meanings",
+  "format_version": 1,
+  "meanings": {
+    "A": "Practice (non-study text): the kitchen",
+    "ADD_ONE": "Practice (non-study text): a kettle has finished boiling",
+    "ALIGN_ARROW": "Practice (non-study text): a parcel has arrived",
+    "B": "Practice (non-study text): the garden",
+    "C": "Practice (non-study text): the garage",
+    "CLOSE": "Practice (non-study text): the window is closing",
+    "D": "Practice (non-study text): the attic",
+    "E": "Practice (non-study text): the blue shelf",
+    "F": "Practice (non-study text): the red shelf",
+    "FLIP_CARD": "Practice (non-study text): the printer is out of paper",
+    "G": "Practice (non-study text): the green shelf",
+    "H": "Practice (non-study text): the yellow shelf",
+    "QUARANTINE": "Practice (non-study text): the alarm is set",
+    "REMOVE_ONE": "Practice (non-study text): a door has been left open",
+    "SCAN": "Practice (non-study text): the battery is low",
+    "TAG": "Practice (non-study text): a timer has ended"
+  },
+  "name": "DEMO-practice-meanings-01"
+}

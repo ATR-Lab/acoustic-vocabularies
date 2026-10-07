@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A1 designer interface</title>
+  <link rel="stylesheet" href="/a1/static/a1.css">
+  <script src="/a1/static/a1.js" defer></script>
+</head>
+<body>
+  <div id="practice-banner" class="banner" hidden>
+    PRACTICE MODE: practice meanings only. Nothing from this session enters a book.
+  </div>
+  <header class="top">
+    <div class="atom">
+      <div class="eyebrow" id="atom-line">Waiting for the first round</div>
+      <h1 id="meaning">No proposal window is open</h1>
+    </div>
+    <dl class="facts">
+      <div><dt>Round</dt><dd id="round">-</dd></div>
+      <div><dt>Profile</dt><dd id="profile">-</dd></div>
+      <div><dt>Slots used (atom)</dt><dd id="slots-used">-</dd></div>
+      <div><dt>Round time left</dt><dd id="window-left">-</dd></div>
+    </dl>
+  </header>
+
+  <main class="layout">
+    <div class="col">
+    <section class="panel" id="slot-panel" aria-labelledby="slots-title">
+      <h2 id="slots-title">Slots of this round</h2>
+      <p class="hint">Slots open by themselves, one after the other: slot 1 when the round starts,
+        the next one when a slot closes. Each slot has up to 40 s.</p>
+      <ol id="slots" class="slots"></ol>
+      <div class="slot-actions">
+        <div class="countdown" id="countdown" aria-live="off">
+          <span class="countdown-label">Slot time left</span>
+          <span class="countdown-value" id="countdown-value">--</span>
+        </div>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite">Waiting for the round to start.</p>
+    </section>
+
+    <section class="panel" id="feedback-panel" aria-labelledby="feedback-title">
+      <h2 id="feedback-title">Feedback: your book only</h2>
+      <div id="feedback" class="table-wrap"><p class="muted">No feedback yet.</p></div>
+    </section>
+
+    <section class="panel" id="book-panel" aria-labelledby="book-title">
+      <h2 id="book-title">Committed atoms of your book</h2>
+      <p class="hint">Parameters only. Committed atoms cannot be played here.</p>
+      <div id="book" class="table-wrap"><p class="muted">No committed atoms yet.</p></div>
+    </section>
+
+    <section class="panel" id="fam-panel" aria-labelledby="fam-title">
+      <h2 id="fam-title">Interface familiarization</h2>
+      <p class="hint">Time spent getting to know the interface is logged. The start of a round ends it.</p>
+      <div class="fam-row">
+        <button id="fam-toggle" type="button">Start familiarization</button>
+        <span id="fam-time" class="mono">0:00</span>
+      </div>
+    </section>
+    </div>
+
+    <div class="col">
+    <section class="panel sticky" id="form-panel" aria-labelledby="form-title">
+      <h2 id="form-title">Recipe</h2>
+      <p class="hint">The form is unlocked while a slot is open. Submit and play renders your recipe,
+        logs the slot and plays it once. A submitted recipe cannot be changed.</p>
+      <form id="recipe-form" autocomplete="off" novalidate></form>
+      <figure class="preview">
+        <svg id="preview" viewBox="0 0 900 140" role="img" aria-label="Recipe schematic"></svg>
+        <figcaption id="preview-caption">Schematic of the entered values (timing and pitch contour; no sound).</figcaption>
+      </figure>
+      <button id="submit" type="button" class="primary wide" disabled>Submit and play</button>
+    </section>
+    </div>
+  </main>
+</body>
+</html>

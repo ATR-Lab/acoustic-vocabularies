@@ -1,0 +1,25 @@
+{
+  "build_identity": {
+    "schema_version": 1,
+    "build_id": "data-quest-001",
+    "commit_sha": "a781fcd2c35ced62205ac44e513210027855dc62",
+    "protocol_version": "engineering-pending-review",
+    "editor_version": "6000.6.0f1",
+    "target": "Android",
+    "dirty_source": false,
+    "station_schema_sha256": "38d2190282e9674349291d48598fd6474d036cc3e00a5e84d641a439cfaab5ec",
+    "development_only": true
+  },
+  "result": "Succeeded",
+  "errors": 0,
+  "duration_seconds": 339.9781453,
+  "total_bytes": 696803585,
+  "development_build": false,
+  "files": [
+    {
+      "path": "experiment.apk",
+      "bytes": 37457696,
+      "sha256": "749c24ebb39fc0233f94953c837db6be34c8451fc06629433d933eb122a020df"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "issue": 83,
+  "scope": "provisional collector software and retained-file rehash diagnostic",
+  "source_commit": "c004f2aba00f67eee4c94158e609270e09f27462",
+  "participant_qualified": false,
+  "v0_9_accepted": false,
+  "methodology_template_reconciled": false,
+  "tagged_candidate_verified": false,
+  "g4_approval_verified": false,
+  "tests": {
+    "command": "python -m pytest tests/test_apparatus_manifest.py tests/test_schemas.py tests/test_repo_guard.py -q",
+    "passed": 43,
+    "failed": 0,
+    "skipped": 1,
+    "skip_reason": "Windows account lacks symlink creation permission; Linux CI executes that case."
+  },
+  "schemas": {
+    "valid": 34,
+    "synthetic_fixtures": 7
+  },
+  "retained_artifact_rehash": {
+    "collector_exit": 0,
+    "independent_verify_exit": 0,
+    "summary": {
+      "field_counts": {
+        "not_applicable": 0,
+        "pending": 44,
+        "recorded": 3
+      },
+      "g4_approval_verified": false,
+      "manifest_sha256": "370cf4e4b8a9f83f740cca8ef391d49fb48ac329e907498643ee60828c3a2d80",
+      "participant_qualified": false,
+      "recorded_artifact_files": 3,
+      "release_accepted": false,
+      "schema_version": 1,
+      "scope": "hash-verification-only",
+      "template_reconciliation": "pending"
+    },
+    "artifacts": [
+      {
+        "kind": "historical Android APK",
+        "public_evidence": "docs/response-panel/validation.json",
+        "sha256": "982e75a0543e28eb75620b69c58eed9931c23360f573a8bb8e3743b40602606e"
+      },
+      {
+        "kind": "historical corrected-layout scene USD",
+        "sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e"
+      },
+      {
+        "kind": "historical neutral snapshot",
+        "sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e"
+      }
+    ],
+    "qualification": "These are retained artifacts from separate engineering runs; this is not an assembled release candidate or new station manifest acceptance."
+  },
+  "remaining": [
+    "Exact read-only methodology template and independent reconciliation",
+    "Tagged #82 release candidate and binary provenance",
+    "Per-station settings, asset dependency inventory and private reference IDs",
+    "Approved independently pinned G4 handoff",
+    "Actual onset calibration, frame-rate record and rendered-view clip",
+    "Independent apparatus-manifest review"
+  ]
+}

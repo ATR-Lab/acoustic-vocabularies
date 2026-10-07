@@ -1,0 +1,22 @@
+{
+  "status": "not_run",
+  "run_id": null,
+  "mode": null,
+  "num_instances": null,
+  "num_envs_per_instance": null,
+  "elapsed_seconds": null,
+  "fixed_base_observed": null,
+  "body_joints": null,
+  "left_hand_joints": null,
+  "right_hand_joints": null,
+  "hash_dependency_closure_complete": null,
+  "both_hands_screenshot_reviewed": null,
+  "gpu_vram_mean_mib": null,
+  "gpu_vram_p95_mib": null,
+  "gpu_vram_max_mib": null,
+  "step_mean_ms": null,
+  "step_p95_ms": null,
+  "step_max_ms": null,
+  "two_instances_feasible": null,
+  "operator_notes": null
+}

@@ -1,0 +1,2 @@
+{"cap_key":"A|DEMO-BK-H9TC|K-a4","detail":"cap of 12 reached","method":"A3","reason":"slot_cap","record":"slot_refusal","record_version":1,"requested":"DEMO-BK-H9TC.K-a4.r4s3","run_id":"DEMO-slot-ledger-01","study":"A","t_ms":5000,"used":12}
+{"cap_key":"B|DEMO-bank-01","detail":"at most 4 attempts per bank version","method":"B","reason":"attempt_cap","record":"slot_refusal","record_version":1,"requested":"attempt-5","run_id":"DEMO-slot-ledger-01","study":"B","t_ms":9000,"used":4}

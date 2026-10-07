@@ -1,0 +1,61 @@
+{
+  "source": "loaded_isaac_articulation_and_workcell",
+  "cycles_requested": 1000,
+  "cycles_completed": 1000,
+  "all_cycles_passed": true,
+  "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "joint_count": 43,
+  "object_count": 60,
+  "forward_frames_per_reset": 1,
+  "physics_integration_during_reset": false,
+  "max_deviation": {
+    "joint_rad": 0.0,
+    "position_m": 1.192092895533904e-07,
+    "orientation_rad": 0.0,
+    "linear_velocity_m_s": 0.0,
+    "angular_velocity_rad_s": 0.0,
+    "environment_absolute": 0.0
+  },
+  "coverage": {
+    "all_joint_positions_and_velocities": true,
+    "all_object_poses_velocities_flags_and_discrete_states": true,
+    "all_material_colors_roughness_and_light_colors_intensities": true,
+    "all_observed_rigid_body_frames_verified": true,
+    "root_perturbation": false
+  },
+  "elapsed_ms_including_log": {
+    "median": 161.85469949999998,
+    "p95": 191.317902,
+    "max": 580.288093
+  },
+  "locked_joint_injection_rejected": true,
+  "explicit_recovery_ok": true,
+  "methodology_review_complete": false,
+  "gaze_neutrality_review_complete": false,
+  "hashes": {
+    "neutral-observer.png": "8932c927d99b310de1d3499182faa54577fad6c7a5659133db3b0ba9d3b96f1a",
+    "neutral_v1.json": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reset-cycles.csv": "17c3264b5386d5b00183eb6b3031063f7fab629f0c43579f5bf3efb4be9a7b42",
+    "reset-events.jsonl": "f1da89c2b766b2046a7472e0736185002a5f314743530809ec7ece20784422ee"
+  },
+  "measured_date": "2026-10-05",
+  "source_commit": "522dbe4971899b0cd3da22ccbf84e1a10c6d5d38",
+  "source_archive_sha256": "3d777aff8b555972ae342ce6c52691fea80094ff6fee8197261331ccedd32f00",
+  "raw_archive_sha256": "7cc1200cc2eee6e1c1fbad922ad196f9346556c01ecd750645e66b9eded15510",
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "network": "none; existing loopback-only guard verified before app startup",
+  "container_exit_code": 0,
+  "artifact_hashes_independently_verified": true,
+  "verification": {
+    "csv_rows": 1000,
+    "terminal_events": 1002,
+    "normalized_csv": false
+  },
+  "limitations": [
+    "Fixed-base root restored/read back but not randomized",
+    "One kinematic forward frame per reset, not physics integration",
+    "Registered workcell appearance only; robot MDL and arbitrary asset appearance outside guard",
+    "Engineering numeric reset criteria verified; private methodology/gaze/hand-neutrality review and final pilot tolerance freeze remain pending"
+  ]
+}

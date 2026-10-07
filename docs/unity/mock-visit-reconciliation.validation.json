@@ -1,0 +1,133 @@
+{
+  "scope": "retained_evidence_compatibility_only",
+  "new_native_visit_executed": false,
+  "exports": [
+    {
+      "manifest_sha256": "7ca23181632bcc5b3554cc80e1c761e305b534e867be4e6db90e4b21860a6149",
+      "records": 3496,
+      "trials": 160,
+      "exposures": 160,
+      "qualification": "prior_mapping_test_only"
+    },
+    {
+      "manifest_sha256": "1f4fde0d8f58ba191ea3e138619872c2da51cabbc3bf645b176a927717b40ee6",
+      "records": 3496,
+      "trials": 160,
+      "exposures": 160,
+      "qualification": "prior_mapping_test_only"
+    },
+    {
+      "manifest_sha256": "594d5826a9e782a79bbe4a26c691fecdf17cf2a1a2b02f8f95e29ec130952581",
+      "records": 3496,
+      "trials": 160,
+      "exposures": 160,
+      "qualification": "prior_mapping_test_only"
+    }
+  ],
+  "packages": [
+    {
+      "study": "A",
+      "package_sha256": "a418ec195eddd965850b616d1f79456c74ed5a547b3e62a29700bf17252a532a",
+      "atoms": 16,
+      "messages": 32,
+      "compositions": 32
+    },
+    {
+      "study": "B",
+      "package_sha256": "6ac6a7b667d00caff07223b89dc9f40cf6a67b3137c65e2bbf2824a68c897e1a",
+      "atoms": 192,
+      "messages": 32,
+      "compositions": 1536
+    }
+  ],
+  "build_binding": {
+    "build_id": "simulation-native-003",
+    "source_commit_bound": true,
+    "build_inventory_files": 205,
+    "executable_bytes_reverified": false,
+    "embedded_build_identity_bytes_reverified": false
+  },
+  "material_binding_incomplete": [],
+  "grammar_material_binding": 0,
+  "mailbox": {
+    "checkpoints": 8,
+    "selection_count": 1,
+    "snapshot_sha256": "a8c087452d7bcca7b9a83585d05ccdd344edfbd9de7b7ab19418cf3154828a1d",
+    "incomplete_reasons": [
+      "STORE_FINAL_WAVE_INCOMPLETE"
+    ],
+    "qualification": "prior_four_request_interop_only"
+  },
+  "version": 1,
+  "synthetic_tests": {
+    "runner": "pytest",
+    "passed": 62,
+    "failed": 0,
+    "dependencies": "standard library plus existing pytest"
+  },
+  "review_fixes": [
+    "suite never succeeds on normal-only coverage",
+    "exact build commit and process duration binding",
+    "native gain range greater than zero and at most 0.1",
+    "exact native complete status required",
+    "registry-bound profile order and complete sample counts",
+    "real mailbox receipt and cross-visit immutable selection links",
+    "streamed capture hashing",
+    "independently pinned fixture provenance copy",
+    "post-cleanup native result required with process/source/config/capability/export binding"
+  ],
+  "issue81_accepted": false,
+  "participant_qualified": false,
+  "acoustic_qualified": false,
+  "source_files": [
+    {
+      "path": "tests/test_mock_visit.py",
+      "sha256": "a2683f9c87ba429b93fe0a4bd0392b953161a964a17a8c674f72dda2a3b06cc3"
+    },
+    {
+      "path": "tests/test_mock_visit_bindings.py",
+      "sha256": "8d7c3fb717267082de64fefb35ed709b01085a2137320e710c5b7a6b0454e129"
+    },
+    {
+      "path": "tools/mock_visit/__init__.py",
+      "sha256": "b8a89f1726a6a0cb4f2fed2c51006e423b23e02faf7c785be9c8de9486013493"
+    },
+    {
+      "path": "tools/mock_visit/content.py",
+      "sha256": "8cbf1fd8b45a3e390db1126d537465f7742101819ce29e04459df30eb1bb17fd"
+    },
+    {
+      "path": "tools/mock_visit/native.py",
+      "sha256": "e764316009a65d03c44411070b48d73b70d47dc7fe04c0b60c29b9bff1a24c22"
+    },
+    {
+      "path": "tools/mock_visit/provenance.py",
+      "sha256": "b0a2cce9ad6a21677fce501998a4a84c3af38f6f721511201e0ea7aa8acebed3"
+    },
+    {
+      "path": "tools/mock_visit/reconcile.py",
+      "sha256": "ffa9a3265589cc5974749bcb2544f36e9ce20e858f1f758f843de758ad956bcc"
+    },
+    {
+      "path": "tools/mock_visit/records.py",
+      "sha256": "c95802569d34894c13e7925d7337c1795c2407735a97d7c65b781cdee3f5f615"
+    },
+    {
+      "path": "tools/mock_visit/store.py",
+      "sha256": "7a1008b7bfbea91aec9f5839fc4babfbfab3bdf0ed5aa0eae8b35b57cc49037f"
+    },
+    {
+      "path": "tools/mock_visit/suite.py",
+      "sha256": "ef3bdc88fb5da6b86e597dbe35257df011d5978aea897d71fc43e1918b35a974"
+    },
+    {
+      "path": "tools/write_mock_run_manifest.py",
+      "sha256": "0557a5d5daf3ebaf5b2be336c2e5b3c803671564447587c1869118817b7f47db"
+    }
+  ],
+  "retained_compatibility_source_commit": "66591f9",
+  "native_post_cleanup_cases": {
+    "passed": 6,
+    "scope": "synthetic positive and throwing-cleanup/export/tamper cases; no native execution"
+  }
+}

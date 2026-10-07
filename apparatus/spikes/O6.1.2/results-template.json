@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "status": "pending_operator_capture",
+  "required_commands": 32,
+  "required_poses": 5,
+  "required_captures": 160,
+  "required_pairwise_comparisons": 2480,
+  "actual_matrix_performed": false,
+  "complete_matrix_passed": false,
+  "independent_code_review_signed": false,
+  "g3_signed": false,
+  "participant_ready": false,
+  "reason": "Capture driver integration, actual complete artifacts and independent review are required; no measurements supplied."
+}

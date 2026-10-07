@@ -1,0 +1,41 @@
+{
+  "environment": "MOCK (mock_llm on loopback; no GPU, no model)",
+  "outbound_refused": [],
+  "profiles": {
+    "realistic": {
+      "calls": 300,
+      "distinct_seeds": 300,
+      "frozen_values_and_seed_logged": 300,
+      "latency_ms": {
+        "max": 34,
+        "p50": 6,
+        "p95": 8
+      },
+      "p95_under_slot_cap": true,
+      "prompt_tokens": 2974,
+      "statuses": {
+        "ok": 300
+      },
+      "target_prompt_tokens": 3000
+    },
+    "worst_case": {
+      "calls": 300,
+      "distinct_seeds": 300,
+      "frozen_values_and_seed_logged": 300,
+      "latency_ms": {
+        "max": 10,
+        "p50": 8,
+        "p95": 9
+      },
+      "p95_under_slot_cap": true,
+      "prompt_tokens": 16373,
+      "statuses": {
+        "ok": 300
+      },
+      "target_prompt_tokens": 16384
+    }
+  },
+  "run_id": "DEMO-llm-bench-mock-1",
+  "runtime": "mock av-generation-mock-llm 1",
+  "slot_cap_ms": 40000
+}
