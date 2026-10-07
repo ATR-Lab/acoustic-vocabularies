@@ -205,8 +205,8 @@ operator guide: [`generation/docs/a1-operating-guide.md`](../../generation/docs/
   clock, meanings, station=None)` builds the service on the run's shared slot ledger and
   the run's `play`, `timing` and `slot_refusal` logs (designer from the A1 book of
   `config`); `serve_a1(service, *, host="127.0.0.1", port=DEFAULT_PORT)` is a context
-  manager that serves the app (port 8741) and yields the page URL. Pending: #20 calls
-  them for a study batch.
+  manager that serves the app (port 8741) and yields the page URL. The batch runner
+  (#20, `batch_runner`) calls them for every batch with real proposers.
 - `create_a1_app(service)`: FastAPI app serving `a1.ROUTES` (`GET /a1/`,
   `GET /a1/api/state`, `POST /a1/api/slots/open`,
   `POST /a1/api/slots/{slot_id}/submit` with `{"recipe": ...}`,
@@ -265,13 +265,37 @@ internal tryout) outside any git work tree; their exports too (`E_POLICY`).
 
 ## Round orchestrator, selector and panel session host (#20)
 
-*Pending (#20).* Skeleton: `Orchestrator(config, layout, proposers, store, fallback, *,
-clock, generation_config, meanings, kind, freeze_manifest=None)` with `run_atom`,
-`run_appointment`, `resume`, `panel_host() -> panel_session.PanelSessionHost`;
-`RatingSlotPlan`; `panel_order_schedule(set_ns, panel_ids)`; `panel_aliases(set_ns,
-panel_id, book_ids)`; `selector.score_candidate`, `selector.pick_incumbent`. Logs:
-`decision`, `commit`, `fallback_scan`, `timing`, and as panel host `rating`, `play` and
-the panel timing events. Whole-book substitution: architecture section 3.2.
+Guide and decisions: [`generation/docs/orchestrator.md`](../../generation/docs/orchestrator.md).
+
+| Name | Contract |
+| --- | --- |
+| `orchestrator.Orchestrator(config, layout, proposers, store, fallback, *, clock, generation_config, meanings, kind, freeze_manifest=None, purpose="batch", preload_lead_ms=1000, slot_event_lead_ms=500)` | Runs one Study A batch. Refuses to start on mismatched pins (`E_CONFIG`), a batch set that does not fit the run kind (`E_KIND`) or `genconfig.check_run_config` (`ConfigMismatch`). Writes or checks `config.json`, `generation-config.json`, `run-manifest.json`; closes the manifest after atom 16 |
+| `.run_atom(atom_id)`, `.run_appointment(n)`, `.run_batch()` | Atoms in `atom_order`; 4 rounds each: parallel `propose_round` calls, 9 rating slots in `panel.order` blocks, one `decision` per book; then commit, bank fallback or whole-book substitution |
+| `.resume() -> str \| None` | Repairs torn tails, reloads the logs, finishes an interrupted atom; returns the next atom |
+| `.panel_host() -> PanelSessionHost` | For `panel.create_panel_app` (#21). Writes every `rating` (one per seat at each lock: rated, `placeholder` or `missing`), `play` and panel `timing` record. Rating refusals: `E_UNKNOWN_RATER`, `E_UNKNOWN_SLOT`, `E_SLOT_CLOSED` (at or after start + 20 s), `E_PLACEHOLDER`, `E_LOCKED` (before unlock), `E_FIRST_ATOM`, `E_PROTOCOL` (missing distinguishability, value outside 1-7), `E_DUPLICATE_RATING` |
+| `.console() -> ConsoleView` | Operator console: panel aliases, slot and atom counts, fallback use, station connections; never a book ID or method. Thread-safe (an operator UI may poll it during a batch) |
+| `.mark_incomplete(reason)`; withdrawal via the host | `batch_incomplete` timing event, store books voided (`batch_rebuild`), `BatchIncomplete` (`E_BATCH_INCOMPLETE`). The host publishes `end` (`withdrawn` / `aborted`) and halts: no event follows it and `snapshot()` is `ended` with no slot |
+| `panel_order_schedule(set_ns, panel_ids, *, profiles=None) -> {panel: 1..6}` | Seed `PANEL\|<set_ns>\|orders`; `profiles` maps each panel to its batch's profile (batch table): one permutation of the 6 orders per profile, differing at every position across profiles (each profile's 6 batches use every order once; 18 panels: each order 3 times; 3 pilot panels: 3 orders). `set_ns` is restricted for pilot and confirmatory sets |
+| `panel_aliases(set_ns, panel_id, book_ids) -> {book: PB-XXXX}` | Seed `PANEL\|<set_ns>\|aliases\|<panel>` |
+| `write_panel_order_csv(path, set_ns, [(panel_id, batch_id)], *, profiles=None)`, `PANEL_ORDER_COLUMNS` | `panel_id,batch_id,profile,order_index,order,seed_key,seed,aliases_seed_key`; DEMO: `generation/examples/demo-panel-orders/` |
+| `read_batch_table(path)`, `check_permutation(definition, permutation)`, `read_book_key(path, unit_id)`, `build_batch_config(...)`, `rebuild_batch_config(config, *, set_ns, panel_id, raters, seed_namespace)` | Batch configs from the schedules files (#29 batch table and `permutation.json`, #31 book key) |
+| `nearest_committed(book_state, recipe) -> CommittedAtom \| None` | Nearest reference by 12-feature distance, ties to the lowest commit index, `None` on the first atom |
+| `substitute_book_id(book_id)` | `<book>-FB`: store book of the frozen fallback book after a failed scan |
+| `check_batch_pins(config, generation_config, fallback, meanings, *, kind)` | The input pins and the set/kind rule (`E_CONFIG`, `E_KIND`), run by `Orchestrator` and the batch runner |
+| `batch_runner.load_batch_inputs(*, config, meanings, fallback, generation_config=None, prompts=None, llm_manifest=None, freeze_manifest=None, proposers="real") -> BatchInputs` | Reads a batch's inputs (committed prompt set and LLM manifest by default; a demo batch without a generation config gets `demo_generation_config`) |
+| `batch_runner.check_batch_start(inputs, *, kind, run_id, proposers="real")` | The one start check of every batch run, before anything is created: run ID, `check_batch_pins`, prompt-set / meaning / decoding-schema / LLM-manifest hashes against the generation config (`E_INPUTS`), stand-ins only for demo runs (`E_MODE`), `genconfig.check_run_config` (frozen G4 config for confirmatory runs). The G4 freeze guard (#25) goes here |
+| `batch_runner.open_batch(inputs, run_dir, *, kind, clock, proposers="real", llm_url=None, a1_station=None, resume=False, purpose="batch", ...) -> StudyBatch` | Start checks, `probe_llm_server` (pinned model and vLLM version; #16's mock for demo runs only; `E_LLM_SERVER`), then the run directory and the real components: one `SlotLedger` shared by `a1.study_service`, `A2Proposer` and `A3Proposer` (with `OpenAICompatibleClient` logging to `llm-requests.jsonl`) |
+| `batch_runner.run_session(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, ...) -> str \| None` | Serves A1 (`a1.serve_a1`) and the panel (`batch_runner.serve_panel` -> `panel.create_panel_app`, port 8765), waits for every seat, finishes an interrupted atom (`resume`) and runs the appointment(s). Synthetic runs only: `panel="bots"`, `designer="bot"`, `proposers="sim"` |
+| `python -m av_generation.batch_runner check\|run ...` | Command line (`--run-dir`, `--kind`, inputs, `--llm-url`, `--a1-host`, `--panel-host`, `--appointment next\|all\|1..4`, `--resume`); exit 0 / 1 refused / 3 batch incomplete |
+| `selector.score_candidate(slot, ratings, *, first_atom) -> CandidateScore` | Eligible = valid and >= 2 comfort `acceptable` (missing = not acceptable); score = exact mean of (association + distinguishability) / 2 over raters with both (first atom: distinguishability 4); fewer than 3 raters: `flagged_missing` |
+| `selector.pick_incumbent(candidates) -> (slot_id, Fraction)` | Best eligible over the atom so far; ties to the lowest `slot_index`; `(None, None)` triggers the bank scan |
+
+Logs per batch: 576 `slot` (proposers), 576 `rating` per rater, 192 `decision`, 48
+`commit` in the final store books (+ k-1 superseded commits for a book substituted at
+atom k), one `fallback_scan` per atom without an incumbent before a substitution,
+`play` and `timing` records. Handoffs: #21 uses `panel_host()`; #22 drives the same
+`Orchestrator` (`purpose="dry_run"`); #24 reads the logs; #13 takes the final store books
+from the `commit` records (`store_book_id`).
 
 ## Rater panel server, stations and bot rater (#21)
 
