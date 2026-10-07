@@ -47,6 +47,15 @@ namespace AcousticVocab.Foundation.Tests
             value = Provisioned; value["input_method"] = "unknown"; Assert.Throws<ConfigurationFault>(() => Check(value));
             value = Provisioned; value["audio"]["buffer_samples"] = -1; Assert.Throws<ConfigurationFault>(() => Check(value));
         }
+        [Test] public void OptionalOnsetCalibrationBindingIsTyped()
+        {
+            var value = Provisioned; var audio = (JObject)value["audio"];
+            audio["connection_mode"] = "wired_3_5mm_earphones"; audio["output_device"] = "Fixture earphones"; audio["onset_calibration_record_sha256"] = new string('a', 64);
+            Assert.That((string)Check(value)["audio"]["onset_calibration_record_sha256"], Is.EqualTo(new string('a', 64)));
+            foreach (var (key, bad) in new (string, JToken)[] { ("connection_mode", "bluetooth"), ("output_device", "line\nbreak"), ("output_device", ""),
+                ("onset_calibration_record_sha256", new string('A', 64)), ("onset_calibration_record_sha256", new string('a', 63)), ("onset_calibration_record_sha256", JValue.CreateNull()) })
+            { var broken = (JObject)value.DeepClone(); broken["audio"][key] = bad; Assert.Throws<ConfigurationFault>(() => Check(broken), key); }
+        }
         [Test] public void ProtocolMismatchFailsClosed() => Assert.Throws<ConfigurationFault>(() => StationConfig.Validate(Provisioned.ToString(), Schema, "different-protocol"));
         [Test] public void QuaternionMustBeUnitLength()
         { var value = Provisioned; value["observer_reference"]["rotation_xyzw"] = new JArray(0, 0, 0, 0); Assert.Throws<ConfigurationFault>(() => Check(value)); }

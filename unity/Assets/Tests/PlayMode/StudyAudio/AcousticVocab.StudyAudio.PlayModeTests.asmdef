@@ -3,5 +3,5 @@
   "references": ["AcousticVocab.StudyAudio"],
   "optionalUnityReferences": ["TestAssemblies"],
   "overrideReferences": true,
-  "precompiledReferences": ["nunit.framework.dll"]
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
 }
