@@ -1,0 +1,163 @@
+{
+  "chat_template": {
+    "field": "chat_template",
+    "file": "tokenizer_config.json",
+    "inserts_default_system_message": true,
+    "sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f"
+  },
+  "decoding": {
+    "max_input_tokens": 16384,
+    "max_tokens": 512,
+    "repetition_penalty": 1.0,
+    "seed_function": "sha256-first8-be-unsigned-v1",
+    "slot_cap_ms": 40000,
+    "temperature": 0.7,
+    "top_k": 50,
+    "top_p": 0.9,
+    "wire_seed": "signed-int64-twos-complement"
+  },
+  "decoding_schema": {
+    "carries_domain": true,
+    "sha256": "39ba4e4e72d5deaa4000d9e410c5109cede003704be556c26bdf67606b249c41",
+    "source": "sound/schema/recipe.schema.json"
+  },
+  "format": "av-generation/llm-manifest",
+  "format_version": 1,
+  "hardware": {
+    "cuda_version": null,
+    "driver_version": null,
+    "gpu": null,
+    "recorded_utc": null,
+    "status": "pending",
+    "torch_version": null,
+    "vllm_installed": null,
+    "vram_mib": null
+  },
+  "model": {
+    "architecture": "Qwen2ForCausalLM",
+    "files": [
+      {
+        "git_blob_sha1": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+        "kind": "other",
+        "path": ".gitattributes",
+        "sha256": null,
+        "size": 1519
+      },
+      {
+        "git_blob_sha1": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+        "kind": "license",
+        "path": "LICENSE",
+        "sha256": null,
+        "size": 11343
+      },
+      {
+        "git_blob_sha1": "4e9536cebaeb5cac673952ad5d0eeae469900f81",
+        "kind": "other",
+        "path": "README.md",
+        "sha256": null,
+        "size": 6240
+      },
+      {
+        "git_blob_sha1": "0178295f88afc3c7f279ed284f961f8c1be00654",
+        "kind": "config",
+        "path": "config.json",
+        "sha256": null,
+        "size": 663
+      },
+      {
+        "git_blob_sha1": "0eb3c536657dcd12626e09eca4b6198c0cbcde1e",
+        "kind": "config",
+        "path": "generation_config.json",
+        "sha256": null,
+        "size": 243
+      },
+      {
+        "git_blob_sha1": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0",
+        "kind": "tokenizer",
+        "path": "merges.txt",
+        "sha256": null,
+        "size": 1671839
+      },
+      {
+        "git_blob_sha1": "5e68dcea92e3696ddd4e1d44d9b420a31fe5622c",
+        "kind": "weights",
+        "path": "model-00001-of-00004.safetensors",
+        "sha256": "a1333e6293854747c481288ea83b348226af178dd565c49b6f9495ba1966aba7",
+        "size": 3945441440
+      },
+      {
+        "git_blob_sha1": "e07e23d4595678a717aaad11eef9bc22056c284a",
+        "kind": "weights",
+        "path": "model-00002-of-00004.safetensors",
+        "sha256": "f5d25a2772cb825164a2a2c0fb6d51a87e282abf21e4dd75bc5cfb3cd0ea6185",
+        "size": 3864726352
+      },
+      {
+        "git_blob_sha1": "114c07bb791bac8d2b32109b7729ef2f9a489dfe",
+        "kind": "weights",
+        "path": "model-00003-of-00004.safetensors",
+        "sha256": "8efdec4c1bc12317ae1a38dc42b595ce777738a64deea3fcb8a0a91381bcdfd5",
+        "size": 3864726424
+      },
+      {
+        "git_blob_sha1": "f4841c787f178938010ce784a3ec99e5568524b5",
+        "kind": "weights",
+        "path": "model-00004-of-00004.safetensors",
+        "sha256": "1a72d403cdf0c1ec3cb7f289f17b394a01e64394c2e9b3c0f94dbce3faf879bd",
+        "size": 3556377672
+      },
+      {
+        "git_blob_sha1": "14d037fdda5a1311dcc0275003a7a370d84114e6",
+        "kind": "weights_index",
+        "path": "model.safetensors.index.json",
+        "sha256": null,
+        "size": 27752
+      },
+      {
+        "git_blob_sha1": "443909a61d429dff23010e5bddd28ff530edda00",
+        "kind": "tokenizer",
+        "path": "tokenizer.json",
+        "sha256": null,
+        "size": 7031645
+      },
+      {
+        "git_blob_sha1": "07bfe0640cb5a0037f9322287fbfc682806cf672",
+        "kind": "tokenizer",
+        "path": "tokenizer_config.json",
+        "sha256": null,
+        "size": 7305
+      },
+      {
+        "git_blob_sha1": "4783fe10ac3adce15ac8f358ef5462739852c569",
+        "kind": "tokenizer",
+        "path": "vocab.json",
+        "sha256": null,
+        "size": 2776833
+      }
+    ],
+    "id": "Qwen/Qwen2.5-7B-Instruct",
+    "last_modified_utc": "2025-01-12T02:10:10.000Z",
+    "license": "apache-2.0",
+    "license_file": "LICENSE",
+    "model_type": "qwen2",
+    "revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "tokenizer_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "weights_sha256": "2eb5af888340e98670e9a73bc565bfaa941a337d240796f00a2f2c077d2f1b81"
+  },
+  "provenance": {
+    "api_url": "https://huggingface.co/api/models/Qwen/Qwen2.5-7B-Instruct/revision/a09a35458c702b33eeacc393d103063234e8bc28?blobs=true",
+    "retrieved_utc": "2026-10-05",
+    "weights_downloaded": false
+  },
+  "runtime": {
+    "engine_seed": 0,
+    "generation_config": "vllm",
+    "load_format": "safetensors",
+    "max_model_len": 16896,
+    "name": "vllm",
+    "precision": "bfloat16",
+    "structured_outputs_backend": "xgrammar",
+    "structured_outputs_request": "response_format.json_schema",
+    "version": "0.30.0"
+  }
+}

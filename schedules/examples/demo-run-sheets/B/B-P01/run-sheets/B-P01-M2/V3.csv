@@ -1,0 +1,8 @@
+participant_id,visit,block,expected_count,actual_count,start_time,end_time,comfort_check,phone_locked,hash_check,deviations,operator_signoff
+B-P01-M2,V3,pre_old,10,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,V3,atom_menus,4,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,V3,atomic_lessons,4,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,V3,message_lessons,16,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,V3,trained,18,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,V3,novel,2,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,V3,atomic,16,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,

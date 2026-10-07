@@ -1,0 +1,667 @@
+{
+  "allocation_seed": "sha256:4ca709c932c03c69127bfc3b263c1cfab39ab7357ccf5e84d5ca87967960cbf8",
+  "audience": "restricted",
+  "books": [
+    {
+      "book_id": "BK-C-V54BM6",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-C01-L02",
+        "A-C01-L04",
+        "A-C01-L11",
+        "A-C01-L12"
+      ],
+      "unit_id": "A-C01"
+    },
+    {
+      "book_id": "BK-C-CBVP7N",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C01-L05",
+        "A-C01-L07",
+        "A-C01-L08",
+        "A-C01-L10"
+      ],
+      "unit_id": "A-C01"
+    },
+    {
+      "book_id": "BK-C-GXGC6T",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C01-L01",
+        "A-C01-L03",
+        "A-C01-L06",
+        "A-C01-L09"
+      ],
+      "unit_id": "A-C01"
+    },
+    {
+      "book_id": "BK-C-9TBH4T",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-C02-L04",
+        "A-C02-L09",
+        "A-C02-L10",
+        "A-C02-L11"
+      ],
+      "unit_id": "A-C02"
+    },
+    {
+      "book_id": "BK-C-GHF6VR",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C02-L02",
+        "A-C02-L05",
+        "A-C02-L06",
+        "A-C02-L08"
+      ],
+      "unit_id": "A-C02"
+    },
+    {
+      "book_id": "BK-C-5CT8XW",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C02-L01",
+        "A-C02-L03",
+        "A-C02-L07",
+        "A-C02-L12"
+      ],
+      "unit_id": "A-C02"
+    },
+    {
+      "book_id": "BK-C-RHFH4Y",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-C03-L01",
+        "A-C03-L07",
+        "A-C03-L10",
+        "A-C03-L11"
+      ],
+      "unit_id": "A-C03"
+    },
+    {
+      "book_id": "BK-C-WRXF5G",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C03-L02",
+        "A-C03-L03",
+        "A-C03-L06",
+        "A-C03-L09"
+      ],
+      "unit_id": "A-C03"
+    },
+    {
+      "book_id": "BK-C-RQX9BT",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C03-L04",
+        "A-C03-L05",
+        "A-C03-L08",
+        "A-C03-L12"
+      ],
+      "unit_id": "A-C03"
+    },
+    {
+      "book_id": "BK-C-4TBNFP",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-C04-L01",
+        "A-C04-L03",
+        "A-C04-L06",
+        "A-C04-L10"
+      ],
+      "unit_id": "A-C04"
+    },
+    {
+      "book_id": "BK-C-K9QPM9",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C04-L07",
+        "A-C04-L09",
+        "A-C04-L11",
+        "A-C04-L12"
+      ],
+      "unit_id": "A-C04"
+    },
+    {
+      "book_id": "BK-C-RV5GXQ",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C04-L02",
+        "A-C04-L04",
+        "A-C04-L05",
+        "A-C04-L08"
+      ],
+      "unit_id": "A-C04"
+    },
+    {
+      "book_id": "BK-C-FPG9MR",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-C05-L01",
+        "A-C05-L03",
+        "A-C05-L04",
+        "A-C05-L12"
+      ],
+      "unit_id": "A-C05"
+    },
+    {
+      "book_id": "BK-C-K4WJVN",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C05-L05",
+        "A-C05-L09",
+        "A-C05-L10",
+        "A-C05-L11"
+      ],
+      "unit_id": "A-C05"
+    },
+    {
+      "book_id": "BK-C-99BK5Y",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C05-L02",
+        "A-C05-L06",
+        "A-C05-L07",
+        "A-C05-L08"
+      ],
+      "unit_id": "A-C05"
+    },
+    {
+      "book_id": "BK-C-WCBBQP",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-C06-L01",
+        "A-C06-L03",
+        "A-C06-L08",
+        "A-C06-L10"
+      ],
+      "unit_id": "A-C06"
+    },
+    {
+      "book_id": "BK-C-RQJ7WB",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C06-L05",
+        "A-C06-L06",
+        "A-C06-L09",
+        "A-C06-L12"
+      ],
+      "unit_id": "A-C06"
+    },
+    {
+      "book_id": "BK-C-NNWQBN",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C06-L02",
+        "A-C06-L04",
+        "A-C06-L07",
+        "A-C06-L11"
+      ],
+      "unit_id": "A-C06"
+    },
+    {
+      "book_id": "BK-C-J5X44F",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-C07-L07",
+        "A-C07-L09",
+        "A-C07-L10",
+        "A-C07-L11"
+      ],
+      "unit_id": "A-C07"
+    },
+    {
+      "book_id": "BK-C-BKVBF9",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C07-L01",
+        "A-C07-L04",
+        "A-C07-L08",
+        "A-C07-L12"
+      ],
+      "unit_id": "A-C07"
+    },
+    {
+      "book_id": "BK-C-T4Q7PK",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C07-L02",
+        "A-C07-L03",
+        "A-C07-L05",
+        "A-C07-L06"
+      ],
+      "unit_id": "A-C07"
+    },
+    {
+      "book_id": "BK-C-FGFWWM",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-C08-L01",
+        "A-C08-L03",
+        "A-C08-L08",
+        "A-C08-L10"
+      ],
+      "unit_id": "A-C08"
+    },
+    {
+      "book_id": "BK-C-T57CNV",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C08-L04",
+        "A-C08-L06",
+        "A-C08-L11",
+        "A-C08-L12"
+      ],
+      "unit_id": "A-C08"
+    },
+    {
+      "book_id": "BK-C-M7F6PJ",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C08-L02",
+        "A-C08-L05",
+        "A-C08-L07",
+        "A-C08-L09"
+      ],
+      "unit_id": "A-C08"
+    },
+    {
+      "book_id": "BK-C-7BKNFF",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-C09-L02",
+        "A-C09-L03",
+        "A-C09-L06",
+        "A-C09-L07"
+      ],
+      "unit_id": "A-C09"
+    },
+    {
+      "book_id": "BK-C-6557V4",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C09-L01",
+        "A-C09-L04",
+        "A-C09-L08",
+        "A-C09-L11"
+      ],
+      "unit_id": "A-C09"
+    },
+    {
+      "book_id": "BK-C-XG8VWJ",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C09-L05",
+        "A-C09-L09",
+        "A-C09-L10",
+        "A-C09-L12"
+      ],
+      "unit_id": "A-C09"
+    },
+    {
+      "book_id": "BK-C-BXBGP6",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-C10-L04",
+        "A-C10-L08",
+        "A-C10-L10",
+        "A-C10-L11"
+      ],
+      "unit_id": "A-C10"
+    },
+    {
+      "book_id": "BK-C-9RX6Y4",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C10-L01",
+        "A-C10-L06",
+        "A-C10-L09",
+        "A-C10-L12"
+      ],
+      "unit_id": "A-C10"
+    },
+    {
+      "book_id": "BK-C-PCNB9J",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C10-L02",
+        "A-C10-L03",
+        "A-C10-L05",
+        "A-C10-L07"
+      ],
+      "unit_id": "A-C10"
+    },
+    {
+      "book_id": "BK-C-KWKJXK",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-C11-L02",
+        "A-C11-L03",
+        "A-C11-L10",
+        "A-C11-L12"
+      ],
+      "unit_id": "A-C11"
+    },
+    {
+      "book_id": "BK-C-K7BBGB",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C11-L04",
+        "A-C11-L08",
+        "A-C11-L09",
+        "A-C11-L11"
+      ],
+      "unit_id": "A-C11"
+    },
+    {
+      "book_id": "BK-C-7YRHVY",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C11-L01",
+        "A-C11-L05",
+        "A-C11-L06",
+        "A-C11-L07"
+      ],
+      "unit_id": "A-C11"
+    },
+    {
+      "book_id": "BK-C-46W5MX",
+      "designer": "D1",
+      "method": "A1",
+      "slots": [
+        "A-C12-L02",
+        "A-C12-L03",
+        "A-C12-L05",
+        "A-C12-L11"
+      ],
+      "unit_id": "A-C12"
+    },
+    {
+      "book_id": "BK-C-MW5K5V",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C12-L01",
+        "A-C12-L06",
+        "A-C12-L08",
+        "A-C12-L10"
+      ],
+      "unit_id": "A-C12"
+    },
+    {
+      "book_id": "BK-C-8Q9T95",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C12-L04",
+        "A-C12-L07",
+        "A-C12-L09",
+        "A-C12-L12"
+      ],
+      "unit_id": "A-C12"
+    },
+    {
+      "book_id": "BK-C-HF5MHK",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-C13-L06",
+        "A-C13-L08",
+        "A-C13-L09",
+        "A-C13-L10"
+      ],
+      "unit_id": "A-C13"
+    },
+    {
+      "book_id": "BK-C-4RBM7Q",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C13-L01",
+        "A-C13-L02",
+        "A-C13-L05",
+        "A-C13-L12"
+      ],
+      "unit_id": "A-C13"
+    },
+    {
+      "book_id": "BK-C-PMCQMK",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C13-L03",
+        "A-C13-L04",
+        "A-C13-L07",
+        "A-C13-L11"
+      ],
+      "unit_id": "A-C13"
+    },
+    {
+      "book_id": "BK-C-VNM5KC",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-C14-L01",
+        "A-C14-L03",
+        "A-C14-L08",
+        "A-C14-L09"
+      ],
+      "unit_id": "A-C14"
+    },
+    {
+      "book_id": "BK-C-7M696X",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C14-L02",
+        "A-C14-L06",
+        "A-C14-L07",
+        "A-C14-L12"
+      ],
+      "unit_id": "A-C14"
+    },
+    {
+      "book_id": "BK-C-HCYQMB",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C14-L04",
+        "A-C14-L05",
+        "A-C14-L10",
+        "A-C14-L11"
+      ],
+      "unit_id": "A-C14"
+    },
+    {
+      "book_id": "BK-C-GXF67C",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-C15-L01",
+        "A-C15-L07",
+        "A-C15-L10",
+        "A-C15-L11"
+      ],
+      "unit_id": "A-C15"
+    },
+    {
+      "book_id": "BK-C-CTJ49M",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C15-L02",
+        "A-C15-L03",
+        "A-C15-L05",
+        "A-C15-L08"
+      ],
+      "unit_id": "A-C15"
+    },
+    {
+      "book_id": "BK-C-WK94HY",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C15-L04",
+        "A-C15-L06",
+        "A-C15-L09",
+        "A-C15-L12"
+      ],
+      "unit_id": "A-C15"
+    },
+    {
+      "book_id": "BK-C-PPTH8W",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-C16-L05",
+        "A-C16-L06",
+        "A-C16-L08",
+        "A-C16-L09"
+      ],
+      "unit_id": "A-C16"
+    },
+    {
+      "book_id": "BK-C-6BF944",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C16-L02",
+        "A-C16-L04",
+        "A-C16-L07",
+        "A-C16-L11"
+      ],
+      "unit_id": "A-C16"
+    },
+    {
+      "book_id": "BK-C-HC46HY",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C16-L01",
+        "A-C16-L03",
+        "A-C16-L10",
+        "A-C16-L12"
+      ],
+      "unit_id": "A-C16"
+    },
+    {
+      "book_id": "BK-C-K8RRPJ",
+      "designer": "D2",
+      "method": "A1",
+      "slots": [
+        "A-C17-L01",
+        "A-C17-L05",
+        "A-C17-L08",
+        "A-C17-L11"
+      ],
+      "unit_id": "A-C17"
+    },
+    {
+      "book_id": "BK-C-Q4JVHV",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C17-L03",
+        "A-C17-L06",
+        "A-C17-L07",
+        "A-C17-L09"
+      ],
+      "unit_id": "A-C17"
+    },
+    {
+      "book_id": "BK-C-8WG9JF",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C17-L02",
+        "A-C17-L04",
+        "A-C17-L10",
+        "A-C17-L12"
+      ],
+      "unit_id": "A-C17"
+    },
+    {
+      "book_id": "BK-C-9KVNX6",
+      "designer": "D3",
+      "method": "A1",
+      "slots": [
+        "A-C18-L01",
+        "A-C18-L10",
+        "A-C18-L11",
+        "A-C18-L12"
+      ],
+      "unit_id": "A-C18"
+    },
+    {
+      "book_id": "BK-C-FXX6PH",
+      "designer": null,
+      "method": "A2",
+      "slots": [
+        "A-C18-L02",
+        "A-C18-L05",
+        "A-C18-L06",
+        "A-C18-L09"
+      ],
+      "unit_id": "A-C18"
+    },
+    {
+      "book_id": "BK-C-GH87TM",
+      "designer": null,
+      "method": "A3",
+      "slots": [
+        "A-C18-L03",
+        "A-C18-L04",
+        "A-C18-L07",
+        "A-C18-L08"
+      ],
+      "unit_id": "A-C18"
+    }
+  ],
+  "demo": true,
+  "design_table_sha256": "8415393ab4b4908fc526b0c955c7950f36526266c0a29c386b29b053d55efb23",
+  "format": "av-schedules/a-book-key",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "list_sha256": "87af9983196049352c779773ea4a260911f1b3cc621d385066f8e06c8a6a9f7a",
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "slots_list_sha256": "fd0a3a966543e048ba07b92cda3c4e5688b438ca1b523c92f07246c2bb50dc1d",
+  "study": "A"
+}

@@ -1,0 +1,125 @@
+{
+  "balance_max_abs_deviation": {
+    "atom_position": {
+      "all": "0.875"
+    },
+    "designer": {
+      "all": "0",
+      "profile=P1": "0",
+      "profile=P2": "0",
+      "profile=P3": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "family_first": {
+      "all": "0",
+      "profile=P1": "0",
+      "profile=P2": "0",
+      "profile=P3": "0",
+      "swap_w1_w4=0": "0.5",
+      "swap_w1_w4=1": "0.5"
+    },
+    "label_index": {
+      "all": "0.5",
+      "profile=P1": "0.5",
+      "profile=P2": "0.5",
+      "profile=P3": "0.5",
+      "swap_w1_w4=0": "0.75",
+      "swap_w1_w4=1": "0.75"
+    },
+    "label_position": {
+      "all": "0.875"
+    },
+    "message_cell": {
+      "all": "0.875"
+    },
+    "message_heldout": {
+      "all": "1.125"
+    },
+    "message_novel": {
+      "all": "0.75"
+    },
+    "profile": {
+      "all": "0",
+      "swap_w1_w4=0": "0",
+      "swap_w1_w4=1": "0"
+    },
+    "swap_w1_w4": {
+      "all": "0",
+      "profile=P1": "0",
+      "profile=P2": "0",
+      "profile=P3": "0"
+    }
+  },
+  "demo": true,
+  "files": {
+    "A-C01/curriculum.csv": "3b5e2f7dfe8670751bcb1dac3c2caed1fab883211fcf506a5918a9f5da5cede1",
+    "A-C01/permutation.json": "c59335c2193b37ebc349ade95107129f9e1bbcbfd7e032584dffcad962115041",
+    "A-C02/curriculum.csv": "f10656844fb5bc012839823437f05b79af32a75762aa391bcece0e2cf8d25ff0",
+    "A-C02/permutation.json": "0196a7d923832a464a311fed6ca455a09c28499f2f7c85d793767c46bbb3023e",
+    "A-C03/curriculum.csv": "3f59cbe65939704faa2a001c1b0803688b80a7134d7c8734e1089d8041480d6f",
+    "A-C03/permutation.json": "98d4aba1c81a98ef324cb9cd4c82fec9273ba5fea5f3f51463d3c083fd16e732",
+    "A-C04/curriculum.csv": "733007909ffda3c2efae0aa6ad83db217b6aaab264121745b6160b93bdb561da",
+    "A-C04/permutation.json": "d474de2e8e2956f7f9b46bce03e3989f43987d72f5664bba1257c44fedb64fc5",
+    "A-C05/curriculum.csv": "7641942d8d78fb541e63b8dbceb8efaf45cdbe5f3d2ae6054301a5fb688bdef2",
+    "A-C05/permutation.json": "c4d81bcd48ca0ab8d35074b3fd4730dda3a4b2a679c3863279b5ce24f0179d70",
+    "A-C06/curriculum.csv": "d5a9c006a67ee53c5b6d9e615822efe73eb129abe28adbe439df3a3d551634b4",
+    "A-C06/permutation.json": "77002fc04b031af684705f42bba35fe8a8d2cca053280746b0e44330a49be1c2",
+    "A-C07/curriculum.csv": "e6cf8ba83b9e25e3e4b6cb20f810bb4edc270f2ecba4ff0b1913e12eb6684322",
+    "A-C07/permutation.json": "fc2ee109ca06051779767669a9a8d6af61789b598fe7fc30934c7f0d3fd9cb74",
+    "A-C08/curriculum.csv": "d37e42363c0e12aa6fc773dd7e0f9f32770355dde01aa4ca2d09920ace7473dc",
+    "A-C08/permutation.json": "9543d9699c0882315e7b09b3130c23180fda816f00ec96dc2e3728953cb8695a",
+    "A-C09/curriculum.csv": "1585bbfae6bc7736b1273a009943e5542fd78160194f97105a4d7749bf8f919f",
+    "A-C09/permutation.json": "80b019c1d525945560371bc08412c69a128b22cc6dad26ad86f5d43dc1a0856c",
+    "A-C10/curriculum.csv": "d2a0e070ae3f1db86cf452404e92c4c016c5c4a8bf51b1943b78bcf559fcb051",
+    "A-C10/permutation.json": "082db5fba2ef761d490b8d40e4ea2bc4b83ec900d33d5cb223ebeb72e471fd52",
+    "A-C11/curriculum.csv": "74c5c820926d1aa94195e9cfcf1e69d3b55fb034f6d56d681af27ba2f1971377",
+    "A-C11/permutation.json": "cc0c26fe0e8cb898d24cdd8cd39090073af726129432a7d3c1053308d95bbe55",
+    "A-C12/curriculum.csv": "7c531a132b4f14fc5ab5325585638d7b4cc288c8e16aa473a7a36a676dc1fa33",
+    "A-C12/permutation.json": "289fac74e533b3e1da2f98b1d7ee40722b0e553e315707bacf8881d510eac213",
+    "A-C13/curriculum.csv": "0ebcd2335c53d0668cf04be4f4d125f4278b0924e5a28c382f8ffbb9dace6192",
+    "A-C13/permutation.json": "35704e251ca8e8d2b04baaea4360dc6b037c62ca83789b515e18bcac5b47ba66",
+    "A-C14/curriculum.csv": "3e91b116aeb398416fd8dcb597053e8f6705d07e08fff8f4ec9e3c3ee5a7e71f",
+    "A-C14/permutation.json": "57eced418caa6c6050d453bb96901f33feb1a183c0d1b3a9733e185f32d7ce65",
+    "A-C15/curriculum.csv": "6ae5fb122d2810528554cb453a0b0cf3e09b5d9b247485487bdc9b59100c98e4",
+    "A-C15/permutation.json": "86a5e1e217c090fc9399ffdd4b90267eea1377af1bf159b7a3118470099843b5",
+    "A-C16/curriculum.csv": "1983a0ed840efd13a089231ef3b8eeed977fe741dbea75ca7ec005201baaeb07",
+    "A-C16/permutation.json": "4afde1f1f59ab27c2ea83ba01f4a6b7772886773ff3893189b3fd1b5249060c7",
+    "A-C17/curriculum.csv": "86020327a7baa0da2f7ff2aa8092c6824e0a3070d7c0cae5eac66c4d7484b821",
+    "A-C17/permutation.json": "22201669cc09cc280028515f771eebd4d5a0c1f52b021e79239a460b717e46ba",
+    "A-C18/curriculum.csv": "fa7e7167f70389541caec405c090c1826d3b789caba22e7690cfcac0a88670eb",
+    "A-C18/permutation.json": "4fc0782afcfa68c3b84f82ad655fe982d18083046e3d3d17c6aeb9fa576d3eac",
+    "confirmatory-balance.csv": "295cc4dfa9e0d57264c0ea63358ba0a3e052bc9fa096a96cd8470f85d82e7c77",
+    "confirmatory-batch-table.csv": "8415393ab4b4908fc526b0c955c7950f36526266c0a29c386b29b053d55efb23"
+  },
+  "format": "av-schedules/manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "confirmatory",
+  "spare_units": [],
+  "study": "A",
+  "units": [
+    "A-C01",
+    "A-C02",
+    "A-C03",
+    "A-C04",
+    "A-C05",
+    "A-C06",
+    "A-C07",
+    "A-C08",
+    "A-C09",
+    "A-C10",
+    "A-C11",
+    "A-C12",
+    "A-C13",
+    "A-C14",
+    "A-C15",
+    "A-C16",
+    "A-C17",
+    "A-C18"
+  ]
+}
