@@ -12,6 +12,12 @@ play audio, drive Isaac or bind a non-DEMO visit. Its three-second illustrative
 progress is not study timing evidence. Normal operation requires `--config`
 instead of `--demo` and a separately configured real engine.
 
+The **Orientation eligibility** panel shows each configured orientation receipt
+before allocation: outcome, receipt hash, verification status and whether
+allocation handoff is blocked. It reuses the `av_schedules.admission` reader;
+visit load and start stay blocked unless that receipt verifies as a pass. The DEMO
+has no receipts. See the contract's pre-allocation section for configuration.
+
 The [runbook](../../docs/spikes/O5.6.2-runbook.md) specifies private provisioning
 and pending paired headset capture. The [contract](../../docs/interfaces/operator-console.md)
 defines the same-PC Link mailbox. An adapter does not create a complete session

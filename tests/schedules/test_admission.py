@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from av_schedules.admission import DurableRevealLog, _receipt, read_orientation
+from av_schedules.admission import DurableRevealLog, _receipt, inspect_orientation, read_orientation
 from av_schedules.admission_cli import main
 from av_schedules.admission_io import WriterLock, canonical, sha
 from av_schedules.reveal import A_CHECKS, B_CHECKS, GENESIS, RevealError
@@ -31,7 +31,8 @@ def make_list(private, study="A"):
     return path, sha(data)
 
 
-def orientation(private, person="DEMO-person", second=False, draft=False):
+def orientation(private, person="DEMO-person", second=False, draft=False, fail=False):
+    second = second or fail
     receipt = {
         "schema_version": 1,
         "receipt_type": "orientation-outcome",
@@ -41,10 +42,11 @@ def orientation(private, person="DEMO-person", second=False, draft=False):
         "orientation_id": "DEMO-" + person,
         "plan_sha256": "1" * 64,
         "demo_index_sha256": "2" * 64,
-        "outcome": "pass_second" if second else "pass_first",
+        "outcome": "fail" if fail else "pass_second" if second else "pass_first",
         "engineering_draft": draft,
-        "eligible": not draft,
+        "eligible": not draft and not fail,
     }
+    retry = [True] * 7 + [False] if fail else [True] * 8
     header = {
         "event": "orientation_header",
         "preallocation": True,
@@ -62,7 +64,7 @@ def orientation(private, person="DEMO-person", second=False, draft=False):
         },
     }
     first = [False] + [True] * 7 if second else [True] * 8
-    answers = [(1, first)] + ([(2, [True] * 8)] if second else [])
+    answers = [(1, first)] + ([(2, retry)] if second else [])
     rows = [header] + [
         {"event": "practice_response", "attempt": a, "ordinal": i + 1, "correct": answer}
         for a, values in answers
@@ -76,7 +78,7 @@ def orientation(private, person="DEMO-person", second=False, draft=False):
             "preallocation": True,
             "learning_result": False,
             "first_correct": first,
-            "second_correct": [True] * 8 if second else [],
+            "second_correct": retry if second else [],
             "reexplanations": 1 if second else 0,
         }
     )
@@ -194,6 +196,40 @@ def test_orientation_integrity_and_admission_refusal(private, mutation):
             orientation_files=[(path, pin, journal)],
         )
     assert not log.journal_path.exists() and log.head == GENESIS
+
+
+@pytest.mark.parametrize("fail,draft", [(True, False), (False, True), (True, True)])
+def test_display_inspection_verifies_recorded_fail_or_draft_but_never_admits(private, fail, draft):
+    files = orientation(private, fail=fail, draft=draft)
+    receipt = inspect_orientation(*files)
+    assert receipt["outcome"] == ("fail" if fail else "pass_first")
+    assert receipt["eligible"] is False and receipt["engineering_draft"] is draft
+    with pytest.raises(RevealError, match="ORIENTATION_NOT_ELIGIBLE"):
+        read_orientation(*files)
+
+
+@pytest.mark.parametrize(
+    "mutation", ["fail_flagged_eligible", "fail_with_full_retry", "draft_unflagged"]
+)
+def test_display_inspection_refuses_inconsistent_outcomes(private, mutation):
+    draft = mutation == "draft_unflagged"
+    path, _, journal = orientation(private, fail=not draft, draft=draft)
+    value = json.loads(path.read_bytes())
+    value.pop("receipt_sha256")
+    if mutation == "fail_flagged_eligible":
+        value["eligible"] = True
+        code = "ORIENTATION_OUTCOME_INVALID"
+    elif mutation == "fail_with_full_retry":
+        retry = b'"second_correct":[' + b",".join([b"true"] * 7)
+        journal.write_bytes(journal.read_bytes().replace(retry + b",false]", retry + b",true]"))
+        value.update(journal_sha256=sha(journal.read_bytes()), journal_bytes=journal.stat().st_size)
+        code = "ORIENTATION_CHECK_COUNTS"
+    else:
+        value.update(engineering_draft=False, eligible=True)
+        code = "ORIENTATION_JOURNAL_BINDING"
+    path.write_bytes(canonical(_receipt(value)))
+    with pytest.raises(RevealError, match=code):
+        inspect_orientation(path, sha(path.read_bytes()), journal)
 
 
 def test_receipt_cannot_claim_missing_practice_response(private):

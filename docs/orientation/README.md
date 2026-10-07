@@ -32,9 +32,15 @@ decision under the approved protocol; the prior private log remains intact.
 `OutcomeRecorded` publishes an immutable outcome only after the durable record.
 `EligibleOutcomeRecorded` is true only for a recorded pass with reviewed content;
 an engineering draft can produce a clearly labelled synthetic/engineering outcome
-but never grants this gate. The operator console (#73) and allocation/session
-engine (#67) must subscribe to the event and retain that gate. Those integrations
-are pending. This is a necessary gate, not consent, human-subjects approval or an
+but never grants this gate. The operator console (#73) now shows the sealed
+receipt before allocation: outcome (`pass_first` / `pass_second` / `fail`),
+receipt hash, verification status and a blocked/eligible allocation state. It
+verifies the pinned receipt and journal with the #31 admission reader and keeps
+visit load and start blocked unless that reader accepts a pass. Missing, failed,
+draft or changed receipts show a blocking state. See
+[the console contract](../interfaces/operator-console.md#pre-allocation-orientation-outcome).
+The allocation/session engine (#67) must retain the same gate; live event
+subscription remains pending. This is a necessary gate, not consent, human-subjects approval or an
 apparatus qualification. All such approvals still apply before human use.
 
 JSONL records include build/station/plan/demo-index identities, action and target
@@ -151,6 +157,8 @@ Three synthetic journal traces also verify that an actual on-disk outcome is
 readable before its callback runs. They use an injected clock and draft content;
 they never grant the host's allocation gate.
 
-Qualified #56 recordings, live demo control, operator-console/allocation integration,
-approved protocol content and physical checks remain explicit qualification work.
+Qualified #56 recordings, live demo control, #67 session integration, approved
+protocol content and physical checks remain explicit qualification work. The
+console's receipt view is tested with synthetic receipts only; no headset run has
+exercised it.
 Issue Acceptance criteria are reserved for human review.
