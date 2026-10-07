@@ -1,0 +1,20 @@
+{
+  "name": "AcousticVocab.ViewCapture.PlayModeTests",
+  "references": [
+    "AcousticVocab.ViewCapture",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.ResponsePanel",
+    "Unity.InputSystem"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "defineConstraints": [
+    "UNITY_EDITOR || AV_SIMULATION_TEST"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll",
+    "nunit.framework.dll"
+  ]
+}

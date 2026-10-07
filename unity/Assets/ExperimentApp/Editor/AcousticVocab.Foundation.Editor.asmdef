@@ -18,7 +18,8 @@
     "AcousticVocab.FrameBudget",
     "AcousticVocab.SelectionMenus",
     "AcousticVocab.SessionIntegration",
-    "AcousticVocab.Orientation"
+    "AcousticVocab.Orientation",
+    "AcousticVocab.ViewCapture"
   ],
   "includePlatforms": [
     "Editor"

@@ -1,0 +1,16 @@
+{
+  "name": "AcousticVocab.ViewCapture.Editor",
+  "references": [
+    "AcousticVocab.ViewCapture",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.ResponsePanel.Editor",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateIntegration.Editor",
+    "AcousticVocab.StudyAudio"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

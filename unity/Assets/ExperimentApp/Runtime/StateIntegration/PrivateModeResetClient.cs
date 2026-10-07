@@ -29,7 +29,7 @@ namespace AcousticVocab.StateIntegration
     {
         sealed class Arrival { internal string Id,Raw;internal double Sent,Received;internal bool Health; }
         readonly struct ResetReceipt
-        {internal readonly double Received,Sample;internal ResetReceipt(double received,double sample){Received=received;Sample=sample;}}
+        {internal readonly double Received,Sample;internal readonly string Raw;internal ResetReceipt(double received,double sample,string raw){Received=received;Sample=sample;Raw=raw;}}
         readonly string session,mode;
         readonly ConcurrentQueue<string> outgoing=new ConcurrentQueue<string>();
         readonly ConcurrentQueue<Arrival> incoming=new ConcurrentQueue<Arrival>();
@@ -71,6 +71,15 @@ namespace AcousticVocab.StateIntegration
         // probe sent after that ACK's full receipt before admitting exposure.
         // Its original RTT, source ages and receipt age still obey the same gate.
         public bool ResetAcknowledged(string exactRequestId) => exactRequestId!=null&&NeutralHoldHealthy&&PostResetProbeObserved(exactRequestId);
+        // Evidence accessor only: the exact wire text of an already validated,
+        // durably persisted, accepted reset reply and its local receipt time.
+        // It grants nothing; callers still require ResetAcknowledged.
+        public bool TryGetAcceptedResetReply(string exactRequestId,out string raw,out double receivedLocalMonoMs)
+        {
+            raw=null;receivedLocalMonoMs=0;
+            if(exactRequestId==null||!resets.TryGetValue(exactRequestId,out var receipt))return false;
+            raw=receipt.Raw;receivedLocalMonoMs=receipt.Received;return true;
+        }
         bool PostResetProbeObserved(string id)=>id!=null&&resets.TryGetValue(id,out var receipt)&&latestObservationWasProbe&&probeSent>=receipt.Received&&probeSample>receipt.Sample;
         public JObject ReadinessDiagnostic(string exactRequestId)
         {
@@ -156,7 +165,7 @@ namespace AcousticVocab.StateIntegration
                     else Require((string)value["reason"]=="RESET_COMPLETE"&&Bool(value["reset_ok"]),"CONTROL_RESET");
                     persist(new JObject{["kind"]="control_reply",["local_mono_ms"]=item.Received,["reply"]=value.DeepClone()});
                     commandReceived=item.Received;commandSample=sample;
-                    pending.Remove(item.Id);if(command=="set_mode")modeAcknowledged=true;else resets.Add(item.Id,new ResetReceipt(item.Received,sample));
+                    pending.Remove(item.Id);if(command=="set_mode")modeAcknowledged=true;else resets.Add(item.Id,new ResetReceipt(item.Received,sample,item.Raw));
                     Require(resets.Count<=512,"CONTROL_CAPACITY");
                 }
                 catch(Exception error){RecordFailure(FailureCode(error),"pump");Interrupt();throw;}

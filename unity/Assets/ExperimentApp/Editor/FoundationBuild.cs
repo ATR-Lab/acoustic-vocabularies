@@ -212,6 +212,14 @@ namespace AcousticVocab.Foundation.Editor
                         throw new BuildFailedException("Preallocation requires one silent host and a disabled allocation-gated joined loader.");
                 }
             }
+            if(ParticipantScenePath=="Assets/Generated.local.data/ViewCapture/ViewCapture.unity")
+            {
+                allowed=allowed.Concat(new[]{typeof(AcousticVocab.ViewCapture.ViewCaptureHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource)}).ToArray();
+                if(UnityEngine.Object.FindObjectsByType<AcousticVocab.ViewCapture.ViewCaptureHost>(FindObjectsInactive.Include).Length!=1||
+                    UnityEngine.Object.FindObjectsByType<AcousticVocab.StudyAudio.AudioPlayer>(FindObjectsInactive.Include).Length!=1||
+                    UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Length!=1)
+                    throw new BuildFailedException("View-capture scene requires one capture host and one inert shared audio source.");
+            }
             if(ParticipantScenePath==CalibrationScenePath)
             {
                 allowed=allowed.Concat(new[] { typeof(AcousticVocab.StudyAudio.AudioCalibrationHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource),

@@ -1,0 +1,21 @@
+{
+  "name": "AcousticVocab.ViewCapture.Tests",
+  "references": [
+    "AcousticVocab.ViewCapture",
+    "AcousticVocab.Foundation",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.StateSources"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll",
+    "nunit.framework.dll"
+  ]
+}

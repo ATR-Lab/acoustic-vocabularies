@@ -1,0 +1,19 @@
+{
+  "name": "AcousticVocab.ViewCapture",
+  "references": [
+    "AcousticVocab.Foundation",
+    "AcousticVocab.StateSources",
+    "AcousticVocab.StateIntegration",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.Workcell",
+    "Unity.InputSystem"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_EDITOR || AV_SIMULATION_TEST"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ]
+}

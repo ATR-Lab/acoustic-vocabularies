@@ -24,6 +24,19 @@ namespace AcousticVocab.Tests
             now=40;var probe=Health(20);probe["publisher_age_ms"]=25;ReceiveHealth(probe.ToString(),30,40);
             Assert.That(client.ResetAcknowledged(reset),Is.True,"Admission requires a progressing real probe after the durable ACK");return reset;
         }
+        [Test]public void AcceptedResetReplyEvidenceIsExactWireTextAndGrantsNothing()
+        {
+            client.RequestMode();string mode=(string)journal[0]["request"]["request_id"];now=20;client.ReceiveReply(mode,Reply(mode,"set_mode",10).ToString(),0,20);client.Pump();
+            string reset=client.RequestReset();string wire=Reply(reset,"reset",15).ToString(Newtonsoft.Json.Formatting.Indented);
+            Assert.That(client.TryGetAcceptedResetReply(reset,out _,out _),Is.False,"No evidence before the reply is validated and persisted");
+            now=30;client.ReceiveReply(reset,wire,20,30);
+            Assert.That(client.ResetAcknowledged(reset),Is.False);
+            Assert.That(client.TryGetAcceptedResetReply(reset,out string raw,out double received),Is.True);
+            Assert.That(raw,Is.EqualTo(wire),"Exact received text, not a re-serialized object");Assert.That(received,Is.EqualTo(30));
+            Assert.That(client.ResetAcknowledged(reset),Is.False,"Reading evidence never admits exposure");
+            Assert.That(client.TryGetAcceptedResetReply(mode,out _,out _),Is.False,"Mode replies are not reset evidence");
+            Assert.That(client.TryGetAcceptedResetReply(null,out _,out _),Is.False);
+        }
         [Test]public void SecondExposureReadUsesQueuedRealProgressAfterDurableWriteDelay()
         {
             string reset=Admit();now=254;Assert.That(client.ResetAcknowledged(reset),Is.True);
