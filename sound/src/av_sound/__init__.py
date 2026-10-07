@@ -18,6 +18,9 @@ Stable public API (see `sound/README.md` and `docs/interfaces/sound-engine.md`):
   grammar clicks (`sound/docs/nonlexical.md`).
 - `VocabularyStore`, `StoreEntry`, `VerifyReport`: the append-only vocabulary store
   (`sound/docs/store.md`).
+- `build_fallback`, `scan_fallback`, `load_fallback`, `verify_fallback`,
+  `freeze_fallback_books`, `fallback_bank_hash`: fallback banks and books
+  (`sound/docs/fallback.md`).
 - `build_package`, `build_dyad_package`, `seal`, `load_package`, `scan_package`: learner and
   dyad packages (`docs/interfaces/package-format.md`); `DyadBank` is the PROVISIONAL Study B
   bank input.
@@ -39,6 +42,24 @@ from av_sound.composer import (
     write_message_wav,
 )
 from av_sound.dyad_bank import DyadBank
+from av_sound.fallback import (
+    BANK_SIZE,
+    BankEntry,
+    BookAtom,
+    FallbackBank,
+    FallbackBook,
+    FallbackError,
+    FallbackSet,
+    FrozenFallbackBook,
+    ScanResult,
+    ScanStep,
+    build_fallback,
+    fallback_bank_hash,
+    freeze_fallback_books,
+    load_fallback,
+    scan_fallback,
+    verify_fallback,
+)
 from av_sound.features import (
     FEATURE_NAMES,
     distance,
@@ -111,6 +132,7 @@ from av_sound.version import renderer_hash, renderer_manifest, renderer_recipe_s
 from av_sound.wav import file_sha256, pcm_sha256, read_wav, wav_bytes, write_wav
 
 __all__ = [
+    "BANK_SIZE",
     "CALIBRATION_SAMPLES",
     "E_DOMAIN",
     "E_JSON",
@@ -128,11 +150,18 @@ __all__ = [
     "VALIDATOR_VERSION",
     "AtomAudio",
     "AtomAudioLike",
+    "BankEntry",
+    "BookAtom",
     "BookFrozen",
     "BookInfo",
     "CommitRejected",
     "CompositionError",
     "DyadBank",
+    "FallbackBank",
+    "FallbackBook",
+    "FallbackError",
+    "FallbackSet",
+    "FrozenFallbackBook",
     "GrammarError",
     "HeldOutMessageError",
     "LeakReport",
@@ -151,6 +180,8 @@ __all__ = [
     "Rendered",
     "ReservedEntry",
     "ReservedRegistry",
+    "ScanResult",
+    "ScanStep",
     "StoreEntry",
     "StoreError",
     "StoreIntegrityError",
@@ -161,6 +192,7 @@ __all__ = [
     "VerifyReport",
     "VocabularyStore",
     "build_dyad_package",
+    "build_fallback",
     "build_package",
     "build_reserved_registry",
     "calibration_example",
@@ -169,8 +201,11 @@ __all__ = [
     "composite_hash",
     "distance",
     "event_samples",
+    "fallback_bank_hash",
     "features",
     "file_sha256",
+    "freeze_fallback_books",
+    "load_fallback",
     "load_package",
     "load_reserved_registry",
     "load_separation_threshold",
@@ -186,6 +221,7 @@ __all__ = [
     "renderer_hash",
     "renderer_manifest",
     "renderer_recipe_schema_hash",
+    "scan_fallback",
     "scan_package",
     "seal",
     "self_test",
@@ -194,6 +230,7 @@ __all__ = [
     "sum_squared_diff",
     "timing",
     "validate",
+    "verify_fallback",
     "wav_bytes",
     "write_message_wav",
     "write_wav",

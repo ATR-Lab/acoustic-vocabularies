@@ -153,8 +153,8 @@ single 2.000-s event: 96,000 samples, longer than any motif (at most 43,200).
 section 2). `asset_spec_version` makes a change of asset design visible in the
 registry itself; the schema keeps it optional, so a registry without it still loads. `validate(..., reserved=None)` loads this file, so every
 proposer and bank builder that uses the default gets the reserved check. The
-fallback banks (#15) use this path; #15 adds the test that every bank recipe passes
-it.
+fallback banks (#15) use this path; `tests/sound/test_fallback.py` checks that every
+bank and book recipe passes it and that no fallback waveform equals an asset.
 
 ## 7. Rebuilding and listening files
 

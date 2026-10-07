@@ -118,6 +118,10 @@ jobs:
           print(f"- {platform.system()}: live composite digest `{digest}` ({len(live)} messages), equals vectors.json: {live == ref}")
           assert live == ref
           EOF
+      - name: Fallback banks and books (DEMO seed rebuild)
+        run: >
+          uv run --project sound python sound/tools/build_fallback.py --demo-seed DEMO-fallback-v1
+          --check sound/testvectors/fallback/demo-manifest.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Reserved nonlexical assets (registry check and WAVs)
         run: >
           uv run --project sound python sound/tools/make_reserved_assets.py --check --table
