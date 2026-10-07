@@ -26,7 +26,7 @@ from fastapi.responses import PlainTextResponse
 from av_generation import _batch_sim as sim
 from av_generation import batch_runner as br
 from av_generation.clock import ManualClock, ScaledClock
-from av_generation.config import RaterSeat
+from av_generation.config import BatchConfig, RaterSeat
 from av_generation.genconfig import (
     FREEZE_CONFIG_KEY,
     ConfigMismatch,
@@ -61,7 +61,7 @@ from av_generation.records import (
     cap_key,
     read_records,
 )
-from av_generation.rundir import RunPolicyError
+from av_generation.rundir import RunLayout, RunPolicyError
 
 ROOT = Path(__file__).resolve().parents[2]
 FIX = ROOT / "tests/generation/fixtures/orchestrator"
@@ -579,9 +579,14 @@ def _demo_files():
     ]
 
 
-def test_cli_runs_appointments_with_the_real_components_and_resumes(tmp_path, capsys, mock_llm_url):
-    """Virtual time (`--clock manual`, driven by the bot panel): appointment 1 in one
-    process, then `--resume` runs appointment 2 on the same ledger and logs."""
+def test_cli_runs_a_batch_with_the_real_components_over_three_sittings(
+    tmp_path, capsys, mock_llm_url
+):
+    """Virtual time (`--clock manual`, driven by the bot panel): appointment 1, then
+    `--resume` runs appointment 2, then `--resume --appointment all` the rest, each on
+    the same ledger and logs. No cap can fire while virtual time stands still, so every
+    A3 slot reaches the mock model (in accelerated real time a busy runner can miss the
+    5-s token-count cap, which is 25 ms of real time at 200x)."""
     common = [
         "--kind",
         "synthetic",
@@ -613,6 +618,30 @@ def test_cli_runs_appointments_with_the_real_components_and_resumes(tmp_path, ca
     timing = read_records(run_dir / "logs/timing.jsonl", TimingEvent)
     assert [e.appointment for e in timing if e.event == "appointment_start"] == [1, 2]
     assert any(e.event == "resume" for e in timing)
+    assert (
+        br.main(
+            ["run", *_cli(tmp_path, "DEMO-cli-01"), *common, "--resume", "--appointment", "all"]
+        )
+        == 0
+    )
+    assert "Atoms finished: 16/16; next: None" in capsys.readouterr().out
+    layout = RunLayout(run_dir, "DEMO-cli-01")
+    summary = sim.summarize(layout, BatchConfig.read(layout.config))
+    counts = summary["counts"]
+    assert summary["closed"] and counts["slot_records"] == 576
+    assert counts["commits_in_final_books"] == 48 and counts["decision_records"] == 192
+    assert set(counts["rating_records_per_rater"].values()) == {576}
+    assert counts["rating_missing"] == 0 and counts["message_plays"] == 0
+    a3 = [s for s in read_records(layout.log("slot"), SlotRecord) if s.method is Method.A3]
+    requests = read_records(layout.log("llm_request"), LlmRequest)
+    assert {s.llm_status.value for s in a3} == {"ok"} and len(requests) == 192
+    if os.environ.get("CI") == "true":
+        out = ROOT / "generation/out/ci/batch-runner"
+        out.mkdir(parents=True, exist_ok=True)
+        summary["a3_outcomes"] = dict(collections.Counter(s.outcome.value for s in a3))
+        (out / "DEMO-cli-01-summary.json").write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+        )
     # a resume of a run that never started is refused
     assert br.main(["run", *_cli(tmp_path, "DEMO-cli-02"), *common, "--resume"]) == 1
     assert "E_RUN_DIR" in capsys.readouterr().err
