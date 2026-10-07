@@ -1,0 +1,13 @@
+{
+  "poses": 3,
+  "compared_link_pose_pairs": 165,
+  "max_position_error_mm": 0.0002995096332168844,
+  "max_orientation_error_deg": 9.227077461425456e-05,
+  "missing_unity_links": [],
+  "unobserved_unity_links": [],
+  "all_observed_links_within_proposed_tolerance": true,
+  "full_urdf_link_coverage": true,
+  "tolerance_status": "proposed_5mm_1degree_pending_protocol_review",
+  "isaac_pose_sha256": "4e108ad4bf8fabdf1193397ce56da097729ace535b7a591c7fe4ea60d310e7dd",
+  "unity_pose_sha256": "42b4bf6c6a097177a7d5c70270978754575c03679bff2df111a7f86faf9dcd24"
+}

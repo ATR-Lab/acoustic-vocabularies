@@ -1,0 +1,1 @@
+{"name":"AcousticVocab.Soak.Tests","references":["AcousticVocab.Soak"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"],"overrideReferences":true,"precompiledReferences":["Newtonsoft.Json.dll"]}

@@ -1,0 +1,402 @@
+{
+  "benchmark_raw_sha256": "f9ea23dd0d94e74af51ff91202ab428f8dc6d3434eab07a4229b6430bdd72b2a",
+  "blocks": [
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 1404000,
+        "median": 899650.0,
+        "min": 639500,
+        "p95": 1170300
+      },
+      "cycle": 0,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 164000,
+        "median": 34650.0,
+        "min": 27900,
+        "p95": 48500
+      },
+      "cycle": 0,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 67800,
+        "median": 28500.0,
+        "min": 27500,
+        "p95": 45000
+      },
+      "cycle": 0,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 2757900,
+        "median": 855100.0,
+        "min": 634600,
+        "p95": 1149200
+      },
+      "cycle": 0,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 2034500,
+        "median": 827350.0,
+        "min": 638600,
+        "p95": 1231000
+      },
+      "cycle": 1,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 95800,
+        "median": 33600.0,
+        "min": 27700,
+        "p95": 52300
+      },
+      "cycle": 1,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 48800,
+        "median": 28900.0,
+        "min": 27600,
+        "p95": 36900
+      },
+      "cycle": 1,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 1635300,
+        "median": 707950.0,
+        "min": 626200,
+        "p95": 1145200
+      },
+      "cycle": 1,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 2138700,
+        "median": 810300.0,
+        "min": 627200,
+        "p95": 1167100
+      },
+      "cycle": 2,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 69800,
+        "median": 38700.0,
+        "min": 27700,
+        "p95": 46000
+      },
+      "cycle": 2,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 63300,
+        "median": 44800.0,
+        "min": 28400,
+        "p95": 49600
+      },
+      "cycle": 2,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 1433000,
+        "median": 783600.0,
+        "min": 638900,
+        "p95": 1168100
+      },
+      "cycle": 2,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 1801200,
+        "median": 783450.0,
+        "min": 642700,
+        "p95": 1203900
+      },
+      "cycle": 3,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 145400,
+        "median": 29300.0,
+        "min": 27700,
+        "p95": 51500
+      },
+      "cycle": 3,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 122700,
+        "median": 41100.0,
+        "min": 28300,
+        "p95": 47700
+      },
+      "cycle": 3,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 1633500,
+        "median": 812600.0,
+        "min": 639500,
+        "p95": 1199200
+      },
+      "cycle": 3,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 4026700,
+        "median": 738950.0,
+        "min": 645800,
+        "p95": 1219900
+      },
+      "cycle": 4,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 85700,
+        "median": 31600.0,
+        "min": 27900,
+        "p95": 47300
+      },
+      "cycle": 4,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 51700,
+        "median": 28400.0,
+        "min": 27600,
+        "p95": 36200
+      },
+      "cycle": 4,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "robot_only"
+    },
+    {
+      "copy_ns": {
+        "count": 200,
+        "max": 2169200,
+        "median": 792550.0,
+        "min": 648700,
+        "p95": 1175100
+      },
+      "cycle": 4,
+      "gc_collections_delta": [
+        0,
+        0,
+        0
+      ],
+      "method": "full_state_then_robot"
+    }
+  ],
+  "copy_ns": {
+    "full_state_then_robot": {
+      "count": 2000,
+      "max": 4026700,
+      "median": 802850.0,
+      "min": 626200,
+      "p95": 1182900
+    },
+    "robot_only": {
+      "count": 2000,
+      "max": 164000,
+      "median": 30900.0,
+      "min": 27500,
+      "p95": 48100
+    }
+  },
+  "cycles": 5,
+  "gc_enabled": true,
+  "gc_policy_changed": false,
+  "gc_thresholds": [
+    700,
+    10,
+    10
+  ],
+  "git_blob_sha256": {
+    "isaac/commands/dispatcher.py": "8ef94899e8321afd4d1e5bd16c450fc541f9a50c8eb0b8d663a342e6c9511d5e",
+    "isaac/reset/manager.py": "56d001920c3d484397eafb6e69f8124997a7249a9df7e220f19f2bbdf8d938c9",
+    "isaac/reset/neutral_copy_benchmark.py": "d6b68d17fe6c90eda764575ab1667a87edb1b3386a93ed78ad1db8128d0372cd"
+  },
+  "hash_basis": {
+    "git_blob_sha256": "Git blob content at source_commit; SHA-256",
+    "snapshot_report_xml_source_sha256": "exact raw file bytes; SHA-256",
+    "source_commit": "Git commit object identifier"
+  },
+  "iterations_per_block": 200,
+  "joint_count": 43,
+  "native_run": false,
+  "object_count": 60,
+  "participant_admission": false,
+  "payloads_equal": true,
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "robot_sha256": "60b3d5208a3f077c2119188d3142ed3b745acb283afce7cd79ad761e2d8d1dbd",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "scope": "offline_copy_only",
+  "separate_tracemalloc_peak_increment_bytes": {
+    "full_state_then_robot": {
+      "count": 20,
+      "max": 98192,
+      "median": 97648.0,
+      "min": 97648,
+      "p95": 97676
+    },
+    "robot_only": {
+      "count": 20,
+      "max": 2540,
+      "median": 2512.0,
+      "min": 2512,
+      "p95": 2512
+    }
+  },
+  "snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+  "source_commit": "1962d201c8699f3a9cdc9f32107593079dc21dbd",
+  "source_sha256": {
+    "isaac/commands/dispatcher.py": "8ef94899e8321afd4d1e5bd16c450fc541f9a50c8eb0b8d663a342e6c9511d5e",
+    "isaac/reset/manager.py": "56d001920c3d484397eafb6e69f8124997a7249a9df7e220f19f2bbdf8d938c9",
+    "isaac/reset/neutral_copy_benchmark.py": "d6b68d17fe6c90eda764575ab1667a87edb1b3386a93ed78ad1db8128d0372cd"
+  },
+  "timing_qualified": false,
+  "validation": {
+    "failed": 0,
+    "new_cases": 19,
+    "passed": 172,
+    "skipped": 0,
+    "xml_sha256": "408e2ee9b3fc8f2b7f05cfc48bcd055e84d6ea8d3f08fdce76b7609f73180945"
+  },
+  "version": 1
+}

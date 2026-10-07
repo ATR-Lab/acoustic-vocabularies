@@ -1,0 +1,38 @@
+{
+  "gpu_total_used_mib": {
+    "count": 58,
+    "mean": 5645.0,
+    "p95": 5645.0,
+    "max": 5645.0
+  },
+  "process_rss_mib": {
+    "count": 58,
+    "mean": 3278.527478448276,
+    "p95": 3278.59765625,
+    "max": 3278.6015625
+  },
+  "cpu_one_core_percent": {
+    "count": 58,
+    "mean": 151.11413143406526,
+    "p95": 153.9697126772427,
+    "max": 154.55029149489542
+  },
+  "step_wall_ms": {
+    "count": 3852,
+    "mean": 7.95954183125649,
+    "p95": 12.045254,
+    "max": 14.232469
+  },
+  "step_interval_ms": {
+    "count": 3851,
+    "mean": 15.573576003375747,
+    "p95": 16.311481,
+    "max": 24.447027
+  },
+  "render_interval_ms": {
+    "count": 0,
+    "mean": null,
+    "p95": null,
+    "max": null
+  }
+}

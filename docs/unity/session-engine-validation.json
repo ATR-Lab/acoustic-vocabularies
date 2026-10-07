@@ -1,0 +1,76 @@
+{
+  "status": "DEVELOPMENT_ONLY",
+  "methodology_verified": false,
+  "apparatus_qualified": false,
+  "unity_editor": "6000.6.0f1",
+  "edit_mode": {
+    "passed": 54,
+    "source_revision": "1732206",
+    "result_sha256": "9b6092b808e9c5a30bd195680bac920837fd70a3ec4f2c4069957b7dd75ac62e",
+    "skipped": 0,
+    "failed": 0
+  },
+  "producer_integration": {
+    "visits": 7,
+    "study_a_package_sha256": "a418ec195eddd965850b616d1f79456c74ed5a547b3e62a29700bf17252a532a",
+    "study_b_package_sha256": "6ac6a7b667d00caff07223b89dc9f40cf6a67b3137c65e2bbf2824a68c897e1a",
+    "demo_only": true
+  },
+  "elapsed_mock_block": {
+    "completed_opportunities": 36,
+    "engine_source_sha256": "5b5341c9639eea0081e98f1e84408dbd871d3d93a958f952b44dfd740a6baa00",
+    "seconds": 504.0179885,
+    "durable_disk_journal": true,
+    "harness_source_sha256": "3b6b481b5df13fb592c9e295e4d190f858489998db982d0570506c872bf1ae0d",
+    "summary_sha256": "bb6f772731d85f0c068d9aec18a04d48ab90ecae192b68715ae734f78fc65b9f",
+    "harness_binary_sha256": "d0239b5e89d61775591f66a9c068f33f3884b75c4818151d3b59cda7c0789921",
+    "mock_content": true,
+    "audio_played": false,
+    "maximum_tick_gap_ms": 823.0419,
+    "expected_seconds": 504
+  },
+  "pending": [
+    "Qualified acoustic onset and physical headset mock block",
+    "Actual forced process termination and app resume",
+    "Private reset/mode transport and renderer/response binding",
+    "Teaching, assessment and selection content modules",
+    "Methodology reconciliation and final CSV templates"
+  ],
+  "play_mode": {
+    "controlled_clock": true,
+    "result_sha256": "aee77e3360fd7ab48ab6a93b4ceb757f8c8b09a9f6e4861372a02f806e634a2d",
+    "passed": 3,
+    "mock_content": true,
+    "failed": 0
+  },
+  "native_builds": {
+    "windows": {
+      "source_revision": "44de0e050c4fbad67c864bfe4c33e9ece8af8114",
+      "result": "Succeeded",
+      "errors": 0,
+      "total_bytes": 104690444,
+      "main_binary_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
+      "main_binary_bytes": 667136,
+      "build_manifest_sha256": "5554590e893752c7e029e901700aa713f5d707264418ed24d23f2894c78ec202",
+      "engine_assembly_preserved": true,
+      "scene": "Foundation engineering scene; no participant content binding",
+      "device_execution": false
+    },
+    "android": {
+      "source_revision": "44de0e050c4fbad67c864bfe4c33e9ece8af8114",
+      "result": "Succeeded",
+      "errors": 0,
+      "total_bytes": 694163618,
+      "main_binary_sha256": "67ffe413e33a0f5ce94eeca3f5d5287562168177bce3b912121d7e8167dccc03",
+      "main_binary_bytes": 37345508,
+      "build_manifest_sha256": "ed52fde76d5586018b6b2ae6864b04d26d962761d1ce17a6f75b69f6373a1209",
+      "engine_assembly_preserved": true,
+      "scene": "Foundation engineering scene; no participant content binding",
+      "device_execution": false
+    }
+  },
+  "ci": {
+    "repository_checks": "passed",
+    "unity_runner": "not_provisioned; configuration gate failed honestly"
+  }
+}

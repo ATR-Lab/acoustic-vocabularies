@@ -1,0 +1,204 @@
+{
+  "checks": {
+    "findings": 0,
+    "schedules": 80
+  },
+  "demo": true,
+  "files": {
+    "B-P01/run-sheets/B-P01-M1/V1.csv": "b63a584af5fd005a051ca9c3579a2a4d763538b763e26e128e3e050adaed0520",
+    "B-P01/run-sheets/B-P01-M1/V2.csv": "880a4add65aacd342f3175fff84a4478c01a5ccc5e6bc961defa0f7c512720a5",
+    "B-P01/run-sheets/B-P01-M1/V3.csv": "70a2145b7db91e570770c8b9d22befb23ee9b2bda1fb7f85abb9d53bdbdae9bd",
+    "B-P01/run-sheets/B-P01-M1/W1.csv": "0acafb0d08f1d93ed2d712d82de21f602527e2c4d4ef532d0b895802521ed79b",
+    "B-P01/run-sheets/B-P01-M1/W4.csv": "ac63b0a96e195087a05448465623fa98f8162572411b3b06000dd03942f919dc",
+    "B-P01/run-sheets/B-P01-M2/V1.csv": "de7d8d2a0f0a153a00be3936e26e4206b40694bb6400b60a7b5c03b6aa99c76c",
+    "B-P01/run-sheets/B-P01-M2/V2.csv": "3a16544cc4582916a26baefa4cad3da601269a4aeb09fe673bbc5b0fbb23e683",
+    "B-P01/run-sheets/B-P01-M2/V3.csv": "f4c3646c87367bea5e8fc2aceac304fe48808c1ace3478559da89dea5c685887",
+    "B-P01/run-sheets/B-P01-M2/W1.csv": "7cacb68a5c0a891b5d3000ece6dc175775cf2f8cd3165f831617832376236631",
+    "B-P01/run-sheets/B-P01-M2/W4.csv": "3d74848b40c32119d05fa33b54da7029db3b241d4379c9de82200d8a4b1ea606",
+    "B-P02/run-sheets/B-P02-M1/V1.csv": "433085774491cfa39d69f1a53c8a2f22e90d9c0aa1373934fd6001f461e70533",
+    "B-P02/run-sheets/B-P02-M1/V2.csv": "0f3d10043d7ddf5371159fabfdb2bea5f616988c4a2adee2ea1f10115b7d4c30",
+    "B-P02/run-sheets/B-P02-M1/V3.csv": "481d38eb1385d6036ebcf48765d9cc73485bc90284af2cd5dd09ccb357d5bed2",
+    "B-P02/run-sheets/B-P02-M1/W1.csv": "d5911346de55dcfeca8dde1014c2d70addd8c4c4553028f3d80d3d4582e6bb5c",
+    "B-P02/run-sheets/B-P02-M1/W4.csv": "7efdb57ece566c7fd2e30c128bda55e9e48171da715790d959f59d47c7fde626",
+    "B-P02/run-sheets/B-P02-M2/V1.csv": "9c2f8236d9f1a6985832f2ea205e2261f8210e7516cdf51a5541f80f497e40fb",
+    "B-P02/run-sheets/B-P02-M2/V2.csv": "4f2243d0908c40886507611ded6bbb2f959a774ca0e5ae1a232fc6fdc5dcc278",
+    "B-P02/run-sheets/B-P02-M2/V3.csv": "8405836c448d76f68ea717261cfd154a042dd59b4536330e23061e57ecf22bff",
+    "B-P02/run-sheets/B-P02-M2/W1.csv": "fe6dae4525df35b2a650bb1ea26b322ddf73f8996af3dbde61df26a30ad53025",
+    "B-P02/run-sheets/B-P02-M2/W4.csv": "dc3a8604428331f1c86d82864f3b6af7b02e55d533e7d0f8c123ad07499bb651",
+    "B-P03/run-sheets/B-P03-M1/V1.csv": "5a3c7a5f00017678eb2948ecbc80e9f301a2736f56fd7ebf6f22de251fc5febf",
+    "B-P03/run-sheets/B-P03-M1/V2.csv": "ca2ddcb4cb2ecaa6a478ca72c2af409253ddfbec5045f62c65297abebfc59685",
+    "B-P03/run-sheets/B-P03-M1/V3.csv": "d025d41e72689b0465f38914b776e6cf040f39e9460bb1a39cea803010e347f2",
+    "B-P03/run-sheets/B-P03-M1/W1.csv": "7635e71be4d6584d4e5be140f37b76a2728b0fc7b238c07582031d3ddc207699",
+    "B-P03/run-sheets/B-P03-M1/W4.csv": "23f1d2e4eab8d6506a27b4a83aa4e539902dd8c9798abbaf306862eb55286af1",
+    "B-P03/run-sheets/B-P03-M2/V1.csv": "a4e838a76ab19880ef6669fdf73c4eb11c7cb871506b87e93d68efaaa4cc2fd2",
+    "B-P03/run-sheets/B-P03-M2/V2.csv": "6ec24c44dbf10264f382f80084fc79356327d74cffa7b45ca57b8d34b4a3b0e7",
+    "B-P03/run-sheets/B-P03-M2/V3.csv": "ac49d3323c67e9bc018703061bf57de1374422866bb592bd664238c641247342",
+    "B-P03/run-sheets/B-P03-M2/W1.csv": "ba76d8be0f10cccf7a9188ffb7a17321674c9a1cfb022631c0d160b17c31c75c",
+    "B-P03/run-sheets/B-P03-M2/W4.csv": "42224bacdc9e091baf922c5bdb52068095e3b93ed46cd60e5570072df9b695d5",
+    "B-P04/run-sheets/B-P04-M1/V1.csv": "5e36e7f258bf7b72f8fd8d3470c5cfb41a61bb64c38b5adcf7abb2dcf08369a7",
+    "B-P04/run-sheets/B-P04-M1/V2.csv": "80b66fe1ce2d93672f33a78a0afbf1b31e293768d14884921f96ef80ed1c4ab8",
+    "B-P04/run-sheets/B-P04-M1/V3.csv": "261d84d1637826a98226f7ba5d715ee0b5134e1ccf61374abbb98f6c925c7f33",
+    "B-P04/run-sheets/B-P04-M1/W1.csv": "ec6e6baf127df54a9d3a98e63cd960a4cf89116b55abcc6c963de3aef1376129",
+    "B-P04/run-sheets/B-P04-M1/W4.csv": "f8399da361902557ccbd9876e2e79f08434cd0d0f6b199f6b5354910111cfb42",
+    "B-P04/run-sheets/B-P04-M2/V1.csv": "61790215e1602315df3af7524161748c4b9df95a3eb5468ce9fa3df07a49faf1",
+    "B-P04/run-sheets/B-P04-M2/V2.csv": "d2928aa9ea877cb15191ab446a57bb3a25a30a5aff81cde365d6555b2c466eb0",
+    "B-P04/run-sheets/B-P04-M2/V3.csv": "c274f9208a2e4508474662ff2a9bc9216befd001cdd0a964d4d14944e733753d",
+    "B-P04/run-sheets/B-P04-M2/W1.csv": "4bd321a2331cc586ea3bb66595ce12b45a02803d72cfad2b37dfe5a23b4050fd",
+    "B-P04/run-sheets/B-P04-M2/W4.csv": "19b99872acbfe4760ac18496a37b6efbe0c8c0395890dadd9b9666d733977f6d",
+    "B-P05/run-sheets/B-P05-M1/V1.csv": "323a71095e36d57441811598a1a302a5eddae2e939222ef1080cb7cacc986d9a",
+    "B-P05/run-sheets/B-P05-M1/V2.csv": "7c8702f7d0658a4459e1d154cd79a22e87378d66c27269cdfab12496bc443902",
+    "B-P05/run-sheets/B-P05-M1/V3.csv": "4e51e2bb5730251bb6e452f5d610991cff0e6d1d9e35de839106144418261166",
+    "B-P05/run-sheets/B-P05-M1/W1.csv": "f2b03a858326c8e5abe7f3ea866150fc7f415c38f6b573fa1a44a806f08b03f6",
+    "B-P05/run-sheets/B-P05-M1/W4.csv": "4e08e42dbbaee7da322cec48563405bf9776434a3afcc547adc69bc1374c3c35",
+    "B-P05/run-sheets/B-P05-M2/V1.csv": "2e8dd2074df075e82aa483f55ffe9ee7d9d6cac44e5b138f5a1ac8fd19f999c4",
+    "B-P05/run-sheets/B-P05-M2/V2.csv": "9769fd56652266f49e635b91dac3983798dc9f555f7ec0dde37a9bef63ee513e",
+    "B-P05/run-sheets/B-P05-M2/V3.csv": "264e644e0de9f551a80d5fb3459a94532a54d9260c04663bb63416e009bdd973",
+    "B-P05/run-sheets/B-P05-M2/W1.csv": "ef8d93d096299809bcde239d88e854774a66f358a0b583e9acae427e91962f23",
+    "B-P05/run-sheets/B-P05-M2/W4.csv": "c3e750cec668c7b2d0d9dd13599260993308e8da42f40a53f46356ff59825cfb",
+    "B-P06/run-sheets/B-P06-M1/V1.csv": "952317e887fbe8bc3f835387171a48c30a8c53bdb1fccf799d38088b3afa0180",
+    "B-P06/run-sheets/B-P06-M1/V2.csv": "947ee495337d791c3174ff5c455c9232bac957d2b05c08a470a4827989f44019",
+    "B-P06/run-sheets/B-P06-M1/V3.csv": "21d5274651b3403e963ae630815e400815043a1748c001600ade6be865b71118",
+    "B-P06/run-sheets/B-P06-M1/W1.csv": "d58fdace802a206dae5b7ff29b33aadbeac59880040509c0ef0363d54ef60026",
+    "B-P06/run-sheets/B-P06-M1/W4.csv": "12a80402c66e3fd7687d582ba3d6ad302246820a9bea18c91a198b0e023a27cc",
+    "B-P06/run-sheets/B-P06-M2/V1.csv": "ddbad0304f356bffc2859f85b3c08451093dbded6928f7fe98c7a89356cfb427",
+    "B-P06/run-sheets/B-P06-M2/V2.csv": "3b4fd3c0eca16058aebe2b6cb24fd402effdb8e908c893044e582667ee8daff0",
+    "B-P06/run-sheets/B-P06-M2/V3.csv": "e40d216ad74a48f7cf7cba0538357f5fab5cde22b2a0e84b598e3f6c64f54e38",
+    "B-P06/run-sheets/B-P06-M2/W1.csv": "d098ae3522d1a085dc71a8cb20bb38e702ac18a37d3981c76ee2f18746708555",
+    "B-P06/run-sheets/B-P06-M2/W4.csv": "02b3f84acae2fcc954cc9789f794d2dcf3cf9074dda272af74d8f6773bf3def5",
+    "B-P07/run-sheets/B-P07-M1/V1.csv": "f3b4789672bfab89849fad509813d88c3f0ff393085c151164df25a6fad061ae",
+    "B-P07/run-sheets/B-P07-M1/V2.csv": "670fc5461fcbc5ac58fc40debd87036992e598e3d8a14286f66b58438850d9aa",
+    "B-P07/run-sheets/B-P07-M1/V3.csv": "8522915c47f314c03bd739c816043b9de0dc53cc6c73a8acbdcacb7ae6f6c410",
+    "B-P07/run-sheets/B-P07-M1/W1.csv": "31197f40aa51bdaaf72d669e733b6e5bb6cd1ae30d348b588918ac2d4655e249",
+    "B-P07/run-sheets/B-P07-M1/W4.csv": "ebcbe18176b86c78171b40773a9f2fe5be30f1a7cdb7ca65d35f8d3510a0af31",
+    "B-P07/run-sheets/B-P07-M2/V1.csv": "ab47e69bf772dfb4316aa2142dbcbc5299836dba5e745e66787972f05926da16",
+    "B-P07/run-sheets/B-P07-M2/V2.csv": "1cdc2f056a55047f4c65e75c32ff67d0ee206c18f0a268beba7c8cc590bcbf9c",
+    "B-P07/run-sheets/B-P07-M2/V3.csv": "72751c5cabfc3f1ee024760aa41fb742b5622956b1f97f31789a1c700a940a15",
+    "B-P07/run-sheets/B-P07-M2/W1.csv": "5aee14f0eb990db238a461d8844c11962fad4a036c6600d60cdc3784b3aff3c3",
+    "B-P07/run-sheets/B-P07-M2/W4.csv": "d9c39ec880b1046751ff8d86eba2acac0af4ec743b6514187284d96cc1dd4b77",
+    "B-P08/run-sheets/B-P08-M1/V1.csv": "e6519b7bdcfd66104bb332d7477bbda8e4f1c8bbdfe78fa0b3099058f9b8e7a7",
+    "B-P08/run-sheets/B-P08-M1/V2.csv": "ea2b199e6cc3226b313afc45b1837b042b2275d301def4564378c2ee9ff347c1",
+    "B-P08/run-sheets/B-P08-M1/V3.csv": "5a9437c0e5f58c34613ec81b839c5c43d8c5b196bbb1860cb2421f7c22d7c1b1",
+    "B-P08/run-sheets/B-P08-M1/W1.csv": "5013919e7ef79171ed41344f69f340c323cc2b1719626aadb0672196c8e035b2",
+    "B-P08/run-sheets/B-P08-M1/W4.csv": "14e888b24c4fb7636c1c7cbbe44812dea3a3101cdf0973ddb4b92fbf6f26f7f0",
+    "B-P08/run-sheets/B-P08-M2/V1.csv": "612d56c41fa60997a71bfacea55bbe7a2538790920da5a59041ef6ea5810f5bb",
+    "B-P08/run-sheets/B-P08-M2/V2.csv": "1c63505d3a2cba9883a19656829e7bf2197a657e6e4362461c06210b8aa510ba",
+    "B-P08/run-sheets/B-P08-M2/V3.csv": "5c08c65ac482a92299dda49d0689d6cf27e0bb608c97aa0b58ea8ead17e2705f",
+    "B-P08/run-sheets/B-P08-M2/W1.csv": "37ac85ecff49b5cb396d9c0442aeef84555e7c908757ad46cea30466f83bdba3",
+    "B-P08/run-sheets/B-P08-M2/W4.csv": "ccdeade5ac3916876e268c7d2d7b76cf98080dd9af5672c9b6cf97af1528583a",
+    "pilot-package-hashes.json": "cfa82012d08d47b44d20c22505cd5142615307a55f1bcd0e882c1b5b451fa78e"
+  },
+  "format": "av-schedules/run-sheets-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "package_hashes": {
+    "demo": true,
+    "packages": 8,
+    "placeholder": true,
+    "sha256": "cfa82012d08d47b44d20c22505cd5142615307a55f1bcd0e882c1b5b451fa78e"
+  },
+  "persons": 16,
+  "schedules_manifest_sha256": "3528835f6f8502d9d14f5869efe4184bd3e5cba136f92a3e9585bd884bafc871",
+  "screening_booked_minutes": 20,
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "B",
+  "template": {
+    "columns": [
+      "participant_id",
+      "visit",
+      "block",
+      "expected_count",
+      "actual_count",
+      "start_time",
+      "end_time",
+      "comfort_check",
+      "phone_locked",
+      "hash_check",
+      "deviations",
+      "operator_signoff"
+    ],
+    "name": "visit-run-sheet-template.csv",
+    "prefilled": [
+      "participant_id",
+      "visit",
+      "block",
+      "expected_count",
+      "hash_check"
+    ],
+    "sha256": "b0bd19bf23f8b676429ef5d1d54321d3773a227fdc6e996287d19a7865947a46"
+  },
+  "units": [
+    "B-P01",
+    "B-P02",
+    "B-P03",
+    "B-P04",
+    "B-P05",
+    "B-P06",
+    "B-P07",
+    "B-P08"
+  ],
+  "visits": {
+    "V1": {
+      "blocks": [
+        "profile_menu",
+        "atom_menus",
+        "atomic_lessons",
+        "message_lessons",
+        "trained",
+        "novel",
+        "atomic"
+      ],
+      "booked_minutes": 75,
+      "scheduled_seconds": 928
+    },
+    "V2": {
+      "blocks": [
+        "pre_old",
+        "atom_menus",
+        "atomic_lessons",
+        "message_lessons",
+        "trained",
+        "novel",
+        "atomic"
+      ],
+      "booked_minutes": 45,
+      "scheduled_seconds": 880
+    },
+    "V3": {
+      "blocks": [
+        "pre_old",
+        "atom_menus",
+        "atomic_lessons",
+        "message_lessons",
+        "trained",
+        "novel",
+        "atomic"
+      ],
+      "booked_minutes": 50,
+      "scheduled_seconds": 1208
+    },
+    "W1": {
+      "blocks": [
+        "trained",
+        "novel",
+        "atomic"
+      ],
+      "booked_minutes": 30,
+      "scheduled_seconds": 704
+    },
+    "W4": {
+      "blocks": [
+        "trained",
+        "novel",
+        "atomic",
+        "validity"
+      ],
+      "booked_minutes": 40,
+      "scheduled_seconds": 928
+    }
+  }
+}
