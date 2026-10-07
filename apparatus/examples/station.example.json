@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "protocol_version": "REPLACE_WITH_REVIEWED_PROTOCOL",
+  "station_id": "EXAMPLE_STATION",
+  "headset_unit_id": "EXAMPLE_HEADSET",
+  "provisioning_status": "example_only",
+  "topology": "standalone_quest",
+  "robot_state_source": "live",
+  "isaac_endpoint": "ws://example.invalid:8765/state",
+  "audio": {
+    "route": "UNMEASURED_ROUTE",
+    "buffer_samples": 1024,
+    "route_offset_ms": null
+  },
+  "input_method": "controllers",
+  "refresh_hz": 72,
+  "tracking_origin_mode": "device",
+  "observer_reference": {
+    "coordinate_frame": "unity_lh_y_up_m",
+    "calibration_id": "UNMEASURED_REFERENCE",
+    "position_m": [
+      0,
+      1.2,
+      0
+    ],
+    "rotation_xyzw": [
+      0,
+      0,
+      0,
+      1
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "balance_max_abs_deviation": {
+    "atom_position": {
+      "all": "0.8125"
+    },
+    "designer": {
+      "all": "0",
+      "profile=P1": "0.6667",
+      "profile=P2": "0.6667",
+      "profile=P3": "0.6667",
+      "swap_w1_w4=0": "0.6667",
+      "swap_w1_w4=1": "0.6667"
+    },
+    "family_first": {
+      "all": "0.5",
+      "profile=P1": "0.5",
+      "profile=P2": "0.5",
+      "profile=P3": "0.5",
+      "swap_w1_w4=0": "1",
+      "swap_w1_w4=1": "0.5"
+    },
+    "label_index": {
+      "all": "0.75",
+      "profile=P1": "0.75",
+      "profile=P2": "0.75",
+      "profile=P3": "0.75",
+      "swap_w1_w4=0": "0.5",
+      "swap_w1_w4=1": "0.75"
+    },
+    "label_position": {
+      "all": "0.8125"
+    },
+    "message_cell": {
+      "all": "0.8125"
+    },
+    "message_heldout": {
+      "all": "1.6875"
+    },
+    "message_novel": {
+      "all": "0.625"
+    },
+    "profile": {
+      "all": "0",
+      "swap_w1_w4=0": "0.6667",
+      "swap_w1_w4=1": "0.6667"
+    },
+    "swap_w1_w4": {
+      "all": "0.5",
+      "profile=P1": "0.5",
+      "profile=P2": "0.5",
+      "profile=P3": "0.5"
+    }
+  },
+  "demo": true,
+  "files": {
+    "A-P01/curriculum.csv": "2af881dc9aeea589b13c8f8d5ccb257c53e18757b52585bc31fa1d8225bb26d4",
+    "A-P01/permutation.json": "677ac78b42452ea5db577260d38783de87c89d35d480f081c353f4844c2d05a5",
+    "A-P02/curriculum.csv": "22738c03e763a70ba8eefe732b6a5239df0d6f13dd964b85654a2397479dca2c",
+    "A-P02/permutation.json": "9bd5feb473080227bb82690e0c663d74a47c3b92f58fb7757b480f0e6d907926",
+    "A-P03/curriculum.csv": "3af192ba66dd2994db70c4fd2cca2e40948efd123ad6b7164e366c26575f6908",
+    "A-P03/permutation.json": "26b0bfac6d3c28fd5090ab938b8c3e47de4528fd67d414b520fd88c1763718cc",
+    "pilot-balance.csv": "1ffc8bfd9a8dbb2e6b7a76bb8c560e87b9b4685fab07cc73c2f35327a1a1e3a9",
+    "pilot-batch-table.csv": "a7d173981fbe2696b5e446c440e380d7fef994e1c5303bd564217843a9d58acf"
+  },
+  "format": "av-schedules/manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "seed_label": "DEMO-o4.4.1-example",
+  "set": "pilot",
+  "spare_units": [],
+  "study": "A",
+  "units": [
+    "A-P01",
+    "A-P02",
+    "A-P03"
+  ]
+}

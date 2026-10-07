@@ -1,0 +1,9 @@
+{
+  "name": "AcousticVocab.Foundation",
+  "references": [
+    "Unity.InputSystem",
+    "Unity.XR.CoreUtils",
+    "Unity.XR.Management",
+    "Unity.XR.OpenXR"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/package-hashes.schema.json",
+  "title": "Package-hash mapping (input of the run-sheet generator)",
+  "description": "Expected package hash per Study A book or Study B dyad slot of one study and set, used to pre-fill the run-sheet hash_check column. Produced from the package builder's manifests (#13). Keys: Study A book IDs from the learner-facing slot list (BK-<P|C>-XXXXXX), Study B dyad slot IDs (B-C01, spares B-S01). Values: package SHA-256, 64 lowercase hex digits. placeholder=true marks DEMO placeholder values (allowed only with demo=true); run sheets then show DEMO-placeholder:<hex>, which never matches a real package. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "format_version", "study", "set", "demo", "placeholder", "packages"],
+  "properties": {
+    "format": {"const": "av-schedules/package-hashes"},
+    "format_version": {"const": 1},
+    "study": {"enum": ["A", "B"]},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "demo": {"type": "boolean"},
+    "placeholder": {"type": "boolean"},
+    "packages": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^(BK-[PC]-[BCFGHJKMNPQRTVWXY4-9]{6}|B-[PCS][0-9]{2})$"},
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    }
+  },
+  "if": {"properties": {"placeholder": {"const": true}}},
+  "then": {"properties": {"demo": {"const": true}}}
+}

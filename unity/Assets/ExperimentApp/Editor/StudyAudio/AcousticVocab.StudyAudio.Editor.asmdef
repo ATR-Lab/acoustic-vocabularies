@@ -1,0 +1,5 @@
+{
+  "name": "AcousticVocab.StudyAudio.Editor",
+  "references": ["AcousticVocab.StudyAudio", "AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor", "Unity.InputSystem", "UnityEngine.UI"],
+  "includePlatforms": ["Editor"]
+}

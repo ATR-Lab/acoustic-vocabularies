@@ -1,0 +1,6 @@
+{
+  "name": "AcousticVocab.OperatorConsole",
+  "references": ["AcousticVocab.SessionEngine"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"]
+}

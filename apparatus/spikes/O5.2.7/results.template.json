@@ -1,0 +1,13 @@
+{
+  "status": "not_run",
+  "actual_eight_hour_soak_completed": false,
+  "g2_signed": false,
+  "station_inventory": null,
+  "raw_log_hashes": null,
+  "analysis_report_sha256": null,
+  "fault_timeline_and_captures": null,
+  "native_normalization_review": null,
+  "power_and_thermal_review": null,
+  "operator_network_fault_authorization": null,
+  "recommendation": "NO_GO: required actual evidence absent"
+}

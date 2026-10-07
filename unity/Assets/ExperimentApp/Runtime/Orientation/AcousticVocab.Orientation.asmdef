@@ -1,0 +1,4 @@
+{
+  "name": "AcousticVocab.Orientation",
+  "references": ["AcousticVocab.Foundation", "AcousticVocab.ResponsePanel", "AcousticVocab.StateSources", "AcousticVocab.StateIntegration", "AcousticVocab.Workcell", "Unity.XR.Hands"]
+}

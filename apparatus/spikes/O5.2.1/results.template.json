@@ -1,0 +1,20 @@
+{
+  "wbs": "O5.2.1",
+  "status": "NOT_REVIEWED",
+  "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+  "common_procedures_2_3_reviewed": false,
+  "geometry_counts_materials_labels_match_protocol": null,
+  "observer_calibrated": false,
+  "headset_configuration_qualified": false,
+  "all_primary_labels_legible": null,
+  "all_printed_codes_legible": null,
+  "hands_and_action_props_visible": null,
+  "supply_and_quarantine_labels_legible": null,
+  "image_sha256": {},
+  "corrections_required": [],
+  "review_notes": "No operator result has been recorded. Keep private protocol text and personal identifiers outside the repository.",
+  "study_ready": false,
+  "g1_signed": false,
+  "g2_signed": false
+}
