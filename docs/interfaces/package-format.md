@@ -84,7 +84,7 @@ trained message has 52,800 to 96,000.
 | `renderer_version`, `composition_contract` | provenance (`0.1.0`, `1.0.0`) |
 | `profile` | A only: `P1`, `P2` or `P3` |
 | `book` | A only: `frozen_head` (chain head of the book's `freeze` record, the value `freeze()` returns), `snapshot_sha256`, and the `renderer_hash` and `validator_hash` the book records ([`store.md`](../../sound/docs/store.md)) |
-| `bank` | B only: `format`, `format_version`, `bank_sha256` of the bank input (section 9) |
+| `bank` | B only: `format`, `format_version`, `bank_sha256` of the bank input (section 9: qualified #26 manifest or provisional DEMO input) |
 | `files` | path -> `{sha256, bytes}` for every file except `manifest.json` |
 | `package_sha256` | the package hash |
 
@@ -210,17 +210,32 @@ not. Build and seal fail on any finding.
 | `E_FORBIDDEN_STRING` | one of `forbidden_strings` (the builder passes the book's or bank's `source` values; strings under 6 characters are skipped) |
 | `E_UNREADABLE` | a file that is neither a canonical WAV nor UTF-8 text, or unreadable atom audio |
 
-## 9. Study B input: PROVISIONAL bank format
+## 9. Study B input: qualified #26 bank or PROVISIONAL DEMO bank
 
-The bank builder (#26) has not defined its manifest yet. Until it does, the dyad builder
-reads a provisional input, format `av-sound/provisional-bank` version 1
-([`sound/schema/provisional-bank.schema.json`](../../sound/schema/provisional-bank.schema.json),
+The manifest's `bank` record names one of two inputs; sections 2-8 are the same for both.
+
+**Qualified #26 bank** (`format` = `av-banks/bank-manifest`, `format_version` = 1,
+`bank_sha256` = the #26 bank hash, `av_generation.bank_manifest.bank_sha256` of the whole
+[bank manifest](../../generation/schema/bank-manifest.schema.json)).
+`av_banks.handoff.qualified_dyad_bank(bank_dir, expected_bank_sha256=...)` runs
+`verify_bank`, compares the bank hash with the independently provisioned pin, refuses an
+incomplete bank and a bank with reserve-rule amendments (the package and the #70 menu do
+not apply `effective_menu` yet), and converts it with `to_dyad_bank`. That `DyadBank`
+carries `handoff` (format, version, bank hash) and every option's `file_sha256`; the
+builder re-renders each option as below and also refuses a written WAV whose file hash
+differs from the bank's. The package ID is the bank ID. #70 menus verify the package
+against the bank manifest itself (Unity `QualifiedBank`, [selection menus](../unity/selection-menus.md)).
+
+**Provisional DEMO bank** (`av-sound/provisional-bank` version 1,
+[`sound/schema/provisional-bank.schema.json`](../../sound/schema/provisional-bank.schema.json),
 `av_sound.dyad_bank`): `bank_id`, `demo`, `labels` (atom ID -> semantic label, the dyad's
 permutation) and 48 `cells` (profile, atom) with 4 options each: `rank`, `recipe`,
-`pcm_sha256` and an optional opaque `source`. The builder re-renders every option, checks
-the hash, refuses overflow, short events and duplicate waveforms within a profile, and
-never copies `source`. When #26 lands, its manifest replaces this input; the package
-format (sections 2-8) does not change.
+`pcm_sha256` and an optional opaque `source`. `bank_sha256` is the canonical hash of that
+document. It stays explicitly provisional: engineering fixtures only, never a participant
+handoff.
+
+For both, the builder re-renders every option, checks the hash, refuses overflow, short
+events and duplicate waveforms within a profile, and never copies `source`.
 
 ## 10. Package-hash mapping for the run sheets (#32)
 

@@ -1,11 +1,13 @@
 # Study B selection menus (#70)
 
 This development module implements the issue-defined 60-second profile menu and
-45-second atom menus. It is not participant-ready: the #26 qualified bank handoff,
+45-second atom menus. It is not participant-ready: a reviewed non-DEMO #26 bank,
 reviewed methodology/script files, independently qualified audio route, and mock
-headset dyad remain required. The currently supported producer input is explicitly
-DEMO-only `av-sound/provisional-bank` from #13; the loader refuses participant
-admission rather than treating those engineering fixtures as an accepted bank.
+headset dyad remain required. Two producer inputs exist. A #13 package recording the
+qualified #26 manifest (`av-banks/bank-manifest`) is admitted only after the full
+hash checks below. The DEMO-only `av-sound/provisional-bank` stays explicitly
+provisional: the loader refuses participant admission rather than treating those
+engineering fixtures as an accepted bank.
 
 The [software validation record](selection-menus.validation.json) binds 278
 EditMode tests, seven PlayMode tests, and successful Windows/Android builds to
@@ -31,6 +33,47 @@ engine calls the content pump before processing any boundary.
 `MenuCatalog` checks the #13 package/bank pins, #31 allocation file and stored
 profile order, package-bound permutation and wave atom order, and exact current
 schedule slots. Candidate ranks are always 1–3; reserve rank 4 is unavailable.
+
+### Qualified bank hash checks (#26 handoff)
+
+For a package whose manifest records `av-banks/bank-manifest` version 1, the caller
+must pass the raw #26 `manifest.json` bytes (`bankManifest`) next to the independent
+`bank_sha256` pin. `QualifiedBank.Verify` runs before any menu content exists and
+fails closed with `MENU_BANK_HASH_MISMATCH`:
+
+- the canonical bank hash (sorted-key compact ASCII JSON, Python-identical; recipe
+  amplitudes are the only floats accepted) equals the pin, and the pinned package
+  manifest records that same format, version and hash, with the bank ID as package ID;
+- the closed top-level shape, `complete` status, attempt list, set/DEMO/ID rules
+  and DEMO status equal to the package's;
+- `permutation_sha256` equals the package's `permutation.json`, `dyad_slot` its
+  unit, `atom_order` and every label its atoms;
+- all 48 cells in stored profile/atom order, and all 192 options with their rank,
+  menu, option ID, WAV path, closed recipe, recipe hash and distinct waveform per
+  profile; each option's PCM and whole-file hashes equal the package WAV re-read
+  through the #64 loader (shown and reserve ranks alike).
+
+`Prepare` re-reads each atom menu's three candidates and checks them again against
+the verified bank (`CheckOption`), so a candidate changed after load stops that
+menu. The same load gates the active and the read-only yoked catalog: a missing,
+changed or re-pinned bank manifest blocks both before a yoked replay can start.
+`BankQualified` reports a verified #26 bank; `ParticipantBankQualified` also needs a
+non-DEMO bank and package, and a DEMO qualified bank still requires explicit
+engineering preview (`MENU_DEMO_BANK_ENGINEERING_ONLY`). Banks with reserve-rule
+amendments are refused upstream by `av_banks.handoff` until menus apply
+`effective_menu`. A provisional package refuses a bank manifest and keeps
+`MENU_BANK_HANDOFF_PENDING` outside DEMO engineering.
+
+`tools/qualified_bank_fixture.py` builds the seeded synthetic test input: one DEMO
+bank from the real builder with the rehearsal's scripted proposer (no model), its
+qualified package sealed with the DEMO B-C01 permutation, and the fixed #14
+calibration examples, under ignored `.local/qualified-bank-demo` (or
+`AV_QUALIFIED_BANK_ROOT`). `QualifiedBankTests` then checks the accepted bank and
+tampered manifests, pins, permutation, re-sealed packages with swapped options,
+changed WAV bytes, a provisional relabel and both dyad roles; they are skipped, not
+passed, without that fixture. The joined engineering bootstrap still supplies only
+the provisional DEMO path, and the private menu-store bridge remains DEMO
+provisional (see its contract).
 All candidate PCM is read through the #64 package loader, including its post-load
 file/hash checks. Profile examples are the three #14 `calibration-P*` files with
 96,000 samples each; their registry/file/PCM hashes are verified.
@@ -147,7 +190,7 @@ another module acquires the shared player, construct a fresh backend/host lease,
 and complete the asynchronous mode handshake before explicit resume. The separate
 session-owner API does not supply a complete production admission bootstrap.
 
-Required operator evidence includes reviewed private assets and #26 bank handoff,
+Required operator evidence includes reviewed private assets and a reviewed non-DEMO #26 bank,
 full active/yoked V1–V3 ledger comparison (128 atom-menu + 8 profile plays per
 person), native headset input/legibility recording, actual route onset calibration,
 interruption/reconstruction procedure and typed #72 export/template verification.
