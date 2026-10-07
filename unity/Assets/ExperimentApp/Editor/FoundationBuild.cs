@@ -204,6 +204,15 @@ namespace AcousticVocab.Foundation.Editor
                 allowed=allowed.Concat(new[]{typeof(AcousticVocab.SessionIntegration.JoinedEngineeringBootstrap),typeof(AcousticVocab.SessionIntegration.JoinedSoakCapture),typeof(AcousticVocab.FrameBudget.FrameCaptureHost),typeof(AcousticVocab.StudyAudio.AudioPlayer),typeof(AudioSource)}).ToArray();
                 if(UnityEngine.Object.FindObjectsByType<AcousticVocab.SessionIntegration.JoinedEngineeringBootstrap>(FindObjectsInactive.Include).Length!=1||UnityEngine.Object.FindObjectsByType<AcousticVocab.FrameBudget.FrameCaptureHost>(FindObjectsInactive.Include).Length!=1||UnityEngine.Object.FindObjectsByType<AcousticVocab.StudyAudio.AudioPlayer>(FindObjectsInactive.Include).Length!=1||UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include).Length!=1)
                     throw new BuildFailedException("Joined engineering scene requires one bootstrap, frame capture, and shared player.");
+                // The #67 elapsed mock-block host exists only in the explicitly
+                // compiled SIMULATION_TEST joined scene, never an ordinary build.
+                int mockHosts=UnityEngine.Object.FindObjectsByType<AcousticVocab.SessionIntegration.SimulationMockBlockHost>(FindObjectsInactive.Include).Length;
+                if(mockHosts!=0)
+                {
+                    if(!SimulationTestBuild||mockHosts!=1||ParticipantScenePath!="Assets/Generated.local.data/SessionIntegration/JoinedEngineering.unity")
+                        throw new BuildFailedException("The mock-block host is only allowed in the SIMULATION_TEST joined scene.");
+                    allowed=allowed.Concat(new[]{typeof(AcousticVocab.SessionIntegration.SimulationMockBlockHost)}).ToArray();
+                }
                 if(ParticipantScenePath.EndsWith("/PreallocationEngineering.unity",StringComparison.Ordinal))
                 {
                     allowed=allowed.Concat(new[]{typeof(AcousticVocab.SessionIntegration.PreallocationEngineeringHost),typeof(AcousticVocab.Orientation.OrientationHost)}).ToArray();
