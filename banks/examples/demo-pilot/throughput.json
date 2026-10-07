@@ -1,4 +1,16 @@
 {
+  "builder": {
+    "av_banks": "0.1.0",
+    "av_generation": "0.1.0",
+    "git": {
+      "commit": "403a66ea6fc52046997a86d25f637b778633aa50",
+      "dirty": false
+    },
+    "source_sha256": {
+      "av_banks": "dd5167684e90376d407b35a7e2aed448986a8b651c65f9e618fdae5af9c6ac84",
+      "av_generation": "a7a3b94d1436223f5b1b16ae9579260c82039a073cca01dccd7a9e735e1e94b2"
+    }
+  },
   "demo": true,
   "dyad_slots": 8,
   "format": "av-banks/pilot-summary",

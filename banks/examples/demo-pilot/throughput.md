@@ -2,7 +2,8 @@
 
 **DEMO rehearsal: fake model, synthetic latencies; not pilot data.**
 
-- Plan `DEMO-pilot-banks`: 8 dyad slots, spare budget 2 (1 used); builder av-banks 0.1.0.
+- Plan `DEMO-pilot-banks`: 8 dyad slots, spare budget 2 (1 used).
+- Builder: av-banks 0.1.0 (source SHA-256 `dd5167684e90376d407b35a7e2aed448986a8b651c65f9e618fdae5af9c6ac84`), av-generation 0.1.0 (source SHA-256 `a7a3b94d1436223f5b1b16ae9579260c82039a073cca01dccd7a9e735e1e94b2`); git commit `403a66ea6fc52046997a86d25f637b778633aa50`.
 - Generation config `DEMO-gen-banks`, hash `514edf9a4baf3c6f564bd48c3d6fdbf7c6572714bcef68e53ce08f5a13c4c98d`, separation threshold 0.10.
 - Register `pilot-register.csv` SHA-256 `afbd8ae442efbdf2824d59e332f37848357fc3e90f34c5c46b5ed7d7c3da5c1d`.
 - Unavailable banks: DEMO-bank-P006 v1.0.0.
