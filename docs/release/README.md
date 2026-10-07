@@ -32,10 +32,10 @@ change_id,component,paths,description,pilot_finding_id,trigger,issue,reason,chec
 | `component` | Lowercase token, e.g. `app`, `console`, `protocol-text`, `run-sheet`. |
 | `paths` | `;`-separated repository paths changed by this row. Exact paths, no globs. |
 | `description` | What changed (the changed value for protocol text). |
-| `pilot_finding_id` | Pilot finding ID from the O6.3.4/O6.3.5 import. `none`, `TBD`, `n/a` and similar are refused. |
-| `trigger` | Analysis plan §8 trigger that fired, or `none`. Lowercase token. |
-| `issue` | `#<n>` or a full `https://github.com/ATR-Lab/acoustic-vocabularies/issues/<n>` (or `pull/<n>`) link. |
-| `reason` | Pilot reason for the change. |
+| `pilot_finding_id` | Pilot finding ID from the O6.3.4/O6.3.5 import. Empty, `none`, `TBD`, `n/a` and similar are refused, except that an `engineering` row must leave it empty. |
+| `trigger` | Analysis plan §8 trigger that fired, `none`, or `engineering`. Lowercase token. |
+| `issue` | Required for every row. `#<n>` or a full `https://github.com/ATR-Lab/acoustic-vocabularies/issues/<n>` (or `pull/<n>`) link. |
+| `reason` | Pilot reason for the change, or the engineering reason for an `engineering` row. |
 | `checks_rerun` | `;`-separated check tokens, e.g. `integrity;leakage;mock-segment`. |
 | `commit` | `;`-separated full 40-digit commits; each must be in `base..candidate`. |
 | `reviewer` | `PENDING` placeholder, or `github:<login>` once a person has reviewed the row. |
@@ -45,6 +45,21 @@ Cells must not be empty, padded, multiline, or start with `=`, `+`, `-` or `@`
 `paths`, `issue`, `reason` and `reviewer` are added so coverage can be checked
 by machine. Escalated items (floor/ceiling, generation changes) are not applied
 silently: when they change a file they need a row like any other change.
+
+**Engineering-only rows.** By maintainer decision on PR #204, an
+engineering-only change between v0.9 and v1.0 that has no pilot finding (for
+example tooling or build fixes) is logged with trigger `engineering`, an empty
+`pilot_finding_id` and an issue link that explains it. All other columns follow
+the usual rules, and the summary reports `engineering_rows`. The parser refuses:
+
+- `PILOT_FINDING_REQUIRED`: a row with any other trigger (including `none`) and
+  an empty or placeholder finding ID. Only the exact token `engineering` is
+  exempt; `Engineering`, `engineering-fix` and padded values are not.
+- `ENGINEERING_ROW_HAS_FINDING`: an `engineering` row with any finding ID,
+  including a placeholder. A change that answers a pilot finding is a pilot
+  change: log it under the trigger that fired (or `none`) with its finding ID, so
+  it is never relabelled as engineering work and reviewed with less scrutiny.
+- `ISSUE_REQUIRED`: any row, engineering or not, with an empty `issue`.
 
 ```text
 python tools/release_freeze.py changelog --base <v0.9 tag> --candidate <v1.0 candidate ref> --changelog docs/protocol/changes-v1.0.csv [--require-reviewed]
@@ -210,7 +225,9 @@ and decoding settings are frozen at G4 (#25) and enter only through the G4 recor
 
 `tests/test_release_freeze.py` builds temporary Git repositories and bundles
 only. It covers: a passing change log and freeze; uncovered changes, extra rows,
-duplicate claims, out-of-range commits and unsafe cells; tampered, added,
+duplicate claims, out-of-range commits and unsafe cells; engineering rows
+accepted with an issue link and refused without one or with a finding ID, and
+non-engineering rows refused without a real finding; tampered, added,
 missing and LFS-pointer files; a consistent forgery caught only by the retained
 pin; forged coverage; forbidden names, columns, keys, credentials and concealed
 content; LF-only, deterministic output; byte-exact CRLF hashing; a converted

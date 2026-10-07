@@ -139,12 +139,14 @@ def test_commit_must_lie_between_base_and_candidate(history):
 
 @pytest.mark.parametrize("field,value,code", [
     ("reason", "", "CELL_INVALID"),
+    ("issue", "", "ISSUE_REQUIRED"),
     ("issue", "85", "CELL_INVALID"),
     ("issue", "https://example.invalid/issues/85", "CELL_INVALID"),
     ("reviewer", "", "CELL_INVALID"),
     ("reviewer", "@someone", "CELL_UNSAFE"),
     ("pilot_finding_id", "TBD", "PILOT_FINDING_REQUIRED"),
     ("pilot_finding_id", "none", "PILOT_FINDING_REQUIRED"),
+    ("pilot_finding_id", "", "PILOT_FINDING_REQUIRED"),
     ("description", "=HYPERLINK(1)", "CELL_UNSAFE"),
     ("description", "two\nlines", "CELL_UNSAFE"),
     ("checks_rerun", "", "CELL_INVALID"),
@@ -157,6 +159,48 @@ def test_commit_must_lie_between_base_and_candidate(history):
 def test_required_fields_and_cell_safety(history, field, value, code):
     rows = [dict(history["rows"][0], **{field: value}), history["rows"][1]]
     with pytest.raises(rf.ChangeLogFault, match="^" + code):
+        check(history, rows)
+
+
+def engineering_row(history, **overrides):
+    value = dict(history["rows"][0], trigger="engineering", pilot_finding_id="",
+                 reason="Engineering-only fix with no pilot finding")
+    value.update(overrides)
+    return value
+
+
+@pytest.mark.parametrize("issue", ["#204", "https://github.com/ATR-Lab/acoustic-vocabularies/issues/204"])
+def test_engineering_row_without_finding_accepted_with_issue(history, issue):
+    rows = [engineering_row(history, issue=issue), history["rows"][1]]
+    summary = check(history, rows)
+    assert summary["result"] == "PASS", summary["problems"]
+    assert summary["engineering_rows"] == 1 and summary["covered_paths"] == 5
+    assert check(history)["engineering_rows"] == 0
+
+
+def test_engineering_row_without_issue_refused(history):
+    rows = [engineering_row(history, issue=""), history["rows"][1]]
+    with pytest.raises(rf.ChangeLogFault, match="^ISSUE_REQUIRED: row 2"):
+        check(history, rows)
+    rows = [engineering_row(history, issue="204"), history["rows"][1]]
+    with pytest.raises(rf.ChangeLogFault, match="^CELL_INVALID: row 2 issue"):
+        check(history, rows)
+
+
+@pytest.mark.parametrize("trigger", ["none", "booking-overrun", "Engineering", "engineering-fix", " engineering"])
+@pytest.mark.parametrize("finding", ["", "TBD", "none", "n/a"])
+def test_non_engineering_row_still_needs_real_finding(history, trigger, finding):
+    rows = [dict(history["rows"][0], trigger=trigger, pilot_finding_id=finding), history["rows"][1]]
+    with pytest.raises(rf.ChangeLogFault, match="^PILOT_FINDING_REQUIRED: row 2"):
+        check(history, rows)
+
+
+@pytest.mark.parametrize("finding", ["PF-A-01", "none", "TBD", " "])
+def test_engineering_row_with_finding_refused(history, finding):
+    # Decision: an engineering row never carries a finding. A change that answers
+    # a pilot finding is logged under its pilot trigger (or `none`) instead.
+    rows = [engineering_row(history, pilot_finding_id=finding), history["rows"][1]]
+    with pytest.raises(rf.ChangeLogFault, match="^ENGINEERING_ROW_HAS_FINDING: row 2"):
         check(history, rows)
 
 

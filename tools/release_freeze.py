@@ -6,6 +6,8 @@ approve anything. Verify a written bundle with the separate
 
   changelog  Check that every path changed between two Git refs is covered by
              exactly one row of the change-log CSV, and no row lists anything else.
+             Rows need a pilot finding ID, except trigger `engineering` rows,
+             which must leave it empty and still need an issue link.
   write      Write FREEZE.json and SHA256SUMS for a bundle directory laid out as
              <bundle>/<item_id>/..., refusing forbidden or concealed content.
 """
@@ -47,6 +49,10 @@ CELL_PATTERNS = {
 CHECK_TOKEN = re.compile(r"[a-z0-9][a-z0-9._-]{0,39}\Z")
 COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 PLACEHOLDER_FINDINGS = {"none", "n/a", "na", "tbd", "todo", "pending", "unknown", "-"}
+# Maintainer decision on #204: an engineering-only change with no pilot finding is
+# logged with this trigger, an empty pilot_finding_id and a mandatory issue link.
+# Every other trigger (including `none`) still needs a real pilot finding ID.
+ENGINEERING_TRIGGER = "engineering"
 MAX_CHANGELOG = 4 * 1024 * 1024
 
 
@@ -98,13 +104,23 @@ def parse_changelog(data):
         if len(cells) != len(CHANGELOG_COLUMNS):
             raise ChangeLogFault(f"ROW_WIDTH_INVALID: row {row_no}")
         row = dict(zip(CHANGELOG_COLUMNS, cells))
+        engineering = row["trigger"] == ENGINEERING_TRIGGER
+        if row["issue"] == "":
+            raise ChangeLogFault(f"ISSUE_REQUIRED: row {row_no}")
+        if not engineering:
+            if row["pilot_finding_id"].strip().lower() in PLACEHOLDER_FINDINGS | {""}:
+                raise ChangeLogFault(f"PILOT_FINDING_REQUIRED: row {row_no}")
+        elif row["pilot_finding_id"] != "":
+            # Engineering rows carry no finding; a change answering a pilot finding
+            # is logged under its pilot trigger (or `none`) so it is reviewed as one.
+            raise ChangeLogFault(f"ENGINEERING_ROW_HAS_FINDING: row {row_no}")
         for column in CHANGELOG_COLUMNS:
+            if column == "pilot_finding_id" and engineering:
+                continue
             cell_text(row_no, column, row[column], limit=20000 if column == "paths" else 500)
             pattern = CELL_PATTERNS.get(column)
             if pattern and not pattern.fullmatch(row[column]):
                 raise ChangeLogFault(f"CELL_INVALID: row {row_no} {column}")
-        if row["pilot_finding_id"].lower() in PLACEHOLDER_FINDINGS:
-            raise ChangeLogFault(f"PILOT_FINDING_REQUIRED: row {row_no}")
         if row["change_id"] in ids:
             raise ChangeLogFault(f"DUPLICATE_CHANGE_ID: row {row_no}")
         ids.add(row["change_id"])
@@ -194,6 +210,7 @@ def check_changelog(repo, base_ref, candidate_ref, changelog_path, *, data=None,
     return {"result": "FAIL" if problems else "PASS", "base": base, "candidate": candidate,
             "changed_paths": len(changed), "exempt_paths": exempt, "rows": len(rows),
             "covered_paths": len(required & set(owners)),
+            "engineering_rows": sum(r["trigger"] == ENGINEERING_TRIGGER for r in rows),
             "reviewer_pending": sum(r["reviewer"] == REVIEWER_PENDING for r in rows),
             "problems": problems}
 
