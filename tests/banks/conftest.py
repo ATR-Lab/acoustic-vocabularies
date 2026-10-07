@@ -60,7 +60,7 @@ else:
     from av_generation.meanings import load_meanings
     from av_generation.netguard import deny_outbound
     from av_generation.parser import ParsedOutput
-    from av_generation.prompts import BuiltPrompt, PromptSet
+    from av_generation.prompts import BuiltPrompt, PromptSet, context_schema
     from av_generation.records import RecordWriter, SlotRecord, SlotRefusal
     from av_sound import load_fallback
     from av_sound._paths import schema_path as sound_schema_path
@@ -387,8 +387,8 @@ else:
         return json.loads(sound_schema_path("recipe.schema.json").read_text(encoding="utf-8"))
 
     def make_prompt_set(meanings, instruction="DEMO B instruction (synthetic, not a study text)"):
-        """A synthetic B prompt set. Fields #17 adds to `PromptSet` (sections, per-mode
-        hashes) are filled when the class has them, so the kit works before and after #17."""
+        """A synthetic B prompt set with #17's fields (sections, per-mode hashes and the
+        hash of the recipe schema the context shows)."""
         files = {"b/instruction.txt": hashlib.sha256(instruction.encode()).hexdigest()}
         values = {
             "name": "DEMO-prompts-b",
@@ -402,7 +402,7 @@ else:
             "b_sections": {},
             "a3_sha256": file_set_sha256({"a3/instruction.txt": "a" * 64}),
             "b_sha256": file_set_sha256(files),
-            "schema_sha256": schema_sha256(_decoding_schema()),
+            "context_schema_sha256": schema_sha256(context_schema(_decoding_schema())),
         }
         names = {f.name for f in dataclasses.fields(PromptSet)}
         return PromptSet(**{k: v for k, v in values.items() if k in names})
