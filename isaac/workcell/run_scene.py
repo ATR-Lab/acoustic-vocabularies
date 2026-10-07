@@ -54,6 +54,10 @@ def main():
     parser.add_argument('--e2e-public-socket',type=Path)
     parser.add_argument('--e2e-private-socket',type=Path)
     parser.add_argument('--e2e-private-timing-seconds',type=float,default=0.)
+    parser.add_argument('--e2e-command-cache-size',type=int,
+                        help='Hot private-command reply cache (default 1024); older IDs fall back to the durable log')
+    parser.add_argument('--e2e-command-request-capacity',type=int,
+                        help='Request IDs remembered per control session (default 16384); reaching it faults admission')
     parser.add_argument('--e2e-handle-cache',action='store_true',
                         help='Experimental guarded USD handle cache for the bounded joined service only')
     parser.add_argument('--same-iteration-check',action='store_true')
@@ -259,6 +263,8 @@ def main():
                     control_session_id=args.e2e_control_session_id,
                     public_socket=args.e2e_public_socket,private_socket=args.e2e_private_socket,
                     private_timing_seconds=args.e2e_private_timing_seconds,
+                    command_cache_size=args.e2e_command_cache_size,
+                    command_request_capacity=args.e2e_command_request_capacity,
                     view_observation=observation_options,
                     joint_csv=ROOT/'docs/spikes/isaac/joint_inventory.csv')
                 if not e2e['service_completed']: raise RuntimeError('JOINED_E2E_SERVICE_FAILED')

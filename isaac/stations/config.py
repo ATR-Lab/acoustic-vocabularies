@@ -6,12 +6,23 @@ import re
 from copy import deepcopy
 from pathlib import Path
 
+from isaac.commands.dispatcher import DEFAULT_CACHE_SIZE, DEFAULT_REQUEST_CAPACITY, idempotency_limits
+
 FIELDS = {'version', 'station_id', 'logical_host', 'gpu_index', 'publisher_port', 'command_port',
           'dds_domain_id', 'ros_domain_id', 'allowed_client', 'allowed_uid', 'scene_sha256',
           'reset_snapshot_sha256', 'layout_sha256', 'image_digest', 'source_revision',
           'publisher_hz', 'network_mode', 'ipc_mode', 'unitree_dds_enabled'}
+# Optional private-command idempotency limits; absent means the dispatcher defaults.
+OPTIONAL_FIELDS = {'command_cache_size', 'command_request_capacity'}
 ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z')
 HASH = re.compile(r'[0-9a-f]{64}\Z')
+
+
+def command_limits(value):
+    """Return validated CommandDispatcher idempotency kwargs for a station config."""
+    cache_size, request_capacity = idempotency_limits(value.get('command_cache_size', DEFAULT_CACHE_SIZE),
+        value.get('command_request_capacity', DEFAULT_REQUEST_CAPACITY))
+    return dict(cache_size=cache_size, request_capacity=request_capacity)
 
 
 def canonical_bytes(value):
@@ -23,7 +34,7 @@ def digest(value):
 
 
 def validate(value):
-    if not isinstance(value, dict) or set(value) != FIELDS:
+    if not isinstance(value, dict) or not FIELDS <= set(value) <= FIELDS | OPTIONAL_FIELDS:
         raise ValueError('Exact private station fields required')
     if type(value['version']) is not int or value['version'] != 1:
         raise ValueError('Unsupported station configuration')
@@ -58,6 +69,10 @@ def validate(value):
         raise ValueError('Publisher rate must be30 or60 Hz')
     if value['network_mode'] != 'none' or value['ipc_mode'] != 'private' or value['unitree_dds_enabled'] is not False:
         raise ValueError('Development stations require isolated network/private IPC and no Unitree DDS')
+    try:
+        command_limits(value)
+    except ValueError as error:
+        raise ValueError('Invalid command idempotency limits: '+str(error)) from None
     return deepcopy(value)
 
 
