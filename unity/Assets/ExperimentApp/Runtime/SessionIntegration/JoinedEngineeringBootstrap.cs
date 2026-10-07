@@ -39,6 +39,7 @@ namespace AcousticVocab.SessionIntegration
         internal JoinedEngineeringConfig ObservationConfig=>config;
         internal JoinedVisitArtifacts ObservationAssets=>assets;
         internal void ObservationFailed(string code)=>Fail(code);
+        bool soakFeedOnly;internal bool SoakFeedOnly=>soakFeedOnly;internal SimulationTestAuthority SimulationAuthority=>simulation;
         internal SoakContext ObservationContext()
         {
             if(owner?.Engine==null)return new SoakContext("paused","startup",StatusCode,null);
@@ -73,6 +74,10 @@ namespace AcousticVocab.SessionIntegration
                 string simPath=Argument("-simulationTestConfig"),simPin=Argument("-simulationTestConfigSha256");
                 if(simulationTestScene){if(simPath==null||simPin==null||!SimulationTestAuthority.CompiledCapability)throw new SessionFault("JOIN_SIMULATION_CAPABILITY_REQUIRED");simulation=SimulationTestAuthority.Load(simPath,simPin,config.BuildId,config.ProtocolVersion);CreateSimulationWatermark();}
                 else if(simPath!=null||simPin!=null)throw new SessionFault("JOIN_SIMULATION_BUILD_REQUIRED");
+                // The soak driver owns backend mode/reset commands while its feed
+                // is consumed; the joined engine and its control client never start.
+                if(Argument("-soakInputs")!=null||Argument("-soakSchedule")!=null)
+                {if(simulation==null)throw new SessionFault("JOIN_SOAK_FEED_REQUIRES_SIMULATION");soakFeedOnly=true;}
                 assets=new JoinedVisitArtifacts(config,simulation);ValidateProvisioned();if(simulation!=null){source.EnableSimulationChecks(simulation);AudioPlayer.ConfigureSimulationDevice(simulation);}
                 if(allocation!=null&&assets.Menus!=null&&allocation.Role!=assets.Menus.Role)throw new SessionFault("JOIN_ALLOCATION_ROLE");
                 if(assets.MissingAuthority!=null)
@@ -106,6 +111,7 @@ namespace AcousticVocab.SessionIntegration
             if(diagnosticQuitAt.HasValue&&Time.realtimeSinceStartupAsDouble>=diagnosticQuitAt.Value)
             {diagnosticQuitAt=null;Report("JOIN_DIAGNOSTIC_QUIT_REQUESTED");Close();Application.Quit(0);return;}
             if(closed||failed||!attempted)return;
+            if(soakFeedOnly){Report("JOIN_SOAK_FEED_ONLY");return;}
             try
             {
                 if(data==null)

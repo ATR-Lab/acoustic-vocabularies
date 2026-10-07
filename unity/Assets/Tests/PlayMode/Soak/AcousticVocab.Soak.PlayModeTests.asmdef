@@ -1,0 +1,1 @@
+{"name":"AcousticVocab.Soak.PlayModeTests","references":["AcousticVocab.Soak","AcousticVocab.StateSources","AcousticVocab.Foundation","AcousticVocab.SessionIntegration","AcousticVocab.DataLogging","AcousticVocab.SessionEngine"],"optionalUnityReferences":["TestAssemblies"],"overrideReferences":true,"precompiledReferences":["Newtonsoft.Json.dll","nunit.framework.dll"]}
