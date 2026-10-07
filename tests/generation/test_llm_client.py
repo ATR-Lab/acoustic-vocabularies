@@ -591,7 +591,8 @@ def test_count_on_a_dead_server_or_wrong_model(base, tmp_path):
 
 
 def test_works_inside_a_running_event_loop(base, mock, tmp_path):
-    client, _ = make_client(base, tmp_path, log=False, count_timeout_ms=200)
+    # 2 s: the first count must finish on a slow CI runner; the stalled second one must not.
+    client, _ = make_client(base, tmp_path, log=False, count_timeout_ms=2000)
 
     async def main():
         count = client.count_prompt_tokens(MESSAGES)
