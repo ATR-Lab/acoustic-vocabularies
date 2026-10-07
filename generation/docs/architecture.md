@@ -83,11 +83,15 @@ are runs of the #26 builder and add no `av_generation` module.
    A2 gets `book.without_labels()` and `semantic_label=None`: no label or meaning
    reaches it.
 2. It runs the three `RoundProposer`s in parallel threads (`proposal_window_start/end`,
-   at most 3 x 40 s each). Each proposer fills its three slots in order, and each slot
-   starts with `SlotLedger.reserve` (the cap is checked before any work):
-   - A3 (#17): reserve; build prompt; `count_prompt_tokens` (server `/tokenize`); above
-     16,384 the slot is `overflow_input` without a call; else one
-     `LlmClient.propose(..., slot_id=)` (#16 logs an `llm_request`); map the status;
+   at most 3 x 40 s each). Each proposer fills its three slots in order, and each slot's
+   proposal work starts with `SlotLedger.reserve` (the cap is checked before any model
+   call or design work):
+   - A3 (#17): build prompt (a contract error raises before anything is charged);
+     reserve (the slot's 40 s start); `count_prompt_tokens` (server `/tokenize`); above
+     16,384 the slot is `overflow_input` without a call; no call at or after the slot
+     deadline (`a3.slot_deadline_ms`: 40 s after reserve, or the window end if earlier;
+     the 40 s cover count and call); else one `LlmClient.propose(..., slot_id=)` (#16
+     logs an `llm_request`); an answer after the deadline is `timeout`; map the status;
      parse; `validate()` against the book's committed references; `consume`.
    - A2 (#18): reserve; sample or mutate with `rng_for(a2_seed_key(...))`; validate;
      consume (the record carries `A2Detail`).
@@ -135,7 +139,7 @@ are runs of the #26 builder and add no `av_generation` module.
 
 For each attempt (at most 4), profile and atom in the stored order (`permutation.json`
 `atom_order`), slot 1..12: `BCellState` (retained options of all atoms so far, this
-cell's history, no ratings) -> `SlotLedger.reserve` -> `build_b_prompt` ->
+cell's history, no ratings) -> `build_b_prompt` -> `SlotLedger.reserve` ->
 `count_prompt_tokens` -> `LlmClient.propose` with `b_seed_key(bank_ns, attempt, profile,
 atom, slot)` -> parse -> `validate(candidate, profile, cell.other_atom_references())` ->
 outcome with `mode="B"` and `cell_duplicate` -> `consume` (cap key per attempt and
@@ -276,9 +280,11 @@ Layout (`rundir`): `run-manifest.json`, `config.json`, `generation-config.json`,
 | `pilot`, `confirmatory` | no `DEMO-` | restricted storage | never; only hashes (chain heads, config, bank and register hashes) in PR text or registers |
 
 `rundir.create_run_dir` refuses a non-DEMO run inside any git work tree (`E_POLICY`), the
-same rule as store books and fallback sets. Real batch configs, book keys, prompt sets
-and meaning sets quoting the protocol, ledgers, ratings, banks and seeds of real runs
-never enter git.
+same rule as store books and fallback sets. Real batch configs, book keys, meaning sets,
+ledgers, ratings, banks and seeds of real runs never enter git. The one exception is the
+committed prompt set `generation/prompts/` (#17): it holds the fixed instruction of Study
+A §3.6 byte for byte, so its hash test runs in CI. Meaning texts stay in restricted
+storage (DEMO set in git).
 
 ## 9. Masking
 
@@ -307,7 +313,7 @@ never enter git.
 
 | Item | Value | Constant |
 | --- | --- | --- |
-| Proposal slot cap | 40 s (A1 server timer; A3/B request cancelled, result within 40.5 s) | `SLOT_CAP_MS` |
+| Proposal slot cap | 40 s from `reserve` (A1 server timer; A3/B: token count and call together, no call at or after the slot deadline, a later answer is `timeout`; the client cancels a call at its own 40-s cap, result within 40.5 s) | `SLOT_CAP_MS` |
 | Proposal window | 3 slots x 40 s = 120 s, three methods in parallel | `PROPOSAL_WINDOW_MS` |
 | Rating slot | 20 s; candidate at 0 s, reference at 2 s | `RATING_SLOT_MS`, `REFERENCE_ONSET_MS` |
 | Rating window | 9 x 20 s = 180 s | `RATING_WINDOW_MS` |
@@ -411,7 +417,7 @@ Tests never touch the network: every generation test runs under `netguard`.
 | `wire_seed` for the server | vLLM rejects seeds outside the signed 64-bit range; the unsigned derivation of #16 is kept |
 | B seed keys name a bank namespace (`B\|<bank_ns>\|...`) | #16 proposed `B\|bank\|...`; a rebuilt bank (new `bank_version`) needs new seeds for independently seeded attempts (Study B §4) |
 | Prompt tokens counted by the server (`/tokenize`) | the pinned chat template inserts a default system message; counting where the template runs avoids a second template implementation and unpinned dependencies |
-| Ledger reserves before work (`reserve` -> `consume`) | no model call or design work beyond the cap (Study B §4; #19 13th-slot refusal) |
+| Ledger reserves before work (`reserve` -> `consume`) | no model call or design work beyond the cap (Study B §4; #19 13th-slot refusal). A3/B build the prompt before `reserve` (#17): it is not proposal work, and a contract error then charges no slot |
 | Slot and rating-slot IDs name the anonymous book or nothing | masking by construction; parseable and filename-safe on Windows |
 | Per-panel book aliases | Study A §3.1 book-ID rotation; the schedules book IDs are learner-facing |
 | Whole-book substitution keeps the method generating (section 3.2) | matched budget and unchanged panel schedule; counts hold; candidates and ratings stay archived |
@@ -420,6 +426,6 @@ Tests never touch the network: every generation test runs under `netguard`.
 | Bank manifests are immutable; amendments go to a chained log | a register hash committed before allocation (#28) stays valid; #70 and #13 apply the log with `effective_menu` |
 | One generation config and one config hash | #25, #26, #28 and confirmatory batches compare the same value |
 | Meaning texts come from one shared set | stations, A1 and prompts show the same frozen texts (hash in the config and run manifest) |
-| Prompt and meaning sets are loaded from directories | protocol-quoted text can stay in restricted storage with only its hash committed (#17 decides in its public-data review) |
+| Prompt and meaning sets are loaded from directories | protocol-quoted text can stay in restricted storage with only its hash committed. #17 decided: the fixed instruction is committed (`generation/prompts/`; owner sign-off pending), meaning texts stay restricted |
 | Records carry every key (nullable) and are validated on write | unique canonical lines, byte-identical reports (#24), early failure |
 | Masked audit drops every method-revealing-by-construction column | the masked table goes to the blinded analysis inputs (#34) |
