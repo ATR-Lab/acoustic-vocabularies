@@ -299,15 +299,45 @@ from the `commit` records (`store_book_id`).
 
 ## Rater panel server, stations and bot rater (#21)
 
-*Pending (#21).* Skeleton: `panel.create_panel_app(host, *, clock)` over
-`panel_session.PanelSessionHost`, station page in `panel.STATION_STATIC_DIR`;
-`rater.BotRater(base_url, *, rater_id, station, run_id, policy)`,
-`rater.BotRatingPolicy(p_comfort_acceptable, force_unacceptable_slots, p_missing)`
-(rating-slot IDs, never book IDs). Protocol fixed by the skeleton
-(`av_generation.rater_protocol`, `rater-message.schema.json`): station messages
-`hello` (with `kind`), `sync_request`, `asset_ready`, `played`, `rating`, `withdraw`;
-server messages `welcome`, `sync_reply`, `preload`, `slot`, `rating_ack`, `pause`,
-`resume`, `end`, `error`. Rating records are written by the host (#20) at lock time.
+Component doc: [`generation/docs/rater-panel.md`](../../generation/docs/rater-panel.md).
+Message formats: `av_generation.rater_protocol` (`rater-message.schema.json`); host
+contract: `av_generation.panel_session` (implemented by #20).
+
+| Module | Public API |
+| --- | --- |
+| `panel` | `create_panel_app(host, *, clock, access_secret=None)` (FastAPI: `GET /panel/station`, `GET /panel/static/{station.js,station.css}`, `GET /panel/assets/<sha256>.wav`, WebSocket `/panel/ws`; `app.state.panel` is the `PanelServer`, with `.seat_key(rater_id, station)`); `STATION_STATIC_DIR` (`web/rater/`); `rating_refusal(slot, submission) -> code \| None` (slot rules, in the #20 host's order: `E_SLOT_CLOSED` from `start + 20,000`, `E_PLACEHOLDER`, `E_LOCKED` before `start + unlock_offset_ms`, `E_FIRST_ATOM` for a distinguishability on a first-atom slot, `E_PROTOCOL` for a missing one elsewhere or a value that is not an `int` in 1-7, e.g. `5.0`); `required_plays(slot)` (the roles a station must have reported `played` before rating: the candidate, and the reference when distinguishability is asked); `seat_key(secret, rater_id, station)` (HMAC seat key); `slot_message(slot, *, rejoin=False)`, `preload_message(assets)`, `server_message(event)`, `asset_url(asset_id)`, `station_url(base_url, station, rater_id, *, key=None)`; `ClockSyncEstimator` (chained probe bursts); constants `SYNC_BURST` (8), `SYNC_INTERVAL_MS` (60,000), `SLOT_LEAD_MS` (500, `slot` event lead of the scripted host and #20), `ONSET_TOLERANCE_MS` (50), `MAX_SKEW_MS` (100), `MAX_LATE_START_MS` (1,000), `MAX_FRAME_BYTES` (4,096), `REPLACED_CLOSE_CODE` (4001), `SEAT_KEY_PARAM` (`key`) |
+| `rater` | `BotRater(base_url, *, rater_id, station, run_id, policy, clock=None, max_reconnects=20, open_timeout_s=10.0, access_key=None).run() -> BotRunResult`; `BotRater.from_station_url(url, *, run_id, policy, clock=None, max_reconnects=20, open_timeout_s=10.0)` (server root, seat and key from a keyed station URL; `ValueError` for any other URL); `BotRatingPolicy(p_comfort_acceptable=0.9, force_unacceptable_slots=frozenset(), p_missing=0.0, drop_slots=frozenset(), withdraw_at=None, rt_ms_range=(400, 4000))` (rating-slot IDs, never book IDs); `bot_rating(run_id, rater_id, rating_slot_id, *, ask_distinguishability, policy) -> BotRating` (stream `rng_for(bot_seed_key(run_id, rater_id, "rating", rating_slot_id))`) |
+| `panel_demo` | `ScriptedPanelHost(session, *, clock, run_dir=None)` (a `PanelSessionHost` for a fixed schedule: `begin`, `begin_when_joined`, `tick`, `start`/`stop`, `wait_ended`, `republish`, `operator`; records in `.ratings`, `.plays`, `.timing` and `run_dir/logs/`); `demo_session(*, run_id, seats, atom_index, rounds, placeholders, positions, ...) -> ScriptedSession` (DEMO batch config, meanings and rendered DEMO atoms); `schedule_document(host)` (`panel-schedule.json`); CLI `python -m av_generation.panel_demo` |
+| `batch_runner` (#20 module; the panel's call sites) | `serve_panel(host, *, clock, bind="127.0.0.1", port=8765)` draws a fresh access secret per session (`secrets.token_bytes(32)`, in memory only: never logged, printed or written), serves `create_panel_app(host, clock=clock, access_secret=secret)` and yields `ServedPanel(base_url, station_urls)` (station -> `station_url(..., key=seat_key(secret, rater_id, station))`, seat order); `run_session(..., panel="stations")` logs `Rater station <station> (<rater>): <keyed URL>` per seat, sets `StudyBatch.served_panel` while serving, calls `on_panel(base_url)` and waits for every seat, and after the appointment waits up to `station_end_grace_s` (10 s) for the stations to leave before stopping the server (`wait_for_stations_to_leave`; #22); one appointment per station session (`E_MODE` for `appointment="all"` and for a batch whose panel session already ended: reopen the run); `station_urls(batch) -> dict[str, str]` (the running session's keyed URLs, for bot stations started in `on_panel`; `E_STATIONS` outside a station session) |
+| `panel_skew` | `detect_onsets(signal, rate)`, `parse_wav(data)` / `read_capture(path)`, `align(scheduled_ms, detected_ms)`, `capture_onsets(capture, schedule, channels)`, `logged_onsets(plays)`, `onset_table(schedule, onsets)`, `summarize(rows, schedule, ...)`, `read_schedule(path)`, `schedule_from_plays(plays, run_id)`; CLI `python -m av_generation.panel_skew logged\|loopback` (`logged-onsets.csv`, `loopback-skew.csv` and their `-summary.json`) |
+
+Rules the server enforces: a browser handshake from another origin gets HTTP 403; every
+frame is schema-checked and integer fields must be JSON integers (ratings only integers
+1-7 and a binary comfort; no free text; otherwise `error E_PROTOCOL` and nothing reaches
+the host); `hello` first and only for a seat of `host.seats()` (`E_UNKNOWN_RATER`), with
+the seat key when the app has an `access_secret` (also needed for assets; the batch
+runner always passes a fresh one and hands out `station_url(..., key=seat_key(...))`, so
+a wrong or missing key gets `E_UNKNOWN_RATER` or HTTP 403); a new `hello` replaces the
+station's old socket, which is closed with `REPLACED_CLOSE_CODE` (stations and bots then stop); `sync_request` is
+answered at once; `played` must match the slot's asset and scheduled time; ratings are
+pre-checked (`E_UNKNOWN_SLOT`, `rating_refusal`, `E_PROTOCOL` unless the station
+reported playing every sound of `required_plays`, then `E_DUPLICATE_RATING`) before
+`host.submit_rating`, and `rating_ack` goes to the rating station only. A (re)joining
+station gets `welcome`, the pending `preload` and the current `slot` with `rejoin=true`;
+stations never play a sound twice, skip a slot joined after its candidate onset and show
+a slot whose sound did not play as a neutral screen (rating missing in both cases). A
+withdrawal is resent after a reconnect until the server answers it; a broadcast
+`end withdrawn` (#20 ends the session when a rater withdraws) shows the normal end screen
+on the other stations. The host writes every rating, play and panel timing record
+(`panel_session`; host duties in the component doc, section 6).
+
+Handoff to #22 (bot stations in a batch run): `run_session(batch, panel="stations",
+on_panel=hook)`; in `hook(base_url)`, one `BotRater.from_station_url(url, run_id=...,
+policy=..., clock=batch.clock)` per URL of `batch_runner.station_urls(batch)`, each run in
+its own thread (the batch config's seats must be `bot` seats). A full batch is four such
+sessions, one per appointment, each on the run reopened with `open_batch(..., resume=True)`
+(a second station session on the same `StudyBatch` is refused with `E_MODE`: its panel
+session has ended) and each with new keys.
 
 ## Synthetic-panel dry run (#22)
 

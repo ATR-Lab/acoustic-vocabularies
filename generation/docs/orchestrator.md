@@ -286,7 +286,7 @@ from the real components and serves what people use during a batch:
 | A3 (#17, #16) | `A3Proposer` with the prompt set and `OpenAICompatibleClient` on `--llm-url`; every call is logged to `logs/llm-requests.jsonl` |
 | A2 (#18) | `A2Proposer` on the shared ledger |
 | A1 (#19) | `a1.study_service` on the shared ledger and the run's play, timing and refusal logs, served with `a1.serve_a1` on `--a1-host` (port 8741); slots open back to back |
-| Panel (#21) | `serve_panel`: `panel.create_panel_app` over `Orchestrator.panel_host()` on `--panel-host` (port 8765); the session starts when every seat's station has joined |
+| Panel (#21) | `serve_panel`: `panel.create_panel_app` over `Orchestrator.panel_host()` on `--panel-host` (port 8765), with a fresh access secret per session; one keyed URL per station; the session starts when every seat's station has joined |
 
 API:
 
@@ -296,11 +296,13 @@ API:
 | `check_batch_start` | `(inputs, *, kind, run_id, proposers="real") -> None` | The start checks of every batch run (below) |
 | `probe_llm_server` | `(url, manifest, *, kind, timeout_s=5.0) -> str` | The LLM server serves the pinned model and runtime (`E_LLM_SERVER`); returns the request log's runtime label |
 | `open_batch` | `(inputs, run_dir, *, kind, clock, proposers="real", llm_url=None, a1_station=None, resume=False, purpose="batch", sim_p_failure=0.05, sim_propose=None) -> StudyBatch` | Start checks, then create (or reopen) the run directory (its name is the run ID) and build the components and the `Orchestrator` |
-| `run_session` | `(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, station_timeout_s=600, rating_policy=None, designer_invalid_slots, designer_timeout_slots, log) -> str \| None` | Serve A1 and the panel, finish an interrupted atom of a reopened run, run the appointment(s); returns the next atom |
-| `serve_panel` | `(host, *, clock, bind="127.0.0.1", port=8765)` | Context manager yielding the panel server's base URL |
+| `run_session` | `(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, station_timeout_s=600, station_end_grace_s=10, rating_policy=None, designer_invalid_slots, designer_timeout_slots, on_panel=None, log) -> str \| None` | Serve A1 and the panel, finish an interrupted atom of a reopened run, run the appointment(s); returns the next atom. With `panel="stations"`: logs one keyed station URL per seat, calls `on_panel(base_url)` (bot stations, #22), waits for every seat; one appointment per session (`E_MODE` for `"all"`); after the appointment it waits up to `station_end_grace_s` real seconds for the stations to leave (they close their socket on `end`) before the panel server stops, and logs the stations still connected |
+| `serve_panel` | `(host, *, clock, bind="127.0.0.1", port=8765)` | Context manager: draws a fresh access secret (`secrets.token_bytes(32)`, in memory only), serves `panel.create_panel_app(host, clock=clock, access_secret=secret)` and yields `ServedPanel(base_url, station_urls)` (station -> `panel.station_url` with the seat key) |
+| `station_urls` | `(batch) -> dict[str, str]` | The keyed station URLs of the panel `run_session` is serving for `batch` (`StudyBatch.served_panel`); for bot stations started in `on_panel` (`rater.BotRater.from_station_url`); `E_STATIONS` outside a station session |
 | `wait_for_stations` | `(orchestrator, *, timeout_s=600, poll_s=0.1)` | Block until every seat has joined (`E_STATIONS`) |
+| `wait_for_stations_to_leave` | `(orchestrator, *, timeout_s=10, poll_s=0.05) -> tuple[str, ...]` | Block until no seat's station is connected, at most `timeout_s`; returns the stations still connected (#22: uvicorn closes WebSockets at once on shutdown, so stopping the server before the stations leave could lose the `end`) |
 | `demo_generation_config` | `(config, meanings, fallback, *, prompt_set=None, llm_manifest_sha256=None)` | The DEMO generation config of a demo/synthetic run |
-| `BatchInputs`, `StudyBatch`, `RunnerError(code, message)`, `main(argv)` | | Codes `E_INPUTS`, `E_MODE`, `E_LLM_SERVER`, `E_RUN_DIR`, `E_STATIONS` |
+| `BatchInputs`, `StudyBatch`, `ServedPanel`, `RunnerError(code, message)`, `main(argv)` | | Codes `E_INPUTS`, `E_MODE`, `E_LLM_SERVER`, `E_RUN_DIR`, `E_STATIONS` |
 
 Start checks (`check_batch_start`), before anything is created: the run ID fits the kind;
 `check_batch_pins`; with real proposers the prompt set and its meaning set, the decoding
@@ -326,14 +328,45 @@ uv run --project generation python -m av_generation.batch_runner run <same input
   --llm-url ... --a1-host ... --panel-host ... --resume
 ```
 
-The runner prints the A1 page URL (for the kiosk policy) and the station page URL, waits
-for the three stations, runs the appointment and prints the atoms finished. `--resume` on
-a finished batch serves nothing and writes nothing (the closed manifest hashes every
-file). Mode errors (`E_MODE`) are found before the run directory is created. Exit codes: 0
-done, 1 refused (`error: <code>: ...`), 3 batch incomplete (rebuild it, section 6), 130
-interrupted (the logs are kept; reopen with `--resume`). Other options: `--prompts`,
-`--llm-manifest` (defaults: the committed set and manifest), `--a1-port`, `--panel-port`,
-`--station-timeout-s`, `--appointment 1..4|all`, `--purpose dry_run`.
+The runner prints the A1 page URL (for the kiosk policy) and one keyed URL per rater
+station, waits for the three stations, runs the appointment and prints the atoms
+finished:
+
+```text
+Rater station S1 (R01): http://<lab interface>:8765/panel/station?station=S1&rater=R01&key=<seat key>
+Rater station S2 (R02): ...
+Rater station S3 (R03): ...
+Waiting for stations: S1, S2, S3
+```
+
+Operator steps for the rater stations (one appointment = one sitting):
+
+1. Start the run with `--panel-host` set to the panel computer's address on the lab
+   network (the printed URLs use it; with `0.0.0.0` replace the host in each URL).
+2. On each station open its own printed URL (S1's URL on S1, and so on) in the station
+   browser (full screen); the rater presses **Start** once to allow audio
+   (`generation/docs/rater-panel.md`, section 1). The session starts when all three
+   have joined (`--station-timeout-s`, default 600 s; else `E_STATIONS` naming the
+   missing stations, exit 1).
+3. The URLs are the only way to a seat: each process draws a fresh access secret,
+   held in memory only (never logged, printed or written), and each URL carries its
+   seat's key (`panel.seat_key`). A wrong or missing key is refused (`E_UNKNOWN_RATER`;
+   assets HTTP 403). Do not copy the URLs into notes or the run directory; they stop
+   working when the process ends, and the next appointment (`--resume`) prints new ones.
+4. A station that drops reconnects by itself; a reloaded page rejoins with the same URL
+   (no audio replay; `rater-panel.md`, section 4).
+
+A station session runs one appointment: the stations end with the appointment
+(`end appointment_complete`), so `--appointment all` with `--panel stations` is refused
+(`E_MODE`); run each appointment with `--appointment next` (or `1..4`) and `--resume`
+(in code: `open_batch(..., resume=True)`; `run_session` refuses a second station session
+on a batch whose panel session has ended, `E_MODE`). `--resume` on a finished batch serves nothing and writes nothing (the closed manifest
+hashes every file). Mode errors (`E_MODE`) are found before the run directory is created.
+Exit codes: 0 done, 1 refused (`error: <code>: ...`), 3 batch incomplete (rebuild it,
+section 6), 130 interrupted (the logs are kept; reopen with `--resume`). Other options:
+`--prompts`, `--llm-manifest` (defaults: the committed set and manifest), `--a1-port`,
+`--panel-port`, `--station-timeout-s`, `--appointment 1..4|all` (`all`: bot panels
+only), `--purpose dry_run`.
 
 Synthetic runs (`--kind demo|synthetic`, `DEMO-` run IDs; the DEMO batch config, meaning
 set and fallback set are the defaults): `--designer bot` works the A1 app over HTTP
@@ -349,6 +382,10 @@ uv run --project generation python -m av_generation.batch_runner run \
   --designer bot --panel bots --clock scaled --speed 200 --a1-port 0 --appointment all
 ```
 
-Pending (#21): the panel server. Until #21 lands, `serve_panel` (and so `--panel
-stations`) raises `NotImplementedError` from the skeleton `panel.create_panel_app`; the
-tests exercise the serving path with a stand-in app.
+Bot stations on the real panel server (#22): `run_session(batch, panel="stations",
+on_panel=hook)` with a `hook(base_url)` that starts one `rater.BotRater` per keyed URL of
+`station_urls(batch)` (`BotRater.from_station_url(url, run_id=..., policy=...,
+clock=batch.clock)`, each in its own thread), one session per appointment on the reopened
+run. They speak the station protocol over HTTP and WebSockets with their seat keys; the
+accelerated test (`tests/generation/test_rater_panel_runner.py`) runs appointment 1 of
+the DEMO batch this way (144 rating slots per rater).
