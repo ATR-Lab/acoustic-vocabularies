@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "scope": "quit_time_shutdown_coordination_software_checks",
+  "runtime_source_commit": "2201dd9eaf8e2dfe2f6234dc24a3bf1c314c9830",
+  "baseline_commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+  "editor": "6000.6.0f1",
+  "participant_admission": false,
+  "native_visit_complete": false,
+  "timing_qualification": false,
+  "runs": [
+    {
+      "source_commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "kind": "EditMode_all_project_assemblies_baseline",
+      "total": 874,
+      "passed": 823,
+      "failed": 18,
+      "skipped": 33,
+      "sha256": "fb88b6844074b6b235bcc11e923fbe4563783a702e3767afaf7b739c604f73c7"
+    },
+    {
+      "source_commit": "2201dd9eaf8e2dfe2f6234dc24a3bf1c314c9830",
+      "kind": "EditMode_all_project_assemblies",
+      "total": 887,
+      "passed": 836,
+      "failed": 18,
+      "skipped": 33,
+      "new_cases_passed": 13,
+      "failed_and_skipped_sets_identical_to_baseline": true,
+      "baseline_passes_lost": 0,
+      "sha256": "e561eba8b340da6644291bc6bfa11c217f694683f85bc755dfbfc54abeae7321",
+      "affected_assemblies": {
+        "AcousticVocab.StateSources.Tests": {"passed": 177, "failed": 0, "skipped": 2},
+        "AcousticVocab.SessionIntegration.Tests": {"passed": 135, "failed": 0, "skipped": 15},
+        "AcousticVocab.FrameBudget.Tests": {"passed": 24, "failed": 0, "skipped": 0}
+      }
+    },
+    {
+      "source_commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "kind": "PlayMode_all_project_assemblies_baseline",
+      "total": 23,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "9b46915452bf619084863cfaa51161887f9e5f72aeec5e4fe17d6fe25857b2e4"
+    },
+    {
+      "source_commit": "2201dd9eaf8e2dfe2f6234dc24a3bf1c314c9830",
+      "kind": "PlayMode_all_project_assemblies",
+      "total": 25,
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "c5c9475de4efb6cedfe258769863726953e3ff8d7ce8981b980bc1a945f58ccb"
+    },
+    {
+      "source_state": "uncommitted tree equal to 2201dd9 except output.clip=null removed",
+      "kind": "PlayMode_mutation_without_clip_release",
+      "total": 25,
+      "passed": 24,
+      "failed": 1,
+      "failed_case": "AudioPlayerTests.ClearingPreparedClipsReleasesSourceReferenceBeforeDestroyingThem",
+      "sha256": "49f8f0054027786e673ac07b7e88a735d3f107140e32a3bb61a37e934304d4ba",
+      "note": "Local mutation, restored before commit. Shows the new PlayMode case detects the retained reference."
+    }
+  ],
+  "preexisting_failures": {
+    "count": 18,
+    "code": "HASH_MISMATCH",
+    "assemblies": ["AcousticVocab.StudyAudio.Tests (PackageLoaderTests, 7)", "AcousticVocab.Teaching.Tests (TeachingCatalogTests, 11)"],
+    "present_on_baseline": true,
+    "related_to_this_change": false
+  },
+  "regressions_added": [
+    "#148 worker failure after an admitted reset through the real Run() worker: send and receive socket errors (CONTROL_SOCKET_ERROR) and a probe deadline (CONTROL_OPERATION_CANCELLED), all in health_exchange; reset revoked, first cause and failed-exchange snapshot retained, exact reset history kept, no grant or journal row after a later valid arrival",
+    "Disposed private control and public state workers stop within the 500 ms quit bound, including when socket IO ignores cancellation and only Abort releases it",
+    "A hung worker is recorded as timed_out without extending the shared bound; completed, cancelled and faulted outcomes are distinguished",
+    "Quit coordinator runs every stage once even after a failing stage and records stage and worker outcomes",
+    "Journal close records its writer join outcome; state host quit shutdown records one disable fault across quit, disable and destroy",
+    "Audio source no longer references prepared clips while they are destroyed"
+  ],
+  "native_build": {
+    "build_id": "o615-simwin-2201dd9",
+    "scene": "SimulationTest",
+    "target": "StandaloneWindows64",
+    "source_commit": "2201dd9eaf8e2dfe2f6234dc24a3bf1c314c9830",
+    "result": "Succeeded",
+    "errors": 0,
+    "dirty_source": false,
+    "files": 205,
+    "total_bytes": 158750327,
+    "build_record_sha256": "95334a5998ee305b5ab7239d1cd22b7e4216d765a2304e2856ed51bde0a80fa6",
+    "native_launch_attempted": false
+  },
+  "limits": [
+    "No native reproduction of the 005-full-002 0xC0000005 exit was attempted; its cause remains unproven.",
+    "No native manual-close rerun with cleanup/export receipts and an independently observed successful exit was performed.",
+    "No crash dump capture was configured; ProcDump and WER LocalDumps are documented operator steps only.",
+    "Scripted sockets drive the real client workers; they do not establish native network, Mono teardown or OpenXR behaviour.",
+    "The 250 ms effective-health bound, strict session/request validation and post-persistence gate are unchanged.",
+    "Participant admission, physical headset and acoustic qualification remain absent."
+  ]
+}
