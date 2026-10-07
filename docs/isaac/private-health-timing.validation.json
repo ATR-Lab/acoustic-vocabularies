@@ -1,0 +1,44 @@
+{
+  "scope": "Backend private timing observer and diagnostic path screens",
+  "participant_admission": false,
+  "qualification": false,
+  "runtime_source_commit": "3d7dc252a25562b6514f448658ce19ff063039e5",
+  "windows_focused_tests": {
+    "passed": 97,
+    "skipped": 1,
+    "reason": "Actual preinstalled WebSocket library unavailable in local root runtime"
+  },
+  "approved_linux_image_tests": {
+    "passed": 64,
+    "skipped": 0,
+    "raw_log_sha256": "14c9df9a29ce7a2a921837e74bb56c4fef977a72fd64be76f0fb22d2ca0e9fd2",
+    "environment": "Existing approved image; no GPU or new installation"
+  },
+  "echo_script_provenance": {
+    "network_echo_server.py": {
+      "executed_private_bytes_sha256": "843285a7bcecc6cd928162fd3db4965f831fc4923424483196117f3e1b8cc5b3",
+      "public_formatted_bytes_sha256": "ed81fdbe29dcb28f47c78938f35f7da7c0ed33aae360ec18a35c73dc3a8fdf88",
+      "ast_equivalent": true
+    },
+    "network_echo_client.py": {
+      "executed_private_bytes_sha256": "e1ec5b225cdd6256d43b7e7039292a9687752910fb553da3557abf82e1d28a77",
+      "public_formatted_bytes_sha256": "583b907a552a63e36f3e4135264dbd6551189bcb3272a69b936fa996938a7262",
+      "ast_equivalent": true
+    }
+  },
+  "cleanup": {
+    "native006_exit": 0,
+    "native007_exit": 0,
+    "echo001_exit": 0,
+    "echo002_exit": 0,
+    "all_owned_containers_relays_forward_listeners_stopped": true,
+    "unrelated_gpu_process_and_container_preserved": true
+  },
+  "remaining": [
+    "Source timing remains below required rate with missed deadlines",
+    "Matched native preflight failed; no participant or visit completion",
+    "Trace contains7dropped events and is incomplete",
+    "Current route still exceeds200ms; no tested process option adopted",
+    "Compression and wired-route comparison not performed"
+  ]
+}

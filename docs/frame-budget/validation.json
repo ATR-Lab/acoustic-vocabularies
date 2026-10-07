@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "scope": "engineering_frame_capture_and_explicit_joining_API_not_qualified_complete_visit",
+  "runtime_source_commit": "87d0c8c6ab507024823bb2040cea48385b433e39",
+  "native_build_source_commit": "d6eb835fe965f2f357a6c36ca581d05ff38b63af",
+  "editor_version": "6000.6.0f1",
+  "test_framework": "builtin_1.8.0",
+  "nunit": "builtin_2.1.0",
+  "tests": [
+    {
+      "run": "frame-tests-007",
+      "total": 483,
+      "passed": 482,
+      "failed": 0,
+      "skipped": 1,
+      "xml_sha256": "20f0d36d0ca39cfc8d829382114c7dafd7018d29009b40b0973d3c014a0d9f2f"
+    },
+    {
+      "run": "frame-speech-001",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "f7c076777660fa9577d21892be21d53738f1b0ebdce6de40ccf190fcfb34027a"
+    },
+    {
+      "run": "frame-play-001",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "17e252a16c3161ed61da054bb5c97eb5bde79ea655868f410ea7bd23cba203f1"
+    }
+  ],
+  "test_notes": [
+    "Full EditMode run skipped only optional private synthetic speech evidence; supplied existing bank03 then passed that exact one-test separately.",
+    "EditMode dirty scope was public evidence documentation; runtime changes were committed. PlayMode and native builds used clean d6eb835.",
+    "Graphics-required acknowledgment comparison is excluded from the ordinary PlayMode suite; actual frame-probe captures are separately identified."
+  ],
+  "python_checks": {
+    "passed": 87,
+    "failed": 0,
+    "schemas": 30,
+    "synthetic_examples": 5,
+    "reachable_history_guard": "pass"
+  },
+  "builds": {
+    "Windows": {
+      "source_commit": "d6eb835fe965f2f357a6c36ca581d05ff38b63af",
+      "build_id": "frame-budget-final-001",
+      "result": "Succeeded",
+      "errors": 0,
+      "unity_reported_total_bytes": 158397238,
+      "manifest_listed_file_bytes": 158397238,
+      "primary_file_bytes": 667136,
+      "primary_sha256": "a4c71b1bfc3e42d02f2f129fe04adef3ebf2343a662884e4b99598e9dfc90e7d",
+      "manifest_sha256": "8d3e48337bba58b89d3827fbe75774300fa934b050abd7f0adfcbcb017cc2ba8",
+      "dirty_source": false
+    },
+    "Android": {
+      "source_commit": "d6eb835fe965f2f357a6c36ca581d05ff38b63af",
+      "build_id": "frame-budget-final-001",
+      "result": "Succeeded",
+      "errors": 0,
+      "unity_reported_total_bytes": 786160080,
+      "manifest_listed_file_bytes": 55659118,
+      "primary_file_bytes": 55659118,
+      "primary_sha256": "63cb6f5b93896d61f86898e225d1322298cfa19db783a7f2c0b2e99787a6e577",
+      "manifest_sha256": "b68d1e8f3fc07210ab438c36767d00e493c7381c01a662971032360edce7dba0",
+      "dirty_source": false
+    }
+  },
+  "android_archive_crc": "pass",
+  "android_architecture": "arm64-v8a",
+  "android_backend": "IL2CPP",
+  "android_internet_permission": true,
+  "physical_quest_devices_seen": 0,
+  "runtime_settings_changed": false,
+  "temporary_private_configs_original_absence_restored": true,
+  "ci_unity": "unconfigured licensed runner guard; local results do not satisfy hosted gate",
+  "pending": [
+    "Physical headset timing and freeze injections",
+    "Chosen operating refresh/rationale and frozen apparatus values",
+    "Full live G1 plus lesson/panel 36-trial profile",
+    "Three eligible volunteer legibility/comfort checks",
+    "Commit row still overlaps G1 shoulders/upper torso",
+    "Selection-menu runtime and concrete fresh-backend staged admission/bootstrap integration",
+    "Qualified orientation motion, final study materials and physical audio calibration"
+  ]
+}

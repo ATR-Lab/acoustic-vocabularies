@@ -3,9 +3,11 @@
 `ScriptedLlmClient(script)` returns the scripted outcomes in order. A script entry is a
 `RawOutcome` (its `seed` is replaced by the key's seed), a string (an `ok` outcome with
 that text), or a callable `(messages, schema, seed_key) -> RawOutcome | str`. It counts
-calls, keeps every request (with its `slot_id`) and counts tokens as whitespace-separated
-words unless a `token_counter` is given (which may raise `llm.TokenCountError` to script
-a failed count). It is not the #16 mock server (which tests the HTTP client).
+calls, keeps every request (with its `slot_id` and `deadline_ms`) and counts tokens as
+whitespace-separated words unless a `token_counter` is given (which may raise
+`llm.TokenCountError` to script a failed count). It accepts `deadline_ms` like the real
+client and records it, but has no clock: a script entry decides the outcome. It is not
+the #16 mock server (which tests the HTTP client).
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ class FakeCall:
     seed_key: str
     seed: int
     slot_id: str | None = None
+    deadline_ms: int | None = None
 
 
 class ScriptExhausted(RuntimeError):
@@ -65,13 +68,16 @@ class ScriptedLlmClient:
         seed_key: str,
         *,
         slot_id: str | None = None,
+        deadline_ms: int | None = None,
     ) -> RawOutcome:
         seed = seed_from_key(seed_key)
         with self._lock:
             index = len(self.calls)
             if index >= len(self._script):
                 raise ScriptExhausted(f"script has {len(self._script)} entries")
-            self.calls.append(FakeCall(tuple(messages), schema, seed_key, seed, slot_id))
+            self.calls.append(
+                FakeCall(tuple(messages), schema, seed_key, seed, slot_id, deadline_ms)
+            )
             entry = self._script[index]
         result = entry(messages, schema, seed_key) if callable(entry) else entry
         if isinstance(result, str):
@@ -88,7 +94,9 @@ class ScriptedLlmClient:
             raise TypeError("a script entry must give a RawOutcome or a string")
         return replace(result, seed=seed)
 
-    def count_prompt_tokens(self, messages: Sequence[ChatMessage]) -> int:
+    def count_prompt_tokens(
+        self, messages: Sequence[ChatMessage], *, deadline_ms: int | None = None
+    ) -> int:
         with self._lock:
             self.token_counts += 1
         if self._token_counter is not None:

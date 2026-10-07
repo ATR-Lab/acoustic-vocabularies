@@ -1,0 +1,151 @@
+{
+  "supplemental_to_canonical_92_pose_suite": true,
+  "reference_pose_sha256": "4e108ad4bf8fabdf1193397ce56da097729ace535b7a591c7fe4ea60d310e7dd",
+  "same_camera_view": {
+    "camera_position_usd": [
+      1.1,
+      -0.15,
+      1.1
+    ],
+    "target_position_usd": [
+      0.32,
+      0,
+      0.84
+    ],
+    "width": 1280,
+    "height": 720,
+    "vertical_fov": 45.74733038125343,
+    "near_clip": 0.1,
+    "far_clip": 100
+  },
+  "binary_storage": "ignored local evidence; publishing blocked by Git LFS upload rejection",
+  "headset_evidence": false,
+  "captures": [
+    {
+      "engine": "unity",
+      "pose_id": "hands_open",
+      "filename": "hands_open.png",
+      "sha256": "81d229c7fb218d2f100654d2cc782ab8ef173eb223ea523900626d991dba81e4",
+      "bytes": 140459,
+      "width": 1280,
+      "height": 720,
+      "inspection": "paired view inspected: body and finger flexion visually agree; rendering materials and wrist bracket geometry differ"
+    },
+    {
+      "engine": "isaac",
+      "pose_id": "hands_open",
+      "filename": "pose-hands_open.png",
+      "sha256": "e8cd9137bbbd3a9ce15a06c8572d682e7957b19412e17160f70f259dcbb7f141",
+      "bytes": 235462,
+      "width": 1280,
+      "height": 720,
+      "inspection": "paired view inspected: body and finger flexion visually agree; rendering materials and wrist bracket geometry differ"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_half_flexed",
+      "filename": "hands_half_flexed.png",
+      "sha256": "0228a3d029061fae99afa9d9943a03d6f5f39fd4e85626a42d82d591562c8308",
+      "bytes": 131157,
+      "width": 1280,
+      "height": 720,
+      "inspection": "paired view inspected: body and finger flexion visually agree; rendering materials and wrist bracket geometry differ"
+    },
+    {
+      "engine": "isaac",
+      "pose_id": "hands_half_flexed",
+      "filename": "pose-hands_half_flexed.png",
+      "sha256": "4d2f80186d30e6edda87041c60f70c7faf222f47189fa9a746454bb925d7e158",
+      "bytes": 230753,
+      "width": 1280,
+      "height": 720,
+      "inspection": "paired view inspected: body and finger flexion visually agree; rendering materials and wrist bracket geometry differ"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_flexed",
+      "filename": "hands_flexed.png",
+      "sha256": "623439d1c78806c6f45d1704299d5224bbe0265be8f3f22804b4ef3dbdb971ad",
+      "bytes": 129896,
+      "width": 1280,
+      "height": 720,
+      "inspection": "paired view inspected: body and finger flexion visually agree; rendering materials and wrist bracket geometry differ"
+    },
+    {
+      "engine": "isaac",
+      "pose_id": "hands_flexed",
+      "filename": "pose-hands_flexed.png",
+      "sha256": "33802a8cad210e6f067b21e602ece772883b2500a58bf127da6e1e0ebae556d1",
+      "bytes": 228738,
+      "width": 1280,
+      "height": 720,
+      "inspection": "paired view inspected: body and finger flexion visually agree; rendering materials and wrist bracket geometry differ"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_flexed",
+      "focus_link": "left_hand_palm_link",
+      "filename": "hands_flexed__left_hand_palm_link.png",
+      "sha256": "5dc2143803a55cd789c41b00f7ec922123d47aa12073eaa046067cb41128dd68",
+      "bytes": 271132,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "targeted hand view rendered; flexed left and right views inspected"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_flexed",
+      "focus_link": "right_hand_palm_link",
+      "filename": "hands_flexed__right_hand_palm_link.png",
+      "sha256": "b43ef5b4393130ba91db17c9608411db652b6841b2a18b5a02576a015d03ecea",
+      "bytes": 292078,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "targeted hand view rendered; flexed left and right views inspected"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_half_flexed",
+      "focus_link": "left_hand_palm_link",
+      "filename": "hands_half_flexed__left_hand_palm_link.png",
+      "sha256": "89d7ec2626c01e544b809a780cabf1505356b68209f09136ecacc49629f1fd5c",
+      "bytes": 285679,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "targeted hand view rendered; flexed left and right views inspected"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_half_flexed",
+      "focus_link": "right_hand_palm_link",
+      "filename": "hands_half_flexed__right_hand_palm_link.png",
+      "sha256": "a5f0efabdc09f925862454c8c9bd0ea4a48990e2176f53188a158a7835807bbc",
+      "bytes": 306751,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "targeted hand view rendered; flexed left and right views inspected"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_open",
+      "focus_link": "left_hand_palm_link",
+      "filename": "hands_open__left_hand_palm_link.png",
+      "sha256": "93eac89ab5a0487318b32ac38db398de150514db0778d67da97dab6c1f7879e7",
+      "bytes": 292749,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "targeted hand view rendered; flexed left and right views inspected"
+    },
+    {
+      "engine": "unity",
+      "pose_id": "hands_open",
+      "focus_link": "right_hand_palm_link",
+      "filename": "hands_open__right_hand_palm_link.png",
+      "sha256": "1da6762e47535f112ab8c8c4d00436c3923b2cde6efed012c3e54b2c38a86a2e",
+      "bytes": 316032,
+      "width": 1024,
+      "height": 1024,
+      "inspection": "targeted hand view rendered; flexed left and right views inspected"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+participant_id,visit,block,expected_count,actual_count,start_time,end_time,comfort_check,phone_locked,hash_check,deviations,operator_signoff
+B-P01-M2,W1,trained,36,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,W1,novel,4,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,
+B-P01-M2,W1,atomic,16,,,,,,DEMO-placeholder:418ccaff2931c24a645c606753cc189f6b5de1cef10cc24deff66e0744691da8,,

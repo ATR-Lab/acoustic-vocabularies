@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "manifest_version": "0.9-provisional",
+  "purpose": "engineering-evidence",
+  "participant_qualified": false,
+  "station_id": "SYNTHETIC-STATION",
+  "template_reconciliation": {
+    "status": "pending",
+    "reason": "Exact read-only methodology apparatus-manifest template is unavailable; issue #83 field contract only."
+  },
+  "config": {
+    "path": "synthetic-input.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "bytes": 0
+  },
+  "release_candidate": {
+    "status": "pending",
+    "reason": "No #82 tagged release candidate has been supplied."
+  },
+  "g4_freeze": {
+    "status": "pending",
+    "reason": "No independently pinned #25 G4 freeze handoff has been supplied."
+  },
+  "artifacts": {
+    "g1_dex3_asset": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "scene_usd": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "reset_snapshot": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "app_build": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "operator_console_build": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "protocol": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "audio_onset_calibration": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "rendered_view_recording": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "timing_validation": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    },
+    "schedules": {
+      "status": "pending",
+      "reason": "Synthetic example: no actual artifact supplied."
+    }
+  },
+  "fields": {
+    "isaac_sim_build": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "isaac_lab_commit": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "unitree_repository_commit": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "joint_inventory": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "camera_pose_fov": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "gpu_vram_driver": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "display_resolution_refresh": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "headphone_audio_device": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "audio_buffer": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "sample_rate": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "render_physics_rates": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "allocation_seed": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "human_research_review_reference": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "preregistration_reference": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "unity_version": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "openxr_plugin_version": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "meta_xr_sdk_version": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "headset_units": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "topology_adr001": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "bridge_transport_adr002": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "input_method_adr004": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "audio_route_adr005": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "observer_reference": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "presentation_mapping": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "panel_layout_version": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "urdf_source_commit": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "host_os": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "station_network_settings": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "app_build_source_commit": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "operator_console_version": {
+      "status": "pending",
+      "reason": "Synthetic example: station measurement or approved reference required."
+    },
+    "model_id_provisional": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "model_revision": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "runtime_precision": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "prompt_hash": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "fallback_bank_hash": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "renderer_recipe_schema_hash": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "asset_sha256": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "scene_sha256": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "reset_snapshot_sha256": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "app_build_sha256": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "operator_console_build_sha256": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "protocol_hash": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "g1_dex3_asset_path": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "audio_onset_calibration_record": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "rendered_view_recording": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "timing_validation_record": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    },
+    "schedule_sha256": {
+      "status": "pending",
+      "reason": "Synthetic example: no derived value or G4 authority supplied."
+    }
+  }
+}

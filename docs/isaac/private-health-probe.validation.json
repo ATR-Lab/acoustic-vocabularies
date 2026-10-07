@@ -1,0 +1,53 @@
+{
+  "scope": "bounded_backend_protocol_validation",
+  "participant": false,
+  "qualification": false,
+  "live_service_probe_measured": false,
+  "source_revision": "04bb1eed800a9c72f5e2b51644395a9c7f344d7d",
+  "source_archive_sha256": "1a06964a2098cb3c3ecc5c1e7ba5ca685a0075c1cadb94941a3d0d135ecd8c90",
+  "approved_image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "isolated_transport_tests": {
+    "network": "none",
+    "gpu_requested": false,
+    "websockets_version": "12.0",
+    "probe_count_without_simulation_owner_drain": 1100,
+    "command_cache_capacity": 2,
+    "owned_test_container_removed": true
+  },
+  "test_reports": [
+    {
+      "name": "private-health-tests-001",
+      "sha256": "6ff77079c38188a513824af6ec8c2c8832b72d54d2a81452dd5d353368659a8a",
+      "tests": "95",
+      "failures": "1",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.480"
+    },
+    {
+      "name": "private-health-tests-002",
+      "sha256": "f001f5be5f58e4149fae8154b3fbe32858c0bf9001e681f2dc0abddd69463766",
+      "tests": "26",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.000"
+    },
+    {
+      "name": "private-health-regression-tests",
+      "sha256": "09fbdaa66a96ceb3ba1933a6d018fba48706a1a975ab0ae2628f20e582c5890b",
+      "tests": "90",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.429"
+    }
+  ],
+  "linux_archive_sha256": "cacf35fd8a28e7dbcff2c5e7afcd21ce215540d2335ee1f03c8eda635a81c1e3",
+  "limitations": [
+    "Linux expanded initial suite had94 passes and one missing-jsonschema dependency failure; preserved. No install. The schema test passes in the existing Windows runtime.",
+    "Final focused Linux suite26 passes includes actual TCP/Unix sockets and synthetic dispatcher only, not live Isaac timing.",
+    "Windows command/service/helper suite90 passes. Ordinary native source remains unchanged until coordinated restart.",
+    "No participant, freshness, native visit, source-throughput or acoustic qualification."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "dtype": "bfloat16",
+  "engine_seed": 0,
+  "format": "av-generation/llm-server-config",
+  "format_version": 1,
+  "generation_config": "vllm",
+  "gpu_memory_utilization": 0.9,
+  "host": "127.0.0.1",
+  "load_format": "safetensors",
+  "manifest_sha256": "dca54199dd4d6ddff015a6a50e1884406760c32e142890c90e89caa4219278f5",
+  "max_model_len": 16896,
+  "name": "llm-a3b-1",
+  "port": 8000,
+  "served_model_name": "Qwen/Qwen2.5-7B-Instruct",
+  "startup_timeout_s": 900,
+  "structured_outputs_backend": "xgrammar",
+  "tensor_parallel_size": 1
+}
