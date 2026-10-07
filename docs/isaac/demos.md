@@ -92,11 +92,13 @@ per-row `capture` record replaces the host-span screen fields (`timing_ok`,
 `measured_first_to_last_host_seconds`, `interval_ms`) with `schedule`,
 `recorded_physics_steps`, `recorded_duration_seconds`, `schedule_ok`,
 `capture_host_seconds`, `capture_interval_ms` and `playback_clock`. The Unity
-orientation loader (#66) and snapshot player (#62) still expect the old fields
-and pace by recorded host-stamp offsets, so they reject a new-format index
-(`ORIENTATION_FIELDS`): they fail closed. They must be changed to this contract
-(host-clock pacing by sample index) before a re-recorded library can be shown.
-That Unity change is not part of this PR.
+orientation loader (#66) and snapshot player (#62) parse exactly this record and
+frame schedule and pace playback by sample index on the host clock
+(`FixedStepSchedule`; see `docs/unity/state-sources.md` and
+`docs/orientation/README.md`). They refuse an old-format index or recording
+explicitly (`ORIENTATION_DEMO_LEGACY_CAPTURE_FORMAT`,
+`TRAJECTORY_LEGACY_SCHEDULE`). `python -m isaac.demos.unity_fixture` writes the
+synthetic fixture both sides test against.
 
 Each opaque `000.ndjson` file contains plain public v2 state frames, with actual
 host-monotonic capture timestamps, the demo-relative step count, advancing
@@ -339,5 +341,7 @@ integration overlay is needed because `isaac.demos`, `isaac.reset` and
    intelligibility, and the forearm near the cup. Keep every failed capture.
    Only then update `demo-diagnostics.json` with the new sanitized counts and
    hashes, and revisit the timing-screen and `recording_complete` statements.
-8. Update the Unity #62/#66 consumers to the new capture fields and
-   sample-index host pacing before any orientation or fallback use.
+8. The Unity #62/#66 consumers accept only the new capture fields and pace by
+   sample index on the host clock. Load the re-recorded library through them
+   (orientation loader and snapshot player) before any orientation or fallback
+   use; a refusal code is a blocking result.

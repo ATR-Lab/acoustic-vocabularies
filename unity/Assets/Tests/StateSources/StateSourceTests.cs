@@ -222,23 +222,7 @@ namespace AcousticVocab.Tests
             source.Receive(Frame(1,.1,1,1),.1,.1);
             Assert.That(source.ResetConfirmed,Is.False);
         }
-        [Test]
-        public void HashedTrajectoryUsesHostOffsetsAndNeverAutoConfirmsReset()
-        {
-            byte[] bytes=Snapshot(); string hash=SceneRegistry.Hash(bytes); var source=new SnapshotSource(bytes,Registry(hash),10);
-            var first=Raw(0,100,0,0,hash); var last=Raw(1,100.2,1,1,hash);
-            first["sim_time"]=700; last["sim_time"]=900;
-            byte[] trajectory=Encoding.UTF8.GetBytes(first.ToString(Formatting.None)+"\n"+last.ToString(Formatting.None)+"\n");
-            source.PlayTrajectory(trajectory,SceneRegistry.Hash(trajectory),10,.3);
-            Assert.That(source.Render(10.1).Objects[0].Position.x,Is.EqualTo(.5f).Within(1e-6));
-            Assert.That(source.ResetConfirmed,Is.False);
-            Assert.That(source.ConfirmReset(source.Neutral,10.21),Is.False);
-            Assert.That(source.PlaybackFinished,Is.False);
-            source.Render(10.31);
-            Assert.That(source.PlaybackFinished,Is.True);
-            source.RestoreNeutral(10.31);
-            Assert.That(source.ConfirmReset(source.Neutral,10.31),Is.True);
-        }
+        // Fixed-step trajectory pacing and refusals: FixedStepPlaybackTests.
         [TestCase("velocity")][TestCase("fixed_steps")][TestCase("root_rotation")][TestCase("environment")][TestCase("frames")]
         public void EvenCorrectlyHashedMalformedNeutralIsRefused(string field)
         {
@@ -251,13 +235,14 @@ namespace AcousticVocab.Tests
             var bytes=Encoding.UTF8.GetBytes(raw.ToString(Formatting.None));
             Assert.Throws<StateFault>(()=>new SnapshotSource(bytes,Registry(SceneRegistry.Hash(bytes)),0));
         }
-        [TestCase(.251,10)][TestCase(.2,double.NaN)][TestCase(.2,9)][TestCase(.2,double.PositiveInfinity)]
-        public void TrajectoryStallsAndInvalidStartClockAreRefused(double span,double now)
+        [TestCase(double.NaN)][TestCase(9)][TestCase(double.PositiveInfinity)]
+        public void InvalidTrajectoryStartClockIsRefused(double now)
         {
             var bytes=Snapshot();var hash=SceneRegistry.Hash(bytes);var source=new SnapshotSource(bytes,Registry(hash),10);
-            var data=Encoding.UTF8.GetBytes(Raw(0,100,0,0,hash).ToString(Formatting.None)+"\n"+Raw(1,100+span,0,0,hash).ToString(Formatting.None));
-            Assert.Throws<StateFault>(()=>source.PlayTrajectory(data,SceneRegistry.Hash(data),now));
+            var data=Encoding.UTF8.GetBytes(string.Join("\n",Enumerable.Range(0,300).Select(i=>{var f=Raw(i,100+i/30d,0,0,hash);f["sim_step"]=2*(i+1);f["sim_time"]=(i+1)/30d;return f.ToString(Formatting.None);})));
+            Assert.That(Assert.Throws<StateFault>(()=>source.PlayTrajectory(data,SceneRegistry.Hash(data),now)).Message,Is.EqualTo("HOST_CLOCK_REGRESSED"));
             Assert.That(source.ResetConfirmed,Is.False);
+            source.RestoreNeutral(10); source.PlayTrajectory(data,SceneRegistry.Hash(data),10); // The same fixed-step stream plays from a valid clock.
         }
         [TestCase(.2,0)][TestCase(.3,1)][TestCase(2,1)]
         public void SnapshotDropInjectionReportsRealHostGap(double gap,int expected)
