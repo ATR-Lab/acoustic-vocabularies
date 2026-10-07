@@ -16,7 +16,10 @@ playback, at least on the best route, with the same preloaded 48 kHz mono test c
 
 ## Measurements
 
-[Audio spike PR](https://github.com/ATR-Lab/acoustic-vocabularies/pull/94) provides
+The [audio analysis](../../spikes/O5.1.6/audio_onsets.py),
+[runbook](../spikes/O5.1.6-runbook.md) and
+[results template](../../apparatus/spikes/O5.1.6/results-template.md), merged in
+[PR98](https://github.com/ATR-Lab/acoustic-vocabularies/pull/98), provide
 capture analysis and empty templates. No physical route has 200 measured onsets
 yet. Mean offset, residual SD, p95 absolute residual, maximum, underruns,
 capture kind, rate/buffer/volume and independent sync uncertainty are all Pending.
