@@ -1,0 +1,283 @@
+{
+  "analyzer": {
+    "name": "av-analysis",
+    "version": "0.1.0"
+  },
+  "checks": [
+    {
+      "check": "C1",
+      "discrepancies": 0,
+      "name": "raw-integrity",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C2",
+      "discrepancies": 1,
+      "name": "counts",
+      "status": "explained",
+      "unresolved": 0
+    },
+    {
+      "check": "C3",
+      "discrepancies": 0,
+      "name": "waveform-hashes",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C4",
+      "discrepancies": 0,
+      "name": "exposure",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C5",
+      "discrepancies": 0,
+      "name": "growth",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C6",
+      "discrepancies": 0,
+      "name": "yoked-ledger",
+      "status": "not_applicable",
+      "unresolved": 0
+    },
+    {
+      "check": "C7",
+      "discrepancies": 0,
+      "name": "windows",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C8",
+      "discrepancies": 0,
+      "name": "deviation-links",
+      "status": "pass",
+      "unresolved": 0
+    }
+  ],
+  "data_kind": "SYNTHETIC",
+  "discrepancies": [
+    {
+      "check": "C2",
+      "code": "COUNT_MISSING_TRIAL",
+      "detail": "scheduled trial has no trial-log row (block trained, position 36)",
+      "deviation_id": "DEMO-DEV-B-P01-M1-W1-1",
+      "resolved": true,
+      "rows": [
+        "B-P01-M1-W1-TR-36"
+      ],
+      "seq": 1,
+      "suspension_event": null
+    }
+  ],
+  "format": "av-analysis/reconciliation",
+  "format_version": 1,
+  "inputs": [
+    {
+      "bytes": 477149,
+      "path": "inputs/packages/bank-P001/audio.json",
+      "sha256": "0573b8dbdba605f52526250522c81b638fb472a755c9758173c65f7304f828de"
+    },
+    {
+      "bytes": 28255,
+      "path": "inputs/packages/bank-P001/manifest.json",
+      "sha256": "4336d96c74b038cfae4cc585a0154886fb59befe2b31dc45d5e501098eb0806f"
+    },
+    {
+      "bytes": 1130,
+      "path": "inputs/reveal/B-pilot.jsonl",
+      "sha256": "f681577c4f961e458870863c9b83e5290195ae2a16526737f4e14e553cb97609"
+    },
+    {
+      "bytes": 443,
+      "path": "inputs/schedules/B/B-P01/run-sheets/B-P01-M1/W1.csv",
+      "sha256": "dd40eda072c26376484d77df9209ff3932befa152cd48532a92cf892d502534f"
+    },
+    {
+      "bytes": 26555,
+      "path": "inputs/schedules/B/B-P01/schedules/B-P01-M1/V1.json",
+      "sha256": "911745e8973bb8db67f9ea8d6bd8ba627c359d17c09da18cdb27db6284f86464"
+    },
+    {
+      "bytes": 32987,
+      "path": "inputs/schedules/B/B-P01/schedules/B-P01-M1/V2.json",
+      "sha256": "535a4d60a8e83538264d4ff65c81d3e165f33d0db822d9e9e0d5203dfe21ed8c"
+    },
+    {
+      "bytes": 46662,
+      "path": "inputs/schedules/B/B-P01/schedules/B-P01-M1/V3.json",
+      "sha256": "314d1c7e348c7fdbee2966e34a9e52b4046825782c3763ff19695c20d6e99802"
+    },
+    {
+      "bytes": 36518,
+      "path": "inputs/schedules/B/B-P01/schedules/B-P01-M1/W1.json",
+      "sha256": "b4abef58ac4dbd4e28e9e48ac80fe6df20c074ca44cbb620709ccb3884231868"
+    },
+    {
+      "bytes": 47452,
+      "path": "inputs/schedules/B/B-P01/schedules/B-P01-M1/W4.json",
+      "sha256": "51eb5d7fb8f1f8b5d7a27aba15e52f63c1e169f8a3c5b487384b097bed8c616c"
+    },
+    {
+      "bytes": 5093,
+      "path": "inputs/schedules/B/pilot-dyads.json",
+      "sha256": "38087205c6609d1dfba4ab20434e63f0736ca91254d71dfe1152fd3830a02326"
+    },
+    {
+      "bytes": 811,
+      "path": "inputs/schedules/B/pilot-package-hashes.json",
+      "sha256": "3dd2e62559861befe9f68c57eff3ffa9d8116c4a5a26e968af9320449be45886"
+    },
+    {
+      "bytes": 3743,
+      "path": "inputs/store-snapshots/B-P01/V1.json",
+      "sha256": "ec0c090fc76c3609968f2187f7a70282df76a7ab0e9feaea79f98ab3b0b05c6f"
+    },
+    {
+      "bytes": 5167,
+      "path": "inputs/store-snapshots/B-P01/V2.json",
+      "sha256": "b9409841c8ac4f5f27de65b1533320f510efd0a22c02c8d09231af5bb1fa91cb"
+    },
+    {
+      "bytes": 6591,
+      "path": "inputs/store-snapshots/B-P01/V3.json",
+      "sha256": "119dd37833038b0b66f35b928a989bada746f15173c0dd94c54f7595fba344e6"
+    },
+    {
+      "bytes": 6591,
+      "path": "inputs/store-snapshots/B-P01/W1.json",
+      "sha256": "3761b784b3a985df302cf31e4fd87eb8a74f6964bef947f2020924cb2c6a4b1f"
+    },
+    {
+      "bytes": 20298,
+      "path": "inputs/store-snapshots/B-P01/receipts.jsonl",
+      "sha256": "05a349530af14d6ab2e77bb76e3839a8c5ce4459cf9ac39fcb50133f5417874f"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/B-P01-M1-V1/deviations.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    },
+    {
+      "bytes": 868,
+      "path": "raw/B-P01-M1-V1/exit-manifest.json",
+      "sha256": "24d3d619d6a819342f398638eb4234add5356a3034c892d1be991bacd519c7b7"
+    },
+    {
+      "bytes": 37545,
+      "path": "raw/B-P01-M1-V1/exposure-ledger.csv",
+      "sha256": "2e1639cf2f39f495f1196244408e86a854eb20520d14bcbe678998d9079afcec"
+    },
+    {
+      "bytes": 13820,
+      "path": "raw/B-P01-M1-V1/trial-log.csv",
+      "sha256": "f7bdd551b2fe40ae48c67d8f67cfd0ecac34b9bf3b2508cc64ff1414d14e86cc"
+    },
+    {
+      "bytes": 1288,
+      "path": "raw/B-P01-M1-V1/visit-run-sheet.csv",
+      "sha256": "762375b2dfca0b0f8cd7a18be11a2a0825fb0d1d6a3d0ade6c347f45bb9e14d0"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/B-P01-M1-V2/deviations.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    },
+    {
+      "bytes": 868,
+      "path": "raw/B-P01-M1-V2/exit-manifest.json",
+      "sha256": "14f517ebd130070faa1a8c9cc3e253764ba8a766479f399f6be7e3472db1c399"
+    },
+    {
+      "bytes": 31517,
+      "path": "raw/B-P01-M1-V2/exposure-ledger.csv",
+      "sha256": "d4a1dd9acef7470bd7d7e3a3b635cad12a69700ee0f205e0161d14e15b99c962"
+    },
+    {
+      "bytes": 18056,
+      "path": "raw/B-P01-M1-V2/trial-log.csv",
+      "sha256": "163aa48b34b7fd8c357031478f6fd2da942589a3d8c74c67888f7102951d7d38"
+    },
+    {
+      "bytes": 1289,
+      "path": "raw/B-P01-M1-V2/visit-run-sheet.csv",
+      "sha256": "99060d898696e220a4b5a87fbb268ec6b9b8b3ed38d0ff6f25453d484ecef44f"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/B-P01-M1-V3/deviations.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    },
+    {
+      "bytes": 868,
+      "path": "raw/B-P01-M1-V3/exit-manifest.json",
+      "sha256": "2e0135bb05a736ab97f252624d10822eb99f47b29f7cee6098a3de8cd429564e"
+    },
+    {
+      "bytes": 40581,
+      "path": "raw/B-P01-M1-V3/exposure-ledger.csv",
+      "sha256": "8f72cd7067dc823c01bb1b3ec6af8e66d54c1277f27494fdf31e6f39b6db368d"
+    },
+    {
+      "bytes": 26400,
+      "path": "raw/B-P01-M1-V3/trial-log.csv",
+      "sha256": "af9c79e2854a25bcabebccbfe756428a1135282277f7b4c3e8bda48bff599162"
+    },
+    {
+      "bytes": 1291,
+      "path": "raw/B-P01-M1-V3/visit-run-sheet.csv",
+      "sha256": "e23a7621b3dc0ee156d5c8157c44ab3708ba5c93bf4a0ffaefa2a000aa39942a"
+    },
+    {
+      "bytes": 362,
+      "path": "raw/B-P01-M1-W1/deviations.csv",
+      "sha256": "7e18cd9542957cec4fb0f85a82e17bef1a886e194c85f9bfb29a8b81022c0f04"
+    },
+    {
+      "bytes": 867,
+      "path": "raw/B-P01-M1-W1/exit-manifest.json",
+      "sha256": "e254bca5cd2fa2d42847f82d35b0432eb5bf24fe47e3b7dec1adbe994093d30e"
+    },
+    {
+      "bytes": 16053,
+      "path": "raw/B-P01-M1-W1/exposure-ledger.csv",
+      "sha256": "864d83bcfb6201afa5eed495e67983bd95071a4757ae1a7959ab6449c4123e81"
+    },
+    {
+      "bytes": 21416,
+      "path": "raw/B-P01-M1-W1/trial-log.csv",
+      "sha256": "65583d01a5c4f1d3307bed38c7240eb633d642bde408307afb427a644c4b3721"
+    },
+    {
+      "bytes": 625,
+      "path": "raw/B-P01-M1-W1/visit-run-sheet.csv",
+      "sha256": "ebcf071ce3a41f88f15f65a015b3413335e3412af3a36d546b5d6cbdf8debce5"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/deviations-log.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    }
+  ],
+  "person_id": "B-P01-M1",
+  "raw_unchanged": true,
+  "session_id": "SYNTHETIC-eb0c0fcc9e38e62c",
+  "set": "pilot",
+  "station_id": "SYNTHETIC-ST1",
+  "study": "B",
+  "summary": {
+    "discrepancies": 1,
+    "status": "pass",
+    "suspension_events": [],
+    "unresolved": 0
+  },
+  "unit_id": "B-P01",
+  "visit": "W1",
+  "visit_id": "B-P01-M1-W1"
+}

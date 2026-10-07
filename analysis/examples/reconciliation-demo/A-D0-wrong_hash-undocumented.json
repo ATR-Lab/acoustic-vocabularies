@@ -1,0 +1,184 @@
+{
+  "analyzer": {
+    "name": "av-analysis",
+    "version": "0.1.0"
+  },
+  "checks": [
+    {
+      "check": "C1",
+      "discrepancies": 0,
+      "name": "raw-integrity",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C2",
+      "discrepancies": 0,
+      "name": "counts",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C3",
+      "discrepancies": 1,
+      "name": "waveform-hashes",
+      "status": "fail",
+      "unresolved": 1
+    },
+    {
+      "check": "C4",
+      "discrepancies": 0,
+      "name": "exposure",
+      "status": "pass",
+      "unresolved": 0
+    },
+    {
+      "check": "C5",
+      "discrepancies": 0,
+      "name": "growth",
+      "status": "not_applicable",
+      "unresolved": 0
+    },
+    {
+      "check": "C6",
+      "discrepancies": 0,
+      "name": "yoked-ledger",
+      "status": "not_applicable",
+      "unresolved": 0
+    },
+    {
+      "check": "C7",
+      "discrepancies": 0,
+      "name": "windows",
+      "status": "not_applicable",
+      "unresolved": 0
+    },
+    {
+      "check": "C8",
+      "discrepancies": 1,
+      "name": "deviation-links",
+      "status": "fail",
+      "unresolved": 1
+    }
+  ],
+  "data_kind": "SYNTHETIC",
+  "discrepancies": [
+    {
+      "check": "C3",
+      "code": "WAVEFORM_HASH_MISMATCH",
+      "detail": "logged waveform of K-a2-r4 matches neither expected hash of the package",
+      "deviation_id": null,
+      "resolved": false,
+      "rows": [
+        "A-P01-L01-D0-TR-01",
+        "Ebcd7184a51258c5110e4"
+      ],
+      "seq": 1,
+      "suspension_event": "WRONG_FILE_MAPPING"
+    },
+    {
+      "check": "C8",
+      "code": "DEVIATION_MISSING",
+      "detail": "unresolved WAVEFORM_HASH_MISMATCH (C3) has no deviation record",
+      "deviation_id": null,
+      "resolved": false,
+      "rows": [
+        "A-P01-L01-D0-TR-01",
+        "Ebcd7184a51258c5110e4"
+      ],
+      "seq": 2,
+      "suspension_event": null
+    }
+  ],
+  "format": "av-analysis/reconciliation",
+  "format_version": 1,
+  "inputs": [
+    {
+      "bytes": 16332,
+      "path": "inputs/packages/BK-P-47Q4PQ/audio.json",
+      "sha256": "cc2a9930d1acc4eb9416d92fe749be56de765adeb3b4235e5b0b9a8057f4f93b"
+    },
+    {
+      "bytes": 5771,
+      "path": "inputs/packages/BK-P-47Q4PQ/manifest.json",
+      "sha256": "e821c6bbae7e718a85b6308af4ddbedd689c50be8a253609ade375c3a11f3cfa"
+    },
+    {
+      "bytes": 867,
+      "path": "inputs/reveal/A-pilot.jsonl",
+      "sha256": "74f72e7d54e37242cd2367e39aec279eb134eefdfc38998758de6693e5294dbf"
+    },
+    {
+      "bytes": 667,
+      "path": "inputs/schedules/A/A-P01/run-sheets/A-P01-L01/D0.csv",
+      "sha256": "19e53c5587bc141fb40e23d1d9b3abc480ccc7332a9b75d9011ea50580842c4d"
+    },
+    {
+      "bytes": 69733,
+      "path": "inputs/schedules/A/A-P01/schedules/A-P01-L01/D0.json",
+      "sha256": "c2704f2647cc44f7a87ffb742bf539dbf9d3c03dc86a1aeec68b27bd8b3c27f4"
+    },
+    {
+      "bytes": 47533,
+      "path": "inputs/schedules/A/A-P01/schedules/A-P01-L01/D7.json",
+      "sha256": "6b0cb3b7e5aa8fd2e89c4f8535b496b0252d639193da0cb47a6074e645970605"
+    },
+    {
+      "bytes": 946,
+      "path": "inputs/schedules/A/pilot-package-hashes.json",
+      "sha256": "40e88ebd0040946f2149eaacd556a5d9839f93445836705fb43d5b7085a62a4d"
+    },
+    {
+      "bytes": 4463,
+      "path": "inputs/schedules/A/pilot-slots.json",
+      "sha256": "7ec4abd0f73b19d4b9a4106d6e9e95d94900999d161796e3deaa6eaa205bcf2b"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/A-P01-L01-D0/deviations.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    },
+    {
+      "bytes": 868,
+      "path": "raw/A-P01-L01-D0/exit-manifest.json",
+      "sha256": "6eadf0c7827c59b04ce8c157c6debaca6ae1579480fcf18646b102294e6ec727"
+    },
+    {
+      "bytes": 52901,
+      "path": "raw/A-P01-L01-D0/exposure-ledger.csv",
+      "sha256": "2761c2fa3f47b727b6a9af042416a9232da63e680b97bb34bfb46efde633920e"
+    },
+    {
+      "bytes": 35449,
+      "path": "raw/A-P01-L01-D0/trial-log.csv",
+      "sha256": "99c7d55742c99acbffa585934636d01cd073ee9e8ba42d7a01ebb14945814d7e"
+    },
+    {
+      "bytes": 971,
+      "path": "raw/A-P01-L01-D0/visit-run-sheet.csv",
+      "sha256": "0017313d3a43fff56968efb6752c8696f4def3f4db10f59faa4bca586ece6f8f"
+    },
+    {
+      "bytes": 185,
+      "path": "raw/deviations-log.csv",
+      "sha256": "9a3e62b62a30702fdc8c71ad291c8a9eb22967e742dc7e409ab3c884b3150b1d"
+    }
+  ],
+  "person_id": "A-P01-L01",
+  "raw_unchanged": true,
+  "session_id": "SYNTHETIC-ca1830aa052d2155",
+  "set": "pilot",
+  "station_id": "SYNTHETIC-ST1",
+  "study": "A",
+  "summary": {
+    "discrepancies": 1,
+    "status": "fail",
+    "suspension_events": [
+      "WRONG_FILE_MAPPING"
+    ],
+    "unresolved": 1
+  },
+  "unit_id": "A-P01",
+  "visit": "D0",
+  "visit_id": "A-P01-L01-D0"
+}
