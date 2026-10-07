@@ -108,8 +108,9 @@ class AtomAudioLike(Protocol):            # e.g. a store entry (#11)
     profile: Profile | str
     pcm: bytes                            # int16 LE mono
 
-AtomAudio(atom_id: str, profile: Profile | str, pcm: bytes)
-AtomAudio.from_rendered(atom_id: str, rendered: Rendered) -> AtomAudio
+AtomAudio(atom_id: str, profile: Profile | str, pcm: bytes, *, book_id: str | None = None)
+AtomAudio.from_rendered(atom_id: str, rendered: Rendered, *,
+                        book_id: str | None = None) -> AtomAudio
 
 compose_message(action: AtomAudioLike, referent: AtomAudioLike, *,
                 heldout: Iterable[str] | None = None,
@@ -124,21 +125,23 @@ write_message_wav(message: Message, path: str | os.PathLike[str], *,
 
 - `Message`: `message_id`, `profile`, `action_id`, `referent_id`,
   `action_samples`, `referent_samples`, `action_pcm_sha256`,
-  `referent_pcm_sha256`, `pcm`, `pcm_sha256`, `n_samples`, `.duration_s`,
-  `.referent_onset`.
+  `referent_pcm_sha256`, `pcm`, `pcm_sha256`, `n_samples`, `book_id`
+  (`None` unless an atom carries one), `.duration_s`, `.referent_onset`.
 - `compose_message` checks, in order: action then referent (`E_ROLE_ORDER`), one
   family (`E_FAMILY_MISMATCH`), not held out (`HeldOutMessageError`, code
-  `E_HELDOUT`), one profile (`E_PROFILE_MISMATCH`), motif length 21,600, 28,800,
-  36,000 or 43,200 samples (`E_MOTIF_LENGTH`). All are `CompositionError`
-  (a `ValueError`) with `.code`.
-- Held-out guard: `heldout` is the set of held-out message IDs (curriculum status
-  table, #29). The default is the 14 held-out IDs of the fixed matrix
-  (`av_sound.grammar.HELDOUT_MESSAGE_IDS`). A refusal reads no samples, writes
-  nothing, logs a warning on logger `av_sound.composer` and calls `audit` with
+  `E_HELDOUT`), one profile (`E_PROFILE_MISMATCH`), one book when both atoms
+  expose `book_id` (`E_BOOK_MISMATCH`), motif length 21,600, 28,800, 36,000 or
+  43,200 samples (`E_MOTIF_LENGTH`). All are `CompositionError` (a `ValueError`)
+  with `.code`.
+- Held-out guard: the 14 held-out IDs of the fixed matrix
+  (`av_sound.grammar.HELDOUT_MESSAGE_IDS`) are always refused. `heldout` adds
+  message IDs to that set and can never remove one (`heldout=()` still refuses
+  all 14). A refusal reads no samples, writes nothing, logs a warning on logger
+  `av_sound.composer` and calls `audit` with
   `{event, operation, message_id, action_id, referent_id}`.
-- `composite_hash` has the same structural checks but is allowed for held-out
-  messages. It hashes incrementally and returns only the lowercase hex digest
-  (the expected hash in a package's `audio.json`, #13).
+- `composite_hash` has the same role, family, profile, book and length checks,
+  but it is allowed for held-out messages. It hashes incrementally and returns
+  only the lowercase hex digest (the expected hash in a package's `audio.json`, #13).
 - `message_length` uses metadata only and never renders: each argument is a
   `total_ms` int, a `Recipe` or recipe dict, or an object with `n_samples`,
   `recipe` or `pcm` (checked in that order).
