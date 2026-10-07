@@ -15,6 +15,7 @@ dependency on `../schedules`). Architecture, module ownership and rules:
 | Reconciliation: loaders, checks C1-C8, exposure ledger, reconciled and derived tables, synthetic logs, fault injection ([guide](docs/reconciliation.md)) | #33 | implemented |
 | Analysis pipeline: scoring, estimators, bootstraps, GLMMs (R), bounds, tipping points, simulation, section 9 report | #34 | interfaces (ladder log, report order and R pins implemented) |
 | Integrity dashboard: column allowlist, panels, red alerts, static HTML and metrics JSON, synthetic demo tables | #35 | implemented |
+| Station export import (column adapter, exit manifest) and block durations against bookings ([guide](docs/reconciliation.md), section 3) | #81 | implemented; synthetic exports only |
 
 ## Use
 
@@ -27,6 +28,11 @@ uv run --project analysis av-analysis init-root <dir> --kind SYNTHETIC --label D
 uv run --project analysis av-analysis schemas
 # Compare the external methodology templates with the encoded headers and hashes
 uv run --project analysis av-analysis check-templates <methodology templates folder>
+# Import a verified station export and the console's run sheet and deviations
+uv run --project analysis av-analysis import-export <visit_id> --root <dir> --export <bundle> \
+  --export-manifest-sha256 <hex> --run-sheet <csv> --run-sheet-sha256 <hex> \
+  --deviations <csv> --deviations-sha256 <hex>
+uv run --project analysis av-analysis block-durations <visit_id> --root <dir>
 # After each visit: reconcile --all, derive, dashboard (skips steps not implemented yet)
 uv run --project analysis av-analysis refresh --root <dir>
 # Integrity dashboard on synthetic (DEMO) reconciled tables
@@ -51,10 +57,11 @@ uv run --project analysis av-analysis dashboard --root <dir>
 | `loaders`, `references`, `reconcile`, `reconcile_checks`, `ledger`, `derive`, `synthetic_inputs`, `synthetic_logs` | reconciliation | #33 |
 | `scoring`, `unmask`, `estimators`, `missingness`, `glmm`, `rbridge`, `simulate`, `report`, `pipeline` | analysis pipeline | #34 |
 | `monitoring`, `monitoring_metrics`, `monitoring_html`, `monitoring_demo` | integrity dashboard: `allowlist()`, `load_monitoring_data()`, `render()`, `write_dashboard()`, `build_document()`, `demo_tables()` | #35 |
+| `export_import`, `block_durations` | `read_bundle()`, `plan_import()`, `import_export()`, column sources; `booking()`, `compare()`, `visit_report()` | #81 |
 
 Schemas: [`schema/`](schema/) (`*-row.schema.json` for the six tables, `data-root`,
 `exit-manifest`, `reconciliation`, `outputs-manifest`, `glmm-log`; `dashboard-data` from
-`monitoring`). R environment:
+`monitoring`; `block-durations` from `block_durations`). R environment:
 [`r/pins.dcf`](r/pins.dcf), `r/install.R`, `r/check_pins.R`.
 
 ## Development
