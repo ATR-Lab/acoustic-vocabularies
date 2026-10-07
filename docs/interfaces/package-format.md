@@ -83,7 +83,7 @@ trained message has 52,800 to 96,000.
 | `builder` | `{name: "av-sound", version}` |
 | `renderer_version`, `composition_contract` | provenance (`0.1.0`, `1.0.0`) |
 | `profile` | A only: `P1`, `P2` or `P3` |
-| `book` | A only: `frozen_head` (chain head of the book's `freeze` record, the value `freeze()` returns) and `snapshot_sha256` of the store book ([`store.md`](../../sound/docs/store.md)) |
+| `book` | A only: `frozen_head` (chain head of the book's `freeze` record, the value `freeze()` returns), `snapshot_sha256`, and the `renderer_hash` and `validator_hash` the book records ([`store.md`](../../sound/docs/store.md)) |
 | `bank` | B only: `format`, `format_version`, `bank_sha256` of the bank input (section 9) |
 | `files` | path -> `{sha256, bytes}` for every file except `manifest.json` |
 | `package_sha256` | the package hash |
@@ -222,7 +222,27 @@ the hash, refuses overflow, short events and duplicate waveforms within a profil
 never copies `source`. When #26 lands, its manifest replaces this input; the package
 format (sections 2-8) does not change.
 
-## 10. Python API
+## 10. Package-hash mapping for the run sheets (#32)
+
+The run-sheet generator pre-fills `hash_check` from a mapping of expected package hashes
+([`schedules/schema/package-hashes.schema.json`](../../schedules/schema/package-hashes.schema.json),
+on the schedules stack): `{format: "av-schedules/package-hashes", format_version: 1,
+study, set, demo, placeholder: false, packages: {key: package_sha256}}`.
+`package_hashes(packages, *, set_name, keys=None)` builds it from built (or sealed)
+packages after verifying each with `load_package`; `write_package_hashes(doc, path)`
+writes it as `<set>-package-hashes.json` next to the package manifests (study mappings
+only outside the repository); `sound/tools/package_hashes.py` is the command line.
+
+- Study A keys are the book IDs of the learner-facing slot list (#31, `BK-C-7QX4MN`):
+  the package ID by default, or `keys={package_id: book_id}`. Learners of one book share
+  the hash, as they share the book ID.
+- Study B keys are dyad slot IDs (`B-C01`, spares `B-S01`): the `unit_id` of the sealed
+  `permutation.json` by default; both members share the dyad package.
+- One study and one DEMO status per mapping; key prefixes must match the set (`P` pilot,
+  `C`/`S` confirmatory) and a sealed permutation's `set`; keys are unique. The run-sheet
+  generator checks coverage of every main unit.
+
+## 11. Python API
 
 ```python
 from av_sound.package import (
@@ -242,14 +262,19 @@ seal(package_dir, *, permutation: bytes | PathLike | None = None,
 load_package(package_dir, *, expected_package_sha256: str | None = None,
              check_composites: bool = True) -> LoadedPackage
 scan_package(package_dir, *, forbidden_strings: Iterable[str] = ()) -> LeakReport
+package_hashes(packages, *, set_name: str, keys: Mapping[str, str] | None = None) -> dict
+write_package_hashes(doc, path) -> str                              # SHA-256 of the file
 ```
 
 - `build_package` needs a frozen, non-void store book of kind `study` or `synthetic`
-  with 16 labelled atoms that passes `store.verify` anchored on its frozen head;
-  `expected_head` (the head `freeze()` returned, recorded at release) must equal it.
-  Rejected commit attempts logged after the freeze do not change the package. `out_dir`
-  must not exist or be empty. It writes into a temporary directory next
-  to `out_dir`, verifies and scans it, then renames it.
+  with 16 labelled atoms that passes `store.verify`. Every store read (`book`,
+  `records`, `verify`, `list`, `snapshot_hashes`) is anchored with `expected_head` on
+  the frozen head (the chain head of the `freeze` record); a given `expected_head` (the
+  head `freeze()` returned, recorded at release) must equal it. Rejected commit attempts
+  logged after the freeze do not change the package; a book voided later (`void`
+  event) is refused, also when it is voided during the build. `out_dir` must not exist
+  or be empty. It writes into a temporary directory next to `out_dir`, verifies and
+  scans it, then renames it.
 - `PackageResult`: `path`, `package_sha256`, `manifest`, `leak_report`.
 - `LoadedPackage`: `path`, `study`, `package_id`, `demo`, `package_sha256`, `manifest`,
   `answers`, `audio`, `permutation`, `allocation`, `schedules`, `files`,
@@ -260,15 +285,17 @@ scan_package(package_dir, *, forbidden_strings: Iterable[str] = ()) -> LeakRepor
 - Errors: `PackageError` (`.code`, `.problems`, `.codes`); `PackageIntegrityError` from
   `load_package` (`.code` = `E_INTEGRITY`, `.problems` lists every finding).
 
-## 11. Examples and evidence
+## 12. Examples and evidence
 
 - [`sound/examples/package-demo/`](../../sound/examples/package-demo/): the JSON files of
   the sealed synthetic package `DEMO-BOOK-P1` (manifest, answers, audio, the DEMO
   permutation A-C01 and allocation). Its WAVs are not committed:
   `uv run --project sound python sound/tools/build_example_package.py --out DIR --dyad`
   rebuilds the complete package (and a synthetic dyad package) with WAVs, and CI uploads
-  them as the `package-demo` artifact. `--check` fails if the committed JSON differs from
-  a rebuild.
+  them as the `package-demo` artifact, with the two run-sheet mappings. `--check` fails
+  if the committed JSON differs from a rebuild. The manifest records the book's frozen
+  head and code hashes, so a code change that moves `renderer_hash` or
+  `validator_code_hash()` (even byte-neutral) needs `--write` in the same pull request.
 - The atoms of `DEMO-BOOK-P1` use the same recipes as `DEMO-P1` in the composition test
   vectors, so every composite hash in its `audio.json` equals
   [`composition/vectors.json`](../../sound/testvectors/composition/vectors.json).

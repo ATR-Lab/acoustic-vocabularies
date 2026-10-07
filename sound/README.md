@@ -40,7 +40,7 @@ Nothing needs the network at runtime.
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
 | `testvectors/fallback/demo-manifest.json` | Fallback banks and books from the public seed `DEMO-fallback-v1` (example, not study material) |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`), example package (`build_example_package.py`), run-sheet package hashes (`package_hashes.py`) |
 | `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
 ## API
@@ -90,6 +90,7 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `seal(package_dir, *, permutation=None, schedules=None, allocation_extras=None) -> str` | Adds `permutation.json` (#29), `schedules/` (#30) and `allocation.json`, checks them, returns the new package hash |
 | `load_package(package_dir, *, expected_package_sha256=None) -> LoadedPackage` | Verifies a package as the app will; raises `PackageIntegrityError` (`E_HASH_MISMATCH`, `E_FILE_MISSING`, `E_FILE_EXTRA`, ...) |
 | `scan_package(package_dir, *, forbidden_strings=()) -> LeakReport` | Leak scan: held-out audio, unlisted message audio, method labels, designer IDs, method words, `source` keys |
+| `av_sound.package.package_hashes(packages, *, set_name, keys=None)`, `write_package_hashes(doc, path)` | Run-sheet package-hash mapping (#32, `av-schedules/package-hashes`); tool `tools/package_hashes.py` |
 | `PackageError`, `PackageResult`, `LeakReport`, `DyadBank` | Package errors (`.code`, `.problems`), build result, scan report, provisional bank |
 
 ```python

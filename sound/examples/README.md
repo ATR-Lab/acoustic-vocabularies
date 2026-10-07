@@ -17,5 +17,8 @@ uv run --project sound python sound/tools/build_example_package.py --out OUT --d
 uv run --project sound python sound/tools/build_example_package.py --check  # committed JSON
 ```
 
-CI uploads the complete packages as the `package-demo` artifact. `--write` rewrites
-the committed JSON after an intended format change; say why in the pull request.
+CI uploads the complete packages, and their run-sheet package-hash mappings (#32), as the
+`package-demo` artifact. The manifest records the store book's frozen head and its
+`renderer_hash` and `validator_hash`, so any change to the renderer or validator code
+(even one that leaves the bytes unchanged) changes it: run `--write` in that pull request
+and say why.

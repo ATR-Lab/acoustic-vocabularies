@@ -385,6 +385,8 @@ scan_package(package_dir, *, forbidden_strings: Iterable[str] = ()) -> LeakRepor
 novel_by_visit(study: str, swap_w1_w4: bool) -> dict[str, list[str]]
 permutation_matrix(doc: Mapping[str, Any]) -> dict[str, tuple[tuple[str, ...], ...]]
 package_sha256(manifest: Mapping[str, Any]) -> str
+package_hashes(packages, *, set_name: str, keys: Mapping[str, str] | None = None) -> dict
+write_package_hashes(doc: Mapping[str, Any], path) -> str
 ```
 
 - A package: 16 atom WAVs, the 18 trained-message WAVs (`compose_message`),
@@ -394,10 +396,14 @@ package_sha256(manifest: Mapping[str, Any]) -> str
   (`options/<profile>/<atom_id>-<rank>.wav`), the wave manifest and the composite hash of
   all 1,536 option combinations; no message WAVs.
 - `build_package` needs a frozen, non-void `study` or `synthetic` store book with 16
-  labelled atoms that passes `store.verify` anchored on the head of its `freeze` record
-  (`manifest.book.frozen_head`; `expected_head` must equal it); it refuses `fallback`
-  books (`E_BOOK`) and study packages inside the repository (`E_POLICY`). Same book,
-  same bytes and hash.
+  labelled atoms that passes `store.verify`. Every store read is anchored
+  (`expected_head=`) on the head of its `freeze` record, which the manifest records with
+  the book's `renderer_hash` and `validator_hash` (`book.frozen_head`; a given
+  `expected_head` must equal it). It refuses void books, `fallback` books (`E_BOOK`) and
+  study packages inside the repository (`E_POLICY`). Same book, same bytes and hash.
+- `package_hashes(packages, *, set_name, keys=None)` and `write_package_hashes(doc, path)`:
+  the run-sheet mapping of #32 (`av-schedules/package-hashes`; A keys = slot-list book
+  IDs, B keys = dyad slot IDs); tool `sound/tools/package_hashes.py`.
 - `seal()` adds `permutation.json` (#29; `demo: true` only for DEMO packages, cells
   equal to `av_sound.grammar.MATRIX`), `allocation.json` (`{"swap_w1_w4": bool}` plus B
   `structured_family`) and `schedules/<person_id>/<visit>.json` (#30), checks them

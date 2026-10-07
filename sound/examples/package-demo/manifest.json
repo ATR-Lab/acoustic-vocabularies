@@ -1,7 +1,9 @@
 {
   "book": {
     "frozen_head": "c1e604e065d3c54c4657b2b786af23d3e8c641e8c2a6ef103c53ca5147ddb98e",
-    "snapshot_sha256": "0d129feefe9543fa31b57e869c0511937ee3be276c1262edd4ad51bb683d01e6"
+    "renderer_hash": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d",
+    "snapshot_sha256": "0d129feefe9543fa31b57e869c0511937ee3be276c1262edd4ad51bb683d01e6",
+    "validator_hash": "fd2d6acfb5aa9f673b46e9e8baab3abda816142af6ddd5e32a5bcecef928a650"
   },
   "builder": {
     "name": "av-sound",
@@ -166,7 +168,7 @@
   "format": "av-sound/package",
   "format_version": 1,
   "package_id": "DEMO-BOOK-P1",
-  "package_sha256": "7dc949cbd57010226b9304195c12461e0158c768d3f3da9de8341c891efbeccb",
+  "package_sha256": "49f3ba54521fb07381923c230f1ad01ee0e999050f2778f6e2704b4aae212cbf",
   "profile": "P1",
   "renderer_version": "0.1.0",
   "study": "A"
