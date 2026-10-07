@@ -1,8 +1,9 @@
 # Round orchestrator, common selector and panel session host (#20)
 
-Modules: `av_generation.orchestrator` (public API), `av_generation.selector`, and the
-private `_orch_host` (panel session host), `_orch_index` (log index) and `_batch_sim`
-(synthetic runs for tests and evidence). Protocol references: Study A protocol §3.1
+Modules: `av_generation.orchestrator` (public API), `av_generation.selector`,
+`av_generation.batch_runner` (the study-mode batch runner and its command line, section
+9), and the private `_orch_host` (panel session host), `_orch_index` (log index) and
+`_batch_sim` (stand-ins for tests, evidence and dry runs). Protocol references: Study A protocol §3.1
 (matching, counterbalancing, book-ID rotation), §3.3 (budget, rating slots, selector,
 withdrawal), §3.7 (fallback). Architecture: [`architecture.md`](architecture.md) §3-§5.
 
@@ -27,6 +28,7 @@ withdrawal), §3.7 (fallback). Architecture: [`architecture.md`](architecture.md
 | `read_book_key` | `(path_or_mapping, unit_id) -> tuple[BookAssignment, ...]` | Schedules book key (#31) |
 | `build_batch_config` | `(definition, books, *, set_ns, panel_id, order_index, raters, threshold, fallback, fallback_manifest_sha256, batch_id=None, seed_namespace=None, sources=None) -> BatchConfig` | One batch config |
 | `rebuild_batch_config` | `(config, *, set_ns, panel_id, raters, seed_namespace) -> BatchConfig` | Config of a rebuilt batch |
+| `check_batch_pins` | `(config, generation_config, fallback, meanings, *, kind) -> None` | Input pins and set/kind rule (`E_CONFIG`, `E_KIND`); run by `Orchestrator` and the batch runner |
 | `nearest_committed` | `(book: BookState, recipe) -> CommittedAtom \| None` | Nearest-reference lookup |
 | `substitute_book_id` | `(book_id) -> str` | Store book of a substituted book (`<book>-FB`) |
 | `RatingSlotPlan`, `ConsoleView`, `BookConsole`, `BatchDefinition` | dataclasses | |
@@ -237,6 +239,11 @@ leaves runs with a `batch_incomplete` event out.
 | Rating codes | `E_LOCKED` before unlock, `E_SLOT_CLOSED` after lock | The skeleton lists both codes without timing rules |
 | `config_sha256` in the run manifest | `BatchConfig.sha256()` (canonical JSON) | Same hash definition as the generation config |
 | `freeze_manifest_sha256` | SHA-256 of `jsonio.document_text(manifest)` | Equals the file hash of a manifest written with `write_document` |
+| Study-mode runner (section 9) | A separate module, `batch_runner`, builds the batch from #16-#19 and #21 and keeps `Orchestrator` free of transport | The orchestrator stays testable with any `RoundProposer` and any panel; one place wires the real components |
+| One start-check function | `batch_runner.check_batch_start`, run before the run directory exists | A refused start leaves nothing behind; #25 adds the G4 freeze guard in one place |
+| LLM server check at start | `GET /v1/models` lists the pinned model and `GET /version` reports the pinned vLLM version; #16's mock is accepted for demo/synthetic runs only | The request log's `runtime` is then true, and a study batch cannot run against the mock |
+| Stand-ins in the runner | Simulated proposers, the HTTP bot designer and bot raters only for demo/synthetic runs (`E_MODE`) | Accelerated tests and the dry run (#22) use the same runner; a study batch never has a bot in it |
+| `--appointment next` | The appointment of the next unfinished atom, after `resume` finished an interrupted atom | One process per appointment, as booked (§3.1); an interrupted atom is finished first |
 
 ## 8. Synthetic runs (evidence)
 
@@ -262,3 +269,86 @@ the batch on every CI OS and compares. CI writes the accelerated run's logs and 
 to `generation/out/ci/orchestrator/` (artifact `generation-ci-<os>`). In accelerated real
 time a 20-s slot lasts 80 ms, so a bot whose thread a busy runner wakes late misses the
 lock and its record is `missing`; the counts hold whatever the timing.
+
+The real components run the same way in `tests/generation/test_batch_runner.py`
+(section 9): ledger, A2, A3 against #16's mock server, A1 over HTTP with a bot designer and
+bot raters, at 200x real time. CI writes that run's logs and summary to
+`generation/out/ci/batch-runner/`.
+
+## 9. Study-mode batch runner (`batch_runner`)
+
+`Orchestrator` takes its proposers and panel from the caller. `batch_runner` builds them
+from the real components and serves what people use during a batch:
+
+| Component | Built by the runner |
+| --- | --- |
+| Slot ledger (#17) | One `SlotLedger` on the run's `logs/slots.jsonl` (refusals and timing to the run's logs), shared by A1, A2 and A3 |
+| A3 (#17, #16) | `A3Proposer` with the prompt set and `OpenAICompatibleClient` on `--llm-url`; every call is logged to `logs/llm-requests.jsonl` |
+| A2 (#18) | `A2Proposer` on the shared ledger |
+| A1 (#19) | `a1.study_service` on the shared ledger and the run's play, timing and refusal logs, served with `a1.serve_a1` on `--a1-host` (port 8741); slots open back to back |
+| Panel (#21) | `serve_panel`: `panel.create_panel_app` over `Orchestrator.panel_host()` on `--panel-host` (port 8765); the session starts when every seat's station has joined |
+
+API:
+
+| Name | Signature | Purpose |
+| --- | --- | --- |
+| `load_batch_inputs` | `(*, config, meanings, fallback, generation_config=None, prompts=None, llm_manifest=None, freeze_manifest=None, proposers="real") -> BatchInputs` | Read the input files; the committed prompt set and LLM manifest by default; a demo batch without a generation config gets `demo_generation_config` |
+| `check_batch_start` | `(inputs, *, kind, run_id, proposers="real") -> None` | The start checks of every batch run (below) |
+| `probe_llm_server` | `(url, manifest, *, kind, timeout_s=5.0) -> str` | The LLM server serves the pinned model and runtime (`E_LLM_SERVER`); returns the request log's runtime label |
+| `open_batch` | `(inputs, run_dir, *, kind, clock, proposers="real", llm_url=None, a1_station=None, resume=False, purpose="batch", sim_p_failure=0.05, sim_propose=None) -> StudyBatch` | Start checks, then create (or reopen) the run directory (its name is the run ID) and build the components and the `Orchestrator` |
+| `run_session` | `(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, station_timeout_s=600, rating_policy=None, designer_invalid_slots, designer_timeout_slots, log) -> str \| None` | Serve A1 and the panel, finish an interrupted atom of a reopened run, run the appointment(s); returns the next atom |
+| `serve_panel` | `(host, *, clock, bind="127.0.0.1", port=8765)` | Context manager yielding the panel server's base URL |
+| `wait_for_stations` | `(orchestrator, *, timeout_s=600, poll_s=0.1)` | Block until every seat has joined (`E_STATIONS`) |
+| `demo_generation_config` | `(config, meanings, fallback, *, prompt_set=None, llm_manifest_sha256=None)` | The DEMO generation config of a demo/synthetic run |
+| `BatchInputs`, `StudyBatch`, `RunnerError(code, message)`, `main(argv)` | | Codes `E_INPUTS`, `E_MODE`, `E_LLM_SERVER`, `E_RUN_DIR`, `E_STATIONS` |
+
+Start checks (`check_batch_start`), before anything is created: the run ID fits the kind;
+`check_batch_pins`; with real proposers the prompt set and its meaning set, the decoding
+schema and the LLM manifest hash to the generation config's values (`E_INPUTS`); then
+`genconfig.check_run_config` (running code = config; demo configs only for demo runs; a
+confirmatory run needs the `frozen` G4 manifest with the config's hash). The G4 freeze
+guard (#25) is added in this function.
+
+Command line (from the repository root; inputs of real runs live in restricted storage):
+
+```sh
+# start checks only (prints the generation-config hash)
+uv run --project generation python -m av_generation.batch_runner check \
+  --run-dir <runs>/<run_id> --kind confirmatory --config <config.json> \
+  --generation-config <generation-config.json> --meanings <meanings dir> \
+  --fallback <fallback manifest> --freeze-manifest <freeze manifest>
+# appointment of a batch: same inputs, plus the servers
+uv run --project generation python -m av_generation.batch_runner run <same inputs> \
+  --llm-url http://<llm-host>:8000 --a1-host <lab interface> --a1-station <kiosk station> \
+  --panel-host <lab interface> --appointment next
+# next appointment (a new process): reopen the run
+uv run --project generation python -m av_generation.batch_runner run <same inputs> \
+  --llm-url ... --a1-host ... --panel-host ... --resume
+```
+
+The runner prints the A1 page URL (for the kiosk policy) and the station page URL, waits
+for the three stations, runs the appointment and prints the atoms finished. `--resume` on
+a finished batch serves nothing and writes nothing (the closed manifest hashes every
+file). Mode errors (`E_MODE`) are found before the run directory is created. Exit codes: 0
+done, 1 refused (`error: <code>: ...`), 3 batch incomplete (rebuild it, section 6), 130
+interrupted (the logs are kept; reopen with `--resume`). Other options: `--prompts`,
+`--llm-manifest` (defaults: the committed set and manifest), `--a1-port`, `--panel-port`,
+`--station-timeout-s`, `--appointment 1..4|all`, `--purpose dry_run`.
+
+Synthetic runs (`--kind demo|synthetic`, `DEMO-` run IDs; the DEMO batch config, meaning
+set and fallback set are the defaults): `--designer bot` works the A1 app over HTTP
+(`_batch_sim.BotDesigner`), `--panel bots` seats in-process bot raters on the panel
+session contract (`_batch_sim.SyntheticPanel`), `--proposers sim` uses the simulated
+proposers, `--clock scaled --speed N` runs in accelerated real time and `--clock manual`
+in virtual time driven by the bot panel (bots only). For example, with #16's mock server
+on `127.0.0.1:8000` (`python -m av_generation.mock_llm serve <dir>`):
+
+```sh
+uv run --project generation python -m av_generation.batch_runner run \
+  --run-dir /tmp/runs/DEMO-A-real-01 --kind synthetic --llm-url http://127.0.0.1:8000 \
+  --designer bot --panel bots --clock scaled --speed 200 --a1-port 0 --appointment all
+```
+
+Pending (#21): the panel server. Until #21 lands, `serve_panel` (and so `--panel
+stations`) raises `NotImplementedError` from the skeleton `panel.create_panel_app`; the
+tests exercise the serving path with a stand-in app.

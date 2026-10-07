@@ -66,9 +66,17 @@ designer has finished.
 
 ### Study session
 
-**Pending (#20):** the batch runner that serves the A1 page during a study batch is not
-built yet. When it is, it builds the service with `a1.study_service(...)`, serves it
-with `a1.serve_a1(..., host=<lab interface>)` on port 8741 and prints the page URL.
+The batch runner (#20; `generation/docs/orchestrator.md`, section 9) serves the A1 page
+during a study batch. It builds the service with `a1.study_service(...)` on the run's
+shared ledger, serves it with `a1.serve_a1(..., host=<lab interface>)` on port 8741 and
+prints the page URL:
+
+```bash
+uv run --project generation python -m av_generation.batch_runner run <batch inputs> \
+    --llm-url http://<llm-host>:8000 --a1-host <lab interface> --a1-station S9 \
+    --panel-host <lab interface> --appointment next
+```
+
 Then open that URL in the kiosk browser of the designer's station, and check that no
 PRACTICE banner is shown and that the run's designer ID is the designer present.
 
