@@ -16,6 +16,7 @@ import json
 import os
 import shutil
 import socket
+import threading
 from pathlib import Path
 
 import httpx
@@ -660,6 +661,16 @@ def test_panel_is_served_and_the_session_waits_for_every_station(tmp_path, monke
     for seat in host.seats():
         host.station_joined(seat.rater_id, seat.station, seat.kind)
     br.wait_for_stations(orch, timeout_s=1)
+    # after the end: the session waits (bounded) until the stations have left
+    assert br.wait_for_stations_to_leave(orch, timeout_s=0.2, poll_s=0.05) == ("S1", "S2", "S3")
+    seats = list(host.seats())
+    host.station_left(seats[0].rater_id, seats[0].station)
+    left = threading.Timer(
+        0.1, lambda: [host.station_left(s.rater_id, s.station) for s in seats[1:]]
+    )
+    left.start()
+    assert br.wait_for_stations_to_leave(orch, timeout_s=5, poll_s=0.02) == ()
+    left.join()
 
 
 def test_a_station_session_serves_the_panel_and_starts_when_every_seat_joined(
@@ -690,12 +701,15 @@ def test_a_station_session_serves_the_panel_and_starts_when_every_seat_joined(
             panel_port=0,
             on_panel=start_stations,
             station_timeout_s=10,
+            station_end_grace_s=0.3,
             log=lines.append,
         )
     finally:
         for panel in stations:
             panel.stop()
     assert nxt == inputs.config.atom_order[4]
+    # the stand-in stations never leave: the session waited its grace and said so
+    assert lines[-2] == "Stations still connected after the end: S1, S2, S3"
     for line, (station, rater) in zip(
         lines[:3], (("S1", "R01"), ("S2", "R02"), ("S3", "R03")), strict=True
     ):
