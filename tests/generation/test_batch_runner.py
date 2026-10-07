@@ -6,7 +6,8 @@ real A1 HTTP service (#19) worked by a bot designer, with bot raters on the pane
 contract, in accelerated real time (`ScaledClock`). It must reach the issue's counts
 (48 commits, 576 slot records) with logs the audit (#24) can read. The other tests cover
 the start checks (the hook for the G4 freeze guard, #25), the LLM server probe, the panel
-serving path and the command line.
+serving path and the command line. Keyed station sessions with bot stations on the real
+panel server (#21) are in `test_rater_panel_runner.py`.
 """
 
 import collections
@@ -45,6 +46,7 @@ from av_generation.orchestrator import (
     read_batch_table,
     read_book_key,
 )
+from av_generation.panel import seat_key, station_url
 from av_generation.prompts import default_prompt_set_dir, load_prompt_set
 from av_generation.rater_protocol import STATION_PAGE
 from av_generation.records import (
@@ -477,8 +479,8 @@ def test_llm_probe_accepts_the_pinned_runtime_and_the_mock_for_demo_runs(serve_a
 def test_panel_is_served_and_the_session_waits_for_every_station(tmp_path, monkeypatch):
     calls = []
 
-    def stub_panel_app(host, *, clock):
-        calls.append((host, clock))
+    def stub_panel_app(host, *, clock, access_secret):
+        calls.append((host, clock, access_secret))
         app = FastAPI()
         app.get(STATION_PAGE)(lambda: PlainTextResponse("station"))
         return app
@@ -487,9 +489,17 @@ def test_panel_is_served_and_the_session_waits_for_every_station(tmp_path, monke
     batch = sim.make_sim_batch(tmp_path, "DEMO-panel-01", clock=ManualClock())
     orch = batch.orchestrator
     host = orch.panel_host()
-    with br.serve_panel(host, clock=batch.clock, port=0) as base:
+    with br.serve_panel(host, clock=batch.clock, port=0) as served:
+        base = served.base_url
         assert httpx.get(f"{base}{STATION_PAGE}", trust_env=False).text == "station"
-    assert calls == [(host, batch.clock)]
+    called_host, called_clock, secret = calls[0]
+    assert (called_host, called_clock) == (host, batch.clock) and len(secret) == 32
+    assert list(served.station_urls) == ["S1", "S2", "S3"]
+    assert served.station_urls["S1"] == station_url(
+        base, "S1", "R01", key=seat_key(secret, "R01", "S1")
+    )
+    with br.serve_panel(host, clock=batch.clock, port=0):  # a fresh secret per session
+        assert len(calls) == 2 and calls[1][2] != secret
     with pytest.raises(br.RunnerError) as err:
         br.wait_for_stations(orch, timeout_s=0.2, poll_s=0.05)
     assert err.value.code == "E_STATIONS" and "S1, S2, S3" in str(err.value)
@@ -504,7 +514,7 @@ def test_a_station_session_serves_the_panel_and_starts_when_every_seat_joined(
     """`panel="stations"`: the panel app is served, `on_panel` gets its URL (where the
     dry run starts its bot stations), and the appointment starts once all seats joined.
     Here an in-process panel stands in for the three stations (#21 serves the real ones)."""
-    monkeypatch.setattr(br, "create_panel_app", lambda host, *, clock: FastAPI())
+    monkeypatch.setattr(br, "create_panel_app", lambda host, *, clock, access_secret: FastAPI())
     inputs = demo_inputs("sim")
     clock = ScaledClock(1000)
     batch = br.open_batch(
@@ -532,8 +542,12 @@ def test_a_station_session_serves_the_panel_and_starts_when_every_seat_joined(
         for panel in stations:
             panel.stop()
     assert nxt == inputs.config.atom_order[4]
-    assert lines[0].startswith("Rater stations: http://127.0.0.1:")
-    assert lines[0].endswith(STATION_PAGE) and lines[1] == "Waiting for stations: S1, S2, S3"
+    for line, (station, rater) in zip(
+        lines[:3], (("S1", "R01"), ("S2", "R02"), ("S3", "R03")), strict=True
+    ):
+        assert line.startswith(f"Rater station {station} ({rater}): http://127.0.0.1:")
+        assert f"{STATION_PAGE}?station={station}&rater={rater}&key=" in line
+    assert lines[3] == "Waiting for stations: S1, S2, S3"
     assert lines[-1] == f"Atoms finished: 4/16; next: {nxt}"
     ratings = read_records(batch.layout.log("rating"), RatingRecord)
     assert set(collections.Counter(r.rater_id for r in ratings).values()) == {4 * 36}

@@ -28,6 +28,11 @@ missing) and `withdraw_at` (the rater withdraws in that slot).
 another rater withdrew and the host ended the session (#20); `withdrawn` (the field)
 says whether this bot withdrew.
 
+Seat keys: a server with an access secret (the batch runner's panel always has one)
+admits a bot only with its seat's key (`access_key`). `BotRater.from_station_url` takes
+the seat and the key from a keyed station URL, e.g. one of
+`batch_runner.station_urls(batch)` inside `run_session(on_panel=...)` (#22).
+
 Clocks: `clock` is the bot's own monotonic clock (default `SystemClock`). For
 accelerated runs (`ScaledClock`) pass a clock with the same speed as the server's, e.g.
 the server's clock object itself; real waits are divided by `clock.speed`.
@@ -44,7 +49,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Final
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx
 from websockets.exceptions import ConnectionClosed, InvalidHandshake
@@ -66,7 +71,7 @@ from av_generation.panel import (
     SYNC_BURST,
     SYNC_INTERVAL_MS,
 )
-from av_generation.rater_protocol import PROTOCOL_VERSION, WS_PATH, parse_message
+from av_generation.rater_protocol import PROTOCOL_VERSION, STATION_PAGE, WS_PATH, parse_message
 from av_generation.seeds import bot_seed_key, rng_for
 
 WITHDRAW_REASON: Final = "rater_request"
@@ -247,6 +252,44 @@ class BotRater:
         """Set when the bot withdraws; sent again after each `welcome` until `end`."""
         self._finished = False
         self._http = httpx.Client(base_url=self.base_url, timeout=10.0)
+
+    @classmethod
+    def from_station_url(
+        cls,
+        url: str,
+        *,
+        run_id: str,
+        policy: BotRatingPolicy,
+        clock: Clock | None = None,
+        max_reconnects: int = 20,
+        open_timeout_s: float = 10.0,
+    ) -> BotRater:
+        """A bot for the seat of a station page URL (`panel.station_url`): the server
+        root, `station`, `rater` and, when present, the seat key `key`, the URL the
+        operator would open on that station (#22: `batch_runner.station_urls`)."""
+        parts = urlsplit(url)
+        if parts.scheme not in ("http", "https") or not parts.path.endswith(STATION_PAGE):
+            raise ValueError(f"not a station page URL: {parts.scheme}://{parts.netloc}{parts.path}")
+        query = parse_qs(parts.query)
+        values: dict[str, str] = {}
+        for name in ("station", "rater", SEAT_KEY_PARAM):
+            given = query.get(name, [])
+            if len(given) > 1 or (name != SEAT_KEY_PARAM and not given):
+                raise ValueError(f"a station URL names exactly one {name!r}")
+            if given:
+                values[name] = given[0]
+        root = parts.path[: -len(STATION_PAGE)]
+        return cls(
+            f"{parts.scheme}://{parts.netloc}{root}",
+            rater_id=values["rater"],
+            station=values["station"],
+            run_id=run_id,
+            policy=policy,
+            clock=clock,
+            max_reconnects=max_reconnects,
+            open_timeout_s=open_timeout_s,
+            access_key=values.get(SEAT_KEY_PARAM),
+        )
 
     # -- time ---------------------------------------------------------------
 

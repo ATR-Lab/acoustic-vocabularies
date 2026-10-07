@@ -13,7 +13,8 @@ them for a batch run and serves what people use during it:
   logs, served to the designer's kiosk with `a1.serve_a1` while the batch runs; its
   slots open back to back (#19);
 - the rater panel: the panel server (`panel.create_panel_app`, #21) over the
-  orchestrator's `PanelSessionHost`, served by `serve_panel`.
+  orchestrator's `PanelSessionHost`, served by `serve_panel` with a fresh access secret
+  per session; the operator gets one keyed URL per station (`ServedPanel.station_urls`).
 
 Synthetic runs (`demo`/`synthetic` kinds only) can swap in the stand-ins of
 `_batch_sim`: simulated proposers (`proposers="sim"`), a bot designer that works the
@@ -40,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import sys
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -85,11 +87,10 @@ from av_generation.orchestrator import (
     Orchestrator,
     check_batch_pins,
 )
-from av_generation.panel import create_panel_app
+from av_generation.panel import create_panel_app, seat_key, station_url
 from av_generation.panel_session import PanelSessionHost
 from av_generation.prompts import PromptSet, default_prompt_set_dir, load_prompt_set
 from av_generation.proposers import RoundProposer
-from av_generation.rater_protocol import STATION_PAGE
 from av_generation.records import RecordWriter, RunManifest
 from av_generation.rundir import (
     MANIFEST_NAME,
@@ -105,6 +106,7 @@ __all__ = [
     "DEMO_GENERATION_CONFIG_NAME",
     "PANEL_PORT",
     "RunnerError",
+    "ServedPanel",
     "StudyBatch",
     "check_batch_start",
     "demo_generation_config",
@@ -114,6 +116,7 @@ __all__ = [
     "probe_llm_server",
     "run_session",
     "serve_panel",
+    "station_urls",
     "wait_for_stations",
 ]
 
@@ -356,6 +359,18 @@ def probe_llm_server(
 # Opening a batch run
 
 
+@dataclass(frozen=True, slots=True)
+class ServedPanel:
+    """The rater panel served for one station session (`serve_panel`)."""
+
+    base_url: str
+    station_urls: Mapping[str, str]
+    """Station -> its station page URL with the seat key (`panel.station_url`), in seat
+    order. A key opens only its own seat, and only while this server runs (the access
+    secret is drawn per session and never stored). The runner prints the URLs for the
+    operator; it never writes them to the run."""
+
+
 @dataclass
 class StudyBatch:
     """One opened batch run with its components (restricted unless DEMO)."""
@@ -375,6 +390,9 @@ class StudyBatch:
     llm: OpenAICompatibleClient | None = None
     bot_designer: sim.BotDesigner | None = None
     """The bot designer of the last session (`run_session(designer="bot")`)."""
+    served_panel: ServedPanel | None = None
+    """The panel `run_session(panel="stations")` is serving right now (`station_urls`);
+    `None` outside a station session."""
 
 
 def _layout(run_dir: Path, kind: RunKind, *, resume: bool) -> RunLayout:
@@ -506,13 +524,35 @@ def serve_panel(
     clock: Clock,
     bind: str = "127.0.0.1",
     port: int = PANEL_PORT,
-) -> Iterator[str]:
+) -> Iterator[ServedPanel]:
     """Serve the rater panel server (#21, `panel.create_panel_app`) for the session
-    `host` (`Orchestrator.panel_host()`); yields its base URL. The stations open
-    `<base>` + `rater_protocol.STATION_PAGE`. This is the one place the runner creates the
-    panel app."""
-    with serve_in_thread(create_panel_app(host, clock=clock), host=bind, port=port) as base:
-        yield base
+    `host` (`Orchestrator.panel_host()`); yields its base URL and one keyed station URL
+    per seat (`ServedPanel`). This is the one place the runner creates the panel app.
+
+    Each call draws a fresh access secret (`secrets.token_bytes(32)`), held only by the
+    app and this frame: never logged, printed or written. A station joins and fetches
+    assets only with its seat's key (`panel.seat_key`), which its URL carries; a wrong
+    or missing key gets `E_UNKNOWN_RATER` (WebSocket) or HTTP 403 (assets)."""
+    secret = secrets.token_bytes(32)
+    app = create_panel_app(host, clock=clock, access_secret=secret)
+    with serve_in_thread(app, host=bind, port=port) as base:
+        urls = {
+            seat.station: station_url(
+                base, seat.station, seat.rater_id, key=seat_key(secret, seat.rater_id, seat.station)
+            )
+            for seat in host.seats()
+        }
+        yield ServedPanel(base, urls)
+
+
+def station_urls(batch: StudyBatch) -> dict[str, str]:
+    """The keyed station URLs (station -> URL) of the panel that `run_session` serves for
+    `batch` right now. For bot stations started from `run_session(on_panel=...)` (#22):
+    `rater.BotRater.from_station_url(url, ...)` takes the seat and its key from the URL.
+    `E_STATIONS` outside a station session."""
+    if batch.served_panel is None:
+        raise RunnerError(E_STATIONS, "no rater panel is being served for this batch")
+    return dict(batch.served_panel.station_urls)
 
 
 def wait_for_stations(
@@ -543,14 +583,25 @@ def _appointments(orchestrator: Orchestrator, appointment: Appointment) -> list[
 
 
 def _check_session(
-    kind: RunKind, clock: Clock, panel: PanelMode, designer: DesignerMode, *, has_a1: bool
+    kind: RunKind,
+    clock: Clock,
+    panel: PanelMode,
+    designer: DesignerMode,
+    *,
+    has_a1: bool,
+    appointment: Appointment = "next",
 ) -> None:
     """Bots and bot designers run demo and synthetic batches only; a manual clock only
-    moves when bot raters drive it and nobody waits for a human designer (`E_MODE`)."""
+    moves when bot raters drive it and nobody waits for a human designer; a station
+    session is one appointment, since the stations end with it (`end`) (`E_MODE`)."""
     if (panel == "bots" or (designer == "bot" and has_a1)) and kind not in PUBLIC_RUN_KINDS:
         raise RunnerError(E_MODE, f"bot raters and bot designers never run a {kind} batch")
     if isinstance(clock, ManualClock) and (panel != "bots" or (has_a1 and designer != "bot")):
         raise RunnerError(E_MODE, "a manual clock needs bot raters and, with A1, a bot designer")
+    if panel == "stations" and appointment == "all":
+        raise RunnerError(
+            E_MODE, "a station session runs one appointment; start the next one with --resume"
+        )
 
 
 def _stdout(line: str) -> None:
@@ -579,10 +630,15 @@ def run_session(
 
     - A1 (real proposers): `a1.serve_a1(batch.a1, host=a1_host, port=a1_port)` for the
       designer's kiosk, or for a bot designer (`designer="bot"`, `_batch_sim.BotDesigner`).
-    - Panel: `serve_panel` for the stations (`panel="stations"`; `on_panel(base_url)` is
-      called once it serves, e.g. to start bot stations, and the session waits until
-      every seat has joined), or in-process bot raters (`panel="bots"`,
-      `_batch_sim.SyntheticPanel` with `rating_policy`, default the seeded bot policy).
+    - Panel: `serve_panel` for the stations (`panel="stations"`): `log` gets one keyed
+      station URL per seat (the operator opens each on its station; a fresh access
+      secret per session, so only these URLs open a seat), `on_panel(base_url)` is called
+      once it serves, e.g. to start bot stations from `station_urls(batch)`, and the
+      session waits until every seat has joined. A station session runs one appointment
+      (`E_MODE` for `"all"`): the stations end with it, so the next appointment needs
+      the run reopened (`open_batch(..., resume=True)`; `E_MODE` on this batch). Or
+      in-process bot raters (`panel="bots"`, `_batch_sim.SyntheticPanel` with
+      `rating_policy`, default the seeded bot policy).
     - A reopened run (`batch.resumed`) first finishes an interrupted atom
       (`Orchestrator.resume`). A closed run (all atoms done, manifest closed) is left
       untouched: nothing is served or written.
@@ -592,7 +648,14 @@ def run_session(
     Bots and bot designers run demo and synthetic batches only (`E_MODE`). Returns the next
     atom (`None` when the batch is finished); `BatchIncomplete` after a withdrawal."""
     orch = batch.orchestrator
-    _check_session(batch.kind, batch.clock, panel, designer, has_a1=batch.a1 is not None)
+    _check_session(
+        batch.kind,
+        batch.clock,
+        panel,
+        designer,
+        has_a1=batch.a1 is not None,
+        appointment=appointment,
+    )
     run_id = batch.layout.run_id
     if RunManifest.read(batch.layout.manifest).closed_utc is not None:
         # A finished, closed run: nothing to serve, and nothing may be appended (the
@@ -602,6 +665,14 @@ def run_session(
             "the run is closed"
         )
         return None
+    if panel == "stations" and orch.panel_host().snapshot().state == "ended":
+        # A station joining an ended session shows the end screen and leaves: an
+        # appointment that ended in this process needs the run reopened for the next.
+        raise RunnerError(
+            E_MODE,
+            "this batch's panel session has ended; reopen the run (--resume) for the "
+            "next appointment",
+        )
     with ExitStack() as stack:
         if batch.a1 is not None:
             page = stack.enter_context(serve_a1(batch.a1, host=a1_host, port=a1_port))
@@ -621,12 +692,16 @@ def run_session(
             policy = rating_policy if rating_policy is not None else sim.seeded_policy(run_id)
             stack.enter_context(sim.SyntheticPanel(host, batch.clock, policy))
         else:
-            base = stack.enter_context(
+            served = stack.enter_context(
                 serve_panel(host, clock=batch.clock, bind=panel_host, port=panel_port)
             )
-            log(f"Rater stations: {base}{STATION_PAGE}")
+            batch.served_panel = served
+            stack.callback(setattr, batch, "served_panel", None)  # the keys end with it
+            for seat in host.seats():
+                url = served.station_urls[seat.station]
+                log(f"Rater station {seat.station} ({seat.rater_id}): {url}")
             if on_panel is not None:
-                on_panel(base)
+                on_panel(served.base_url)
             log(f"Waiting for stations: {', '.join(s.station for s in host.seats())}")
             wait_for_stations(orch, timeout_s=station_timeout_s)
         if batch.resumed:
@@ -742,8 +817,16 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         )
         return 0
     clock = _clock(args)
+    appointment: Appointment = (
+        args.appointment if args.appointment in ("next", "all") else int(args.appointment)
+    )
     _check_session(  # before anything is created
-        RunKind(args.kind), clock, args.panel, args.designer, has_a1=args.proposers == "real"
+        RunKind(args.kind),
+        clock,
+        args.panel,
+        args.designer,
+        has_a1=args.proposers == "real",
+        appointment=appointment,
     )
     batch = open_batch(
         inputs,
@@ -757,9 +840,6 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         purpose=args.purpose,
     )
     _stdout(f"Run {batch.layout.run_id} ({batch.kind}): batch {inputs.config.batch_id}")
-    appointment: Appointment = (
-        args.appointment if args.appointment in ("next", "all") else int(args.appointment)
-    )
     run_session(
         batch,
         appointment=appointment,
