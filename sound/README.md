@@ -57,14 +57,14 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `RENDERER_VERSION`, `renderer_hash()`, `renderer_recipe_schema_hash()` | Provenance for store records and the apparatus manifest (pinned in `testvectors/renderer/vectors.json`) |
 | `self_test()` | Renders two pinned reference vectors; call at start-up on a generation host |
 | `SAMPLE_RATE`, `SAMPLES_PER_MS`, `MIN_EVENT_SAMPLES`, `RMS_TARGET` | Constants (48,000; 48; 2,880; 7,336) |
-| `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
-| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `validate(candidate, profile, committed=(), *, reserved=None, threshold=None) -> ValidationResult` | Admissibility check; all failing reason codes in a fixed order ([`docs/validator.md`](docs/validator.md)) |
 | `Reference(ref_id, recipe, pcm_sha256, profile)`, `Reference.from_rendered(ref_id, rendered)` | A committed motif or retained bank option to check against |
 | `nearest_reference(candidate, committed) -> NearestReference \| None` | Closest committed reference by 12-feature distance; ties to the lowest index |
 | `features(recipe)`, `sum_squared_diff(a, b)`, `distance(a, b)`, `separated(a, b, threshold)` | Exact 12-feature metric; `distance` is a float for reports |
 | `REASON_CODES`, `VALIDATOR_VERSION`, `load_separation_threshold()`, `parse_threshold()` | Codes, version and the configured threshold (exact `Fraction`) |
 | `load_reserved_registry()`, `ReservedRegistry`, `ReservedEntry` | Reserved signals (`E_RESERVED`) |
+| `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
+| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `nonlexical_assets()`, `nonlexical_asset(id)`, `calibration_example(profile)` -> `NonlexicalAsset` | Calibration examples (96,000 samples per profile), READY cue and grammar clicks; `.pcm`, `.pcm_sha256`, `.file_sha256`, `.segments`, levels ([`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `build_reserved_registry()`, `CALIBRATION_SAMPLES` | The registry `reserved/registry.json` must equal; 96,000 |
 | `AtomAudio(atom_id, profile, pcm)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` also works |
