@@ -64,6 +64,6 @@ Stable shared contracts (implemented):
 | `clock`, `netguard`, `webserve`, `llm_fake` | Clocks, outbound-network guard, uvicorn helper, scripted model client |
 
 Interfaces filled by their issues: `llm` (#16), `ledger`, `prompts`, `parser`, `a3` (#17),
-`a2` (#18), `a1` (#19), `orchestrator`, `selector` (#20), `panel`, `rater` (#21),
+`a2` (#18), `a1` (#19), `orchestrator`, `selector`, `batch_runner` (#20), `panel`, `rater` (#21),
 `dryrun` (#22), `threshold` (#23), `audit` (#24), `freeze` (#25); the bank builder (#26)
 goes in `banks/`.

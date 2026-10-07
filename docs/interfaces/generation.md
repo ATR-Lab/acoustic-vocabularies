@@ -205,8 +205,8 @@ operator guide: [`generation/docs/a1-operating-guide.md`](../../generation/docs/
   clock, meanings, station=None)` builds the service on the run's shared slot ledger and
   the run's `play`, `timing` and `slot_refusal` logs (designer from the A1 book of
   `config`); `serve_a1(service, *, host="127.0.0.1", port=DEFAULT_PORT)` is a context
-  manager that serves the app (port 8741) and yields the page URL. Pending: #20 calls
-  them for a study batch.
+  manager that serves the app (port 8741) and yields the page URL. The batch runner
+  (#20, `batch_runner`) calls them for every batch with real proposers.
 - `create_a1_app(service)`: FastAPI app serving `a1.ROUTES` (`GET /a1/`,
   `GET /a1/api/state`, `POST /a1/api/slots/open`,
   `POST /a1/api/slots/{slot_id}/submit` with `{"recipe": ...}`,
@@ -281,6 +281,12 @@ Guide and decisions: [`generation/docs/orchestrator.md`](../../generation/docs/o
 | `read_batch_table(path)`, `check_permutation(definition, permutation)`, `read_book_key(path, unit_id)`, `build_batch_config(...)`, `rebuild_batch_config(config, *, set_ns, panel_id, raters, seed_namespace)` | Batch configs from the schedules files (#29 batch table and `permutation.json`, #31 book key) |
 | `nearest_committed(book_state, recipe) -> CommittedAtom \| None` | Nearest reference by 12-feature distance, ties to the lowest commit index, `None` on the first atom |
 | `substitute_book_id(book_id)` | `<book>-FB`: store book of the frozen fallback book after a failed scan |
+| `check_batch_pins(config, generation_config, fallback, meanings, *, kind)` | The input pins and the set/kind rule (`E_CONFIG`, `E_KIND`), run by `Orchestrator` and the batch runner |
+| `batch_runner.load_batch_inputs(*, config, meanings, fallback, generation_config=None, prompts=None, llm_manifest=None, freeze_manifest=None, proposers="real") -> BatchInputs` | Reads a batch's inputs (committed prompt set and LLM manifest by default; a demo batch without a generation config gets `demo_generation_config`) |
+| `batch_runner.check_batch_start(inputs, *, kind, run_id, proposers="real")` | The one start check of every batch run, before anything is created: run ID, `check_batch_pins`, prompt-set / meaning / decoding-schema / LLM-manifest hashes against the generation config (`E_INPUTS`), stand-ins only for demo runs (`E_MODE`), `genconfig.check_run_config` (frozen G4 config for confirmatory runs). The G4 freeze guard (#25) goes here |
+| `batch_runner.open_batch(inputs, run_dir, *, kind, clock, proposers="real", llm_url=None, a1_station=None, resume=False, purpose="batch", ...) -> StudyBatch` | Start checks, `probe_llm_server` (pinned model and vLLM version; #16's mock for demo runs only; `E_LLM_SERVER`), then the run directory and the real components: one `SlotLedger` shared by `a1.study_service`, `A2Proposer` and `A3Proposer` (with `OpenAICompatibleClient` logging to `llm-requests.jsonl`) |
+| `batch_runner.run_session(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, ...) -> str \| None` | Serves A1 (`a1.serve_a1`) and the panel (`batch_runner.serve_panel` -> `panel.create_panel_app`, port 8765), waits for every seat, finishes an interrupted atom (`resume`) and runs the appointment(s). Synthetic runs only: `panel="bots"`, `designer="bot"`, `proposers="sim"` |
+| `python -m av_generation.batch_runner check\|run ...` | Command line (`--run-dir`, `--kind`, inputs, `--llm-url`, `--a1-host`, `--panel-host`, `--appointment next\|all\|1..4`, `--resume`); exit 0 / 1 refused / 3 batch incomplete |
 | `selector.score_candidate(slot, ratings, *, first_atom) -> CandidateScore` | Eligible = valid and >= 2 comfort `acceptable` (missing = not acceptable); score = exact mean of (association + distinguishability) / 2 over raters with both (first atom: distinguishability 4); fewer than 3 raters: `flagged_missing` |
 | `selector.pick_incumbent(candidates) -> (slot_id, Fraction)` | Best eligible over the atom so far; ties to the lowest `slot_index`; `(None, None)` triggers the bank scan |
 
