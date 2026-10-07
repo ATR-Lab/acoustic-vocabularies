@@ -341,10 +341,23 @@ session has ended) and each with new keys.
 
 ## Synthetic-panel dry run (#22)
 
-*Pending (#22).* Skeleton: `DryRunPlan` (`dry-run-plan.json`,
-`dry-run-plan.schema.json`: zero-eligible atoms with the expected fallback, the rating
-slots bots rate unacceptable, invalid and timed-out designer slots),
-`check_log_completeness(run_dir, *, plan=None) -> CompletenessReport`.
+Module `av_generation.dryrun`; guide, evidence and the pending GPU run:
+[`generation/docs/dry-run.md`](../../generation/docs/dry-run.md).
+
+| Name | Contract |
+| --- | --- |
+| `run_dry_run(out, run_id, *, clock, appointments=(1, 2, 3, 4), fallback_bank="demo", zero_eligible=None, llm_url=None, mock_latency_ms=3000, designer_think_ms=(10000, 35000), station_timeout_s=120, resume=False, log) -> DryRunResult` | One `synthetic` run (purpose `dry_run`) through `batch_runner`: the model (mock server or `llm_url`) and the renderer preloaded and logged as `startup_*` events (components `llm`, `renderer`); `dry-run-plan.json` written before the first slot; one keyed station session per appointment with three `rater.BotRater`s and the A1 bot designer (`ThinkingBotDesigner`) |
+| `dry_run_config(base=None, *, fallback=None) -> BatchConfig` | The DEMO batch's profile, atom order and books with batch `DEMO-DRY-P01`, seed namespace `DEMO-DRY-P01-s1`, panel order and aliases from set namespace `DEMO-DRY`, three `bot` seats |
+| `make_plan(config, *, run_id, clock, appointments, zero_eligible, fallback_bank, designer_think_ms, mock_llm_latency_ms) -> DryRunPlan` | The injected cases; `zero_eligible` items are `METHOD@POSITION` |
+| `DryRunPlan` (`dry-run-plan.schema.json`, `av-generation/dry-run-plan` v1) | `run_id`, `batch_id`, `clock`, `clock_speed`, `zero_eligible` (`InjectedFallback(book_id, atom_id, expect="bank"\|"book")`), `force_unacceptable_slots` (rating-slot IDs, never book IDs), `designer_invalid_slots`, `designer_timeout_slots`, `appointments`, `fallback_bank` (`demo` \| `single_recipe`), `designer_think_ms`, `mock_llm_latency_ms`, `p_comfort_acceptable`, `token_count_cap_ms`; `.atoms(config)` |
+| `single_recipe_fallback(fallback, profile) -> FallbackSet` | Every bank entry of `profile` = bank recipe 0: the second zero-eligible atom of a book exhausts the scan (whole-book run) |
+| `check_log_completeness(run_dir, *, plan=None) -> CompletenessReport(ok, problems, counts)` | Commits in the final store books with their waveform SHA-256 in the vocabulary store, slot records per method with an outcome and none replenished, rating records per rater (placeholders included), decisions, 0 message plays, fallback events equal to `plan.zero_eligible`, the injected designer slots, timing and startup events, the closed manifest; counts scale with `plan.appointments` |
+| `timing_rows(run_dir) -> (rows, TimingSummary)`, `write_timing(run_dir, out_dir)` | `timing.csv` (`TIMING_COLUMNS`: per round, atom and appointment, and startup) and `timing-summary.json` (`atom_ok` <= 20 min, `appointment_ok` <= 80 min, `appointment_within_booking` <= 90 min) |
+| `tally_logs(run_dir)`, `compare_with_audit(run_dir, audit_dir, path)`, `write_hand_tally(run_dir, path)` | Independent recount from the raw JSONL lines (standard library only) against the #24 audit; #24's tally sheet with `hand_count` filled |
+| `write_bundle(run_dir, path)`, `write_evidence(run_dir, evidence_dir, *, bundle_dir=None, result=None)` | Deterministic tar.gz of the run directory; the text evidence with `manifest.json` (`av-generation/dry-run-evidence` v1) |
+| `python -m av_generation.dryrun run\|check\|timing\|tally\|evidence` | Exit 0 all checks pass, 1 a check fails, 2 refused |
+
+Handoffs: the dry-run logs are the reference dataset of the #24 audit (`generation/runs/DEMO-dry-run-accel-01/` holds its audit and the tally comparison); the measured timings go to O3.1.5 and the booking note to O6.2.1 (`generation/docs/dry-run.md` section 8). Committed evidence: `generation/runs/DEMO-dry-run-*/` (text only; the bundles are outside git, their SHA-256 in each `manifest.json`).
 
 ## Generation audit reports (#24)
 
