@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/confirmatory-plan.schema.json",
+  "title": "Confirmatory Study B bank campaign plan",
+  "description": "plan.json of a confirmatory bank campaign (#28; Study B protocol §4): the G4 freeze the campaign runs under, the 72 banks (bank-C001..bank-C064 main dyad slots B-C01..B-C64, bank-C065..bank-C072 spares B-S01..B-S08; DEMO-C001.. in a rehearsal) with their unit permutation hashes and seed namespaces, the seed check summary (unique across the banks, disjoint from the pilot namespaces) and an optional run-size estimate from the pilot throughput. Restricted storage only: it names the seed namespaces. Written once by av_banks.confirmatory.plan.create_plan; rebuilds of crashed banks are appended to rebuilds.jsonl.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bank_version",
+    "banks",
+    "campaign_id",
+    "created_utc",
+    "demo",
+    "format",
+    "format_version",
+    "freeze",
+    "generation_config_sha256",
+    "kind",
+    "pilot",
+    "seeds",
+    "set",
+    "sizing"
+  ],
+  "properties": {
+    "format": {"const": "av-banks/confirmatory-plan"},
+    "format_version": {"const": 1},
+    "campaign_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,38}[A-Za-z0-9]$"},
+    "set": {"enum": ["confirmatory", "demo"]},
+    "demo": {"type": "boolean"},
+    "kind": {"enum": ["confirmatory", "demo"]},
+    "created_utc": {"$ref": "#/$defs/utc"},
+    "bank_version": {"$ref": "#/$defs/version"},
+    "generation_config_sha256": {"$ref": "#/$defs/sha256"},
+    "freeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_frozen_sha256",
+        "freeze_version",
+        "manifest_sha256",
+        "repo_commit",
+        "status",
+        "tag",
+        "tag_checked"
+      ],
+      "properties": {
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["draft", "frozen"]},
+        "freeze_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+        "tag": {"oneOf": [{"type": "string", "pattern": "^[!-~]{1,64}$"}, {"type": "null"}]},
+        "repo_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
+        "config_frozen_sha256": {"$ref": "#/$defs/sha256"},
+        "tag_checked": {"type": "boolean"}
+      }
+    },
+    "seeds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distinct_seeds", "keys", "seed_check_sha256", "seeds_digest"],
+      "properties": {
+        "keys": {"type": "integer", "minimum": 0},
+        "distinct_seeds": {"type": "integer", "minimum": 0},
+        "seeds_digest": {"$ref": "#/$defs/sha256"},
+        "seed_check_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "pilot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespaces", "records_checked", "sources"],
+      "properties": {
+        "namespaces": {"type": "array", "items": {"$ref": "#/$defs/namespace"}, "uniqueItems": true},
+        "records_checked": {"type": "integer", "minimum": 0},
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "name", "sha256"],
+            "properties": {
+              "kind": {"enum": ["bank_manifest", "csv", "namespace"]},
+              "name": {"type": "string", "minLength": 1, "maxLength": 255},
+              "sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+            }
+          }
+        }
+      }
+    },
+    "sizing": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "expected_hours",
+            "expected_slots",
+            "parallel_banks",
+            "pilot_banks",
+            "pilot_slots_max",
+            "pilot_slots_mean",
+            "slot_ms_p95_max",
+            "slots_per_minute",
+            "worst_hours",
+            "worst_slots"
+          ],
+          "properties": {
+            "pilot_banks": {"type": "integer", "minimum": 1},
+            "pilot_slots_mean": {"type": "number", "minimum": 0},
+            "pilot_slots_max": {"type": "integer", "minimum": 0},
+            "slots_per_minute": {"type": "number", "minimum": 0},
+            "slot_ms_p95_max": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+            "parallel_banks": {"type": "integer", "minimum": 1},
+            "expected_slots": {"type": "integer", "minimum": 0},
+            "worst_slots": {"type": "integer", "minimum": 0},
+            "expected_hours": {"type": "number", "minimum": 0},
+            "worst_hours": {"type": "number", "minimum": 0}
+          }
+        }
+      ]
+    },
+    "banks": {
+      "type": "array",
+      "minItems": 72,
+      "maxItems": 72,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bank_id",
+          "bank_version",
+          "dyad_slot",
+          "permutation_sha256",
+          "role",
+          "run_id",
+          "seed_namespace",
+          "sequence"
+        ],
+        "properties": {
+          "sequence": {"type": "integer", "minimum": 1, "maximum": 72},
+          "bank_id": {"type": "string", "pattern": "^(bank|DEMO)-C[0-9]{3}$"},
+          "role": {"enum": ["main", "spare"]},
+          "dyad_slot": {"type": "string", "pattern": "^B-[CS][0-9]{2}$"},
+          "bank_version": {"$ref": "#/$defs/version"},
+          "seed_namespace": {"$ref": "#/$defs/namespace"},
+          "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]$"},
+          "permutation_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "namespace": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$"}
+  }
+}

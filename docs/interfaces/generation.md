@@ -217,5 +217,51 @@ config hash is the bank manifest's `generation_config_sha256`.
 
 ## Confirmatory banks (#28)
 
-*Pending (#28).* Register format, freeze check (`genconfig.check_run_config` with the G4
-manifest) and run notes. Bank IDs `bank-C001`..`bank-C072`.
+Producer: `banks/` subpackage `av_banks.confirmatory` (design and runbook in
+[`banks/docs/confirmatory-banks.md`](../../banks/docs/confirmatory-banks.md)); command
+line `python -m av_banks.confirmatory`. Consumers: G5B owner (register, report), the
+allocation reveal (#31: unavailable bank IDs), #70 and #13 (bank directories, unchanged
+#26 format). The real run is **pending** (G4 freeze #25, LLM host).
+
+**Banks.** 72 bank IDs in dyad-slot sequence: `bank-C001`..`bank-C064` (main, units
+`B-C01`..`B-C64`), `bank-C065`..`bank-C072` (spares, `B-S01`..`B-S08`); each built by
+the #26 builder as its own run `<campaign>-<bank>` under the campaign directory
+(restricted storage). Seed namespace = bank ID (`<bank>-v<version>` for a rebuild after a
+crash). `DEMO-C001`..`DEMO-C072` in rehearsals.
+
+**Freeze check.** `plan` and `run` refuse unless the freeze manifest matches
+`freeze-manifest.schema.json`, `genconfig.check_run_config(config, kind="confirmatory",
+freeze_manifest=...)` passes (frozen status, `config.frozen_sha256` = config hash, code
+pins) and, with `--repo`, the manifest's `tag` points at its `repo_commit`.
+
+**Seeds.** `seed_check.check_seeds`: namespaces name their bank and version, are unique,
+and the 165,888 keys of the budget (72 x 4 x 3 x 16 x 12) give distinct seeds, none in
+the key space of the pilot namespaces (read from pilot bank, run or campaign directories,
+or a CSV with a `seed_namespace` column). `check_used_seeds` rechecks every slot record
+after the run.
+
+**Register** (public; commit before the allocation list is unsealed):
+`register.csv` with `register.REGISTER_COLUMNS` (`sequence, bank_id, role, dyad_slot,
+bank_version, status, assignable, generation_config_sha256, config_matches_freeze,
+attempts, attempt_used, slots_attempt_used, max_slots_per_attempt, slots_total,
+crashed_versions, crashed_slots, verify, verify_report_sha256, bank_sha256`) and
+`register.json` ([`banks/schema/confirmatory-register.schema.json`](../../banks/schema/confirmatory-register.schema.json):
+counts, checks, `decision` in `ready`, `escalation_required`, `escalated`, `blocked`,
+escalation link and date, `unavailable_bank_ids`, hashes of the plan, seed checks,
+verification and timing logs, the register CSV and the deterministic archive). No seeds,
+recipes, WAVs or allocation information.
+
+**Rules.** At least 64 complete banks, else stop and escalate to the advisor before G5B
+(`escalate --reference <issue/PR link> --date`). Unavailable banks are never assignable;
+the coordinator logs each with `RevealLog.log_bank_unavailable` before the first reveal,
+and the reveal replaces an unavailable main slot by the first unused spare with the same
+SQ arm and swap flag. `commit-check` confirms the committed register equals the campaign's,
+was never changed, and its commit time precedes the first confirmatory screening.
+
+**Restricted files** (campaign directory): `plan.json`
+([`confirmatory-plan.schema.json`](../../banks/schema/confirmatory-plan.schema.json)),
+freeze/config/unit copies, `seed-check.json`, `used-seeds.json`, `runs/`, `verify/`,
+`verification-log.txt`, `timing.csv` (per bank: wall time, slots/min, model latency and
+slot time p50/p95/max, slots over the 40-s cap, failed model calls), `slot-timing.csv`,
+`events.jsonl`, `progress.jsonl`, `rebuilds.jsonl`, `g5b-report.md`,
+`archive/<campaign>-banks.tar`.

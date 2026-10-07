@@ -1,0 +1,70 @@
+{
+  "archive": {
+    "bytes": 932116480,
+    "files": 14142,
+    "name": "DEMO-cbanks-01-banks.tar",
+    "sha256": "6ea894699903c37f30cad1fb6653743d4de49e467307408de774cf96a971c146"
+  },
+  "campaign_id": "DEMO-cbanks-01",
+  "checks": {
+    "all_banks_verified": true,
+    "attempts_within_cap": true,
+    "bank_records": true,
+    "complete_banks_verified": true,
+    "config_matches_freeze": true,
+    "seeds_unique_and_disjoint": true,
+    "slots_within_cap": true
+  },
+  "compiled_utc": "2026-10-07T00:07:13.079Z",
+  "counts": {
+    "banks": 72,
+    "complete": 69,
+    "main_complete": 62,
+    "main_unavailable": 2,
+    "spares_complete": 7,
+    "spares_unavailable": 1,
+    "unavailable": 3
+  },
+  "crashed_versions": 0,
+  "decision": "ready",
+  "demo": true,
+  "escalation": {
+    "complete": 69,
+    "date": null,
+    "needed": 64,
+    "reference": null,
+    "required": false,
+    "rule": "complete banks < 64: stop and escalate to the advisor before G5B"
+  },
+  "format": "av-banks/confirmatory-register",
+  "format_version": 1,
+  "freeze": {
+    "config_frozen_sha256": "c689f6cedf6b0e9dc8cb48d8307ad9b3e2965382245598a5e64be82f68663519",
+    "freeze_version": "0.1",
+    "manifest_sha256": "ffe41c3baa70b2fd64544f07bdfe5eed4d8387fa0a7d57a914e37cacd902417f",
+    "repo_commit": "0000000000000000000000000000000000000000",
+    "status": "frozen",
+    "tag": "DEMO-g4-freeze"
+  },
+  "generation_config_sha256": "c689f6cedf6b0e9dc8cb48d8307ad9b3e2965382245598a5e64be82f68663519",
+  "hashes": {
+    "archive_sha256": "6ea894699903c37f30cad1fb6653743d4de49e467307408de774cf96a971c146",
+    "plan_sha256": "3c0e647d3f4eec735bdc4405875f54a93648bfb304fb9348fcf72f8a88df8014",
+    "register_csv_sha256": "b39524916bec3279d0f19bfb6a5d1235265e27d00a7450a7f5693408267e1265",
+    "seed_check_sha256": "fc73ce13f26937a3a942e93ea14c805bf370b61043f0b34a82e81a92f7aff824",
+    "slot_timing_csv_sha256": "5aa17a1541df5e11af3e8337279ed84d56ef0974a60c87e965171b92c3845dce",
+    "timing_csv_sha256": "749e5cb8bbe50ee781ea21ef47edfc1a1cde626a60fe1ebc066ee523f98c8cb0",
+    "used_seeds_sha256": "71fa825069230509ea2b38d4da40dc11a646fa9bee58d07958ac68d4c30a17a0",
+    "verification_log_sha256": "7959ec8b601d67d0f12a8a4c9ac654afe96cbe565e69141a702dacb12eae455d",
+    "verification_sha256": "ad4749b205738a0d4e23976fd66b1df0093af9cbccdc94992a27f5dcfdd30ecf"
+  },
+  "problems": [],
+  "set": "demo",
+  "slots_total": 13395,
+  "spare_rule": "Spares do not change the count: at least 64 of the 72 banks must be complete, else stop and escalate to the advisor before G5B. An unavailable bank is never assigned; log each with the allocation reveal API before the first reveal, which replaces an unavailable main slot, at its position, by the first unused spare with the same SQ arm and swap flag (schedules #31).",
+  "unavailable_bank_ids": [
+    "DEMO-C007",
+    "DEMO-C030",
+    "DEMO-C070"
+  ]
+}
