@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "record_kind": "pending_gate_record",
+  "gate": "G3",
+  "issue": 84,
+  "wbs": "O6.1.7",
+  "evidence_review_date_utc": "2026-10-07",
+  "evidence_main_commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+  "decision": null,
+  "accepted_build_sha256": null,
+  "manifest_version": null,
+  "release_candidate_tag": null,
+  "robot_state_source": null,
+  "signed": false,
+  "developer_approval": null,
+  "advisor_approval": null,
+  "check_5_qualification": null,
+  "station_rollout_authorized": false,
+  "human_pilots_authorized": false,
+  "g2_dependency_resolved": false,
+  "open_blocking_defects": [
+    148,
+    149,
+    150
+  ],
+  "gate_checks": [
+    {
+      "id": "check_1_tuple_hash_target_score",
+      "check": 1,
+      "issues": [
+        78
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "integrity_baseline"
+      ],
+      "reason": "480 exported component cases verified; licensed-Unity CI and pilot-station run missing"
+    },
+    {
+      "id": "check_2_growth_hash_lock",
+      "check": 2,
+      "issues": [
+        78
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "integrity_baseline"
+      ],
+      "reason": "Store growth and overwrite rejection verified in component scope; no tagged-candidate or station run"
+    },
+    {
+      "id": "check_3_view_capture_leakage",
+      "check": 3,
+      "issues": [
+        79
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "view_leakage_verifier",
+        "view_state_observations"
+      ],
+      "reason": "Verifier and observation tooling only; no 32 x 5 station capture, diff report or signed code-path review"
+    },
+    {
+      "id": "check_4_lesson_counts_no_prior_novel",
+      "check": 4,
+      "issues": [
+        78
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "integrity_baseline"
+      ],
+      "reason": "Generated schedule counts only; joined playback counts and full holdout scan missing"
+    },
+    {
+      "id": "check_5_onset_offset_jitter",
+      "check": 5,
+      "issues": [
+        80
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "study_audio_onset_unmeasured"
+      ],
+      "reason": "No onset calibration record or signed response-time qualification"
+    },
+    {
+      "id": "check_6_rate_frames_freeze",
+      "check": 6,
+      "issues": [
+        74,
+        81
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "frame_budget",
+        "frame_simulator_callbacks"
+      ],
+      "reason": "Simulator callback stalls only; no selected rate, live headset block, profiler or legibility record"
+    },
+    {
+      "id": "check_7_connection_input_loss_pause",
+      "check": 7,
+      "issues": [
+        81
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "session_engine_recovery",
+        "backend_fault_recovery",
+        "native_simulator_attempts"
+      ],
+      "reason": "No planned seven-fault native mock campaign or physical headset/input-loss check"
+    },
+    {
+      "id": "check_8_mock_a_b_reconciled",
+      "check": 8,
+      "issues": [
+        81,
+        83
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "mock_visit_reconciler",
+        "native_simulator_attempts",
+        "screening_chain",
+        "apparatus_manifest_collector"
+      ],
+      "reason": "No complete native mock A visit or B dyad history; manifest provisional"
+    },
+    {
+      "id": "g2_outcome_and_source",
+      "check": null,
+      "issues": [
+        63
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "g2_packet"
+      ],
+      "reason": "G2 decision and chosen source unset and unsigned"
+    },
+    {
+      "id": "zero_open_blocking_defects",
+      "check": null,
+      "issues": [
+        82
+      ],
+      "status": "PENDING",
+      "evidence": [
+        "native_simulator_attempts",
+        "defect_teaching_menu_contrast",
+        "defect_menu_precue_cancellation"
+      ],
+      "reason": "Blocking defects 148, 149 and 150 open; no tagged release candidate"
+    },
+    {
+      "id": "developer_advisor_signoff",
+      "check": null,
+      "issues": [
+        84
+      ],
+      "status": "PENDING",
+      "evidence": [],
+      "reason": "No signed decision"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "integrity_baseline",
+      "status": "PASS_COMPONENT_ONLY",
+      "pr": 138,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/integrity-baseline.md",
+      "artifact_sha256": "f7ed282192082f42bc19f4c19d1270f0522f74ec3d54c1484719736f43786196",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/integrity-baseline.md"
+    },
+    {
+      "id": "view_leakage_verifier",
+      "status": "IMPLEMENTED_NOT_RUN",
+      "pr": 139,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/spikes/O6.1.2-validation.json",
+      "artifact_sha256": "cede17d31a1bb478d8d987432c2b0205c8d784d0fa81348a935e3c18eef2fa4d",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/spikes/O6.1.2-validation.json"
+    },
+    {
+      "id": "view_state_observations",
+      "status": "IMPLEMENTED_NOT_RUN",
+      "pr": 172,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/isaac/evidence/view-observation-software-checks.json",
+      "artifact_sha256": "465b23ccfe2897899f2b285c4bc5d1884f0597ffe5e0c61f124c3d835a053479",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/isaac/evidence/view-observation-software-checks.json"
+    },
+    {
+      "id": "study_audio_onset_unmeasured",
+      "status": "NOT_MEASURED",
+      "pr": 126,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/unity/study-audio-validation.json",
+      "artifact_sha256": "ae39c78e830972a4040b6848b77e67da56409a5178727e8f01a4054e20a1d7de",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/unity/study-audio-validation.json"
+    },
+    {
+      "id": "frame_budget",
+      "status": "SOFTWARE_SCOPE_ONLY",
+      "pr": 135,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/frame-budget/validation.json",
+      "artifact_sha256": "d8eeb5a1e30545d08213d3f9cd393ffc6377ffa2ea19f7b3a1db2cd77eb6e992",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/frame-budget/validation.json"
+    },
+    {
+      "id": "frame_simulator_callbacks",
+      "status": "SIMULATOR_CALLBACKS_ONLY",
+      "pr": 135,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/frame-budget/simulator-callbacks/validation.json",
+      "artifact_sha256": "3eee86ad255dcfe29c086315c0c5f7cbd5803414cce2ff36e404a4c361e56010",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/frame-budget/simulator-callbacks/validation.json"
+    },
+    {
+      "id": "session_engine_recovery",
+      "status": "PASS_COMPONENT_ONLY",
+      "pr": 128,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/unity/session-engine-validation.json",
+      "artifact_sha256": "5530a67fc74837282c00f5035dfa8e9c60cfd0a7adcee1e9086deb56c39d12cd",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/unity/session-engine-validation.json"
+    },
+    {
+      "id": "backend_fault_recovery",
+      "status": "DIAGNOSTIC_ONLY",
+      "pr": 147,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/tests/soak/backend-fault-results.json",
+      "artifact_sha256": "cde93a4dc5a8169b3efcc60dc8e3ae5e16b6fe04e1428d0c56fed0f97cf87963",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/tests/soak/backend-fault-results.json"
+    },
+    {
+      "id": "mock_visit_reconciler",
+      "status": "IMPLEMENTED_NOT_COMPLETE",
+      "pr": 143,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/unity/mock-visit-reconciliation.validation.json",
+      "artifact_sha256": "18d7cec5376b4edd5f931abfc86873dadf8a9fb4875cfd45a4e154335a87ef0a",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/unity/mock-visit-reconciliation.validation.json"
+    },
+    {
+      "id": "native_simulator_attempts",
+      "status": "INCOMPLETE_ATTEMPTS",
+      "pr": 152,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/tests/native-simulator-attempts.json",
+      "artifact_sha256": "a2355ebf0af1a47366f795f8810a299bb5db3718060f385b994f1676da356baa",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/tests/native-simulator-attempts.json"
+    },
+    {
+      "id": "screening_chain",
+      "status": "IMPLEMENTED_NOT_COMPLETE",
+      "pr": 171,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/tests/screening-chain-validation.json",
+      "artifact_sha256": "59efee52699dbfd2e0f13e2c1d9b42fc1d202c04fc2c572735459ccb0f308708",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/tests/screening-chain-validation.json"
+    },
+    {
+      "id": "apparatus_manifest_collector",
+      "status": "PROVISIONAL",
+      "pr": 137,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/apparatus-manifest.validation.json",
+      "artifact_sha256": "b2bae2b2c4cfae669f2df4cba0d7cd406c4d50992590d819bbf7996e69b1b6c0",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/apparatus-manifest.validation.json"
+    },
+    {
+      "id": "g2_packet",
+      "status": "PENDING_UNSIGNED",
+      "pr": 133,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/gates/G2-evidence.json",
+      "artifact_sha256": "2483a6500866683a273b9ecdf440761367a01ed93a7056d261a1d4c9b0f039f7",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/gates/G2-evidence.json"
+    },
+    {
+      "id": "defect_teaching_menu_contrast",
+      "status": "FIX_MERGED_RERUN_PENDING",
+      "pr": 156,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/tests/teaching-menu-contrast.md",
+      "artifact_sha256": "ffe577ccafee71125dcc69225a003c400db7168e6e6e26c7b27449fcc158500a",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/tests/teaching-menu-contrast.md"
+    },
+    {
+      "id": "defect_menu_precue_cancellation",
+      "status": "FIX_MERGED_RERUN_PENDING",
+      "pr": 159,
+      "commit": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "path": "docs/tests/menu-precue-cancellation.md",
+      "artifact_sha256": "ca21a8752ff565d30492037625450e52db513dd130ef45d0daa03ca6ee93e2e2",
+      "url": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/0aa8eebb227e169d48051ed574d52ea8fbbdb51c/docs/tests/menu-precue-cancellation.md"
+    }
+  ],
+  "limitations": [
+    "Pending record only; no check is marked pass, fail or qualified pass",
+    "Component, synthetic and simulator evidence does not pass a pilot-station check",
+    "No build, manifest v0.9, station inventory or robot-state source is accepted",
+    "Station rollout O1.3.8 (#88) and human pilots O6.3.1/O6.3.2 remain blocked"
+  ]
+}
