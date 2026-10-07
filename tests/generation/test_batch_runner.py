@@ -5,7 +5,7 @@ client against #16's mock OpenAI-compatible server (loopback only), and A1 throu
 real A1 HTTP service (#19) worked by a bot designer, with bot raters on the panel session
 contract, in accelerated real time (`ScaledClock`). It must reach the issue's counts
 (48 commits, 576 slot records) with logs the audit (#24) can read. The other tests cover
-the start checks (the hook for the G4 freeze guard, #25), the LLM server probe, the panel
+the start checks (with the G4 freeze guard of #25), the LLM server probe, the panel
 serving path and the command line. Keyed station sessions with bot stations on the real
 panel server (#21) are in `test_rater_panel_runner.py`.
 """
@@ -27,6 +27,7 @@ from fastapi.responses import PlainTextResponse
 
 from av_generation import _batch_sim as sim
 from av_generation import batch_runner as br
+from av_generation import freeze as g4
 from av_generation.clock import ManualClock, ScaledClock
 from av_generation.config import RaterSeat
 from av_generation.genconfig import (
@@ -37,7 +38,7 @@ from av_generation.genconfig import (
     fallback_pins,
 )
 from av_generation.ids import STUDY_A_METHODS, Method, RunKind, Study
-from av_generation.jsonio import file_sha256, schema_sha256
+from av_generation.jsonio import document_text, file_sha256, read_json, schema_sha256
 from av_generation.llm import decoding_schema, decoding_schema_sha256
 from av_generation.llm_manifest import load_llm_manifest, manifest_sha256
 from av_generation.mock_llm import MOCK_RUNTIME, MockLlmServer
@@ -305,7 +306,7 @@ def test_logs_are_audit_ready(real_run):
 
 
 # ---------------------------------------------------------------------------
-# Start checks (the hook for the G4 freeze guard, #25)
+# Start checks (with the G4 freeze guard, #25)
 
 
 def _confirmatory_inputs(**changes):
@@ -364,10 +365,163 @@ def test_confirmatory_start_needs_the_frozen_config(tmp_path):
         with pytest.raises(ConfigMismatch) as err:
             br.check_batch_start(dataclasses.replace(inputs, freeze_manifest=freeze), **start)
         assert err.value.code == code
-    br.check_batch_start(dataclasses.replace(inputs, freeze_manifest=_freeze(frozen)), **start)
+    # the right config hash is not enough: the G4 freeze guard (#25) reads the manifest file
+    with pytest.raises(br.RunnerError) as err:
+        br.check_batch_start(dataclasses.replace(inputs, freeze_manifest=_freeze(frozen)), **start)
+    assert err.value.code == br.E_FREEZE_GUARD and "--freeze-manifest" in str(err.value)
     # a refused start creates nothing
     with pytest.raises(ConfigMismatch):
         br.open_batch(inputs, tmp_path / "A-C01-run1", kind="confirmatory", clock=ManualClock())
+    assert not (tmp_path / "A-C01-run1").exists()
+
+
+# Synthetic values of the G4 items recorded on the GPU host or by people (test only).
+_RECORDED_BY_KIND = {
+    "sha256": "1" * 64,
+    "sha256_map": {"test": "2" * 64},
+    "revision": "3" * 40,
+    "text": "test value",
+    "decimal": "0.10",
+    "integer": 16_896,
+    "number": 1.0,
+    "object": {"test": True},
+}
+_SIGNOFF = tuple(
+    {
+        "role": role,
+        "date": "2027-01-25",
+        "reference": f"https://github.com/ATR-Lab/acoustic-vocabularies/issues/25#test-{role}",
+    }
+    for role in ("owner", "advisor")
+)
+
+
+def _freeze_file(path, inputs, *, status="frozen", description=None):
+    """A G4 freeze manifest (#25) of the inputs' generation config, built from this
+    checkout by `freeze`'s own builder (synthetic recorded values, except those the
+    committed LLM manifest records; test sign-off links, roles only), written to `path`."""
+    recorded = {
+        s.key: g4.FreezeValue(_RECORDED_BY_KIND[s.kind], "test value")
+        for s in g4.ITEM_SPECS
+        if s.guard == "recorded"
+    }
+    recorded.update(
+        (key, value)
+        for key, value in g4.committed_values().items()
+        if g4.SPECS[key].guard == "recorded"
+    )
+    values = g4.freeze_values(recorded, inputs.generation_config, inputs.fallback)
+    frozen = status == "frozen"
+    manifest = g4.build_freeze_manifest(
+        values,
+        status=status,
+        repo_commit="0123456789abcdef0123456789abcdef01234567" if frozen else None,
+        tag="generation-freeze-v1.0" if frozen else None,
+        signoff=_SIGNOFF if frozen else (),
+        description=description,
+    )
+    path.write_text(document_text(manifest), encoding="utf-8", newline="\n")
+    return path
+
+
+def _with_freeze(inputs, path, manifest=None):
+    """The inputs with the freeze manifest file `path`, as `load_batch_inputs` reads it
+    (`manifest` replaces the document read from the file)."""
+    return dataclasses.replace(
+        inputs,
+        freeze_manifest=read_json(path) if manifest is None else manifest,
+        freeze_manifest_path=path,
+    )
+
+
+def test_confirmatory_start_runs_the_g4_freeze_guard(tmp_path, monkeypatch):
+    """A confirmatory batch starts only on a frozen G4 manifest file that passes #25's
+    freeze guard against this checkout and pins the batch's generation config."""
+    inputs = _confirmatory_inputs()
+    start = dict(kind="confirmatory", run_id="A-C01-run1")
+    frozen = _freeze_file(tmp_path / "FREEZE-v1.0.json", inputs)
+    draft = _freeze_file(tmp_path / "FREEZE-v1.0.draft.json", inputs, status="draft")
+    br.check_batch_start(_with_freeze(inputs, frozen), **start)  # accepted
+    # a draft is refused (step 4), and so is a draft file behind a frozen document (guard)
+    with pytest.raises(ConfigMismatch) as err:
+        br.check_batch_start(_with_freeze(inputs, draft), **start)
+    assert err.value.code == "E_FREEZE_STATUS"
+    with pytest.raises(br.RunnerError) as err:
+        br.check_batch_start(_with_freeze(inputs, draft, read_json(frozen)), **start)
+    assert err.value.code == br.E_FREEZE_GUARD and f"{g4.E_STATUS}: " in str(err.value)
+    # the document the run records must be the file the guard checked
+    other = _freeze_file(tmp_path / "other.json", inputs, description="FROZEN (test copy)")
+    with pytest.raises(br.RunnerError) as err:
+        br.check_batch_start(_with_freeze(inputs, other, read_json(frozen)), **start)
+    assert err.value.code == br.E_FREEZE_GUARD and "is not the freeze manifest" in str(err.value)
+    # a checkout that changed after the freeze never starts: here an edited selector,
+    # which the generation config cannot see (`generation.code`)
+    digests = g4.generation_code_digests()
+    edited = dict(digests, **{"generation/src/av_generation/selector.py": "e" * 64})
+    monkeypatch.setattr(g4, "generation_code_digests", lambda **_: edited)
+    with pytest.raises(br.RunnerError) as err:
+        br.check_batch_start(_with_freeze(inputs, frozen), **start)
+    assert err.value.code == br.E_FREEZE_GUARD
+    message = str(err.value)
+    assert f"{g4.E_GUARD}: the running code or the repository differs" in message
+    assert "changed: generation/src/av_generation/selector.py" in message
+    with pytest.raises(br.RunnerError):  # refused before anything is created
+        br.open_batch(
+            _with_freeze(inputs, frozen),
+            tmp_path / "runs" / "A-C01-run1",
+            kind="confirmatory",
+            clock=ManualClock(),
+        )
+    assert not (tmp_path / "runs").exists()
+    monkeypatch.setattr(g4, "generation_code_digests", lambda **_: digests)
+    br.check_batch_start(_with_freeze(inputs, frozen), **start)
+
+
+def test_pilot_start_needs_no_frozen_manifest(tmp_path):
+    """Pilot batches run before G4: no freeze manifest, no freeze guard (freeze.md
+    section 7); a manifest given to them is compared by config hash only."""
+    confirmatory = _confirmatory_inputs()
+    inputs = dataclasses.replace(
+        confirmatory, config=dataclasses.replace(confirmatory.config, set="pilot")
+    )
+    start = dict(kind="pilot", run_id="A-P01-run1")
+    br.check_batch_start(inputs, **start)
+    draft = _freeze_file(tmp_path / "FREEZE-v1.0.draft.json", inputs, status="draft")
+    br.check_batch_start(_with_freeze(inputs, draft), **start)
+    with pytest.raises(ConfigMismatch) as err:  # a manifest of another config is refused
+        br.check_batch_start(
+            dataclasses.replace(inputs, freeze_manifest=_freeze("0" * 64)), **start
+        )
+    assert err.value.code == "E_FREEZE_MISMATCH"
+
+
+def test_cli_check_runs_the_g4_freeze_guard(tmp_path, monkeypatch, capsys):
+    inputs = _confirmatory_inputs()
+    inputs.config.write(tmp_path / "config.json")
+    inputs.generation_config.write(tmp_path / "generation-config.json")
+    frozen = _freeze_file(tmp_path / "FREEZE-v1.0.json", inputs)
+    draft = _freeze_file(tmp_path / "FREEZE-v1.0.draft.json", inputs, status="draft")
+    files = [
+        "--kind", "confirmatory",
+        "--config", str(tmp_path / "config.json"),
+        "--generation-config", str(tmp_path / "generation-config.json"),
+        "--meanings", str(ROOT / "generation/examples/demo-meanings"),
+        "--fallback", str(ROOT / "sound" / sim.DEMO_FALLBACK_MANIFEST),
+    ]  # fmt: skip
+    check = ["check", *_cli(tmp_path, "A-C01-run1"), *files]
+    assert br.main(check) == 1
+    assert "E_FREEZE_MISSING" in capsys.readouterr().err
+    assert br.main([*check, "--freeze-manifest", str(draft)]) == 1
+    assert "E_FREEZE_STATUS" in capsys.readouterr().err
+    assert br.main([*check, "--freeze-manifest", str(frozen)]) == 0
+    assert capsys.readouterr().out.startswith("ok: run A-C01-run1 (confirmatory)")
+    edited = dict(g4.generation_code_digests())
+    edited["generation/src/av_generation/a2.py"] = "e" * 64
+    monkeypatch.setattr(g4, "generation_code_digests", lambda **_: edited)
+    assert br.main([*check, "--freeze-manifest", str(frozen)]) == 1
+    err = capsys.readouterr().err
+    assert err.startswith(f"error: {br.E_FREEZE_GUARD}: refused by the G4 freeze guard: E_GUARD")
+    assert "changed: generation/src/av_generation/a2.py" in err
     assert not (tmp_path / "A-C01-run1").exists()
 
 

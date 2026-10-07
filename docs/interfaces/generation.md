@@ -283,7 +283,7 @@ Guide and decisions: [`generation/docs/orchestrator.md`](../../generation/docs/o
 | `substitute_book_id(book_id)` | `<book>-FB`: store book of the frozen fallback book after a failed scan |
 | `check_batch_pins(config, generation_config, fallback, meanings, *, kind)` | The input pins and the set/kind rule (`E_CONFIG`, `E_KIND`), run by `Orchestrator` and the batch runner |
 | `batch_runner.load_batch_inputs(*, config, meanings, fallback, generation_config=None, prompts=None, llm_manifest=None, freeze_manifest=None, proposers="real") -> BatchInputs` | Reads a batch's inputs (committed prompt set and LLM manifest by default; a demo batch without a generation config gets `demo_generation_config`) |
-| `batch_runner.check_batch_start(inputs, *, kind, run_id, proposers="real")` | The one start check of every batch run, before anything is created: run ID, `check_batch_pins`, prompt-set / meaning / decoding-schema / LLM-manifest hashes against the generation config (`E_INPUTS`), stand-ins only for demo runs (`E_MODE`), `genconfig.check_run_config` (frozen G4 config for confirmatory runs). The G4 freeze guard (#25) goes here |
+| `batch_runner.check_batch_start(inputs, *, kind, run_id, proposers="real")` | The one start check of every batch run, before anything is created: run ID, `check_batch_pins`, prompt-set / meaning / decoding-schema / LLM-manifest hashes against the generation config (`E_INPUTS`), stand-ins only for demo runs (`E_MODE`), `genconfig.check_run_config` (frozen G4 config for confirmatory runs), then for confirmatory runs the G4 freeze guard of #25 (`freeze.load_freeze_manifest(path, require_frozen=True)` on `--freeze-manifest`; `E_FREEZE_GUARD`) |
 | `batch_runner.open_batch(inputs, run_dir, *, kind, clock, proposers="real", llm_url=None, a1_station=None, resume=False, purpose="batch", ...) -> StudyBatch` | Start checks, `probe_llm_server` (pinned model and vLLM version; #16's mock for demo runs only; `E_LLM_SERVER`), then the run directory and the real components: one `SlotLedger` shared by `a1.study_service`, `A2Proposer` and `A3Proposer` (with `OpenAICompatibleClient` logging to `llm-requests.jsonl`) |
 | `batch_runner.run_session(batch, *, appointment="next", panel="stations", designer="kiosk", a1_host, a1_port, panel_host, panel_port, ...) -> str \| None` | Serves A1 (`a1.serve_a1`) and the panel (`batch_runner.serve_panel` -> `panel.create_panel_app`, port 8765), waits for every seat, finishes an interrupted atom (`resume`) and runs the appointment(s). Synthetic runs only: `panel="bots"`, `designer="bot"`, `proposers="sim"` |
 | `python -m av_generation.batch_runner check\|run ...` | Command line (`--run-dir`, `--kind`, inputs, `--llm-url`, `--a1-host`, `--panel-host`, `--appointment next\|all\|1..4`, `--resume`); exit 0 / 1 refused / 3 batch incomplete |
@@ -390,10 +390,31 @@ Module `av_generation.audit`; guide [`generation/docs/audit.md`](../../generatio
 
 ## G4 freeze (#25)
 
-*Pending (#25).* Skeleton: `freeze-manifest.schema.json`, `freeze.REQUIRED_ITEM_KEYS`
-(including `config.frozen_sha256`, `meanings.sha256`, `llm.manifest_sha256`),
-`freeze.APPARATUS_FIELDS`, `build_freeze_manifest`, `freeze_differences` (CI guard).
-Confirmatory runs check the frozen config hash with `genconfig.check_run_config`.
+Format, items, guard and G4 procedure:
+[`generation/docs/freeze.md`](../../generation/docs/freeze.md). Manifest
+`generation/FREEZE-v1.0.json` (`freeze-manifest.schema.json`, format
+`av-generation/freeze-manifest` v1) from G4 on; until then the repository carries the
+draft `generation/FREEZE-v1.0.draft.json` (`status: draft`, GPU-host, restricted and human
+values pending). Each item has `key`, `category`, `value` (`null` = pending, drafts only),
+`sha256` (the value for hash items, the canonical hash for objects), `source`, `guard`
+(`code`, `file`, `config`, `recorded`) and `path`.
+
+| API (`av_generation.freeze`) | Use |
+| --- | --- |
+| `REQUIRED_ITEM_KEYS`, `ITEM_SPECS`, `SPECS`, `APPARATUS_FIELDS` | the 50 items in manifest order (the skeleton's 41 plus `config.document`, `renderer.implementation`, `renderer.spec_sha256`, `validator.reserved_sha256`, `separation.evidence_sha256`, `seeds.reference_digest`, `fallback.banks_sha256`, `pilot.audit_sha256`, `generation.code`) |
+| `generation_code_digests(*, package=None, sound=None, root=None)`, `generation_code_modules(package=None)`, `GENERATION_CODE_EXCLUDED`, `SOUND_CODE_MODULES`, `BANKS_CODE_EXCLUDED` | value of `generation.code`: `{repository path: digest}` of every `av_generation` module and `web/` page except the excluded ones, `av_sound` fallback, grammar and store, the bank builder `banks/src/av_banks` and `generation/llm/server-config.json` once committed. A new module is frozen unless it is added to the exclusion list in review, so #16-#28 need no change here |
+| `committed_values(root=None)`, `llm_manifest_values(path)`, `LLM_MANIFEST_FIELDS`, `PROMPT_SET_PATHS` | what the committed LLM manifest (#16) and prompt sets (#17) pin; `build` refuses a disagreement, and the guard compares them once a manifest holds a config document |
+| `build_freeze_manifest(values, *, status="draft", freeze_version, protocol_version, repo_commit=None, tag=None, signoff=(), description=None) -> dict` | assemble and check a manifest from `{key: FreezeValue(value, source)}`; raises `FreezeError` (`.code`, `.problems`) |
+| `freeze_differences(manifest_path, current) -> list[str]` | the CI freeze guard; `current` is normally `current_values()`; empty = nothing frozen changed |
+| `current_values(root=None)`, `config_values(config)`, `fallback_values(fset, config=None)`, `draft_values(recorded=None)`, `freeze_values(recorded, config, fset)` | collect item values (code and files, frozen config, fallback set, drafts, G4 build) |
+| `manifest_problems(manifest)`, `item_values(manifest)`, `apparatus_values(values)`, `item_sha256(kind, value)` | checks and helpers; `prompt_hash` = `canonical_sha256({"a3_sha256", "b_sha256"})` |
+| `load_freeze_manifest(path, *, require_frozen=False, check_repository=None, root=None) -> FreezeManifestFile(path, manifest, sha256)`, `frozen_config(manifest) -> GenerationConfig` | confirmatory batches (#20, O7.1.1) and banks (#26, #28) call it with `require_frozen=True`: it also runs the guard against the running code and the committed files and raises `E_GUARD` on any difference, so a changed checkout never starts. Then pass `.manifest` to `genconfig.check_run_config(config, kind="confirmatory", freeze_manifest=...)`; `.sha256` is `RunManifest.freeze_manifest_sha256` |
+| `verify_fallback_hashes(manifest, fallback) -> list[str]` | re-render the fallback set and compare its hashes with the manifest |
+| `active_manifest_path(root=None)`, `refresh_draft(manifest)`, `record_value(manifest, key, value, source)`, `draft_manifest()`, `weights_sha256(model_dir)`, `manifest_table(manifest)` | draft upkeep, GPU-host weights hash, review table |
+
+Command line: `python -m av_generation.freeze {check,refresh,record,build,verify,config,
+weights,table}`. Test: `tests/generation/test_freeze_manifest.py` (`test_ci_freeze_guard`
+is the guard).
 
 ## Study B bank builder (#26)
 
