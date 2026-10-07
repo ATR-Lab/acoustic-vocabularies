@@ -40,6 +40,7 @@ namespace AcousticVocab.StudyAudio
         AudioRouteCalibration route;
         bool configured,failed,scheduling;
         int outputRate,bufferFrames,bufferCount;
+        int simulatedStallMs;volatile bool simulatedStallDone;bool simulatedStallArmed;
         float gain=.1f;
         public bool Ready => isActiveAndEnabled && configured && !failed && !scheduling && prepared.Count>0 && current==null;
         public bool Playing => current!=null;
@@ -57,6 +58,20 @@ namespace AcousticVocab.StudyAudio
             AudioSettings.GetDSPBufferSize(out int frames,out int count);
             if(AudioSettings.outputSampleRate!=48000||frames<=0||frames>512||count<=0)throw new AudioFault("AUDIO_SIMULATION_DEVICE_FORMAT");
             UnityEngine.Debug.Log("SIMULATION_AUDIO_DEVICE sample_rate="+AudioSettings.outputSampleRate+" dsp_frames="+frames+" dsp_count="+count+" acoustic_qualified=false");
+        }
+        // SIMULATION_TEST fault injection (#81): block this source's audio
+        // callback thread once, mid-cue, so the output path really starves.
+        // Detection and the AUDIO_UNDERRUN code remain the ordinary delivery
+        // and deadline checks below. Returns null only after the stall ran.
+        public string SimulationStallAudioThread(AcousticVocab.Foundation.SimulationTestAuthority authority,int milliseconds)
+        {
+            if(authority==null||!AcousticVocab.Foundation.SimulationTestAuthority.CompiledCapability)throw new AudioFault("AUDIO_SIMULATION_AUTHORITY");
+            if(milliseconds<300||milliseconds>2000)throw new AudioFault("AUDIO_SIMULATION_FAULT_INVALID");
+            if(simulatedStallDone)return null;
+            if(simulatedStallArmed)return "AUDIO_STALL_PENDING";
+            var ticket=current;
+            if(ticket==null||ticket.Delivery.Status!=AudioDelivery.Pending||ticket.Delivery.CallbackCount==0)return "AUDIO_NOT_DELIVERING";
+            simulatedStallArmed=true;Interlocked.Exchange(ref simulatedStallMs,milliseconds);return "AUDIO_STALL_PENDING";
         }
 
         void Awake()
@@ -173,6 +188,7 @@ namespace AcousticVocab.StudyAudio
         void OnAudioFilterRead(float[] data,int channels)
         {
             var ticket=Volatile.Read(ref current);if(ticket==null) return;
+            int stall=Interlocked.Exchange(ref simulatedStallMs,0);if(stall>0) { Thread.Sleep(stall);simulatedStallDone=true; } // SIMULATION_TEST only; armed by the hook above.
             int count=channels>0 && data.Length%channels==0 ? data.Length/channels : 0;
             ticket.Delivery.Observe(AudioSettings.dspTime,count,outputRate);
             // Observational only: never write to data or synthesize samples.
@@ -184,7 +200,7 @@ namespace AcousticVocab.StudyAudio
         }
         public void Abort(string code="AUDIO_CANCELLED")
         {
-            var ticket=current;Volatile.Write(ref current,null);failed=true;mapping.Reset();if(output!=null) output.Stop();
+            var ticket=current;Volatile.Write(ref current,null);failed=true;mapping.Reset();Interlocked.Exchange(ref simulatedStallMs,0);if(output!=null) output.Stop();
             if(ticket!=null) { try { Emit(code??"AUDIO_UNDERRUN",ticket); } catch { UnityEngine.Debug.LogError("AUDIO_EVIDENCE_FAILED"); } }
         }
         void OnAudioConfigurationChanged(bool _) { if(configured) Abort("AUDIO_DEVICE_CHANGED"); }

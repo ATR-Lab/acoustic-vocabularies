@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "case_id": "missing-response-log-01",
+  "scenario": "missing_response_log",
+  "run_id": "fault-run-01",
+  "build_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "config_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "schedule_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "expected_native_codes": [
+    "DATA_APPEND_FAILED",
+    "SESSION_JOURNAL_FAILED"
+  ],
+  "planned_opportunity_id": "DEMO-novel-01",
+  "minimum_observation_ms": 5000
+}

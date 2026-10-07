@@ -98,6 +98,17 @@ namespace AcousticVocab.ResponsePanel
             if(State.Request.Role!=PanelRole.Target)Press(keys.Find(x=>x.Kind=="action"&&x.Value==action));
             Press(keys.Find(x=>x.Value=="commit"));return State.Locked;
         }
+        double simulatedInputLossUntil = -1;
+        // SIMULATION_TEST fault injection (#81): the configured controller/hand
+        // is treated as untracked for a bounded interval. The ordinary Update
+        // availability edge, panel fault latch and frame interface check respond.
+        public void SimulationSuppressInput(SimulationTestAuthority authority,int milliseconds)
+        {
+            if(authority==null||!SimulationTestAuthority.CompiledCapability)throw new InvalidOperationException("SIMULATION_INPUT_AUTHORITY");
+            if(milliseconds<100||milliseconds>10000)throw new InvalidOperationException("SIMULATION_INPUT_VALUE");
+            simulatedInputLossUntil = Time.realtimeSinceStartupAsDouble + milliseconds/1000d;
+        }
+        bool SimulatedInputLost => simulatedInputLossUntil>=0 && Time.realtimeSinceStartupAsDouble<simulatedInputLossUntil;
         void FoundationFault(string _) => Fail("foundation_fault");
         void Fail(string reason)
         {
@@ -113,7 +124,7 @@ namespace AcousticVocab.ResponsePanel
             if (State == null || settings == null || panel == null) return;
             try
             {
-                bool available = focused && !paused && foundation.Ready && (settings.InputMethod == "controller_ray" ? PollController() : PollHand());
+                bool available = focused && !paused && foundation.Ready && !SimulatedInputLost && (settings.InputMethod == "controller_ray" ? PollController() : PollHand());
                 if (!available)
                 {
                     if (InputAvailable && State.Request != null && !State.Locked) Fail("input_lost");

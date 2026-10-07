@@ -111,6 +111,14 @@ namespace AcousticVocab.StateIntegration
         }
         public void RequestMode(){Require(!modeAcknowledged&&!pending.Values.Contains("set_mode"),"CONTROL_MODE_PENDING");Request("set_mode");}
         public string RequestReset()=>Request("reset");
+        Action<string> simulatedResetWithheld;
+        // SIMULATION_TEST fault injection (#81): withhold the next actual reset
+        // reply as if lost in transport. It is neither persisted nor accepted, so
+        // the request stays pending and the ordinary reset deadline must decide.
+        public void SimulationWithholdNextResetReply(SimulationTestAuthority authority,Action<string> withheld)
+        {if(authority==null||!SimulationTestAuthority.CompiledCapability)throw new ControlFault("CONTROL_SIMULATION_AUTHORITY");simulatedResetWithheld=withheld??(_=>{});}
+        public void SimulationCancelWithheldReset(SimulationTestAuthority authority)
+        {if(authority==null||!SimulationTestAuthority.CompiledCapability)throw new ControlFault("CONTROL_SIMULATION_AUTHORITY");simulatedResetWithheld=null;}
         public void Interrupt(){RecordFailure("CONTROL_EXPLICIT_INTERRUPT","owner");healthGate.Invalidate();modeAcknowledged=false;failed=true;lifetime.Cancel();socket?.Abort();}
         void Phase(string value){lock(diagnosticLock){workerPhase=value;phaseStarted=now();}}
         void Completed(PrivateControlExchange.Reply reply){lock(diagnosticLock){lastSent=reply.Sent;lastReceived=reply.Received;}}
@@ -148,6 +156,7 @@ namespace AcousticVocab.StateIntegration
                     }
                     Keys(value,"version","kind","request_id","accepted","reason","mode","host_mono_ms","sim_time","reset_ok","duplicate","health");
                     pending.TryGetValue(item.Id,out var command);Require(value["version"].Type==JTokenType.Integer&&(int)value["version"]==1&&(string)value["kind"]=="private_reply"&&(string)value["request_id"]==item.Id&&command!=null,"CONTROL_REPLY");
+                    if(command=="reset"&&simulatedResetWithheld!=null){var withheld=simulatedResetWithheld;simulatedResetWithheld=null;withheld(item.Id);continue;}
                     Number(value["host_mono_ms"]);Number(value["sim_time"]);Require(!Bool(value["duplicate"]),"CONTROL_UNEXPECTED_DUPLICATE");
                     Require(Bool(value["accepted"])&&(string)value["mode"]==mode,"CONTROL_REJECTED");
                     double sample=healthGate.ObserveCommandCompletion((JObject)value["health"],item.Sent,item.Received);
