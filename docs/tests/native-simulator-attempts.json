@@ -794,6 +794,130 @@
           "retained_capture_count": 31,
           "kind": "desktop mirror of the participant camera under Meta XR Simulator; not physical HMD"
         }
+      },
+      {
+        "attempt": "016-B-menu-001",
+        "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+        "process_exit": 0,
+        "process_result_sha256": "9c0d680e1228a6f349d5e6060ea35b6b9c228ffc5ff8d32194a0f2dc489aedad",
+        "native_log_sha256": "8ab77a7811e378f403b6fdb9444b96fa2375bd6a0c0914e7c00352628c14630e",
+        "startup_status": "LESSON_CATALOG_INVALID",
+        "cause": "operator input map omitted teaching_allocation required for Study B teaching",
+        "journal_or_export_created": false,
+        "reconciled": false
+      },
+      {
+        "attempt": "016-B-menu-002",
+        "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+        "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+        "run_manifest_sha256": "47a65bf214a3043715fb0797dbf279d668a2a37535dfd0e5aa4cf3e068587dbb",
+        "reconciliation_report_sha256": "1a3bcbdc2233dac5a0edc81e42df3c87609e3d7549a2f441335407d451c3b883",
+        "export_manifest_sha256": "7e053b00072497a721731a42c7b18652049858a5e42c0803b2f05e121bef04bc",
+        "process_exit": 0,
+        "process_elapsed_seconds": 199.07641,
+        "process_result_sha256": "cf9a6915cb2ebd72962cc0b70a54ebe9e37264410a6cbf6a3233932d838f6bbc",
+        "terminal": {
+          "status": "AUDIO_EXPOSURE_INTERRUPTED",
+          "complete": false,
+          "cleanup_succeeded": true,
+          "export_succeeded": true,
+          "participant_admission": false
+        },
+        "close": "operator CloseMainWindow (WM_CLOSE) after the visit owner latched",
+        "reconciliation": {
+          "integrity_verified": true,
+          "software_reconciliation_complete": false,
+          "fault_codes": [
+            "AUDIO_EXPOSURE_INTERRUPTED",
+            "OPERATOR_ADAPTER_FAILED",
+            "SESSION_JOIN_DISPOSED"
+          ],
+          "incomplete_reasons": [
+            "ACTUAL_DISPLAY_TRACE_MISSING",
+            "AUDIO_CALLBACK_OR_COMPLETION_MISSING",
+            "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+            "FORMS_DISPLAY_TRACE_INCOMPLETE",
+            "FORMS_INCOMPLETE",
+            "FRAME_BUDGET_SCREEN_FAILED",
+            "FRAME_CAPTURE_INCOMPLETE",
+            "FRAME_FAULT_PRESENT",
+            "GRAMMAR_COMPLETION_MISSING",
+            "MENU_DISPLAY_COVERAGE_INCOMPLETE",
+            "MENU_EVENTS_INCOMPLETE",
+            "MENU_LEDGER_UNSEALED",
+            "MENU_SEAL_MISSING",
+            "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+            "NATIVE_RUN_END_INCOMPLETE",
+            "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+            "STORE_FINAL_FRESH_VERIFICATION_MISSING",
+            "STORE_FINAL_WAVE_INCOMPLETE",
+            "VISIT_COMPLETE_RECORD_MISSING"
+          ],
+          "scheduled_opportunities": 39,
+          "completed_opportunities": 0,
+          "scheduled_plays": 134,
+          "requested_plays": 8,
+          "callback_observed_plays": 7,
+          "software_completed_plays": 7,
+          "frame_raw_attributed_intervals": 1727,
+          "frame_max_render_interval_ms": 45.1747000000032
+        },
+        "hashes": {
+          "join_config": "faff3e7f2786971f4211bfd1fcb7aa9ec81ecc78684de4c94350b47855bd76aa",
+          "simulation_capability": "548e74194a92a504a50145ad81046a3840f41aff98483098ccb707902ee69e63",
+          "console_catalog": "bbbf8299bdb02e21082e31d0eac84882a72cf8d1d9d007737396ed5123f7814d",
+          "native_log": "bbed15c5d62a67b3b5a161a562479ca8866efd22ccb9a1def618f14cd2f63703",
+          "native_result": "47bf6aa01e2d8651c876024e33fabd9b98c25638e739b91c109be44e43588d5a",
+          "joined_journal": "2c6925ce144e7f1730e9bd78c3ebdb4aeef659060672f0259b0c7488555bfed0",
+          "data_journal": "2462d847fba46b6663f5303a7abc83a8e29accaa505480ec13a5f693ccaf376c",
+          "trial_csv": "3ebd07466aa4aec763614461289532cc4420b81ba0338d7d0528a55a77d88255",
+          "exposure_csv": "79877f2f429090f6bf127042588f9f2e2985670b872816dbc53d0ec2b568bdc8",
+          "console_audit": "df71fc14b0b9480b7121f60eccdf95c400c2e8c5ba894d1005a780c35dcf3a39",
+          "menu_ledger": "6a453d6a3a1f2eeac24ed97ef003d21c609919c0cab72a472d5fd2a4c5f9d21f"
+        },
+        "precue_recovery": {
+          "trigger": "operator Start then Pause through the console before the planned onset",
+          "loaded_mono_ms": 38567.5828,
+          "planned_onset_mono_ms": 39306.174900000005,
+          "session_paused_mono_ms": 38863.2914,
+          "frame_cancelled_before_window_mono_ms": 38858.597,
+          "exposure_consumed_at_pause": false,
+          "audio_requested_before_pause": false,
+          "menu_ledger_interrupted_before_start": false,
+          "planned_audio_ids_retired": 8,
+          "replacement_loaded_mono_ms": 60034.4079,
+          "fresh_audio_request_ids": true,
+          "menu_start_appended_after_resume": true,
+          "profile_plays_completed_before_selection": 6,
+          "profile_selection_store_receipt_accepted": true,
+          "reconciler_retired_unplayed_epochs": 1
+        },
+        "later_failure": {
+          "code": "AUDIO_EXPOSURE_INTERRUPTED",
+          "at_play": 8,
+          "receipt_elapsed_ms": 250.8205,
+          "round_trip_ms": 31.0473,
+          "neutral_age_ms": 3.4626200875701905,
+          "effective_age_ms": 285.3304200875629,
+          "maximum_age_ms": 250,
+          "probe_send_started_local_mono_ms": 115925.011,
+          "first_failure_code": "CONTROL_EXPLICIT_INTERRUPT",
+          "menu_ledger_final": "menu_interrupted after start; unsealed"
+        },
+        "export_rows": {
+          "trial": 1,
+          "exposure": 8,
+          "exposure_callback_complete": 7,
+          "exposure_uncertain_playback": 1,
+          "exposure_audible_status": "uncertain",
+          "exposure_consumed": true,
+          "acoustic_onset_columns_empty": true
+        },
+        "captures": {
+          "profile_menu_on_backing": "db32e977fa4f30ae4bb571c72b3a312abc0e555534ba82206172f27dc0908545",
+          "retained_capture_count": 28,
+          "kind": "desktop mirror of the participant camera under Meta XR Simulator; not physical HMD"
+        }
       }
     ],
     "shutdown_breadcrumbs": {
@@ -813,6 +937,14 @@
           "faulted": 0,
           "timed_out": 0,
           "elapsed_ms": 16.995
+        },
+        {
+          "attempt": "016-B-menu-002",
+          "completed": 4,
+          "cancelled": 0,
+          "faulted": 0,
+          "timed_out": 0,
+          "elapsed_ms": 14.3698
         }
       ]
     },
@@ -820,35 +952,54 @@
       "148": {
         "segment_rerun_and_reconciled": true,
         "resolved": false,
-        "observed": "Current-health failure recurred in both attempts: grammar gate at 259.28 ms effective age (full-001) and health-probe receive timeout with zero bytes after 222 ms (full-002)."
+        "observed": "Current-health failure ended all three closed attempts: grammar gate at 259.28 ms effective age (full-001), health-probe receive timeout with zero bytes after 222 ms (full-002), and 285.33 ms at the eighth profile play (B menu-002)."
       },
       "149": {
         "teaching_capture_at_reference": true,
-        "menu_capture_at_reference": false,
-        "physical_hmd": false
+        "menu_capture_at_reference": true,
+        "physical_hmd": false,
+        "menu_scope": "profile menu only; atom menus not reached"
       },
       "150": {
-        "manual_close_reruns": 2,
+        "manual_close_reruns": 3,
         "cleanup_and_export_receipts": true,
         "observed_exit_codes": [
           0,
+          0,
           0
         ],
-        "original_0xC0000005_reproduced_or_explained": false
+        "original_0xC0000005_reproduced_or_explained": false,
+        "startup_refusal_exit_code": 0
       },
       "155": {
         "teaching_capture_on_backing": true,
-        "menu_capture_on_backing": false,
-        "physical_hmd": false
+        "menu_capture_on_backing": true,
+        "physical_hmd": false,
+        "menu_scope": "profile menu only; atom menus not reached"
       },
       "158": {
-        "exercised": false
+        "exercised": true,
+        "precue_unconsumed_then_fresh_lease_resume_appended_menu_start": true,
+        "trigger": "operator pause, not readiness refusal",
+        "later_started_interruption_unsealed": true,
+        "runs": 1
       }
     },
     "seven_fault_scenarios_credited": 0,
     "issue81_accepted": false,
     "participant_qualified": false,
     "acoustic_onset_qualified": false,
-    "physical_hmd_visibility_qualified": false
+    "physical_hmd_visibility_qualified": false,
+    "fixtures_b": {
+      "study": "B",
+      "visit": "V1",
+      "role": "active",
+      "scheduled_opportunities": 39,
+      "scheduled_study_plays": 134,
+      "package_sha256": "987afaf6bf21e436638da5722c3c02e48dd9e7b9ac829c562756c16e7281333e",
+      "bank_sha256": "e84de620f14f4767668c497607669d419fa8458d3066230a962bdc9378f8e8b2",
+      "fixture_provenance_sha256": "9a9a0aedac56608a4bce8b66901cabf67fe3b4b864e90dc4a87b85cfe2afdd3e",
+      "store": "fresh tools/menu_store_fixture.py --mode service store per attempt, served by tools/menu_store_bridge.py --serve-mailbox"
+    }
   }
 }
