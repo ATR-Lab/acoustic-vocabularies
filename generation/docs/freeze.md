@@ -260,11 +260,25 @@ With `require_frozen=True`, `load_freeze_manifest` also runs the CI guard agains
 running code and the committed files of the run host (`check_repository`, on by default
 for frozen manifests) and raises `E_GUARD` with every difference. A run from a checkout
 with an edited selector, prompt template or LLM manifest therefore never starts.
-Confirmatory batches (#20, O7.1.1) and banks (#26, #28) call it this way.
-`check_run_config` refuses a draft (`E_FREEZE_STATUS`) and a config whose hash differs
-from `config.frozen_sha256` (`E_FREEZE_MISMATCH`). Pilot runs record their own unfrozen
-config hash. Pilot books and banks keep their pilot IDs (`A-P..`, `bank-P..`) and stay
-archived. `bank_manifest.require_bank_set` refuses a pilot bank in a confirmatory run.
+`check_run_config` refuses a missing manifest (`E_FREEZE_MISSING`), a draft
+(`E_FREEZE_STATUS`) and a config whose hash differs from `config.frozen_sha256`
+(`E_FREEZE_MISMATCH`).
+
+Every entry point that starts confirmatory work runs both checks before it creates
+anything:
+
+| Entry point | Where | Refusal |
+| --- | --- | --- |
+| Study A batches (#20, O7.1.1): `batch_runner check` and `run`, `open_batch` | `batch_runner.check_batch_start`: `check_run_config`, then `load_freeze_manifest(--freeze-manifest, require_frozen=True)`, which must be the manifest `check_run_config` checked | `ConfigMismatch` (codes above); `RunnerError` `E_FREEZE_GUARD`, whose message carries the freeze code (`E_GUARD`, `E_STATUS`, `E_MANIFEST`, `E_INPUT`) and every difference |
+| Study B bank builds (#26): `banks build` with `bank-C...` banks | `av_banks.run.read_freeze_manifest(--freeze-manifest, kind="confirmatory")`, then `build_banks` (`check_run_config`) | `BankBuildError` `E_FREEZE_GUARD` as above; `ConfigMismatch` |
+| Study B confirmatory campaign (#28): `plan` and `run` | `confirmatory.freeze_check.load_freeze` at `plan` and again before the first bank, then `check_run_config` | `CampaignError` `E_FREEZE` |
+
+The guard runs again at every start: each `batch_runner run --resume` of the next
+appointment, and each `run` of a campaign. Pilot runs need no freeze manifest and skip the
+guard; they record their own unfrozen config hash, and a manifest given to them is
+compared by config hash only. Pilot books and banks keep their pilot IDs (`A-P..`,
+`bank-P..`) and stay archived. `bank_manifest.require_bank_set` refuses a pilot bank in a
+confirmatory run.
 
 ## 8. The committed draft
 
@@ -293,6 +307,7 @@ Keep it current with `python -m av_generation.freeze refresh`. Delete it in the 
 | The Study B bank rules are rule text in `budget.study_b` | the retention, menu, reserve and attempt rules can be read without the code; the builder's code is in `generation.code` |
 | The committed LLM manifest and prompt sets are compared only once a manifest has a config document | the draft does not go stale when #16 and #17 land; a frozen manifest is compared with them at every guard run |
 | `load_freeze_manifest(..., require_frozen=True)` runs the guard at run start | CI only checks pushed commits; a run host could carry local edits |
+| Each run entry point calls the guard in its own start check (section 7); pilot runs skip it | one rule for batches and banks, before anything is created; pilot runs precede G4 |
 | `prompt_hash` = canonical hash of the config's `prompts` object | the apparatus has one prompt field for two prompt sets |
 | `model.weights_sha256` = `file_set_sha256` of the `*.safetensors` files | the shared file-set definition; computable from Hugging Face LFS metadata and on the GPU host |
 | Threshold compared as text | the frozen value is the exact decimal text of `sound/config/validator.json` |
