@@ -12,7 +12,7 @@ namespace AcousticVocab.StateSources
         readonly SceneFrame neutral;
         SceneFrame held;
         List<SceneFrame> frames;
-        double playStart, playDuration, lastValid, gapAt=double.PositiveInfinity, gapDuration;
+        double playStart, lastValid, gapAt=double.PositiveInfinity, gapDuration;
         bool stale, failed;
         public string Kind => "snapshot";
         public bool Stale => stale;
@@ -74,6 +74,9 @@ namespace AcousticVocab.StateSources
                 StateParser.Vector(robot["joint_positions_rad"],43),parsed);
             held=neutral; lastValid=now; ResetConfirmed=true;
         }
+        // Plays one #56 fixed sim-step recording (FixedStepSchedule). The retained
+        // capture host stamps must still progress, but they are unpaced capture
+        // provenance: their spacing and span neither pace nor bound playback.
         public void PlayTrajectory(byte[] bytes, string expectedHash, double now, double? nominalDurationSeconds=null)
         {
             try
@@ -81,12 +84,14 @@ namespace AcousticVocab.StateSources
                 CheckTime(now,lastValid);
                 StateParser.Require(bytes!=null && bytes.Length<=64*1024*1024 &&
                     StateParser.IsHash(expectedHash) && SceneRegistry.Hash(bytes)==expectedHash,"HASH_MISMATCH");
+                StateParser.Require(nominalDurationSeconds==null || nominalDurationSeconds.Value==FixedStepSchedule.DurationSeconds,
+                    "TRAJECTORY_PLAYBACK_DURATION");
                 string text=new UTF8Encoding(false,true).GetString(bytes);
                 var loaded=new List<SceneFrame>();
                 foreach(string line in text.Split('\n'))
                 {
                     if(string.IsNullOrWhiteSpace(line)) continue;
-                    if(loaded.Count>=12000) throw new StateFault("TRAJECTORY_TOO_LARGE");
+                    if(loaded.Count>=FixedStepSchedule.SampleCount) throw new StateFault("TRAJECTORY_SAMPLE_COUNT");
                     var frame=StateParser.Parse(line,registry);
                     if(loaded.Count>0)
                     {
@@ -94,18 +99,12 @@ namespace AcousticVocab.StateSources
                         StateParser.Require(frame.SessionId==previous.SessionId && frame.Sequence==previous.Sequence+1 &&
                             frame.PublishedNs>previous.PublishedNs && frame.SimStep>previous.SimStep &&
                             frame.SimTime>previous.SimTime,"TRAJECTORY_NONPROGRESSING");
-                        StateParser.Require(frame.PublishedNs-previous.PublishedNs<=250000000,"TRAJECTORY_STALE_GAP");
                     }
                     loaded.Add(frame);
                 }
-                StateParser.Require(loaded.Count>=2 &&
-                    (loaded[loaded.Count-1].PublishedNs-loaded[0].PublishedNs)/1e9<=600,"TRAJECTORY_DURATION");
+                FixedStepSchedule.CheckFrames(loaded);
                 StateParser.Require(NeutralComparison.Matches(loaded[0],neutral),"TRAJECTORY_START_NOT_NEUTRAL");
-                double measuredSpan=(loaded[loaded.Count-1].PublishedNs-loaded[0].PublishedNs)/1e9;
-                double duration=nominalDurationSeconds??measuredSpan;
-                StateParser.Require(!double.IsNaN(duration) && !double.IsInfinity(duration) &&
-                    duration>=measuredSpan && duration<=600,"TRAJECTORY_CAPTURE_OVERRUN");
-                frames=loaded; playStart=lastValid=now; playDuration=duration;
+                frames=loaded; playStart=lastValid=now;
                 ResetConfirmed=false; PlaybackFinished=false;
                 Event?.Invoke(new SourceEvent("TRAJECTORY_STARTED",now,now));
             }
@@ -142,21 +141,19 @@ namespace AcousticVocab.StateSources
             { Event?.Invoke(new SourceEvent("STATE_RECOVERED",lastValid,now,now-lastValid)); stale=false; }
             lastValid=now; SampleAgeSeconds=0;
             if(frames==null) { held=neutral; return held; }
+            // Host monotonic time since start, by sample index only: sample i at
+            // i/30 s, the last sample held to 10 s. Between samples the display
+            // interpolates continuous coordinates on that same host timeline;
+            // discrete state stays left-continuous (SceneFrame.Interpolate).
             double offset=Math.Max(0,now-playStart);
-            if(offset>=playDuration && !PlaybackFinished)
+            if(offset>=FixedStepSchedule.DurationSeconds && !PlaybackFinished)
             {
                 PlaybackFinished=true;
                 Event?.Invoke(new SourceEvent("TRAJECTORY_COMPLETED",playStart,now,now-playStart));
             }
-            ulong first=frames[0].PublishedNs;
-            int index=0;
-            while(index+1<frames.Count && (frames[index+1].PublishedNs-first)/1e9<=offset) index++;
-            if(index+1==frames.Count) held=frames[index];
-            else
-            {
-                double a=(frames[index].PublishedNs-first)/1e9, b=(frames[index+1].PublishedNs-first)/1e9;
-                held=SceneFrame.Interpolate(frames[index],frames[index+1],(offset-a)/(b-a));
-            }
+            int? index=FixedStepSchedule.PlaybackIndex(offset);
+            if(index==null || index.Value==frames.Count-1) held=frames[frames.Count-1];
+            else held=SceneFrame.Interpolate(frames[index.Value],frames[index.Value+1],offset*FixedStepSchedule.SampleHz-index.Value);
             return held;
         }
         public bool ConfirmReset(SceneFrame expectedNeutral,double now)

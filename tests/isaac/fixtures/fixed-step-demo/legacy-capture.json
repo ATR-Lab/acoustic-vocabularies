@@ -1,0 +1,19 @@
+{
+  "actual_host_timestamps_preserved": true,
+  "capture_complete": true,
+  "file": "000.ndjson",
+  "frame_count": 300,
+  "interval_ms": {
+    "max": 740.0,
+    "mean": 42.34113712374582,
+    "min": 40.0,
+    "p95": 40.0
+  },
+  "measured_first_to_last_host_seconds": 12.66,
+  "nominal_duration_seconds": 10.0,
+  "nominal_sample_hz": 30,
+  "sha256": "bffd7af72df303ef4edcae5e60234920e59025d83c186a310438b8675e33eb2e",
+  "time_compressed": false,
+  "timing_ok": true,
+  "timing_rule": "300 samples, first-to-last span <= 10 s, no gap > 250 ms; provisional engineering screen"
+}
