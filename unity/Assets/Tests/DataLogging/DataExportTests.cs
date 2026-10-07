@@ -45,6 +45,26 @@ namespace AcousticVocab.DataLogging.Tests
         }
         [Test] public void RawByteTamperCannotBeReexportedAsValid()
         {string raw=Raw();string file=Directory.GetFiles(raw).Single();byte[] data=File.ReadAllBytes(file);data[10]^=1;File.WriteAllBytes(file,data);Assert.Throws<DataFault>(()=>ExportBundle.Create(raw,SyntheticData.Folder("rejected-export"),SyntheticData.Identity,ReviewedSyntheticHeaders()));}
+        // #72: one byte of the exported raw/ copy changed after visit exit. Same
+        // length, so only the recorded SHA-256 can catch it; the source journal is untouched.
+        [Test] public void OneFlippedByteInExportedRawCopyAfterExitIsAHashMismatch()
+        {
+            string raw=Raw(),output=SyntheticData.Folder("raw-flip-export");var bundle=ExportBundle.Create(raw,output,SyntheticData.Identity,ReviewedSyntheticHeaders());
+            string source=Directory.GetFiles(raw).Single();byte[] journal=File.ReadAllBytes(source);
+            var entry=bundle.Files.Single(x=>x.RelativePath.StartsWith("raw/",StringComparison.Ordinal));Assert.That(entry.RelativePath,Is.EqualTo("raw/"+Path.GetFileName(source)));
+            string copy=Path.Combine(output,"raw",Path.GetFileName(source));byte[] original=File.ReadAllBytes(copy);Assert.That(original,Is.EqualTo(journal));Assert.That(entry.Sha256,Is.EqualTo(DataJson.HashBytes(original)));
+            byte[] flipped=(byte[])original.Clone();flipped[flipped.Length/2]^=0x01;File.WriteAllBytes(copy,flipped);
+            Assert.That(new FileInfo(copy).Length,Is.EqualTo(entry.Bytes));Assert.That(DataJson.HashBytes(flipped),Is.Not.EqualTo(entry.Sha256));
+            Assert.That(Assert.Throws<DataFault>(()=>bundle.VerifiedBytes(entry)).Code,Is.EqualTo("DATA_EXPORT_CHANGED"));
+            Assert.That(Assert.Throws<DataFault>(()=>bundle.VerifyAll()).Code,Is.EqualTo("DATA_EXPORT_CHANGED"));
+            // The manifest itself is intact, so a reload reaches and refuses the changed raw file.
+            Assert.That(Assert.Throws<DataFault>(()=>ExportBundle.Load(output,bundle.ManifestSha256)).Code,Is.EqualTo("DATA_EXPORT_CHANGED"));
+            var store=new MemoryStore();string receipts=SyntheticData.Folder("raw-flip-receipt");Directory.CreateDirectory(receipts);string receipt=Path.Combine(receipts,"never.json");
+            Assert.That(Assert.ThrowsAsync<DataFault>(async()=>await VerifiedUpload.UploadAsync(bundle,store,receipt,CancellationToken.None)).Code,Is.EqualTo("DATA_EXPORT_CHANGED"));
+            Assert.That(store.objects,Is.Empty,"Nothing is uploaded from a changed export");Assert.That(File.Exists(receipt),Is.False);
+            Assert.That(File.ReadAllBytes(source),Is.EqualTo(journal),"The source journal is not touched by the export check");
+            File.WriteAllBytes(copy,original);bundle.VerifyAll();Assert.That(ExportBundle.Load(output,bundle.ManifestSha256).Files.Count,Is.EqualTo(bundle.Files.Count));
+        }
         [Test] public void PreservedUnacknowledgedTailPreventsQualification()
         {string raw=Raw();File.AppendAllText(Directory.GetFiles(raw).Single(),"torn");var bundle=ExportBundle.Create(raw,SyntheticData.Folder("torn-export"),SyntheticData.Identity,ReviewedSyntheticHeaders());Assert.That(bundle.HeadersQualified,Is.False);Assert.That(bundle.Files.Any(x=>x.RelativePath.StartsWith("raw/",StringComparison.Ordinal)),Is.True);}
         sealed class MemoryStore : IApprovedStoreTransport
