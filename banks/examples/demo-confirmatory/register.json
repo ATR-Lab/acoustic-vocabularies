@@ -3,7 +3,7 @@
     "bytes": 932116480,
     "files": 14142,
     "name": "DEMO-cbanks-01-banks.tar",
-    "sha256": "6ea894699903c37f30cad1fb6653743d4de49e467307408de774cf96a971c146"
+    "sha256": "c6f79f5a1348a0056c57ada83b7cca3f87675364ccf053658f4d2600d029fef0"
   },
   "campaign_id": "DEMO-cbanks-01",
   "checks": {
@@ -15,7 +15,7 @@
     "seeds_unique_and_disjoint": true,
     "slots_within_cap": true
   },
-  "compiled_utc": "2026-10-07T00:07:13.079Z",
+  "compiled_utc": "2026-10-07T01:30:06.290Z",
   "counts": {
     "banks": 72,
     "complete": 69,
@@ -40,20 +40,23 @@
   "format_version": 1,
   "freeze": {
     "config_frozen_sha256": "c689f6cedf6b0e9dc8cb48d8307ad9b3e2965382245598a5e64be82f68663519",
-    "freeze_version": "0.1",
-    "manifest_sha256": "ffe41c3baa70b2fd64544f07bdfe5eed4d8387fa0a7d57a914e37cacd902417f",
-    "repo_commit": "0000000000000000000000000000000000000000",
-    "status": "frozen",
-    "tag": "DEMO-g4-freeze"
+    "freeze_version": "1.0",
+    "guard_checked": false,
+    "manifest_sha256": "68f3323b51f5e41c10e8e79b62aceb7b2d31e1da8bbcc740ddde84c791c54859",
+    "repo_commit": null,
+    "status": "draft",
+    "tag": null,
+    "tag_checked": false,
+    "tag_commit": null
   },
   "generation_config_sha256": "c689f6cedf6b0e9dc8cb48d8307ad9b3e2965382245598a5e64be82f68663519",
   "hashes": {
-    "archive_sha256": "6ea894699903c37f30cad1fb6653743d4de49e467307408de774cf96a971c146",
-    "plan_sha256": "3c0e647d3f4eec735bdc4405875f54a93648bfb304fb9348fcf72f8a88df8014",
+    "archive_sha256": "c6f79f5a1348a0056c57ada83b7cca3f87675364ccf053658f4d2600d029fef0",
+    "plan_sha256": "7c227b42feb3b467705085438991c249810d01a775cfa47b54b57e55f4e571be",
     "register_csv_sha256": "b39524916bec3279d0f19bfb6a5d1235265e27d00a7450a7f5693408267e1265",
     "seed_check_sha256": "fc73ce13f26937a3a942e93ea14c805bf370b61043f0b34a82e81a92f7aff824",
     "slot_timing_csv_sha256": "5aa17a1541df5e11af3e8337279ed84d56ef0974a60c87e965171b92c3845dce",
-    "timing_csv_sha256": "749e5cb8bbe50ee781ea21ef47edfc1a1cde626a60fe1ebc066ee523f98c8cb0",
+    "timing_csv_sha256": "e25aefc1b7c0bf860668e98621acf3573b665f0efe0b658a76ebb3800d0060c5",
     "used_seeds_sha256": "71fa825069230509ea2b38d4da40dc11a646fa9bee58d07958ac68d4c30a17a0",
     "verification_log_sha256": "7959ec8b601d67d0f12a8a4c9ac654afe96cbe565e69141a702dacb12eae455d",
     "verification_sha256": "ad4749b205738a0d4e23976fd66b1df0093af9cbccdc94992a27f5dcfdd30ecf"

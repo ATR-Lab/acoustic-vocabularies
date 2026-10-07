@@ -6,6 +6,7 @@ output (fast: 48 slots each), so 2 banks (one main, one spare) are complete and 
 escalation rule applies."""
 
 import csv
+import dataclasses
 import io
 import json
 import os
@@ -19,6 +20,7 @@ from av_generation.jsonio import file_sha256, read_json, write_document
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from av_banks.confirmatory import register as register_module
 from av_banks.confirmatory import rehearsal as R
 from av_banks.confirmatory.common import (
     CampaignError,
@@ -26,17 +28,22 @@ from av_banks.confirmatory.common import (
     campaign_bank_ids,
     schema_errors,
 )
-from av_banks.confirmatory.plan import create_plan, read_plan
+from av_banks.confirmatory.plan import bank_history, create_plan, read_plan
 from av_banks.confirmatory.register import (
     REGISTER_COLUMNS,
     TIMING_COLUMNS,
+    Counts,
     archive_members,
     check_register_commit,
     compile_register,
     decide,
+    escalation_required,
     publish_register,
     record_escalation,
+    register_row,
+    runner_time,
     tally,
+    timing_log,
     verify_all,
     write_archive,
 )
@@ -118,6 +125,8 @@ def test_register_with_too_few_complete_banks(rehearsal):
     }
     assert all(doc["checks"].values())
     assert doc["escalation"]["required"] and doc["escalation"]["reference"] is None
+    assert doc["freeze"]["tag_checked"] is False and doc["freeze"]["guard_checked"] is False
+    assert doc["freeze"]["tag_commit"] is None and doc["freeze"]["status"] == "draft"
     assert doc["escalation"]["complete"] == 2 and doc["escalation"]["needed"] == 64
     assert len(doc["unavailable_bank_ids"]) == 70 and "DEMO-C001" not in doc["unavailable_bank_ids"]
     hashes = doc["hashes"]
@@ -140,6 +149,8 @@ def test_register_with_too_few_complete_banks(rehearsal):
     assert used["ok"] and used["records"] == used["distinct_seeds"] == doc["slots_total"]
     report = layout.g5b_report.read_text(encoding="utf-8")
     assert "Decision: **escalation_required**" in report and "| All (72) | 2 | 70 |" in report
+    assert "freeze tag checked in the repository: no" in report
+    assert "#25 freeze guard run: no" in report
     # the public register holds hashes and counts, never seeds or paths
     for text in (layout.register_csv.read_text(), layout.register_json.read_text()):
         assert "DEMO-P0" not in text and "B|" not in text
@@ -164,6 +175,7 @@ def test_verification_and_timing_logs(rehearsal):
     assert int(c001["latency_ms_p50"]) >= 150 and int(c001["latency_ms_max"]) <= 900
     assert int(c001["wall_ms"]) > 0 and float(c001["slots_per_minute"]) > 0
     assert c001["slots_over_cap"] == "0" and c001["llm_server_errors"] == "0"
+    assert c001["wall_estimated"] == "0" and total["wall_estimated"] == "0"
     slots = _rows(layout.slot_timing)
     assert len(slots) == int(total["slots"]) and slots[0]["slot_id"].startswith("DEMO-C001.t1.")
 
@@ -347,17 +359,45 @@ def test_register_commit_timestamp(copy, tmp_path):
     assert ok.url == f"https://github.com/ATR-Lab/acoustic-vocabularies/commit/{ok.commit}"
     assert ok.sha256 == expected and ok.to_dict()["problems"] == []
     late = check_register_commit(
-        repo, f"{rel}/register.csv", first_screening_utc="2027-04-27T09:00:00Z"
+        repo,
+        f"{rel}/register.csv",
+        expected_sha256=expected,
+        first_screening_utc="2027-04-27T09:00:00Z",
     )
-    assert not late.ok and "does not precede" in late.problems[0]
-    other = check_register_commit(repo, f"{rel}\\register.csv", expected_sha256="0" * 64)
+    assert not late.ok and late.problems == (
+        "the register commit (2027-04-27T10:00:00.000Z) does not precede the first screening",
+    )
+    # a commit at the very time of the first screening does not precede it
+    same = check_register_commit(
+        repo,
+        f"{rel}/register.csv",
+        expected_sha256=expected,
+        first_screening_utc="2027-04-27T10:00:00Z",
+    )
+    assert not same.ok and "does not precede" in same.problems[0]
+    other = check_register_commit(
+        repo,
+        f"{rel}\\register.csv",
+        expected_sha256="0" * 64,
+        first_screening_utc="2027-05-03T09:00:00Z",
+    )
     assert not other.ok and "not the campaign's file" in other.problems[0]
+    # nothing passes unchecked: no screening time, or no file hash, is not ok
+    unchecked = check_register_commit(repo, f"{rel}/register.csv", expected_sha256=expected)
+    assert not unchecked.ok and unchecked.problems == (
+        "timestamp not checked: no first confirmatory screening time given",
+    )
+    unhashed = check_register_commit(
+        repo, f"{rel}/register.csv", first_screening_utc="2027-05-03T09:00:00Z"
+    )
+    assert not unhashed.ok and unhashed.problems[0].startswith("file not checked")
     (repo / rel / "register.csv").write_text("edited\n", encoding="utf-8")
     _git(repo, "commit", "-q", "-am", "edit", date="2027-04-28T10:00:00+00:00")
     edited = check_register_commit(repo, f"{rel}/register.csv", expected_sha256=expected)
     assert edited.commit == ok.commit and edited.changed_after == 1 and not edited.ok
     missing = check_register_commit(repo, "banks/registers/none.csv")
     assert not missing.ok and missing.commit is None
+    assert missing.problems[0] == "banks/registers/none.csv was never committed"
     with pytest.raises(CampaignError, match="time zone"):
         check_register_commit(
             repo, f"{rel}/register.csv", first_screening_utc="2027-05-03T09:00:00"
@@ -410,9 +450,169 @@ def test_cli_register_escalate_publish_commit_check(copy, tmp_path, capsys):
     assert result["ok"] and result["sha256"] == file_sha256(copy / "register.json")
     assert cli.main([*args, "--first-screening", "2027-04-01T09:00:00Z"]) == 1
     capsys.readouterr()
+    with pytest.raises(SystemExit):  # the screening time is required
+        cli.main(args)
+    capsys.readouterr()
+    # only the campaign's register.csv or register.json, and the campaign must have it
+    plan = [*args[:4], f"{rel}/plan.json", *args[5:]]  # a campaign file, not a register
+    assert cli.main([*plan, "--first-screening", "2027-05-03T09:00:00Z"]) == 2
+    assert "E_INPUT: --path names 'plan.json', not one of" in capsys.readouterr().err
+    empty = tmp_path / "empty-campaign"
+    empty.mkdir()
+    no_files = [*args[:6], str(empty), "--first-screening", "2027-05-03T09:00:00Z"]
+    assert cli.main(no_files) == 2
+    assert "has no register.json" in capsys.readouterr().err
     # a blocked register exits 1
     report = CampaignLayout.at(copy).verify_report("DEMO-C001", "1.0.0")
     doc = read_json(report)
     doc["ok"] = False
     write_document(report, doc)
     assert cli.main(["register", str(copy)]) == 1
+
+
+# -- negative tests of the acceptance-criterion checks ------------------------------------
+
+
+def _counts(complete):
+    main = min(complete, 64)
+    return Counts(
+        72, complete, 72 - complete, main, 64 - main, complete - main, 8 - complete + main
+    )
+
+
+@pytest.mark.parametrize(
+    ("complete", "required", "decision"),
+    [(63, True, "escalation_required"), (64, False, "ready"), (65, False, "ready")],
+)
+def test_the_escalation_boundary_is_64_complete_banks(complete, required, decision):
+    counts = _counts(complete)
+    assert escalation_required(counts) is required
+    assert decide(counts, checks_ok=True, escalated=False) == decision
+    assert decide(counts, checks_ok=True, escalated=True) == ("escalated" if required else "ready")
+    assert decide(counts, checks_ok=False, escalated=True) == "blocked"
+
+
+def _row(copy, bank_id, *, plan=None, bank=None):
+    layout = CampaignLayout.at(copy)
+    plan = plan or read_plan(copy)
+    versions = bank_history(plan)[bank_id]
+    if bank is not None:
+        versions = (*versions[:-1], bank)
+    return register_row(layout, plan, versions)
+
+
+def test_register_rows_check_the_freeze_value_seeds_unit_and_caps(copy, monkeypatch):
+    plan = read_plan(copy)
+    row, problems = _row(copy, "DEMO-C001")
+    assert problems == [] and row["assignable"] == 1 and row["config_matches_freeze"] == 1
+    # a bank built under a config hash other than the G4 freeze value
+    other = dataclasses.replace(
+        plan, freeze=dataclasses.replace(plan.freeze, config_frozen_sha256="0" * 64)
+    )
+    row, problems = _row(copy, "DEMO-C001", plan=other)
+    assert row["config_matches_freeze"] == 0 and row["assignable"] == 0
+    assert problems == ["DEMO-C001: config hash differs from the G4 freeze value"]
+    bank = plan.bank("DEMO-C001")
+    layout = CampaignLayout.at(copy)  # (a report under the other version's name)
+    shutil.copyfile(
+        layout.verify_report("DEMO-C001", "1.0.0"), layout.verify_report("DEMO-C001", "1.0.1")
+    )
+    for changes in ({"seed_namespace": "DEMO-C001-v1.0.0-x"}, {"bank_version": "1.0.1"}):
+        _, problems = _row(copy, "DEMO-C001", bank=dataclasses.replace(bank, **changes))
+        assert problems == ["DEMO-C001: seed namespace or version differs from the plan"]
+    for changes in ({"permutation_sha256": "0" * 64}, {"dyad_slot": "B-C02"}):
+        _, problems = _row(copy, "DEMO-C001", bank=dataclasses.replace(bank, **changes))
+        assert problems == ["DEMO-C001: unit differs from the plan"]
+    # more than 4 attempts, or an attempt over 576 slots (the builder refuses both; the
+    # register checks the manifests again); the bank hash stays the verified one
+    read = register_module.BankManifest.read
+    digest = read_json(layout.verify_report("DEMO-C002", "1.0.0"))["bank_sha256"]
+    monkeypatch.setattr(register_module.BankManifest, "bank_sha256", lambda self: digest)
+
+    def with_attempts(extra):
+        def fake(path):
+            manifest = read(path)
+            last = manifest.attempts[-1]
+            return dataclasses.replace(manifest, attempts=(*manifest.attempts, *extra(last)))
+
+        return fake
+
+    monkeypatch.setattr(
+        register_module.BankManifest,
+        "read",
+        with_attempts(lambda a: [dataclasses.replace(a, attempt=a.attempt + 1)] * 4),
+    )
+    row, problems = _row(copy, "DEMO-C002")
+    assert row["attempts"] == 8 and problems == ["DEMO-C002: 8 attempts (cap 4)"]
+    monkeypatch.setattr(
+        register_module.BankManifest,
+        "read",
+        with_attempts(lambda a: [dataclasses.replace(a, slots_used=577)]),
+    )
+    row, problems = _row(copy, "DEMO-C002")
+    assert "DEMO-C002: an attempt used 577 slots (cap 576)" in problems
+
+
+def test_a_config_mismatch_blocks_the_register(copy):
+    layout = CampaignLayout.at(copy)
+    data = read_json(layout.plan)
+    data["freeze"]["config_frozen_sha256"] = "0" * 64
+    write_document(layout.plan, data)
+    result = compile_register(copy, clock=ManualClock())
+    assert result.decision == "blocked"
+    doc = read_json(layout.register_json)
+    assert not doc["checks"]["config_matches_freeze"]
+    assert all(r["config_matches_freeze"] == "0" for r in _rows(layout.register_csv))
+
+
+def test_the_register_rechecks_used_seeds_against_the_pilot(copy):
+    """A pilot namespace recorded in the plan whose seeds a bank used (here: the plan is
+    edited so that a campaign namespace counts as pilot) blocks the register."""
+    layout = CampaignLayout.at(copy)
+    data = read_json(layout.plan)
+    data["pilot"]["namespaces"] = [*data["pilot"]["namespaces"], "DEMO-C001"]
+    write_document(layout.plan, data)
+    result = compile_register(copy, clock=ManualClock())
+    assert result.decision == "blocked"
+    assert any(p.startswith("used-seed check failed") for p in result.problems)
+    used = read_json(layout.used_seeds)
+    assert not used["ok"] and any("pilot key" in p for p in used["problems"])
+    assert not read_json(layout.register_json)["checks"]["seeds_unique_and_disjoint"]
+
+
+def test_a_killed_runner_session_ends_at_its_last_record(copy):
+    layout = CampaignLayout.at(copy)
+    before = runner_time(layout)
+    assert before.unclosed == 0 and before.sessions == 1  # (a ManualClock runner)
+
+    def event(at, name, **fields):
+        with open(layout.events, "ab") as handle:
+            handle.write(json.dumps({"at_utc": at, "event": name, **fields}).encode() + b"\n")
+
+    # a runner that was killed: no runner_end; its last record is a progress snapshot
+    event("2030-01-01T00:00:00.000Z", "runner_start", banks=[])
+    event("2030-01-01T00:00:10.000Z", "bank_start", bank_id="DEMO-C001")
+    with open(layout.progress, "ab") as handle:
+        handle.write(b'{"at_utc":"2030-01-01T00:01:10.000Z","counts":{}}\n')
+    # operator actions after the kill do not extend it
+    event("2030-01-02T00:00:00.000Z", "bank_rebuild", bank_id="DEMO-C001")
+    # the next runner breaks the lock and ends normally
+    event("2030-01-03T00:00:00.000Z", "lock_broken")
+    event("2030-01-03T00:00:01.000Z", "runner_start", banks=[])
+    event("2030-01-03T00:00:05.000Z", "runner_end", halted=None, stopped=None)
+    after = runner_time(layout)
+    assert after.sessions == before.sessions + 2 and after.unclosed == 1
+    assert after.wall_ms == before.wall_ms + 70_000 + 4_000
+    # bank activity (e.g. an unfinished attempt's last slot) also counts as a record
+    later = runner_time(layout, ["2030-01-01T00:02:00.000Z", "2031-01-01T00:00:00.000Z"])
+    assert later.wall_ms == before.wall_ms + 120_000 + 4_000
+    total = timing_log(copy).rows[-1]
+    assert total["bank_id"] == "ALL" and total["wall_estimated"] == 1
+    assert total["wall_ms"] >= after.wall_ms
+    # a killed runner with nothing after it ends at its last record too
+    event("2030-02-01T00:00:00.000Z", "runner_start", banks=[])
+    event("2030-02-01T00:00:30.000Z", "bank_end", bank_id="DEMO-C001")
+    with open(layout.events, "ab") as handle:  # and the half line it left is skipped
+        handle.write(b'{"at_utc":"2030-02-01T00:00:4')
+    last = runner_time(layout)
+    assert last.unclosed == 2 and last.wall_ms == after.wall_ms + 30_000

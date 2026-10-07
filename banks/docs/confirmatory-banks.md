@@ -19,12 +19,12 @@ storage. A confirmatory campaign is refused inside a git work tree.
 
 | Step (issue checklist) | Command | Result |
 | --- | --- | --- |
-| Confirm the G4 freeze manifest and tag; check the builder config hash | `python -m av_banks.confirmatory plan ... --repo .` | refused unless the freeze manifest is valid and `frozen`, its tag points at its `repo_commit`, and its `config.frozen_sha256` equals the config hash |
+| Confirm the G4 freeze manifest and tag; check the builder config hash | `python -m av_banks.confirmatory plan ... --repo .` | refused unless the freeze manifest passes #25's freeze guard (valid, `frozen`, running code and committed files equal to it), the tagged commit holds this manifest byte for byte and `repo_commit` is that commit or an ancestor, and its `config.frozen_sha256` equals the config hash (section 4) |
 | Create the 72 bank IDs and seed namespaces and record them | the same `plan` | `R/plan.json`, `R/seed-check.json` |
 | Run the builder in parallel on the LLM host with progress monitoring | `run R ...`; `status R` from any shell | one #26 run per bank; `R/progress.jsonl`; a progress line on stderr |
 | Run `banks verify` on every complete bank | `verify-all R --jobs N` | `R/verify/*.json`, `R/verification-log.txt` |
 | Compile the register and archive; hash the archive | `register R` | `R/register.csv`, `R/register.json`, `R/archive/<id>-banks.tar` and its SHA-256, `R/g5b-report.md` |
-| Commit the register with a timestamp before allocation unsealing | `publish R --dest banks/registers/<id>`, then `git add`, `git commit`, `git push`, then `commit-check` | commit link; the commit time is checked against the first screening |
+| Commit the register with a timestamp before allocation unsealing | `publish R --dest banks/registers/<id>`, then `git add`, `git commit`, `git push`, then `commit-check` for `register.csv` and `register.json` | commit link; the committed bytes and the commit time (before the first screening) are checked |
 | Report complete and unavailable counts to the G5B owner | send `R/g5b-report.md` | counts, decision, unavailable bank IDs, hashes |
 
 The full command lines:
@@ -45,11 +45,16 @@ $P register R                  # exit 0 ready or escalated, 3 escalation require
 $P escalate R --reference https://github.com/ATR-Lab/acoustic-vocabularies/issues/28#issuecomment-N --date 2027-04-27
 $P publish R --dest banks/registers/C-banks-v1
 git add banks/registers/C-banks-v1 && git commit -m "Register confirmatory banks C-banks-v1 (#28)" && git push
-$P commit-check --repo . --path banks/registers/C-banks-v1/register.csv \
-  --campaign-root R --first-screening 2027-05-03T09:00:00Z
+for f in register.csv register.json; do
+  $P commit-check --repo . --path banks/registers/C-banks-v1/$f \
+    --campaign-root R --first-screening 2027-05-03T09:00:00Z
+done
 ```
 
-`--units` is the schedules output directory of Study B. It holds
+`--freeze-manifest` is the committed G4 file and `--repo .` the checkout it is
+committed in (required for a confirmatory plan; `--freeze-repo-path` if the manifest is
+not at `generation/FREEZE-v<freeze version>.json`). `--units` is the schedules output
+directory of Study B. It holds
 `<unit_id>/permutation.json` for `B-C01`..`B-C64` and `B-S01`..`B-S08`. `--pilot` takes
 pilot bank, run or campaign directories, or a CSV with a `seed_namespace` column. Repeat
 it as needed, or give `--pilot-namespace NS`.
@@ -114,12 +119,36 @@ automated (`seed_check`):
   The result is in `used-seeds.json`, which stays restricted. The register shows only
   whether the check passed.
 
-## 4. Runner
+## 4. Freeze check and runner
+
+**Freeze check** (`plan`; `freeze_check`). The freeze manifest is read through #25's
+freeze guard, `freeze.load_freeze_manifest(path, require_frozen=True)` for a
+confirmatory campaign. The guard checks the manifest, refuses a draft, and compares the
+running code and the committed files with the manifest, so a checkout with an edited
+module, prompt set or LLM manifest never plans a campaign. A checkout without #25's
+guard refuses a confirmatory campaign; a DEMO campaign is then checked against
+`freeze-manifest.schema.json`. Then `genconfig.check_run_config` must pass: the code
+pins equal the config, the manifest is `frozen` and its `config.frozen_sha256` equals
+the config hash.
+
+A confirmatory plan also checks the freeze tag in the repository given with `--repo`
+(`freeze_check.check_tag`). In #25's procedure (`generation/docs/freeze.md` sections 2
+and 6), `repo_commit` is the commit the frozen values were collected from, and the
+signed tag marks the later commit that adds the manifest. So the check requires:
+
+- the tag resolves to a commit;
+- that commit holds the given manifest byte for byte at
+  `generation/FREEZE-v<freeze version>.json` (or `--freeze-repo-path`);
+- `repo_commit` is that commit or an ancestor of it.
+
+`plan.json` and `register.json` record `tag_checked`, `tag_commit` and `guard_checked`
+(their schemas require all three for a confirmatory campaign), and the G5B report shows
+them. A DEMO rehearsal checks neither.
 
 `run` (`runner.run_campaign`) first checks the campaign again: the stored freeze
-manifest and config must be the planned ones, and `genconfig.check_run_config` must pass
-(code pins, a `frozen` manifest, the config hash). Only then does it build the *pending*
-banks.
+manifest and config must be the planned ones, the manifest must pass #25's guard again
+(the checkout may have changed since `plan`), and `genconfig.check_run_config` must
+pass. Only then does it build the *pending* banks.
 
 - Each bank is one #26 run, `R/runs/<campaign>-<bank>/banks/<bank>/`. It runs with
   `parallel_banks` banks at once, and each bank has `workers` profile streams. One bank's
@@ -132,10 +161,22 @@ banks.
   slots used, slots per minute, each running bank's attempt and slot count, and an
   estimate of the hours left. `status R` gives the same view from another shell.
 - **Model-server outage.** A failed model call (`server_error` or `timeout`) uses its
-  slot as usual (#26). After `--breaker` such calls in a row (24 by default, across all
-  banks), the campaign halts. The next slot of every running bank raises
-  `CampaignHalted`, so an outage cannot use up a bank's attempts and make it
-  `unavailable`. Halted banks are *crashed*.
+  slot as usual (Study B protocol §4, #26), with two exceptions
+  (`runner.InfrastructureBreaker`):
+  - the call is the `--breaker`-th failed call in a row (3 by default, 1 to 11) of its
+    profile stream in its bank;
+  - the call falls on the last (12th) slot of its cell.
+
+  Then the failing call itself raises `CampaignHalted`, before the builder records its
+  slot, and so does the next slot of every running bank. A failed call is therefore
+  never the slot that fails a cell. During an outage every call fails, so each stream
+  halts at its third failed call or at its cell's 12th slot, whichever comes first, with
+  at most 11 slots used in that cell. An outage can thus not fail an attempt or make a
+  bank `unavailable`, in any attempt. Halted banks are *crashed* and are rebuilt. The
+  halting call has no slot record; its request stays in the crashed run's
+  `llm-requests.jsonl`. A single failed call on a 12th slot also halts, because one call
+  cannot tell an isolated error from the start of an outage. Failed calls that do not
+  halt stay visible in `timing.csv` (`llm_server_errors`, `llm_timeouts`).
 - **Stopping.** After a failed build, no further bank starts, and the banks already
   running finish. `--continue-on-error` keeps starting banks. Ctrl-C also stops new banks
   from starting.
@@ -148,7 +189,11 @@ banks.
   example, a prompt set that differs from the config) leaves nothing, and the bank stays
   pending. An `unavailable` bank is final and is never rebuilt.
 - **One runner.** `runner.lock` admits one runner at a time. `--break-lock` removes the
-  lock that a killed runner leaves behind.
+  lock that a killed runner leaves behind. It also cuts a line that the killed runner
+  left unfinished at the end of `events.jsonl` or `progress.jsonl`, and logs the cut as
+  `log_repaired`. The campaign logs are appended through `jsonio.JsonlAppender`: the
+  runner's bank threads share one lock per file, so lines never interleave, also on
+  Windows.
 
 **Sizing.** If the `--pilot` directories hold pilot banks, `plan` adds `sizing` to
 `plan.json`:
@@ -204,7 +249,8 @@ WAVs, and no allocation information. Everything else stays restricted.
 - the `decision` (`ready`, `escalation_required`, `escalated` or `blocked`) and the
   escalation;
 - the unavailable bank IDs and the spare rule;
-- the freeze reference (manifest hash, tag, commit);
+- the freeze reference (manifest hash, status, tag, `repo_commit`, `tag_checked`,
+  `tag_commit`, `guard_checked`);
 - the hashes of the plan, seed checks, register CSV, verification log, timing logs and
   archive.
 
@@ -212,10 +258,13 @@ WAVs, and no allocation information. Everything else stays restricted.
 report is missing or older than its manifest; or a runner holds the lock. A failed check
 gives `blocked`, and `publish` refuses a blocked register.
 
-**Timestamp.** `commit-check` finds the first commit that added the register file and
-checks three things: the committed bytes are the campaign's file, no later commit
-changed the file, and the commit time precedes `--first-screening`. It prints the commit
-link. Git commit times are claims made by the committer. The independent record is the
+**Timestamp.** `commit-check --path <dir>/register.csv` (or `register.json`) finds the
+first commit that added the register file and checks three things: the committed bytes
+are the campaign's file of that name, no later commit changed the file, and the commit
+time strictly precedes `--first-screening` (required). Another file name, or a campaign
+without the file, is refused. It prints the commit link. In the Python API
+(`check_register_commit`), a result without the file hash or the screening time lists
+what was not checked and is not `ok`. Git commit times are claims made by the committer. The independent record is the
 push time on GitHub (the commit page and the PR timeline). Push the register commit, and
 give its link in the G5B report, before the first confirmatory screening.
 
@@ -223,13 +272,20 @@ give its link in the G5B report, before the first confirmatory screening.
 (`register.TIMING_COLUMNS`). Each row holds:
 
 - attempts and slots;
-- wall time and slots per minute;
+- wall time, slots per minute and `wall_estimated`;
 - model latency and open-to-close slot time (nearest-rank p50, p95 and max);
 - slots over the 40-s cap;
 - failed and timed-out model calls;
 - start and end times.
 
-The `ALL` row's wall time is the runner time from `events.jsonl`. `slot-timing.csv` has
+A bank row's wall time is the sum of its attempts (`attempt.json`). An unfinished
+attempt of a crashed build has no `attempt.json`: its time runs from its
+`attempt_start` timing event to its last timing event or slot record, and the row is
+flagged `wall_estimated = 1`. The `ALL` row's wall time is the runner time from
+`events.jsonl`, from each `runner_start` to its `runner_end`. A killed runner writes no
+`runner_end`: its session ends at its last record (runner event, progress snapshot or
+bank activity) before the next `runner_start` or `lock_broken`, and the row is flagged
+`wall_estimated = 1`. `slot-timing.csv` has
 the latency and slot time of every slot, for methods reporting.
 
 **Archive.** `archive/<campaign>-banks.tar` is a POSIX tar of every campaign file except
@@ -243,11 +299,12 @@ same files therefore give the same SHA-256 on every platform. The hash is in
 | Module | API |
 | --- | --- |
 | `common` | `campaign_bank_ids(*, demo=False)`, `bank_sequence`, `bank_role`, `dyad_slot`, `run_id_for(campaign_id, bank_id, bank_version)`, `CampaignLayout`, `CampaignError` (`.code`: `E_INPUT`, `E_FREEZE`, `E_UNITS`, `E_SEEDS`, `E_EXISTS`, `E_STATE`, `E_LOCKED`, `E_VERIFY`, `E_COMMIT`), `N_MAIN`, `N_SPARES`, `MIN_COMPLETE` |
-| `plan` | `create_plan(root, *, campaign_id, config, freeze_manifest, units, pilot, clock, bank_version="1.0.0", repo=None, parallel_banks=1) -> CampaignPlan`; `check_freeze(freeze_manifest, config, *, kind, manifest_sha256, repo=None) -> FreezeRef`; `size_run(pilot, *, parallel_banks)`; `read_plan`, `effective_banks`, `bank_history`, `read_rebuilds`, `next_version` |
+| `plan` | `create_plan(root, *, campaign_id, config, freeze_manifest, units, pilot, clock, bank_version="1.0.0", repo=None, freeze_repo_path=None, parallel_banks=1) -> CampaignPlan`; `check_freeze(freeze_manifest_path, config, *, kind, repo=None, manifest_path=None) -> FreezeRef` (`tag_checked`, `tag_commit`, `guard_checked`); `size_run(pilot, *, parallel_banks)`; `read_plan`, `effective_banks`, `bank_history`, `read_rebuilds`, `next_version`, `append_event` |
+| `freeze_check` | `load_freeze(path, *, kind) -> LoadedFreeze` (#25's guard), `check_tag(repo, manifest, data, *, manifest_path=None) -> str` (tagged commit), `guard_available()`, `default_manifest_path(manifest)` |
 | `seed_check` | `bank_seed_keys(namespace)`, `check_seeds(entries, *, expected_set, pilot) -> SeedCheck`, `read_pilot(paths=(), *, namespaces=()) -> PilotSeeds`, `check_used_seeds(banks, *, pilot_namespaces) -> UsedSeeds`, `SeedEntry`, `KEYS_PER_BANK` |
-| `runner` | `run_campaign(root, *, proposer_factory, clock, config=None, bank_clock=None, parallel_banks=1, workers=3, only=None, ledger_factory=slot_ledger, fsync=True, breaker_threshold=24, monitor_interval_s=60.0, on_progress=None, stop_on_error=True, break_lock=False, llm_runtime=None) -> CampaignRun`; `campaign_status(root) -> CampaignStatus`; `rebuild_bank(root, bank_id, *, reason, clock) -> PlannedBank`; `check_campaign`; `InfrastructureBreaker`, `GuardedProposer`, `CampaignHalted` |
-| `register` | `verify_all(root, *, jobs=1, only=None) -> VerifyAll`; `timing_log(root)`; `compile_register(root, *, clock) -> RegisterResult`; `register_row`; `tally(rows)`, `decide(counts, *, checks_ok, escalated)`; `write_archive(root, target) -> ArchiveInfo`; `record_escalation(root, *, reference, date, clock)`; `publish_register(root, dest)`; `check_register_commit(repo, path, *, expected_sha256=None, first_screening_utc=None, ref="HEAD") -> RegisterCommit` |
-| `rehearsal` | `rehearse(out, *, campaign_id, unavailable, outage=(), parallel_banks=4, workers=1, jobs=1, only=None, ledger_factory=None, ...) -> Rehearsal`; `DemoSlotProposer`, `demo_units`, `demo_config`, `demo_freeze_manifest` |
+| `runner` | `run_campaign(root, *, proposer_factory, clock, config=None, bank_clock=None, parallel_banks=1, workers=3, only=None, ledger_factory=slot_ledger, fsync=True, breaker_threshold=3, monitor_interval_s=60.0, on_progress=None, stop_on_error=True, break_lock=False, llm_runtime=None) -> CampaignRun`; `campaign_status(root) -> CampaignStatus`; `rebuild_bank(root, bank_id, *, reason, clock) -> PlannedBank`; `check_campaign`; `InfrastructureBreaker(threshold=3)` (`record(cell, proposal, slot_id)`), `GuardedProposer`, `CampaignHalted`, `DEFAULT_BREAKER` |
+| `register` | `verify_all(root, *, jobs=1, only=None) -> VerifyAll`; `timing_log(root) -> TimingLog` (`rows`, `runner`), `attempt_times(bank_dir, records)`, `runner_time(layout, activity=())`; `compile_register(root, *, clock) -> RegisterResult`; `register_row`; `tally(rows)`, `escalation_required(counts)`, `decide(counts, *, checks_ok, escalated)`; `write_archive(root, target) -> ArchiveInfo`; `record_escalation(root, *, reference, date, clock)`; `publish_register(root, dest)`; `check_register_commit(repo, path, *, expected_sha256=None, first_screening_utc=None, ref="HEAD") -> RegisterCommit` |
+| `rehearsal` | `rehearse(out, *, campaign_id, unavailable, outage=(), parallel_banks=4, workers=1, jobs=1, only=None, ledger_factory=None, ...) -> Rehearsal`; `DemoSlotProposer`, `demo_units`, `demo_config`, `demo_freeze_manifest(config)` (a draft) |
 | `cli` | `main(argv)`; `python -m av_banks.confirmatory` |
 
 ## 8. Decisions
@@ -259,7 +316,8 @@ same files therefore give the same SHA-256 on every platform. The hash is in
 | At least 64 of 72 complete, else `escalation_required`, recorded with a link and a date | the issue's proposal; equivalent to "spares cover every unavailable main bank" in number; arm matching is checked by the reveal API |
 | Seed namespace = bank ID (the #26 default); disjointness checked over the full key space | pilot (`bank-P`) and confirmatory (`bank-C`) namespaces differ by construction; the check also covers any rebuild namespace and the recorded pilot seeds |
 | One #26 run per bank | a crash or halt affects one bank's run only; the per-bank run manifest names the bank's seed namespace |
-| Halt after repeated failed model calls; crashed banks are rebuilt under a new version | an outage must not exhaust attempts and turn banks `unavailable`; #26 never resumes a build, and a new version brings new seeds; the crashed run is archived and reported |
+| Halt on the third failed model call in a row of one profile stream, or on a failed call on a cell's 12th slot, from the failing call itself; crashed banks are rebuilt under a new version | an outage must not fail a cell, so it can never exhaust attempts and turn a bank `unavailable` (a failed call on the 12th slot would decide its cell); counting per stream finds an outage within a cell's budget whatever the other streams do; isolated failed calls still use their slots (Study B §4); #26 never resumes a build, and a new version brings new seeds; the crashed run is archived and reported |
+| Freeze tag: the tagged commit holds the given manifest byte for byte, and `repo_commit` is that commit or an ancestor; `--repo` required for a confirmatory plan; #25's guard on the manifest at `plan` and `run` | #25 defines `repo_commit` as the commit the values come from and the tag as the commit that adds the manifest, so they differ; the byte comparison ties the file the campaign copies to the tagged one; the guard refuses a checkout that differs from the freeze (#25 contract) |
 | Only `register.csv` and `register.json` are public | hashes and counts give a timestamped commitment without seeds, recipes or WAVs |
 | Deterministic tar archive | the archive hash can be recomputed from the stored files on any machine |
 | Commit time from git, push time on GitHub as the independent record | a git timestamp alone can be set by the committer |
@@ -273,7 +331,8 @@ same files therefore give the same SHA-256 on every platform. The hash is in
   `"demo": true`);
 - a DEMO config built from the repository's DEMO meaning set, the recipe schema, the
   DEMO fallback set and synthetic prompt hashes;
-- a DEMO freeze manifest with that config's hash and the tag `DEMO-g4-freeze`;
+- a DEMO draft freeze manifest with that config's hash, without tag or sign-off (a
+  DEMO config is never frozen; with #25 in the checkout it is #25's draft format);
 - the DEMO pilot namespaces `DEMO-P001`..`DEMO-P008`;
 - `DemoSlotProposer`: random recipes drawn from each slot's seed key, with simulated
   model latency on each bank's own clock.

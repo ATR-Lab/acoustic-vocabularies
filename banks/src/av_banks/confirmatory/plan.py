@@ -3,11 +3,15 @@
 `create_plan` runs before any slot, in restricted storage (a confirmatory campaign is
 refused inside a git work tree, like every confirmatory run):
 
-1. **Freeze.** The G4 freeze manifest (#25) matches `freeze-manifest.schema.json`, and
-   `genconfig.check_run_config(config, kind="confirmatory", freeze_manifest=...)` passes:
-   the running code equals the config, the manifest is `frozen` and its
-   `config.frozen_sha256` equals the config hash. With `repo=`, its `tag` must exist in
-   that git repository and point at its `repo_commit`.
+1. **Freeze.** The G4 freeze manifest (#25) is read through #25's freeze guard
+   (`freeze_check.load_freeze`: `freeze.load_freeze_manifest(path, require_frozen=True)`
+   for a confirmatory campaign, which also compares the running code and the committed
+   files with the manifest), and `genconfig.check_run_config(config,
+   kind="confirmatory", freeze_manifest=...)` passes: the running code equals the
+   config, the manifest is `frozen` and its `config.frozen_sha256` equals the config
+   hash. A confirmatory plan also checks the freeze tag in the repository (`repo=`,
+   required): the tagged commit holds this manifest byte for byte and `repo_commit` is
+   that commit or an ancestor of it (`freeze_check.check_tag`).
 2. **Bank IDs.** `bank-C001`..`bank-C064` (main dyad slots `B-C01`..`B-C64`) and
    `bank-C065`..`bank-C072` (spares `B-S01`..`B-S08`): the #26 dyad-slot sequence, no
    random draw, no allocation information. Each is bound to its unit's package-safe
@@ -26,15 +30,14 @@ The plan is immutable; rebuilds of crashed banks are appended to `rebuilds.jsonl
 
 from __future__ import annotations
 
+import hashlib
 import math
 import os
-import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Literal
 
-from av_generation._schemas import schema_errors as generation_schema_errors
 from av_generation.clock import Clock, utc_text
 from av_generation.constants import B_MAX_SLOTS
 from av_generation.genconfig import (
@@ -47,9 +50,8 @@ from av_generation.genconfig import (
 from av_generation.ids import RunKind
 from av_generation.jsonio import (
     CodecError,
-    canonical_line,
+    JsonlAppender,
     decode_dataclass,
-    file_sha256,
     iter_jsonl,
     read_json,
     to_json_value,
@@ -79,12 +81,12 @@ from .common import (
     require_schema,
     run_id_for,
 )
+from .freeze_check import check_tag, load_freeze
 from .seed_check import PilotSeeds, SeedCheck, SeedEntry, SourceRef, check_seeds
 
 PLAN_FORMAT: Final = "av-banks/confirmatory-plan"
 PLAN_VERSION: Final = 1
 PLAN_SCHEMA: Final = "confirmatory-plan.schema.json"
-FREEZE_SCHEMA: Final = "freeze-manifest.schema.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,7 +101,13 @@ class FreezeRef:
     repo_commit: str | None
     config_frozen_sha256: str
     tag_checked: bool
-    """`True` when the tag was resolved in a git repository and equals `repo_commit`."""
+    """`True` when the tag was checked in the git repository (`freeze_check.check_tag`);
+    always for a confirmatory plan."""
+    tag_commit: str | None
+    """The commit the tag points at (the commit that adds the manifest), when checked."""
+    guard_checked: bool
+    """`True` when #25's freeze guard compared the running code and committed files with
+    the manifest (`freeze_check.load_freeze`); always for a confirmatory plan."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,62 +207,48 @@ def read_plan(root: str | os.PathLike[str]) -> CampaignPlan:
 # Freeze
 
 
-def git_tag_commit(repo: str | os.PathLike[str], tag: str) -> str | None:
-    """The commit a tag points at in a git repository, or `None` if it does not exist."""
-    result = subprocess.run(  # noqa: S603 - fixed argument list, no shell
-        ["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}^{{commit}}"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
-
-
 def check_freeze(
-    freeze_manifest: Mapping[str, Any],
+    freeze_manifest: str | os.PathLike[str],
     config: GenerationConfig,
     *,
     kind: RunKind | str,
-    manifest_sha256: str,
     repo: str | os.PathLike[str] | None = None,
+    manifest_path: str | None = None,
 ) -> FreezeRef:
-    """Refuse a campaign whose config hash differs from the G4 freeze manifest (module
-    docstring, step 1); raises `CampaignError(E_FREEZE)`."""
-    errors = generation_schema_errors(FREEZE_SCHEMA, dict(freeze_manifest))
-    if errors:
+    """Refuse a campaign whose config hash differs from the G4 freeze manifest at path
+    `freeze_manifest` (module docstring, step 1); raises `CampaignError(E_FREEZE)`. A
+    confirmatory campaign needs `repo`, the git repository the freeze tag is checked in
+    (`manifest_path`: the manifest's path there, default `generation/FREEZE-v<freeze
+    version>.json`)."""
+    kind = RunKind(kind)
+    if kind is RunKind.CONFIRMATORY and repo is None:
         raise CampaignError(
-            E_FREEZE, f"freeze manifest does not match {FREEZE_SCHEMA}: {list(errors[:3])}"
+            E_FREEZE,
+            "a confirmatory plan checks the freeze tag in the repository: give repo (--repo)",
         )
+    loaded = load_freeze(freeze_manifest, kind=kind)
+    doc = loaded.manifest
     try:
-        check_run_config(config, kind=kind, freeze_manifest=freeze_manifest)
+        check_run_config(config, kind=kind, freeze_manifest=doc)
     except ConfigMismatch as err:
         raise CampaignError(
             E_FREEZE, f"generation config refused by the freeze check: {err}"
         ) from err
-    tag = freeze_manifest.get("tag")
-    commit = freeze_manifest.get("repo_commit")
-    checked = False
-    if repo is not None:
-        if not isinstance(tag, str):
-            raise CampaignError(E_FREEZE, "the freeze manifest names no tag to check")
-        found = git_tag_commit(repo, tag)
-        if found is None:
-            raise CampaignError(E_FREEZE, f"tag {tag!r} does not exist in {Path(repo).name}")
-        if found != commit:
-            raise CampaignError(
-                E_FREEZE, f"tag {tag!r} points at {found}, the freeze manifest names {commit}"
-            )
-        checked = True
+    tag_commit = (
+        check_tag(repo, doc, loaded.data, manifest_path=manifest_path) if repo is not None else None
+    )
+    tag = doc.get("tag")
+    commit = doc.get("repo_commit")
     return FreezeRef(
-        manifest_sha256=manifest_sha256,
-        status=str(freeze_manifest["status"]),
-        freeze_version=str(freeze_manifest["freeze_version"]),
+        manifest_sha256=loaded.sha256,
+        status=str(doc["status"]),
+        freeze_version=str(doc["freeze_version"]),
         tag=tag if isinstance(tag, str) else None,
         repo_commit=commit if isinstance(commit, str) else None,
-        config_frozen_sha256=str(freeze_item(freeze_manifest, FREEZE_CONFIG_KEY)),
-        tag_checked=checked,
+        config_frozen_sha256=str(freeze_item(doc, FREEZE_CONFIG_KEY)),
+        tag_checked=tag_commit is not None,
+        tag_commit=tag_commit,
+        guard_checked=loaded.guard_checked,
     )
 
 
@@ -332,10 +326,13 @@ def create_plan(
     clock: Clock,
     bank_version: str = FIRST_VERSION,
     repo: str | os.PathLike[str] | None = None,
+    freeze_repo_path: str | None = None,
     parallel_banks: int = 1,
 ) -> CampaignPlan:
     """Check the freeze, bind the 72 banks, check the seeds and write the campaign
-    directory (module docstring). `campaign_id` starts with `DEMO-` for a rehearsal."""
+    directory (module docstring). `campaign_id` starts with `DEMO-` for a rehearsal; a
+    confirmatory campaign needs `repo` (and `freeze_repo_path` when the manifest is not
+    committed at `generation/FREEZE-v<freeze version>.json`)."""
     demo = is_demo_campaign(campaign_id)
     kind = RunKind.DEMO if demo else RunKind.CONFIRMATORY
     if not CAMPAIGN_ID_RE.fullmatch(campaign_id):
@@ -346,13 +343,10 @@ def create_plan(
     if layout.root.exists() and any(layout.root.iterdir()):
         raise CampaignError(E_EXISTS, f"campaign directory {layout.root.name} is not empty")
     freeze_path = Path(freeze_manifest)
+    freeze = check_freeze(freeze_path, config, kind=kind, repo=repo, manifest_path=freeze_repo_path)
     freeze_bytes = freeze_path.read_bytes()
-    freeze_doc = read_json(freeze_path)
-    if not isinstance(freeze_doc, dict):
-        raise CampaignError(E_FREEZE, "the freeze manifest is not a JSON object")
-    freeze = check_freeze(
-        freeze_doc, config, kind=kind, manifest_sha256=file_sha256(freeze_path), repo=repo
-    )
+    if hashlib.sha256(freeze_bytes).hexdigest() != freeze.manifest_sha256:
+        raise CampaignError(E_FREEZE, "the freeze manifest changed while the plan was made")
     units_root = Path(units)
     banks = tuple(
         _planned(b, units_root, demo=demo, bank_version=bank_version, campaign_id=campaign_id)
@@ -410,11 +404,10 @@ def _seed_problems(check: SeedCheck) -> list[str]:
     ][:5]
 
 
-def append_event(layout: CampaignLayout, event: Mapping[str, Any]) -> None:
-    """Append one canonical line to `events.jsonl`."""
-    layout.root.mkdir(parents=True, exist_ok=True)
-    with open(layout.events, "ab") as handle:
-        handle.write(canonical_line(dict(event)))
+def append_event(layout: CampaignLayout, event: Mapping[str, Any], *, fsync: bool = True) -> None:
+    """Append one canonical line to `events.jsonl` (`jsonio.JsonlAppender`: the runner's
+    bank threads share one lock per file, so lines never interleave, also on Windows)."""
+    JsonlAppender(layout.events, fsync=fsync).append_obj(dict(event))
 
 
 # ---------------------------------------------------------------------------

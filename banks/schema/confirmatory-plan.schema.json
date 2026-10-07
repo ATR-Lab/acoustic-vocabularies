@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/confirmatory-plan.schema.json",
   "title": "Confirmatory Study B bank campaign plan",
-  "description": "plan.json of a confirmatory bank campaign (#28; Study B protocol §4): the G4 freeze the campaign runs under, the 72 banks (bank-C001..bank-C064 main dyad slots B-C01..B-C64, bank-C065..bank-C072 spares B-S01..B-S08; DEMO-C001.. in a rehearsal) with their unit permutation hashes and seed namespaces, the seed check summary (unique across the banks, disjoint from the pilot namespaces) and an optional run-size estimate from the pilot throughput. Restricted storage only: it names the seed namespaces. Written once by av_banks.confirmatory.plan.create_plan; rebuilds of crashed banks are appended to rebuilds.jsonl.",
+  "description": "plan.json of a confirmatory bank campaign (#28; Study B protocol §4): the G4 freeze the campaign runs under, the 72 banks (bank-C001..bank-C064 main dyad slots B-C01..B-C64, bank-C065..bank-C072 spares B-S01..B-S08; DEMO-C001.. in a rehearsal) with their unit permutation hashes and seed namespaces, the seed check summary (unique across the banks, disjoint from the pilot namespaces) and an optional run-size estimate from the pilot throughput. A confirmatory plan records that the freeze tag was checked in the repository and that the G4 freeze guard (#25) compared the running code and committed files with the manifest. Restricted storage only: it names the seed namespaces. Written once by av_banks.confirmatory.plan.create_plan; rebuilds of crashed banks are appended to rebuilds.jsonl.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -37,11 +37,13 @@
       "required": [
         "config_frozen_sha256",
         "freeze_version",
+        "guard_checked",
         "manifest_sha256",
         "repo_commit",
         "status",
         "tag",
-        "tag_checked"
+        "tag_checked",
+        "tag_commit"
       ],
       "properties": {
         "manifest_sha256": {"$ref": "#/$defs/sha256"},
@@ -50,7 +52,9 @@
         "tag": {"oneOf": [{"type": "string", "pattern": "^[!-~]{1,64}$"}, {"type": "null"}]},
         "repo_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
         "config_frozen_sha256": {"$ref": "#/$defs/sha256"},
-        "tag_checked": {"type": "boolean"}
+        "tag_checked": {"type": "boolean"},
+        "tag_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
+        "guard_checked": {"type": "boolean"}
       }
     },
     "seeds": {
@@ -149,6 +153,23 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"const": "confirmatory"}}, "required": ["kind"]},
+      "then": {
+        "properties": {
+          "freeze": {
+            "properties": {
+              "status": {"const": "frozen"},
+              "tag_checked": {"const": true},
+              "tag_commit": {"type": "string"},
+              "guard_checked": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"},

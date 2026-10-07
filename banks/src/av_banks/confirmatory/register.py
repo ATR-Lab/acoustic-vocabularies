@@ -10,8 +10,12 @@ After the run:
    is missing or stale):
    - `used-seeds.json`: the seeds the slot records used (`seed_check.check_used_seeds`);
    - `timing.csv` (one row per bank version and an `ALL` row: wall time, slots per
-     minute, model latency and slot time p50/p95/max, slots over the 40-s cap, failed
-     model calls) and `slot-timing.csv` (one row per slot): the run timing log;
+     minute, whether the wall time is estimated, model latency and slot time
+     p50/p95/max, slots over the 40-s cap, failed model calls) and `slot-timing.csv` (one
+     row per slot): the run timing log. A bank row adds the time of an unfinished
+     (crashed) attempt from its timing events and slot records; the `ALL` row is the
+     runner time, and a killed runner's session ends at its last record. Both are then
+     flagged `wall_estimated`;
    - `register.csv` (`REGISTER_COLUMNS`, one row per bank in dyad-slot sequence): bank
      ID, role, dyad slot, version, status, whether it may be assigned, config hash and
      its match with the freeze value, attempts, attempt used, slots, verify result and
@@ -20,8 +24,9 @@ After the run:
      except the archive, `register.json`, `g5b-report.md` and the lock, in sorted POSIX
      order with fixed metadata, so the same files always give the same SHA-256);
    - `register.json` (`banks/schema/confirmatory-register.schema.json`): counts, checks,
-     the decision and escalation, the unavailable bank IDs, and the hashes of the plan,
-     seed check, register CSV, verification and timing logs and the archive;
+     the decision and escalation, the unavailable bank IDs, the freeze reference (with
+     whether the freeze tag and #25's freeze guard were checked), and the hashes of the
+     plan, seed check, register CSV, verification and timing logs and the archive;
    - `g5b-report.md`: the counts and decision for the G5B owner.
 3. **Counts and escalation.** Spares do not change the count: at least 64 of the 72
    banks must be complete. If fewer are, the decision is `escalation_required`: stop and
@@ -34,7 +39,8 @@ After the run:
    (hashes and counts only) into the repository; after the commit,
    `check_register_commit` confirms that the committed files equal the campaign's, that
    they were added once and never changed, and that the commit time precedes the first
-   confirmatory screening.
+   confirmatory screening (`ok` is false when either the file hash or the screening time
+   is not given, so nothing passes unchecked).
 """
 
 from __future__ import annotations
@@ -42,6 +48,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 import os
 import re
 import shutil
@@ -50,7 +57,7 @@ import tarfile
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final, Literal
 
@@ -111,6 +118,7 @@ TIMING_COLUMNS: Final[tuple[str, ...]] = (
     "slots",
     "wall_ms",
     "slots_per_minute",
+    "wall_estimated",
     "latency_ms_p50",
     "latency_ms_p95",
     "latency_ms_max",
@@ -141,6 +149,21 @@ SPARE_RULE: Final = (
     "arm and swap flag (schedules #31)."
 )
 ESCALATION_RULE: Final = "complete banks < 64: stop and escalate to the advisor before G5B"
+RUNNER_ACTIVITY: Final = frozenset(
+    {
+        "runner_start",
+        "log_repaired",
+        "bank_crashed",
+        "bank_start",
+        "bank_end",
+        "bank_error",
+        "bank_not_started",
+        "runner_end",
+    }
+)
+"""`events.jsonl` events a runner writes during its session."""
+SESSION_BOUNDARIES: Final = frozenset({"runner_start", "lock_broken"})
+"""Events that begin a new runner session (and so end a killed runner's session)."""
 REFERENCE_RE: Final = re.compile(
     r"https://github\.com/ATR-Lab/acoustic-vocabularies/(issues|pull)/[0-9]+(#[!-~]+)?"
 )
@@ -287,50 +310,162 @@ def _quantiles(prefix: str, values: Sequence[int]) -> dict[str, int | None]:
     }
 
 
+def _jsonl(path: Path) -> list[Any]:
+    """The complete lines of a JSONL log; a line a killed process left unfinished at the
+    end is skipped (the runner cuts it, logged, when it next starts)."""
+    if not path.is_file():
+        return []
+    data = path.read_bytes()
+    return [json.loads(raw) for raw in data[: data.rfind(b"\n") + 1].splitlines() if raw]
+
+
+def _moment(text: object) -> datetime | None:
+    if not isinstance(text, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return moment if moment.tzinfo is not None else None
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptTime:
+    """Wall time of one attempt on disk."""
+
+    attempt: int
+    wall_ms: int
+    started_utc: str | None
+    ended_utc: str | None
+    estimated: bool
+    """`True` for an unfinished attempt (no `attempt.json`: its build crashed)."""
+
+
+def attempt_times(
+    bank_dir: Path, records: Sequence[tuple[int, Mapping[str, Any]]]
+) -> list[AttemptTime]:
+    """Wall time of every attempt of a bank directory: from `attempt.json` for a finished
+    attempt; for an unfinished one, from its `attempt_start` timing event to its last
+    timing event or slot record (`records`: `(attempt, slot record)`), estimated."""
+    blayout = BankLayout(bank_dir)
+    events = [e for e in _jsonl(blayout.timing) if isinstance(e, dict)]
+    out: list[AttemptTime] = []
+    for attempt in blayout.attempts():
+        path = blayout.attempt_summary(attempt)
+        if path.is_file():
+            summary = AttemptSummary.read(path)
+            out.append(
+                AttemptTime(attempt, summary.wall_ms, summary.started_utc, summary.ended_utc, False)
+            )
+            continue
+        mine = [e for e in events if e.get("attempt") == attempt and isinstance(e.get("t_ms"), int)]
+        start = next((e for e in mine if e.get("event") == "attempt_start"), None)
+        if start is None:
+            out.append(AttemptTime(attempt, 0, None, None, True))
+            continue
+        t0 = int(start["t_ms"])
+        t1 = max(
+            [
+                t0,
+                *(int(e["t_ms"]) for e in mine),
+                *(
+                    int(r["t_ms"])
+                    for a, r in records
+                    if a == attempt and isinstance(r.get("t_ms"), int)
+                ),
+            ]
+        )
+        began = _moment(start.get("wall_utc"))
+        out.append(
+            AttemptTime(
+                attempt,
+                t1 - t0,
+                None if began is None else utc_text(began),
+                None if began is None else utc_text(began + timedelta(milliseconds=t1 - t0)),
+                True,
+            )
+        )
+    return out
+
+
 def _timing_row(
     bank_id: str,
     version: str,
     status: str,
-    records: Sequence[dict[str, Any]],
-    summaries: Sequence[AttemptSummary],
+    records: Sequence[Mapping[str, Any]],
+    times: Sequence[AttemptTime],
 ) -> dict[str, Any]:
     latency = [int(r["latency_ms"]) for r in records if isinstance(r.get("latency_ms"), int)]
     slot_ms = [int(r["t_ms"]) - int(r["t_open_ms"]) for r in records]
-    wall = sum(s.wall_ms for s in summaries)
+    wall = sum(t.wall_ms for t in times)
     return {
         "bank_id": bank_id,
         "bank_version": version,
         "status": status,
-        "attempts": len(summaries),
+        "attempts": len(times),
         "slots": len(records),
         "wall_ms": wall,
         "slots_per_minute": round(len(records) * 60_000 / wall, 3) if wall > 0 else None,
+        "wall_estimated": int(any(t.estimated for t in times)),
         **_quantiles("latency_ms", latency),
         **_quantiles("slot_ms", slot_ms),
         "slots_over_cap": sum(1 for ms in slot_ms if ms > SLOT_CAP_MS),
         "llm_server_errors": sum(1 for r in records if r.get("llm_status") == "server_error"),
         "llm_timeouts": sum(1 for r in records if r.get("llm_status") == "timeout"),
-        "started_utc": min((s.started_utc for s in summaries), default=None),
-        "ended_utc": max((s.ended_utc for s in summaries), default=None),
+        "started_utc": min((t.started_utc for t in times if t.started_utc), default=None),
+        "ended_utc": max((t.ended_utc for t in times if t.ended_utc), default=None),
     }
 
 
-def _runner_wall_ms(layout: CampaignLayout) -> int:
-    """Total runner time: every `runner_start` to the next `runner_end` in `events.jsonl`."""
-    total = 0
+@dataclass(frozen=True, slots=True)
+class RunnerTime:
+    """Runner sessions of a campaign (`runner_time`)."""
+
+    wall_ms: int
+    sessions: int
+    unclosed: int
+    """Sessions without `runner_end` (a killed runner), ended at their last record."""
+
+
+def runner_time(layout: CampaignLayout, activity: Iterable[str] = ()) -> RunnerTime:
+    """Total runner time from `events.jsonl`: every `runner_start` to its `runner_end`. A
+    session without `runner_end` (the runner was killed) ends at its last record before
+    the next `runner_start` or `lock_broken`: the latest runner event, progress snapshot
+    or bank activity time (`activity`, UTC texts such as attempt end times)."""
+    events = [
+        (moment, str(e.get("event")))
+        for e in _jsonl(layout.events)
+        if isinstance(e, dict) and (moment := _moment(e.get("at_utc"))) is not None
+    ]
+    marks = [at for at, name in events if name in RUNNER_ACTIVITY]
+    marks += [
+        moment
+        for p in _jsonl(layout.progress)
+        if isinstance(p, dict) and (moment := _moment(p.get("at_utc"))) is not None
+    ]
+    marks += [moment for text in activity if (moment := _moment(text)) is not None]
+
+    def last_mark(lo: datetime, hi: datetime | None) -> datetime:
+        return max((m for m in marks if lo <= m and (hi is None or m < hi)), default=lo)
+
+    total = sessions = unclosed = 0
     start: datetime | None = None
-    if not layout.events.is_file():
-        return 0
-    for event in iter_jsonl(layout.events):
-        if not isinstance(event, dict):
-            continue
-        at = datetime.fromisoformat(str(event.get("at_utc")))
-        if event.get("event") == "runner_start":
-            start = at
-        elif event.get("event") == "runner_end" and start is not None:
+    for at, name in events:
+        if name in SESSION_BOUNDARIES:
+            if start is not None:
+                total += int((last_mark(start, at) - start).total_seconds() * 1000)
+                unclosed += 1
+                start = None
+            if name == "runner_start":
+                start = at
+                sessions += 1
+        elif name == "runner_end" and start is not None:
             total += int((at - start).total_seconds() * 1000)
             start = None
-    return total
+    if start is not None:
+        total += int((last_mark(start, None) - start).total_seconds() * 1000)
+        unclosed += 1
+    return RunnerTime(total, sessions, unclosed)
 
 
 @dataclass(frozen=True, slots=True)
@@ -338,6 +473,9 @@ class TimingLog:
     timing_sha256: str
     slot_timing_sha256: str
     totals: Mapping[str, Any]
+    runner: RunnerTime
+    rows: tuple[Mapping[str, Any], ...]
+    """The rows of `timing.csv` (the `ALL` row last)."""
 
 
 def timing_log(root: str | os.PathLike[str]) -> TimingLog:
@@ -347,20 +485,17 @@ def timing_log(root: str | os.PathLike[str]) -> TimingLog:
     rows: list[dict[str, Any]] = []
     slot_rows: list[dict[str, Any]] = []
     every: list[dict[str, Any]] = []
+    activity: list[str] = []
     for bank in plan.banks:
         for version in history[bank.bank_id]:
             bank_dir = layout.bank_dir(version.run_id, version.bank_id)
             records = _slot_records(bank_dir)
-            blayout = BankLayout(bank_dir)
-            summaries = [
-                AttemptSummary.read(blayout.attempt_summary(a))
-                for a in blayout.attempts()
-                if blayout.attempt_summary(a).is_file()
-            ]
+            times = attempt_times(bank_dir, records)
+            activity.extend(t.ended_utc for t in times if t.ended_utc)
             state = bank_progress(layout, version, active=False).state
             rows.append(
                 _timing_row(
-                    bank.bank_id, version.bank_version, state, [r for _, r in records], summaries
+                    bank.bank_id, version.bank_version, state, [r for _, r in records], times
                 )
             )
             every.extend(r for _, r in records)
@@ -378,18 +513,20 @@ def timing_log(root: str | os.PathLike[str]) -> TimingLog:
                     }
                 )
     total = _timing_row("ALL", "", "", every, [])
-    wall = _runner_wall_ms(layout)
+    runner = runner_time(layout, activity)
+    wall = runner.wall_ms
     total.update(
         attempts=sum(int(r["attempts"]) for r in rows),
         wall_ms=wall,
         slots_per_minute=round(len(every) * 60_000 / wall, 3) if wall > 0 else None,
+        wall_estimated=int(runner.unclosed > 0),
         started_utc=min((r["started_utc"] for r in rows if r["started_utc"]), default=None),
         ended_utc=max((r["ended_utc"] for r in rows if r["ended_utc"]), default=None),
     )
     rows.append(total)
     digest = _write_csv(layout.timing, TIMING_COLUMNS, rows)
     slot_digest = _write_csv(layout.slot_timing, SLOT_TIMING_COLUMNS, slot_rows)
-    return TimingLog(digest, slot_digest, total)
+    return TimingLog(digest, slot_digest, total, runner, tuple(rows))
 
 
 # ---------------------------------------------------------------------------
@@ -424,12 +561,17 @@ def tally(rows: Sequence[Mapping[str, Any]]) -> Counts:
     )
 
 
+def escalation_required(counts: Counts) -> bool:
+    """Fewer than 64 of the 72 banks are complete (spares do not change the count)."""
+    return counts.complete < MIN_COMPLETE
+
+
 def decide(counts: Counts, *, checks_ok: bool, escalated: bool) -> Decision:
     """`blocked` when a check fails; else `ready` with at least 64 complete banks;
     else `escalated` once the escalation is recorded, `escalation_required` before."""
     if not checks_ok:
         return "blocked"
-    if counts.complete >= MIN_COMPLETE:
+    if not escalation_required(counts):
         return "ready"
     return "escalated" if escalated else "escalation_required"
 
@@ -627,6 +769,9 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
             "tag": plan.freeze.tag,
             "repo_commit": plan.freeze.repo_commit,
             "config_frozen_sha256": plan.freeze.config_frozen_sha256,
+            "tag_checked": plan.freeze.tag_checked,
+            "tag_commit": plan.freeze.tag_commit,
+            "guard_checked": plan.freeze.guard_checked,
         },
         "counts": to_json_value(counts),
         "checks": {
@@ -645,7 +790,7 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
         "problems": problems[:50],
         "decision": decision,
         "escalation": {
-            "required": counts.complete < MIN_COMPLETE,
+            "required": escalation_required(counts),
             "rule": ESCALATION_RULE,
             "complete": counts.complete,
             "needed": MIN_COMPLETE,
@@ -677,9 +822,14 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
     return RegisterResult(decision, counts, csv_sha, json_sha, archive, tuple(problems))
 
 
+def _yes(flag: object) -> str:
+    return "yes" if flag else "no"
+
+
 def _write_report(layout: CampaignLayout, doc: Mapping[str, Any]) -> None:
     c = doc["counts"]
     e = doc["escalation"]
+    f = doc["freeze"]
     h = doc["hashes"]
     unavailable = ", ".join(doc["unavailable_bank_ids"]) or "none"
     lines = [
@@ -698,8 +848,12 @@ def _write_report(layout: CampaignLayout, doc: Mapping[str, Any]) -> None:
         + (f" Recorded: {e['reference']} ({e['date']})." if e["reference"] else ""),
         f"- Unavailable banks (never assigned; log each with `log_bank_unavailable` before the "
         f"first reveal): {unavailable}.",
-        f"- Generation config: `{doc['generation_config_sha256']}` (G4 freeze "
-        f"`{doc['freeze']['tag']}`, manifest `{doc['freeze']['manifest_sha256']}`).",
+        f"- Generation config: `{doc['generation_config_sha256']}`; G4 freeze manifest "
+        f"`{f['manifest_sha256']}` ({f['status']}, "
+        + (f"tag `{f['tag']}`" if f["tag"] else "no tag")
+        + f"); freeze tag checked in the repository: {_yes(f['tag_checked'])}"
+        + (f" (tagged commit `{f['tag_commit']}`)" if f["tag_commit"] else "")
+        + f"; #25 freeze guard run: {_yes(f['guard_checked'])}.",
         f"- Register CSV: `{h['register_csv_sha256']}`; archive `{doc['archive']['name']}`: "
         f"`{h['archive_sha256']}` ({doc['archive']['files']} files).",
         f"- Verification log: `{h['verification_log_sha256']}`; "
@@ -824,8 +978,10 @@ def check_register_commit(
     """Find the commit (reachable from `ref`) that added `path` (POSIX, relative to the
     repository root) and check it: the committed bytes have `expected_sha256` (the
     campaign's file), no later commit changed the file, and the commit time precedes
-    `first_screening_utc`. The commit time is the committer date git records; the push
-    time on the repository host is the independent record (see the docs)."""
+    `first_screening_utc` (strictly). `ok` needs both: without `expected_sha256` or
+    `first_screening_utc` the result lists what was not checked and is not ok. The
+    commit time is the committer date git records; the push time on the repository host
+    is the independent record (see the docs)."""
     repo_path = Path(repo)
     rel = path.replace("\\", "/").strip("/")
     log = _git(repo_path, "log", "--format=%H %ct", ref, "--", rel)
@@ -835,6 +991,10 @@ def check_register_commit(
         )
     commits = [line.split() for line in log.stdout.decode().splitlines() if line.strip()]
     problems: list[str] = []
+    if expected_sha256 is None:
+        problems.append("file not checked: no expected SHA-256 (the campaign's file) given")
+    if first_screening_utc is None:
+        problems.append("timestamp not checked: no first confirmatory screening time given")
     if not commits:
         return RegisterCommit(
             rel,
@@ -845,7 +1005,7 @@ def check_register_commit(
             0,
             first_screening_utc,
             False,
-            (f"{rel} was never committed",),
+            (f"{rel} was never committed", *problems),
         )
     first, epoch = commits[-1][0], int(commits[-1][1])
     committed = datetime.fromtimestamp(epoch, UTC)

@@ -8,8 +8,8 @@ tooling, the files and the counts can be checked without the G4 freeze or the LL
   output);
 - a DEMO generation config from the repository's DEMO inputs (`demo_config`: DEMO
   meaning set, the recipe schema as decoding schema, the DEMO fallback set, synthetic
-  prompt-set hashes) and a DEMO freeze manifest holding its hash
-  (`demo_freeze_manifest`, tag `DEMO-g4-freeze`);
+  prompt-set hashes) and a DEMO draft freeze manifest holding its hash
+  (`demo_freeze_manifest`: built by #25 when the checkout has it; no tag, never frozen);
 - DEMO pilot namespaces `DEMO-P001`..`DEMO-P008`;
 - the plan, the parallel run with `DemoSlotProposer` (random recipes drawn from each
   slot's seed key, simulated model latency on a per-bank `ManualClock`; banks listed in
@@ -31,9 +31,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Literal
 
+from av_generation import freeze as _freeze
 from av_generation._paths import examples_path
 from av_generation.clock import Clock, ManualClock, SystemClock
-from av_generation.freeze import REQUIRED_ITEM_KEYS
 from av_generation.genconfig import (
     FREEZE_CONFIG_KEY,
     GenerationConfig,
@@ -71,6 +71,12 @@ DEFAULT_UNAVAILABLE: Final[tuple[str, ...]] = ("DEMO-C007", "DEMO-C030", "DEMO-C
 DEMO_PILOT: Final[tuple[str, ...]] = tuple(f"DEMO-P{n:03d}" for n in range(1, 9))
 _A3_TEXT: Final = "DEMO A3 instruction (synthetic rehearsal text, not a study prompt)"
 _B_TEXT: Final = "DEMO B instruction (synthetic rehearsal text, not a study prompt)"
+DEMO_FREEZE_DESCRIPTION: Final = (
+    "DEMO - NOT FROZEN. Freeze manifest of the confirmatory bank rehearsal (#28, "
+    "av_banks.confirmatory.rehearsal): code and file items from this checkout, config items "
+    "from the DEMO generation config, GPU-host, restricted and human items pending. Never "
+    "use it for confirmatory runs."
+)
 Mode = Literal["valid", "invalid", "outage"]
 
 
@@ -154,10 +160,26 @@ def demo_config(name: str = "DEMO-o8-1-1-config") -> GenerationConfig:
     )
 
 
-def demo_freeze_manifest(config: GenerationConfig, *, status: str = "frozen") -> dict[str, Any]:
-    """A DEMO freeze manifest (`freeze-manifest.schema.json`) whose
-    `config.frozen_sha256` is `config`'s hash. Only `config.frozen_sha256` and a few
-    pins carry real values; the other items say `DEMO`."""
+def demo_freeze_manifest(config: GenerationConfig) -> dict[str, Any]:
+    """A DEMO freeze manifest whose `config.frozen_sha256` is `config`'s hash: a draft
+    with no tag and no sign-off, since a DEMO config is never frozen.
+
+    With #25 in the checkout it is #25's draft (`freeze.build_freeze_manifest` over
+    `freeze.draft_values` with `freeze.config_values(config)`), so it passes #25's
+    manifest checks (`freeze.load_freeze_manifest`). Before #25 it follows the skeleton
+    format (`freeze-manifest.schema.json`): the config hash and a few pins carry real
+    values, the other items say `DEMO`.
+    """
+    build = getattr(_freeze, "build_freeze_manifest", None)
+    draft_values = getattr(_freeze, "draft_values", None)
+    config_values = getattr(_freeze, "config_values", None)
+    if callable(draft_values) and callable(config_values) and callable(build):
+        built: dict[str, Any] = build(
+            draft_values(config_values(config)),
+            status="draft",
+            description=DEMO_FREEZE_DESCRIPTION,
+        )
+        return built
     known: dict[str, Any] = {
         FREEZE_CONFIG_KEY: config.frozen_sha256(),
         "renderer.version": config.code.renderer_version,
@@ -178,29 +200,25 @@ def demo_freeze_manifest(config: GenerationConfig, *, status: str = "frozen") ->
             "sha256": config.frozen_sha256() if key == FREEZE_CONFIG_KEY else None,
             "source": "DEMO rehearsal (av_banks.confirmatory.rehearsal); not a G4 value",
         }
-        for key in REQUIRED_ITEM_KEYS
+        for key in _freeze.REQUIRED_ITEM_KEYS
     ]
-    reference = "https://github.com/ATR-Lab/acoustic-vocabularies/issues/28"
     return {
         "format": "av-generation/freeze-manifest",
         "format_version": 1,
-        "freeze_version": "0.1",
-        "status": status,
+        "freeze_version": "1.0",
+        "status": "draft",
         "protocol_version": "DEMO",
-        "repo_commit": "0" * 40,
-        "tag": "DEMO-g4-freeze",
+        "repo_commit": None,
+        "tag": None,
         "items": items,
         "apparatus": {
             "renderer_recipe_schema_hash": config.code.renderer_recipe_schema_hash,
             "model_revision": config.model.revision,
             "runtime_precision": None,
-            "prompt_hash": config.prompts.b_sha256,
-            "fallback_bank_hash": None,
+            "prompt_hash": None,
+            "fallback_bank_hash": config.fallback.bank_hash,
         },
-        "signoff": [
-            {"role": "owner", "date": "2027-04-22", "reference": reference},
-            {"role": "advisor", "date": "2027-04-22", "reference": reference},
-        ],
+        "signoff": [],
     }
 
 

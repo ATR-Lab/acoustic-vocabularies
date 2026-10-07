@@ -3,9 +3,9 @@
 ```
 plan         --campaign-root R --campaign-id ID --generation-config G --freeze-manifest F
              --units U (--pilot PATH | --pilot-namespace NS)... [--repo DIR]
-             [--parallel-banks N] [--bank-version 1.0.0]
+             [--freeze-repo-path REL] [--parallel-banks N] [--bank-version 1.0.0]
 run          R --meanings M --prompts P --decoding-schema D --llm-url URL
-             [--parallel-banks N] [--workers 3] [--only ID]... [--breaker 24]
+             [--parallel-banks N] [--workers 3] [--only ID]... [--breaker 3]
              [--monitor-interval 60] [--continue-on-error] [--break-lock]
 status       R [--json]
 rebuild      R --bank-id ID --reason TEXT
@@ -13,10 +13,13 @@ verify-all   R [--jobs N] [--only ID]...
 register     R
 escalate     R --reference URL --date YYYY-MM-DD
 publish      R --dest DIR
-commit-check --repo DIR --path REL --campaign-root R [--first-screening ISO] [--ref HEAD]
+commit-check --repo DIR --path REL --campaign-root R --first-screening ISO [--ref HEAD]
 rehearse     --out DIR [--campaign-id DEMO-...] [--unavailable ID]... [--parallel-banks N]
              [--jobs N] [--only ID]...
 ```
+
+`plan` of a confirmatory campaign needs `--repo` (the checkout whose freeze tag is
+checked). `commit-check --path` names `register.csv` or `register.json` of the campaign.
 
 Exit codes: 0 done; 1 a check failed (verify, blocked register, commit check, crashed or
 halted run); 2 refused or an error; 3 the register needs an advisor escalation.
@@ -38,9 +41,10 @@ from av_generation.rundir import RunLayout
 
 from av_banks.proposer import SlotProposer
 
-from .common import CampaignError, CampaignLayout
+from .common import E_INPUT, CampaignError, CampaignLayout
 from .plan import PlannedBank, create_plan
 from .register import (
+    PUBLIC_FILES,
     check_register_commit,
     compile_register,
     publish_register,
@@ -48,7 +52,13 @@ from .register import (
     verify_all,
 )
 from .rehearsal import DEFAULT_UNAVAILABLE, rehearse
-from .runner import ProposerFactory, campaign_status, rebuild_bank, run_campaign
+from .runner import (
+    DEFAULT_BREAKER,
+    ProposerFactory,
+    campaign_status,
+    rebuild_bank,
+    run_campaign,
+)
 from .seed_check import read_pilot
 
 
@@ -66,7 +76,14 @@ def _parser() -> argparse.ArgumentParser:
     plan.add_argument("--units", required=True, type=Path)
     plan.add_argument("--pilot", action="append", default=[], type=Path)
     plan.add_argument("--pilot-namespace", action="append", default=[])
-    plan.add_argument("--repo", type=Path, default=None)
+    plan.add_argument(
+        "--repo", type=Path, default=None, help="git checkout to check the freeze tag in"
+    )
+    plan.add_argument(
+        "--freeze-repo-path",
+        default=None,
+        help="the manifest's path at the tag (default generation/FREEZE-v<version>.json)",
+    )
     plan.add_argument("--parallel-banks", type=int, default=1)
     plan.add_argument("--bank-version", default="1.0.0")
 
@@ -80,7 +97,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--parallel-banks", type=int, default=1)
     run.add_argument("--workers", type=int, default=3)
     run.add_argument("--only", action="append", default=None)
-    run.add_argument("--breaker", type=int, default=24)
+    run.add_argument("--breaker", type=int, default=DEFAULT_BREAKER)
     run.add_argument("--monitor-interval", type=float, default=60.0)
     run.add_argument("--continue-on-error", action="store_true")
     run.add_argument("--break-lock", action="store_true")
@@ -115,7 +132,7 @@ def _parser() -> argparse.ArgumentParser:
     check.add_argument("--repo", required=True, type=Path)
     check.add_argument("--path", required=True)
     check.add_argument("--campaign-root", required=True, type=Path)
-    check.add_argument("--first-screening", default=None)
+    check.add_argument("--first-screening", required=True)
     check.add_argument("--ref", default="HEAD")
 
     demo = sub.add_parser("rehearse", help="the whole procedure on DEMO IDs (no model)")
@@ -162,6 +179,7 @@ def _plan(args: argparse.Namespace) -> int:
         clock=SystemClock(),
         bank_version=args.bank_version,
         repo=args.repo,
+        freeze_repo_path=args.freeze_repo_path,
         parallel_banks=args.parallel_banks,
     )
     layout = CampaignLayout.at(args.campaign_root)
@@ -172,7 +190,12 @@ def _plan(args: argparse.Namespace) -> int:
             "first": plan.banks[0].bank_id,
             "last": plan.banks[-1].bank_id,
             "generation_config_sha256": plan.generation_config_sha256,
-            "freeze": {"tag": plan.freeze.tag, "manifest_sha256": plan.freeze.manifest_sha256},
+            "freeze": {
+                "tag": plan.freeze.tag,
+                "tag_checked": plan.freeze.tag_checked,
+                "guard_checked": plan.freeze.guard_checked,
+                "manifest_sha256": plan.freeze.manifest_sha256,
+            },
             "seed_keys": plan.seeds.keys,
             "distinct_seeds": plan.seeds.distinct_seeds,
             "pilot_namespaces": len(plan.pilot.namespaces),
@@ -271,8 +294,12 @@ def _publish(args: argparse.Namespace) -> int:
 def _commit_check(args: argparse.Namespace) -> int:
     layout = CampaignLayout.at(args.campaign_root)
     name = Path(args.path.replace("\\", "/")).name
+    if name not in PUBLIC_FILES:
+        raise CampaignError(E_INPUT, f"--path names {name!r}, not one of {list(PUBLIC_FILES)}")
     local = layout.root / name
-    expected = file_sha256(local) if local.is_file() else None
+    if not local.is_file():
+        raise CampaignError(E_INPUT, f"the campaign has no {name} (compile the register)")
+    expected = file_sha256(local)
     result = check_register_commit(
         args.repo,
         args.path,

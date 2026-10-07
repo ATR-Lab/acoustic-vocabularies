@@ -4,8 +4,10 @@
 yet) with the #26 builder, one run per bank (`av_banks.run.build_banks` with one spec,
 run ID `<campaign>-<bank>`), `parallel_banks` banks at once and `workers` profile streams
 each. Before the first bank it re-checks the campaign: the stored freeze manifest and
-config are the planned ones and `genconfig.check_run_config` passes (code pins, frozen
-G4 manifest, config hash), so it refuses to run under any other configuration.
+config are the planned ones, the manifest passes #25's freeze guard again
+(`freeze_check.load_freeze`: for a confirmatory campaign the running code and committed
+files still equal the manifest) and `genconfig.check_run_config` passes (code pins,
+frozen G4 manifest, config hash), so it refuses to run under any other configuration.
 
 - **Budget.** A bank is built once per version: complete and unavailable banks are never
   built again, and the builder caps every attempt (12 slots per cell, 576 per attempt,
@@ -15,18 +17,28 @@ G4 manifest, config hash), so it refuses to run under any other configuration.
   slots per minute, the running banks' attempt and slot counts, an estimate of the time
   left. `campaign_status(root)` gives the same view from another process.
 - **Model-server failures.** A slot whose model call failed (`llm_status` `server_error`
-  or `timeout`) is consumed as usual. After `breaker_threshold` such slots in a row
-  (across all banks) the campaign halts: the next slot of every running bank raises
-  `CampaignHalted`, so an outage cannot burn the banks' attempts. Halted or failed builds
-  leave their bank *crashed* (a run directory without a manifest). After a failed build no
-  further bank starts (`stop_on_error`); running banks finish. Ctrl-C does the same.
+  or `timeout`) is consumed as usual (Study B protocol §4), with two exceptions that
+  halt the campaign instead (`InfrastructureBreaker`): the failed call is the
+  `breaker_threshold`-th in a row (default 3) of its profile stream in its bank, or it
+  falls on the last (12th) slot of its cell. `CampaignHalted` is then raised by the
+  failing call itself, before the builder records the slot, and by the next slot of
+  every running bank. So a failed model call is never the slot that fails a cell: during
+  an outage every call fails, and each stream halts at its third failed call or at its
+  cell's 12th slot, whichever comes first, with at most 11 slots used in that cell. An
+  outage therefore never fails an attempt or makes a bank unavailable; it leaves the
+  running banks *crashed* (a run directory without a manifest), to be rebuilt. The
+  halting call has no slot record; its model request stays in the crashed run's
+  `llm-requests.jsonl`. After a failed build no further bank starts (`stop_on_error`);
+  running banks finish. Ctrl-C does the same.
 - **Crashes.** A crashed bank is never resumed (#26). `rebuild_bank` records a rebuild
   under the next bank version (`1.0.0` -> `1.0.1`, seed namespace `<bank>-v1.0.1`,
   rechecked against every other namespace and the pilot) in `rebuilds.jsonl`; the next
   `run_campaign` builds it. The crashed run stays in the campaign and the archive, and
   the register reports it.
 - **One runner.** `runner.lock` admits one runner per campaign; `break_lock=True` removes
-  a lock left by a killed runner.
+  a lock left by a killed runner (and cuts a line it left unfinished in `events.jsonl` or
+  `progress.jsonl`, logged as `log_repaired`). The campaign logs are appended through
+  `jsonio.JsonlAppender`, one lock per file for all bank threads.
 """
 
 from __future__ import annotations
@@ -42,9 +54,17 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from av_generation.clock import Clock, utc_text
+from av_generation.constants import B_SLOTS_PER_CELL
 from av_generation.genconfig import ConfigMismatch, GenerationConfig, check_run_config
 from av_generation.ids import RunKind
-from av_generation.jsonio import canonical_line, file_sha256, read_json, to_json_value
+from av_generation.jsonio import (
+    JsonlAppender,
+    TornTail,
+    file_sha256,
+    read_json,
+    repair_torn_tail,
+    to_json_value,
+)
 from av_generation.outcomes import LlmStatus
 from av_generation.proposers import BCellState
 from av_generation.rundir import RunLayout
@@ -66,6 +86,7 @@ from .common import (
     CampaignLayout,
     run_id_for,
 )
+from .freeze_check import load_freeze
 from .plan import (
     CampaignPlan,
     PlannedBank,
@@ -81,8 +102,10 @@ from .seed_check import PilotSeeds, SeedEntry, check_seeds
 BankState = Literal["pending", "running", "complete", "unavailable", "crashed"]
 STATES: Final[tuple[BankState, ...]] = ("pending", "running", "complete", "unavailable", "crashed")
 INFRASTRUCTURE: Final = frozenset({LlmStatus.SERVER_ERROR, LlmStatus.TIMEOUT})
-DEFAULT_BREAKER: Final = 24
-"""Consecutive failed model calls that halt the campaign (two cells' worth of slots)."""
+DEFAULT_BREAKER: Final = 3
+"""Failed model calls in a row, in one profile stream of one bank, that halt the campaign.
+It must stay below the 12 slots of a cell (`InfrastructureBreaker`); a failed call on a
+cell's 12th slot halts whatever the count."""
 
 ProposerFactory = Callable[[RunLayout, PlannedBank], SlotProposer]
 """Makes the proposer of one bank run (called with the new run's layout)."""
@@ -216,13 +239,22 @@ def campaign_status(
 
 
 class InfrastructureBreaker:
-    """Counts consecutive failed model calls across all banks; trips at `threshold`."""
+    """Halts the campaign on a model-server outage (module docstring).
+
+    `record` counts the failed model calls (`server_error`, `timeout`) in a row of each
+    profile stream of each bank (a call that reached the server resets its stream). A
+    failed call trips the breaker when it is the `threshold`-th in a row of its stream
+    (`1 <= threshold < 12`) or falls on the last (12th) slot of its cell; that call, and
+    every failed call after the trip, raises `CampaignHalted` before the builder records
+    its slot, so a failed call never closes a cell. `check` stops every other slot once
+    tripped.
+    """
 
     def __init__(self, threshold: int = DEFAULT_BREAKER) -> None:
-        if threshold < 1:
-            raise CampaignError(E_INPUT, "the breaker threshold must be at least 1")
+        if not 1 <= threshold < B_SLOTS_PER_CELL:
+            raise CampaignError(E_INPUT, f"the breaker threshold must be 1..{B_SLOTS_PER_CELL - 1}")
         self.threshold = threshold
-        self._run = 0
+        self._runs: dict[tuple[str, str], int] = {}
         self._lock = threading.Lock()
         self.tripped: str | None = None
 
@@ -236,20 +268,35 @@ class InfrastructureBreaker:
             if self.tripped is None:
                 self.tripped = reason
 
-    def record(self, proposal: Proposal, slot_id: str) -> None:
+    def record(self, cell: BCellState, proposal: Proposal, slot_id: str) -> None:
+        """Count the call of one slot; raise `CampaignHalted` when it is a failed call
+        that trips the breaker or comes after the trip."""
+        profile = str(cell.profile)
+        stream = (cell.bank_id, profile)
         with self._lock:
-            failed = proposal.llm_status in INFRASTRUCTURE
-            self._run = self._run + 1 if failed else 0
-            if self._run >= self.threshold and self.tripped is None:
-                self.tripped = (
-                    f"{self._run} consecutive failed model calls (last {slot_id}, "
-                    f"{proposal.llm_status}); check the model server, then rebuild the "
-                    "crashed banks"
+            if proposal.llm_status not in INFRASTRUCTURE:
+                self._runs[stream] = 0
+                return
+            run = self._runs.get(stream, 0) + 1
+            self._runs[stream] = run
+            if self.tripped is None and (run >= self.threshold or cell.slot >= B_SLOTS_PER_CELL):
+                why = (
+                    f"{run} failed model calls in a row in {cell.bank_id} {profile}"
+                    if run >= self.threshold
+                    else f"a failed model call on the last slot of a cell ({run} in a row)"
                 )
+                self.tripped = (
+                    f"{why} (last {slot_id}, {proposal.llm_status}); the slot is not "
+                    "recorded; check the model server, then rebuild the crashed banks"
+                )
+            reason = self.tripped
+        if reason is not None:
+            raise CampaignHalted(reason)
 
 
 class GuardedProposer:
-    """A `SlotProposer` that stops at the breaker before each proposal."""
+    """A `SlotProposer` that stops at the breaker before each proposal and passes each
+    proposal through it (`InfrastructureBreaker.record`)."""
 
     def __init__(self, inner: SlotProposer, breaker: InfrastructureBreaker) -> None:
         self.inner = inner
@@ -261,7 +308,7 @@ class GuardedProposer:
     def propose(self, cell: BCellState, *, seed_key: str, slot_id: str) -> Proposal:
         self.breaker.check()
         proposal = self.inner.propose(cell, seed_key=seed_key, slot_id=slot_id)
-        self.breaker.record(proposal, slot_id)
+        self.breaker.record(cell, proposal, slot_id)
         return proposal
 
 
@@ -295,8 +342,9 @@ def check_campaign(
     root: str | os.PathLike[str], config: GenerationConfig | None = None
 ) -> tuple[CampaignPlan, GenerationConfig, dict[str, Any], RunKind]:
     """Re-check a campaign before running it: the stored freeze manifest and config are
-    the planned ones, `config` (if given) is the stored one, and `check_run_config`
-    passes. Raises `CampaignError(E_FREEZE)`."""
+    the planned ones, `config` (if given) is the stored one, the manifest passes #25's
+    freeze guard again (`freeze_check.load_freeze`) and `check_run_config` passes.
+    Raises `CampaignError(E_FREEZE)`."""
     layout = CampaignLayout.at(root)
     plan = read_plan(root)
     if file_sha256(layout.freeze_manifest) != plan.freeze.manifest_sha256:
@@ -310,17 +358,28 @@ def check_campaign(
             f"config hash {config.frozen_sha256()} differs from the campaign's "
             f"{plan.generation_config_sha256} (the G4 freeze value)",
         )
-    freeze = read_json(layout.freeze_manifest)
     kind = RunKind(plan.kind)
+    loaded = load_freeze(layout.freeze_manifest, kind=kind)
+    if loaded.sha256 != plan.freeze.manifest_sha256:
+        raise CampaignError(E_FREEZE, "freeze-manifest.json is not the planned freeze manifest")
     try:
-        check_run_config(stored, kind=kind, freeze_manifest=freeze)
+        check_run_config(stored, kind=kind, freeze_manifest=loaded.manifest)
     except ConfigMismatch as err:
         raise CampaignError(E_FREEZE, f"refused by the freeze check: {err}") from err
-    return plan, stored, freeze, kind
+    return plan, stored, loaded.manifest, kind
 
 
-def _event(layout: CampaignLayout, clock: Clock, event: str, **fields: Any) -> None:  # noqa: ANN401
-    append_event(layout, {"event": event, "at_utc": utc_text(clock.utc_now()), **fields})
+def _event(
+    layout: CampaignLayout,
+    clock: Clock,
+    event: str,
+    *,
+    fsync: bool = True,
+    **fields: Any,  # noqa: ANN401
+) -> None:
+    append_event(
+        layout, {"event": event, "at_utc": utc_text(clock.utc_now()), **fields}, fsync=fsync
+    )
 
 
 class _Monitor:
@@ -331,12 +390,14 @@ class _Monitor:
         interval_s: float,
         on_progress: Callable[[CampaignStatus, str], None] | None,
         start_slots: int,
+        fsync: bool = True,
     ) -> None:
         self.layout = layout
         self.clock = clock
         self.interval_s = interval_s
         self.on_progress = on_progress
         self.start_slots = start_slots
+        self.log = JsonlAppender(layout.progress, fsync=fsync)
         self.t0 = clock.now_ms()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._loop, name="campaign-monitor", daemon=True)
@@ -376,8 +437,7 @@ class _Monitor:
                 if b.state == "running"
             ],
         }
-        with open(self.layout.progress, "ab") as handle:
-            handle.write(canonical_line(record))
+        self.log.append_obj(record)
         if self.on_progress is not None:
             self.on_progress(status, line)
         return status
@@ -399,7 +459,16 @@ def _discard_unstarted(layout: CampaignLayout, bank: PlannedBank) -> bool:
     return True
 
 
-def _acquire(layout: CampaignLayout, clock: Clock, break_lock: bool) -> None:
+def _repair_logs(layout: CampaignLayout) -> list[TornTail]:
+    """Cut a line a killed runner left unfinished in the campaign logs."""
+    return [t for t in (repair_torn_tail(layout.events), repair_torn_tail(layout.progress)) if t]
+
+
+def _acquire(
+    layout: CampaignLayout, clock: Clock, break_lock: bool, *, fsync: bool = True
+) -> list[TornTail]:
+    """Take `runner.lock` (breaking a stale one with `break_lock`); returns the log tails
+    cut (`_repair_logs`), which the caller logs."""
     try:
         with open(layout.lock, "x", encoding="utf-8", newline="\n") as handle:
             handle.write(utc_text(clock.utc_now()) + "\n")
@@ -410,8 +479,11 @@ def _acquire(layout: CampaignLayout, clock: Clock, break_lock: bool) -> None:
                 "another runner holds runner.lock (if it was killed, run again with break_lock)",
             ) from None
         layout.lock.unlink()
-        _event(layout, clock, "lock_broken")
-        _acquire(layout, clock, False)
+        repaired = _repair_logs(layout)
+        _event(layout, clock, "lock_broken", fsync=fsync)
+        _acquire(layout, clock, False, fsync=fsync)
+        return repaired
+    return _repair_logs(layout)
 
 
 def run_campaign(
@@ -446,33 +518,38 @@ def run_campaign(
         if unknown:
             raise CampaignError(E_INPUT, f"not banks of this campaign: {unknown}")
     breaker = InfrastructureBreaker(breaker_threshold)
-    _acquire(layout, clock, break_lock)
+
+    def event(name: str, **fields: Any) -> None:  # noqa: ANN401
+        _event(layout, clock, name, fsync=fsync, **fields)
+
+    repaired = _acquire(layout, clock, break_lock, fsync=fsync)
     stop = threading.Event()
     stopped: list[str] = []
     results: list[BankRun] = []
     monitor: _Monitor | None = None
     try:
         before = campaign_status(root, clock=clock, active=False)
-        for progress in before.banks:
-            if progress.state == "crashed":
-                _event(
-                    layout, clock, "bank_crashed", bank_id=progress.bank_id, run_id=progress.run_id
-                )
         pending = [
             b
             for b, p in zip(current, before.banks, strict=True)
             if p.state == "pending" and (only is None or b.bank_id in only)
         ]
-        _event(
-            layout,
-            clock,
+        event(
             "runner_start",
             banks=[b.bank_id for b in pending],
             parallel_banks=parallel_banks,
             workers=workers,
+            breaker_threshold=breaker.threshold,
             config_sha256=plan.generation_config_sha256,
         )
-        monitor = _Monitor(layout, clock, monitor_interval_s, on_progress, before.slots_total)
+        for torn in repaired:
+            event("log_repaired", file=torn.name, n_bytes=torn.n_bytes, sha256=torn.sha256)
+        for progress in before.banks:
+            if progress.state == "crashed":
+                event("bank_crashed", bank_id=progress.bank_id, run_id=progress.run_id)
+        monitor = _Monitor(
+            layout, clock, monitor_interval_s, on_progress, before.slots_total, fsync=fsync
+        )
         monitor.start()
 
         def build_one(bank: PlannedBank) -> BankRun:
@@ -487,7 +564,7 @@ def run_campaign(
                 bank_version=bank.bank_version,
                 seed_namespace=bank.seed_namespace,
             )
-            _event(layout, clock, "bank_start", bank_id=bank.bank_id, run_id=bank.run_id)
+            event("bank_start", bank_id=bank.bank_id, run_id=bank.run_id)
             try:
                 result = build_banks(
                     [spec],
@@ -511,16 +588,14 @@ def run_campaign(
                     stop.set()  # no new bank starts; running banks finish
                     stopped.append(f"{bank.bank_id}: {text}")
                 if _discard_unstarted(layout, bank):
-                    _event(layout, clock, "bank_not_started", bank_id=bank.bank_id, error=text)
+                    event("bank_not_started", bank_id=bank.bank_id, error=text)
                     return BankRun(
                         bank.bank_id, bank.bank_version, bank.run_id, "skipped", error=text
                     )
-                _event(layout, clock, "bank_error", bank_id=bank.bank_id, error=text)
+                event("bank_error", bank_id=bank.bank_id, error=text)
                 return BankRun(bank.bank_id, bank.bank_version, bank.run_id, "crashed", error=text)
             built = result.banks[0]
-            _event(
-                layout,
-                clock,
+            event(
                 "bank_end",
                 bank_id=bank.bank_id,
                 status=built.status,
@@ -548,9 +623,7 @@ def run_campaign(
     finally:
         if monitor is not None:
             monitor.stop()
-        _event(
-            layout,
-            clock,
+        event(
             "runner_end",
             halted=breaker.tripped,
             stopped=stopped[0] if stopped else None,
@@ -609,8 +682,7 @@ def rebuild_bank(
     )
     if not check.ok:
         raise CampaignError(E_SEEDS, f"the rebuild's seeds are not unique or not disjoint: {entry}")
-    with open(layout.rebuilds, "ab") as handle:
-        handle.write(canonical_line(to_json_value(entry)))
+    JsonlAppender(layout.rebuilds).append_obj(to_json_value(entry))
     _event(
         layout, clock, "bank_rebuild", bank_id=bank_id, bank_version=version, reason=entry.reason
     )

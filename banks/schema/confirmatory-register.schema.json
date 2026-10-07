@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/confirmatory-register.schema.json",
   "title": "Confirmatory Study B bank register summary",
-  "description": "register.json of a confirmatory bank campaign (#28; Study B protocol §4), committed with register.csv before the allocation list is unsealed. Public by design: bank IDs, dyad slots, counts and SHA-256 hashes only (no seeds, recipes, WAVs or allocation information). decision is blocked when a check fails, ready with at least 64 complete banks, escalation_required below 64, escalated once the advisor escalation (a link and a date, never a name) is recorded. unavailable_bank_ids are never assigned and are logged with the allocation reveal API before the first reveal.",
+  "description": "register.json of a confirmatory bank campaign (#28; Study B protocol §4), committed with register.csv before the allocation list is unsealed. Public by design: bank IDs, dyad slots, counts and SHA-256 hashes only (no seeds, recipes, WAVs or allocation information). decision is blocked when a check fails, ready with at least 64 complete banks, escalation_required below 64, escalated once the advisor escalation (a link and a date, never a name) is recorded. unavailable_bank_ids are never assigned and are logged with the allocation reveal API before the first reveal. freeze says whether the freeze tag was checked in the repository and whether the G4 freeze guard (#25) ran; both are true for a confirmatory register.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -37,14 +37,27 @@
     "freeze": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["config_frozen_sha256", "freeze_version", "manifest_sha256", "repo_commit", "status", "tag"],
+      "required": [
+        "config_frozen_sha256",
+        "freeze_version",
+        "guard_checked",
+        "manifest_sha256",
+        "repo_commit",
+        "status",
+        "tag",
+        "tag_checked",
+        "tag_commit"
+      ],
       "properties": {
         "manifest_sha256": {"$ref": "#/$defs/sha256"},
         "freeze_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
         "status": {"enum": ["draft", "frozen"]},
         "tag": {"oneOf": [{"type": "string", "pattern": "^[!-~]{1,64}$"}, {"type": "null"}]},
         "repo_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
-        "config_frozen_sha256": {"$ref": "#/$defs/sha256"}
+        "config_frozen_sha256": {"$ref": "#/$defs/sha256"},
+        "tag_checked": {"type": "boolean"},
+        "tag_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
+        "guard_checked": {"type": "boolean"}
       }
     },
     "counts": {
@@ -157,6 +170,23 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"set": {"const": "confirmatory"}}, "required": ["set"]},
+      "then": {
+        "properties": {
+          "freeze": {
+            "properties": {
+              "status": {"const": "frozen"},
+              "tag_checked": {"const": true},
+              "tag_commit": {"type": "string"},
+              "guard_checked": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }

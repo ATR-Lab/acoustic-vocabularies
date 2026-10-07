@@ -6,9 +6,10 @@ import json
 from pathlib import Path
 
 import pytest
+from av_generation import freeze as freeze_module
 from av_generation._schemas import schema_errors as generation_schema_errors
 from av_generation.clock import ManualClock
-from av_generation.jsonio import file_sha256, read_json
+from av_generation.jsonio import file_sha256, read_json, write_document
 from av_generation.proposers import BCellState
 from av_generation.seeds import b_seed_key
 from av_sound.recipe import Profile
@@ -16,6 +17,7 @@ from av_sound.validate import validate
 
 from av_banks.confirmatory import rehearsal as R
 from av_banks.confirmatory.common import CampaignLayout, schema_errors
+from av_banks.confirmatory.freeze_check import guard_available, load_freeze
 from av_banks.confirmatory.plan import bank_history, read_plan
 from av_banks.confirmatory.register import TIMING_COLUMNS, register_row, timing_log
 from av_banks.permutation import parse_permutation
@@ -43,15 +45,23 @@ def test_demo_units_are_valid_and_deterministic():
     assert len(parsed.atom_order) == 16 and len(set(parsed.labels.values())) == 16
 
 
-def test_demo_freeze_manifest_and_config():
+def test_demo_freeze_manifest_and_config(tmp_path):
     config = R.demo_config()
     assert config.demo and config.separation_threshold == "0.10"
     doc = R.demo_freeze_manifest(config)
+    # the checkout's format: #25's schema (and manifest checks) once #25 is in, else the
+    # skeleton schema
     assert generation_schema_errors("freeze-manifest.schema.json", doc) == ()
     item = next(i for i in doc["items"] if i["key"] == "config.frozen_sha256")
     assert item["value"] == item["sha256"] == config.frozen_sha256()
-    assert doc["status"] == "frozen" and doc["tag"] == "DEMO-g4-freeze"
-    assert R.demo_freeze_manifest(config, status="draft")["status"] == "draft"
+    assert doc["status"] == "draft" and doc["tag"] is None and doc["repo_commit"] is None
+    assert doc["signoff"] == []  # a DEMO config is never frozen
+    write_document(tmp_path / "freeze.json", doc)
+    loaded = load_freeze(tmp_path / "freeze.json", kind="demo")
+    assert loaded.manifest == doc and not loaded.guard_checked
+    if guard_available():  # #25 is in the checkout: its own manifest checks pass too
+        assert freeze_module.manifest_problems(doc) == []
+        assert doc["description"] == R.DEMO_FREEZE_DESCRIPTION
 
 
 def _cell(slot=1, retained=()):
@@ -96,6 +106,8 @@ def test_the_committed_demo_register_is_consistent():
     doc = read_json(EXAMPLE / "register.json")
     assert schema_errors("confirmatory-register.schema.json", doc) == ()
     assert doc["demo"] and doc["set"] == "demo" and doc["decision"] == "ready"
+    assert doc["freeze"]["status"] == "draft" and doc["freeze"]["tag"] is None
+    assert not doc["freeze"]["tag_checked"] and not doc["freeze"]["guard_checked"]
     assert doc["hashes"]["register_csv_sha256"] == file_sha256(EXAMPLE / "register.csv")
     assert doc["hashes"]["timing_csv_sha256"] == file_sha256(EXAMPLE / "timing.csv")
     assert doc["hashes"]["verification_log_sha256"] == file_sha256(EXAMPLE / "verification-log.txt")

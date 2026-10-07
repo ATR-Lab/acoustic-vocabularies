@@ -5,7 +5,8 @@ They come from the synthetic `DEMO-` set, not from study banks:
 
 - banks `DEMO-C001`..`DEMO-C072`;
 - DEMO unit stand-ins;
-- a DEMO generation config with a DEMO freeze manifest (tag `DEMO-g4-freeze`);
+- a DEMO generation config with a DEMO draft freeze manifest (no tag: a DEMO config is
+  never frozen, so `register.json` shows `tag_checked` and `guard_checked` false);
 - a scripted proposer instead of the model;
 - DEMO pilot namespaces `DEMO-P001`..`DEMO-P008`.
 
@@ -16,7 +17,7 @@ Design and procedure: [`banks/docs/confirmatory-banks.md`](../../docs/confirmato
 | `register.csv` | the register: 72 bank records with status, budget use, config hash, verify result and bank SHA-256 |
 | `register.json` | counts, checks, decision (`ready`: 69 complete, 3 unavailable), unavailable bank IDs, hashes of the restricted files and of the archive |
 | `verification-log.txt` | `banks verify` of all 72 banks (re-render, hashes, caps, 1,920 pairs per profile) |
-| `timing.csv` | run timing log: one row per bank and an `ALL` row |
+| `timing.csv` | run timing log: one row per bank and an `ALL` row (`wall_estimated` is 0: no crash, no killed runner) |
 | `g5b-report.md` | the report for the G5B owner |
 
 The archive (`DEMO-cbanks-01-banks.tar`, 14,142 files, 932 MB, SHA-256 in
@@ -24,7 +25,10 @@ The archive (`DEMO-cbanks-01-banks.tar`, 14,142 files, 932 MB, SHA-256 in
 `slot-timing.csv`) are not committed.
 
 Regenerate the files with the command below, then copy the five files here. It needs
-#17's slot ledger; the tests use their own ledger.
+#17's slot ledger. Until #17 is in the checkout, call `rehearsal.rehearse(out,
+parallel_banks=4, jobs=4, ledger_factory=...)` with the tests' `MemoryLedger`
+(`tests/banks/conftest.py`), which writes the same slot records; these files were made
+that way.
 
 ```bash
 uv run --project banks python -m av_banks.confirmatory rehearse --out <scratch dir> --parallel-banks 4 --jobs 4

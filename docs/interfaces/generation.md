@@ -229,10 +229,22 @@ the #26 builder as its own run `<campaign>-<bank>` under the campaign directory
 (restricted storage). Seed namespace = bank ID (`<bank>-v<version>` for a rebuild after a
 crash). `DEMO-C001`..`DEMO-C072` in rehearsals.
 
-**Freeze check.** `plan` and `run` refuse unless the freeze manifest matches
-`freeze-manifest.schema.json`, `genconfig.check_run_config(config, kind="confirmatory",
-freeze_manifest=...)` passes (frozen status, `config.frozen_sha256` = config hash, code
-pins) and, with `--repo`, the manifest's `tag` points at its `repo_commit`.
+**Freeze check.** `plan` and `run` read the freeze manifest through #25's guard
+(`freeze.load_freeze_manifest(path, require_frozen=True)` for a confirmatory campaign:
+manifest checks, frozen status, running code and committed files equal to the manifest;
+a checkout without it refuses a confirmatory campaign), then require
+`genconfig.check_run_config(config, kind="confirmatory", freeze_manifest=...)`
+(`config.frozen_sha256` = config hash, code pins). A confirmatory `plan` needs `--repo`:
+the manifest's `tag` must resolve to a commit that holds this manifest byte for byte at
+`generation/FREEZE-v<freeze version>.json` (`--freeze-repo-path` otherwise), and
+`repo_commit` must be that commit or an ancestor of it. `plan.json` and `register.json`
+record `tag_checked`, `tag_commit` and `guard_checked`.
+
+**Model-server outage.** A failed model call uses its slot (Study B §4) unless it is the
+third in a row of its profile stream in its bank (`--breaker`, 1-11) or falls on a
+cell's 12th slot: then the campaign halts from that call, before the slot is recorded,
+and the running banks are left crashed and are rebuilt under a new version. A failed
+call never closes a cell, so an outage never makes a bank unavailable.
 
 **Seeds.** `seed_check.check_seeds`: namespaces name their bank and version, are unique,
 and the 165,888 keys of the budget (72 x 4 x 3 x 16 x 12) give distinct seeds, none in
@@ -255,8 +267,10 @@ recipes, WAVs or allocation information.
 (`escalate --reference <issue/PR link> --date`). Unavailable banks are never assignable;
 the coordinator logs each with `RevealLog.log_bank_unavailable` before the first reveal,
 and the reveal replaces an unavailable main slot by the first unused spare with the same
-SQ arm and swap flag. `commit-check` confirms the committed register equals the campaign's,
-was never changed, and its commit time precedes the first confirmatory screening.
+SQ arm and swap flag. `commit-check --path <dir>/register.csv|register.json
+--first-screening <UTC>` confirms the committed register equals the campaign's, was never
+changed, and its commit time strictly precedes the first confirmatory screening; without
+the file hash or the screening time the result is not `ok`.
 
 **Restricted files** (campaign directory): `plan.json`
 ([`confirmatory-plan.schema.json`](../../banks/schema/confirmatory-plan.schema.json)),
@@ -264,4 +278,6 @@ freeze/config/unit copies, `seed-check.json`, `used-seeds.json`, `runs/`, `verif
 `verification-log.txt`, `timing.csv` (per bank: wall time, slots/min, model latency and
 slot time p50/p95/max, slots over the 40-s cap, failed model calls), `slot-timing.csv`,
 `events.jsonl`, `progress.jsonl`, `rebuilds.jsonl`, `g5b-report.md`,
-`archive/<campaign>-banks.tar`.
+`archive/<campaign>-banks.tar`. `timing.csv` flags `wall_estimated` when a row includes
+an unfinished (crashed) attempt or a killed runner session, each ended at its last
+record.
