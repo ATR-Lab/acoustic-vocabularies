@@ -638,13 +638,41 @@ def test_cli_runs_appointments_with_the_real_components_and_resumes(tmp_path, ca
     assert "E_RUN_DIR" in capsys.readouterr().err
 
 
-def test_cli_runs_the_stand_ins_for_tests_and_dry_runs(tmp_path, capsys):
-    args = ["--kind", "demo", "--proposers", "sim", "--panel", "bots", "--clock", "manual"]
-    assert br.main(["run", *_cli(tmp_path, "DEMO-sim-01"), *args, "--appointment", "1"]) == 0
-    assert "Atoms finished: 4/16" in capsys.readouterr().out
-    manifest = RunManifest.read(tmp_path / "DEMO-sim-01/run-manifest.json")
-    assert manifest.kind == "demo" and manifest.clock == "manual"
-    assert (
-        br.main(["run", *_cli(tmp_path, "DEMO-sim-02"), "--kind", "demo", "--clock", "manual"]) == 1
+def test_cli_options_of_the_stand_ins(tmp_path, capsys):
+    """The stand-ins run through the same `open_batch` / `run_session` path as the
+    station-session test; here only what the command line adds is checked."""
+    sim_args = ["--kind", "demo", "--proposers", "sim"]
+    assert br.main(["check", *_cli(tmp_path, "DEMO-sim-01"), *sim_args]) == 0
+    assert f"generation config {demo_inputs('sim').generation_config.frozen_sha256()}" in (
+        capsys.readouterr().out
     )
+    for extra, code in (
+        (["--clock", "manual"], "E_MODE"),  # nobody would move a manual clock
+        (["--panel", "bots", "--clock", "scaled", "--kind", "pilot", *_demo_files()], "E_MODE"),
+    ):
+        assert br.main(["run", *_cli(tmp_path, "DEMO-sim-01"), *sim_args, *extra]) == 1
+        assert code in capsys.readouterr().err
+    real = ["--kind", "demo", "--clock", "manual", "--panel", "bots", "--designer", "bot"]
+    assert br.main(["run", *_cli(tmp_path, "DEMO-sim-02"), *real]) == 1
     assert "E_LLM_SERVER" in capsys.readouterr().err  # real proposers need --llm-url
+    assert not (tmp_path / "DEMO-sim-01").exists() and not (tmp_path / "DEMO-sim-02").exists()
+
+
+def test_a_closed_run_is_left_untouched_when_reopened(real_run, mock_llm_url):
+    """`--resume` on a finished batch serves nothing and writes nothing: the closed
+    manifest's file hashes stay true."""
+    batch, _, _, _ = real_run
+    before = {p: p.read_bytes() for p in batch.layout.root.rglob("*") if p.is_file()}
+    again = br.open_batch(
+        batch.inputs,
+        batch.layout.root,
+        kind=RunKind.SYNTHETIC,
+        clock=ScaledClock(SPEED),
+        llm_url=mock_llm_url,
+        resume=True,
+    )
+    lines = []
+    assert br.run_session(again, panel="stations", log=lines.append) is None
+    assert lines == ["Atoms finished: 16/16; the run is closed"]
+    after = {p: p.read_bytes() for p in batch.layout.root.rglob("*") if p.is_file()}
+    assert after == before

@@ -327,7 +327,9 @@ uv run --project generation python -m av_generation.batch_runner run <same input
 ```
 
 The runner prints the A1 page URL (for the kiosk policy) and the station page URL, waits
-for the three stations, runs the appointment and prints the atoms finished. Exit codes: 0
+for the three stations, runs the appointment and prints the atoms finished. `--resume` on
+a finished batch serves nothing and writes nothing (the closed manifest hashes every
+file). Mode errors (`E_MODE`) are found before the run directory is created. Exit codes: 0
 done, 1 refused (`error: <code>: ...`), 3 batch incomplete (rebuild it, section 6), 130
 interrupted (the logs are kept; reopen with `--resume`). Other options: `--prompts`,
 `--llm-manifest` (defaults: the committed set and manifest), `--a1-port`, `--panel-port`,

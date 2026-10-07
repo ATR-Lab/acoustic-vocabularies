@@ -90,7 +90,7 @@ from av_generation.panel_session import PanelSessionHost
 from av_generation.prompts import PromptSet, default_prompt_set_dir, load_prompt_set
 from av_generation.proposers import RoundProposer
 from av_generation.rater_protocol import STATION_PAGE
-from av_generation.records import RecordWriter
+from av_generation.records import RecordWriter, RunManifest
 from av_generation.rundir import (
     MANIFEST_NAME,
     RunLayout,
@@ -542,6 +542,17 @@ def _appointments(orchestrator: Orchestrator, appointment: Appointment) -> list[
     return [int(appointment)]
 
 
+def _check_session(
+    kind: RunKind, clock: Clock, panel: PanelMode, designer: DesignerMode, *, has_a1: bool
+) -> None:
+    """Bots and bot designers run demo and synthetic batches only; a manual clock only
+    moves when bot raters drive it and nobody waits for a human designer (`E_MODE`)."""
+    if (panel == "bots" or (designer == "bot" and has_a1)) and kind not in PUBLIC_RUN_KINDS:
+        raise RunnerError(E_MODE, f"bot raters and bot designers never run a {kind} batch")
+    if isinstance(clock, ManualClock) and (panel != "bots" or (has_a1 and designer != "bot")):
+        raise RunnerError(E_MODE, "a manual clock needs bot raters and, with A1, a bot designer")
+
+
 def _stdout(line: str) -> None:
     sys.stdout.write(line + "\n")
     sys.stdout.flush()
@@ -573,21 +584,24 @@ def run_session(
       every seat has joined), or in-process bot raters (`panel="bots"`,
       `_batch_sim.SyntheticPanel` with `rating_policy`, default the seeded bot policy).
     - A reopened run (`batch.resumed`) first finishes an interrupted atom
-      (`Orchestrator.resume`).
+      (`Orchestrator.resume`). A closed run (all atoms done, manifest closed) is left
+      untouched: nothing is served or written.
     - `appointment`: `"next"` (the appointment of the next atom), `"all"` (the rest of
       the batch) or 1..4.
 
     Bots and bot designers run demo and synthetic batches only (`E_MODE`). Returns the next
     atom (`None` when the batch is finished); `BatchIncomplete` after a withdrawal."""
     orch = batch.orchestrator
-    bots = panel == "bots" or (designer == "bot" and batch.a1 is not None)
-    if bots and batch.kind not in PUBLIC_RUN_KINDS:
-        raise RunnerError(E_MODE, f"bot raters and bot designers never run a {batch.kind} batch")
-    if isinstance(batch.clock, ManualClock) and (
-        panel != "bots" or (batch.a1 is not None and designer != "bot")
-    ):
-        raise RunnerError(E_MODE, "a manual clock needs bot raters and, with A1, a bot designer")
+    _check_session(batch.kind, batch.clock, panel, designer, has_a1=batch.a1 is not None)
     run_id = batch.layout.run_id
+    if RunManifest.read(batch.layout.manifest).closed_utc is not None:
+        # A finished, closed run: nothing to serve, and nothing may be appended (the
+        # closed manifest holds the hash of every file).
+        log(
+            f"Atoms finished: {len(orch.config.atom_order)}/{len(orch.config.atom_order)}; "
+            "the run is closed"
+        )
+        return None
     with ExitStack() as stack:
         if batch.a1 is not None:
             page = stack.enter_context(serve_a1(batch.a1, host=a1_host, port=a1_port))
@@ -727,11 +741,15 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             f"generation config {inputs.generation_config.frozen_sha256()}"
         )
         return 0
+    clock = _clock(args)
+    _check_session(  # before anything is created
+        RunKind(args.kind), clock, args.panel, args.designer, has_a1=args.proposers == "real"
+    )
     batch = open_batch(
         inputs,
         run_dir,
         kind=args.kind,
-        clock=_clock(args),
+        clock=clock,
         proposers=args.proposers,
         llm_url=args.llm_url,
         a1_station=args.a1_station,
