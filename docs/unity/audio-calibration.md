@@ -74,7 +74,9 @@ That evidence is produced offline from a physical capture by
 and the procedure is in the [O6.1.3 runbook](../spikes/O6.1.3-runbook.md). No
 physical measurement has been made yet, and no record exists. Only synthetic
 fixtures exist, and the schema keeps them provisional. This host does not read
-the records.
+the records; it always uses an unmeasured route. The study-audio path loads a
+pinned record and binds it to the running setup, as described in
+[Onset calibration record](study-audio.md#onset-calibration-record-80).
 
 Private `operator-logs/audio-calibration-*.jsonl` records the configuration hash,
 route, preview status, stored order, example hashes, preload memory estimate,
