@@ -418,13 +418,72 @@ is the guard).
 
 ## Study B bank builder (#26)
 
-*Pending (#26).* Manifest format fixed by the skeleton: `bank-manifest.schema.json`
-(`av-banks/bank-manifest` v1: `bank_id` `bank-P<seq>`/`bank-C<seq>`/`DEMO-` tied to
-`set`, `seed_namespace`, `generation_config_sha256`, `permutation_sha256`, cells,
-attempts), `bank_manifest.bank_sha256(manifest)` (SHA-256 of the canonical compact JSON;
-the manifest is immutable), the amendment log `amendments.jsonl`
-(`bank-amendment.schema.json`, chained by `prev_sha256`) and `effective_menu(manifest,
-amendments)` for #70 and #13. Builder, `verify` and `amend` live in `banks/` (`av_banks`).
+Producer: `banks/` (`av-banks`, import `av_banks`; design and usage in
+[`banks/docs/bank-builder.md`](../../banks/docs/bank-builder.md)). Consumers: Unity
+menus and yoked replay (#70: manifest, WAVs, amendments), dyad package builder (#13),
+pilot and confirmatory bank runs (#27, #28: CLI, `verify`, bank hash).
+
+**Inputs.** A bank ID from the dyad-slot sequence (#31; `bank-P001`.., `bank-C001`..`bank-C064`
+main, `bank-C065`..`bank-C072` spares, or `DEMO-`), bound to its unit by a fixed rule
+(`av_banks.permutation.expected_unit_id`: `bank-C012` -> `B-C12`, `bank-C066` -> `B-S02`)
+and read through the unit's package-safe `permutation.json` (`labels`, `atom_order` =
+traversal order; never `<set>-dyads.json`); the generation config (threshold, pins, budgets;
+confirmatory banks also the `frozen` G4 manifest, read through #25's freeze guard by
+`av_banks.run.read_freeze_manifest(path, kind="confirmatory")`: `E_FREEZE_GUARD` when this
+checkout differs from it); the B prompt set, meaning set and decoding schema (hashes equal
+to the config's); the #16 client.
+
+**Build** (`banks build`, `av_banks.run.build_banks`, `builder.BankBuilder`). Attempts
+1..4; per profile P1..P3 and atom in the stored order, slots 1..12 of the cell: ledger
+`reserve` (cap key `B|<bank>|<attempt>|<profile>|<atom>`; a 13th slot and a 577th slot
+raise `ledger.SlotCapExceeded` before any work), one proposal from a `BCellState`
+(label, all options retained so far under the profile, the cell's slot history; no
+rating, participant or test field) with seed key `seeds.b_seed_key(seed_namespace,
+attempt, profile, atom, slot)`, `av_sound.validate` against the other atoms' retained
+options at the config threshold, outcome with `mode="B"`, one `SlotRecord`. The first 4
+`valid` slots are the options (ranks 1-3 shown, 4 reserve). A cell with 12 slots and
+fewer than 4 options fails the attempt (kept on disk); the first complete attempt is the
+bank; 4 failed attempts give `status: unavailable` (no cells; never assigned); a 5th
+attempt raises `ledger.AttemptCapExceeded` (logged). `workers` 1-3 runs profiles as
+parallel streams, `parallel_banks` several banks per run. Single atoms only: the builder
+never composes a message.
+
+**Files** (`rundir.RunLayout.bank_dir(bank_id)` = `<run>/banks/<bank_id>/`): `manifest.json`
+(`bank-manifest.schema.json`; derived from the stored files with
+`av_banks.manifest.manifest_from_files`), `bank-sha256.txt`, `generation-config.json`,
+`permutation.json` (byte copy; `permutation_sha256` = SHA-256 of the bytes),
+`timing.jsonl`, `attempts/<n>/slots.jsonl` (`slot-record`), `attempts/<n>/slot-refusals.jsonl`,
+`attempts/<n>/attempt.json` ([`banks/schema/bank-attempt.schema.json`](../../banks/schema/bank-attempt.schema.json):
+status, reason, failed cell, timing, throughput), `options/P<k>/<atom>-<rank>.wav`
+(attempt used only), `amendments.jsonl`. The run directory holds `run-manifest.json`
+(`purpose: "bank"`, study B, `bank_ids`, config and meanings hashes, `files`) and
+`logs/llm-requests.jsonl`. Option IDs: `<bank_id>.<profile>.<atom>.<rank>`; manifest cells
+in the order P1, P2, P3 x stored atom order.
+
+**Bank hash.** `bank_manifest.bank_sha256(manifest)` (SHA-256 of the canonical compact
+JSON); recomputing the manifest from the stored files gives the same hash (`banks verify`,
+`banks hash`). Amendments never change it.
+
+**Verify** (`banks verify`, `av_banks.verify.verify_bank -> VerifyReport`): schema, manifest
+= stored files, bank hash, config pins, a seed namespace that names the bank and version
+(`<bank_id>` for 1.0.0, else `<bank_id>-v<version>[-<suffix>]`), every attempt log (hash,
+counts, slot IDs, seed keys, caps, traversal order, retention), provenance of every option
+(a `valid` record of the attempt used), re-render and WAV hashes, technical validity,
+distinct waveforms per cell, all 1,920 different-atom pairs per profile, amendment chain.
+
+**Amend** (`banks amend ... --unheard-confirmed`, `av_banks.amend.amend_bank`): the reserve
+replaces a shown option (rank 1-3) after the operator confirms it is unheard and
+uncommitted and the wave's menu has not been heard; verifies the bank, rechecks the reserve
+(re-render, hashes, validity, 60 pairs against the other atoms' options) and appends a
+chained `bank_amendment` line; one per cell. Consumers use `effective_menu(manifest,
+amendments)` after `amendment_chain_errors(...) == ()`.
+
+**Package builder (#13).** `av_banks.manifest.to_dyad_bank(read_manifest(bank_dir))` ->
+`av_sound.dyad_bank.DyadBank` (option `source` = slot ID); amendments are not applied by
+the conversion.
+
+**Pending.** Example bank with the real model on the LLM host (hardware); manifest review
+by the #70 owner (human).
 
 ## Pilot banks (#27)
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/bank-manifest.schema.json",
   "title": "Study B bank manifest",
-  "description": "One dyad's candidate bank as built (#26; Study B protocol §4): 16 atoms x 3 profiles, each cell with the first 4 retained options in order (ranks 1-3 the displayed menu, rank 4 the reserve), their recipes, WAV paths and hashes, and the attempts made (at most 4 x 576 slots). status unavailable: all 4 attempts failed, cells is empty and the bank must not be assigned. bank_id: bank-P<seq> (pilot), bank-C<seq> (confirmatory) by dyad-slot sequence, or DEMO-. seed_namespace is the <bank_ns> part of the bank's seed keys; generation_config_sha256 is the hash of the generation-config.json stored beside the manifest; permutation_sha256 the SHA-256 of the unit's permutation.json (labels, atom_order). The manifest is immutable: the bank hash (av_generation.bank_manifest.bank_sha256) is the SHA-256 of its canonical compact JSON, and reserve-rule amendments go to amendments.jsonl (bank-amendment.schema.json). Consumers: Unity menus and yoked replay (#70), dyad package builder (#13).",
+  "description": "One dyad's candidate bank as built (#26; Study B protocol §4): 16 atoms x 3 profiles, each cell with the first 4 retained options in order (ranks 1-3 the displayed menu, rank 4 the reserve), their recipes, WAV paths and hashes, and the attempts made (at most 4 x 576 slots; a complete attempt has no failed cell and at least 4 x 48 slots, a failed attempt names the cell that used its 12 slots without 4 options; attempts are numbered 1..n and only the last can be complete). status unavailable: all 4 attempts failed, cells is empty and the bank must not be assigned. bank_id: bank-P<seq> (pilot), bank-C<seq> (confirmatory) by dyad-slot sequence, or DEMO-. seed_namespace is the <bank_ns> part of the bank's seed keys; generation_config_sha256 is the hash of the generation-config.json stored beside the manifest; permutation_sha256 the SHA-256 of the unit's permutation.json (labels, atom_order). The manifest is immutable: the bank hash (av_generation.bank_manifest.bank_sha256) is the SHA-256 of its canonical compact JSON, and reserve-rule amendments go to amendments.jsonl (bank-amendment.schema.json). Consumers: Unity menus and yoked replay (#70), dyad package builder (#13).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -137,7 +137,35 @@
             "type": "integer",
             "minimum": 0
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "complete"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "failed_cell": {
+                  "type": "null"
+                },
+                "slots_used": {
+                  "minimum": 192
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "failed_cell": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "labels": {
