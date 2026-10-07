@@ -30,7 +30,19 @@ repository setup script when the Unity spike selects an editor.
 
 The initial skeleton is the sole direct commit to `main`. Subsequent changes use
 one branch and one pull request per issue; maintainers review and merge.
-Versioning, public-data safeguards and CI follow in #43.
+See [versioning](docs/versioning.md), [data policy](docs/data-policy.md) and
+[third-party provenance](THIRD_PARTY.md). CI runs Python tests, schema validation,
+credential/path checks and LFS-pointer checks on each pull request.
+
+For local checks, use Python 3.12, create an isolated virtual environment, then
+`python -m pip install -r requirements-dev.txt`, `python tools/generate-fixtures.py`, `python -m pytest`,
+`python tools/validate_schemas.py`, and `python tools/repo_guard.py`.
+The guard inspects committed history; run it again after committing.
+
+Configure Smart Merge with `tools/setup-unity-merge.ps1 -UnityEditor <Unity.exe>`
+on Windows, or `UNITY_EDITOR=<Unity.app/Contents/MacOS/Unity> sh
+tools/setup-unity-merge.sh` on macOS. Each checkout configures its local editor;
+editor paths are never committed.
 
 Never commit study vocabularies, codebooks, learner packages, candidate banks,
 allocation lists, confirmatory seeds, participant data, credentials or local

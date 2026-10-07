@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Listening task</title>
+  <link rel="stylesheet" href="/threshold/static/threshold.css">
+</head>
+<body>
+  <main>
+    <h1>Same or different?</h1>
+    <p id="instructions">
+      Press Play to hear two short sounds, one after the other. Each pair plays once.
+      When the second sound has ended, answer whether the two sounds were the same or
+      different. Take your time; there is no time limit.
+    </p>
+    <p id="progress" aria-live="polite"></p>
+    <div class="controls">
+      <button id="play" type="button" disabled>Play</button>
+    </div>
+    <div id="answer" class="controls" hidden>
+      <button id="same" type="button" disabled>Same</button>
+      <button id="different" type="button" disabled>Different</button>
+    </div>
+    <p id="status" role="status"></p>
+    <div class="controls">
+      <button id="skip" type="button" class="operator" hidden>Skip this trial (operator)</button>
+    </div>
+  </main>
+  <script src="/threshold/static/threshold.js"></script>
+</body>
+</html>

@@ -1,0 +1,1714 @@
+{
+  "container_E": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.115,
+      0.075,
+      0.875
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_E/home"
+    },
+    "visible": true
+  },
+  "container_E/code": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.164,
+      0.075,
+      0.965
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "container_E/lid": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.0675,
+      0.075,
+      0.9125
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "lid_open_fraction": 1.0
+    },
+    "visible": true
+  },
+  "container_E/tag": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.18,
+      0.075,
+      0.84
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_E/tag_free",
+      "tag_attached": false
+    },
+    "visible": true
+  },
+  "container_F": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.115,
+      0.285,
+      0.875
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_F/home"
+    },
+    "visible": true
+  },
+  "container_F/code": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.164,
+      0.285,
+      0.965
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "container_F/lid": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.0675,
+      0.285,
+      0.9125
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "lid_open_fraction": 1.0
+    },
+    "visible": true
+  },
+  "container_F/tag": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.18,
+      0.285,
+      0.84
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_F/tag_free",
+      "tag_attached": false
+    },
+    "visible": true
+  },
+  "container_G": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.3,
+      0.075,
+      0.875
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_G/home"
+    },
+    "visible": true
+  },
+  "container_G/code": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.349,
+      0.075,
+      0.965
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "container_G/lid": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.2525,
+      0.075,
+      0.9125
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "lid_open_fraction": 1.0
+    },
+    "visible": true
+  },
+  "container_G/tag": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.365,
+      0.075,
+      0.84
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_G/tag_free",
+      "tag_attached": false
+    },
+    "visible": true
+  },
+  "container_H": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.3,
+      0.285,
+      0.875
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_H/home"
+    },
+    "visible": true
+  },
+  "container_H/code": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.349,
+      0.285,
+      0.965
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "container_H/lid": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.2525,
+      0.285,
+      0.9125
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "lid_open_fraction": 1.0
+    },
+    "visible": true
+  },
+  "container_H/tag": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.365,
+      0.285,
+      0.84
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "container_H/tag_free",
+      "tag_attached": false
+    },
+    "visible": true
+  },
+  "quarantine_E": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.115,
+      0.18,
+      0.837
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "quarantine_F": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.115,
+      0.38999999999999996,
+      0.837
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "quarantine_G": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.3,
+      0.18,
+      0.837
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "quarantine_H": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.3,
+      0.38999999999999996,
+      0.837
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "return_cup": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.045,
+      0.405,
+      0.856
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "supply/washer_0": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.031,
+      -0.419,
+      0.842
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_1": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.059,
+      -0.419,
+      0.842
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_10": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.031,
+      -0.391,
+      0.854
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_11": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.059,
+      -0.391,
+      0.854
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_2": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.031,
+      -0.391,
+      0.842
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_3": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.059,
+      -0.391,
+      0.842
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_4": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.031,
+      -0.419,
+      0.848
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_5": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.059,
+      -0.419,
+      0.848
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_6": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.031,
+      -0.391,
+      0.848
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_7": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.059,
+      -0.391,
+      0.848
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_8": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.031,
+      -0.419,
+      0.854
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply/washer_9": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.059,
+      -0.419,
+      0.854
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "supply_cup"
+    },
+    "visible": true
+  },
+  "supply_cup": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.045,
+      -0.405,
+      0.856
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "surface_left": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.2175,
+      -0.225,
+      0.815
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "surface_right": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.2175,
+      0.225,
+      0.815
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "tray_A": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.115,
+      -0.105,
+      0.851
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "tray_A/arrow": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.067,
+      -0.06999999999999999,
+      0.872
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "arrow_angle_rad": 1.5707963267948966
+    },
+    "visible": true
+  },
+  "tray_A/card": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.067,
+      -0.14,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "card_face": 0
+    },
+    "visible": true
+  },
+  "tray_A/washer_0": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.16,
+      -0.149,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_A"
+    },
+    "visible": true
+  },
+  "tray_A/washer_1": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.16,
+      -0.105,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_A"
+    },
+    "visible": true
+  },
+  "tray_A/washer_2": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.16,
+      -0.061,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_A"
+    },
+    "visible": true
+  },
+  "tray_B": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.115,
+      -0.295,
+      0.851
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "tray_B/arrow": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.067,
+      -0.26,
+      0.872
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "arrow_angle_rad": 1.5707963267948966
+    },
+    "visible": true
+  },
+  "tray_B/card": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.067,
+      -0.32999999999999996,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "card_face": 0
+    },
+    "visible": true
+  },
+  "tray_B/washer_0": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.16,
+      -0.339,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_B"
+    },
+    "visible": true
+  },
+  "tray_B/washer_1": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.16,
+      -0.295,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_B"
+    },
+    "visible": true
+  },
+  "tray_B/washer_2": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.16,
+      -0.251,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_B"
+    },
+    "visible": true
+  },
+  "tray_C": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.3,
+      -0.105,
+      0.851
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "tray_C/arrow": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.252,
+      -0.06999999999999999,
+      0.872
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "arrow_angle_rad": 1.5707963267948966
+    },
+    "visible": true
+  },
+  "tray_C/card": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.252,
+      -0.14,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "card_face": 0
+    },
+    "visible": true
+  },
+  "tray_C/washer_0": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.345,
+      -0.149,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_C"
+    },
+    "visible": true
+  },
+  "tray_C/washer_1": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.345,
+      -0.105,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_C"
+    },
+    "visible": true
+  },
+  "tray_C/washer_2": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.345,
+      -0.061,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_C"
+    },
+    "visible": true
+  },
+  "tray_D": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.3,
+      -0.295,
+      0.851
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {},
+    "visible": true
+  },
+  "tray_D/arrow": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.252,
+      -0.26,
+      0.872
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "arrow_angle_rad": 1.5707963267948966
+    },
+    "visible": true
+  },
+  "tray_D/card": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.252,
+      -0.32999999999999996,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "card_face": 0
+    },
+    "visible": true
+  },
+  "tray_D/washer_0": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.345,
+      -0.339,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_D"
+    },
+    "visible": true
+  },
+  "tray_D/washer_1": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.345,
+      -0.295,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_D"
+    },
+    "visible": true
+  },
+  "tray_D/washer_2": {
+    "angular_velocity_rad_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "collision_enabled": false,
+    "enabled": true,
+    "linear_velocity_m_s": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "position_m": [
+      0.345,
+      -0.251,
+      0.871
+    ],
+    "rotation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "state": {
+      "location": "tray_D"
+    },
+    "visible": true
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "scope": "Standalone synthetic WebSocket transport diagnostics; not native or source qualification",
+  "qualification": false,
+  "participant": false,
+  "archive_sha256": "9114c7891bd50a493ed7068dbe04ce4367b3a14b53bf3645ac3386f03fabe163",
+  "ssh_version": "OpenSSH_for_Windows_9.5p2, LibreSSL3.8.2",
+  "default_ssh_config": {
+    "compression": "no",
+    "ipqos": "af21 cs1"
+  },
+  "qos_variant": "IPQoS=none only; compression remains no",
+  "response_deadline_ms": 200,
+  "requested_period_ms": 75,
+  "bulk_frame_bytes": 10799,
+  "bulk_target_hz": 16,
+  "reports": {
+    "network-echo-private-001": {
+      "raw_sha256": "2b5b6fbe2ac7552c9d36a61de7412a194f292864ecc5875db4a9c6c9547dd2b9",
+      "elapsed_seconds": 67.6618192,
+      "phases": [
+        {
+          "phase": 0,
+          "nodelay": 0,
+          "requests": 200,
+          "deadline_failures": 0,
+          "median_completed_ms": 49.15265,
+          "max_completed_ms": 160.0547
+        },
+        {
+          "phase": 1,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 0,
+          "median_completed_ms": 50.968900000000005,
+          "max_completed_ms": 141.1636
+        },
+        {
+          "phase": 2,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 6,
+          "median_completed_ms": 57.92415,
+          "max_completed_ms": 173.6481
+        },
+        {
+          "phase": 3,
+          "nodelay": 0,
+          "requests": 200,
+          "deadline_failures": 3,
+          "median_completed_ms": 58.9909,
+          "max_completed_ms": 174.9853
+        }
+      ],
+      "load_frames": 0,
+      "load_errors": [],
+      "load_thread_alive": false,
+      "approx_end_utc_from_file_mtime": "2026-10-06T00:57:18.454160+00:00"
+    },
+    "network-echo-load-001": {
+      "raw_sha256": "b2f098e2a672729ebd3fa63123cab679b37305274d93dc5e2df23a9481a44f7e",
+      "elapsed_seconds": 65.1954739,
+      "phases": [
+        {
+          "phase": 0,
+          "nodelay": 0,
+          "requests": 200,
+          "deadline_failures": 2,
+          "median_completed_ms": 52.3375,
+          "max_completed_ms": 171.6762
+        },
+        {
+          "phase": 1,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 2,
+          "median_completed_ms": 55.496399999999994,
+          "max_completed_ms": 199.6472
+        },
+        {
+          "phase": 2,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 0,
+          "median_completed_ms": 41.099599999999995,
+          "max_completed_ms": 180.793
+        },
+        {
+          "phase": 3,
+          "nodelay": 0,
+          "requests": 200,
+          "deadline_failures": 0,
+          "median_completed_ms": 44.14135,
+          "max_completed_ms": 157.2601
+        }
+      ],
+      "load_frames": 1026,
+      "load_errors": [],
+      "load_thread_alive": false,
+      "approx_end_utc_from_file_mtime": "2026-10-06T00:58:42.562153+00:00"
+    },
+    "network-qos-default-A1": {
+      "raw_sha256": "48766a3832be0dd48b1eddc85891285fa4352b8f2fa2492b158dedbd475dabfe",
+      "elapsed_seconds": 19.0388028,
+      "phases": [
+        {
+          "phase": 0,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 6,
+          "median_completed_ms": 54.8493,
+          "max_completed_ms": 189.5669
+        }
+      ],
+      "load_frames": 0,
+      "load_errors": [],
+      "load_thread_alive": false,
+      "approx_end_utc_from_file_mtime": "2026-10-06T01:01:16.773554+00:00"
+    },
+    "network-qos-none-BB": {
+      "raw_sha256": "f5e742cc60a0bf315a87c90c35c5212c7cdbdf93c062eba32580c0e026df4d82",
+      "elapsed_seconds": 45.3820961,
+      "phases": [
+        {
+          "phase": 0,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 15,
+          "median_completed_ms": 75.5838,
+          "max_completed_ms": 197.0544
+        },
+        {
+          "phase": 1,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 8,
+          "median_completed_ms": 55.75165,
+          "max_completed_ms": 189.4711
+        }
+      ],
+      "load_frames": 0,
+      "load_errors": [],
+      "load_thread_alive": false,
+      "approx_end_utc_from_file_mtime": "2026-10-06T01:02:37.660185+00:00"
+    },
+    "network-qos-default-A2": {
+      "raw_sha256": "2d840fdeb6d22591c8622be6f0a08bc6f00055b173fada4279321db485cbff1c",
+      "elapsed_seconds": 19.3727566,
+      "phases": [
+        {
+          "phase": 0,
+          "nodelay": 1,
+          "requests": 200,
+          "deadline_failures": 6,
+          "median_completed_ms": 59.772149999999996,
+          "max_completed_ms": 197.2238
+        }
+      ],
+      "load_frames": 0,
+      "load_errors": [],
+      "load_thread_alive": false,
+      "approx_end_utc_from_file_mtime": "2026-10-06T01:03:35.630470+00:00"
+    }
+  },
+  "compression_screen_performed": false,
+  "confounds": [
+    "Sequential windows, not randomized simultaneous route comparisons",
+    "Earlier private/load screens may overlap other desktop work; Editor test/shutdown times retained separately",
+    "Approximate wall boundaries derived from file mtime minus measured duration, not an explicit clock mapping",
+    "QoS window had no Isaac, native player or Editor/test process per root observation; ordinary desktop/API work may continue",
+    "Server responses and public-size padding are synthetic, not the native ClientWebSocket protocol",
+    "Successful RTT maxima exclude right-censored deadline failures",
+    "TCP retransmissions demonstrate variability on a diagnostic connection, not cause of the historical native failure"
+  ],
+  "owned_resources_stopped": true
+}

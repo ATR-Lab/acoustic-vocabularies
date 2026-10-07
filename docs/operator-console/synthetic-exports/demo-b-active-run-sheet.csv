@@ -1,0 +1,3 @@
+participant_id,visit,block,expected_count,actual_count,start_time,end_time,comfort_check,phone_locked,hash_check,deviations,operator_signoff
+demo-01,W4,trained,3,3,,,yes,yes,sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,3,ops-demo
+demo-01,W4,atomic,2,2,,,yes,yes,sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,3,ops-demo

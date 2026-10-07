@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "scope": "synthetic_software_contract_validation",
+  "source_commit": "6f498ba0d6a124cba2ef06774b0290f05e034f9a",
+  "source_files_sha256_basis": "Git blob bytes at source_commit; working-tree line endings may differ",
+  "source_files_sha256": {
+    "tools/mock_visit/screening.py": "0fc1b2492cdcfad135de2e5aa1b83a80629c1e9a45a23d377e6132c31efd9c1d",
+    "tools/mock_visit/suite.py": "f1139255bcccc8b18d466b6329f182f591d7c52192b4ba92d3ff23f1402a09d9",
+    "tests/test_mock_visit_screening.py": "3b70b32817759247a04601f6e96fa3cc128174489dbe0770d0a18e3fefb43e3c",
+    "unity/Assets/Tests/Orientation/OrientationScreeningExportTests.cs": "0ee8f7b689aeb4dbfd8f0b6e4c1ccffb45ae2cf9f12513de77ece0442180d09a"
+  },
+  "unity": {
+    "editor_version": "6000.6.0f1",
+    "validation_commit": "c8859c2dbb8e9dd64d96d6ab93df0aa1d3cbe4a2",
+    "export_test_commit": "c2e269f19618726eb5ab2d06b8c6893306d4fe43",
+    "cases": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "xml_sha256": "7537defa0cbf31b19b0efed568151676838e535bba9c9c5ff7cd09526858459d",
+    "evidence": "Actual C# Flow, Panel and Journal producers with injected clock and synthetic demo observations; no native visit"
+  },
+  "python": {
+    "command": "python -m unittest discover -s tests -p test_mock_visit*.py",
+    "cases": 135,
+    "passed": 135,
+    "failed": 0,
+    "skipped": 0,
+    "actual_csharp_export_test_enabled": true,
+    "raw_log_sha256": "1485d1dcbeacf849cebeac3d42f42af0719ab5758cff7a0920b5c27f5ca27375"
+  },
+  "exports": [
+    {
+      "outcome": "pass_first",
+      "engineering_draft": true,
+      "eligible": false,
+      "journal_events": 45,
+      "practice_responses": 8,
+      "raw_artifact_sha256": {
+        "plan": "4d4a5284721954330c9bd48a4e3a0996e39ec76bae5a12d6b3d906fed96d4241",
+        "demo_index": "47e3e1b6ec1021bcffbf033ebb0e8b121d5cfc938878b29734b57c2a89aadac5",
+        "journal": "1eaf19d3f5d8d45524fae06f37d23727a7bf38128f29ef9fa2c00dcb11c0b16c",
+        "receipt": "f3975d3f4c28143e8ecfb3418253e70deb81fc75a51b9265c47b9f3eec08ff3f",
+        "export_inventory": "7a2d1a273e3903792003b1889533c156f573db3e255b5cedaa6e3ed123951fce"
+      }
+    },
+    {
+      "outcome": "pass_second",
+      "engineering_draft": true,
+      "eligible": false,
+      "journal_events": 87,
+      "practice_responses": 16,
+      "raw_artifact_sha256": {
+        "plan": "4d4a5284721954330c9bd48a4e3a0996e39ec76bae5a12d6b3d906fed96d4241",
+        "demo_index": "47e3e1b6ec1021bcffbf033ebb0e8b121d5cfc938878b29734b57c2a89aadac5",
+        "journal": "e3ffba01e4fd89a1ce4b9148e70391ee7490f1d373f2cea39265d9919a075fc5",
+        "receipt": "a14933508335c22c53f8dd90e639d56cc08c2d809fcab8c30ad5870b9e1b30b5",
+        "export_inventory": "700ad74cbc942aa3bac18aca291c39585bea5decc01c00ec1f63f62a5b7d2633"
+      }
+    },
+    {
+      "outcome": "fail",
+      "engineering_draft": true,
+      "eligible": false,
+      "journal_events": 87,
+      "practice_responses": 16,
+      "raw_artifact_sha256": {
+        "plan": "4d4a5284721954330c9bd48a4e3a0996e39ec76bae5a12d6b3d906fed96d4241",
+        "demo_index": "47e3e1b6ec1021bcffbf033ebb0e8b121d5cfc938878b29734b57c2a89aadac5",
+        "journal": "8a8e37dc9f41b7795477b2541b1ec3192c520f98bc813e048908271f5fddb3bd",
+        "receipt": "9c72077a4dcbaa6d4ebeaae8c7f1c5c1ba94adadd6c626206178d95d96983bdb",
+        "export_inventory": "ed1b5a1aaab9caa19b6ba019a6b7744c0a4058bc7dd2b85070aacbb53042c117"
+      }
+    }
+  ],
+  "limits": [
+    "Synthetic engineering-draft C# inputs never grant allocation eligibility.",
+    "Separate Python allocation fixtures use actual DEMO producers with synthetic review-shaped receipts; no human review is asserted.",
+    "Demo index is raw-byte bound only; no trajectory library or rendered visibility qualification.",
+    "No participant, acoustic, physical screening, native visit, build execution, or receipt custody qualification.",
+    "Full issue81 suite and supplementary reviews remain incomplete."
+  ],
+  "participant_admission": false,
+  "physical_screening_verified": false,
+  "issue81_accepted": false
+}

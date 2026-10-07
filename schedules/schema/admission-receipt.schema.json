@@ -1,0 +1,583 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/admission-receipt.schema.json",
+  "title": "Pinned orientation and allocation handoff receipts",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "receipt_type",
+        "screening_id",
+        "station_id",
+        "protocol_version",
+        "orientation_id",
+        "plan_sha256",
+        "demo_index_sha256",
+        "journal_sha256",
+        "journal_bytes",
+        "outcome",
+        "engineering_draft",
+        "eligible",
+        "receipt_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "receipt_type": {
+          "const": "orientation-outcome"
+        },
+        "screening_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,32}$",
+          "maxLength": 32
+        },
+        "station_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "maxLength": 80
+        },
+        "protocol_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "maxLength": 80
+        },
+        "orientation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "maxLength": 80
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "demo_index_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "journal_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "journal_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "outcome": {
+          "enum": [
+            "pass_first",
+            "pass_second",
+            "fail"
+          ]
+        },
+        "engineering_draft": {
+          "type": "boolean"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "receipt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "eligible": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "engineering_draft": {
+                "const": false
+              },
+              "outcome": {
+                "enum": [
+                  "pass_first",
+                  "pass_second"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "study",
+        "set",
+        "list_sha256",
+        "eligibility_id",
+        "screening_ids",
+        "journal_head_sha256",
+        "journal_line",
+        "receipt_sha256",
+        "receipt_type",
+        "orientation_receipt_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "study": {
+          "enum": [
+            "A",
+            "B"
+          ]
+        },
+        "set": {
+          "enum": [
+            "pilot",
+            "confirmatory"
+          ]
+        },
+        "list_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "eligibility_id": {
+          "type": "string",
+          "pattern": "^E[0-9]{4,}$",
+          "maxLength": 16
+        },
+        "screening_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,32}$",
+            "maxLength": 32
+          },
+          "uniqueItems": true
+        },
+        "journal_head_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "journal_line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "receipt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "receipt_type": {
+          "const": "allocation-eligibility"
+        },
+        "orientation_receipt_sha256": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "study": {
+                "const": "A"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "screening_ids": {
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "orientation_receipt_sha256": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "study": {
+                "const": "B"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "screening_ids": {
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "orientation_receipt_sha256": {
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "study",
+        "set",
+        "list_sha256",
+        "eligibility_id",
+        "screening_ids",
+        "journal_head_sha256",
+        "journal_line",
+        "receipt_sha256",
+        "receipt_type",
+        "eligibility_receipt_sha256",
+        "entry_sha256",
+        "entry"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "study": {
+          "enum": [
+            "A",
+            "B"
+          ]
+        },
+        "set": {
+          "enum": [
+            "pilot",
+            "confirmatory"
+          ]
+        },
+        "list_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "eligibility_id": {
+          "type": "string",
+          "pattern": "^E[0-9]{4,}$",
+          "maxLength": 16
+        },
+        "screening_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,32}$",
+            "maxLength": 32
+          },
+          "uniqueItems": true
+        },
+        "journal_head_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "journal_line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "receipt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "receipt_type": {
+          "const": "allocation-reveal"
+        },
+        "eligibility_receipt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "entry_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "entry": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/a_entry"
+            },
+            {
+              "$ref": "#/$defs/b_entry"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "study": {
+                "const": "A"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "screening_ids": {
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "entry": {
+                "$ref": "#/$defs/a_entry"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "study": {
+                "const": "B"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "screening_ids": {
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "entry": {
+                "$ref": "#/$defs/b_entry"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,32}$"
+    },
+    "a_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slot_id",
+        "unit_id",
+        "slot",
+        "order",
+        "wave",
+        "wave_position",
+        "profile",
+        "book_id",
+        "participant_id"
+      ],
+      "properties": {
+        "slot_id": {
+          "type": "string",
+          "pattern": "^A-[PC][0-9]{2}-L[0-9]{2}$"
+        },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^A-[PC][0-9]{2}$"
+        },
+        "slot": {
+          "type": "string",
+          "pattern": "^L[0-9]{2}$"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wave_position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "profile": {
+          "enum": [
+            "P1",
+            "P2",
+            "P3"
+          ]
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^BK-[PC]-[BCFGHJKMNPQRTVWXY4-9]{6}$"
+        },
+        "participant_id": {
+          "$ref": "#/$defs/code"
+        }
+      }
+    },
+    "b_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id",
+        "kind",
+        "order",
+        "block_id",
+        "block_position",
+        "sq_arm",
+        "structured_family",
+        "swap_w1_w4",
+        "members",
+        "bank_id",
+        "profile_menu_order",
+        "replaces"
+      ],
+      "properties": {
+        "unit_id": {
+          "type": "string",
+          "pattern": "^B-[PCS][0-9]{2}$"
+        },
+        "kind": {
+          "enum": [
+            "dyad",
+            "spare"
+          ]
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "block_id": {
+          "type": "string",
+          "pattern": "^B-[PC]-blk[0-9]{2}$"
+        },
+        "block_position": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "sq_arm": {
+          "enum": [
+            "SQ-1",
+            "SQ-2"
+          ]
+        },
+        "structured_family": {
+          "enum": [
+            "K",
+            "Q"
+          ]
+        },
+        "swap_w1_w4": {
+          "type": "boolean"
+        },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "slot_id",
+              "member",
+              "role",
+              "participant_id"
+            ],
+            "properties": {
+              "slot_id": {
+                "type": "string",
+                "pattern": "^B-[PCS][0-9]{2}-M[12]$"
+              },
+              "member": {
+                "enum": [
+                  1,
+                  2
+                ]
+              },
+              "role": {
+                "enum": [
+                  "active",
+                  "yoked"
+                ]
+              },
+              "participant_id": {
+                "$ref": "#/$defs/code"
+              }
+            }
+          }
+        },
+        "bank_id": {
+          "type": "string",
+          "pattern": "^bank-[PC][0-9]{3}$"
+        },
+        "profile_menu_order": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "P1",
+              "P2",
+              "P3"
+            ]
+          }
+        },
+        "replaces": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^B-[PC][0-9]{2}$",
+          "description": "Main dyad slot this spare replaces (its bank is unavailable); null otherwise."
+        }
+      }
+    }
+  }
+}

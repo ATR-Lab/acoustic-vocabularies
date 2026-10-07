@@ -1,0 +1,23 @@
+{
+  "candidate": "custom-websocket",
+  "source_kind": [
+    "live"
+  ],
+  "applied_frames": 600,
+  "duration_received_s": 19.966472600000003,
+  "callback_ms_median": 0.30200000000135674,
+  "callback_ms_p95": 0.4132999999999498,
+  "callback_ms_max": 3.5676999999996184,
+  "source_fresh_values": [
+    "false"
+  ],
+  "diagnostic_values": [
+    "true"
+  ],
+  "run_end_recorded": true,
+  "messages_sha256": "f4ab2a28403a945f066585cc2f5207d44ccb54cdfc580f3773b7227ec2b63ab3",
+  "image_sha256": "4a0a443c1bf1e65d1ac027ef0105e89139b0dc6469205e5c810d5172789f1f14",
+  "capture_summary_sha256": "7ea3406fe474f0cb38a1031216f181e607383860d1c1dd547502f7e9e6058738",
+  "unity_exit_code": 0,
+  "device_acceptance": false
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/assign-manifest.schema.json",
+  "title": "Allocation manifest (<set>-assign-manifest.json)",
+  "description": "Seed fingerprint, generator version, list hashes and file hashes of one study's allocation set. Its SHA-256 and the list hashes are what may be published for restricted sets. See docs/interfaces/schedules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "generator",
+    "demo",
+    "seed_label",
+    "allocation_seed",
+    "study",
+    "set",
+    "design_table_sha256",
+    "lists",
+    "files",
+    "balance_max_abs_deviation"
+  ],
+  "properties": {
+    "format": {"const": "av-schedules/assign-manifest"},
+    "format_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "av-schedules"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "demo": {"type": "boolean"},
+    "seed_label": {"type": "string", "pattern": "^(DEMO-[A-Za-z0-9._-]{1,64}|sha256:[0-9a-f]{64})$"},
+    "allocation_seed": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Value for the apparatus manifest field allocation_seed."},
+    "study": {"enum": ["A", "B"]},
+    "set": {"enum": ["pilot", "confirmatory"]},
+    "design_table_sha256": {"$ref": "#/$defs/sha256"},
+    "lists": {
+      "type": "object",
+      "description": "list_sha256 of each list document, by file name.",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "files": {
+      "type": "object",
+      "description": "SHA-256 of the bytes of every other file of the set, by file name.",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "balance_max_abs_deviation": {
+      "type": "object",
+      "description": "Largest |count - expected| per balance metric and scope.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

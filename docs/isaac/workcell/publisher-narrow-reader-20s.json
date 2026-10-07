@@ -1,0 +1,33 @@
+{
+  "rate_hz": 30,
+  "duration_s": 20.013925816,
+  "required_duration_s": 3600,
+  "frames": 601,
+  "source_kind": "live",
+  "complete": false,
+  "contiguous": true,
+  "simulation_progressing": true,
+  "interval_median_ms": 33.329086000000004,
+  "interval_p99_ms": 35.75335888,
+  "absolute_period_error_p99_ms": 2.71232997333333,
+  "nominal_period_ms": 33.333333333333336,
+  "max_gap_ms": 36.769468,
+  "gaps_over_250_ms": 0,
+  "queue_overwrites": 0,
+  "missed_deadlines": 0,
+  "timing_screen": true,
+  "rate_screen": false,
+  "raw_csv_sha256": "76c7256079b3ef6dc4d1e8bc82476d5073bcb4b009d14af05658fc604795cb55",
+  "limitations": [
+    "Publisher timing only; does not qualify network, clocks or headset rendering",
+    "Disconnect/reconnect simulation-cost comparison is a separate check"
+  ],
+  "local_receive_complete": true,
+  "hashes": {
+    "health.json": "59871f3cab7f26d6e3e5382cab31c087d1a0402880cc070366a063f76cebb8bf",
+    "metadata.json": "fdbb4f24d3dbc71ba525272aebac07a60254ffa356f480c2c8a656825c9039ab",
+    "publish.csv": "76c7256079b3ef6dc4d1e8bc82476d5073bcb4b009d14af05658fc604795cb55",
+    "sample-first.json": "3ba40999587c54fcf3bcb03de54172ceaa22623fe66f552cd25589eb6b9f439d",
+    "sample-last.json": "f64617864b5949e9ccefca752df48e2aedf12102c331c8d26517a42f51cfae46"
+  }
+}

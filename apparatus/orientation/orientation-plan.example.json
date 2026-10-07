@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "protocol_version": "engineering-pending-review",
+  "content_status": "engineering_draft",
+  "review_evidence_sha256": null,
+  "source_note": "Engineering draft from public action identifiers. Common procedures and the approved orientation script were unavailable. Wording, order and practice timing require protocol-owner review.",
+  "practice_window_ms": 60000,
+  "actions": [
+    {
+      "id": "ADD_ONE",
+      "title": "Add one",
+      "meaning": "Add one token to the selected tray."
+    },
+    {
+      "id": "REMOVE_ONE",
+      "title": "Remove one",
+      "meaning": "Remove one token from the selected tray."
+    },
+    {
+      "id": "FLIP_CARD",
+      "title": "Flip card",
+      "meaning": "Turn over the card at the selected tray."
+    },
+    {
+      "id": "ALIGN_ARROW",
+      "title": "Align arrow",
+      "meaning": "Align the arrow at the selected tray."
+    },
+    {
+      "id": "SCAN",
+      "title": "Scan",
+      "meaning": "Scan the selected container."
+    },
+    {
+      "id": "TAG",
+      "title": "Tag",
+      "meaning": "Tag the selected container."
+    },
+    {
+      "id": "CLOSE",
+      "title": "Close",
+      "meaning": "Close the selected container."
+    },
+    {
+      "id": "QUARANTINE",
+      "title": "Quarantine",
+      "meaning": "Move the selected container to its quarantine position."
+    }
+  ],
+  "targets": [
+    {
+      "id": "A",
+      "title": "Tray A",
+      "meaning": "This is tray A. Its label identifies it in a written request."
+    },
+    {
+      "id": "B",
+      "title": "Tray B",
+      "meaning": "This is tray B. Its label identifies it in a written request."
+    },
+    {
+      "id": "C",
+      "title": "Tray C",
+      "meaning": "This is tray C. Its label identifies it in a written request."
+    },
+    {
+      "id": "D",
+      "title": "Tray D",
+      "meaning": "This is tray D. Its label identifies it in a written request."
+    },
+    {
+      "id": "E",
+      "title": "Container E",
+      "meaning": "This is container E. Its label identifies it in a written request."
+    },
+    {
+      "id": "F",
+      "title": "Container F",
+      "meaning": "This is container F. Its label identifies it in a written request."
+    },
+    {
+      "id": "G",
+      "title": "Container G",
+      "meaning": "This is container G. Its label identifies it in a written request."
+    },
+    {
+      "id": "H",
+      "title": "Container H",
+      "meaning": "This is container H. Its label identifies it in a written request."
+    }
+  ],
+  "practice_pairs": [
+    {
+      "id": "practice-1",
+      "target": "A",
+      "action": "ADD_ONE",
+      "request": "Add one: tray A."
+    },
+    {
+      "id": "practice-2",
+      "target": "B",
+      "action": "REMOVE_ONE",
+      "request": "Remove one: tray B."
+    },
+    {
+      "id": "practice-3",
+      "target": "C",
+      "action": "FLIP_CARD",
+      "request": "Flip card: tray C."
+    },
+    {
+      "id": "practice-4",
+      "target": "D",
+      "action": "ALIGN_ARROW",
+      "request": "Align arrow: tray D."
+    },
+    {
+      "id": "practice-5",
+      "target": "E",
+      "action": "SCAN",
+      "request": "Scan: container E."
+    },
+    {
+      "id": "practice-6",
+      "target": "F",
+      "action": "TAG",
+      "request": "Tag: container F."
+    },
+    {
+      "id": "practice-7",
+      "target": "G",
+      "action": "CLOSE",
+      "request": "Close: container G."
+    },
+    {
+      "id": "practice-8",
+      "target": "H",
+      "action": "QUARANTINE",
+      "request": "Quarantine: container H."
+    }
+  ],
+  "second_order": [
+    "practice-7",
+    "practice-3",
+    "practice-1",
+    "practice-5",
+    "practice-8",
+    "practice-2",
+    "practice-6",
+    "practice-4"
+  ]
+}
