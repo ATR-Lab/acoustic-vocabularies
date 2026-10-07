@@ -5,6 +5,7 @@ no study authority, demo motion or clock/timing qualification.
 """
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import csv
@@ -51,6 +52,27 @@ def advance_once(adapter, dispatcher, handoff, publisher, sim_step, trace=None, 
         raise RuntimeError('PUBLIC_PUBLISHER_FAULT')
     handoff.refresh_health()
     return sim_step, frame, False
+
+
+def freeze_startup_heap():
+    """Keep the loaded simulator heap out of later full collections (#148).
+
+    After scene load the process holds a large long-lived Python object graph.
+    Each generation-2 collection rescanned it and stopped every Python thread
+    for roughly 370-470 ms (traced), including the private health-probe loop,
+    so an in-flight probe got no reply within its 200 ms deadline. One full
+    collection runs here, before READY and before any client is relayed; its
+    survivors then move to the permanent generation. Collection stays enabled
+    with unchanged thresholds and new objects are still collected.
+    """
+    before = (gc.isenabled(), gc.get_threshold())
+    started = time.monotonic_ns()
+    collected = gc.collect()
+    gc.freeze()
+    if (gc.isenabled(), gc.get_threshold()) != before:
+        raise RuntimeError('GC_SETTINGS_CHANGED')
+    return dict(collected=collected, frozen_objects=gc.get_freeze_count(),
+                duration_ms=(time.monotonic_ns()-started)/1e6, enabled=before[0], thresholds=list(before[1]))
 
 
 def run_joined_service(reset_manager, layout, output, *, seconds, station_id,
@@ -102,7 +124,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
         reset_manager.reset_snapshot_sha256, station_id,
         joint_csv or Path(__file__).resolve().parents[2]/'docs/spikes/isaac/joint_inventory.csv')
     output=Path(output); output.mkdir(parents=True, exist_ok=False)
-    public=publisher=command_log=dispatcher=handoff=private=trace=timing=observation=None
+    public=publisher=command_log=dispatcher=handoff=private=trace=timing=observation=heap=None
     started=ended=time.monotonic_ns(); steps=0; first=last=None
     failure=None; end_reason='duration'; ready=False; cleanup_errors=[]
     def save(name, value):
@@ -141,6 +163,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
         private=PrivateCommandTransport(handoff,socket_path=private_socket,allowed_uid=host_uid,timing=timing)
         os.chown(private_socket,host_uid,-1)
         trace=StepTrace(output/'physics-steps.jsonl')
+        heap=freeze_startup_heap()
         started=time.monotonic_ns(); publisher.epoch_ns=started
         while time.monotonic_ns()-started < seconds*1e9:
             steps,frame,stopped=advance_once(adapter,dispatcher,handoff,publisher,steps,trace,timing)
@@ -194,7 +217,7 @@ loopback-only operator actions; this function never creates a host TCP listener.
         max_public_clients_observed=max((int(row['connected_clients']) for row in publish_rows),default=0),
         accepted_private_reset_events=sum(row['command']=='reset' and row['reply']['reset_ok'] is True for row in accepted),
         accepted_private_mode_events=sum(row['command']=='set_mode' for row in accepted),
-        fault=failure,cleanup_errors=cleanup_errors,
+        fault=failure,cleanup_errors=cleanup_errors,startup_heap=heap,
         service_completed=ready and failure is None and not cleanup_errors,native_visit_completed=False,
         limitations=['Actual simulator/software E2E only; no participant authority',
             'No clock, acoustic, headset or throughput qualification',
