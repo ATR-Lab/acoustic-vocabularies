@@ -53,7 +53,15 @@ def _receipt(value: dict[str, Any]) -> dict[str, Any]:
     return {**value, "receipt_sha256": sha(canonical(value))}
 
 
+OUTCOMES = ("pass_first", "pass_second", "fail")
+
+
 def validate_orientation(value: object) -> dict[str, Any]:
+    """Admission gate: only a finalized, non-draft, passed receipt is accepted."""
+    return _validate_orientation(value, require_eligible=True)
+
+
+def _validate_orientation(value: object, *, require_eligible: bool) -> dict[str, Any]:
     result = _exact(value, ORIENTATION_KEYS)
     if type(result["schema_version"]) is not int or result["schema_version"] != 1:
         raise RevealError("ORIENTATION_VERSION")
@@ -69,12 +77,20 @@ def validate_orientation(value: object) -> dict[str, Any]:
         raise RevealError("SCREENING_ID")
     if type(result["journal_bytes"]) is not int or not 0 < result["journal_bytes"] <= MAX_JOURNAL:
         raise RevealError("ORIENTATION_JOURNAL_SIZE")
-    if (
+    if require_eligible and (
         result["engineering_draft"] is not False
         or result["eligible"] is not True
         or result["outcome"] not in {"pass_first", "pass_second"}
     ):
         raise RevealError("ORIENTATION_NOT_ELIGIBLE")
+    draft, eligible = result["engineering_draft"], result["eligible"]
+    if (
+        result["outcome"] not in OUTCOMES
+        or type(draft) is not bool
+        or type(eligible) is not bool
+        or eligible is not (result["outcome"] != "fail" and not draft)
+    ):
+        raise RevealError("ORIENTATION_OUTCOME_INVALID")
     expected = _receipt({k: v for k, v in result.items() if k != "receipt_sha256"})
     if expected != result:
         raise RevealError("ORIENTATION_RECEIPT_HASH")
@@ -82,10 +98,25 @@ def validate_orientation(value: object) -> dict[str, Any]:
 
 
 def read_orientation(receipt_path: Path, raw_sha256: str, journal_path: Path) -> dict[str, Any]:
+    """Admission gate: verified evidence for a finalized, non-draft passed orientation."""
+    return _read_orientation(receipt_path, raw_sha256, journal_path, require_eligible=True)
+
+
+def inspect_orientation(receipt_path: Path, raw_sha256: str, journal_path: Path) -> dict[str, Any]:
+    """Display-only reader: the same integrity checks, also for recorded fail/draft outcomes.
+
+    The result is never admission evidence; only ``read_orientation`` grants eligibility.
+    """
+    return _read_orientation(receipt_path, raw_sha256, journal_path, require_eligible=False)
+
+
+def _read_orientation(
+    receipt_path: Path, raw_sha256: str, journal_path: Path, *, require_eligible: bool
+) -> dict[str, Any]:
     data = read(receipt_path, 65536)
     if sha(data) != _hash(raw_sha256):
         raise RevealError("ORIENTATION_FILE_HASH")
-    receipt = validate_orientation(parse(data))
+    receipt = _validate_orientation(parse(data), require_eligible=require_eligible)
     journal = read(journal_path)
     if len(journal) != receipt["journal_bytes"] or sha(journal) != receipt["journal_sha256"]:
         raise RevealError("ORIENTATION_JOURNAL_HASH")
@@ -117,7 +148,7 @@ def read_orientation(receipt_path: Path, raw_sha256: str, journal_path: Path) ->
         )
         or final.get("event") != "eligibility_outcome"
         or final.get("outcome") != receipt["outcome"]
-        or final.get("engineering_draft") is not False
+        or final.get("engineering_draft") is not receipt["engineering_draft"]
         or final.get("preallocation") is not True
         or final.get("learning_result") is not False
     ):
@@ -134,8 +165,12 @@ def read_orientation(receipt_path: Path, raw_sha256: str, journal_path: Path) ->
     if receipt["outcome"] == "pass_first":
         valid = all(first) and second == [] and final.get("reexplanations") == 0
     else:
+        # pass_second needs 8/8 on the second check; fail is any other second score.
         valid = (
-            not all(first) and len(second) == 8 and all(second) and final.get("reexplanations") == 1
+            not all(first)
+            and len(second) == 8
+            and all(second) is (receipt["outcome"] == "pass_second")
+            and final.get("reexplanations") == 1
         )
     if not valid:
         raise RevealError("ORIENTATION_CHECK_COUNTS")
