@@ -211,6 +211,16 @@ def small_pilot(kit, demo_units, tmp_path_factory):
     return run_demo(kit, root, demo_units, kind, dyads=2, spares=1, run_id=SMALL_RUN)
 
 
+@pytest.fixture(scope="module")
+def small_reports(small_pilot):
+    """The small pilot's verify reports by bank path, for `finish_pilot(reports=)` on an
+    unchanged copy (saves re-running banks verify)."""
+    return {
+        row.bank_path: report
+        for row, report in zip(small_pilot.finish.rows, small_pilot.finish.reports, strict=True)
+    }
+
+
 @pytest.fixture
 def pilot_copy(small_pilot, tmp_path):
     """A writable copy of the small pilot's root (archiving makes files read-only)."""
@@ -557,10 +567,10 @@ def test_throughput_summary_records_slots_per_hour_and_attempts(demo_pilot):
 def test_archive_is_read_only_and_hashed(pilot_copy):
     with pytest.raises(pilot.PilotError, match="E_ROOT"):  # nothing is archived unchecked
         broken = pilot_copy / pilot.REGISTER_NAME
-        original = broken.read_text(encoding="utf-8")
-        broken.write_text(original.replace("pass", "fail", 1), encoding="utf-8")
+        original = broken.read_bytes()  # bytes: the summary names the register's hash
+        broken.write_bytes(original.replace(b"pass", b"fail", 1))
         pilot.archive_pilot(pilot_copy, clock=ManualClock())
-    broken.write_text(original, encoding="utf-8")
+    broken.write_bytes(original)
     result = pilot.archive_pilot(pilot_copy, clock=ManualClock())
     manifest = read_json(pilot_copy / ARCHIVE_MANIFEST_NAME)
     assert manifest["archive_sha256"] == result.archive_sha256 == file_set_sha256(manifest["files"])
@@ -622,7 +632,7 @@ def test_an_archived_bank_can_still_be_amended(pilot_copy):
     # the sessions amend after the archive: append to a log, and start a new one
     _amend(main, cells[20], 2, "2026-12-16")
     _amend(spare, read_manifest(spare).cells[5], 3, "2026-12-16")
-    assert pilot.check_pilot(pilot_copy, rerun_verify=True) == ()
+    assert pilot.check_pilot(pilot_copy) == ()
     assert pilot.main(["check", "--root", str(pilot_copy)]) == 0
     # the archived lines cannot change, and every line chains to the archived bank hash
     lines = log.read_bytes().splitlines(keepends=True)
@@ -653,7 +663,7 @@ def test_an_archived_bank_can_still_be_amended(pilot_copy):
     )
 
 
-def test_a_changed_bank_breaks_the_register(pilot_copy):
+def test_a_changed_bank_breaks_the_register(pilot_copy, small_reports):
     row = read_register(pilot_copy / pilot.REGISTER_NAME)[0]
     layout = BankLayout(pilot_copy.joinpath(*row.bank_path.split("/")))
     manifest = read_manifest(layout.manifest)
@@ -664,31 +674,32 @@ def test_a_changed_bank_breaks_the_register(pilot_copy):
     problems = " | ".join(pilot.check_pilot(pilot_copy, rerun_verify=True))
     assert f"{row.bank_id} v1.0.0: register hash {row.bank_sha256} != recomputed" in problems
     assert "verify now fails" in problems
-    finish = pilot.finish_pilot(pilot_copy)
+    others = {path: r for path, r in small_reports.items() if path != row.bank_path}
+    finish = pilot.finish_pilot(pilot_copy, reports=others)
     assert finish.exit_code == 1 and not finish.verified
     assert finish.shortfall == ("B-P01",)  # a bank that fails verify is not used
 
 
-def test_finish_reports_plan_mismatches(pilot_copy):
+def test_finish_reports_plan_mismatches(pilot_copy, small_reports):
     shutil.rmtree(pilot_copy / "runs" / SMALL_RUN / "banks" / "DEMO-bank-P001")
     plan = read_json(pilot_copy / pilot.PLAN_NAME)
     plan["spares"] = 0
     (pilot_copy / pilot.PLAN_NAME).write_text(json.dumps(plan), encoding="utf-8")
     crashed = pilot_copy / "runs" / f"{SMALL_RUN}-S1" / "banks" / "DEMO-bank-P002"
     os.remove(crashed / "manifest.json")
-    finish = pilot.finish_pilot(pilot_copy)
+    finish = pilot.finish_pilot(pilot_copy, reports=small_reports)
     assert "DEMO-bank-P001 v1.0.0: planned but not built" in finish.problems
     assert any("no bank manifest (unfinished or crashed build)" in p for p in finish.problems)
     assert finish.shortfall == ("B-P01", "B-P02") and finish.exit_code == 1
     assert [(r.bank_id, r.bank_version) for r in finish.rows] == [("DEMO-bank-P002", "1.0.0")]
 
 
-def test_finish_reports_banks_outside_the_plan(pilot_copy):
+def test_finish_reports_banks_outside_the_plan(pilot_copy, small_reports):
     plan = read_json(pilot_copy / pilot.PLAN_NAME)
     plan.update(spares=0, demo=False)
     plan["banks"][1]["bank_id"] = "DEMO-bank-P009"
     (pilot_copy / pilot.PLAN_NAME).write_text(json.dumps(plan), encoding="utf-8")
-    finish = pilot.finish_pilot(pilot_copy)
+    finish = pilot.finish_pilot(pilot_copy, reports=small_reports)
     assert "DEMO-bank-P009 v1.0.0: planned but not built" in finish.problems
     assert "2 spare banks built, the plan allows 0" in finish.problems
     assert "DEMO-bank-P002 v1.1.0: not a bank of the plan" in finish.problems
@@ -741,7 +752,7 @@ def test_check_recomputes_which_bank_each_slot_uses(pilot_copy):
         pilot.archive_pilot(pilot_copy, clock=ManualClock())
 
 
-def test_check_compares_the_register_with_the_plan(pilot_copy):
+def test_check_compares_the_register_with_the_plan(pilot_copy, small_reports):
     config = read_register(pilot_copy / pilot.REGISTER_NAME)[0].generation_config_sha256
     plan_path = pilot_copy / pilot.PLAN_NAME
     plan = read_json(plan_path)
@@ -764,18 +775,21 @@ def test_check_compares_the_register_with_the_plan(pilot_copy):
         f"DEMO-bank-P001 v1.0.0: generation config {config}, the plan records {zeros}" in problems
     )
     assert problems.count(f", the plan records {zeros}") == 3
-    assert any(f"the plan records {zeros}" in p for p in pilot.finish_pilot(pilot_copy).problems)
+    assert any(
+        f"the plan records {zeros}" in p
+        for p in pilot.finish_pilot(pilot_copy, reports=small_reports).problems
+    )
     os.remove(pilot_copy / pilot.SUMMARY_JSON_NAME)
     assert any(p.startswith("throughput.json: ") for p in pilot.check_pilot(pilot_copy))
     (pilot_copy / pilot.SUMMARY_JSON_NAME).write_bytes(b"[]\n")
     assert "throughput.json: not a JSON object" in pilot.check_pilot(pilot_copy)
 
 
-def test_a_crashed_main_run_is_archived_as_its_record(pilot_copy):
+def test_a_crashed_main_run_is_archived_as_its_record(pilot_copy, small_reports):
     bank = pilot_copy / "runs" / SMALL_RUN / "banks" / "DEMO-bank-P001"
     for name in ("manifest.json", "bank-sha256.txt"):  # the build never finished
         os.remove(bank / name)
-    finish = pilot.finish_pilot(pilot_copy)
+    finish = pilot.finish_pilot(pilot_copy, reports=small_reports)
     assert "DEMO-bank-P001 v1.0.0: planned but not built" in finish.problems
     assert finish.shortfall == ("B-P01",)
     # while the main run is closed, a planned bank missing from the register is a problem
@@ -857,46 +871,39 @@ def _rows(finish):
     return [(r.bank_id, r.bank_version, r.role, r.status, r.verify, r.use) for r in finish.rows]
 
 
-def test_a_bank_that_fails_verify_gets_a_spare_and_two_slots_get_spares(
+def test_spares_replace_a_bank_that_fails_verify_and_an_unavailable_one(
     kit, demo_units, tmp_path, monkeypatch
 ):
+    """Slot B-P01: the main bank completes but fails banks verify, its first spare is
+    unavailable, its second spare (v1.2.0) is used. Slot B-P02: the main bank is
+    unavailable and its spare is used. Spares are served in slot order."""
     fail_verify_after_build(monkeypatch, {("DEMO-bank-P001", "1.0.0")})
-    kind = failing_first_cell(kit.permutation.atom_order, {"DEMO-bank-P002"})
-    result = run_demo(
-        kit, tmp_path / "two", demo_units, kind, dyads=2, spares=2, run_id="DEMO-two-spares"
+    kind = failing_first_cell(
+        kit.permutation.atom_order, {"DEMO-bank-P001-v1.1.0", "DEMO-bank-P002"}
     )
-    assert _rows(result.finish) == [
-        ("DEMO-bank-P001", "1.0.0", "main", "complete", "fail", False),
-        ("DEMO-bank-P001", "1.1.0", "spare", "complete", "pass", True),
-        ("DEMO-bank-P002", "1.0.0", "main", "unavailable", "pass", False),
-        ("DEMO-bank-P002", "1.1.0", "spare", "complete", "pass", True),
-    ]
-    assert [r.run_id for r in result.runs] == [
-        "DEMO-two-spares",
-        "DEMO-two-spares-S1",
-        "DEMO-two-spares-S2",
-    ]
-    assert result.finish.shortfall == ()
-    assert result.finish.exit_code == 1  # a bank failed banks verify: look before archiving
-    assert_only_the_broken_bank(result.root)
-
-
-def test_one_slot_may_use_both_spares(kit, demo_units, tmp_path, monkeypatch):
-    fail_verify_after_build(monkeypatch, {("DEMO-bank-P001", "1.0.0")})
-    kind = failing_first_cell(kit.permutation.atom_order, {"DEMO-bank-P001-v1.1.0"})
     result = run_demo(
-        kit, tmp_path / "one", demo_units, kind, dyads=1, spares=2, run_id="DEMO-one-slot"
+        kit, tmp_path / "spares", demo_units, kind, dyads=2, spares=3, run_id="DEMO-spares"
     )
     assert _rows(result.finish) == [
         ("DEMO-bank-P001", "1.0.0", "main", "complete", "fail", False),
         ("DEMO-bank-P001", "1.1.0", "spare", "unavailable", "pass", False),
         ("DEMO-bank-P001", "1.2.0", "spare", "complete", "pass", True),
+        ("DEMO-bank-P002", "1.0.0", "main", "unavailable", "pass", False),
+        ("DEMO-bank-P002", "1.1.0", "spare", "complete", "pass", True),
     ]
-    used = [r for r in result.finish.rows if r.use]
-    assert [(r.seed_namespace, r.run_id) for r in used] == [
-        ("DEMO-bank-P001-v1.2.0", "DEMO-one-slot-S2")
+    assert [r.run_id for r in result.runs] == [
+        "DEMO-spares",
+        "DEMO-spares-S1",
+        "DEMO-spares-S2",
+        "DEMO-spares-S3",
+    ]
+    used = [(r.seed_namespace, r.run_id) for r in result.finish.rows if r.use]
+    assert used == [
+        ("DEMO-bank-P001-v1.2.0", "DEMO-spares-S2"),
+        ("DEMO-bank-P002-v1.1.0", "DEMO-spares-S3"),
     ]
     assert result.finish.shortfall == ()
+    assert result.finish.exit_code == 1  # a bank failed banks verify: look before archiving
     assert_only_the_broken_bank(result.root)
 
 
