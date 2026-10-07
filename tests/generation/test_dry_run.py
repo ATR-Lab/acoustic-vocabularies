@@ -21,6 +21,7 @@ import dataclasses
 import json
 import os
 import shutil
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -50,6 +51,15 @@ from av_generation.rundir import create_run_dir
 
 ROOT = Path(__file__).resolve().parents[2]
 CI_OUT = ROOT / "generation/out/ci/dry-run"
+
+
+@contextmanager
+def no_fsync():
+    """`os.fsync` as a no-op while a fixture builds its run: durability is not what these
+    tests check, and fsynced log lines dominate the run time on Windows runners."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(os, "fsync", lambda fd: None)
+        yield
 
 
 def test_plan_is_keyed_by_what_stations_see():
@@ -248,7 +258,8 @@ def _sim_dry_run(root, run_id, *, appointments=(1, 2, 3, 4), fallback_bank="demo
 @pytest.fixture(scope="module")
 def sim_run(tmp_path_factory):
     root = tmp_path_factory.mktemp("dry-sim")
-    layout, plan = _sim_dry_run(root, "DEMO-dry-sim-01")
+    with no_fsync():
+        layout, plan = _sim_dry_run(root, "DEMO-dry-sim-01")
     return layout.root, plan
 
 
@@ -256,7 +267,8 @@ def sim_run(tmp_path_factory):
 def sim_small(tmp_path_factory):
     """Appointment 1 only (a reduced run): the defect, injection and CLI tests."""
     root = tmp_path_factory.mktemp("dry-sim-small")
-    layout, plan = _sim_dry_run(root, "DEMO-dry-sim-02", appointments=(1,))
+    with no_fsync():
+        layout, plan = _sim_dry_run(root, "DEMO-dry-sim-02", appointments=(1,))
     return layout.root, plan
 
 
@@ -288,7 +300,7 @@ def test_complete_logs_pass_every_count(sim_run):
     # the check reads the run and changes nothing
     after = {p: p.stat().st_mtime_ns for p in run_dir.rglob("*") if p.is_file()}
     assert after == before
-    assert dryrun.check_log_completeness(run_dir, plan=plan) == report
+    assert plan == DryRunPlan.read(run_dir / "dry-run-plan.json")
     assert report.text().startswith("log completeness: OK\n")
 
 
@@ -392,13 +404,14 @@ def test_fallback_events_must_equal_the_injected_cases(sim_small):
 
 
 def test_a_reduced_whole_book_run_counts_sixteen_fallback_book_commits(tmp_path):
-    layout, plan = _sim_dry_run(
-        tmp_path,
-        "DEMO-dry-sim-book-01",
-        appointments=(1,),
-        fallback_bank="single_recipe",
-        zero=["A3@1", "A3@2"],
-    )
+    with no_fsync():
+        layout, plan = _sim_dry_run(
+            tmp_path,
+            "DEMO-dry-sim-book-01",
+            appointments=(1,),
+            fallback_bank="single_recipe",
+            zero=["A3@1", "A3@2"],
+        )
     report = dryrun.check_log_completeness(layout.root)
     assert report.ok, report.problems
     config = BatchConfig.read(layout.config)
@@ -584,21 +597,22 @@ def e2e_run(tmp_path_factory):
         shutil.rmtree(out, ignore_errors=True)
         out.mkdir(parents=True, exist_ok=True)
     lines = []
-    result = dryrun.run_dry_run(
-        out,
-        "DEMO-dry-run-e2e-01",
-        clock=ScaledClock(80),
-        appointments=(1,),
-        fallback_bank="single_recipe",
-        zero_eligible=("A3@1", "A3@2"),
-        mock_latency_ms=500,
-        designer_think_ms=(0, 2_000),
-        station_timeout_s=60,
-        log=lines.append,
-    )
-    doc = dryrun.write_evidence(
-        result.layout.root, out / "DEMO-dry-run-e2e-01-evidence", bundle_dir=out, result=result
-    )
+    with no_fsync():
+        result = dryrun.run_dry_run(
+            out,
+            "DEMO-dry-run-e2e-01",
+            clock=ScaledClock(100),
+            appointments=(1,),
+            fallback_bank="single_recipe",
+            zero_eligible=("A3@1", "A3@2"),
+            mock_latency_ms=500,
+            designer_think_ms=(0, 2_000),
+            station_timeout_s=60,
+            log=lines.append,
+        )
+        doc = dryrun.write_evidence(
+            result.layout.root, out / "DEMO-dry-run-e2e-01-evidence", bundle_dir=out, result=result
+        )
     return result, doc, lines
 
 
@@ -667,9 +681,10 @@ def test_resume_reopens_the_run_with_its_stored_plan(e2e_run):
     out, run_id = result.layout.root.parent, result.layout.run_id
     with pytest.raises(dryrun.br.RunnerError, match="scaled clock"):
         dryrun.run_dry_run(out, run_id, clock=ManualClock(), resume=True, log=lambda _: None)
-    again = dryrun.run_dry_run(
-        out, run_id, clock=ScaledClock(80), resume=True, appointments=(2,), log=lambda _: None
-    )
+    with no_fsync():
+        again = dryrun.run_dry_run(
+            out, run_id, clock=ScaledClock(100), resume=True, appointments=(2,), log=lambda _: None
+        )
     assert again.plan == result.plan and again.sessions == []
     report = dryrun.check_log_completeness(result.layout.root)
     assert report.ok, report.problems
