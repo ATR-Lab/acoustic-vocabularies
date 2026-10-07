@@ -12,13 +12,16 @@ Set `AV_BANKS_DEMO_PILOT_OUT=<dir>` to write the small evidence files of the reh
 """
 
 import csv
+import dataclasses
 import hashlib
 import json
 import os
 import random
 import shutil
+import subprocess
 from pathlib import Path
 
+import av_generation
 import pytest
 from av_generation.bank_manifest import BankSetError, require_bank_set
 from av_generation.clock import ManualClock
@@ -38,7 +41,9 @@ from av_generation.seeds import b_seed_key
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+import av_banks
 import av_banks.pilot as pilot
+from av_banks.amend import amend_bank
 from av_banks.archive import (
     ARCHIVE_HASH_NAME,
     ARCHIVE_MANIFEST_NAME,
@@ -56,6 +61,7 @@ from av_banks.register import (
     open_bank,
     read_register,
     register_problems,
+    write_register,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -80,7 +86,9 @@ def write_units(kit, root, *, demo=True, slots=8, set_name="pilot"):
             doc["seed_label"] = "sha256:" + "6" * 64
         path = Path(root) / unit / "permutation.json"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        # `\n` on every OS: the permutation hash feeds the bank, register and archive hashes
+        with open(path, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(doc, indent=2) + "\n")
     return Path(root)
 
 
@@ -289,6 +297,78 @@ def test_plan_binds_slots_to_units(kit, demo_units):
     assert doc["builder"]["av_banks"] and doc["dyad_slots"] == 8
 
 
+def test_the_plan_records_the_builder_code(demo_pilot):
+    doc = read_json(demo_pilot.root / pilot.PLAN_NAME)
+    builder = doc["builder"]
+    assert builder["av_banks"] == av_banks.__version__
+    assert builder["av_generation"] == av_generation.__version__
+    assert builder["source_sha256"] == {
+        "av_banks": pilot.source_sha256(Path(av_banks.__file__).resolve().parent),
+        "av_generation": pilot.source_sha256(Path(av_generation.__file__).resolve().parent),
+    }
+    git = builder["git"]  # None only outside a git checkout
+    assert git is None or (
+        pilot.GIT_COMMIT_RE.fullmatch(git["commit"]) and isinstance(git["dirty"], bool)
+    )
+    summary = read_json(demo_pilot.root / pilot.SUMMARY_JSON_NAME)
+    assert summary["builder"] == builder
+    note = (demo_pilot.root / pilot.SUMMARY_MD_NAME).read_text(encoding="utf-8")
+    assert f"source SHA-256 `{builder['source_sha256']['av_banks']}`" in note
+    assert f"source SHA-256 `{builder['source_sha256']['av_generation']}`" in note
+
+
+def test_source_hash_covers_the_python_files_of_a_package(tmp_path):
+    package = tmp_path / "package"
+    (package / "sub" / "__pycache__").mkdir(parents=True)
+    (package / "a.py").write_bytes(b"x = 1\n")
+    (package / "sub" / "b.py").write_bytes(b"y = 2\n")
+    first = pilot.source_sha256(package)
+    assert first == file_set_sha256(
+        {
+            "a.py": hashlib.sha256(b"x = 1\n").hexdigest(),
+            "sub/b.py": hashlib.sha256(b"y = 2\n").hexdigest(),
+        }
+    )
+    (package / "sub" / "__pycache__" / "c.py").write_bytes(b"cache")
+    (package / "data.json").write_bytes(b"{}")
+    assert pilot.source_sha256(package) == first
+    (package / "a.py").write_bytes(b"x = 2\n")
+    assert pilot.source_sha256(package) != first
+    (tmp_path / "empty").mkdir()
+    with pytest.raises(pilot.PilotError, match="no Python source files"):
+        pilot.source_sha256(tmp_path / "empty")
+
+
+def test_git_identity(monkeypatch, tmp_path):
+    here = pilot.git_identity(ROOT)
+    assert here is None or pilot.GIT_COMMIT_RE.fullmatch(here["commit"])
+    answers = {"rev-parse": "a" * 40 + "\n", "status": " M banks/x.py\n"}
+
+    def fake_run(args, **kwargs):
+        assert args[:3] == ["git", "-C", os.fspath(tmp_path)] and kwargs["check"]
+        return subprocess.CompletedProcess(args, 0, answers[args[3]], "")
+
+    monkeypatch.setattr(pilot.subprocess, "run", fake_run)
+    assert pilot.git_identity(tmp_path) == {"commit": "a" * 40, "dirty": True}
+    answers["status"] = ""
+    assert pilot.git_identity(tmp_path) == {"commit": "a" * 40, "dirty": False}
+    answers["rev-parse"] = "HEAD\n"
+    assert pilot.git_identity(tmp_path) is None
+
+    def failing(error):
+        def run(args, **kwargs):
+            raise error
+
+        return run
+
+    for error in (FileNotFoundError("git"), subprocess.CalledProcessError(128, ["git"])):
+        monkeypatch.setattr(pilot.subprocess, "run", failing(error))
+        assert pilot.git_identity(tmp_path) is None
+    builder = {"av_banks": "0.1.0", "av_generation": "0.1.0", "git": None}
+    assert "git commit not recorded" in pilot.builder_text(builder)
+    assert "source SHA-256 `not recorded`" in pilot.builder_text(builder)
+
+
 def test_real_plan_uses_pilot_ids(kit, tmp_path):
     units = write_units(kit, tmp_path / "units", demo=False, slots=2)
     plan = pilot.pilot_plan(units, run_id="P-banks-01", dyads=2)
@@ -312,6 +392,24 @@ def test_plan_refusals(kit, tmp_path, demo_units):
         pilot.pilot_plan(confirmatory, run_id=RUN_ID, demo=True, dyads=1)
     with pytest.raises(FileNotFoundError):
         pilot.pilot_plan(demo_units, run_id=RUN_ID, demo=True, dyads=9)
+
+
+def test_a_run_id_too_long_for_its_spare_runs_is_refused_before_any_build(
+    kit, demo_units, tmp_path
+):
+    run_id = "DEMO-" + "x" * 59  # 64 characters: a valid main run ID
+    with pytest.raises(pilot.PilotError, match="E_PLAN: spare run 1 of run .*shorter run ID"):
+        pilot.pilot_plan(demo_units, run_id=run_id, demo=True, dyads=1, spares=2)
+    assert pilot.pilot_plan(demo_units, run_id=run_id, demo=True, dyads=1, spares=0).spares == 0
+    short = pilot.pilot_plan(demo_units, run_id=run_id[:-3], demo=True, dyads=1, spares=2)
+    assert short.spare_run_id(2) == run_id[:-3] + "-S2" and len(short.spare_run_id(2)) == 64
+    # a plan made by hand is checked before the root is written
+    unchecked = dataclasses.replace(short, run_id=run_id)
+    with pytest.raises(pilot.PilotError, match="E_PLAN: spare run 1"):
+        pilot.run_pilot(
+            unchecked, root=tmp_path / "x", config=kit.config, proposer=None, clock=ManualClock()
+        )
+    assert not (tmp_path / "x").exists()
 
 
 def test_real_pilot_root_is_refused_inside_git(kit, tmp_path):
@@ -374,6 +472,17 @@ def test_rehearsal_builds_8_banks_and_one_spare(demo_pilot):
             == demo_pilot.runs[0].banks[0].manifest.generation_config_sha256
         )
         assert row.separation_threshold == "0.10" and row.set == "demo"
+
+
+def test_rehearsal_text_files_have_lf_line_ends(demo_pilot):
+    """The rehearsal's hashes are the same on every OS: no text file holds a CR."""
+    texts = [
+        path
+        for path in demo_pilot.root.rglob("*")
+        if path.suffix in {".json", ".jsonl", ".csv", ".txt", ".md"}
+    ]
+    assert len(texts) > 80
+    assert [path.name for path in texts if b"\r" in path.read_bytes()] == []
 
 
 def test_every_slot_of_the_spare_uses_its_own_namespace(demo_pilot):
@@ -480,6 +589,70 @@ def test_archive_is_read_only_and_hashed(pilot_copy):
     assert archive_problems(pilot_copy)
 
 
+def _amend(bank_dir, cell, rank, date):
+    return amend_bank(
+        bank_dir,
+        profile=cell.profile,
+        atom_id=cell.atom_id,
+        rank=rank,
+        reason="DEMO: cached asset unusable before the wave menu",
+        unheard_confirmed=True,
+        date=date,
+    )
+
+
+def test_an_archived_bank_can_still_be_amended(pilot_copy):
+    """Study B protocol §4 reserve rule: a pilot session may amend an archived bank. The
+    archive keeps every other file frozen and pins the amendment lines it archived."""
+    main = pilot_copy / "runs" / SMALL_RUN / "banks" / "DEMO-bank-P001"
+    spare = pilot_copy / "runs" / f"{SMALL_RUN}-S1" / "banks" / "DEMO-bank-P002"
+    cells = read_manifest(main).cells
+    _amend(main, cells[2], 1, "2026-12-15")  # before the archive
+    assert pilot.check_pilot(pilot_copy) == ()
+    pilot.archive_pilot(pilot_copy, clock=ManualClock())
+    log = BankLayout(main).amendments
+    name = f"runs/{SMALL_RUN}/banks/DEMO-bank-P001/amendments.jsonl"
+    archived = read_json(pilot_copy / ARCHIVE_MANIFEST_NAME)
+    assert archived["append_only"] == {
+        "patterns": list(pilot.AMENDMENT_LOGS),
+        "bytes": {name: log.stat().st_size},
+    }
+    assert archived["files"][name] == file_sha256(log)
+    assert not is_read_only(log) and is_read_only(main / "manifest.json")
+    # the sessions amend after the archive: append to a log, and start a new one
+    _amend(main, cells[20], 2, "2026-12-16")
+    _amend(spare, read_manifest(spare).cells[5], 3, "2026-12-16")
+    assert pilot.check_pilot(pilot_copy, rerun_verify=True) == ()
+    assert pilot.main(["check", "--root", str(pilot_copy)]) == 0
+    # the archived lines cannot change, and every line chains to the archived bank hash
+    lines = log.read_bytes().splitlines(keepends=True)
+    log.write_bytes(lines[1])
+    problems = pilot.check_pilot(pilot_copy)
+    assert f"{name}: append-only log changed before its archived end" in problems
+    assert f"{name}: amendment 1: prev_sha256 breaks the chain" in problems
+    log.write_bytes(b"".join(lines))
+    spare_log = BankLayout(spare).amendments
+    with open(spare_log, "ab") as handle:
+        handle.write(b'{"record": "bank_amendment"}\n')
+    problems = " | ".join(pilot.check_pilot(pilot_copy))
+    assert f"runs/{SMALL_RUN}-S1/banks/DEMO-bank-P002/amendments.jsonl: amendment 2:" in problems
+    spare_log.write_bytes(spare_log.read_bytes().splitlines(keepends=True)[0])
+    assert pilot.check_pilot(pilot_copy) == ()
+    # any other new file is still reported, amendment-named or not
+    (pilot_copy / "runs" / SMALL_RUN / "amendments.jsonl").write_bytes(b"")
+    (main / "notes.txt").write_bytes(b"x")
+    problems = pilot.check_pilot(pilot_copy)
+    assert f"runs/{SMALL_RUN}/amendments.jsonl: not in the archive" in problems
+    assert f"runs/{SMALL_RUN}/banks/DEMO-bank-P001/notes.txt: not in the archive" in problems
+    os.remove(log)
+    assert f"{name}: missing" in pilot.check_pilot(pilot_copy)
+    log.write_bytes(b"[1]\n")
+    assert any(
+        p.startswith(f"{name}: ") and "every line is a JSON object" in p
+        for p in pilot.check_pilot(pilot_copy)
+    )
+
+
 def test_a_changed_bank_breaks_the_register(pilot_copy):
     row = read_register(pilot_copy / pilot.REGISTER_NAME)[0]
     layout = BankLayout(pilot_copy.joinpath(*row.bank_path.split("/")))
@@ -523,6 +696,105 @@ def test_finish_reports_banks_outside_the_plan(pilot_copy):
     assert finish.exit_code == 1
 
 
+def _rewrite_register(root, change):
+    path = root / pilot.REGISTER_NAME
+    rows = [r for r in (change(row) for row in read_register(path)) if r is not None]
+    write_register(rows, path)
+
+
+def test_check_refuses_a_register_that_drops_rows(pilot_copy):
+    _rewrite_register(pilot_copy, lambda r: None if r.bank_id == "DEMO-bank-P002" else r)
+    problems = pilot.check_pilot(pilot_copy)
+    for run in (SMALL_RUN, f"{SMALL_RUN}-S1"):
+        assert f"runs/{run}/banks/DEMO-bank-P002: a built bank with no register row" in problems
+    assert "DEMO-bank-P002 v1.0.0: planned but not in the register" in problems
+    assert "throughput.json: shortfall [], the register gives ['B-P02']" in problems
+    assert "throughput.json: register_sha256 is not the hash of pilot-register.csv" in problems
+    with pytest.raises(pilot.PilotError, match="E_ROOT"):
+        pilot.archive_pilot(pilot_copy, clock=ManualClock())
+    assert not (pilot_copy / ARCHIVE_HASH_NAME).exists()
+
+
+def test_check_recomputes_which_bank_each_slot_uses(pilot_copy):
+    _rewrite_register(pilot_copy, lambda r: dataclasses.replace(r, use=False))
+    problems = " | ".join(pilot.check_pilot(pilot_copy))
+    for bank in ("DEMO-bank-P001 v1.0.0", "DEMO-bank-P002 v1.1.0"):
+        assert f"{bank}: use 0, expected 1 (a dyad slot uses its first complete bank" in problems
+    # hiding a bank behind a false `verify` is caught by the stored verify report
+    _rewrite_register(
+        pilot_copy,
+        lambda r: (
+            dataclasses.replace(r, verify="fail", use=False)
+            if r.bank_id == "DEMO-bank-P001"
+            else dataclasses.replace(r, use=r.status == "complete")
+        ),
+    )
+    problems = " | ".join(pilot.check_pilot(pilot_copy))
+    assert "use 0, expected 1" not in problems
+    assert (
+        "DEMO-bank-P001 v1.0.0: verify fail, but verify/DEMO-bank-P001-v1.0.0.json has ok True"
+        in problems
+    )
+    os.remove(pilot_copy / "verify" / "DEMO-bank-P001-v1.0.0.json")
+    assert "DEMO-bank-P001 v1.0.0: no verify report" in " | ".join(pilot.check_pilot(pilot_copy))
+    with pytest.raises(pilot.PilotError, match="E_ROOT"):
+        pilot.archive_pilot(pilot_copy, clock=ManualClock())
+
+
+def test_check_compares_the_register_with_the_plan(pilot_copy):
+    config = read_register(pilot_copy / pilot.REGISTER_NAME)[0].generation_config_sha256
+    plan_path = pilot_copy / pilot.PLAN_NAME
+    plan = read_json(plan_path)
+    plan["generation_config"]["sha256"] = "0" * 64
+    plan["banks"][1]["dyad_slot"] = "B-P09"
+    with open(plan_path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(plan))
+    _rewrite_register(
+        pilot_copy, lambda r: dataclasses.replace(r, role="main") if r.role == "spare" else r
+    )
+    problems = " | ".join(pilot.check_pilot(pilot_copy))
+    assert "DEMO-bank-P002 v1.1.0: role main, the plan makes it a spare bank" in problems
+    for version in ("1.0.0", "1.1.0"):
+        assert (
+            f"DEMO-bank-P002 v{version}: dyad slot B-P02, the plan binds DEMO-bank-P002 to B-P09"
+            in problems
+        )
+    zeros = "0" * 64
+    assert (
+        f"DEMO-bank-P001 v1.0.0: generation config {config}, the plan records {zeros}" in problems
+    )
+    assert problems.count(f", the plan records {zeros}") == 3
+    assert any(f"the plan records {zeros}" in p for p in pilot.finish_pilot(pilot_copy).problems)
+    os.remove(pilot_copy / pilot.SUMMARY_JSON_NAME)
+    assert any(p.startswith("throughput.json: ") for p in pilot.check_pilot(pilot_copy))
+    (pilot_copy / pilot.SUMMARY_JSON_NAME).write_bytes(b"[]\n")
+    assert "throughput.json: not a JSON object" in pilot.check_pilot(pilot_copy)
+
+
+def test_a_crashed_main_run_is_archived_as_its_record(pilot_copy):
+    bank = pilot_copy / "runs" / SMALL_RUN / "banks" / "DEMO-bank-P001"
+    for name in ("manifest.json", "bank-sha256.txt"):  # the build never finished
+        os.remove(bank / name)
+    finish = pilot.finish_pilot(pilot_copy)
+    assert "DEMO-bank-P001 v1.0.0: planned but not built" in finish.problems
+    assert finish.shortfall == ("B-P01",)
+    # while the main run is closed, a planned bank missing from the register is a problem
+    assert "DEMO-bank-P001 v1.0.0: planned but not in the register" in pilot.check_pilot(pilot_copy)
+    run_manifest = pilot_copy / "runs" / SMALL_RUN / "run-manifest.json"
+    doc = read_json(run_manifest)
+    doc.update(closed_utc=None, files=None)  # as a crash leaves it: never closed
+    with open(run_manifest, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(doc, indent=2) + "\n")
+    assert pilot.check_pilot(pilot_copy) == ()
+    pilot.archive_pilot(pilot_copy, clock=ManualClock())
+    assert pilot.check_pilot(pilot_copy) == ()
+    # a run that does not exist did not crash; one whose manifest cannot be read did
+    assert pilot._run_crashed(pilot_copy, "DEMO-no-such-run") is False
+    (pilot_copy / "runs" / "DEMO-torn").mkdir()
+    (pilot_copy / "runs" / "DEMO-torn" / "run-manifest.json").write_bytes(b"{")
+    assert pilot._run_crashed(pilot_copy, "DEMO-torn") is True
+
+
 def test_shortfall_is_reported_when_spares_run_out(kit, demo_units, tmp_path):
     order = kit.permutation.atom_order
     kind = failing_first_cell(order, {"DEMO-bank-P002", "DEMO-bank-P002-v1.1.0"})
@@ -550,6 +822,82 @@ def test_spares_are_not_used_without_need(kit, demo_units, tmp_path):
     )  # fmt: skip
     assert len(result.runs) == 1 and [r.role for r in result.finish.rows] == ["main", "main"]
     assert result.finish.exit_code == 0
+
+
+def fail_verify_after_build(monkeypatch, targets):
+    """Banks `targets` (bank ID, version) fail `banks verify` right after their build: one
+    option WAV of a complete bank gets a flipped bit, so its file hash no longer matches."""
+    real = pilot.build_banks
+
+    def build(specs, **kwargs):
+        result = real(specs, **kwargs)
+        for spec, bank in zip(specs, result.banks, strict=True):
+            if (spec.bank_id, spec.bank_version) in targets and bank.status == "complete":
+                wav = BankLayout(bank.bank_dir).option(bank.manifest.cells[0].options[0].wav)
+                data = bytearray(wav.read_bytes())
+                data[-2] ^= 0x01
+                wav.write_bytes(bytes(data))
+        return result
+
+    monkeypatch.setattr(pilot, "build_banks", build)
+
+
+def assert_only_the_broken_bank(root):
+    """`check` finds the changed WAV of the main bank (its files no longer give its bank
+    hash) and nothing else: the register, plan and summary agree."""
+    problems = pilot.check_pilot(root)
+    assert len(problems) == 2
+    assert problems[0].startswith("DEMO-bank-P001 v1.0.0: register hash ")
+    assert problems[1] == (
+        "DEMO-bank-P001 v1.0.0: stored manifest or bank-sha256.txt differs from the files"
+    )
+
+
+def _rows(finish):
+    return [(r.bank_id, r.bank_version, r.role, r.status, r.verify, r.use) for r in finish.rows]
+
+
+def test_a_bank_that_fails_verify_gets_a_spare_and_two_slots_get_spares(
+    kit, demo_units, tmp_path, monkeypatch
+):
+    fail_verify_after_build(monkeypatch, {("DEMO-bank-P001", "1.0.0")})
+    kind = failing_first_cell(kit.permutation.atom_order, {"DEMO-bank-P002"})
+    result = run_demo(
+        kit, tmp_path / "two", demo_units, kind, dyads=2, spares=2, run_id="DEMO-two-spares"
+    )
+    assert _rows(result.finish) == [
+        ("DEMO-bank-P001", "1.0.0", "main", "complete", "fail", False),
+        ("DEMO-bank-P001", "1.1.0", "spare", "complete", "pass", True),
+        ("DEMO-bank-P002", "1.0.0", "main", "unavailable", "pass", False),
+        ("DEMO-bank-P002", "1.1.0", "spare", "complete", "pass", True),
+    ]
+    assert [r.run_id for r in result.runs] == [
+        "DEMO-two-spares",
+        "DEMO-two-spares-S1",
+        "DEMO-two-spares-S2",
+    ]
+    assert result.finish.shortfall == ()
+    assert result.finish.exit_code == 1  # a bank failed banks verify: look before archiving
+    assert_only_the_broken_bank(result.root)
+
+
+def test_one_slot_may_use_both_spares(kit, demo_units, tmp_path, monkeypatch):
+    fail_verify_after_build(monkeypatch, {("DEMO-bank-P001", "1.0.0")})
+    kind = failing_first_cell(kit.permutation.atom_order, {"DEMO-bank-P001-v1.1.0"})
+    result = run_demo(
+        kit, tmp_path / "one", demo_units, kind, dyads=1, spares=2, run_id="DEMO-one-slot"
+    )
+    assert _rows(result.finish) == [
+        ("DEMO-bank-P001", "1.0.0", "main", "complete", "fail", False),
+        ("DEMO-bank-P001", "1.1.0", "spare", "unavailable", "pass", False),
+        ("DEMO-bank-P001", "1.2.0", "spare", "complete", "pass", True),
+    ]
+    used = [r for r in result.finish.rows if r.use]
+    assert [(r.seed_namespace, r.run_id) for r in used] == [
+        ("DEMO-bank-P001-v1.2.0", "DEMO-one-slot-S2")
+    ]
+    assert result.finish.shortfall == ()
+    assert_only_the_broken_bank(result.root)
 
 
 # -- confirmatory-mode refusal ---------------------------------------------------
@@ -618,6 +966,10 @@ def test_cli_plan(demo_units, capsys):
     doc = json.loads(capsys.readouterr().out)
     assert doc["set"] == "demo" and len(doc["banks"]) == 8
     assert doc["banks"][0]["seed_namespace"] == "DEMO-bank-P001"
+    assert doc["spare_run_ids"] == [f"{RUN_ID}-S1", f"{RUN_ID}-S2"]
+    assert doc["builder"]["source_sha256"]["av_banks"] == pilot.source_sha256(
+        Path(av_banks.__file__).resolve().parent
+    )
     assert pilot.main(["plan", "--units", str(demo_units), "--run-id", "P-banks-01"]) == 2
     assert "real units" in capsys.readouterr().err
 
@@ -680,15 +1032,16 @@ def test_cli_run_check_finish_archive(kit, demo_units, tmp_path, monkeypatch, ca
 def _register_counts(path):
     keep = ("bank_id", "bank_version", "role", "dyad_slot", "set", "status", "use",
             "attempt_used", "attempts", "slots_used", "verify", "reason", "seed_namespace",
-            "separation_threshold", "run_id", "bank_path")  # fmt: skip
+            "separation_threshold", "permutation_sha256", "run_id", "bank_path")  # fmt: skip
     with open(path, encoding="utf-8", newline="") as handle:
         return [{k: row[k] for k in keep} for row in csv.DictReader(handle)]
 
 
 def test_demo_evidence(demo_pilot, tmp_path):
     """Writes the evidence files when `AV_BANKS_DEMO_PILOT_OUT` is set, and checks the
-    committed copy against this rehearsal (everything but hash-valued columns, which
-    change whenever a shared format or the code pins change)."""
+    committed copy against this rehearsal: every register column but the hashes that
+    change with a shared format or the code pins (the permutation hashes depend only on
+    the DEMO units, so they are compared too, on every OS)."""
     root = tmp_path / "evidence-root"
     shutil.copytree(demo_pilot.root, root)
     try:

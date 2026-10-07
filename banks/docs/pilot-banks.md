@@ -51,14 +51,20 @@ Prerequisites (all in restricted storage, never in git):
 - The meaning set, the B prompt set (#17) and the decoding schema. Their hashes must
   equal the config's.
 - The pinned LLM server (#16) on the LLM host.
-- A checkout of this repository at the commit being used. Record `git rev-parse HEAD`
-  in the run notes; the plan records the `av-banks` and `av-generation` versions.
+- A checkout of this repository at the commit being used, with no local changes. `plan`
+  prints the builder identity that `run` records in `pilot-plan.json`: the `av-banks`
+  and `av-generation` versions, the SHA-256 of each package's Python source files
+  (`pilot.source_sha256`) and the git commit with a dirty flag (`pilot.git_identity`).
+  Confirm it before `run`. The versions alone do not change when the code changes.
+- A run ID that leaves room for the spare runs: `<run_id>-S<k>` must also be a valid run
+  ID (at most 64 characters), so with spares the run ID has at most 61 characters. `plan`
+  refuses a longer one before anything is built.
 
 ```bash
 # from the repository root, on the LLM host
 uv sync --project banks --locked
 uv run --project banks python -m av_banks.pilot plan \
-  --units <restricted>/units --run-id P-banks-01        # check IDs, units, namespaces
+  --units <restricted>/units --run-id P-banks-01        # IDs, units, namespaces, builder
 uv run --project banks python -m av_banks.pilot run \
   --units <restricted>/units --root <restricted>/pilot-banks --run-id P-banks-01 \
   --generation-config <restricted>/generation-config.json \
@@ -74,7 +80,7 @@ uv run --project banks python -m av_banks.pilot check --root <restricted>/pilot-
 
 1. Writes `pilot-plan.json`: the bank IDs, dyad slots, seed namespaces and permutation
    hashes; the spare budget; the config name, hash and threshold, the model revision and
-   the B prompt hash; and the builder versions.
+   the B prompt hash; and the builder identity.
 2. Builds the 8 banks in run `P-banks-01` (`run.build_banks`: the config check before
    slot 1, the run manifest, `parallel_banks` at a time with `workers` profile streams).
 3. Runs `banks verify` on each bank and builds spares in runs `P-banks-01-S1`, `-S2`
@@ -84,13 +90,17 @@ uv run --project banks python -m av_banks.pilot check --root <restricted>/pilot-
 
 **After a crash.** A crashed build is not resumed (#26). Keep the crashed root as the
 record (run `finish` on it, then `archive`; `finish` lists the bank directories that
-have no manifest). Then run again in a new root with a new run ID and `--major 2`. Every
+have no manifest). `check` and `archive` accept planned banks that are missing from the
+register only while the main run's `run-manifest.json` is not closed, which is how a
+crash leaves it. Then run again in a new root with a new run ID and `--major 2`. Every
 bank is then built at version `2.0.0` under new seed namespaces (`bank-P001-v2.0.0`).
 
 Exit codes: 0 when every slot has a usable bank, 3 for a shortfall, 1 for a verify or
 plan problem, 2 when the command is refused. `finish` repeats step 4 until the root is
 archived. `check` compares the register with hashes recomputed from the stored files
-(`--verify` also re-runs `banks verify`), and checks the archive once there is one.
+(`--verify` also re-runs `banks verify`) and with the bank directories, the plan and the
+summary (section 4). It also checks the amendment logs, and the archive once there is
+one (section 5).
 
 ## 3. Files under the root
 
@@ -142,16 +152,53 @@ the register's, the stored manifest's and `bank-sha256.txt`. It also compares ev
 other column with the manifest, the config and the run manifest, refuses banks of
 another set, and checks that IDs are unique and each slot uses at most one bank.
 
+`check` (`pilot.check_pilot`) adds the rules that need the plan and the bank directories,
+so a register cannot hide a bank:
+
+- Every bank directory with a `manifest.json` has a row. Every planned bank has a row,
+  unless the main run crashed (section 2).
+- `role` is `main` exactly for a planned bank. The spares stay within the budget and are
+  versions of planned banks. Each bank is on its planned dyad slot, and every
+  `generation_config_sha256` is the hash in `pilot-plan.json`.
+- `use` is recomputed from `status` and `verify` with the rule of `finish`. `verify`
+  must equal the stored report `verify/<bank>-v<ver>.json` (`--verify` re-runs
+  `banks verify` itself).
+- `throughput.json` names the register's hash and the shortfall that the rows give.
+
 ## 5. Archive
 
 `archive` refuses to run while `check` reports a problem. It then writes
 `archive-manifest.json` (`av-banks/archive-manifest` v1, which lists the SHA-256 of
 every file under the root) and `archive-sha256.txt`. The archive hash is
 `jsonio.file_set_sha256` of that list. Then it removes the write permission of every
-file (on Windows it sets the read-only attribute). After that, `finish` and `archive`
-refuse the root. `check` reports any file that is missing, changed, added or writable.
-Record the archive hash and the register hash in the run notes and in the PR or issue.
-The files themselves stay in restricted storage.
+file except the banks' amendment logs (on Windows it sets the read-only attribute).
+After that, `finish` and `archive` refuse the root. Record the archive hash and the
+register hash in the run notes and in the PR or issue. The files themselves stay in
+restricted storage.
+
+**Amendments after the archive.** The pilot sessions use the archived banks. The
+reserve rule (Study B protocol section 4) may amend a bank before either partner hears
+the wave's menu: `banks amend` appends a line to the bank's `amendments.jsonl`, or
+creates the file. The manifest and the bank hash do not change. So the archive treats
+`runs/*/banks/*/amendments.jsonl` (`pilot.AMENDMENT_LOGS`) as append-only logs:
+
+- They stay writable. The archive manifest records the size of each log that exists at
+  archive time (`append_only`), and `check` requires that those bytes do not change.
+  A log that appears later in a bank directory is accepted.
+- `check` checks every amendment log against its bank
+  (`bank_manifest.amendment_chain_errors`): a chain from the archived bank hash, one
+  reserve per cell, and the replaced and replacing options of the cell. `check --verify`
+  also rechecks each amendment with `banks verify`.
+- The archive hash does not cover lines added after the archive, and a removed last line
+  of such a log is found only against the session records. Record each amendment in the
+  session log too (#70).
+
+**What is frozen.** Permissions freeze the contents of files only. Directories stay
+writable, because the reserve rule may have to create a bank's first amendment log, and
+because Windows does not stop a file being added to or removed from a read-only
+directory. `check` finds the rest: any file that is missing, changed or added (other
+than an amendment log), any archived file that is writable again, and an amendment log
+whose archived lines changed.
 
 ## 6. Throughput summary (`throughput.json`, `throughput.md`)
 

@@ -233,10 +233,13 @@ never meet (`builder.seed_namespace_error`; property test). Spare budget 2
 ledger_factory=slot_ledger, llm_runtime=None, project_banks=72, fsync=True) ->
 PilotResult`, `finish_pilot(root, *, project_banks=72, reports=None) -> PilotFinish`
 (`rows`, `register_sha256`, `reports`, `summary`, `shortfall`, `problems`,
-`exit_code`), `check_pilot(root, *, rerun_verify=False)`, `archive_pilot(root, *, clock)`.
-Root (restricted storage): `pilot-plan.json` (`av-banks/pilot-plan` v1: banks,
-namespaces, permutation hashes, spare budget, config name/hash/threshold, model revision,
-B prompt hash, builder versions), `runs/<run_id>/` and `runs/<run_id>-S<k>/` (#26 run
+`exit_code`), `check_pilot(root, *, rerun_verify=False)` (register against the banks,
+the bank directories, the plan and the summary; amendment logs; archive),
+`archive_pilot(root, *, clock)`. Root (restricted storage): `pilot-plan.json`
+(`av-banks/pilot-plan` v1: banks, namespaces, permutation hashes, spare budget, config
+name/hash/threshold, model revision, B prompt hash, builder identity: versions,
+`source_sha256` of the `av_banks` and `av_generation` sources, git commit and dirty
+flag), `runs/<run_id>/` and `runs/<run_id>-S<k>/` (#26 run
 layout, every attempt kept), `verify/verify-log.txt`, `verify/<bank>-v<ver>.json`,
 `pilot-register.csv`, `throughput.json`, `throughput.md`, `archive-manifest.json`,
 `archive-sha256.txt`.
@@ -261,11 +264,16 @@ confirmatory mode refuses it"), as does any ID that is not `bank-C...` (includin
 `PILOT-...`); a manifest that does not hash to `bank-sha256.txt` raises `ManifestError`.
 `register.check_bank_id_set(bank_id, mode)` checks an ID alone.
 
-**Archive** (`archive.archive_tree(root, *, label, created_utc) -> ArchiveResult`,
-`archive_problems(root)`): `archive-manifest.json` (`av-banks/archive-manifest` v1:
-relative path -> SHA-256 of every file, `n_files`, `bytes`, `archive_sha256`) and
-`archive-sha256.txt` (`jsonio.file_set_sha256` of the list); every file then loses its
-write permission (read-only attribute on Windows).
+**Archive** (`archive.archive_tree(root, *, label, created_utc, append_only=()) ->
+ArchiveResult`, `archive_problems(root, *, append_only=None)`): `archive-manifest.json`
+(`av-banks/archive-manifest` v1: relative path -> SHA-256 of every file, `n_files`,
+`bytes`, `archive_sha256`, `append_only` {`patterns`, `bytes`: archived size of each
+append-only file}) and `archive-sha256.txt` (`jsonio.file_set_sha256` of the list);
+every file then loses its write permission (read-only attribute on Windows) except the
+append-only logs, which may grow but keep their archived bytes. A pilot root's
+append-only logs are the banks' `amendments.jsonl` (`pilot.AMENDMENT_LOGS`: the reserve
+rule may amend an archived bank), checked by their amendment chain. Directories stay
+writable; `archive_problems` reports added, missing and changed files.
 
 **Throughput** (`metrics.summarize_banks(bank_dirs, *, run_dirs=(), project_banks=72) ->
 ThroughputSummary`, `summary_markdown`): slots per hour per bank builder (attempt time)

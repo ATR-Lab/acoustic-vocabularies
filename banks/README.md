@@ -62,5 +62,5 @@ the tests refuse any non-loopback connection.
 | `permutation.load_permutation`, `permutation.expected_unit_id` | Unit permutation and the bank-ID to dyad-slot rule |
 | `pilot.pilot_plan`, `pilot.run_pilot`, `pilot.finish_pilot`, `pilot.check_pilot`, `pilot.archive_pilot` | Pilot banks (#27) |
 | `register.write_register`, `register.register_problems`, `register.open_bank` | Bank register, register check (recomputed hashes), set-bound loading |
-| `archive.archive_tree`, `archive.archive_problems` | Hash every file, make it read-only, check |
+| `archive.archive_tree`, `archive.archive_problems` | Hash every file, make it read-only (append-only logs excepted), check |
 | `metrics.summarize_banks`, `metrics.summary_markdown` | Throughput and failure metrics, projection for #28 |

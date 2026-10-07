@@ -17,7 +17,7 @@ The run built 8 main banks, `DEMO-bank-P001`..`DEMO-bank-P008` (dyad slots
 
 | File | What it is |
 | --- | --- |
-| `pilot-plan.json` | The plan: bank IDs, dyad slots, seed namespaces, permutation hashes, spare budget, config hash and threshold, builder versions |
+| `pilot-plan.json` | The plan: bank IDs, dyad slots, seed namespaces, permutation hashes, spare budget, config hash and threshold, builder identity (versions, source hashes, git commit) |
 | `pilot-register.csv` | The register: 9 rows, with hashes recomputed and checked |
 | `verify-log.txt` | `banks verify` output of the 9 banks (`verified 9 banks: 9 OK, 0 FAILED`) |
 | `throughput.json`, `throughput.md` | Throughput and failure summary, with the projection for 72 banks (synthetic latencies) |
@@ -33,6 +33,7 @@ AV_BANKS_DEMO_PILOT_OUT=banks/examples/demo-pilot uv run --project banks pytest 
   --import-mode=importlib -p no:cacheprovider tests/banks/test_pilot_banks.py -k demo_evidence
 ```
 
-The hash values (config, permutation, bank, register and archive hashes) depend on the
-shared formats and code pins at the commit that wrote them. The test checks the other
-register columns and the summary figures against a fresh rehearsal.
+The hash values (config, bank, register, archive and source hashes) and the git commit
+in `pilot-plan.json` depend on the code at the commit that wrote them. The test checks
+the other register columns, the permutation hashes and the summary figures against a
+fresh rehearsal on every OS.

@@ -7,7 +7,7 @@ import shutil
 import pytest
 from av_generation.bank_manifest import BankSetError
 from av_generation.clock import ManualClock
-from av_generation.jsonio import file_set_sha256, read_json
+from av_generation.jsonio import file_set_sha256, file_sha256, read_json
 
 from av_banks.archive import (
     ARCHIVE_HASH_NAME,
@@ -129,6 +129,17 @@ def test_register_problems_name_every_wrong_column(bank_run, tmp_path):
     )
     write_register([missing], path)
     assert "no/such" in " | ".join(register_problems(path, root, expected_set="demo"))
+
+
+def test_a_bank_hash_file_that_differs_breaks_the_register(run_copy, tmp_path):
+    root, bank_dir = run_copy
+    path = tmp_path / "register.csv"
+    write_register([_row(root, bank_dir)], path)
+    assert register_problems(path, root, expected_set="demo") == ()
+    BankLayout(bank_dir).bank_hash.write_bytes(b"0" * 64 + b"\n")  # manifest and files agree
+    assert register_problems(path, root, expected_set="demo") == (
+        "DEMO-bank-31 v1.0.0: stored manifest or bank-sha256.txt differs from the files",
+    )
 
 
 def test_malformed_registers_are_refused(bank_run, tmp_path):
@@ -255,3 +266,80 @@ def test_counts_in_the_archive_manifest_are_checked(tree):
     os.chmod(tree / ARCHIVE_MANIFEST_NAME, 0o644)
     (tree / ARCHIVE_MANIFEST_NAME).write_text(json.dumps(doc), encoding="utf-8")
     assert "n_files 5 != 2 listed" in " | ".join(archive_problems(tree))
+
+
+def test_append_only_logs_may_grow_after_the_archive(tree):
+    log = tree / "a" / "b" / "log.jsonl"
+    log.write_bytes(b'{"n": 1}\n')
+    patterns = ["c/*/log.jsonl", "a/*/log.jsonl"]
+    result = archive_tree(tree, label="DEMO", created_utc="x", append_only=patterns)
+    assert result.files["a/b/log.jsonl"] == file_sha256(log)
+    doc = read_archive_manifest(tree)
+    assert doc["append_only"] == {
+        "patterns": ["a/*/log.jsonl", "c/*/log.jsonl"],
+        "bytes": {"a/b/log.jsonl": 9},
+    }
+    assert not is_read_only(log) and is_read_only(tree / "top.csv")
+    with open(log, "ab") as handle:
+        handle.write(b'{"n": 2}\n')
+    (tree / "c" / "d").mkdir(parents=True)
+    (tree / "c" / "d" / "log.jsonl").write_bytes(b"{}\n")  # a new log where one may start
+    assert archive_problems(tree, append_only=patterns) == ()
+    assert archive_problems(tree) == ()  # the manifest's own policy
+    # the policy cannot be widened by editing the manifest
+    narrow = archive_problems(tree, append_only=["a/*/log.jsonl"])
+    assert narrow[0].startswith("archive: append-only patterns ['a/*/log.jsonl', 'c/*/log.jsonl']")
+    # only matching paths are logs (`*` stays inside one path component)
+    (tree / "c" / "log.jsonl").write_bytes(b"{}\n")
+    (tree / "c" / "d" / "e").mkdir()
+    (tree / "c" / "d" / "e" / "log.jsonl").write_bytes(b"{}\n")
+    problems = archive_problems(tree, append_only=patterns)
+    assert problems == ("c/d/e/log.jsonl: not in the archive", "c/log.jsonl: not in the archive")
+    for name in ("c/log.jsonl", "c/d/e/log.jsonl"):
+        os.remove(tree.joinpath(*name.split("/")))
+    # the archived bytes are pinned: no edit, no truncation, no removal
+    for data in (b'{"n": 9}\n{"n": 2}\n', b'{"n"'):
+        log.write_bytes(data)
+        assert archive_problems(tree, append_only=patterns) == (
+            "a/b/log.jsonl: append-only log changed before its archived end",
+        )
+    os.remove(log)
+    assert archive_problems(tree, append_only=patterns) == ("a/b/log.jsonl: missing",)
+
+
+def test_a_log_dropped_from_the_append_only_sizes_is_frozen(tree):
+    log = tree / "a" / "b" / "log.jsonl"
+    log.write_bytes(b"{}\n")
+    archive_tree(tree, label="DEMO", created_utc="x", append_only=["a/*/log.jsonl"])
+    doc = read_json(tree / ARCHIVE_MANIFEST_NAME)
+    doc["append_only"]["bytes"] = {}
+    os.chmod(tree / ARCHIVE_MANIFEST_NAME, 0o644)
+    (tree / ARCHIVE_MANIFEST_NAME).write_text(json.dumps(doc), encoding="utf-8")
+    log.write_bytes(b"{}\n{}\n")
+    problems = archive_problems(tree, append_only=["a/*/log.jsonl"])
+    assert "a/b/log.jsonl: changed since archiving" in problems
+    doc["append_only"] = {"patterns": "a/*/log.jsonl", "bytes": {}}
+    (tree / ARCHIVE_MANIFEST_NAME).write_text(json.dumps(doc), encoding="utf-8")
+    assert archive_problems(tree) == (
+        "archive: archive-manifest.json: malformed append_only section",
+    )
+    del doc["append_only"]  # a manifest without the section: nothing is append-only
+    (tree / ARCHIVE_MANIFEST_NAME).write_text(json.dumps(doc), encoding="utf-8")
+    problems = archive_problems(tree)
+    assert "a/b/log.jsonl: changed since archiving" in problems
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    ["", "/abs/log.jsonl", "a\\b", "a//b", "../log.jsonl", "a/./b", "archive-sha256.txt",
+     "*.json", 7],
+)  # fmt: skip
+def test_bad_append_only_patterns_are_refused(tree, pattern):
+    with pytest.raises(ArchiveError, match="append-only pattern"):
+        archive_tree(tree, label="DEMO", created_utc="x", append_only=[pattern])
+    assert not (tree / ARCHIVE_MANIFEST_NAME).exists()
+
+
+def test_append_only_takes_a_sequence(tree):
+    with pytest.raises(ArchiveError, match="sequence of patterns"):
+        archive_tree(tree, label="DEMO", created_utc="x", append_only="a/*/log.jsonl")
