@@ -515,7 +515,8 @@ def test_a_hung_tokenize_on_the_real_clock(base, mock, tmp_path):
     with pytest.raises(TokenCountTimeout):
         client.count_prompt_tokens(MESSAGES)
     assert 0.3 <= time.perf_counter() - started < 0.3 + 0.5
-    assert wait_for(lambda: mock.tokenize_aborted == 1)
+    # The mock notices the hang-up by polling; loaded Windows runners took over 5 s.
+    assert wait_for(lambda: mock.tokenize_aborted == 1, timeout_s=20.0)
     mock.tokenize_delay_s = 0
     assert client.count_prompt_tokens(MESSAGES) == count_tokens(MESSAGES)
 
