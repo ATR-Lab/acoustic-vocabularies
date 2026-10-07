@@ -1,6 +1,6 @@
-# Native simulator attempts: builds 004 through 007
+# Native simulator attempts: builds 004 through 007, and 016
 
-Refs #81 and #82. These are seven **actual, incomplete Windows XR simulator attempts**, using explicit `SIMULATION_TEST` capability and synthetic materials. All seven closed inventories independently verify for integrity; none completes a mock visit. No participant, acoustic, physical headset, leakage, or timing acceptance is claimed. Later builds are not included.
+Refs #81 and #82. These are seven **actual, incomplete Windows XR simulator attempts**, using explicit `SIMULATION_TEST` capability and synthetic materials. All seven closed inventories independently verify for integrity; none completes a mock visit. No participant, acoustic, physical headset, leakage, or timing acceptance is claimed. Builds 008 to 014 are not included here. Two later build 016 attempts, made to check the O6.1.5 fixes, are in [their own section](#build-016-o615-fix-validation-attempts).
 
 The [sanitized machine-readable report](native-simulator-attempts.json) records each exact source, build inventory, run manifest, export, process receipt, terminal receipt, journal and capture hash. Raw histories, identifiers, configuration paths, screenshots and materials remain private. The independent audit reran `tools.mock_visit.reconcile` at `880cf2a30fc6c6dbd94b6ecb6ca49582418e68e0` against the frozen manifests, read the actual CSV and typed records, and visually inspected the retained desktop images. It did not launch another native process or run a new test suite.
 
@@ -37,3 +37,44 @@ The linked blocking defects are #148 (grammar current-health refusal), #149 (joi
 These attempts supersede any earlier preparation-only statement that build 004 never launched or that OS policy still prevented every launch. The earlier OS refusal and separate missing-configuration startup refusal remain historical evidence; they are not additional completed mock visits.
 
 None of these observations counts toward the seven prescribed fault injections. No matching predeclared injection provenance is credited, and the earlier generic `GRAMMAR_FAILED` must not be retroactively assigned the 005 diagnosis. #81 and #82 remain open. Closure still needs linked fixes/regressions, reconciled affected native segments, full A/B visit coverage, required fault scenarios, reviewed materials and methodology, and the separate physical-device/acoustic qualifications. See the [mock evidence contract](../unity/mock-visit-reconciliation.md) and [partial fault evidence scope](../../tools/mock_visit/FAULT_EVIDENCE.md).
+
+## Build 016: O6.1.5 fix validation attempts
+
+Refs #148, #149, #150, #155 and #158. On 2026-10-07 two more **actual, incomplete** A D0 attempts ran on the Windows XR simulator against a live Isaac service. Both closed exports verify for integrity under `tools.mock_visit.reconcile`, and neither completes a visit. The JSON report has the pins under `build016_o615_validation`.
+
+**Source.** The player is `simulation-native-016`, protocol `simulation-test-v1`, built by `tools/build-unity.ps1 -Scene SimulationTest` with Unity 6000.6.0f1. The build result is Succeeded with 0 errors and 205 inventoried files. Its source is a local test merge, `ce772216a24a2abe36b0b95359b2d60cd2a19efd` (tree `347dcd879e0d5b9d748f40f0f648675d504e913d`), which was not pushed. That merge takes `main` at `0aa8eebb227e169d48051ed574d52ea8fbbdb51c`, adds #201 at `d85cd121d8ef80a7c74cbe52e2344267d1b4e245`, then adds #199 at `d98e471ea1462b911ee9e1cc54c310ef67cef8f0`. The fixes for #148, #149, #155 and #158 that are already on `main` are therefore included, together with the #199 quit coordinator. The Isaac service ran the same commit, copied as a `git archive` and checked file by file before each launch.
+
+An earlier build under the ID `simulation-native-015` failed scene verification with "unexpected component". That build had reused a Library cache copied from another worktree. It produced no player. Rebuilding the same source with a clean cache gave build 016.
+
+**Setup.** The fixtures are a freshly generated DEMO A package and schedule, sealed against the current DEMO-local producer schedules and run sheets. The fixture set came from `tools/prepare_mock_visits.py`. These hashes differ from the builds 004 to 007 fixtures. The run-sheet package-hash mapping binds every DEMO set key to that one DEMO package, for engineering use only. The station uses the observer reference from #149: (0, 1.5, 1.45) m with a yaw of 180°.
+
+Each attempt had its own Isaac service and control session, launched as in [joined-e2e](../isaac/joined-e2e.md). The service used the approved rendered-cache image with `--network none`. Owned loopback relays and SSH local forwards on 18765 and 18767 connected it to the player. After the player exited, the service was ended with an accepted private `stop`, and the container exited 0. Relays, sockets, listeners and the container were then removed. Unrelated GPU work and containers were left running.
+
+**Procedure.**
+
+- The console ran through `--simulation-config` with HTTP commands only: Load, checks, then explicit Start. No UI clicks were sent to the player.
+- The dummy-input driver was armed before the first Start, so no manual input check was made first.
+- A separate screen copy captured the player's desktop mirror window every 1–3 s. This load may have affected frame timing.
+- After the visit owner had latched, the operator sent `CloseMainWindow` (`WM_CLOSE`, the same message as the window close control). The process observer recorded the exit independently.
+
+| Attempt | Terminal status | Process exit | Grammar examples completed | Study plays requested / software-completed | Completed opportunities |
+|---|---|---:|---:|---:|---:|
+| 016 full-001 | `AUDIO_EXPOSURE_INTERRUPTED` | 0 | 0 | 0 / 0 | 0 of 108 |
+| 016 full-002 | `CONTROL_UNAVAILABLE` | 0 | 2 | 5 / 5 | 1 of 108 |
+
+**016 full-001.** The first READY request was recorded durably. At 41,311.0 ms the grammar gate then refused with `GRAMMAR_RESET_ACK_NOT_CURRENT`. The effective health age was 173.3227 ms receipt age + 48.7861 ms round trip + 37.1742 ms publisher age = **259.2830 ms**, against the unchanged 250 ms limit. The exact reset was recorded and the mode acknowledged. Queued arrivals were 0, and the worker was neither failed nor disposed. A health exchange that started at 41,164.6 ms had still not been answered at the observation, about 146 ms later; the previous round trip had taken 48.8 ms. The gate then recorded `GRAMMAR_PRIVATE_CONTROL_NOT_READY` and `AUDIO_EXPOSURE_INTERRUPTED`, with 0 callbacks. Reconciliation reports faults `AUDIO_EXPOSURE_INTERRUPTED` and `SESSION_JOIN_DISPOSED`, with integrity verified and the visit incomplete.
+
+**016 full-002.** Both grammar examples completed in software, from 34,021.2 ms to 36,215.2 ms, and their 2 grammar plays were hash-verified. After the explicit second Start, the first atomic lesson (`AL-01`) ran in full. All 3 of its plays were requested, observed by callback and completed in software. The driver committed a dummy response, and `lesson_end` followed at 93,518.5 ms. This is the actual grammar-to-first-study-item segment, run at the schedule's own timing.
+
+In `AL-02`, both plays completed and a dummy response was committed. The worker then sent a health probe at 106,086.3 ms. After 222.0 ms it had received 0 fragments and 0 bytes, so the 200 ms deadline cancelled it: `CONTROL_OPERATION_CANCELLED` in `health_exchange`, first observed at 106,310.8 ms. The lesson was interrupted and the run ended `CONTROL_UNAVAILABLE`, with an effective age of 392.83 ms. The previous probe round trip had been 102.4 ms.
+
+Frame capture holds 862 attributed intervals, with a maximum of 44.38 ms. One 44.4 ms `frame_freeze` occurred at 93,538.7 ms, before the fault. Reconciliation reports faults `CONTROL_UNAVAILABLE`, `OPERATOR_ADAPTER_FAILED` and `SESSION_JOIN_DISPOSED`. It also reports `FRAME_BUDGET_SCREEN_FAILED` and `LESSON_SOFTWARE_DISPLAY_TIMING_FAILED`, among other reasons the visit is incomplete. The export has 2 trial rows and 5 exposure rows. Every exposure is `callback_complete` with audible status uncertain and consumed, and the acoustic onset columns are empty. The full-001 export has no rows in either CSV.
+
+**Where each defect criterion stands after these attempts.**
+
+- **#148, not resolved.** The required segment was rerun with its schedule timing and reconciled in full-002. The same class of current-health failure occurred in both attempts, though: at the first grammar example in full-001 (259.28 ms), and at the second lesson in full-002 (probe receive timeout with zero bytes). The new observation is that the failing path is now bounded to the private WebSocket health-probe reply arriving late: 146 ms or more in flight in full-001, and nothing received within the 200 ms deadline in full-002. The service-side private timing trace was off, so it is not known where the reply was delayed: in the Windows client, the SSH tunnel, the relay or the service loop.
+- **#149 and #155, teaching part only.** Participant-camera captures were taken from the player's desktop mirror under Meta XR Simulator, at the configured yaw-180 reference, in full-002. The grammar capture shows READY on a dark backing panel centred in view. The lesson captures show definition text, role words and the image, also on dark backing. The text is white on dark and visible. The yellow simulation watermark overlaps the first text line. The menu part was not exercised, because no Study B attempt ran. These captures are not physical HMD observations.
+- **#158, not exercised.** No Study B menu recovery attempt ran.
+- **#150, the requested rerun is recorded.** Two manual closes were made after a latched, incomplete visit. Each one has a post-cleanup receipt with `cleanup_succeeded:true` and `export_succeeded:true`. The quit-coordinator breadcrumbs show all 3 tracked workers completed, with none cancelled, faulted or timed out (15.2 ms and 17.0 ms). The independently observed process exit was 0 both times. This does not reproduce or explain the original `0xC0000005` exit, which followed a focus loss, and two clean exits do not show that the fault is gone.
+
+These attempts are not prescribed fault injections, and they do not count toward #81 visit coverage. Raw captures, journals, configurations, session identifiers and materials remain private; only their hashes are published.
