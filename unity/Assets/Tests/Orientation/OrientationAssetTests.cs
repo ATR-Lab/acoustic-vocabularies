@@ -29,7 +29,7 @@ namespace AcousticVocab.Orientation.Tests
             registry=new SceneRegistry((string)manifest["station_id"],(string)manifest["scene_sha256"],SceneRegistry.Hash(neutral),
                 manifest["joint_names"].Select(x=>(string)x),new Dictionary<string,string[]>{{"card",new[]{"card_face"}}},new string[0]);
             File.Copy(Path.Combine(Fixture,"000.ndjson"),Path.Combine(directory,"000.ndjson"));
-            index=Json("index.private.json");
+            index=Json("index.synthetic.json");
         }
         [TearDown] public void RemoveFixtureCopy() { try { Directory.Delete(directory,true); } catch(IOException) { } }
         JObject Capture(int row) => (JObject)index["rows"][row]["capture"];
@@ -81,7 +81,7 @@ namespace AcousticVocab.Orientation.Tests
             var legacy=Json("legacy-capture.json");
             index["rows"][0]["capture"]=legacy.DeepClone();
             Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_LEGACY_CAPTURE_FORMAT"));
-            index=Json("index.private.json");index["rows"][FirstExecutionRow]["capture"]=legacy;
+            index=Json("index.synthetic.json");index["rows"][FirstExecutionRow]["capture"]=legacy;
             Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_LEGACY_CAPTURE_FORMAT"));
         }
         [TestCase("extra")][TestCase("missing")][TestCase("mixed_legacy")][TestCase("schedule_extra")][TestCase("interval_missing")]
@@ -107,22 +107,22 @@ namespace AcousticVocab.Orientation.Tests
         public void IncompleteOrOffScheduleCaptureIsUnqualified(string key)
         {
             Capture(0)[key]=false;Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_UNQUALIFIED"));
-            index=Json("index.private.json");Capture(FirstExecutionRow+5)[key]=false;Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_UNQUALIFIED"));
+            index=Json("index.synthetic.json");Capture(FirstExecutionRow+5)[key]=false;Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_UNQUALIFIED"));
         }
         [Test] public void SimTimeOrCaptureStampsCannotBeThePlaybackClock()
         { Capture(0)["playback_clock"]="sim_time";Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_PLAYBACK_CLOCK")); }
         [Test] public void MetadataMustAgreeWithRetainedTimestamps()
         {
             Capture(0)["capture_host_seconds"]=9;Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_TIMING_METADATA"));
-            index=Json("index.private.json");Capture(0)["capture_interval_ms"]["max"]=40;Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_TIMING_METADATA"));
+            index=Json("index.synthetic.json");Capture(0)["capture_interval_ms"]["max"]=40;Assert.That(Code(()=>Load()),Is.EqualTo("ORIENTATION_DEMO_TIMING_METADATA"));
         }
         [Test] public void LegacyOrOffScheduleFramesAreRefusedByTheRealPlayer()
         {
             Rewrite("legacy.ndjson",(i,f)=>{f["sim_step"]=i+1;return f;});
             Assert.That(Assert.Throws<StateFault>(()=>Load()).Message,Is.EqualTo("TRAJECTORY_LEGACY_SCHEDULE"));
-            index=Json("index.private.json");Rewrite("skipped.ndjson",(i,f)=>{if(i>=10)f["sim_step"]=2*(i+1)+1;return f;});
+            index=Json("index.synthetic.json");Rewrite("skipped.ndjson",(i,f)=>{if(i>=10)f["sim_step"]=2*(i+1)+1;return f;});
             Assert.That(Assert.Throws<StateFault>(()=>Load()).Message,Is.EqualTo("TRAJECTORY_SIM_STEP_SCHEDULE"));
-            index=Json("index.private.json");Rewrite("dt.ndjson",(i,f)=>{if(i>=10)f["sim_time"]=(double)f["sim_time"]+1d/60;return f;});
+            index=Json("index.synthetic.json");Rewrite("dt.ndjson",(i,f)=>{if(i>=10)f["sim_time"]=(double)f["sim_time"]+1d/60;return f;});
             Assert.That(Assert.Throws<StateFault>(()=>Load()).Message,Is.EqualTo("TRAJECTORY_SIM_TIME_SCHEDULE"));
         }
         [Test] public void AudioPathsAreRejectedBeforeAnyAssetRead()

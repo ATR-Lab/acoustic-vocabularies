@@ -27,7 +27,7 @@ def test_generator_refuses_to_overwrite(tmp_path):
 
 
 def test_fixture_trajectory_passes_the_recorder_replay_check():
-    manifest, index = load('manifest.json'), load('index.private.json')
+    manifest, index = load('manifest.json'), load('index.synthetic.json')
     registry = PublicRegistry(manifest['station_id'], manifest['scene_sha256'], manifest['reset_snapshot_sha256'],
                               tuple(manifest['joint_names']), (('card', ('card_face',)),), ())
     capture = index['rows'][0]['capture']
@@ -41,7 +41,7 @@ def test_fixture_trajectory_passes_the_recorder_replay_check():
 
 
 def test_fixture_index_is_one_fixed_duration_suite():
-    index = load('index.private.json')
+    index = load('index.synthetic.json')
     assert len(index['rows']) == 40 and sum(row['group'] == 'orientation' for row in index['rows']) == 8
     suite = validate_suite([row['capture'] for row in index['rows']])
     assert suite['identical_physics_steps'] == 600

@@ -3,7 +3,9 @@
 Writes one clearly synthetic recording through the real ``record_fixed_schedule``
 and ``TrajectoryWriter`` (so the NDJSON bytes and the per-row ``capture`` record
 are exactly what the recorder emits), a matching neutral snapshot, a 40-row
-private-index shape, a pre-fixed-step (legacy) capture record and a host-clock
+index in the benchmark's private-index shape (``index.synthetic.json``; tests
+copy it to the loader's ``index.private.json`` name in a scratch directory), a
+pre-fixed-step (legacy) capture record and a host-clock
 playback table from ``playback_index``/``playback_offset_seconds``. The Unity
 EditMode/PlayMode tests read these committed files; ``--check`` (and the pytest
 in ``tests/isaac/test_unity_fixture.py``) proves they still match this recorder.
@@ -38,7 +40,7 @@ SCENE_SHA256 = hashlib.sha256(b'synthetic fixed-step demo fixture scene; not an 
 JOINTS = tuple('j%02d' % i for i in range(43))
 SESSION = 'f1' * 16
 TRAJECTORY = '000.ndjson'
-FILES = ('manifest.json', 'neutral.json', TRAJECTORY, 'index.private.json', 'legacy-capture.json', 'playback.json')
+FILES = ('manifest.json', 'neutral.json', TRAJECTORY, 'index.synthetic.json', 'legacy-capture.json', 'playback.json')
 SIM_START_SECONDS = 123.25
 CLOCK_START_NS = 10**12
 STALL_SAMPLE = 150
@@ -136,7 +138,7 @@ def generate(out):
                                              unchanged=True, factory_ran=False),
                  joint_names_sha256=hashlib.sha256(('\n'.join(JOINTS)+'\n').encode()).hexdigest(),
                  station_id=STATION, nominal_duration_seconds=NOMINAL_DURATION_SECONDS)
-    write_json(out/'index.private.json', index)
+    write_json(out/'index.synthetic.json', index)
     write_json(out/'legacy-capture.json', legacy_capture(capture))
     probes = sorted({0., 1/30-1e-6, 1/30, 299/30, 9.999, 10-1e-9, NOMINAL_DURATION_SECONDS, 10.5}
                     | {i/SAMPLE_HZ for i in range(SAMPLE_COUNT)} | {(i+.5)/SAMPLE_HZ for i in range(SAMPLE_COUNT)})

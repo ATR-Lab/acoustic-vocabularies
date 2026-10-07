@@ -3,7 +3,7 @@
   "capture_host_stall_sample": 150,
   "files": {
     "000.ndjson": "bffd7af72df303ef4edcae5e60234920e59025d83c186a310438b8675e33eb2e",
-    "index.private.json": "7913fd045788f2c0326215a813e0231992f68426fa8667fa1eafd367c156ff27",
+    "index.synthetic.json": "7913fd045788f2c0326215a813e0231992f68426fa8667fa1eafd367c156ff27",
     "legacy-capture.json": "f7f1179c310c07bb79f208a420bcce18b81b28433c53c925317f0b6326045506",
     "neutral.json": "e88406bab6aa0d9ebee1707c80b26587d70cc4998639560dc8f31ef821343395",
     "playback.json": "51888be503c0d77c561fc78f21cb0bbacab579454bd45dc4ac2e8b576a46756c"
