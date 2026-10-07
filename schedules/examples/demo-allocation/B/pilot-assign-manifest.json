@@ -1,0 +1,42 @@
+{
+  "allocation_seed": "sha256:f9cba56f0cd0cec2427a11e22d601a7e1b7f929967745ec76e05628169e3188c",
+  "balance_max_abs_deviation": {
+    "member1_role": {
+      "all:SQ-1:swap_w1_w4=0": "0",
+      "all:SQ-1:swap_w1_w4=1": "0",
+      "all:SQ-2:swap_w1_w4=0": "0",
+      "all:SQ-2:swap_w1_w4=1": "0"
+    },
+    "menu_order": {
+      "all": "0.6667"
+    },
+    "menu_position": {
+      "all": "0.6667"
+    },
+    "sq_arm": {
+      "all": "0"
+    },
+    "swap_w1_w4": {
+      "all:SQ-1": "0",
+      "all:SQ-2": "0"
+    }
+  },
+  "demo": true,
+  "design_table_sha256": "e40e865b29acbedc9f463ba87af420a0992eeb736d4162159808465de3198711",
+  "files": {
+    "pilot-assign-balance.csv": "eb477da93c9f423cd13bce9c28929f24dcc2f52719123f135ec9632a6fc36ca7",
+    "pilot-dyads.json": "d9980913bbaca98c0cf07e9070e1457103e6281a9caf1cef8494d4e2ad8ca9a6"
+  },
+  "format": "av-schedules/assign-manifest",
+  "format_version": 1,
+  "generator": {
+    "name": "av-schedules",
+    "version": "0.1.0"
+  },
+  "lists": {
+    "pilot-dyads.json": "6d26efefd48fdbabe5d0dbb3cb14bfe1c0dadffa4a1c2b1a6edfce25d22e9bcb"
+  },
+  "seed_label": "DEMO-o4.4.3-pilot",
+  "set": "pilot",
+  "study": "B"
+}

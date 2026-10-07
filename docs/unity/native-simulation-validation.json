@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST_software_only_native_launch_blocked",
+  "runtime_source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
+  "test_source_commit": "5d19835121673757569563b62bbb352c63bdc9ad",
+  "editor_version": "6000.6.0f1",
+  "test_framework": "builtin_1.8.0",
+  "nunit": "builtin_2.1.0",
+  "tests": [
+    {
+      "run": "simulation-tests-004",
+      "kind": "focused_local_source_and_simulation",
+      "source_commit": "50e4063ea15e664decc743d6ffd4601cbed79eef",
+      "total": 93,
+      "passed": 93,
+      "failed": 0,
+      "skipped": 0,
+      "result": "Passed",
+      "xml_sha256": "6e6557e2f585e670514abfc66f7480e3df5456d791076d88662c514f2944729c"
+    },
+    {
+      "run": "simulation-tests-005",
+      "kind": "focused_grammar_staging_assessment",
+      "source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+      "total": 91,
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "result": "Passed",
+      "xml_sha256": "a58d49774301cd3e5cc01dd45ec904d115665e644b6208a30f1fa3317c413634"
+    },
+    {
+      "run": "simulation-broad-001",
+      "kind": "broad_EditMode",
+      "source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+      "total": 711,
+      "passed": 709,
+      "failed": 1,
+      "skipped": 1,
+      "result": "Failed(Child)",
+      "xml_sha256": "624583e6085580f0d7ffdfb75efb17ebf09b35fa80606053dcc31f8eefcadb74"
+    },
+    {
+      "run": "simulation-A-D7-tests-001",
+      "kind": "actual_A_D7_fixture_and_corrected_output_test",
+      "source_commit": "48941e48a27156d504fe8b4145f08efca35b4ad4",
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "result": "Passed",
+      "xml_sha256": "d3cfbbd812d5bff746633962d24ff8231855f6baad08978cac99d4aed8b6fe80"
+    },
+    {
+      "run": "simulation-B-V1-tests-001",
+      "kind": "actual_B_active_V1_fixture",
+      "source_commit": "5d19835121673757569563b62bbb352c63bdc9ad",
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "result": "Passed",
+      "xml_sha256": "e9732e732321e8403fdb0e8303455159e7d1fe3fb37b633ec799d3b37183542b"
+    },
+    {
+      "run": "simulation-data-tests-001",
+      "kind": "synthetic_data_journal_export_regression",
+      "source_commit": "5d19835121673757569563b62bbb352c63bdc9ad",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "result": "Passed",
+      "xml_sha256": "e48283f2fd069a8852185f3fee78a308748af07f7400fa3521647c3bb1b0bd77"
+    },
+    {
+      "run": "simulation-play-001",
+      "kind": "headless_PlayMode",
+      "source_commit": "5d19835121673757569563b62bbb352c63bdc9ad",
+      "total": 21,
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "result": "Passed",
+      "xml_sha256": "c0d771c384e2a5f9ec0cdcbc836b663596286ba4c1adb68b48276f37f2415e6c"
+    },
+    {
+      "run": "simulation-close-tests-001",
+      "total": 18,
+      "passed": 18,
+      "xml_sha256": "25ee74e003d12d35878988ffaa4422605a68b82ef031537b0d2a146f18905965",
+      "source_commit": "f14e94d",
+      "failed": 0,
+      "kind": "actual_host_post_cleanup_and_simulation_authority",
+      "skipped": 0,
+      "result": "Passed"
+    }
+  ],
+  "broad_test_failure_resolution": {
+    "failure": "Negative public-output test inadvertently used the private TEMP root selected by the build wrapper",
+    "runtime_defect": false,
+    "fix_commit": "0ba1da2",
+    "focused_result": "Passed in both delayed A and active B fixture runs",
+    "remaining_skip": "Windows refused temporary symlink creation; no symlink enforcement pass claimed"
+  },
+  "native_build": {
+    "inventory_sha256": "1068b586826640e46b9d99deeb6bc9ff90f5e4820b7de3d43b844a0b08c105d4",
+    "native_inventory_raw_sha256": "0f211bc2d686ac166de6d9cde919351e201f5e488cbe9dd79da3b906cc15323d",
+    "native_launch_attempted": false,
+    "inventory": "native-simulation-builds/windows-004.json",
+    "build_id": "simulation-native-004",
+    "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
+    "result": "Succeeded",
+    "public_inventory_encoding": "UTF8 LF; same parsed inventory, original native CRLF bytes separately pinned",
+    "total_bytes": 158695895,
+    "dirty_source": false,
+    "errors": 0
+  },
+  "native_launch": {
+    "native_process_created": false,
+    "pid": null,
+    "exit_code": null,
+    "completed_visit": false,
+    "result": "WINDOWS_APPLICATION_CONTROL_BLOCKED",
+    "code_integrity_event_id": 3077,
+    "policy_changed": false,
+    "alternate_execution_attempted": false,
+    "appdata_restoration_verified": true,
+    "receipt_sha256": "e744d1bda5d6af76bc73103242ada1435a5b84e827cab75e90ab80aa570b9803",
+    "build_id": "simulation-native-003"
+  },
+  "qualification": {
+    "participant_admission": false,
+    "acoustic_onset": false,
+    "physical_headset": false,
+    "complete_native_visit": false,
+    "seven_native_faults": false,
+    "active_yoked_history": false,
+    "synthetic_unit_observations_are_native_callback_evidence": false
+  },
+  "pending": [
+    "Normal OS execution approval for the built native player",
+    "Actual complete A D0/D7 and B active/yoked history",
+    "Seven planned native fault injections and recovery",
+    "Actual presented/displayed/recorded reconciliation and source-clock/acoustic qualification",
+    "Screen recordings and complete mock apparatus manifest"
+  ],
+  "independent_python": {
+    "full_suite": {
+      "passed": 641,
+      "skipped": 14,
+      "failed": 0,
+      "xml_sha256": "52504b0da8d306a862bc7227898bc2d2d31cc54476f260d9f660a0773c62689a"
+    },
+    "fresh_native_export_mutations": {
+      "passed": 16,
+      "skipped": 0,
+      "new_previously_skipped_cases": 4,
+      "xml_sha256": "376c250dd17c316f8dc0385da19c0a6c41ac97b380d46dc1385e413ee134cf31"
+    },
+    "unique_verified_passes": 645,
+    "remaining_platform_skips": 10,
+    "fixture_and_console_with_existing_dependencies": {
+      "passed": 19,
+      "skipped": 0,
+      "xml_sha256": "a189bec205bf778cf7d60fb14c91d09af1496374e10edb11a5225f250b325e5f"
+    },
+    "minimal_repository_environment": {
+      "passed": 14,
+      "skipped": 5,
+      "skip_reason": "NumPy-dependent producer fixture tests run in existing locked sound CI",
+      "xml_sha256": "20a2196d640e0ff7415f92d44945325580e5baabd1dafcf9ea261552f7533179"
+    }
+  },
+  "command_integrity": {
+    "permutations": 3,
+    "cases_per_permutation": 160,
+    "tuples_per_permutation": 32,
+    "total_cases": 480,
+    "scope": "controlled_clock_real_modules_no_acoustic_evidence",
+    "callback_observed": false,
+    "verification_sha256": "949f2428896dcffd4ecc6095e6d94ad5423bdd6fd56dcf7e25709c97b1d65304"
+  },
+  "reconciliation_tools": {
+    "source_commit": "c61b342e25b2596bd28b83b397c7668a32434d41",
+    "pending_semantics": [
+      "external fault injection provenance",
+      "screening and eligibility",
+      "screen recording semantic review",
+      "O4.5.1 script-result review",
+      "killed-run and multi-process recovery provenance"
+    ],
+    "actual_native_run": false,
+    "suite_acceptance_available": false,
+    "scope": "synthetic_contract_and_retained_artifact_compatibility",
+    "tests": {
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "a46ee36630f54438fb266779d8c2945e2e2d795cc782cb56f15b3797d184542c",
+      "pytest_passed": 62
+    },
+    "previous_tests": {
+      "skipped": 0,
+      "unittest_passed": 56,
+      "failed": 0,
+      "pytest_passed": 56,
+      "xml_sha256": "103208be3e277341c1f074f6e19f56ad17d7f4a97a3ddee909e2369ae7f6d1e5"
+    }
+  },
+  "previous_runtime_source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+  "previous_native_builds": [
+    {
+      "build_id": "simulation-native-003",
+      "result": "Succeeded",
+      "errors": 0,
+      "inventory": "native-simulation-builds/windows-003.json",
+      "inventory_sha256": "b83b81f63a82639231de9e53f5d013e5def3cfd5f1814bba6adbc300912637a4",
+      "source_commit": "e272208c4872bebd920d4d0e5bc22e6ff442983b",
+      "dirty_source": false,
+      "native_inventory_raw_sha256": "6375bf1339c850f327edef52e4854f1fbc239eb1ccc006c5ad9a922eed61c9a4",
+      "public_inventory_encoding": "UTF8 LF; same parsed inventory, original native CRLF bytes separately pinned"
+    }
+  ]
+}

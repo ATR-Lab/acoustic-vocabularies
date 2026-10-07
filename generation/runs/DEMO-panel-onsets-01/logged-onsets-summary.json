@@ -1,0 +1,44 @@
+{
+  "alignment": null,
+  "by_station": {
+    "S1": {
+      "detected": 72,
+      "max_abs_dev_ms": 5.0,
+      "max_reference_interval_error_ms": 8.0
+    },
+    "S2": {
+      "detected": 72,
+      "max_abs_dev_ms": 5.0,
+      "max_reference_interval_error_ms": 4.0
+    },
+    "S3": {
+      "detected": 72,
+      "max_abs_dev_ms": 5.0,
+      "max_reference_interval_error_ms": 4.0
+    }
+  },
+  "capture_sha256": null,
+  "complete_rows": 72,
+  "longest_slot_run_within_onset": 36,
+  "longest_slot_run_within_skew": 36,
+  "max_abs_dev_ms": 5.0,
+  "max_skew_ms": 6.0,
+  "mean_skew_ms": 1.4,
+  "n_rows": 72,
+  "n_slots": 36,
+  "onset_tolerance_ms": 50,
+  "p95_skew_ms": 6.0,
+  "pass_onset_all_rows": true,
+  "pass_skew_36_slots": true,
+  "rows_within_onset": 72,
+  "rows_within_skew": 72,
+  "run_id": "DEMO-panel-onsets-01",
+  "schedule_sha256": "43765154cfb8ba63419f5ad63c58bf117a9c3eb195bc6abdbc8fab4e446c120a",
+  "skew_limit_ms": 100,
+  "source": "logged",
+  "stations": [
+    "S1",
+    "S2",
+    "S3"
+  ]
+}

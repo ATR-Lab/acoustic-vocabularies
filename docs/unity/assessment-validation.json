@@ -1,0 +1,232 @@
+{
+  "status": "software_validated_physical_and_joined_visit_pending",
+  "runtime_commit": "4a3c5a4cc9f531e4414bad09d864aa2fa4b087d9",
+  "editor": "6000.6.0f1",
+  "methodology_reconciled": false,
+  "participant_qualified": false,
+  "tests": [
+    {
+      "build_id": "assessment-edit-006",
+      "source_commit": "4a3c5a4cc9f531e4414bad09d864aa2fa4b087d9",
+      "result": "Passed",
+      "total": 416,
+      "passed": 416,
+      "failed": 0,
+      "skipped": 0,
+      "duration_s": 43.5084608,
+      "xml_sha256": "f25cb49bb576b5385ed1356c1eb1fbbfe7b0f8e3ddf947e0779d3e5b4494ad7d"
+    },
+    {
+      "build_id": "assessment-play-003",
+      "source_commit": "4a3c5a4cc9f531e4414bad09d864aa2fa4b087d9",
+      "result": "Passed",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "duration_s": 47.2891531,
+      "xml_sha256": "c48a43cb90a57d0a354e8891941da7c0614ff944e22fcc7b30ebab109793e698"
+    },
+    {
+      "build_id": "assessment-render-002",
+      "source_commit": "9f30390c1c5c6ba70a71949a0a2db4a489ea4c28",
+      "result": "Passed",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "duration_s": 0.6908427,
+      "xml_sha256": "b52644bfa4e629698d86f15ded308d038121d112906692a75e2133182bb09a23"
+    }
+  ],
+  "builds": [
+    {
+      "result": "Succeeded",
+      "errors": 0,
+      "duration_seconds": 10.2416605,
+      "total_bytes": 158308338,
+      "build_id": "assessment-link-002",
+      "target": "Windows",
+      "source_commit": "4a3c5a4cc9f531e4414bad09d864aa2fa4b087d9",
+      "dirty_source": false,
+      "manifest_sha256": "88b403121cf426b2224ba63501e580378fb752a9c4c1163d1902aea955048917",
+      "verified_file_count": 199
+    },
+    {
+      "result": "Succeeded",
+      "errors": 0,
+      "duration_seconds": 82.3481132,
+      "total_bytes": 782669933,
+      "build_id": "assessment-quest-002",
+      "target": "Android",
+      "source_commit": "4a3c5a4cc9f531e4414bad09d864aa2fa4b087d9",
+      "dirty_source": false,
+      "manifest_sha256": "77f9b92e7af3cfa6ec0c9a8aa652f93519a52e4d77caa7402c1de92fba4b76ed",
+      "verified_file_count": 1,
+      "apk_bytes": 55491930,
+      "apk_sha256": "d76830958ae821f9cf134c6f7c3c10ca0016e37e2f9c21db4ab24125a4ca6b46",
+      "archive_crc": "pass",
+      "arm64_il2cpp_present": true
+    }
+  ],
+  "producer_mock_visits": [
+    {
+      "study": "A",
+      "visit": "D0",
+      "pre_old": 0,
+      "trained": 36,
+      "novel": 4,
+      "atomic": 16,
+      "fixed_seconds": 704,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    },
+    {
+      "study": "A",
+      "visit": "D7",
+      "pre_old": 0,
+      "trained": 36,
+      "novel": 4,
+      "atomic": 16,
+      "fixed_seconds": 704,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    },
+    {
+      "study": "B",
+      "visit": "V1",
+      "pre_old": 0,
+      "trained": 4,
+      "novel": 2,
+      "atomic": 8,
+      "fixed_seconds": 156,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    },
+    {
+      "study": "B",
+      "visit": "V2",
+      "pre_old": 4,
+      "trained": 10,
+      "novel": 2,
+      "atomic": 12,
+      "fixed_seconds": 332,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    },
+    {
+      "study": "B",
+      "visit": "V3",
+      "pre_old": 10,
+      "trained": 18,
+      "novel": 2,
+      "atomic": 16,
+      "fixed_seconds": 564,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    },
+    {
+      "study": "B",
+      "visit": "W1",
+      "pre_old": 0,
+      "trained": 36,
+      "novel": 4,
+      "atomic": 16,
+      "fixed_seconds": 704,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    },
+    {
+      "study": "B",
+      "visit": "W4",
+      "pre_old": 0,
+      "trained": 36,
+      "novel": 4,
+      "atomic": 16,
+      "fixed_seconds": 704,
+      "test": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+      "result": "passed"
+    }
+  ],
+  "acknowledgment": {
+    "width": 1024,
+    "height": 512,
+    "clock": "controlled_monotonic_test_clock",
+    "frame_render_source_unchanged_at_runtime_revision": true,
+    "conditions": [
+      {
+        "condition": "atomic-correct",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "atomic-dont_know",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "atomic-timeout",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "atomic-wrong",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "full-correct",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "full-dont_know",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "full-timeout",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      },
+      {
+        "condition": "full-wrong",
+        "bytes": 15553,
+        "png_sha256": "5b5881a07c64158fb2dc5cf860ac376a495dcc17395a9e24a65575f22cf4589d"
+      }
+    ],
+    "raw_rgba_sha256": "d2c44945977f72b1139516206a462e55c939ee5fa787f0c5ea1442f871cf3c85"
+  },
+  "python": {
+    "data_contract_tests_passed": 5,
+    "schema_count": 29,
+    "synthetic_example_count": 5
+  },
+  "retained_prior_runs": [
+    {
+      "build_id": "assessment-import-001",
+      "result": "failed",
+      "reason": "three timing assertions repaired; private G1 fixture initially absent"
+    },
+    {
+      "build_id": "assessment-edit-004",
+      "result": "compile_failed",
+      "reason": "assessment editor assembly references absent; corrected before final validation"
+    },
+    {
+      "build_id": "assessment-render-001",
+      "result": "passed_superseded_capture",
+      "reason": "larger 1024x512 capture used for readable inspection"
+    }
+  ],
+  "limits": [
+    "No full elapsed joined W4 recording",
+    "No actual physical Quest test or acoustic-onset qualification",
+    "No reviewed methodology/scripts/catalog supplied",
+    "Optional execution remains blocked without qualified recording provider",
+    "Stage export headers provisional; no participant upload qualification",
+    "Session-owner and selection integration are separate dependent work",
+    "Unity CI licensed runner is unprovisioned"
+  ],
+  "producer_mock_visit_time_note": "Fixed trial time excludes 750ms admission lead per explicitly resumed block; tests assert both fixed sum and engine elapsed controlled-clock time."
+}

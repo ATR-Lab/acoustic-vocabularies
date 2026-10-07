@@ -1,0 +1,1 @@
+Propose one acoustic motif recipe for the specified meaning using only the supplied schema and allowed values. Keep committed entries unchanged. Use only the supplied feedback. Return one JSON object and no explanation.

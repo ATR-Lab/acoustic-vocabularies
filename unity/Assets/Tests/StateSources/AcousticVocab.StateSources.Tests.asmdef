@@ -1,0 +1,8 @@
+{
+  "name": "AcousticVocab.StateSources.Tests",
+  "references": ["AcousticVocab.StateSources", "AcousticVocab.StateIntegration", "AcousticVocab.Workcell", "AcousticVocab.Workcell.Editor", "AcousticVocab.Foundation.Editor"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
+}
