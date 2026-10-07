@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/bank-manifest.schema.json",
+  "title": "Study B bank manifest",
+  "description": "One dyad's candidate bank as built (#26; Study B protocol §4): 16 atoms x 3 profiles, each cell with the first 4 retained options in order (ranks 1-3 the displayed menu, rank 4 the reserve), their recipes, WAV paths and hashes, and the attempts made (at most 4 x 576 slots). status unavailable: all 4 attempts failed, cells is empty and the bank must not be assigned. bank_id: bank-P<seq> (pilot), bank-C<seq> (confirmatory) by dyad-slot sequence, or DEMO-. seed_namespace is the <bank_ns> part of the bank's seed keys; generation_config_sha256 is the hash of the generation-config.json stored beside the manifest; permutation_sha256 the SHA-256 of the unit's permutation.json (labels, atom_order). The manifest is immutable: the bank hash (av_generation.bank_manifest.bank_sha256) is the SHA-256 of its canonical compact JSON, and reserve-rule amendments go to amendments.jsonl (bank-amendment.schema.json). Consumers: Unity menus and yoked replay (#70), dyad package builder (#13).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "atom_order",
+    "attempt_used",
+    "attempts",
+    "bank_id",
+    "bank_version",
+    "cells",
+    "demo",
+    "dyad_slot",
+    "format",
+    "format_version",
+    "generation_config_sha256",
+    "labels",
+    "permutation_sha256",
+    "seed_namespace",
+    "set",
+    "status"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-banks/bank-manifest"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "bank_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "set": {
+      "enum": [
+        "demo",
+        "pilot",
+        "confirmatory"
+      ]
+    },
+    "demo": {
+      "type": "boolean"
+    },
+    "dyad_slot": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^(B-[PCS][0-9]{2}|DEMO-[A-Za-z0-9-]{1,59})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bank_version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "unavailable"
+      ]
+    },
+    "attempt_used": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "attempt",
+          "failed_cell",
+          "slots_sha256",
+          "slots_used",
+          "status",
+          "wall_ms"
+        ],
+        "properties": {
+          "attempt": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "failed"
+            ]
+          },
+          "slots_used": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 576
+          },
+          "failed_cell": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "atom_id",
+                  "profile"
+                ],
+                "properties": {
+                  "profile": {
+                    "$ref": "common.schema.json#/$defs/profile"
+                  },
+                  "atom_id": {
+                    "$ref": "common.schema.json#/$defs/atom_id"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slots_sha256": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "wall_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "K-a1",
+        "K-a2",
+        "K-a3",
+        "K-a4",
+        "K-r1",
+        "K-r2",
+        "K-r3",
+        "K-r4",
+        "Q-a1",
+        "Q-a2",
+        "Q-a3",
+        "Q-a4",
+        "Q-r1",
+        "Q-r2",
+        "Q-r3",
+        "Q-r4"
+      ],
+      "properties": {
+        "K-a1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-a2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-a3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-a4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "K-r4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-a4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r1": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r2": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r3": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        },
+        "Q-r4": {
+          "$ref": "common.schema.json#/$defs/semantic_label"
+        }
+      }
+    },
+    "atom_order": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/atom_id"
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "atom_id",
+          "options",
+          "profile",
+          "slots_used"
+        ],
+        "properties": {
+          "profile": {
+            "$ref": "common.schema.json#/$defs/profile"
+          },
+          "atom_id": {
+            "$ref": "common.schema.json#/$defs/atom_id"
+          },
+          "slots_used": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 12
+          },
+          "options": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file_sha256",
+                "menu",
+                "option_id",
+                "pcm_sha256",
+                "rank",
+                "recipe",
+                "recipe_sha256",
+                "slot_id",
+                "wav"
+              ],
+              "properties": {
+                "rank": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "menu": {
+                  "enum": [
+                    "shown",
+                    "reserve"
+                  ]
+                },
+                "option_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]{1,127}$"
+                },
+                "recipe": {
+                  "$ref": "common.schema.json#/$defs/recipe"
+                },
+                "recipe_sha256": {
+                  "$ref": "common.schema.json#/$defs/sha256"
+                },
+                "pcm_sha256": {
+                  "$ref": "common.schema.json#/$defs/sha256"
+                },
+                "file_sha256": {
+                  "$ref": "common.schema.json#/$defs/sha256"
+                },
+                "wav": {
+                  "type": "string",
+                  "pattern": "^options/P[1-3]/[KQ]-[ar][1-4]-[1-4]\\.wav$"
+                },
+                "slot_id": {
+                  "$ref": "common.schema.json#/$defs/bank_slot_id"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "rank": {
+                        "const": 4
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "menu": {
+                        "const": "reserve"
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "menu": {
+                        "const": "shown"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "generation_config_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "seed_namespace": {
+      "$ref": "common.schema.json#/$defs/seed_part"
+    },
+    "permutation_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "complete"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attempt_used": {
+            "type": "integer"
+          },
+          "cells": {
+            "minItems": 48,
+            "maxItems": 48
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "attempt_used": {
+            "type": "null"
+          },
+          "cells": {
+            "maxItems": 0
+          },
+          "attempts": {
+            "minItems": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set": {
+            "const": "demo"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "demo": {
+            "const": true
+          },
+          "bank_id": {
+            "pattern": "^DEMO-"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "demo": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set": {
+            "const": "pilot"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bank_id": {
+            "pattern": "^bank-P[0-9]{3}$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set": {
+            "const": "confirmatory"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bank_id": {
+            "pattern": "^bank-C[0-9]{3}$"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -12,6 +12,7 @@ producer, the consumers and the file that defines the contract. Entries marked
 | Reserved-signal registry and nonlexical assets | #14 | validator #9, Unity #64, #68, #70, goldens #12 | [`sound/reserved/registry.json`](../../sound/reserved/registry.json), `sound/schema/reserved-registry.schema.json` (format: #9), [`sound/docs/nonlexical.md`](../../sound/docs/nonlexical.md) |
 | Golden manifest (cross-machine waveform hashes) | #12 | package builder #13, G4 freeze #25 | [`tests/golden/manifest.json`](../../tests/golden/manifest.json), [`sound/docs/golden.md`](../../sound/docs/golden.md) |
 | Package format (manifest, answers, held-out hashes) | #13 | Unity audio subsystem #64, session engine #67 | [`package-format.md`](package-format.md), [`sound/schema/package.schema.json`](../../sound/schema/package.schema.json) |
+| Generation contracts (seeds, slot outcomes, log records, rater protocol, audit tables, freeze and bank manifests) | #16–#28 | generation #16–#28, package builder #13, analysis #34, Unity #70 | [`generation.md`](generation.md), `generation/schema/` |
 | Curriculum, permutation, schedules, allocation, run sheets | #29–#32 | package builder #13, session engine #67, operator console #73, round orchestrator #20 | [`schedules.md`](schedules.md), `schedules/schema/` *(pending, #29)* |
 
 Rules for every contract:

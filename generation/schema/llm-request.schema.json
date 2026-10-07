@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/llm-request.schema.json",
+  "title": "Model request log line",
+  "description": "One model call of the A3/B client (#16): the frozen decoding values (Study A protocol §3.6), the derived seed, the prompt and schema hashes and the result. The decoding values are constants: a call with other values cannot be logged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "finish_reason",
+    "latency_ms",
+    "max_tokens",
+    "model",
+    "model_revision",
+    "prompt_sha256",
+    "record",
+    "record_version",
+    "repetition_penalty",
+    "response_format",
+    "run_id",
+    "runtime",
+    "schema_sha256",
+    "seed",
+    "seed_key",
+    "slot_id",
+    "status",
+    "t_ms",
+    "temperature",
+    "tokens_in",
+    "tokens_out",
+    "top_k",
+    "top_p",
+    "wire_seed"
+  ],
+  "properties": {
+    "record": {
+      "const": "llm_request"
+    },
+    "record_version": {
+      "const": 1
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "seed_key": {
+      "$ref": "common.schema.json#/$defs/seed_key"
+    },
+    "seed": {
+      "$ref": "common.schema.json#/$defs/seed"
+    },
+    "wire_seed": {
+      "$ref": "common.schema.json#/$defs/wire_seed"
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^[!-~]{1,128}$"
+    },
+    "runtime": {
+      "type": "string",
+      "pattern": "^[ -~]{1,64}$"
+    },
+    "temperature": {
+      "const": 0.7
+    },
+    "top_p": {
+      "const": 0.9
+    },
+    "top_k": {
+      "const": 50
+    },
+    "repetition_penalty": {
+      "const": 1.0
+    },
+    "max_tokens": {
+      "const": 512
+    },
+    "prompt_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "schema_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/llm_status"
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "t_ms": {
+      "$ref": "common.schema.json#/$defs/t_ms"
+    },
+    "model_revision": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "finish_reason": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[!-~]{1,32}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tokens_in": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tokens_out": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "slot_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/slot_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "response_format": {
+      "const": "json_schema"
+    }
+  }
+}

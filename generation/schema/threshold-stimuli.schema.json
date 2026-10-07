@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/threshold-stimuli.schema.json",
+  "title": "Separation-threshold stimulus set",
+  "description": "Every pair of a listening study (#23; Study A protocol §3.2): two valid atomic motifs per pair at a controlled normalized 12-feature distance (bins of config), plus identical-pair catch trials (kind same, bin_center null, distance 0). Never study-book motifs, never complete messages. Its SHA-256 (canonical compact JSON) identifies the set.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "config",
+    "demo",
+    "format",
+    "format_version",
+    "pairs",
+    "renderer_version",
+    "set_id",
+    "validator_version"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/threshold-stimuli"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "set_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "demo": {
+      "type": "boolean"
+    },
+    "renderer_version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "validator_version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bin_centers",
+        "bin_halfwidth",
+        "gap_ms",
+        "pairs_per_bin",
+        "profiles",
+        "same_pairs",
+        "threshold_default"
+      ],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/profile"
+          }
+        },
+        "bin_centers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/decimal"
+          }
+        },
+        "bin_halfwidth": {
+          "$ref": "common.schema.json#/$defs/decimal"
+        },
+        "pairs_per_bin": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "same_pairs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gap_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "threshold_default": {
+          "$ref": "common.schema.json#/$defs/decimal"
+        }
+      }
+    },
+    "pairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bin_center",
+          "differing",
+          "distance",
+          "file_sha256_a",
+          "file_sha256_b",
+          "kind",
+          "pair_id",
+          "pcm_sha256_a",
+          "pcm_sha256_b",
+          "profile",
+          "recipe_a",
+          "recipe_b",
+          "search_steps",
+          "seed_key",
+          "sum_sq"
+        ],
+        "properties": {
+          "pair_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,64}$"
+          },
+          "profile": {
+            "$ref": "common.schema.json#/$defs/profile"
+          },
+          "kind": {
+            "enum": [
+              "different",
+              "same"
+            ]
+          },
+          "bin_center": {
+            "oneOf": [
+              {
+                "$ref": "common.schema.json#/$defs/decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recipe_a": {
+            "$ref": "common.schema.json#/$defs/recipe"
+          },
+          "recipe_b": {
+            "$ref": "common.schema.json#/$defs/recipe"
+          },
+          "pcm_sha256_a": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "pcm_sha256_b": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "file_sha256_a": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "file_sha256_b": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          },
+          "sum_sq": {
+            "$ref": "common.schema.json#/$defs/fraction"
+          },
+          "distance": {
+            "type": "number",
+            "minimum": 0
+          },
+          "differing": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "common.schema.json#/$defs/coordinate"
+            }
+          },
+          "seed_key": {
+            "$ref": "common.schema.json#/$defs/seed_key"
+          },
+          "search_steps": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

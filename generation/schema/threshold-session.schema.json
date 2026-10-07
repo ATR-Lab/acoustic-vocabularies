@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/threshold-session.schema.json",
+  "title": "Separation-threshold listening session",
+  "description": "One listener session of the listening tool (#23; Study A protocol §3.2), written before the first trial: the stimulus set and its hash, coded listener, station, fixed gain, the seeded trial order (threshold_seed_key(set, order, session)) and the A/B counterbalancing rule. Trials are threshold_trial records with the same session_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ab_order_rule",
+    "created_utc",
+    "demo",
+    "format",
+    "format_version",
+    "gain_db",
+    "listener_id",
+    "order_seed",
+    "order_seed_key",
+    "plan",
+    "session_id",
+    "set_id",
+    "set_sha256",
+    "station",
+    "tryout"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/threshold-session"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "session_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "set_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "set_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "listener_id": {
+      "$ref": "common.schema.json#/$defs/coded_id"
+    },
+    "station": {
+      "$ref": "common.schema.json#/$defs/station"
+    },
+    "gain_db": {
+      "type": "number",
+      "minimum": -120,
+      "maximum": 20
+    },
+    "order_seed_key": {
+      "$ref": "common.schema.json#/$defs/seed_key"
+    },
+    "order_seed": {
+      "$ref": "common.schema.json#/$defs/seed"
+    },
+    "ab_order_rule": {
+      "enum": [
+        "balanced_per_bin",
+        "seeded_coin"
+      ]
+    },
+    "plan": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "pair_id",
+          "trial_index"
+        ],
+        "properties": {
+          "trial_index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pair_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "order": {
+            "enum": [
+              "AB",
+              "BA"
+            ]
+          }
+        }
+      }
+    },
+    "tryout": {
+      "type": "boolean"
+    },
+    "demo": {
+      "type": "boolean"
+    },
+    "created_utc": {
+      "$ref": "common.schema.json#/$defs/utc"
+    }
+  }
+}

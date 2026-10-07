@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/freeze-manifest.schema.json",
+  "title": "G4 generation freeze manifest",
+  "description": "Every value frozen at gate G4 (#25; Study A protocol §3.2, §3.6; Common procedures §9), each with its SHA-256 where it is a file or document and its source, readable without the code. Item keys: av_generation.freeze.REQUIRED_ITEM_KEYS. apparatus holds the values copied into the apparatus manifest. Sign-off records roles and links, never names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apparatus",
+    "format",
+    "format_version",
+    "freeze_version",
+    "items",
+    "protocol_version",
+    "repo_commit",
+    "signoff",
+    "status",
+    "tag"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/freeze-manifest"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "freeze_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "frozen"
+      ]
+    },
+    "protocol_version": {
+      "type": "string",
+      "pattern": "^[!-~]{1,32}$"
+    },
+    "repo_commit": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tag": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[!-~]{1,64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "category",
+          "key",
+          "sha256",
+          "source",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)+$"
+          },
+          "category": {
+            "enum": [
+              "renderer",
+              "validator",
+              "separation",
+              "model",
+              "runtime",
+              "decoding",
+              "schema",
+              "prompts",
+              "seeds",
+              "budget",
+              "a2",
+              "selector",
+              "fallback",
+              "pilot",
+              "config",
+              "llm",
+              "meanings"
+            ]
+          },
+          "value": {
+            "description": "Any JSON value (string, number, boolean, null, array or object)."
+          },
+          "sha256": {
+            "oneOf": [
+              {
+                "$ref": "common.schema.json#/$defs/sha256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[ -~]{1,400}$"
+          }
+        }
+      }
+    },
+    "apparatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fallback_bank_hash",
+        "model_revision",
+        "prompt_hash",
+        "renderer_recipe_schema_hash",
+        "runtime_precision"
+      ],
+      "properties": {
+        "renderer_recipe_schema_hash": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_revision": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runtime_precision": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[!-~]{1,32}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prompt_hash": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallback_bank_hash": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "signoff": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "date",
+          "reference",
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "owner",
+              "advisor"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "reference": {
+            "type": "string",
+            "pattern": "^https://github\\.com/ATR-Lab/acoustic-vocabularies/(issues|pull)/[0-9]+(#[!-~]+)?$"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "frozen"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "repo_commit": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "signoff": {
+            "minItems": 2
+          }
+        }
+      }
+    }
+  ]
+}

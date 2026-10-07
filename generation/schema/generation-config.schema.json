@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/generation-config.schema.json",
+  "title": "Generation configuration",
+  "description": "Everything that decides what a method can propose and what is admissible (av_generation.genconfig): model pin, LLM-manifest hash, decoding values and decoding-schema hash, prompt-set and meaning-set hashes, renderer and validator versions and hashes, separation threshold, seed function and namespaces, Study A and B budgets, A2 and selector rules, fallback hashes. Its canonical SHA-256 is the config hash of runs (RunManifest.generation_config_sha256), bank manifests and registers (#26-#28), and the G4 freeze item config.frozen_sha256 (#25). demo configs have DEMO- names and may omit the LLM manifest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "a2",
+    "budget_a",
+    "budget_b",
+    "code",
+    "decoding",
+    "decoding_schema_sha256",
+    "demo",
+    "fallback",
+    "format",
+    "format_version",
+    "llm_manifest_sha256",
+    "meanings_sha256",
+    "model",
+    "name",
+    "prompts",
+    "seeds",
+    "selector",
+    "separation_threshold"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/generation-config"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "name": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "demo": {
+      "type": "boolean"
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "revision"
+      ],
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "pattern": "^[!-~]{1,128}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "llm_manifest_sha256": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "decoding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_input_tokens",
+        "max_tokens",
+        "repetition_penalty",
+        "temperature",
+        "top_k",
+        "top_p"
+      ],
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": 0
+        },
+        "top_p": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "top_k": {
+          "type": "integer",
+          "minimum": -1
+        },
+        "repetition_penalty": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_input_tokens": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "decoding_schema_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "prompts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "a3_sha256",
+        "b_sha256"
+      ],
+      "properties": {
+        "a3_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "b_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "meanings_sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "renderer_hash",
+        "renderer_recipe_schema_hash",
+        "renderer_version",
+        "validator_hash",
+        "validator_version"
+      ],
+      "properties": {
+        "renderer_version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "renderer_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "renderer_recipe_schema_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "validator_version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "validator_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "separation_threshold": {
+      "$ref": "common.schema.json#/$defs/decimal"
+    },
+    "seeds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "function",
+        "namespaces"
+      ],
+      "properties": {
+        "function": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
+        "namespaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{1,16}$"
+          }
+        }
+      }
+    },
+    "budget_a": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "atoms_per_appointment",
+        "raters_per_panel",
+        "rating_slot_ms",
+        "reference_onset_ms",
+        "rounds_per_atom",
+        "slot_cap_ms",
+        "slots_per_round"
+      ],
+      "properties": {
+        "rounds_per_atom": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "slots_per_round": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "slot_cap_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rating_slot_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reference_onset_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "raters_per_panel": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "atoms_per_appointment": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "budget_b": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_attempts",
+        "options_per_cell",
+        "shown_options",
+        "slot_cap_ms",
+        "slots_per_cell"
+      ],
+      "properties": {
+        "slots_per_cell": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "options_per_cell": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shown_options": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "slot_cap_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "a2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "child_mutations",
+        "pitch_steps"
+      ],
+      "properties": {
+        "pitch_steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer"
+          }
+        },
+        "child_mutations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "first_atom_distinguishability",
+        "min_acceptable_comfort",
+        "missing_comfort"
+      ],
+      "properties": {
+        "min_acceptable_comfort": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_atom_distinguishability": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "missing_comfort": {
+          "enum": [
+            "not_acceptable"
+          ]
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bank_hash",
+        "books_sha256"
+      ],
+      "properties": {
+        "bank_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "books_sha256": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "properties": {
+            "P1": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            "P2": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            "P3": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "demo": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "name": {
+            "pattern": "^DEMO-"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "name": {
+            "not": {
+              "pattern": "^DEMO-"
+            }
+          },
+          "llm_manifest_sha256": {
+            "$ref": "common.schema.json#/$defs/sha256"
+          }
+        }
+      }
+    }
+  ]
+}
