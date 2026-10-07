@@ -156,10 +156,35 @@ Call order per method:
 
 ## A2 mutation search (#18)
 
-*Pending (#18).* Skeleton: `A2Proposer(ledger, *, clock).propose_round(request)` (the
-request's book is label-free), `sample_uniform(rng)`, `mutate_pitch(value, step) ->
-A2Mutation`, `mutate_index(coordinate, value, direction)`, `mutate(parent, k, rng)`;
-slot records carry `A2Detail`.
+`av_generation.a2` ([`generation/docs/a2-search.md`](../../generation/docs/a2-search.md)),
+Study A protocol §3.5.
+
+- `A2Proposer(ledger, *, clock)` is a `RoundProposer`. `propose_round(request) ->
+  RoundResult` fills slots 1..3. Each slot runs `SlotLedger.reserve`, the proposal,
+  `validate` against `request.book.references()` at `request.book.threshold`, then
+  `consume`. Every outcome consumes the slot, with no resampling. Ledger refusals
+  propagate; nothing else can interrupt a round after a reservation.
+- Requests: `request.book` must be `BookState.without_labels()` and `semantic_label` must
+  be `None`. Feedback must hold `round - 1` closed rounds of this book and atom, and its
+  incumbent must follow the selector rule (highest score, then the lowest `slot_index`).
+  IDs, profile, `seed_namespace` and `book.threshold` must be well formed. Otherwise
+  `A2RequestError.code` is `E_A2_LABEL`, `E_A2_REQUEST`, `E_A2_PARENT` or `E_A2_METHOD`,
+  raised before any reservation.
+- Proposals: uniform samples without an eligible parent. Otherwise child k (slot k)
+  mutates exactly k coordinates of the incumbent. Each proposal is a pure function of
+  `a2_seed_key(seed_namespace, atom, round, slot)` and the parent (`plan_slot`).
+  Draws come from the raw PCG64 output (`draw_index`; frozen order `A2_ALGORITHM`).
+- Helpers: `sample_uniform(rng)`, `mutate(parent, k, rng, *, parent_slot_id=None) ->
+  (Recipe, A2Detail)`, `mutate_pitch(value, step, *, coordinate="pitch_1") ->
+  A2Mutation`, `mutate_index(coordinate, value, direction)`,
+  `choose_coordinates(rng, k)`, `select_parent(feedback)`, `check_request(request)`.
+- Slot records: `seed_key`/`seed`, the canonical recipe JSON in `raw_output`,
+  `latency_ms` = compute time, and `pcm_sha256`/`file_sha256` when the waveform is
+  usable. A2 writes no audio. `a2 = A2Detail(mode, parent_slot_id, mutations)`, and
+  every reflection correction is logged (`corrected=true`). A2 never times out.
+- Cross-platform fixture: `tests/generation/fixtures/a2-proposals.json`. Credibility check
+  (synthetic): `python -m av_generation._a2_credibility --grid`, with the result in
+  `generation/runs/DEMO-a2-credibility/grid.json`.
 
 ## A1 hand-designer interface (#19)
 
