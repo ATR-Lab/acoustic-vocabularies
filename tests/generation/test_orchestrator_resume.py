@@ -230,17 +230,29 @@ def test_rater_withdrawal_marks_the_batch_incomplete_and_rebuilds(tmp_path):
 
 
 def test_no_event_follows_the_end_after_a_withdrawal_in_accelerated_time(tmp_path):
-    """Accelerated real time, slots announced 0.5 s ahead: a rater withdraws 1 s into
+    """Accelerated real time, slots announced 0.5 s ahead: a rater withdraws 5 s into
     rating slot p2. That slot runs to its lock and keeps its records, the next slot is
     never announced (no event follows `end`) and a rejoining station's snapshot is
-    `ended` with no slot."""
+    `ended` with no slot.
+
+    At 20x, 5 s of run time is 250 ms of real time, and a loaded runner can wake the
+    orchestrator later than that for p1's lock. The withdrawal therefore also waits
+    until p1 is closed (its three rating records are written): p2 is then the slot in
+    progress for the orchestrator too, not only on the clock."""
     clock = ScaledClock(20)
     batch = sim.make_sim_batch(tmp_path, "DEMO-wd-04", clock=clock)
     config = batch.orchestrator.config
     host = batch.orchestrator.panel_host()
     target = f"{config.batch_id}.{config.atom_order[0]}.r1p2"
+    previous = f'"rating_slot_id":"{config.batch_id}.{config.atom_order[0]}.r1p1"'
+    ratings_log = batch.layout.log("rating")
     stop = threading.Event()
     during = []
+
+    def p1_closed():
+        if not ratings_log.exists():
+            return False
+        return ratings_log.read_text(encoding="utf-8").count(previous) == 3
 
     def withdraw():
         seq = 0
@@ -248,7 +260,7 @@ def test_no_event_follows_the_end_after_a_withdrawal_in_accelerated_time(tmp_pat
             for event in host.wait_events(seq, 0.05):
                 seq = event.seq
                 if event.kind == "slot" and event.slot.rating_slot_id == target:
-                    while clock.now_ms() < event.slot.start_ms + 1_000:
+                    while clock.now_ms() < event.slot.start_ms + 5_000 or not p1_closed():
                         clock.sleep(0.1)
                     host.report_withdrawal("R02", "S2", "unwell")
                     during.append(host.snapshot())
