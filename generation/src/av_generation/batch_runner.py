@@ -118,6 +118,7 @@ __all__ = [
     "serve_panel",
     "station_urls",
     "wait_for_stations",
+    "wait_for_stations_to_leave",
 ]
 
 ProposerMode = Literal["real", "sim"]
@@ -129,6 +130,10 @@ PANEL_PORT: Final = 8765
 """Default port of the rater panel server (the stations' URL)."""
 STATION_TIMEOUT_S: Final = 600.0
 """Default real seconds to wait for every seat's station before the session starts."""
+STATION_END_GRACE_S: Final = 10.0
+"""Default real seconds a station session waits, after its appointment, for the stations
+to leave before it stops the panel server: stations close their socket when they receive
+`end`, and stopping the server first could lose that message."""
 DEMO_GENERATION_CONFIG_NAME: Final = "DEMO-batch-runner"
 """Name of the generation config built for a demo/synthetic run without one."""
 
@@ -570,6 +575,19 @@ def wait_for_stations(
         time.sleep(poll_s)
 
 
+def wait_for_stations_to_leave(
+    orchestrator: Orchestrator, *, timeout_s: float = STATION_END_GRACE_S, poll_s: float = 0.05
+) -> tuple[str, ...]:
+    """Block until no seat's station is connected (stations leave on `end`), at most
+    `timeout_s` real seconds; returns the stations still connected."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        connected = tuple(station for station, up in orchestrator.console().stations if up)
+        if not connected or time.monotonic() >= deadline:
+            return connected
+        time.sleep(poll_s)
+
+
 def _appointments(orchestrator: Orchestrator, appointment: Appointment) -> list[int]:
     nxt = orchestrator.next_atom()
     if nxt is None:
@@ -620,6 +638,7 @@ def run_session(
     panel_host: str = "127.0.0.1",
     panel_port: int = PANEL_PORT,
     station_timeout_s: float = STATION_TIMEOUT_S,
+    station_end_grace_s: float = STATION_END_GRACE_S,
     rating_policy: sim.RatingPolicy | None = None,
     designer_invalid_slots: frozenset[str] = frozenset(),
     designer_timeout_slots: frozenset[str] = frozenset(),
@@ -636,7 +655,10 @@ def run_session(
       once it serves, e.g. to start bot stations from `station_urls(batch)`, and the
       session waits until every seat has joined. A station session runs one appointment
       (`E_MODE` for `"all"`): the stations end with it, so the next appointment needs
-      the run reopened (`open_batch(..., resume=True)`; `E_MODE` on this batch). Or
+      the run reopened (`open_batch(..., resume=True)`; `E_MODE` on this batch). After
+      the appointment the session waits up to `station_end_grace_s` real seconds for the
+      stations to leave (they close their socket on `end`) before the panel server stops,
+      so none misses the `end`; stations still connected then are logged. Or
       in-process bot raters (`panel="bots"`, `_batch_sim.SyntheticPanel` with
       `rating_policy`, default the seeded bot policy).
     - A reopened run (`batch.resumed`) first finishes an interrupted atom
@@ -706,10 +728,17 @@ def run_session(
             wait_for_stations(orch, timeout_s=station_timeout_s)
         if batch.resumed:
             orch.resume()
-        for k in _appointments(orch, appointment):
+        ran = _appointments(orch, appointment)
+        for k in ran:
             log(f"Appointment {k}: started")
             orch.run_appointment(k)
             log(f"Appointment {k}: done")
+        if panel == "stations" and ran:
+            # The stations leave when they get `end`; stopping the server first can lose
+            # it (uvicorn closes WebSockets at once on shutdown).
+            stayed = wait_for_stations_to_leave(orch, timeout_s=station_end_grace_s)
+            if stayed:
+                log(f"Stations still connected after the end: {', '.join(stayed)}")
     nxt = orch.next_atom()
     view = orch.console()
     log(f"Atoms finished: {view.atoms_finished}/{len(orch.config.atom_order)}; next: {nxt}")
