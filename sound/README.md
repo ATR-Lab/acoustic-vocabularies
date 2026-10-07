@@ -63,11 +63,10 @@ Stable entry points, exported from `av_sound`. The full contract is in
 | `features(recipe)`, `sum_squared_diff(a, b)`, `distance(a, b)`, `separated(a, b, threshold)` | Exact 12-feature metric; `distance` is a float for reports |
 | `REASON_CODES`, `VALIDATOR_VERSION`, `load_separation_threshold()`, `parse_threshold()` | Codes, version and the configured threshold (exact `Fraction`) |
 | `load_reserved_registry()`, `ReservedRegistry`, `ReservedEntry` | Reserved signals (`E_RESERVED`) |
-| `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
-| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `nonlexical_assets()`, `nonlexical_asset(id)`, `calibration_example(profile)` -> `NonlexicalAsset` | Calibration examples (96,000 samples per profile), READY cue and grammar clicks; `.pcm`, `.pcm_sha256`, `.file_sha256`, `.segments`, levels ([`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `build_reserved_registry()`, `CALIBRATION_SAMPLES` | The registry `reserved/registry.json` must equal; 96,000 |
-| `AtomAudio(atom_id, profile, pcm)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` also works |
+| `AtomAudio(atom_id, profile, pcm, *, book_id=None)`, `AtomAudio.from_rendered()` | One committed atom (`K-a1` .. `Q-r4`); any object with `atom_id`, `profile`, `pcm` (and optional `book_id`) also works |
+| `compose_message(action, referent, *, heldout=None, audit=None) -> Message` (alias `compose`) | Action + 9,600 zero samples + referent; always refuses the 14 held-out IDs (`heldout=` can only add IDs; `HeldOutMessageError`) and mixed profiles, families, books or roles (`CompositionError`) |
 | `composite_hash(action, referent) -> str` | Expected SHA-256 of a message, held-out included; returns no samples |
 | `message_length(action, referent) -> int` | Message samples from metadata (`total_ms`, recipe, atom); never renders |
 | `write_message_wav(message, path) -> str` | Canonical WAV of a trained message; returns `file_sha256` |

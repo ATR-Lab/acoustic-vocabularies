@@ -46,6 +46,7 @@ from av_sound import (
 from av_sound.composer import MOTIF_SAMPLES
 from av_sound.nonlexical import (
     ASSET_IDS,
+    ASSET_SPEC_VERSION,
     CLICK_PEAK,
     CLICK_SAMPLES,
     DOUBLE_CLICK_ONSET,
@@ -196,6 +197,7 @@ def test_registry_lists_every_asset_with_hashes_that_match_a_rebuild():
     assert text == json.dumps(doc, indent=2, sort_keys=True) + "\n"
     registry = load_reserved_registry()
     assert registry.renderer_version == RENDERER_VERSION
+    assert registry.asset_spec_version == ASSET_SPEC_VERSION == doc["asset_spec_version"]
     assert registry == build_reserved_registry()
     assert registry.to_dict() == doc
     assert [e.id for e in registry.entries] == list(ASSET_IDS)

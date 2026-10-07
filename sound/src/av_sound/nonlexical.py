@@ -55,7 +55,8 @@ from av_sound.tables import (
 from av_sound.wav import file_sha256, pcm_sha256
 
 ASSET_SPEC_VERSION: Final = "0.1.0"
-"""Version of the asset definitions; bumped whenever any asset's bytes change."""
+"""Version of the asset definitions, recorded in the registry; bumped whenever any
+asset's design or bytes change."""
 
 # Calibration examples (Study B protocol §3 and §5.1; Study A protocol §5).
 CALIBRATION_MS: Final = 2000
@@ -382,4 +383,5 @@ def build_reserved_registry() -> ReservedRegistry:
         registry_version=REGISTRY_VERSION,
         renderer_version=RENDERER_VERSION,
         entries=tuple(a.to_entry() for a in nonlexical_assets()),
+        asset_spec_version=ASSET_SPEC_VERSION,
     )
