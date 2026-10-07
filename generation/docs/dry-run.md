@@ -286,7 +286,18 @@ Problems found, and suggested follow-ups:
    (100x station run) and `test_audit.py::test_csv_cells` (a Hypothesis health check)
    failed once. Both pass alone. Follow-up: slow the station test down or loosen it, and
    relax the health check.
-7. **CI time.** In the first CI run of this module, `test_dry_run.py` took 4 min 29 s on
+7. **The panel server stopped before the stations had the `end` (fixed here, #20).** In the
+   second CI run every bot station on the Windows runner followed all 144 slots but
+   never received `end appointment_complete`: `run_session` stopped the panel server
+   about 5 ms of real time after the appointment, and uvicorn closes WebSockets at once
+   when it shuts down. The bots then used up their 20 reconnects (`end_reason` `None`).
+   #21's `test_rater_panel_runner.py` failed in the same run in the same way. A human
+   station would show "reconnecting" instead of the end screen. Fix in
+   `batch_runner.run_session`: after the appointment it waits up to
+   `station_end_grace_s` (10 s) for the stations to leave (station pages and bots close
+   their socket on `end`) before the server stops, and logs any station still
+   connected (`wait_for_stations_to_leave`; tests in `test_batch_runner.py`).
+8. **CI time.** In the first CI run of this module, `test_dry_run.py` took 4 min 29 s on
    the Windows runner (Ubuntu 3 min 21 s, macOS 2 min 29 s); the Windows test step took
    30 min 29 s of the job's 45 min. Its fixtures now make `os.fsync` a no-op (fsynced log
    lines are slow on Windows, and durability is not under test there), and the
@@ -323,7 +334,7 @@ transitions run long enough that the panel bookings must be extended.
 
 | Item | Decision | Rationale |
 | --- | --- | --- |
-| Driver location | `av_generation.dryrun` (the skeleton's #22 module), CLI `python -m av_generation.dryrun` | One module, which the G4 freeze leaves out of `generation.code` (`freeze.GENERATION_CODE_EXCLUDED`): a dry-run tool is not study code, and a new module would change the frozen code hash |
+| Driver location | `av_generation.dryrun` (the skeleton's #22 module), CLI `python -m av_generation.dryrun` | One module, which the G4 freeze leaves out of `generation.code` (`freeze.GENERATION_CODE_EXCLUDED`): a dry-run tool is not study code, while a new private module would count in that item |
 | Synthetic batch config | The DEMO batch's profile, atom order and books, with batch `DEMO-DRY-P01`, seed namespace `DEMO-DRY-P01-s1` and the panel order and aliases drawn from set namespace `DEMO-DRY` by the real schedule functions | The dry run's seeds differ from every other DEMO run, and the panel goes through the same code as a real batch |
 | Bot raters (Proposed: comfort acceptable p = 0.9, association and distinguishability uniform on 1-7) | Adopted: `rater.BotRatingPolicy(p_comfort_acceptable=0.9)`, seeded per run, rater and rating slot | The issue's proposal; a candidate is then eligible with probability 0.972, so a zero-eligible atom happens only where it is injected |
 | Bot designer think time | Uniform 10-35 s per slot, seeded per slot; none before an invalid submit | With instant submits the A1 window would end after about a second, and the timing would not test the proposal window. 35 s keeps a slot under its 40-s cap, and with at most one skipped slot per round an A1 window stays at or below 110 s |
