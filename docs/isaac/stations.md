@@ -16,6 +16,11 @@ revision, a pinned image digest, publisher rate and namespace policy. Configs
 use canonical UTF-8 JSON and LF; JSON is also the supported YAML 1.2 subset if an
 operator chooses a `.yaml` suffix. Loading checks the configured raw SHA-256.
 Do not silently rebuild a config after a mismatch or recapture a snapshot.
+Two optional fields set the private command idempotency limits:
+`command_cache_size` (default 1,024) and `command_request_capacity` (default
+16,384). They must satisfy `1 <= cache <= capacity <= 262,144`.
+`command_limits(config)` returns them as `CommandDispatcher` keyword arguments.
+See [commands](commands.md#idempotency-for-the-whole-control-session).
 
 A fleet rejects duplicate identities, host ports, domains or gateway UIDs.
 Separate ports alone are insufficient authentication: a same-UID process can

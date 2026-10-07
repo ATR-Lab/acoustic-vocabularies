@@ -61,11 +61,51 @@ later. A changed body with an existing ID receives `REQUEST_ID_CONFLICT`.
 The protected lock is checked before all cached outcomes.
 
 Request IDs are scoped to a fresh private control session. A restarted process
-rejects old session IDs. The cache never evicts an ID and then re-executes an
-old retry: reaching its configured capacity faults/pauses admission until an
-explicit service restart. Select the capacity for the visit length. Queue
-saturation is rejected as `COMMAND_QUEUE_FULL` and logged without scene access.
-Disconnected clients do not cancel already admitted commands or their logs.
+rejects old session IDs. Queue saturation is rejected as `COMMAND_QUEUE_FULL`
+and logged without scene access. Disconnected clients do not cancel already
+admitted commands or their logs.
+
+### Idempotency for the whole control session
+
+Duplicate detection covers every remembered request ID for the life of the
+control session, and the durable command log is its authority. A request ID is
+never silently forgotten, so an old retry can never execute again:
+
+- **Hot tier, `cache_size` (default 1,024).** Full prior replies for the most
+  recently used IDs, held in memory (about 3 KB each).
+- **Cold tier.** When the hot tier is full, the least recently used entry moves
+  to a compact index: the 16-byte ID, the body fingerprint and the location
+  (`event_seq`, byte offset and length) of its fsynced terminal event in
+  `DurableCommandLog`. That is about 190 bytes per ID. A changed body under an
+  evicted ID is still `REQUEST_ID_CONFLICT`, with no disk read. An identical
+  replay reads that one event back through a persistent read handle (a seek, not
+  a file open). It checks the session envelope, `event_seq`, station, request ID,
+  body fingerprint and original reply, then replays the logged outcome with
+  `duplicate=true`. If the read or any check fails, the dispatcher fails closed:
+  it latches `COMMAND_LOG_READBACK_FAILED`, pauses, replies `COMMAND_FAILED` and
+  does not execute.
+- **`request_capacity` (default 16,384, maximum 262,144).** The total number of
+  remembered IDs, hot plus cold, including an admitted demo that has not yet
+  completed. When this is reached, the next new ID faults and pauses admission
+  with `IDEMPOTENCY_CAPACITY` until an explicit service restart. Every
+  remembered ID still replays. In the worst case the cold index uses about
+  50 MB.
+
+Only events written by a `DurableCommandLog` can be evicted, so the sink must
+return that log's `CommandLogLocator`. Wrapping sinks, such as the view-observation
+journal, pass the locator through. A sink that returns no locator (for example a
+test list) pins its entries in the hot tier. That restores the original
+behavior: admission faults at `cache_size`.
+
+`idempotency_limits` validates `1 <= cache_size <= request_capacity <= 262,144`.
+Configure the limits per station with the optional `command_cache_size` and
+`command_request_capacity` fields. `isaac.stations.config.command_limits` turns
+them into dispatcher keyword arguments. For a joined run, set them with
+`run_joined_service(..., command_cache_size=..., command_request_capacity=...)`
+or `run_scene.py --e2e-command-cache-size/--e2e-command-request-capacity`.
+The default capacity is above the 12,000 IDs of the longest schedule the soak
+driver accepts (36,000 s at 20 commands/minute). The default eight-hour schedule
+has about 2,800 IDs.
 
 `reset_ok` reports only that reset attempt. A duplicate old reset reply is not
 a new verification; callers must also check current health/exposure state.
@@ -84,7 +124,7 @@ engine.
 
 Construct `CommandDispatcher(reset_manager, durable_log, station_id=...,
 allowed_client=..., demo_factory=..., hold_robot=make_robot_hold(adapter),
-publisher=...)`, then `CommandQueue(dispatcher)`. The simulation loop order is:
+publisher=..., **command_limits(station_config))`, then `CommandQueue(dispatcher)`. The simulation loop order is:
 
 1. `handoff.drain()` validates queued commands and advances one demo safe point.
 2. Advance physics and refresh the articulation at the normal fixed step.
@@ -134,6 +174,18 @@ request conflicts and restart identity, pause/resume/stop, priority lock
 transition, reset failure, robot-only hold and unhidden object drift.
 `test_command_transport.py` exercises the actual approved WebSocket library on
 Linux with a synthetic backend, including peer refusal and Unix permissions.
+`test_command_idempotency.py` covers whole-session idempotency:
+- Eviction, and a duplicate or conflict after eviction, with no re-execution.
+  This includes an evicted demo and a superseded unlock.
+- The hard `request_capacity` refusal, with every remembered ID still replayable.
+- Fail-closed read-back after a read error or tampering on disk.
+- A soak-like 3,000-command run with the default limits, followed by a replay of
+  all 3,000 IDs. Nothing re-executes and each original outcome is returned.
+- A tracemalloc bound. With a 64-entry hot tier, 2,800 further commands added
+  about 190 bytes each, compared with about 3 KB for a hot entry.
+- Validation of the station config, schema and joined-service limits.
+
+None of this is a soak result.
 
 `run_command_check` in `isaac.commands.benchmark` tests the lock against the
 actual scene, checks exact before/after state hashes for 32 protected rejects,

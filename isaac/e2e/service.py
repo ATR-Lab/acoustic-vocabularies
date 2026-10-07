@@ -55,14 +55,16 @@ def advance_once(adapter, dispatcher, handoff, publisher, sim_step, trace=None, 
 
 def run_joined_service(reset_manager, layout, output, *, seconds, station_id,
                        host_uid, public_socket, private_socket, control_session_id=None, joint_csv=None,
-                       private_timing_seconds=0, view_observation=None):
+                       private_timing_seconds=0, view_observation=None,
+                       command_cache_size=None, command_request_capacity=None):
     """Bounded service; fresh output and explicitly owned private Unix paths.
 
 Both sockets are permission0600, owned by the explicitly supplied host relay UID.
 The container remains --network none. Host relays/SSH forwarding are separate,
 loopback-only operator actions; this function never creates a host TCP listener.
 """
-    from isaac.commands.dispatcher import CommandDispatcher
+    from isaac.commands.dispatcher import (CommandDispatcher, DEFAULT_CACHE_SIZE,
+                                           DEFAULT_REQUEST_CAPACITY, idempotency_limits)
     from isaac.commands.event_log import DurableCommandLog
     from isaac.commands.hold import make_robot_hold
     from isaac.commands.queue import CommandQueue
@@ -80,6 +82,9 @@ loopback-only operator actions; this function never creates a host TCP listener.
         raise ValueError('Private timing is disabled0 or explicitly bounded1..900s within the service lease')
     if type(host_uid) is not int or host_uid < 0:
         raise ValueError('Explicit host relay UID required')
+    command_cache_size, command_request_capacity = idempotency_limits(
+        DEFAULT_CACHE_SIZE if command_cache_size is None else command_cache_size,
+        DEFAULT_REQUEST_CAPACITY if command_request_capacity is None else command_request_capacity)
     if view_observation is not None:
         from isaac.view_capture.observations import validate_options
         validate_options(view_observation,seconds)
@@ -135,7 +140,8 @@ loopback-only operator actions; this function never creates a host TCP listener.
             publisher.observation=observation
             command_sink=observation.command_sink(command_log)
         dispatcher=CommandDispatcher(reset_manager,command_sink,station_id=station_id,
-            allowed_client=f'uid:{host_uid}',hold_robot=make_robot_hold(adapter),publisher=publisher)
+            allowed_client=f'uid:{host_uid}',hold_robot=make_robot_hold(adapter),publisher=publisher,
+            cache_size=command_cache_size,request_capacity=command_request_capacity)
         dispatcher.control_session_id=control_session_id
         handoff=CommandQueue(dispatcher,timing=timing)
         private=PrivateCommandTransport(handoff,socket_path=private_socket,allowed_uid=host_uid,timing=timing)
