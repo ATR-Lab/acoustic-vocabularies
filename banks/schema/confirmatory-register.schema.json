@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/confirmatory-register.schema.json",
+  "title": "Confirmatory Study B bank register summary",
+  "description": "register.json of a confirmatory bank campaign (#28; Study B protocol §4), committed with register.csv before the allocation list is unsealed. Public by design: bank IDs, dyad slots, counts and SHA-256 hashes only (no seeds, recipes, WAVs or allocation information). decision is blocked when a check fails, ready with at least 64 complete banks, escalation_required below 64, escalated once the advisor escalation (a link and a date, never a name) is recorded. unavailable_bank_ids are never assigned and are logged with the allocation reveal API before the first reveal. freeze says whether the freeze tag was checked in the repository and whether the G4 freeze guard (#25) ran; both are true for a confirmatory register.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "archive",
+    "campaign_id",
+    "checks",
+    "compiled_utc",
+    "counts",
+    "crashed_versions",
+    "decision",
+    "demo",
+    "escalation",
+    "format",
+    "format_version",
+    "freeze",
+    "generation_config_sha256",
+    "hashes",
+    "problems",
+    "set",
+    "slots_total",
+    "spare_rule",
+    "unavailable_bank_ids"
+  ],
+  "properties": {
+    "format": {"const": "av-banks/confirmatory-register"},
+    "format_version": {"const": 1},
+    "campaign_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,38}[A-Za-z0-9]$"},
+    "set": {"enum": ["confirmatory", "demo"]},
+    "demo": {"type": "boolean"},
+    "compiled_utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"},
+    "generation_config_sha256": {"$ref": "#/$defs/sha256"},
+    "freeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_frozen_sha256",
+        "freeze_version",
+        "guard_checked",
+        "manifest_sha256",
+        "repo_commit",
+        "status",
+        "tag",
+        "tag_checked",
+        "tag_commit"
+      ],
+      "properties": {
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "freeze_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+        "status": {"enum": ["draft", "frozen"]},
+        "tag": {"oneOf": [{"type": "string", "pattern": "^[!-~]{1,64}$"}, {"type": "null"}]},
+        "repo_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
+        "config_frozen_sha256": {"$ref": "#/$defs/sha256"},
+        "tag_checked": {"type": "boolean"},
+        "tag_commit": {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{40}$"}, {"type": "null"}]},
+        "guard_checked": {"type": "boolean"}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "banks",
+        "complete",
+        "main_complete",
+        "main_unavailable",
+        "spares_complete",
+        "spares_unavailable",
+        "unavailable"
+      ],
+      "properties": {
+        "banks": {"type": "integer", "minimum": 0},
+        "complete": {"type": "integer", "minimum": 0},
+        "unavailable": {"type": "integer", "minimum": 0},
+        "main_complete": {"type": "integer", "minimum": 0},
+        "main_unavailable": {"type": "integer", "minimum": 0},
+        "spares_complete": {"type": "integer", "minimum": 0},
+        "spares_unavailable": {"type": "integer", "minimum": 0}
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_banks_verified",
+        "attempts_within_cap",
+        "bank_records",
+        "complete_banks_verified",
+        "config_matches_freeze",
+        "seeds_unique_and_disjoint",
+        "slots_within_cap"
+      ],
+      "properties": {
+        "bank_records": {"type": "boolean"},
+        "attempts_within_cap": {"type": "boolean"},
+        "slots_within_cap": {"type": "boolean"},
+        "config_matches_freeze": {"type": "boolean"},
+        "complete_banks_verified": {"type": "boolean"},
+        "all_banks_verified": {"type": "boolean"},
+        "seeds_unique_and_disjoint": {"type": "boolean"}
+      }
+    },
+    "problems": {"type": "array", "maxItems": 50, "items": {"type": "string", "maxLength": 2000}},
+    "decision": {"enum": ["ready", "escalation_required", "escalated", "blocked"]},
+    "escalation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "date", "needed", "reference", "required", "rule"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "rule": {"type": "string"},
+        "complete": {"type": "integer", "minimum": 0},
+        "needed": {"const": 64},
+        "reference": {
+          "oneOf": [
+            {"type": "string", "pattern": "^https://github\\.com/ATR-Lab/acoustic-vocabularies/(issues|pull)/[0-9]+(#[!-~]+)?$"},
+            {"type": "null"}
+          ]
+        },
+        "date": {"oneOf": [{"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
+      }
+    },
+    "unavailable_bank_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(bank|DEMO)-C[0-9]{3}$"}
+    },
+    "spare_rule": {"type": "string"},
+    "crashed_versions": {"type": "integer", "minimum": 0},
+    "slots_total": {"type": "integer", "minimum": 0},
+    "hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archive_sha256",
+        "plan_sha256",
+        "register_csv_sha256",
+        "seed_check_sha256",
+        "slot_timing_csv_sha256",
+        "timing_csv_sha256",
+        "used_seeds_sha256",
+        "verification_log_sha256",
+        "verification_sha256"
+      ],
+      "properties": {
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "seed_check_sha256": {"$ref": "#/$defs/sha256"},
+        "used_seeds_sha256": {"$ref": "#/$defs/sha256"},
+        "register_csv_sha256": {"$ref": "#/$defs/sha256"},
+        "verification_log_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "verification_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "timing_csv_sha256": {"$ref": "#/$defs/sha256"},
+        "slot_timing_csv_sha256": {"$ref": "#/$defs/sha256"},
+        "archive_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes", "files", "name", "sha256"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Za-z0-9-]+-banks\\.tar$"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "files": {"type": "integer", "minimum": 0},
+        "bytes": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"set": {"const": "confirmatory"}}, "required": ["set"]},
+      "then": {
+        "properties": {
+          "freeze": {
+            "properties": {
+              "status": {"const": "frozen"},
+              "tag_checked": {"const": true},
+              "tag_commit": {"type": "string"},
+              "guard_checked": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
