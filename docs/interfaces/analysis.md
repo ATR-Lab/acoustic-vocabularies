@@ -312,18 +312,50 @@ actual delay, real-data runs (out of scope).
 ## Integrity dashboard (#35)
 
 Producer: integrity monitoring dashboard (#35). Consumers: study coordinator and
-research assistants (masked staff), pilot reviews. Design and reading guide:
-`analysis/docs/monitoring.md`.
+research assistants (masked staff), pilot reviews O6.3.4 and O6.3.5 (fault and overrun
+rates). Design, allowlist and reading guide: `analysis/docs/monitoring.md`.
 
-- `av-analysis dashboard --root DIR`: `monitoring/index.html` (static, watermarked) from
-  `reconciled/visit-status.csv`, `reconciled/discrepancies.csv` and
-  `reconciled/enrollment.csv` only, through an explicit column allowlist
-  (`monitoring.allowlist()`); panels `monitoring.PANELS` (alerts, enrollment, allocation,
-  attrition, windows, faults, reconciliation). Comfort and welfare come from
-  `visit-status` `comfort_flag`, `comfort_deviations_n` and `withdrawal_deviations_n`;
-  faults by type from `fault_<type>_n` (`vocab.FAULT_TYPES`, including `other`).
-- Regenerated after each reconciliation run by `av-analysis refresh --root DIR`.
-- Red alerts for `WRONG_FILE_MAPPING`, `ANSWER_LEAK`, `OLD_WAVEFORM_CHANGED` with visit IDs.
+- `av-analysis dashboard --root DIR` reads `reconciled/visit-status.csv`,
+  `reconciled/discrepancies.csv` and `reconciled/enrollment.csv` only and writes
+  `monitoring/index.html` (static page: inline CSS, no script, no network),
+  `monitoring/dashboard.json` (panel metrics,
+  [schema](../../analysis/schema/dashboard-data.schema.json)) and
+  `monitoring/manifest.json` (`outputs-manifest.schema.json`). Exit 0 written, 1 written
+  with red alerts, 2 refused input (nothing written). `av-analysis refresh --root DIR`
+  regenerates it after each reconciliation run.
+- **Column allowlist** (`monitoring.ALLOWED_COLUMNS`, `allowlist()`): every column of
+  the three tables is either allow-listed or a reviewed exclusion
+  (`monitoring.EXCLUDED_COLUMNS`, dropped at load). A column that `masking` forbids
+  under policy `masked`, a free-text template column or any other column fails the
+  build before a row is read. Contract for #33: a column added to one of these tables
+  makes the dashboard refuse it until #35 classifies the column.
+- **Panels** (`monitoring.PANELS`): suspension alerts, enrollment against frozen targets
+  (`monitoring_metrics.TARGETS`: Study A 216 learners in 54 books and 18 batches, pilot 18
+  in 9 and 3; Study B 128 participants in 64 dyads, pilot 16 in 8; planning budgets until
+  O6.4.1 and O6.4.3 freeze them), allocation progress per batch or dyad (Study B
+  members counted per dyad, never which member), attrition and missed visits, window
+  adherence and dyad pair timing, faults pooled, per study and set and per station by
+  `vocab.FAULT_TYPES` against the 5% trigger, overruns against the 10% trigger,
+  reconciliation status, discrepancy codes, open deviations, comfort and withdrawal
+  reports. No per-person, per-book or per-condition split.
+- **Red alerts** for `WRONG_FILE_MAPPING`, `ANSWER_LEAK`, `OLD_WAVEFORM_CHANGED`: from a
+  discrepancy's `suspension_event` (or its code's event) and from `visit-status`
+  `suspension_events`, with the affected visit IDs; a linked deviation record does not
+  remove an alert. Amber triggers: `monitoring_metrics.TRIGGERS` (rates strictly above
+  5% and 10%; `enrollment_mismatch` also when a study and set has `visit-status` rows
+  but no `enrollment` row).
+- **Last update**: the later of the latest visit date and the latest reveal-log date,
+  with the SHA-256 of the three input tables (no wall clock).
+- `dashboard.json` (`format` `av-analysis/dashboard-data`, `format_version` 1): `as_of`,
+  `inputs`, `thresholds`, `groups`, `enrollment`, `allocation`, `attrition`, `windows`,
+  `faults` (`pooled`, `by_group`, `by_station`: `opportunities_n`, `fault_n`,
+  `fault_rate`, `trigger_exceeded`, `by_type`), `overruns` (`pooled`, `by_group`,
+  `by_visit`, `by_station`: `checked_n`, `overrun_n`, `overrun_share`,
+  `trigger_exceeded`), `reconciliation`, `alerts` (`suspension`, `triggers`). Strict
+  at every level; counts, coded IDs, enumerations and generated text only.
+- Synthetic demonstration tables: `python -m av_analysis.monitoring_demo --out DIR
+  [--seed DEMO-...] [--study] [--set] [--progress] [--inject NAME[=VISIT_ID]]`
+  (SYNTHETIC roots only; stand-in until #33's `synth-logs` and `derive` run in the chain).
 
-**Pending (#35):** the allowlist, panel metrics, last-update rule, reading guide,
-masking sign-off.
+**Pending (#35):** advisor sign-off on masking (human); frozen targets (O6.4.1,
+O6.4.3); screening-case source (#73 with #33).

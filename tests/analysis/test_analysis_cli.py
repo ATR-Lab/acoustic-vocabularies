@@ -113,13 +113,16 @@ def test_refresh_runs_reconcile_derive_dashboard_and_skips_missing_steps(
     assert capsys.readouterr().err.count("skipped") == 3
 
     def with_steps(codes):
-        """build_parser whose refresh steps are fakes returning the given exit codes."""
+        """build_parser whose refresh steps are fakes returning the given exit codes
+        (None: the step raises NotImplementedError, like an interface not built yet)."""
 
         def build():
             parser, handlers = real_build_parser()
             for step, code in codes.items():
 
                 def handler(args, step=step, code=code):
+                    if code is None:
+                        raise NotImplementedError(step)
                     calls.append((step, args.root, getattr(args, "all", None)))
                     return code
 
@@ -128,7 +131,15 @@ def test_refresh_runs_reconcile_derive_dashboard_and_skips_missing_steps(
 
         return build
 
-    monkeypatch.setattr(cli, "build_parser", with_steps({"reconcile": 1, "derive": 0}))
+    # Steps that are not implemented yet are skipped (independent of which issues landed).
+    unbuilt = dict.fromkeys(("reconcile", "derive", "dashboard"))
+    monkeypatch.setattr(cli, "build_parser", with_steps(unbuilt))
+    assert cli.main(["refresh", "--root", str(tmp_path)]) == 3
+    assert capsys.readouterr().err.count("skipped") == 3
+
+    monkeypatch.setattr(
+        cli, "build_parser", with_steps({"reconcile": 1, "derive": 0, "dashboard": None})
+    )
     assert cli.main(["refresh", "--root", "r"]) == 1  # findings: continue, dashboard skipped
     assert calls == [("reconcile", "r", True), ("derive", "r", None)]
     assert "refresh: reconcile exit 1" in capsys.readouterr().out

@@ -1,0 +1,1585 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/dashboard-data.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Panel metrics of the masked integrity dashboard (#35), computed from the allow-listed columns of reconciled/visit-status.csv, discrepancies.csv and enrollment.csv only. Counts, coded IDs, enumerations and generated text: no outcome, response, rating, condition, personal name or contact field (masking policy 'masked'). See analysis/docs/monitoring.md.",
+  "properties": {
+    "alerts": {
+      "additionalProperties": false,
+      "properties": {
+        "suspension": {
+          "description": "Red alerts: one entry per suspension event raised (analysis plan section 8).",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "codes": {
+                "items": {
+                  "pattern": "^[A-Z][A-Z0-9_]{0,79}$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "discrepancies_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "event": {
+                "enum": [
+                  "WRONG_FILE_MAPPING",
+                  "ANSWER_LEAK",
+                  "OLD_WAVEFORM_CHANGED"
+                ]
+              },
+              "title": {
+                "enum": [
+                  "Wrong-file mapping",
+                  "Leaked answer display",
+                  "Changed old waveform"
+                ]
+              },
+              "unresolved_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "visit_ids": {
+                "items": {
+                  "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "event",
+              "title",
+              "visit_ids",
+              "codes",
+              "discrepancies_n",
+              "unresolved_n"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "triggers": {
+          "description": "Amber triggers (feasibility triggers, enrollment stop, reconciliation).",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "description": "Generated from constants and counts.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "set": {
+                "enum": [
+                  "pilot",
+                  "confirmatory",
+                  null
+                ]
+              },
+              "study": {
+                "enum": [
+                  "A",
+                  "B",
+                  null
+                ]
+              },
+              "trigger": {
+                "enum": [
+                  "target_reached",
+                  "target_exceeded",
+                  "enrollment_mismatch",
+                  "fault_rate",
+                  "overrun_share",
+                  "reconciliation_failed",
+                  "not_reconciled",
+                  "pair_gap"
+                ]
+              }
+            },
+            "required": [
+              "trigger",
+              "study",
+              "set",
+              "message"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "suspension",
+        "triggers"
+      ],
+      "type": "object"
+    },
+    "allocation": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "set": {
+            "enum": [
+              "pilot",
+              "confirmatory"
+            ]
+          },
+          "study": {
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "units": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "planned_persons_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "revealed_persons_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "unit_id": {
+                  "pattern": "^(A-[PC][0-9]{2}|B-[PCS][0-9]{2})$",
+                  "type": "string"
+                },
+                "unit_kind": {
+                  "enum": [
+                    "batch",
+                    "dyad",
+                    "spare"
+                  ]
+                },
+                "visits": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expected_n": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "held_n": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "missed_n": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "pending_n": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "visit": {
+                        "enum": [
+                          "D0",
+                          "D7",
+                          "V1",
+                          "V2",
+                          "V3",
+                          "W1",
+                          "W4"
+                        ]
+                      },
+                      "withdrawn_n": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "visit",
+                      "expected_n",
+                      "held_n",
+                      "missed_n",
+                      "withdrawn_n",
+                      "pending_n"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "unit_id",
+                "unit_kind",
+                "planned_persons_n",
+                "revealed_persons_n",
+                "visits"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "study",
+          "set",
+          "units"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "analyzer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "av-analysis"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "as_of": {
+      "additionalProperties": false,
+      "description": "Last update: the latest visit date and reveal-log date of the inputs (no wall clock).",
+      "properties": {
+        "data_date": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "latest_reveal_date": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "latest_visit_date": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "data_date",
+        "latest_visit_date",
+        "latest_reveal_date"
+      ],
+      "type": "object"
+    },
+    "attrition": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "missed_visit_ids": {
+            "items": {
+              "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "set": {
+            "enum": [
+              "pilot",
+              "confirmatory"
+            ]
+          },
+          "study": {
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "visits": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "expected_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "held_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "missed_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "pending_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "visit": {
+                  "enum": [
+                    "D0",
+                    "D7",
+                    "V1",
+                    "V2",
+                    "V3",
+                    "W1",
+                    "W4"
+                  ]
+                },
+                "withdrawn_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "visit",
+                "expected_n",
+                "held_n",
+                "missed_n",
+                "withdrawn_n",
+                "pending_n"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "withdrawals": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "person_id": {
+                  "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}|B-[PCS][0-9]{2}-M[12])$",
+                  "type": "string"
+                },
+                "visit": {
+                  "enum": [
+                    "D0",
+                    "D7",
+                    "V1",
+                    "V2",
+                    "V3",
+                    "W1",
+                    "W4"
+                  ]
+                }
+              },
+              "required": [
+                "person_id",
+                "visit"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "withdrawn_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "study",
+          "set",
+          "persons_n",
+          "withdrawn_persons_n",
+          "visits",
+          "missed_visit_ids",
+          "withdrawals"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "data_kind": {
+      "description": "Watermark (paths).",
+      "enum": [
+        "SYNTHETIC",
+        "REAL"
+      ]
+    },
+    "enrollment": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bank_unavailable_n": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "eligibility_records_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "eligible_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_event_date": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "planned_units_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "remaining_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "revealed_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "revealed_units_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "screening_cases_n": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "set": {
+            "enum": [
+              "pilot",
+              "confirmatory"
+            ]
+          },
+          "spares_used_n": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "study": {
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "target_books_n": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "target_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target_reached": {
+            "type": "boolean"
+          },
+          "target_units_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tracked_persons_n": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unit_kind": {
+            "enum": [
+              "batch",
+              "dyad"
+            ]
+          }
+        },
+        "required": [
+          "study",
+          "set",
+          "unit_kind",
+          "target_units_n",
+          "target_persons_n",
+          "target_books_n",
+          "planned_units_n",
+          "planned_persons_n",
+          "eligibility_records_n",
+          "eligible_persons_n",
+          "screening_cases_n",
+          "revealed_units_n",
+          "revealed_persons_n",
+          "spares_used_n",
+          "bank_unavailable_n",
+          "last_event_date",
+          "remaining_persons_n",
+          "target_reached",
+          "tracked_persons_n"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "faults": {
+      "additionalProperties": false,
+      "description": "Pooled, per study and set, and per station; never per person or condition.",
+      "properties": {
+        "by_group": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "by_type": {
+                "additionalProperties": false,
+                "properties": {
+                  "audio_underrun": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "failed_reset": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "hash_mismatch": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "missing_playback": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "missing_response_log": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "other": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "presentation_freeze": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "audio_underrun",
+                  "missing_playback",
+                  "hash_mismatch",
+                  "failed_reset",
+                  "missing_response_log",
+                  "presentation_freeze",
+                  "other"
+                ],
+                "type": "object"
+              },
+              "fault_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fault_rate": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "held_visits_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "opportunities_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "set": {
+                "enum": [
+                  "pilot",
+                  "confirmatory"
+                ]
+              },
+              "study": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "trigger_exceeded": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "study",
+              "set",
+              "held_visits_n",
+              "opportunities_n",
+              "fault_n",
+              "fault_rate",
+              "trigger_exceeded",
+              "by_type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "by_station": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "by_type": {
+                "additionalProperties": false,
+                "properties": {
+                  "audio_underrun": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "failed_reset": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "hash_mismatch": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "missing_playback": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "missing_response_log": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "other": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "presentation_freeze": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "audio_underrun",
+                  "missing_playback",
+                  "hash_mismatch",
+                  "failed_reset",
+                  "missing_response_log",
+                  "presentation_freeze",
+                  "other"
+                ],
+                "type": "object"
+              },
+              "fault_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fault_rate": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "held_visits_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "opportunities_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "station_id": {
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "trigger_exceeded": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "station_id",
+              "held_visits_n",
+              "opportunities_n",
+              "fault_n",
+              "fault_rate",
+              "trigger_exceeded",
+              "by_type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "pooled": {
+          "additionalProperties": false,
+          "properties": {
+            "by_type": {
+              "additionalProperties": false,
+              "properties": {
+                "audio_underrun": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "failed_reset": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "hash_mismatch": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "missing_playback": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "missing_response_log": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "other": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "presentation_freeze": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "audio_underrun",
+                "missing_playback",
+                "hash_mismatch",
+                "failed_reset",
+                "missing_response_log",
+                "presentation_freeze",
+                "other"
+              ],
+              "type": "object"
+            },
+            "fault_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "fault_rate": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "held_visits_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "opportunities_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "trigger_exceeded": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "held_visits_n",
+            "opportunities_n",
+            "fault_n",
+            "fault_rate",
+            "trigger_exceeded",
+            "by_type"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "pooled",
+        "by_group",
+        "by_station"
+      ],
+      "type": "object"
+    },
+    "format": {
+      "const": "av-analysis/dashboard-data"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "groups": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "set": {
+            "enum": [
+              "pilot",
+              "confirmatory"
+            ]
+          },
+          "study": {
+            "enum": [
+              "A",
+              "B"
+            ]
+          }
+        },
+        "required": [
+          "study",
+          "set"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "inputs": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "enum": [
+              "reconciled/visit-status.csv",
+              "reconciled/discrepancies.csv",
+              "reconciled/enrollment.csv"
+            ]
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "overruns": {
+      "additionalProperties": false,
+      "properties": {
+        "by_group": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "checked_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "overrun_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "overrun_share": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "set": {
+                "enum": [
+                  "pilot",
+                  "confirmatory"
+                ]
+              },
+              "study": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "trigger_exceeded": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "study",
+              "set",
+              "checked_n",
+              "overrun_n",
+              "overrun_share",
+              "trigger_exceeded"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "by_station": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "checked_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "overrun_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "overrun_share": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "station_id": {
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "trigger_exceeded": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "station_id",
+              "checked_n",
+              "overrun_n",
+              "overrun_share",
+              "trigger_exceeded"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "by_visit": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "checked_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "overrun_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "overrun_share": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "set": {
+                "enum": [
+                  "pilot",
+                  "confirmatory"
+                ]
+              },
+              "study": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "trigger_exceeded": {
+                "type": "boolean"
+              },
+              "visit": {
+                "enum": [
+                  "D0",
+                  "D7",
+                  "V1",
+                  "V2",
+                  "V3",
+                  "W1",
+                  "W4"
+                ]
+              }
+            },
+            "required": [
+              "study",
+              "set",
+              "visit",
+              "checked_n",
+              "overrun_n",
+              "overrun_share",
+              "trigger_exceeded"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "pooled": {
+          "additionalProperties": false,
+          "properties": {
+            "checked_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "overrun_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "overrun_share": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "trigger_exceeded": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "checked_n",
+            "overrun_n",
+            "overrun_share",
+            "trigger_exceeded"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "pooled",
+        "by_group",
+        "by_visit",
+        "by_station"
+      ],
+      "type": "object"
+    },
+    "reconciliation": {
+      "additionalProperties": false,
+      "properties": {
+        "by_group": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "fail_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "held_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "held_not_run_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "not_run_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "pass_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "set": {
+                "enum": [
+                  "pilot",
+                  "confirmatory"
+                ]
+              },
+              "study": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "visits_n": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "study",
+              "set",
+              "visits_n",
+              "held_n",
+              "pass_n",
+              "fail_n",
+              "not_run_n",
+              "held_not_run_n"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "codes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "check": {
+                "enum": [
+                  "C1",
+                  "C2",
+                  "C3",
+                  "C4",
+                  "C5",
+                  "C6",
+                  "C7",
+                  "C8"
+                ]
+              },
+              "code": {
+                "pattern": "^[A-Z][A-Z0-9_]{0,79}$",
+                "type": "string"
+              },
+              "discrepancies_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "resolution": {
+                "description": "codes.code(code).resolution",
+                "minLength": 1,
+                "type": "string"
+              },
+              "suspension_event": {
+                "enum": [
+                  "WRONG_FILE_MAPPING",
+                  "ANSWER_LEAK",
+                  "OLD_WAVEFORM_CHANGED",
+                  null
+                ]
+              },
+              "title": {
+                "description": "codes.code(code).title",
+                "minLength": 1,
+                "type": "string"
+              },
+              "unresolved_n": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "code",
+              "check",
+              "title",
+              "resolution",
+              "suspension_event",
+              "discrepancies_n",
+              "unresolved_n"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "deviations": {
+          "additionalProperties": false,
+          "properties": {
+            "comfort_deviations_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "comfort_flags_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "deviations_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "open_deviations_n": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "withdrawal_deviations_n": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "deviations_n",
+            "open_deviations_n",
+            "comfort_deviations_n",
+            "withdrawal_deviations_n",
+            "comfort_flags_n"
+          ],
+          "type": "object"
+        },
+        "failing": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "checks_failed": {
+                "items": {
+                  "enum": [
+                    "C1",
+                    "C2",
+                    "C3",
+                    "C4",
+                    "C5",
+                    "C6",
+                    "C7",
+                    "C8"
+                  ]
+                },
+                "type": "array"
+              },
+              "discrepancies_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "suspension_events": {
+                "items": {
+                  "enum": [
+                    "WRONG_FILE_MAPPING",
+                    "ANSWER_LEAK",
+                    "OLD_WAVEFORM_CHANGED"
+                  ]
+                },
+                "type": "array"
+              },
+              "unresolved_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "visit_id": {
+                "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "visit_id",
+              "checks_failed",
+              "discrepancies_n",
+              "unresolved_n",
+              "suspension_events"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "open_deviation_visits": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "open_deviations_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "visit_id": {
+                "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "visit_id",
+              "open_deviations_n"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "welfare_visits": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "comfort_deviations_n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "comfort_flag": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "visit_id": {
+                "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+                "type": "string"
+              },
+              "withdrawal_deviations_n": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "visit_id",
+              "comfort_flag",
+              "comfort_deviations_n",
+              "withdrawal_deviations_n"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "by_group",
+        "failing",
+        "codes",
+        "deviations",
+        "open_deviation_visits",
+        "welfare_visits"
+      ],
+      "type": "object"
+    },
+    "thresholds": {
+      "additionalProperties": false,
+      "properties": {
+        "fault_rate_trigger": {
+          "type": "number"
+        },
+        "freeze_fault_ms": {
+          "type": "integer"
+        },
+        "overrun_minutes": {
+          "type": "integer"
+        },
+        "overrun_share_trigger": {
+          "type": "number"
+        },
+        "yoked_max_hours": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fault_rate_trigger",
+        "overrun_share_trigger",
+        "overrun_minutes",
+        "freeze_fault_ms",
+        "yoked_max_hours"
+      ],
+      "type": "object"
+    },
+    "windows": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "exceptions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "days_since_anchor": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "timing": {
+                  "enum": [
+                    "in_window",
+                    "early",
+                    "late",
+                    "not_applicable",
+                    "unknown"
+                  ]
+                },
+                "visit_id": {
+                  "pattern": "^(A-[PC][0-9]{2}-L[0-9]{2}-D[07]|B-[PCS][0-9]{2}-M[12]-(V[1-3]|W[14]))$",
+                  "type": "string"
+                },
+                "window_hi_days": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "window_lo_days": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "visit_id",
+                "timing",
+                "days_since_anchor",
+                "window_lo_days",
+                "window_hi_days"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "pairs": {
+            "description": "Study B dyad pair timing (V1-V3), per dyad and visit; null for Study A.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "checked_n": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "outside": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "pair_gap_hours": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "unit_id": {
+                          "pattern": "^(A-[PC][0-9]{2}|B-[PCS][0-9]{2})$",
+                          "type": "string"
+                        },
+                        "visit": {
+                          "enum": [
+                            "D0",
+                            "D7",
+                            "V1",
+                            "V2",
+                            "V3",
+                            "W1",
+                            "W4"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "unit_id",
+                        "visit",
+                        "pair_gap_hours"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "outside_n": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "checked_n",
+                  "outside_n",
+                  "outside"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "set": {
+            "enum": [
+              "pilot",
+              "confirmatory"
+            ]
+          },
+          "study": {
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "visits": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "anchor_visit": {
+                  "enum": [
+                    "D0",
+                    "D7",
+                    "V1",
+                    "V2",
+                    "V3",
+                    "W1",
+                    "W4"
+                  ]
+                },
+                "early_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "held_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "in_window_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "late_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "unknown_n": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "visit": {
+                  "enum": [
+                    "D0",
+                    "D7",
+                    "V1",
+                    "V2",
+                    "V3",
+                    "W1",
+                    "W4"
+                  ]
+                },
+                "window_hi_days": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "window_lo_days": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "visit",
+                "anchor_visit",
+                "window_lo_days",
+                "window_hi_days",
+                "held_n",
+                "in_window_n",
+                "early_n",
+                "late_n",
+                "unknown_n"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "study",
+          "set",
+          "visits",
+          "exceptions",
+          "pairs"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "data_kind",
+    "analyzer",
+    "as_of",
+    "inputs",
+    "thresholds",
+    "groups",
+    "enrollment",
+    "allocation",
+    "attrition",
+    "windows",
+    "faults",
+    "overruns",
+    "reconciliation",
+    "alerts"
+  ],
+  "title": "Integrity dashboard data (monitoring/dashboard.json)",
+  "type": "object"
+}
