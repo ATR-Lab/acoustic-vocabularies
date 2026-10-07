@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 from av_analysis import missingness, simulate, unmask
 from av_analysis.references import ExpectedHash, References
 from av_analysis.scoring import BatteryScore
@@ -37,12 +35,3 @@ def test_issue_34_interfaces_take_the_inputs_they_need():
     assert {"tables", "files"} <= set(inspect.signature(simulate.SyntheticDataset).parameters)
     planned = inspect.signature(unmask.Conditions).parameters
     assert {"planned", "person_condition", "person_unit"} <= set(planned)
-
-
-def test_interface_stubs_raise_not_implemented(tmp_path):
-    with pytest.raises(NotImplementedError):
-        missingness.all_assigned_bounds("A", [], None, {})  # type: ignore[arg-type]
-    with pytest.raises(NotImplementedError):
-        missingness.tipping_grid("A", [], None, {})  # type: ignore[arg-type]
-    with pytest.raises(NotImplementedError):
-        unmask.load_conditions(None, "A", "pilot")  # type: ignore[arg-type]

@@ -1,0 +1,124 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/operating-characteristics-row.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Rejection rate of one contrast of one simulation scenario, with Monte Carlo uncertainty (#34, av-analysis simulate). CSV cells: empty = null. Synthetic only.",
+  "properties": {
+    "contrast": {
+      "enum": [
+        "A3-A2",
+        "A3-A1",
+        "A2-A1",
+        "C",
+        "S",
+        "any",
+        "both"
+      ]
+    },
+    "data_kind": {
+      "description": "Watermark: simulations are synthetic.",
+      "enum": [
+        "SYNTHETIC"
+      ]
+    },
+    "datasets": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "mc95_high": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "mc95_low": {
+      "description": "Wilson 95% Monte Carlo interval.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "mcse": {
+      "description": "sqrt(rate (1 - rate) / datasets).",
+      "minimum": 0,
+      "type": "number"
+    },
+    "mean_estimate": {
+      "description": "Mean estimated contrast (proportion).",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "mean_unit_sd": {
+      "description": "Mean SD of the unit differences.",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "mean_units": {
+      "description": "Mean contributing units.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "rate": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "rejections": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "scenario": {
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": "string"
+    },
+    "seed": {
+      "description": "DEMO- seed label (seeds.rng).",
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": "string"
+    },
+    "study": {
+      "enum": [
+        "A",
+        "B"
+      ]
+    },
+    "true_effect_pp": {
+      "description": "True contrast of the scenario (null for any/both).",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "unavailable": {
+      "description": "Datasets with fewer than 2 units.",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "data_kind",
+    "scenario",
+    "study",
+    "contrast",
+    "rule",
+    "true_effect_pp",
+    "datasets",
+    "rejections",
+    "rate",
+    "mcse",
+    "mc95_low",
+    "mc95_high",
+    "mean_estimate",
+    "mean_unit_sd",
+    "mean_units",
+    "unavailable",
+    "seed"
+  ],
+  "title": "Operating-characteristics row (estimates/simulation/operating-characteristics.csv)",
+  "type": "object"
+}
