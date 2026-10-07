@@ -6,6 +6,7 @@ whether an operator omitted a run. Never publish the private input plan.
 from __future__ import annotations
 
 import argparse
+import csv
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -13,7 +14,7 @@ import os
 from pathlib import Path
 
 from . import content
-from .records import EvidenceError, exact, guid, hash_value, require, sha, strict, validate_data_payload
+from .records import EvidenceError, exact, guid, hash_value, require, sha, strict, validate_data_payload, verify_chain
 from .reconcile import export_bundle, no_links, pinned, read, reconcile, relative, schedule_items
 
 VISITS = {"A": ("D0", "D7"), "B": ("V1", "V2", "V3", "W1", "W4")}
@@ -32,6 +33,9 @@ class VisitEvidence:
     software_complete: bool
     process_started_utc: str
     process_ended_utc: str
+    # Non-null pcm_sha256 values named by the menu ledger and joined (lesson)
+    # journal. They are checked independently of the data-journal joins.
+    ledger_pcm: tuple = ()
 
 
 def phrase_index(messages):
@@ -62,11 +66,15 @@ is not subtracted from audio clocks. Monotonic values remain within their epoch.
     require(study in VISITS and len(visits) <= 64, "HOLDOUT_HISTORY_LIMIT")
     reasons, complete_visits = set(), set()
     person = index = last_end = last_visit = None
-    sessions, events, requests, epochs, engine_epochs, consumed = set(), set(), set(), set(), set(), set()
+    sessions, events, requests, epochs, engine_epochs, requested = set(), set(), set(), set(), set(), set()
+    # message_id -> (session_id, attempt) of the durable novel cue intent that
+    # consumed it. The engine marks exposure consumed at CueRequested, before
+    # any audio_request row exists, so a crash there still consumes the phrase.
+    consumed = {}
     owners = {}
     total_records = 0
     counts = dict(audio_requests=0, audio_observations=0, grammar_audio_events=0,
-                  authorized_heldout_requests=0, heldout_callback_events=0)
+                  ledger_audio_references=0, authorized_heldout_requests=0, heldout_callback_events=0)
     for visit in visits:
         require(visit.visit in VISITS[study], "HOLDOUT_VISIT")
         order = VISITS[study].index(visit.visit)
@@ -101,6 +109,14 @@ is not subtracted from audio clocks. Monotonic values remain within their epoch.
         engine_epochs.update(local_engine_epochs)
         if len(local_epochs) != 1 or any(r["event_type"] == "recovery" for r in visit.records):
             reasons.add("RECOVERED_OR_MISSING_PROCESS_HISTORY")
+        # Menu and lesson ledgers only ever present atoms, profile examples or
+        # trained messages; a held-out composite there is contamination even
+        # when no data-journal request names it. Content provenance of ledger
+        # audio stays with reconcile; this only rejects held-out composites.
+        for digest in visit.ledger_pcm:
+            counts["ledger_audio_references"] += 1
+            require(hash_value(digest), "HOLDOUT_LEDGER_HASH")
+            require(digest not in current_index, "HOLDOUT_LEDGER_CONTAMINATION")
         cues, permits, used_permits, audio, grammar_intents = {}, {}, set(), {}, set()
         for row in visit.records:
             require(row["identity"] == identity, "HOLDOUT_IDENTITY_GRAFT")
@@ -113,6 +129,14 @@ is not subtracted from audio clocks. Monotonic values remain within their epoch.
                 if p["event"] == "state_after" and p["state"] == "CueRequested":
                     require(attempt not in cues and p["opportunity_id"] in visit.items, "HOLDOUT_CUE_REUSE")
                     cues[attempt] = p
+                    item = visit.items[p["opportunity_id"]]
+                    mid = item.get("message_id")
+                    if (item["block"] == "novel" and p["exposure_consumed"] and mid in visit.messages
+                            and visit.messages[mid]["status"] == "heldout"):
+                        # Durable cue intent consumes the phrase even if no
+                        # permit, request or callback follows (e.g. a crash).
+                        require(mid not in consumed, "HOLDOUT_CONSUMED_PHRASE_REPLAY")
+                        consumed[mid] = (identity["session_id"], attempt)
                 elif p["event"] == "novel_buffer_authorized":
                     require(attempt in cues and attempt not in permits, "HOLDOUT_PERMIT_REUSE_OR_ORDER")
                     cue = cues[attempt]
@@ -121,6 +145,7 @@ is not subtracted from audio clocks. Monotonic values remain within their epoch.
                             and visit.messages[item["message_id"]]["status"] == "heldout"
                             and all(p[k] == cue[k] for k in ("clock_epoch", "opportunity_id", "audio_request_ids"))
                             and len(p["audio_request_ids"]) == 1 and guid(p["audio_request_ids"][0]), "HOLDOUT_PERMIT_BINDING")
+                    require(consumed.get(item["message_id"]) == (identity["session_id"], attempt), "HOLDOUT_CONSUMED_PHRASE_REPLAY")
                     permits[attempt] = (item["message_id"], p["audio_request_ids"][0])
                 continue
             if kind == "grammar_stage":
@@ -160,8 +185,11 @@ is not subtracted from audio clocks. Monotonic values remain within their epoch.
                         "HOLDOUT_EARLY_OR_WRONG_PHRASE")
                 require(permits.get(attempt) == (mid, request) and attempt not in used_permits,
                         "HOLDOUT_PERMIT_MISSING_OR_REUSED")
-                require(mid not in consumed, "HOLDOUT_CONSUMED_PHRASE_REPLAY")
-                used_permits.add(attempt); consumed.add(mid); counts["authorized_heldout_requests"] += 1
+                # Second guard: the request must belong to the consuming cue
+                # and a phrase is requested at most once in the whole history.
+                require(consumed.get(mid) == (identity["session_id"], attempt) and mid not in requested,
+                        "HOLDOUT_CONSUMED_PHRASE_REPLAY")
+                used_permits.add(attempt); requested.add(mid); counts["authorized_heldout_requests"] += 1
             else:
                 counts["audio_observations"] += 1
                 require(audio.get(request) == (row["attempt_id"], row["opportunity_id"], digest), "HOLDOUT_OBSERVATION_GRAFT")
@@ -216,6 +244,23 @@ def known_audio(base, config, artifacts, atoms, messages):
     return frozenset(hashes)
 
 
+def ledger_audio(base, artifacts):
+    """Every non-null PCM hash named by chain-verified menu and lesson rows."""
+    digests = []
+    for entry in artifacts:
+        if entry["kind"] not in {"menu_journal", "joined_journal"}:
+            continue
+        raw = read(base/relative(entry["path"]), entry["sha256"])
+        if entry["kind"] == "menu_journal":
+            rows = [row["record"] for row in verify_chain([(entry["path"], raw)], "menu")]
+            keys = ("pcm_sha256",)
+        else:
+            rows = [row["payload"] for row in verify_chain([(entry["path"], raw)], "joined") if row["kind"] == "lesson"]
+            keys = ("pcm_sha256", "action_pcm_sha256", "referent_pcm_sha256")
+        digests.extend(p[k] for p in rows for k in keys if p.get(k) is not None)
+    return tuple(digests)
+
+
 def verify_history(path, expected):
     path = Path(path).absolute(); root = path.parent
     plan = strict(read(path, expected, 1024**2))
@@ -259,7 +304,8 @@ def verify_history(path, expected):
         process = strict(pinned(base, {k: artifacts["process_result"][0][k] for k in ("path", "sha256")}))
         visits.append(VisitEvidence(m["visit"], em["identity"], m["schedule"]["sha256"],
                      schedule_items(schedule, m["study"], m["visit"]), records, messages, known,
-                     report["software_reconciliation_complete"], process["started_utc"], process["ended_utc"]))
+                     report["software_reconciliation_complete"], process["started_utc"], process["ended_utc"],
+                     ledger_audio(base, m["artifacts"])))
         reports.append(dict(manifest_sha256=pin["sha256"], software_reconciliation_complete=report["software_reconciliation_complete"]))
     result = scan_visits(plan["study"], visits)
     if missing:
@@ -269,10 +315,10 @@ def verify_history(path, expected):
     return result
 
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--plan", type=Path, required=True); p.add_argument("--sha256", required=True)
-    p.add_argument("--out", type=Path, required=True); args = p.parse_args()
+    p.add_argument("--out", type=Path, required=True); args = p.parse_args(argv)
     try:
         result = verify_history(args.plan, args.sha256); no_links(args.out)
         with args.out.open("xb") as stream:
@@ -282,7 +328,7 @@ def main():
         return 0 if result["software_history_complete"] else 3
     except EvidenceError as error:
         print(str(error)); return 2
-    except (OSError, ValueError, TypeError, KeyError, UnicodeError):
+    except (OSError, ValueError, TypeError, KeyError, UnicodeError, csv.Error):
         print("HOLDOUT_INPUT_UNREADABLE_OR_MALFORMED"); return 2
 
 

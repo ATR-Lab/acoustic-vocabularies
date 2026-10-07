@@ -49,11 +49,23 @@ refused rather than resolved from a label.
 
 A held-out request needs its exact scheduled novel item, preceding durable cue
 intent and one-use composition permit, and the permit's exact audio request ID.
-The first request consumes the phrase even if no callback follows. Another run,
-session, request ID or rank combination cannot make it unheard again. Permits,
+The durable novel cue intent (`CueRequested` with `exposure_consumed`) consumes
+the phrase, before any request row, matching the engine. A run that stopped after
+that intent, even before its request or callback, therefore still consumes it,
+and a later cue, permit or request for the same phrase is refused. The permit
+and request must belong to the consuming session and attempt, and a phrase is
+requested at most once in the whole history. Another run, session, request ID or
+rank combination cannot make it unheard again. Permits,
 event IDs, data/engine clock epochs and audio request IDs cannot be grafted across
 runs. Grammar and study requests share the same ownership namespace; repeated
 grammar observations are allowed only for the same session, phase and PCM.
+
+Every pinned menu ledger and joined lesson journal is also chain-verified and
+its non-null `pcm_sha256`, `action_pcm_sha256` and `referent_pcm_sha256` values
+are checked against the held-out index, so a held-out composite named only in a
+menu or lesson row is refused even without a data-journal request. Whether such
+ledger audio is otherwise the right package content remains reconciliation's
+check; this scan only rejects held-out contamination there.
 
 UTC provides process ordering only. No audio onset or clock offset is inferred
 by subtracting timestamps from different processes. Acoustic fields remain null;
@@ -75,11 +87,18 @@ sealed producer packages exercise actual PCM/composition hashes and their sealed
 schedules via `AV_HOLDOUT_PACKAGE_FIXTURES`; they do not turn those journals into
 native runs. Adversarial cases include rehashed early phrase substitution,
 unselected B combinations, missing/reordered/reused permits, cross-session and
-cross-channel grafts, unknown PCM, process overlap and truncated coverage.
+cross-channel grafts, unknown PCM, process overlap, truncated coverage, a failed
+run that consumed a phrase before its request followed by a replay, and held-out
+PCM in a menu ledger. Synthetic on-disk plans exercise `verify_history` and the
+CLI (role, person, package and artifact binding, reserved WAV byte checks and
+malformed-input exit codes) with reconciliation, export and package parsing
+stubbed to the synthetic history; those parsers have their own tests.
 The retained actual A008 prefix is checked separately and remains incomplete.
 
 The [validation record](../../docs/tests/heldout-history-validation.json) pins
-the tested source, 154 passing mock-history tests and the retained A008 result.
+the tested source, the mock-history test results and the retained A008 result.
 That actual prefix contains 15 study requests, 30 observations and 6 grammar
-audio events; it cannot establish a complete D0/D7 history. Source hashes in the
-record refer to Git blob bytes at the stated commit, not local line endings.
+audio events; it cannot establish a complete D0/D7 history. The A008 result was
+produced by the first scanner revision and has not been re-run with the revised
+consumption and ledger checks. Source hashes in the record refer to Git blob
+bytes at the stated commit, not local line endings.

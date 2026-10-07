@@ -250,6 +250,39 @@ class HoldoutHistory(unittest.TestCase):
             self.assertIn("PINNED_RUN_MISSING",h.verify_history(path,sha(raw))["incomplete_reasons"])
             with self.assertRaisesRegex(EvidenceError,"FILE_HASH"):h.verify_history(path,"f"*64)
 
+    def failed_prefix(self, visit, through_novel_permit):
+        """A distinct earlier attempt of the same visit, stopped at a cut."""
+        rows=visit.records;novel=next(i for i,r in enumerate(rows) if r["payload"].get("event")=="novel_buffer_authorized")
+        cut=novel+1 if through_novel_permit else novel-1
+        epoch=sha(b"failed-clock")[:32];identity=dict(visit.identity,session_id="session-failed")
+        records=[];fresh=lambda request:sha(b"failed"+request.encode())[:32]
+        for i,row in enumerate(rows[:cut]):
+            row=copy.deepcopy(row);row.update(event_id=sha(b"failed"+str(i).encode())[:32],clock_epoch=epoch,identity=identity)
+            if row["event_type"]=="session":
+                row["payload"].update(clock_epoch=epoch,audio_request_ids=[fresh(r) for r in row["payload"]["audio_request_ids"]])
+            elif row["audio_request_id"] is not None:
+                row["audio_request_id"]=fresh(row["audio_request_id"]);row["payload"]["audio_id"]=row["audio_request_id"]
+            records.append(row)
+        start=datetime.fromisoformat(visit.process_started_utc)-timedelta(hours=6)
+        return replace(visit,identity=identity,records=rechain(records),software_complete=False,
+                       process_started_utc=start.isoformat(),process_ended_utc=(start+timedelta(hours=1)).isoformat())
+
+    def test_permit_consumes_phrase_so_failed_run_cannot_hide_replay(self):
+        visits=history("A")
+        with self.assertRaisesRegex(EvidenceError,"CONSUMED_PHRASE_REPLAY"):
+            h.scan_visits("A",[self.failed_prefix(visits[0],True)]+visits)
+        # A run stopped before any novel cue consumed nothing held out.
+        report=h.scan_visits("A",[self.failed_prefix(visits[0],False)]+visits)
+        self.assertIn("NATIVE_RUN_INCOMPLETE",report["incomplete_reasons"])
+        self.assertEqual(report["authorized_heldout_requests"],8)
+
+    def test_menu_or_lesson_ledger_heldout_pcm_refuses(self):
+        visits=history("A");heldout=next(iter(h.phrase_index(visits[0].messages)))
+        clean=h.scan_visits("A",[replace(visits[0],ledger_pcm=(HASH,)),visits[1]])
+        self.assertEqual(clean["ledger_audio_references"],1)
+        with self.assertRaisesRegex(EvidenceError,"LEDGER_CONTAMINATION"):
+            h.scan_visits("A",[replace(visits[0],ledger_pcm=(HASH,heldout)),visits[1]])
+
     @unittest.skipUnless(os.environ.get("AV_HOLDOUT_PACKAGE_FIXTURES"),"Optional existing sealed producer packages")
     def test_existing_sealed_producer_pcm_and_schedule_histories(self):
         root=Path(os.environ["AV_HOLDOUT_PACKAGE_FIXTURES"])
@@ -258,6 +291,111 @@ class HoldoutHistory(unittest.TestCase):
                 report=h.scan_visits(study,history(study,root/name))
                 self.assertTrue(report["software_history_complete"])
                 self.assertFalse(report["acoustic_qualified"])
+
+
+def journal(kind, rows):
+    """Compact menu/joined chain bytes; the row hash excludes its newline."""
+    previous="0"*64;lines=[]
+    for i,body in enumerate(rows):
+        row=dict(version=1,sequence=i,previous_sha256=previous,**body) if kind=="menu" else \
+            dict(version=1,clock_epoch=sha(b"joined")[:32],sequence=i,host_mono_ms=float(i),previous_sha256=previous,**body)
+        row["sha256"]=previous=sha(compact(row))
+        lines.append(compact(row)+b"\n")
+    return b"".join(lines)
+
+
+def wav(samples):
+    data=b"".join(int(s).to_bytes(2,"little",signed=True) for s in samples)
+    import struct
+    return b"RIFF"+struct.pack("<I",36+len(data))+b"WAVEfmt "+struct.pack("<IHHIIHH",16,1,1,48000,96000,2,16)+b"data"+struct.pack("<I",len(data))+data
+
+
+class HoldoutHistoryOnDisk(unittest.TestCase):
+    """verify_history/CLI over pinned files. Reconcile, export and package
+    parsing have their own tests and are stubbed to the synthetic history."""
+
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.visits=history("A")
+        self.patches=[]
+        by_visit={v.visit:v for v in self.visits}
+        def export(path,expected):
+            v=by_visit[json.loads(Path(path).read_bytes())["visit"]]
+            return dict(identity=v.identity),v.records,None,None
+        def package(root,artifact,expected,read_,relative_):
+            return None,{"synthetic-atom":dict(pcm_sha256=HASH)},self.visits[0].messages
+        from unittest import mock
+        for target,value in (("export_bundle",export),("reconcile",lambda run,pin:dict(software_reconciliation_complete=True))):
+            p=mock.patch.object(h,target,value);p.start();self.patches.append(p)
+        p=mock.patch.object(h.content,"package",package);p.start();self.patches.append(p)
+        # Every synthetic composite counts as package audio for known_audio.
+        self.messages=self.visits[0].messages
+
+    def tearDown(self):
+        for p in self.patches:p.stop()
+        self.tmp.cleanup()
+
+    def put(self, name, raw):
+        path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(raw)
+        return dict(path=name.split("/",1)[1] if "/" in name else name,sha256=sha(raw))
+
+    def build(self, *, role="reference", coded="A-C01-L01", package=HASH, drop=None, menu=(), registry=None):
+        runs=[]
+        for v in self.visits:
+            d=f"run-{v.visit}";schedule=ROOT/"schedules/examples/demo/A/A-C01/schedules/A-C01-L01"/(v.visit+".json")
+            files=dict(reserved_registry=None)
+            directories=dict(grammar=None,menu_examples=None)
+            if registry is not None:
+                raw_wav,entry=registry
+                files["reserved_registry"]=self.put(f"{d}/registry.json",compact(dict(entries=[entry])))
+                directories["grammar"]="grammar";self.put(f"{d}/grammar/ready-cue.wav",raw_wav)
+            config=compact(dict(identity=dict(coded_id=coded,unit_id="A-C01",visit_id=v.visit),files=files,directories=directories))
+            artifacts=[dict(kind="export_manifest",**self.put(f"{d}/export.json",compact(dict(visit=v.visit)))),
+                       dict(kind="package_manifest",**self.put(f"{d}/package.json",b"{}")),
+                       dict(kind="process_result",**self.put(f"{d}/process.json",compact(dict(started_utc=v.process_started_utc,ended_utc=v.process_ended_utc))))]
+            if menu:artifacts.append(dict(kind="menu_journal",**self.put(f"{d}/menu.jsonl",journal("menu",[dict(record=dict(kind="play_request",pcm_sha256=x,mono_ms=float(i))) for i,x in enumerate(menu)]))))
+            artifacts=[a for a in artifacts if a["kind"]!=drop]
+            run=compact(dict(study="A",role=role,package_sha256=package,visit=v.visit,artifacts=artifacts,
+                             config=self.put(f"{d}/config.json",config),schedule=self.put(f"{d}/schedule.json",read(schedule))))
+            runs.append(dict(path=f"{d}/run.json",sha256=self.put(f"{d}/run.json",run)["sha256"]))
+        plan=compact(dict(version=1,scope="SIMULATION_TEST",study="A",role="reference",coded_id="A-C01-L01",unit_id="A-C01",package_sha256=HASH,runs=runs))
+        (self.root/"history.json").write_bytes(plan)
+        return self.root/"history.json",sha(plan)
+
+    def test_clean_pinned_history_scans_complete_and_cli_exits_zero(self):
+        path,pin=self.build(menu=(HASH,))
+        report=h.verify_history(path,pin)
+        self.assertTrue(report["software_history_complete"])
+        self.assertEqual(report["ledger_audio_references"],2)
+        self.assertEqual(h.main(["--plan",str(path),"--sha256",pin,"--out",str(self.root/"out.json")]),0)
+
+    def test_role_person_package_and_missing_artifact_refuse(self):
+        for change,kwargs,code in (("role",dict(role="active"),"RUN_BINDING"),("person",dict(coded="A-C02-L01"),"PERSON_GRAFT"),
+                                   ("package",dict(package="f"*64),"RUN_BINDING"),("artifact",dict(drop="process_result"),"ARTIFACT_REQUIRED")):
+            path,pin=self.build(**kwargs)
+            with self.subTest(change=change):
+                with self.assertRaisesRegex(EvidenceError,code):h.verify_history(path,pin)
+                out=self.root/f"out-{change}.json"
+                self.assertEqual(h.main(["--plan",str(path),"--sha256",pin,"--out",str(out)]),2)
+                self.assertFalse(out.exists())
+
+    def test_pinned_menu_ledger_heldout_refuses_through_cli(self):
+        heldout=next(iter(h.phrase_index(self.messages)))
+        path,pin=self.build(menu=(HASH,heldout))
+        self.assertEqual(h.main(["--plan",str(path),"--sha256",pin,"--out",str(self.root/"out.json")]),2)
+
+    def test_reserved_registry_pcm_is_byte_verified(self):
+        raw=wav(range(-8,8));pcm=content.pcm(raw)
+        good=dict(id="ready-cue",file_sha256=sha(raw),pcm_sha256=sha(pcm),n_samples=len(pcm)//2)
+        path,pin=self.build(registry=(raw,good))
+        self.assertTrue(h.verify_history(path,pin)["software_history_complete"])
+        path,pin=self.build(registry=(raw,dict(good,pcm_sha256="f"*64)))
+        with self.assertRaisesRegex(EvidenceError,"RESERVED_PCM"):h.verify_history(path,pin)
+
+    def test_malformed_csv_is_a_refusal_not_a_traceback(self):
+        from unittest import mock
+        path,pin=self.build()
+        with mock.patch.object(h,"verify_history",side_effect=csv.Error("bad row")):
+            self.assertEqual(h.main(["--plan",str(path),"--sha256",pin,"--out",str(self.root/"out.json")]),2)
 
 
 if __name__=="__main__":unittest.main()
