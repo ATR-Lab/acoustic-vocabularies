@@ -34,7 +34,7 @@ workload (pre-run baseline 1,019 MiB). Simulator RSS was mean 3,355.23 MiB,
 p95 3,358.43 MiB and maximum 3,358.55 MiB. Mean CPU was 208.60% of one core,
 approximately 2.09 cores. These are measured totals on the nonbaseline machine,
 not an allocation or density guarantee. No frames were rendered in this run.
-The [spike evidence](https://github.com/ATR-Lab/acoustic-vocabularies/blob/o5.1.2-isaac-fixed-base-spike/docs/spikes/isaac/report.md)
+The [spike report](../spikes/isaac/report.md)
 links raw timestamps, resource CSVs, hashes and exact run configuration.
 The additional offscreen run completed 600.0121 s and 25,446 steps, exit code 0.
 Its full step/render intervals were mean 23.5787 ms, p95 25.4004 ms and maximum

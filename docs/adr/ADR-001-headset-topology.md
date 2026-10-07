@@ -22,8 +22,9 @@ Windows rendering PC in addition to its allocated Isaac capacity.
 ## Measurements
 
 Required: #45 frame distributions/refresh/startup/loss tests, #47 rate/transport
-matrix and #48 physical onset. [Audio harness PR](https://github.com/ATR-Lab/acoustic-vocabularies/pull/94)
-is not onset evidence. No route/topology timing CSV is available yet. Windows
+matrix and #48 physical onset. The [audio harness](../../spikes/O5.1.6/audio_onsets.py)
+and [runbook](../spikes/O5.1.6-runbook.md), merged in
+[PR98](https://github.com/ATR-Lab/acoustic-vocabularies/pull/98), are not onset evidence. No route/topology timing CSV is available yet. Windows
 x64 Mono/DX11 and Android ARM64 IL2CPP/Vulkan builds passed in Unity 6000.6.0f1,
 including the aligned robot Android build in #46. Compilation proves buildability
 only. Headset removal, sleep, Link loss
