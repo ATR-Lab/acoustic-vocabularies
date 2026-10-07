@@ -11,6 +11,7 @@ controls below build them by hand to prove that the leak scan finds them.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import importlib.util
 import json
@@ -39,7 +40,10 @@ from av_sound import (
 from av_sound._schemas import load_schema, schema_validator
 from av_sound.composer import AtomAudio
 from av_sound.dyad_bank import (
+    QUALIFIED_BANK_FORMAT,
+    QUALIFIED_BANK_FORMAT_VERSION,
     BankError,
+    BankHandoff,
     BankOption,
     DyadBank,
     identity_labels,
@@ -1307,6 +1311,52 @@ def test_dyad_bank_file_errors(tmp_path: Path):
     labels.pop("K-a1")
     with pytest.raises(BankError):
         DyadBank("DEMO-X1", True, labels, {})
+
+
+def test_qualified_handoff_is_explicit_and_binds_wav_files(dyad: dict[str, Any], tmp_path: Path):
+    bank: DyadBank = dyad["bank"]
+    provisional = {
+        "format": "av-sound/provisional-bank",
+        "format_version": 1,
+        "bank_sha256": bank.bank_sha256(),
+    }
+    assert not bank.qualified and bank.package_bank() == provisional
+    assert dyad["result"].manifest["bank"] == provisional
+    for args in (
+        ("av-sound/provisional-bank", 1, "a" * 64),
+        (QUALIFIED_BANK_FORMAT, 2, "a" * 64),
+        (QUALIFIED_BANK_FORMAT, 1, "A" * 64),
+    ):
+        with pytest.raises(BankError):
+            BankHandoff(*args)
+    handoff = BankHandoff(QUALIFIED_BANK_FORMAT, QUALIFIED_BANK_FORMAT_VERSION, "b" * 64)
+    with pytest.raises(BankError, match="file_sha256"):
+        DyadBank(bank.bank_id, True, bank.labels, bank.cells, handoff=handoff)
+    audio = json.loads((dyad["result"].path / "audio.json").read_text(encoding="utf-8"))
+    files = {(o["profile"], o["atom_id"], o["rank"]): o["file_sha256"] for o in audio["options"]}
+    cells = {
+        key: tuple(
+            dataclasses.replace(o, file_sha256=files[(key[0], key[1], o.rank)]) for o in options
+        )
+        for key, options in bank.cells.items()
+    }
+    qualified = DyadBank(bank.bank_id, True, bank.labels, cells, handoff=handoff)
+    assert qualified.qualified and qualified == bank
+    result = build_dyad_package(qualified, tmp_path / "q")
+    assert result.manifest["bank"] == {
+        "format": QUALIFIED_BANK_FORMAT,
+        "format_version": 1,
+        "bank_sha256": "b" * 64,
+    }
+    assert load_package(result.path).manifest["bank"]["format"] == QUALIFIED_BANK_FORMAT
+    first = cells[("P2", "Q-r3")]
+    cells[("P2", "Q-r3")] = (dataclasses.replace(first[0], file_sha256="0" * 64), *first[1:])
+    with pytest.raises(PackageError) as err:
+        build_dyad_package(
+            DyadBank(bank.bank_id, True, bank.labels, cells, handoff=handoff), tmp_path / "w"
+        )
+    assert err.value.code == "E_BANK" and "file_sha256" in str(err.value)
+    assert not (tmp_path / "w").exists()
 
 
 # --- Schema ---------------------------------------------------------------------------

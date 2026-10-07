@@ -2,7 +2,9 @@
 
 `tools/menu_store_bridge.py` connects #70 selection records to the actual #11
 `VocabularyStore`. It accepts only a pinned, provisional **DEMO** `DyadBank` and
-an independently pinned #13 Study B package. The qualified #26 bank is absent;
+an independently pinned #13 Study B package. Packages that record a qualified #26
+bank manifest (`av-banks/bank-manifest`) are verified by the Unity menu catalog but
+are not served by this bridge yet;
 every receipt and verified read says `source_kind: synthetic` and
 `participant_ready: false`. The function/CLI and bounded private file mailbox
 connect to the actual store; they do not grant participant authorization or

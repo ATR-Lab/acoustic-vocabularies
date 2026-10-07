@@ -16,12 +16,20 @@ bank builder); the package builder never copies them.
 model): format and pipeline tests only, not study material and not a learnable
 vocabulary. Its options are distinct within each profile but have not been through the
 bank compatibility checks (#26 `verify`).
+
+Qualified #26 handoff: `av_banks.manifest.to_dyad_bank` (and `av_banks.handoff`) give a
+`DyadBank` whose `handoff` names the verified #26 manifest (`av-banks/bank-manifest`
+version 1 and its bank hash) and whose options carry the bank's WAV `file_sha256`. The
+package then records that identity instead of the provisional one, so consumers (#70)
+can check the package against the #26 manifest itself. A bank without `handoff` stays
+explicitly provisional.
 """
 
 from __future__ import annotations
 
 import hashlib
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,12 +50,38 @@ SHOWN_OPTIONS: Final = 3
 RESERVE_RANK: Final = 4
 PROFILES: Final[tuple[Profile, ...]] = (Profile.P1, Profile.P2, Profile.P3)
 SYNTHETIC_PREFIX: Final = "DEMO-"
+QUALIFIED_BANK_FORMAT: Final = "av-banks/bank-manifest"
+"""The #26 bank manifest format (`generation/schema/bank-manifest.schema.json`)."""
+QUALIFIED_BANK_FORMAT_VERSION: Final = 1
+_SHA256_RE: Final = re.compile(r"[0-9a-f]{64}")
 
 
 class BankError(ValueError):
     """The provisional bank input is invalid; `.code` is `E_BANK`."""
 
     code = "E_BANK"
+
+
+@dataclass(frozen=True, slots=True)
+class BankHandoff:
+    """The verified #26 bank a `DyadBank` was converted from: format, version and the
+    bank hash (`av_generation.bank_manifest.bank_sha256` of the whole manifest)."""
+
+    format: str
+    format_version: int
+    bank_sha256: str
+
+    def __post_init__(self) -> None:
+        if (self.format, self.format_version) != (
+            QUALIFIED_BANK_FORMAT,
+            QUALIFIED_BANK_FORMAT_VERSION,
+        ):
+            raise BankError(
+                f"a qualified handoff is {QUALIFIED_BANK_FORMAT} version "
+                f"{QUALIFIED_BANK_FORMAT_VERSION}, got {self.format} {self.format_version}"
+            )
+        if not _SHA256_RE.fullmatch(self.bank_sha256):
+            raise BankError("a qualified handoff needs a lowercase SHA-256 bank hash")
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +93,9 @@ class BankOption:
     pcm_sha256: str
     source: str | None = field(default=None, compare=False)
     """Opaque provenance from the bank builder; never copied into a package."""
+    file_sha256: str | None = field(default=None, compare=False)
+    """SHA-256 of the bank's canonical WAV file (#26 manifest); the package's file must
+    equal it. `None` for provisional banks, whose files the package builder writes."""
 
     @property
     def menu(self) -> str:
@@ -76,6 +113,8 @@ class DyadBank:
     """Atom ID -> semantic label (the dyad's permutation, #29)."""
     cells: Mapping[tuple[str, str], tuple[BankOption, ...]]
     """(profile, atom ID) -> the 4 options in rank order."""
+    handoff: BankHandoff | None = field(default=None, compare=False)
+    """The verified #26 manifest this bank came from; `None` keeps it provisional."""
 
     def __post_init__(self) -> None:
         try:
@@ -92,8 +131,35 @@ class DyadBank:
             ranks = [o.rank for o in options]
             if ranks != list(range(1, OPTIONS_PER_CELL + 1)):
                 raise BankError(f"{profile} {atom}: options must have ranks 1-4 in order")
+            if self.handoff is not None and not all(
+                o.file_sha256 is not None and _SHA256_RE.fullmatch(o.file_sha256)
+                for o in options
+            ):
+                raise BankError(
+                    f"{profile} {atom}: a qualified bank names every option's file_sha256"
+                )
         object.__setattr__(self, "labels", dict(self.labels))
         object.__setattr__(self, "cells", dict(self.cells))
+
+    @property
+    def qualified(self) -> bool:
+        """True for a bank converted from a verified #26 manifest (`handoff` set)."""
+        return self.handoff is not None
+
+    def package_bank(self) -> dict[str, Any]:
+        """The package manifest's `bank` record: the #26 manifest identity for a qualified
+        bank, else the provisional format and `bank_sha256()`."""
+        if self.handoff is not None:
+            return {
+                "format": self.handoff.format,
+                "format_version": self.handoff.format_version,
+                "bank_sha256": self.handoff.bank_sha256,
+            }
+        return {
+            "format": BANK_FORMAT,
+            "format_version": BANK_FORMAT_VERSION,
+            "bank_sha256": self.bank_sha256(),
+        }
 
     def option(self, profile: Profile | str, atom_id: str, rank: int) -> BankOption:
         """The option of rank 1..4 for an atom under a profile."""

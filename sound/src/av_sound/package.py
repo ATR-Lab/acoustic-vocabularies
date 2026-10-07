@@ -54,7 +54,7 @@ from av_sound.composer import (
     message_length,
     write_message_wav,
 )
-from av_sound.dyad_bank import BANK_FORMAT, BANK_FORMAT_VERSION, PROFILES, DyadBank
+from av_sound.dyad_bank import PROFILES, DyadBank
 from av_sound.grammar import (
     ATOM_IDS,
     FAMILIES,
@@ -774,8 +774,10 @@ def build_package(
 
 
 def build_dyad_package(bank: DyadBank, out_dir: str | os.PathLike[str]) -> PackageResult:
-    """Build the Study B package of one frozen dyad bank (PROVISIONAL input, see
-    `av_sound.dyad_bank`) into `out_dir`.
+    """Build the Study B package of one frozen dyad bank (see `av_sound.dyad_bank`) into
+    `out_dir`. A provisional bank is recorded as `av-sound/provisional-bank`; a bank with
+    a verified #26 `handoff` is recorded as `av-banks/bank-manifest` with the #26 bank hash,
+    and every written WAV must equal the bank's `file_sha256`.
 
     Re-renders every option and checks it against the bank's hash (no overflow, no short
     event, distinct waveforms within a profile), writes the 192 option WAVs, `answers.json`
@@ -807,6 +809,10 @@ def build_dyad_package(bank: DyadBank, out_dir: str | os.PathLike[str]) -> Packa
                     rel = _option_path(profile.value, atom, option.rank)
                     pcm = rendered.pcm
                     file_hash = writer.write(rel, wav_bytes(pcm))
+                    if option.file_sha256 is not None and file_hash != option.file_sha256:
+                        raise PackageError(
+                            E_BANK, f"{where}: WAV file differs from the bank's file_sha256"
+                        )
                     atoms[(profile.value, atom, option.rank)] = AtomAudio(atom, profile, pcm)
                     option_rows.append(
                         {
@@ -861,13 +867,7 @@ def build_dyad_package(bank: DyadBank, out_dir: str | os.PathLike[str]) -> Packa
         answers = _answers_doc("B", bank.bank_id, bank.demo, bank.labels)
         writer.write(ANSWERS, _json_bytes(answers))
         writer.write(AUDIO, _json_bytes(audio))
-        extra = {
-            "bank": {
-                "format": BANK_FORMAT,
-                "format_version": BANK_FORMAT_VERSION,
-                "bank_sha256": bank.bank_sha256(),
-            }
-        }
+        extra = {"bank": bank.package_bank()}
         manifest = _manifest_doc("B", bank.bank_id, bank.demo, writer.files, extra)
         sources = sorted({o.source for opts in bank.cells.values() for o in opts if o.source})
         leak = _finish(stage, manifest, sources)

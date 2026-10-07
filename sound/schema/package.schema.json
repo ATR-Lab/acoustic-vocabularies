@@ -57,12 +57,12 @@
       }
     },
     "bank": {
-      "description": "Study B: the frozen dyad bank the package was built from (PROVISIONAL input format until #26).",
+      "description": "Study B: the frozen dyad bank the package was built from: the verified #26 bank manifest (av-banks/bank-manifest, bank_sha256 = its bank hash) or the PROVISIONAL DEMO input (av-sound/provisional-bank).",
       "type": "object",
       "additionalProperties": false,
       "required": ["format", "format_version", "bank_sha256"],
       "properties": {
-        "format": { "const": "av-sound/provisional-bank" },
+        "format": { "enum": ["av-banks/bank-manifest", "av-sound/provisional-bank"] },
         "format_version": { "const": 1 },
         "bank_sha256": { "$ref": "#/$defs/sha256" }
       }
