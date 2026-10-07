@@ -10,7 +10,8 @@
     "simulation-native-004",
     "simulation-native-005",
     "simulation-native-006",
-    "simulation-native-007"
+    "simulation-native-007",
+    "simulation-native-016"
   ],
   "reviewer_source_commit": "880cf2a30fc6c6dbd94b6ecb6ca49582418e68e0",
   "verification_method": [
@@ -523,5 +524,482 @@
       "queued_arrivals": 0
     },
     "interpretation": "After one software-completed example, the second example was interrupted. Exact reset identity remained recorded, no queued arrival or failed worker was reported, and conservative current-health age exceeded 250 ms. The transport cadence correction did not resolve this actual refusal. No acoustic authority or whole grammar completion is established."
+  },
+  "build016_o615_validation": {
+    "date_utc": "2026-10-07",
+    "issues": [
+      148,
+      149,
+      150,
+      155,
+      158
+    ],
+    "source": {
+      "test_merge_commit_local_only": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+      "test_merge_tree": "347dcd879e0d5b9d748f40f0f648675d504e913d",
+      "main": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "merged_in_order": [
+        {
+          "pr": 201,
+          "head": "d85cd121d8ef80a7c74cbe52e2344267d1b4e245"
+        },
+        {
+          "pr": 199,
+          "head": "d98e471ea1462b911ee9e1cc54c310ef67cef8f0"
+        }
+      ],
+      "isaac_source_archive_sha256": "4bc348b29af2a38ce497e88872fd003542fc11079231ca25f509c19b30412246"
+    },
+    "build": {
+      "build_id": "simulation-native-016",
+      "protocol_version": "simulation-test-v1",
+      "unity": "6000.6.0f1",
+      "result": "Succeeded",
+      "errors": 0,
+      "inventoried_files": 205,
+      "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+      "failed_earlier_build": {
+        "build_id": "simulation-native-015",
+        "stage": "scene verification",
+        "message": "Foundation scene has an unexpected component.",
+        "context": "Library cache copied from another worktree; no player produced; clean-cache rebuild became 016"
+      }
+    },
+    "fixtures": {
+      "study": "A",
+      "visit": "D0",
+      "scheduled_opportunities": 108,
+      "scheduled_study_plays": 212,
+      "package_sha256": "4558cb135fcc6782db4008c97617183a0ce2d1e1fbe0e136fb3995c23348bbe0",
+      "schedule_sha256": "cd3f0133a49a77b2ad633bcb92fea0af3e53cd8d825440d9a5344e328f938b9c",
+      "fixture_provenance_sha256": "2bd0d5e68ea57878f5b37c306d0cf59dea329a8c4a1c0bbb837f110038fa9d76",
+      "note": "Freshly generated DEMO fixtures; not hash-comparable with builds 004-007."
+    },
+    "station": {
+      "observer_reference_position_m": [
+        0,
+        1.5,
+        1.45
+      ],
+      "observer_reference_yaw_deg": 180,
+      "dsp_buffer_frames": 512,
+      "robot_state_source": "live"
+    },
+    "backend": {
+      "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+      "network": "none",
+      "private_timing_trace": false,
+      "one_service_and_control_session_per_attempt": true,
+      "end_reason": "private_stop",
+      "container_exit": 0,
+      "owned_relays_sockets_listeners_container_removed": true
+    },
+    "procedure": [
+      "Console --simulation-config with HTTP Load, checks and explicit Start only; no player UI clicks.",
+      "Dummy-input driver armed before the first Start; no initial manual input check.",
+      "Separate desktop screen copy of the player's mirror window every 1-3 s; this load may affect frame timing.",
+      "Manual close by operator WM_CLOSE after the visit owner latched; independent process observer receipt."
+    ],
+    "attempts": [
+      {
+        "attempt": "016-full-001",
+        "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+        "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+        "run_manifest_sha256": "4e83427fb5301e2abc6963552b78f36d9af89583911f7ec94089ff7b8cbc66e1",
+        "reconciliation_report_sha256": "0f8d7964e6a44fa9354381492802467176e21787f5eb82a2b5706bdea00752ac",
+        "export_manifest_sha256": "cad5b6cdc08cce204159531e10a1fd1776ccdcee39ed1790bed2dd91b97a2cbf",
+        "process_exit": 0,
+        "process_elapsed_seconds": 82.006213,
+        "process_result_sha256": "2797078c8b09a992867c99404c8d69fbe326aff170292318f3049a8ad5779f30",
+        "terminal": {
+          "status": "AUDIO_EXPOSURE_INTERRUPTED",
+          "complete": false,
+          "cleanup_succeeded": true,
+          "export_succeeded": true,
+          "participant_admission": false
+        },
+        "close": "operator CloseMainWindow (WM_CLOSE) after the visit owner latched",
+        "reconciliation": {
+          "integrity_verified": true,
+          "software_reconciliation_complete": false,
+          "fault_codes": [
+            "AUDIO_EXPOSURE_INTERRUPTED",
+            "SESSION_JOIN_DISPOSED"
+          ],
+          "incomplete_reasons": [
+            "ACTUAL_DISPLAY_TRACE_MISSING",
+            "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+            "FORMS_DISPLAY_TRACE_INCOMPLETE",
+            "FORMS_INCOMPLETE",
+            "GRAMMAR_COMPLETION_MISSING",
+            "GRAMMAR_INTERRUPTED",
+            "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+            "NATIVE_RUN_END_INCOMPLETE",
+            "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+            "VISIT_COMPLETE_RECORD_MISSING"
+          ],
+          "scheduled_opportunities": 108,
+          "completed_opportunities": 0,
+          "scheduled_plays": 212,
+          "requested_plays": 0,
+          "callback_observed_plays": 0,
+          "software_completed_plays": 0,
+          "grammar_hash_verified_plays": 0,
+          "frame_raw_attributed_intervals": 0,
+          "frame_max_render_interval_ms": 0.0
+        },
+        "hashes": {
+          "join_config": "6e021182f9cc5bee9854d7a156479b2ae1d132e7f7555e2f2f1ff02558ac462a",
+          "simulation_capability": "f930e95a729210504e3c31f38a48a8201e3f91d3b6e08ee2dc4eb298c9fe5762",
+          "console_catalog": "90ef4913e2a12b9f05c1a96990fd1ea2576ae700a2584bbb5500c4d1233393ac",
+          "native_log": "0e0c2279ad24e4c0b491f2d7160044fdeed839df1bec10c0ecce4f699306720c",
+          "native_result": "e96f2e4d1224a8997d5eb2e26da3e86384292d558c61f048440d5f93e4fabee0",
+          "joined_journal": "4e2a2a4901d7d0c18053756fcb28fc65020f9d4caa28eabf7a18a950fbdde77c",
+          "data_journal": "8520d3c720a18fc2c4155fd3dda79dbad6baf6fcd2f88b1e4d6e1f54db218fae",
+          "trial_csv": "2a0c824d2ca2bbc08b839e989022034449575237321118baac25997c1f7d6a3c",
+          "exposure_csv": "62cc435383c5ce38e8f8a2c9f4598e7ea05422544e53ba0674e62d74b0a18a37",
+          "console_audit": "151fdb83276ab0bf31d84fd28e819ae8804b8cf5b731e86cd45e0314bccaf7a2"
+        },
+        "grammar_examples_completed": 0,
+        "gate_refusal": {
+          "record_sha256": "058a08872cabd7e86e1f08e6e6a74f5d175fa15f0a9e027764cf7296a0af23ee",
+          "observed_local_mono_ms": 41310.8936,
+          "code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+          "receipt_elapsed_ms": 173.3227,
+          "round_trip_ms": 48.7861,
+          "publisher_age_ms": 37.174237854599,
+          "neutral_age_ms": 1.898162854598999,
+          "effective_age_ms": 259.2830378546008,
+          "maximum_age_ms": 250,
+          "exact_reset_recorded": true,
+          "mode_acknowledged": true,
+          "queued_arrivals": 0,
+          "failed": false,
+          "in_flight_health_exchange_started_local_mono_ms": 41164.6483,
+          "following_codes": [
+            "GRAMMAR_PRIVATE_CONTROL_NOT_READY",
+            "AUDIO_EXPOSURE_INTERRUPTED"
+          ]
+        },
+        "captures": {
+          "01-ready-before-load.png": "dd2e7f41e09668a4fbc3d6984f063bf980206826a80aca57739771fca56445be",
+          "03-after-grammar-refusal.png": "18c77793d5f2ee0d105effabb6b616e821b58255d8397bb811155d6aa563c956"
+        }
+      },
+      {
+        "attempt": "016-full-002",
+        "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+        "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+        "run_manifest_sha256": "021b634b45df16812a9c7c453c27f634c7e032146bf365b05c7eca1f30f85c41",
+        "reconciliation_report_sha256": "ac8af1b55b060d334c15b1e52241ade234955c2f021954888456b509fb2e18b3",
+        "export_manifest_sha256": "c3c7fbb7a740ce689ea417d5e1fb09a40e37e4287d0c697ee8c2a8dc47559488",
+        "process_exit": 0,
+        "process_elapsed_seconds": 157.072308,
+        "process_result_sha256": "fbaff220ab79d26c42aafc7e3c12fcb8d76ccda8e4abf1573c01e23ee313ba08",
+        "terminal": {
+          "status": "CONTROL_UNAVAILABLE",
+          "complete": false,
+          "cleanup_succeeded": true,
+          "export_succeeded": true,
+          "participant_admission": false
+        },
+        "close": "operator CloseMainWindow (WM_CLOSE) after the visit owner latched",
+        "reconciliation": {
+          "integrity_verified": true,
+          "software_reconciliation_complete": false,
+          "fault_codes": [
+            "CONTROL_UNAVAILABLE",
+            "OPERATOR_ADAPTER_FAILED",
+            "SESSION_JOIN_DISPOSED"
+          ],
+          "incomplete_reasons": [
+            "ACTUAL_DISPLAY_TRACE_MISSING",
+            "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+            "FORMS_DISPLAY_TRACE_INCOMPLETE",
+            "FORMS_INCOMPLETE",
+            "FRAME_BUDGET_SCREEN_FAILED",
+            "FRAME_CAPTURE_INCOMPLETE",
+            "FRAME_FAULT_PRESENT",
+            "LESSON_EVENT_COVERAGE_INCOMPLETE",
+            "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+            "LESSON_TYPED_INTERRUPTED",
+            "LESSON_TYPED_INTERVALS_INCOMPLETE",
+            "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+            "NATIVE_RUN_END_INCOMPLETE",
+            "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+            "SCHEDULED_PLAYS_INCOMPLETE",
+            "VISIT_COMPLETE_RECORD_MISSING"
+          ],
+          "scheduled_opportunities": 108,
+          "completed_opportunities": 1,
+          "scheduled_plays": 212,
+          "requested_plays": 5,
+          "callback_observed_plays": 5,
+          "software_completed_plays": 5,
+          "grammar_hash_verified_plays": 2,
+          "frame_raw_attributed_intervals": 862,
+          "frame_max_render_interval_ms": 44.3843999999954
+        },
+        "hashes": {
+          "join_config": "791dab1e24e7fb34a6e5f0355314b2bed4d1e6ff7c2b62a01f1b398a347a2bd5",
+          "simulation_capability": "b9ea0a2600eed391d4d063ee1f4e69e15dc600b631a4beda53605fda1f7551a4",
+          "console_catalog": "e80a617d622286b4eb2638508d7d1792d26725f5a788922b135ea0be646fb7b4",
+          "native_log": "984eb4a6b660cc2e6ed1c60bf413e2c193e05271e27799e52b6f1eca9f5d8c79",
+          "native_result": "f8add16ce2a5ba11ac5d98067d4613d8a85fd48c7fb66e78bb9366203f07b15c",
+          "joined_journal": "1cda5aba991932b827ad4282c07ac3904e5097bd7653dee719086eaacaf7aa1f",
+          "data_journal": "4928b331d0cb8b2c2033d54e9dd506a35f5c71b2fa7160d6634c5fd533b6ae40",
+          "trial_csv": "11dbdb620a2c1297b5f48c1cdc04b3ed393b2cbfdba692b08c5a834f1592d935",
+          "exposure_csv": "4083ae247c05e486c3d0e4fbacaec1ea8991209cb4e5280671e71dabedfd0cc0",
+          "console_audit": "427f66c68cddeaeea000a76cf3362f8b7be2f3324e2122d1a57d9f336a24ba8f"
+        },
+        "grammar_examples_completed": 2,
+        "grammar_started_local_mono_ms": 34021.2108,
+        "grammar_finished_local_mono_ms": 36215.249,
+        "first_study_item": {
+          "attempt_id_suffix": "AL-01",
+          "plays_software_completed": 3,
+          "lesson_end_record_sha256": "f44082855124ae53f0de2d0435b80dfdad43bcf3f1ec30abcdb9fb0a0440deb8",
+          "lesson_end_local_mono_ms": 93518.4827
+        },
+        "export_rows": {
+          "trial": 2,
+          "exposure": 5,
+          "exposure_audible_status": "uncertain",
+          "exposure_consumed": true,
+          "acoustic_onset_columns_empty": true
+        },
+        "control_failure": {
+          "terminal_diagnostic_record_sha256": "9e8a81ed251858c55b511d65b581b3dc9524d169b49d1cc36e0aaf36f79087cd",
+          "lesson_interrupted_record_sha256": "28b01a57e9322e96fbad96c5edc436dabebfffec77e0f5e7d8d56d0c88cec454",
+          "first_failure_code": "CONTROL_OPERATION_CANCELLED",
+          "first_failure_phase": "health_exchange",
+          "first_failure_local_mono_ms": 106310.8036,
+          "probe_send_started_local_mono_ms": 106086.254,
+          "probe_timeout_ms": 200,
+          "elapsed_at_failure_ms": 221.9971,
+          "received_fragments": 0,
+          "received_bytes": 0,
+          "previous_round_trip_ms": 102.3747,
+          "effective_age_ms": 392.8349659500535,
+          "terminal_code": "CONTROL_UNAVAILABLE"
+        },
+        "frame_freeze_before_fault": {
+          "observed_local_mono_ms": 93538.6923,
+          "duration_ms": 44.38439999999537
+        },
+        "captures": {
+          "grammar_ready_on_backing": "7377d95adc4e39ae4c4e6d78d7d85e636ea7e6b30632a5ab698eafc46d37887f",
+          "lesson_view_on_backing": "1d3b380906575733a46f83a07eee825b919f11053f09dcc07a6e0c1489137484",
+          "lesson_view_retrieval": "500452a9801086941c0b218df8bcaf0c7add0f00ae6c7b212412b850bb89c03c",
+          "retained_capture_count": 31,
+          "kind": "desktop mirror of the participant camera under Meta XR Simulator; not physical HMD"
+        }
+      },
+      {
+        "attempt": "016-B-menu-001",
+        "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+        "process_exit": 0,
+        "process_result_sha256": "9c0d680e1228a6f349d5e6060ea35b6b9c228ffc5ff8d32194a0f2dc489aedad",
+        "native_log_sha256": "8ab77a7811e378f403b6fdb9444b96fa2375bd6a0c0914e7c00352628c14630e",
+        "startup_status": "LESSON_CATALOG_INVALID",
+        "cause": "operator input map omitted teaching_allocation required for Study B teaching",
+        "journal_or_export_created": false,
+        "reconciled": false
+      },
+      {
+        "attempt": "016-B-menu-002",
+        "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+        "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+        "run_manifest_sha256": "47a65bf214a3043715fb0797dbf279d668a2a37535dfd0e5aa4cf3e068587dbb",
+        "reconciliation_report_sha256": "1a3bcbdc2233dac5a0edc81e42df3c87609e3d7549a2f441335407d451c3b883",
+        "export_manifest_sha256": "7e053b00072497a721731a42c7b18652049858a5e42c0803b2f05e121bef04bc",
+        "process_exit": 0,
+        "process_elapsed_seconds": 199.07641,
+        "process_result_sha256": "cf9a6915cb2ebd72962cc0b70a54ebe9e37264410a6cbf6a3233932d838f6bbc",
+        "terminal": {
+          "status": "AUDIO_EXPOSURE_INTERRUPTED",
+          "complete": false,
+          "cleanup_succeeded": true,
+          "export_succeeded": true,
+          "participant_admission": false
+        },
+        "close": "operator CloseMainWindow (WM_CLOSE) after the visit owner latched",
+        "reconciliation": {
+          "integrity_verified": true,
+          "software_reconciliation_complete": false,
+          "fault_codes": [
+            "AUDIO_EXPOSURE_INTERRUPTED",
+            "OPERATOR_ADAPTER_FAILED",
+            "SESSION_JOIN_DISPOSED"
+          ],
+          "incomplete_reasons": [
+            "ACTUAL_DISPLAY_TRACE_MISSING",
+            "AUDIO_CALLBACK_OR_COMPLETION_MISSING",
+            "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+            "FORMS_DISPLAY_TRACE_INCOMPLETE",
+            "FORMS_INCOMPLETE",
+            "FRAME_BUDGET_SCREEN_FAILED",
+            "FRAME_CAPTURE_INCOMPLETE",
+            "FRAME_FAULT_PRESENT",
+            "GRAMMAR_COMPLETION_MISSING",
+            "MENU_DISPLAY_COVERAGE_INCOMPLETE",
+            "MENU_EVENTS_INCOMPLETE",
+            "MENU_LEDGER_UNSEALED",
+            "MENU_SEAL_MISSING",
+            "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+            "NATIVE_RUN_END_INCOMPLETE",
+            "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+            "STORE_FINAL_FRESH_VERIFICATION_MISSING",
+            "STORE_FINAL_WAVE_INCOMPLETE",
+            "VISIT_COMPLETE_RECORD_MISSING"
+          ],
+          "scheduled_opportunities": 39,
+          "completed_opportunities": 0,
+          "scheduled_plays": 134,
+          "requested_plays": 8,
+          "callback_observed_plays": 7,
+          "software_completed_plays": 7,
+          "frame_raw_attributed_intervals": 1727,
+          "frame_max_render_interval_ms": 45.1747000000032
+        },
+        "hashes": {
+          "join_config": "faff3e7f2786971f4211bfd1fcb7aa9ec81ecc78684de4c94350b47855bd76aa",
+          "simulation_capability": "548e74194a92a504a50145ad81046a3840f41aff98483098ccb707902ee69e63",
+          "console_catalog": "bbbf8299bdb02e21082e31d0eac84882a72cf8d1d9d007737396ed5123f7814d",
+          "native_log": "bbed15c5d62a67b3b5a161a562479ca8866efd22ccb9a1def618f14cd2f63703",
+          "native_result": "47bf6aa01e2d8651c876024e33fabd9b98c25638e739b91c109be44e43588d5a",
+          "joined_journal": "2c6925ce144e7f1730e9bd78c3ebdb4aeef659060672f0259b0c7488555bfed0",
+          "data_journal": "2462d847fba46b6663f5303a7abc83a8e29accaa505480ec13a5f693ccaf376c",
+          "trial_csv": "3ebd07466aa4aec763614461289532cc4420b81ba0338d7d0528a55a77d88255",
+          "exposure_csv": "79877f2f429090f6bf127042588f9f2e2985670b872816dbc53d0ec2b568bdc8",
+          "console_audit": "df71fc14b0b9480b7121f60eccdf95c400c2e8c5ba894d1005a780c35dcf3a39",
+          "menu_ledger": "6a453d6a3a1f2eeac24ed97ef003d21c609919c0cab72a472d5fd2a4c5f9d21f"
+        },
+        "precue_recovery": {
+          "trigger": "operator Start then Pause through the console before the planned onset",
+          "loaded_mono_ms": 38567.5828,
+          "planned_onset_mono_ms": 39306.174900000005,
+          "session_paused_mono_ms": 38863.2914,
+          "frame_cancelled_before_window_mono_ms": 38858.597,
+          "exposure_consumed_at_pause": false,
+          "audio_requested_before_pause": false,
+          "menu_ledger_interrupted_before_start": false,
+          "planned_audio_ids_retired": 8,
+          "replacement_loaded_mono_ms": 60034.4079,
+          "fresh_audio_request_ids": true,
+          "menu_start_appended_after_resume": true,
+          "profile_plays_completed_before_selection": 6,
+          "profile_selection_store_receipt_accepted": true,
+          "reconciler_retired_unplayed_epochs": 1
+        },
+        "later_failure": {
+          "code": "AUDIO_EXPOSURE_INTERRUPTED",
+          "at_play": 8,
+          "receipt_elapsed_ms": 250.8205,
+          "round_trip_ms": 31.0473,
+          "neutral_age_ms": 3.4626200875701905,
+          "effective_age_ms": 285.3304200875629,
+          "maximum_age_ms": 250,
+          "probe_send_started_local_mono_ms": 115925.011,
+          "first_failure_code": "CONTROL_EXPLICIT_INTERRUPT",
+          "menu_ledger_final": "menu_interrupted after start; unsealed"
+        },
+        "export_rows": {
+          "trial": 1,
+          "exposure": 8,
+          "exposure_callback_complete": 7,
+          "exposure_uncertain_playback": 1,
+          "exposure_audible_status": "uncertain",
+          "exposure_consumed": true,
+          "acoustic_onset_columns_empty": true
+        },
+        "captures": {
+          "profile_menu_on_backing": "db32e977fa4f30ae4bb571c72b3a312abc0e555534ba82206172f27dc0908545",
+          "retained_capture_count": 28,
+          "kind": "desktop mirror of the participant camera under Meta XR Simulator; not physical HMD"
+        }
+      }
+    ],
+    "shutdown_breadcrumbs": {
+      "quit_ready": [
+        {
+          "attempt": "016-full-001",
+          "completed": 3,
+          "cancelled": 0,
+          "faulted": 0,
+          "timed_out": 0,
+          "elapsed_ms": 15.2287
+        },
+        {
+          "attempt": "016-full-002",
+          "completed": 3,
+          "cancelled": 0,
+          "faulted": 0,
+          "timed_out": 0,
+          "elapsed_ms": 16.995
+        },
+        {
+          "attempt": "016-B-menu-002",
+          "completed": 4,
+          "cancelled": 0,
+          "faulted": 0,
+          "timed_out": 0,
+          "elapsed_ms": 14.3698
+        }
+      ]
+    },
+    "defect_criteria": {
+      "148": {
+        "segment_rerun_and_reconciled": true,
+        "resolved": false,
+        "observed": "Current-health failure ended all three closed attempts: grammar gate at 259.28 ms effective age (full-001), health-probe receive timeout with zero bytes after 222 ms (full-002), and 285.33 ms at the eighth profile play (B menu-002)."
+      },
+      "149": {
+        "teaching_capture_at_reference": true,
+        "menu_capture_at_reference": true,
+        "physical_hmd": false,
+        "menu_scope": "profile menu only; atom menus not reached"
+      },
+      "150": {
+        "manual_close_reruns": 3,
+        "cleanup_and_export_receipts": true,
+        "observed_exit_codes": [
+          0,
+          0,
+          0
+        ],
+        "original_0xC0000005_reproduced_or_explained": false,
+        "startup_refusal_exit_code": 0
+      },
+      "155": {
+        "teaching_capture_on_backing": true,
+        "menu_capture_on_backing": true,
+        "physical_hmd": false,
+        "menu_scope": "profile menu only; atom menus not reached"
+      },
+      "158": {
+        "exercised": true,
+        "precue_unconsumed_then_fresh_lease_resume_appended_menu_start": true,
+        "trigger": "operator pause, not readiness refusal",
+        "later_started_interruption_unsealed": true,
+        "runs": 1
+      }
+    },
+    "seven_fault_scenarios_credited": 0,
+    "issue81_accepted": false,
+    "participant_qualified": false,
+    "acoustic_onset_qualified": false,
+    "physical_hmd_visibility_qualified": false,
+    "fixtures_b": {
+      "study": "B",
+      "visit": "V1",
+      "role": "active",
+      "scheduled_opportunities": 39,
+      "scheduled_study_plays": 134,
+      "package_sha256": "987afaf6bf21e436638da5722c3c02e48dd9e7b9ac829c562756c16e7281333e",
+      "bank_sha256": "e84de620f14f4767668c497607669d419fa8458d3066230a962bdc9378f8e8b2",
+      "fixture_provenance_sha256": "9a9a0aedac56608a4bce8b66901cabf67fe3b4b864e90dc4a87b85cfe2afdd3e",
+      "store": "fresh tools/menu_store_fixture.py --mode service store per attempt, served by tools/menu_store_bridge.py --serve-mailbox"
+    }
   }
 }
