@@ -102,14 +102,16 @@ namespace AcousticVocab.Workcell.Tests
             foreach(char l in "ABCD")
             {
                 var card=Object("tray_"+l+"/card");var arrow=Object("tray_"+l+"/arrow");
-                Assert.That(registry.ApplyObject(card.id,card.neutralPosition,card.neutralRotation,true,true,new PublicVisualState(cardFace:1)),Is.True);
+                // Either face keeps FLIP_CARD possible, so only a hidden, disabled card blocks it.
+                Assert.That(registry.ApplyObject(card.id,card.neutralPosition,card.neutralRotation,false,false,new PublicVisualState(cardFace:1)),Is.True);
                 Assert.That(registry.ApplyObject(arrow.id,arrow.neutralPosition,arrow.neutralRotation,true,true,new PublicVisualState(arrowAngleRad:0)),Is.True);
                 foreach(var washer in WashersAt("tray_"+l))Assert.That(registry.ApplyObject(washer.id,washer.neutralPosition,washer.neutralRotation,true,true,new PublicVisualState(location:"return_cup")),Is.True);
             }
             foreach(var washer in WashersAt("supply_cup"))Assert.That(registry.ApplyObject(washer.id,washer.neutralPosition,washer.neutralRotation,false,false,new PublicVisualState(location:"supply_cup")),Is.True);
             foreach(char l in "EFGH")
             {
-                var tag=Object("container_"+l+"/tag");var lid=Object("container_"+l+"/lid");var container=Object("container_"+l);
+                var tag=Object("container_"+l+"/tag");var lid=Object("container_"+l+"/lid");var container=Object("container_"+l);var code=Object("container_"+l+"/code");
+                Assert.That(registry.ApplyObject(code.id,code.neutralPosition,code.neutralRotation,false,false,code.NeutralState),Is.True);
                 Assert.That(registry.ApplyObject(tag.id,tag.neutralPosition,tag.neutralRotation,true,true,new PublicVisualState(tagAttached:true,location:"container_"+l+"/home")),Is.True);
                 Assert.That(registry.ApplyObject(lid.id,lid.neutralPosition,lid.neutralRotation,true,true,new PublicVisualState(lidOpenFraction:0)),Is.True);
                 Assert.That(registry.ApplyObject(container.id,container.neutralPosition,container.neutralRotation,true,true,new PublicVisualState(location:"quarantine_"+l)),Is.True);
@@ -117,7 +119,7 @@ namespace AcousticVocab.Workcell.Tests
             // The mutated scene really blocks every pair, so the reset assertion below is not vacuous.
             foreach(var pair in isaacPairs)Assert.That(Possible((string)pair["action"],(string)pair["target"]),Is.False,(string)pair["action"]+" "+(string)pair["target"]);
             registry.ResetToImportedNeutral();
-            foreach(var pair in isaacPairs)Assert.That(Possible((string)pair["action"],(string)pair["target"]),Is.True,(string)pair["action"]+" "+(string)pair["target"]);
+            foreach(var row in Table)EveryObjectTheActionReadsIsPresentAtReset(row.Action);
         }
 
         void InitialState(ObjectBinding item,string target)
