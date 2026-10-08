@@ -5,6 +5,13 @@ from copy import deepcopy
 from .geometry import mul, inverse, norm, angle, rotate, add
 
 
+# Acceptance limits for every keyframe (unchanged). ``solve`` may be asked to
+# keep iterating toward a tighter ``tolerance`` to measure headroom; acceptance
+# is always these limits.
+IK_POSITION_LIMIT_M = .0005
+IK_ORIENTATION_LIMIT_RAD = .008
+
+
 class IsaacMotionBackend:
     def __init__(self, adapter, neutral_robot):
         self.adapter, self.robot, self.sim = adapter, adapter.robot, adapter.sim
@@ -47,20 +54,35 @@ class IsaacMotionBackend:
             result[index] = start + closure*(end-start)
         return result
 
-    def solve(self, seed, side, target, quaternion=None, *, label='', local_point=None):
+    def solve(self, seed, side, target, quaternion=None, *, label='', local_point=None,
+              tolerance=None, seed_label=None, extra_seeds=()):
+        """Damped least-squares arm IK from bounded seeds.
+
+        Stops a seed early once within ``tolerance`` (position m, orientation
+        rad; default the acceptance limits). Acceptance is always the limits.
+        ``seed_label`` (default ``label``) names the deterministic restarts.
+        ``extra_seeds`` are (name, joint vector) pairs whose arm joints are
+        tried after the previous keyframe and before the neutral/restart seeds.
+        """
         import torch
         import random
+        stop_position, stop_orientation = tolerance or (IK_POSITION_LIMIT_M, IK_ORIENTATION_LIMIT_RAD)
         indices = self.arms[side]
         body = self.robot.body_names.index(side+'_hand_palm_link')
         lo = torch.tensor(self.low, device=self.robot.device)
         hi = torch.tensor(self.high, device=self.robot.device)
         seeds = [('previous_keyframe', list(seed))]
+        for name, values in extra_seeds:
+            candidate = list(seed)
+            for i in indices:
+                candidate[i] = min(self.high[i], max(self.low[i], values[i]))
+            seeds.append((name, candidate))
         neutral_seed = list(seed)
         for i in indices:
             neutral_seed[i] = self.neutral['joint_positions_rad'][i]
         seeds.append(('neutral_arm', neutral_seed))
         # Public engineering search seeds, independent of any study randomization.
-        rng = random.Random('issue56-IK-'+label)
+        rng = random.Random('issue56-IK-'+(label if seed_label is None else seed_label))
         for number in range(2):
             retry = list(seed)
             for i in indices:
@@ -89,7 +111,7 @@ class IsaacMotionBackend:
                 quality = position_error + .15*rotation_error
                 if local is None or quality < local[0]:
                     local = (quality, q[0].tolist(), actual, position_error, rotation_error)
-                if position_error < .0005 and rotation_error < .008:
+                if position_error < stop_position and rotation_error < stop_orientation:
                     break
                 jac = self.robot.root_physx_view.get_jacobians()[0, body-1, :, indices]
                 if jac.shape != (6, len(indices)):
@@ -113,16 +135,17 @@ class IsaacMotionBackend:
                 position_error_m=local[3], orientation_error_rad=local[4]))
             if best is None or local[0] < best[0]:
                 best = local
-            if local[3] < .0005 and local[4] < .008:
+            if local[3] < stop_position and local[4] < stop_orientation:
                 best = local
                 break
         self.write(best[1])
         self.ik_results.append(dict(label=label, side=side, target_position_m=list(target),
             target_orientation_xyzw=quaternion, local_grip_point=local_point, joint_names=self.names, attempts=attempts,
+            stop_tolerance=[stop_position, stop_orientation], seed_label=seed_label,
             best_joint_positions_rad=best[1], measured_palm_pose=best[2],
             position_error_m=best[3], orientation_error_rad=best[4],
             max_joint_change_from_previous_rad=max(abs(a-b) for a, b in zip(seed, best[1])),
             orientation_constrained=quaternion is not None))
-        if best[3] >= .0005 or best[4] >= .008:
+        if best[3] >= IK_POSITION_LIMIT_M or best[4] >= IK_ORIENTATION_LIMIT_RAD:
             raise ValueError(f'Bounded IK search failed: {label}, position={best[3]:.6g}, orientation={best[4]:.6g}')
         return best[1], best[2]

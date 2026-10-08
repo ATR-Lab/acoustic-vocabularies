@@ -1,4 +1,99 @@
 {
+  "add_one_redesign_development_probes": {
+    "date": "2026-10-07/08",
+    "design": "docs/isaac/demos.md, Transport reorientation and bounded lean",
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "kind": "development probes, not the procedure preflight: uncommitted working-tree snapshots (git stash create + git archive, archive hash and pax commit verified on the host); ADD_ONE pairs only; run_scene.py unchanged except the --demo-preflight hook; --reset-cycles 10; same image and isolation (--network none, read-only /work and /assets, fresh /results)",
+    "private_outputs": "host ~/.cache/acoustic-vocab-spikes/2026-10-07/i56-native2/results (not published)",
+    "probes": [
+      {
+        "archive_sha256": "d5f437df8ecf8fa5e95d6f4c2c071280a827f3ea1c5172bd5145f59afb96a10b",
+        "container_removed": true,
+        "exit_code": 137,
+        "gpu_utilization_percent_in_run": {
+          "max": 100,
+          "mean": 96.9,
+          "median": 100.0,
+          "min": 75,
+          "samples": 1614
+        },
+        "other_targets": "stopped during tray_A",
+        "probe": "dev1",
+        "run_seconds": 8075.1,
+        "snapshot_commit": "58e1bb737feafb3a7b152751ec68d268eaa75c2d",
+        "stopped_by_task": true,
+        "tray_D": {
+          "feasible": false,
+          "ik_solves": 1283,
+          "lean_0": {
+            "best_placement_residual_mm": 16.2,
+            "entry_feasible": "2/8",
+            "entry_residuals_mm": [
+              0.098,
+              0.091
+            ],
+            "placement_feasible": "0/16"
+          },
+          "refusals": "most lean 0.15/0.30 pairs refused at contact (u=0.20-0.25) by attachment_rotation_rad 0.5-2.2 mrad between identical rotations: float32 quaternion norm artefact of 2*acos(|a.b|), fixed with geometry.rotation_angle; others: corridor IK failure, finger_m 2.7 mm (lean 0.30)",
+          "seconds": 7710
+        }
+      },
+      {
+        "archive_sha256": "85763feac506e3d65bb93a1e924bad0e766f1591a1734b1b241396ae6721eeb7",
+        "container_removed": true,
+        "exit_code": 137,
+        "gpu_utilization_percent_in_run": {
+          "max": 100,
+          "mean": 90.9,
+          "median": 97.0,
+          "min": 0,
+          "samples": 700
+        },
+        "probe": "dev2",
+        "run_seconds": 3500.9,
+        "snapshot_commit": "45b99f5d2d503da6f2853d01e315162cf9beabfa",
+        "stopped_by_task": true,
+        "tray_A": "lean 0: 4 screened pairs refused at transport keyframes (IK); stopped during lean 0.15; transport seeding toward the screened placement solution added afterwards",
+        "tray_D": {
+          "chosen": {
+            "lean_direction_rad": "pi/4",
+            "lean_rad": 0.3,
+            "pickup_palm_yaw_rad": "-3pi/4",
+            "placement_palm_yaw_rad": "pi",
+            "washer_yaw_rad": "-pi/4"
+          },
+          "entry": {
+            "headroom": 0.82,
+            "orientation_rad": 0.00041,
+            "position_mm": 0.091
+          },
+          "feasible": true,
+          "ik_solves": 883,
+          "placement": {
+            "headroom": 0.26,
+            "orientation_rad": 1.77e-05,
+            "position_mm": 0.37
+          },
+          "prior_failures": 21,
+          "refusals": "mostly transport keyframe IK (full pose) failures",
+          "seconds": 3191,
+          "swept_joint_path": {
+            "body_mm": 44.6,
+            "carried_tilt_max_rad": 0.0052,
+            "carried_wall_mm": 2.3,
+            "contact_offset_max_mm": 0.34,
+            "corridor_orientation_max_rad": 0.0036,
+            "finger_mm": 9.64,
+            "other_washers_mm": 0.77,
+            "rows": 1265,
+            "transport_carried_outside_cup_mm": 114.1,
+            "transport_reach_mm": 70.0
+          },
+          "transport_max_joint_step_rad": 0.363
+        }
+      }
+    ]
+  },
   "diagnostic_suite": {
     "actual_public_v2_frames": 12000,
     "capture_complete": 40,

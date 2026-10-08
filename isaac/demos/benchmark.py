@@ -19,7 +19,7 @@ from isaac.commands.hold import make_robot_hold
 from isaac.publisher.protocol import PublicRegistry, StateEncoder
 from .backend import IsaacMotionBackend
 from .planner import compile_plan
-from .grip_geometry import path_clearance
+from .grip_geometry import MEASURED_ATTACHMENT_TOLERANCE, path_clearance
 from .recording import (TrajectoryWriter, read_trajectory, write_json, record_fixed_schedule,
                         validate_suite, SCHEDULE)
 from .runtime import (DemoLibrary, SAMPLE_COUNT, NOMINAL_DURATION_SECONDS, PHYSICS_DT_SECONDS,
@@ -52,7 +52,8 @@ def collect_cup_frames(library, adapter, plan, action, target):
     except StopIteration: pass
     # Declared envelope on actual palm poses; any outside-pad-posture sample
     # whose reach sphere meets the cup is left to the pinned-mesh screen.
-    declared = path_clearance(corridor, palms, strict_reach=False)
+    declared = path_clearance(corridor, palms, strict_reach=False,
+                              attachment_tolerance=MEASURED_ATTACHMENT_TOLERANCE)
     near = {row['sample'] for row in declared['uncertified']}
     rows = [row for row, item in zip(measured_rows, palms)
             if corridor['enter'] <= item['u'] <= corridor['exit'] or row['sample'] in near]
