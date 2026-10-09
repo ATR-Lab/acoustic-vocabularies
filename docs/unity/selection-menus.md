@@ -75,13 +75,35 @@ the menu event schema.
 Sealing requires all menus, three independently pinned candidate files, eight
 correlated requests/onset authorities/completions per menu, final selection and
 independently re-read store receipt, and all display transitions. The onset check
-uses the event's reported uncertainty, capped at 20 ms; display residuals use a
-separate 20 ms engineering check. Neither is evidence of acoustic timing or a new
+uses the event's reported uncertainty, capped at 20 ms. Display transitions and
+the final choice are observed on the first rendered frame at or after their
+boundary, so their stamps lag by up to a frame plus in-frame work. `MenuTimeline`
+refuses such an observation more than 250 ms after its boundary
+(`MENU_DISPLAY_LATE`/`MENU_DECISION_LATE`) and the active seal applies the same
+bound, the limit already used for onset observation and the frame-gap fault. A
+check first discovered at the seal, after every menu's exposure, would end the
+visit without protecting any exposure. The 20 ms display residual remains a
+separate engineering screen (`MENU_DISPLAY_TIMING_SCREEN_FAILED` in mock-visit
+reconciliation); yoked rows keep the 20 ms comparison against the recorded active
+offsets. None of these is evidence of acoustic or physical display timing or a new
 approved protocol tolerance. Incomplete, interrupted,
 late or malformed segments remain on disk but cannot authorize yoked replay.
 An interruption's event ID is also its `matching_deviation_id`; recovery never
 automatically repeats a partial exposure. Explicit reconstruction/owner review is
 needed before a replacement active sequence can be admitted.
+
+The [native rerun record](selection-menus-native-017.validation.json) covers #220.
+Simulator player `simulation-native-017` was built clean from a local test merge
+of main, #201, #199 and this change. It ran B V1 active with a fresh DEMO store
+and Resume at each block-boundary pause. The profile menu and all eight atom
+menus completed, and the ledger sealed (`menu_count` 9). The atomic-lessons
+preflight passed. Atomic lessons (8/8) and message lessons (8/8) followed.
+The visit then stopped in the second trained assessment item with the separate
+`ASSESSMENT_RESPONSE_LOG_MISSING`. Reconciliation verified integrity and
+recorded 123 of 123 requested plays with software completion. It no longer
+lists the unsealed-ledger reasons. It still reports the
+`MENU_DISPLAY_TIMING_SCREEN_FAILED` and frame-budget screens. This is
+simulator engineering evidence only.
 
 `MenuReplaySequence.Load` requires an independently pinned sealed active-file
 hash and active binding, verifies canonical bytes/hash chain/schema, independent
