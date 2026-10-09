@@ -92,6 +92,19 @@ An interruption's event ID is also its `matching_deviation_id`; recovery never
 automatically repeats a partial exposure. Explicit reconstruction/owner review is
 needed before a replacement active sequence can be admitted.
 
+The [native rerun record](selection-menus-native-017.validation.json) covers #220.
+Simulator player `simulation-native-017` was built clean from a local test merge
+of main, #201, #199 and this change. It ran B V1 active with a fresh DEMO store
+and Resume at each block-boundary pause. The profile menu and all eight atom
+menus completed, and the ledger sealed (`menu_count` 9). The atomic-lessons
+preflight passed. Atomic lessons (8/8) and message lessons (8/8) followed.
+The visit then stopped in the second trained assessment item with the separate
+`ASSESSMENT_RESPONSE_LOG_MISSING`. Reconciliation verified integrity and
+recorded 123 of 123 requested plays with software completion. It no longer
+lists the unsealed-ledger reasons. It still reports the
+`MENU_DISPLAY_TIMING_SCREEN_FAILED` and frame-budget screens. This is
+simulator engineering evidence only.
+
 `MenuReplaySequence.Load` requires an independently pinned sealed active-file
 hash and active binding, verifies canonical bytes/hash chain/schema, independent
 assets and actual store receipts, and refuses age outside 0–24 hours. The session
