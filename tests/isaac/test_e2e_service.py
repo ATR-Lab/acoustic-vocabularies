@@ -1,9 +1,57 @@
 """Owner-thread service sequencing; actual Isaac E2E evidence is separate."""
+import ast
+import gc
+import inspect
 from types import SimpleNamespace
+import weakref
 
 import pytest
 
-from isaac.e2e.service import advance_once, run_joined_service
+from isaac.e2e import service
+from isaac.e2e.service import advance_once, freeze_startup_heap, run_joined_service
+
+
+@pytest.fixture
+def unfrozen():
+    gc.unfreeze()
+    yield
+    gc.unfreeze()
+
+
+def test_startup_heap_freeze_keeps_gc_enabled_with_unchanged_thresholds(unfrozen):
+    settings=(gc.isenabled(),gc.get_threshold())
+    survivors=[{'node':i} for i in range(5000)]
+    record=freeze_startup_heap()
+    assert (gc.isenabled(),gc.get_threshold())==settings
+    assert record['enabled']==settings[0] and tuple(record['thresholds'])==settings[1]
+    # Refcount frees can still remove frozen objects, so compare lower bounds.
+    assert record['frozen_objects']>=len(survivors) and gc.get_freeze_count()>=len(survivors)
+    assert record['duration_ms']>=0 and record['collected']>=0
+
+
+def test_startup_garbage_is_collected_not_frozen_and_new_cycles_still_collect(unfrozen):
+    class Node: pass
+    def cycle():
+        a,b=Node(),Node();a.peer,b.peer=b,a
+        return weakref.ref(a)
+    before=cycle()
+    freeze_startup_heap()
+    assert before() is None  # the pre-freeze full collection freed it
+    after=cycle()
+    gc.collect()
+    assert after() is None   # collection still works for post-READY objects
+
+
+def test_service_freezes_after_startup_and_before_the_paced_loop():
+    # The freeze must follow all startup allocations (transports, journals,
+    # trace) and precede READY, which is only written inside the paced loop.
+    tree=ast.parse(inspect.getsource(service.run_joined_service))
+    calls=[n for n in ast.walk(tree) if isinstance(n,ast.Call) and getattr(n.func,'id',None) in
+           ('freeze_startup_heap','PrivateCommandTransport','StepTrace')]
+    lines={n.func.id:n.lineno for n in calls}
+    loop=min(n.lineno for n in ast.walk(tree) if isinstance(n,ast.While))
+    assert lines['PrivateCommandTransport']<lines['StepTrace']<lines['freeze_startup_heap']<loop
+    assert sum(n.func.id=='freeze_startup_heap' for n in calls)==1
 
 
 def fixture():

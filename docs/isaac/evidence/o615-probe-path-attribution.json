@@ -1,0 +1,1872 @@
+{
+ "scope": "Engineering probe-path attribution for #148; SIMULATION_TEST only",
+ "participant": false,
+ "qualification": false,
+ "date": "2026-10-07",
+ "refs": [
+  "#148",
+  "#82",
+  "#81"
+ ],
+ "sources": {
+  "native_player": "simulation-native-016 (unchanged; build manifest 86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109)",
+  "unfixed_service": {
+   "commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+   "archive_sha256": "4bc348b29af2a38ce497e88872fd003542fc11079231ca25f509c19b30412246"
+  },
+  "fixed_service": {
+   "commit": "ae77de8c56138826a54b0ae6b15f1717306a177c",
+   "note": "local test merge of this branch onto ce77221; not pushed",
+   "archive_sha256": "7feb01c760f4ab65a4d0072d2247853d79a725d70458990fccadbac3543f74a1"
+  },
+  "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+  "relay_sha256": "06a2391b006689c75db84830bbe94e8a25afee2ca4aabe6251ffb39c836e71bf"
+ },
+ "route": {
+  "windows_ssh": "OpenSSH_for_Windows_9.5p2",
+  "server_ssh": "OpenSSH_9.6p1 Ubuntu-3ubuntu13.19",
+  "cipher": "chacha20-poly1305@openssh.com",
+  "compression": "no",
+  "windows_link": "Wi-Fi",
+  "raw_tcp_handshake_rtt_ms": {
+   "n": 334,
+   "median": 4.07,
+   "p99": 14.36,
+   "max": 101.5,
+   "retained": false,
+   "note": "SYN/SYN-ACK to port 22 at 75 ms cadence; summary only, not repeated to avoid sshd connection noise"
+  },
+  "ssh_session_channel_echo": {
+   "note": "SSH session channel (no forward, relay or Isaac), 207-byte line echo, 75 ms cadence",
+   "rtt_ms": {
+    "n": 400,
+    "median": 4.298,
+    "p90": 6.301,
+    "p99": 10.844,
+    "max": 14.469
+   }
+  },
+  "sshd_tcp_info_during_forward": "Linux ss -ti on the -N forward: unacked:1 with notsent:36 recurring, smoothed rtt 25-30 ms versus minrtt 2.3 ms"
+ },
+ "stage_definitions": {
+  "client_rtt_ms": "Windows probe client send to full reply (perf_counter)",
+  "relay_residence_ms": "relay read of the request to relay drain of the reply (host monotonic)",
+  "outside_relay_ms": "client RTT minus relay residence: Windows client and OpenSSH, network, sshd and loopback TCP",
+  "relay_to_service_ingress_ms": "relay request read to service probe_ingress (same host clock)",
+  "service_ingress_to_send_end_ms": "service probe_ingress to WebSocket send completion",
+  "gate_replay": "derived worst ControlHealthGate effective age before each next reply: gap + RTT + max(neutral, publisher age); not a native observation"
+ },
+ "forward_modes": {
+  "N": "documented forwarding-only ssh -N (non-interactive)",
+  "T": "pty session (RequestTTY=force) with ObscureKeystrokeTiming=no: TCP_NODELAY at both ends",
+  "K": "same as T (echo screen label)",
+  "T_echo_with_obfuscation": "echo-002 T1/T2: pty with default keystroke obfuscation (20 ms quantization)",
+  "W": "ssh -W stdio to the relay port",
+  "U": "ssh stream-local forward straight to the echo Unix socket (no relay)"
+ },
+ "echo_screens": {
+  "echo-001/L1": {
+   "label": "L1",
+   "requests": 400,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 400,
+    "median": 48.52,
+    "p90": 70.448,
+    "p99": 95.019,
+    "max": 103.903
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 400,
+    "median": 1.116,
+    "p90": 1.219,
+    "p99": 1.418,
+    "max": 1.474
+   },
+   "outside_relay_ms": {
+    "n": 400,
+    "median": 47.377,
+    "p90": 69.366,
+    "p99": 93.825,
+    "max": 102.767
+   }
+  },
+  "echo-001/W1": {
+   "label": "W1",
+   "requests": 400,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 400,
+    "median": 47.452,
+    "p90": 67.287,
+    "p99": 91.975,
+    "max": 96.698
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 400,
+    "median": 1.03,
+    "p90": 1.074,
+    "p99": 1.313,
+    "max": 1.334
+   },
+   "outside_relay_ms": {
+    "n": 400,
+    "median": 46.469,
+    "p90": 66.233,
+    "p99": 90.931,
+    "max": 95.648
+   }
+  },
+  "echo-001/L2": {
+   "label": "L2",
+   "requests": 400,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 400,
+    "median": 50.393,
+    "p90": 72.867,
+    "p99": 102.037,
+    "max": 119.181
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 400,
+    "median": 1.016,
+    "p90": 1.067,
+    "p99": 1.299,
+    "max": 4.661
+   },
+   "outside_relay_ms": {
+    "n": 400,
+    "median": 49.404,
+    "p90": 71.939,
+    "p99": 101.019,
+    "max": 118.159
+   }
+  },
+  "echo-001/L3": {
+   "label": "L3",
+   "requests": 300,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 300,
+    "median": 45.628,
+    "p90": 64.521,
+    "p99": 87.262,
+    "max": 90.718
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 300,
+    "median": 0.984,
+    "p90": 1.068,
+    "p99": 1.261,
+    "max": 1.319
+   },
+   "outside_relay_ms": {
+    "n": 300,
+    "median": 44.577,
+    "p90": 63.539,
+    "p99": 86.226,
+    "max": 89.689
+   }
+  },
+  "echo-002/N1": {
+   "label": "N1",
+   "requests": 300,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 300,
+    "median": 50.187,
+    "p90": 67.559,
+    "p99": 106.949,
+    "max": 133.505
+   },
+   "over_130ms": 1,
+   "relay_residence_ms": {
+    "n": 300,
+    "median": 1.161,
+    "p90": 1.233,
+    "p99": 1.477,
+    "max": 1.829
+   },
+   "outside_relay_ms": {
+    "n": 300,
+    "median": 48.989,
+    "p90": 66.32,
+    "p99": 105.76,
+    "max": 132.308
+   }
+  },
+  "echo-002/T1": {
+   "label": "T1",
+   "requests": 300,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 300,
+    "median": 17.476,
+    "p90": 36.567,
+    "p99": 58.647,
+    "max": 61.138
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 300,
+    "median": 0.981,
+    "p90": 1.061,
+    "p99": 1.125,
+    "max": 1.188
+   },
+   "outside_relay_ms": {
+    "n": 300,
+    "median": 16.494,
+    "p90": 35.52,
+    "p99": 57.672,
+    "max": 60.195
+   }
+  },
+  "echo-002/N2": {
+   "label": "N2",
+   "requests": 300,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 300,
+    "median": 51.581,
+    "p90": 73.91,
+    "p99": 90.283,
+    "max": 103.246
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 300,
+    "median": 0.976,
+    "p90": 1.049,
+    "p99": 1.177,
+    "max": 2.861
+   },
+   "outside_relay_ms": {
+    "n": 300,
+    "median": 50.605,
+    "p90": 72.904,
+    "p99": 89.454,
+    "max": 102.382
+   }
+  },
+  "echo-002/T2": {
+   "label": "T2",
+   "requests": 300,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 300,
+    "median": 18.766,
+    "p90": 34.628,
+    "p99": 60.878,
+    "max": 64.577
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 300,
+    "median": 0.983,
+    "p90": 1.064,
+    "p99": 1.312,
+    "max": 2.81
+   },
+   "outside_relay_ms": {
+    "n": 300,
+    "median": 17.967,
+    "p90": 33.651,
+    "p99": 59.981,
+    "max": 63.638
+   }
+  },
+  "echo-002/K1": {
+   "label": "K1-tt-noobscure",
+   "requests": 250,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 250,
+    "median": 5.481,
+    "p90": 7.414,
+    "p99": 10.947,
+    "max": 19.71
+   },
+   "over_130ms": 0,
+   "relay_residence_ms": {
+    "n": 250,
+    "median": 0.978,
+    "p90": 1.065,
+    "p99": 1.126,
+    "max": 1.241
+   },
+   "outside_relay_ms": {
+    "n": 250,
+    "median": 4.528,
+    "p90": 6.428,
+    "p99": 9.905,
+    "max": 18.729
+   }
+  },
+  "echo-001/U1": {
+   "label": "U1-direct-unix-no-relay",
+   "requests": 400,
+   "deadline_failures": 0,
+   "client_rtt_ms": {
+    "n": 400,
+    "median": 51.335,
+    "p90": 72.988,
+    "p99": 92.443,
+    "max": 163.006
+   },
+   "note": "SSH stream-local forward directly to the echo Unix socket; no relay"
+  },
+  "echo-001/linux-relay": {
+   "label": "linux-relay",
+   "requests": 300,
+   "client_rtt_ms": {
+    "n": 300,
+    "median": 1.798,
+    "p90": 1.945,
+    "p99": 2.186,
+    "max": 2.33
+   },
+   "note": "Linux client through the loopback relay; no SSH"
+  }
+ },
+ "isaac_standalone": {
+  "i1": {
+   "linux-relay": {
+    "label": "linux-relay",
+    "requests": 297,
+    "deadline_failures": 1,
+    "client_rtt_ms": {
+     "n": 297,
+     "median": 13.178,
+     "p90": 24.487,
+     "p99": 29.69,
+     "max": 40.684
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 297,
+     "median": 12.489,
+     "p90": 23.713,
+     "p99": 28.952,
+     "max": 39.806
+    },
+    "outside_relay_ms": {
+     "n": 297,
+     "median": 0.745,
+     "p90": 0.854,
+     "p99": 2.022,
+     "max": 2.733
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 297,
+     "median": 9.667,
+     "p90": 20.772,
+     "p99": 23.917,
+     "max": 33.575
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 297,
+     "median": 1.395,
+     "p90": 9.087,
+     "p99": 12.333,
+     "max": 16.591
+    },
+    "gate_replay": {
+     "intervals": 296,
+     "worst_effective_median_ms": 120.76,
+     "worst_effective_max_ms": 554.134,
+     "intervals_over_250ms": 1,
+     "source_age_median_ms": 33.619,
+     "source_age_max_ms": 463.539
+    }
+   },
+   "N-private": {
+    "label": "N-private",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 49.376,
+     "p90": 70.26,
+     "p99": 90.02,
+     "max": 190.045
+    },
+    "over_130ms": 1,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 11.113,
+     "p90": 22.161,
+     "p99": 28.756,
+     "max": 40.033
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 37.541,
+     "p90": 58.869,
+     "p99": 80.298,
+     "max": 171.938
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 8.974,
+     "p90": 20.35,
+     "p99": 26.699,
+     "max": 33.605
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 1.013,
+     "p90": 8.911,
+     "p99": 14.692,
+     "max": 19.717
+    },
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 165.001,
+     "worst_effective_max_ms": 276.284,
+     "intervals_over_250ms": 5,
+     "source_age_median_ms": 35.624,
+     "source_age_max_ms": 114.157
+    }
+   },
+   "N-load": {
+    "label": "N-load",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 44.762,
+     "p90": 68.075,
+     "p99": 95.92,
+     "max": 99.76
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 11.417,
+     "p90": 24.25,
+     "p99": 30.513,
+     "max": 34.786
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 30.768,
+     "p90": 56.818,
+     "p99": 76.995,
+     "max": 88.771
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 8.946,
+     "p90": 21.675,
+     "p99": 27.162,
+     "max": 29.609
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 1.374,
+     "p90": 9.116,
+     "p99": 11.082,
+     "max": 19.397
+    },
+    "concurrent_public_frames": 250,
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 151.026,
+     "worst_effective_max_ms": 245.594,
+     "intervals_over_250ms": 0,
+     "source_age_median_ms": 33.684,
+     "source_age_max_ms": 119.553
+    }
+   },
+   "T-private": {
+    "label": "T-private",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 16.317,
+     "p90": 29.245,
+     "p99": 37.301,
+     "max": 44.463
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 11.399,
+     "p90": 23.313,
+     "p99": 30.207,
+     "max": 39.441
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 4.484,
+     "p90": 6.515,
+     "p99": 16.66,
+     "max": 27.991
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 9.078,
+     "p90": 21.394,
+     "p99": 26.516,
+     "max": 33.261
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 1.049,
+     "p90": 10.227,
+     "p99": 11.319,
+     "max": 12.58
+    },
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 119.445,
+     "worst_effective_max_ms": 211.252,
+     "intervals_over_250ms": 0,
+     "source_age_median_ms": 30.474,
+     "source_age_max_ms": 118.429
+    }
+   },
+   "T-load": {
+    "label": "T-load",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 16.39,
+     "p90": 33.971,
+     "p99": 43.514,
+     "max": 75.469
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 11.689,
+     "p90": 27.413,
+     "p99": 37.368,
+     "max": 44.279
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 4.25,
+     "p90": 9.115,
+     "p99": 21.78,
+     "max": 48.219
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 10.035,
+     "p90": 22.885,
+     "p99": 30.425,
+     "max": 37.775
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 1.373,
+     "p90": 8.669,
+     "p99": 12.946,
+     "max": 13.703
+    },
+    "concurrent_public_frames": 244,
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 123.54,
+     "worst_effective_max_ms": 310.388,
+     "intervals_over_250ms": 1,
+     "source_age_median_ms": 26.052,
+     "source_age_max_ms": 198.98
+    }
+   },
+   "service": {
+    "trace_events": 53692,
+    "dropped": 3,
+    "complete": false,
+    "gc_settings_unchanged": true,
+    "gen2": [
+     {
+      "after_ready_s": 2.752,
+      "ms": 455.099,
+      "collected": 294
+     }
+    ],
+    "loop_lag_ms": {
+     "n": 5272,
+     "median": 5.387,
+     "p90": 10.72,
+     "p99": 17.688,
+     "max": 455.261
+    }
+   },
+   "publisher": {
+    "frames": 1396,
+    "rate_hz": 10.35,
+    "interval_ms": {
+     "n": 1395,
+     "median": 92.93,
+     "p90": 114.252,
+     "p99": 155.162,
+     "max": 542.184
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 2.7,
+      "ms": 542.2,
+      "sim_step": 30,
+      "start_host_ms": 1375963850.396
+     }
+    ]
+   },
+   "summary": {
+    "elapsed_seconds": 135.144905487,
+    "physics_steps": 1397,
+    "end_reason": "private_stop",
+    "fault": null
+   }
+  },
+  "i2": {
+   "linux-relay": {
+    "label": "linux-relay",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 15.317,
+     "p90": 31.935,
+     "p99": 44.74,
+     "max": 47.435
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 14.38,
+     "p90": 31.002,
+     "p99": 44.193,
+     "max": 46.602
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 0.693,
+     "p90": 0.909,
+     "p99": 1.116,
+     "max": 27.539
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 11.224,
+     "p90": 25.512,
+     "p99": 37.602,
+     "max": 39.99
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 2.038,
+     "p90": 11.081,
+     "p99": 29.588,
+     "max": 31.659
+    },
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 166.047,
+     "worst_effective_max_ms": 355.222,
+     "intervals_over_250ms": 39,
+     "source_age_median_ms": 72.989,
+     "source_age_max_ms": 258.682
+    }
+   },
+   "N-private": {
+    "label": "N-private",
+    "requests": 300,
+    "deadline_failures": 1,
+    "client_rtt_ms": {
+     "n": 299,
+     "median": 59.908,
+     "p90": 103.724,
+     "p99": 162.494,
+     "max": 168.092
+    },
+    "over_130ms": 16,
+    "relay_residence_ms": {
+     "n": 276,
+     "median": 15.23,
+     "p90": 35.427,
+     "p99": 45.521,
+     "max": 48.916
+    },
+    "outside_relay_ms": {
+     "n": 275,
+     "median": 42.421,
+     "p90": 72.068,
+     "p99": 113.615,
+     "max": 127.846
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 276,
+     "median": 12.682,
+     "p90": 29.375,
+     "p99": 43.338,
+     "max": 47.322
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 276,
+     "median": 1.782,
+     "p90": 10.839,
+     "p99": 19.604,
+     "max": 28.478
+    },
+    "gate_replay": {
+     "intervals": 274,
+     "worst_effective_median_ms": 215.054,
+     "worst_effective_max_ms": 426.452,
+     "intervals_over_250ms": 84,
+     "source_age_median_ms": 67.508,
+     "source_age_max_ms": 237.805
+    }
+   },
+   "N-load": {
+    "label": "N-load",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 52.178,
+     "p90": 77.474,
+     "p99": 102.62,
+     "max": 117.515
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 17.468,
+     "p90": 33.457,
+     "p99": 43.512,
+     "max": 52.048
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 32.497,
+     "p90": 59.735,
+     "p99": 80.736,
+     "max": 89.268
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 14.678,
+     "p90": 27.362,
+     "p99": 36.837,
+     "max": 42.765
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 1.999,
+     "p90": 12.377,
+     "p99": 28.937,
+     "max": 32.388
+    },
+    "concurrent_public_frames": 131,
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 199.305,
+     "worst_effective_max_ms": 368.272,
+     "intervals_over_250ms": 84,
+     "source_age_median_ms": 67.675,
+     "source_age_max_ms": 228.275
+    }
+   },
+   "T-private": {
+    "label": "T-private",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 21.758,
+     "p90": 37.171,
+     "p99": 55.645,
+     "max": 63.448
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 16.412,
+     "p90": 31.84,
+     "p99": 45.951,
+     "max": 50.002
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 4.409,
+     "p90": 6.597,
+     "p99": 13.605,
+     "max": 22.604
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 12.884,
+     "p90": 26.254,
+     "p99": 42.812,
+     "max": 49.173
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 1.931,
+     "p90": 10.946,
+     "p99": 21.168,
+     "max": 30.377
+    },
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 166.871,
+     "worst_effective_max_ms": 345.227,
+     "intervals_over_250ms": 34,
+     "source_age_median_ms": 63.149,
+     "source_age_max_ms": 230.834
+    }
+   },
+   "T-load": {
+    "label": "T-load",
+    "requests": 300,
+    "deadline_failures": 0,
+    "client_rtt_ms": {
+     "n": 300,
+     "median": 21.347,
+     "p90": 37.189,
+     "p99": 49.464,
+     "max": 63.52
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 300,
+     "median": 16.864,
+     "p90": 32.062,
+     "p99": 43.954,
+     "max": 46.333
+    },
+    "outside_relay_ms": {
+     "n": 300,
+     "median": 4.084,
+     "p90": 6.27,
+     "p99": 17.034,
+     "max": 25.576
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 300,
+     "median": 13.172,
+     "p90": 27.564,
+     "p99": 39.215,
+     "max": 42.702
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 300,
+     "median": 2.129,
+     "p90": 12.426,
+     "p99": 22.88,
+     "max": 25.82
+    },
+    "concurrent_public_frames": 147,
+    "gate_replay": {
+     "intervals": 299,
+     "worst_effective_median_ms": 168.253,
+     "worst_effective_max_ms": 319.58,
+     "intervals_over_250ms": 33,
+     "source_age_median_ms": 63.979,
+     "source_age_max_ms": 227.712
+    }
+   },
+   "service": {
+    "trace_events": 101163,
+    "dropped": 4,
+    "complete": false,
+    "gc_settings_unchanged": true,
+    "gen2": [
+     {
+      "after_ready_s": 360.013,
+      "ms": 1.468,
+      "collected": 599
+     },
+     {
+      "after_ready_s": 381.6,
+      "ms": 0.389,
+      "collected": 0
+     },
+     {
+      "after_ready_s": 404.034,
+      "ms": 0.479,
+      "collected": 0
+     },
+     {
+      "after_ready_s": 426.29,
+      "ms": 0.332,
+      "collected": 0
+     },
+     {
+      "after_ready_s": 446.793,
+      "ms": 0.358,
+      "collected": 0
+     }
+    ],
+    "loop_lag_ms": {
+     "n": 17293,
+     "median": 5.45,
+     "p90": 13.074,
+     "p99": 26.238,
+     "max": 45.115
+    }
+   },
+   "publisher": {
+    "frames": 2814,
+    "rate_hz": 6.09,
+    "interval_ms": {
+     "n": 2813,
+     "median": 159.412,
+     "p90": 227.356,
+     "p99": 242.013,
+     "max": 288.248
+    },
+    "gaps_over_300ms": []
+   },
+   "summary": {
+    "elapsed_seconds": 462.061345213,
+    "physics_steps": 2815,
+    "end_reason": "private_stop",
+    "fault": null,
+    "startup_heap": {
+     "collected": 294,
+     "frozen_objects": 640052,
+     "duration_ms": 459.367431,
+     "enabled": true,
+     "thresholds": [
+      700,
+      10,
+      10
+     ]
+    }
+   }
+  }
+ },
+ "isaac_001_long_path_attempt": {
+  "note": "Relay refused its >107-byte AF_UNIX path, so no probes reached the service; the trace still covers 253 s of the unfixed service",
+  "service": {
+   "trace_events": 78877,
+   "dropped": 1,
+   "complete": false,
+   "gc_settings_unchanged": true,
+   "gen2": [
+    {
+     "after_ready_s": 2.862,
+     "ms": 487.323,
+     "collected": 294
+    },
+    {
+     "after_ready_s": 204.376,
+     "ms": 446.8,
+     "collected": 0
+    }
+   ],
+   "loop_lag_ms": {
+    "n": 9867,
+    "median": 5.354,
+    "p90": 10.721,
+    "p99": 12.364,
+    "max": 477.883
+   }
+  },
+  "publisher": {
+   "frames": 2760,
+   "rate_hz": 10.92,
+   "interval_ms": {
+    "n": 2759,
+    "median": 88.695,
+    "p90": 108.852,
+    "p99": 117.096,
+    "max": 585.313
+   },
+   "gaps_over_300ms": [
+    {
+     "after_s": 2.8,
+     "ms": 585.3,
+     "sim_step": 31,
+     "start_host_ms": 1375665696.61
+    },
+    {
+     "after_s": 171.9,
+     "ms": 315.8,
+     "sim_step": 1889,
+     "start_host_ms": 1375834785.281
+    },
+    {
+     "after_s": 204.3,
+     "ms": 555.4,
+     "sim_step": 2239,
+     "start_host_ms": 1375867200.778
+    }
+   ]
+  }
+ },
+ "pr216_failures": {
+  "backends": {
+   "o615-native-001": {
+    "rate_hz": 17.79,
+    "interval_ms": {
+     "n": 3725,
+     "median": 56.003,
+     "p90": 59.019,
+     "p99": 67.281,
+     "max": 461.843
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 1.7,
+      "ms": 461.8,
+      "sim_step": 31,
+      "start_host_ms": 1372169191.405
+     },
+     {
+      "after_s": 124.4,
+      "ms": 425.2,
+      "sim_step": 2178,
+      "start_host_ms": 1372291916.162
+     }
+    ]
+   },
+   "o615-native-002": {
+    "rate_hz": 17.78,
+    "interval_ms": {
+     "n": 3193,
+     "median": 55.349,
+     "p90": 59.039,
+     "p99": 66.812,
+     "max": 389.228
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 1.8,
+      "ms": 389.2,
+      "sim_step": 31,
+      "start_host_ms": 1372476905.102
+     },
+     {
+      "after_s": 119.8,
+      "ms": 373.0,
+      "sim_step": 2104,
+      "start_host_ms": 1372594888.74
+     }
+    ]
+   },
+   "o615-native-003": {
+    "rate_hz": 16.57,
+    "interval_ms": {
+     "n": 934,
+     "median": 59.215,
+     "p90": 62.732,
+     "p99": 70.342,
+     "max": 403.423
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 1.8,
+      "ms": 403.4,
+      "sim_step": 31,
+      "start_host_ms": 1373595584.214
+     }
+    ]
+   },
+   "o615-native-004": {
+    "rate_hz": 16.31,
+    "interval_ms": {
+     "n": 3517,
+     "median": 60.363,
+     "p90": 63.998,
+     "p99": 73.137,
+     "max": 410.998
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 1.8,
+      "ms": 411.0,
+      "sim_step": 31,
+      "start_host_ms": 1373698216.52
+     },
+     {
+      "after_s": 129.5,
+      "ms": 373.5,
+      "sim_step": 2102,
+      "start_host_ms": 1373825941.066
+     }
+    ]
+   }
+  },
+  "correlation": [
+   {
+    "run": "A full-001",
+    "backend": "o615-native-001",
+    "code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+    "effective_age_ms": 259.28,
+    "receipt_ms": 173.32,
+    "rtt_ms": 48.79,
+    "source_age_ms": 37.17,
+    "last_probe_sample_host_ms": 1372291898.296,
+    "nearest_publisher_gap_ms": 425.2,
+    "gap_start_minus_last_probe_sample_ms": 17.9,
+    "gap_sim_step": 2178,
+    "attribution": "service stall: the next probe arrived during a 425 ms process-wide pause"
+   },
+   {
+    "run": "A full-002",
+    "backend": "o615-native-002",
+    "code": "CONTROL_OPERATION_CANCELLED",
+    "previous_probe_rtt_ms": 102.37,
+    "failed_probe_elapsed_ms": 222.0,
+    "received_bytes": 0,
+    "last_probe_sample_host_ms": 1372591734.298,
+    "nearest_publisher_gap_ms": 373.0,
+    "gap_start_minus_last_probe_sample_ms": 3154.4,
+    "gap_sim_step": 2104,
+    "publisher_intervals_within_0p8s": "53-60 ms (no service pause)",
+    "attribution": "transport: forwarding-only SSH tail (no service pause within 3 s)"
+   },
+   {
+    "run": "B menu-002",
+    "backend": "o615-native-004",
+    "code": "AUDIO_EXPOSURE_INTERRUPTED",
+    "effective_age_ms": 285.33,
+    "receipt_ms": 250.82,
+    "rtt_ms": 31.05,
+    "failed_probe_elapsed_ms": 195.97,
+    "received_bytes": 0,
+    "last_probe_sample_host_ms": 1373825944.282,
+    "nearest_publisher_gap_ms": 373.5,
+    "gap_start_minus_last_probe_sample_ms": -3.2,
+    "gap_sim_step": 2102,
+    "attribution": "service stall: the next probe arrived during a 374 ms process-wide pause"
+   }
+  ],
+  "note": "Health sample times and publish.csv share the source host monotonic clock; trace was off in these runs. The same-step pauses (31 and ~2100-2240) match traced generation-2 collections."
+ },
+ "gc": {
+  "unfixed": {
+   "native007_ms": 370.385,
+   "isaac_001": [
+    {
+     "after_ready_s": 2.862,
+     "ms": 487.323,
+     "collected": 294
+    },
+    {
+     "after_ready_s": 204.376,
+     "ms": 446.8,
+     "collected": 0
+    }
+   ],
+   "i1": [
+    {
+     "after_ready_s": 2.752,
+     "ms": 455.099,
+     "collected": 294
+    }
+   ],
+   "j1": [
+    {
+     "after_ready_s": 5.018,
+     "ms": 464.551,
+     "collected": 294
+    }
+   ],
+   "j2": [
+    {
+     "after_ready_s": 2.668,
+     "ms": 376.324,
+     "collected": 294
+    }
+   ]
+  },
+  "fixed": {
+   "i2_startup_heap": {
+    "collected": 294,
+    "frozen_objects": 640052,
+    "duration_ms": 459.367431,
+    "enabled": true,
+    "thresholds": [
+     700,
+     10,
+     10
+    ]
+   },
+   "i2_gen2_after_ready": [
+    {
+     "after_ready_s": 360.013,
+     "ms": 1.468,
+     "collected": 599
+    },
+    {
+     "after_ready_s": 381.6,
+     "ms": 0.389,
+     "collected": 0
+    },
+    {
+     "after_ready_s": 404.034,
+     "ms": 0.479,
+     "collected": 0
+    },
+    {
+     "after_ready_s": 426.29,
+     "ms": 0.332,
+     "collected": 0
+    },
+    {
+     "after_ready_s": 446.793,
+     "ms": 0.358,
+     "collected": 0
+    }
+   ],
+   "i2_publisher_gaps_over_300ms": [],
+   "i2_physics_steps": 2815,
+   "j3_startup_heap": {
+    "collected": 294,
+    "frozen_objects": 640058,
+    "duration_ms": 507.008585,
+    "enabled": true,
+    "thresholds": [
+     700,
+     10,
+     10
+    ]
+   },
+   "j3_gen2_after_ready": []
+  }
+ },
+ "joined_attempts": {
+  "simulation-test-A-D0-016-attr-001": {
+   "backend": "j1",
+   "forward": "ssh -N (documented)",
+   "service_source": "ce77221",
+   "native_status": "AUDIO_NOT_READY",
+   "process_exit": 0,
+   "grammar_examples_completed": 0,
+   "requested_plays": 0,
+   "integrity_verified": true,
+   "software_reconciliation_complete": false,
+   "fault_codes": [
+    "AUDIO_NOT_READY",
+    "SESSION_JOIN_DISPOSED"
+   ],
+   "first_refusal": {
+    "kind": "grammar_gate_refused",
+    "code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+    "effective_age_ms": 286.38,
+    "receipt_elapsed_ms": 50.46,
+    "round_trip_ms": 56.15,
+    "neutral_age_ms": 179.77,
+    "publisher_age_ms": 149.46,
+    "dominant_term": "source age"
+   },
+   "unity_private_connection": {
+    "probes": 233,
+    "relay_residence_ms": {
+     "n": 233,
+     "median": 16.902,
+     "p90": 34.705,
+     "p99": 50.701,
+     "max": 208.151
+    },
+    "request_interval_ms": {
+     "n": 232,
+     "median": 75.961,
+     "p90": 98.659,
+     "p99": 130.381,
+     "max": 241.531
+    }
+   },
+   "service": {
+    "trace_events": 66851,
+    "dropped": 2,
+    "complete": false,
+    "gc_settings_unchanged": true,
+    "gen2": [
+     {
+      "after_ready_s": 5.018,
+      "ms": 464.551,
+      "collected": 294
+     }
+    ],
+    "loop_lag_ms": {
+     "n": 8514,
+     "median": 5.578,
+     "p90": 15.096,
+     "p99": 27.838,
+     "max": 470.59
+    }
+   },
+   "publisher": {
+    "frames": 1495,
+    "rate_hz": 6.45,
+    "interval_ms": {
+     "n": 1494,
+     "median": 146.516,
+     "p90": 216.756,
+     "p99": 233.757,
+     "max": 624.719
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 4.9,
+      "ms": 624.7,
+      "sim_step": 30,
+      "start_host_ms": 1376340870.446
+     }
+    ]
+   },
+   "startup_heap": null,
+   "concurrent_diagnostic_probes": {
+    "label": "N-diag-during-visit",
+    "requests": 2400,
+    "deadline_failures": 1,
+    "client_rtt_ms": {
+     "n": 2399,
+     "median": 53.267,
+     "p90": 80.354,
+     "p99": 101.595,
+     "max": 121.082
+    },
+    "over_130ms": 0,
+    "relay_residence_ms": {
+     "n": 1958,
+     "median": 15.66,
+     "p90": 32.971,
+     "p99": 45.613,
+     "max": 67.301
+    },
+    "outside_relay_ms": {
+     "n": 1958,
+     "median": 34.224,
+     "p90": 58.653,
+     "p99": 82.518,
+     "max": 101.413
+    },
+    "relay_to_service_ingress_ms": {
+     "n": 1958,
+     "median": 12.318,
+     "p90": 27.006,
+     "p99": 39.364,
+     "max": 45.722
+    },
+    "service_ingress_to_send_end_ms": {
+     "n": 1958,
+     "median": 1.593,
+     "p90": 11.29,
+     "p99": 26.401,
+     "max": 39.193
+    },
+    "gate_replay": {
+     "intervals": 1957,
+     "worst_effective_median_ms": 217.823,
+     "worst_effective_max_ms": 397.423,
+     "intervals_over_250ms": 576,
+     "source_age_median_ms": 92.267,
+     "source_age_max_ms": 225.117
+    }
+   }
+  },
+  "simulation-test-A-D0-016-attr-002": {
+   "backend": "j2",
+   "forward": "tools/engineering_forward.py",
+   "service_source": "ce77221",
+   "native_status": "AUDIO_EXPOSURE_INTERRUPTED",
+   "process_exit": 0,
+   "grammar_examples_completed": 2,
+   "requested_plays": 1,
+   "integrity_verified": true,
+   "software_reconciliation_complete": false,
+   "fault_codes": [
+    "AUDIO_EXPOSURE_INTERRUPTED",
+    "OPERATOR_ADAPTER_FAILED",
+    "SESSION_JOIN_DISPOSED"
+   ],
+   "first_refusal": {
+    "kind": "terminal_fault_diagnostic",
+    "code": "AUDIO_EXPOSURE_INTERRUPTED",
+    "effective_age_ms": 284.02,
+    "receipt_elapsed_ms": 97.05,
+    "round_trip_ms": 25.06,
+    "neutral_age_ms": 17.59,
+    "publisher_age_ms": 161.91,
+    "dominant_term": "source age"
+   },
+   "unity_private_connection": {
+    "probes": 1154,
+    "relay_residence_ms": {
+     "n": 1154,
+     "median": 12.47,
+     "p90": 28.891,
+     "p99": 43.942,
+     "max": 224.766
+    },
+    "request_interval_ms": {
+     "n": 1153,
+     "median": 75.742,
+     "p90": 76.761,
+     "p99": 78.987,
+     "max": 228.209
+    }
+   },
+   "service": {
+    "trace_events": 68317,
+    "dropped": 1,
+    "complete": false,
+    "gc_settings_unchanged": true,
+    "gen2": [
+     {
+      "after_ready_s": 2.668,
+      "ms": 376.324,
+      "collected": 294
+     }
+    ],
+    "loop_lag_ms": {
+     "n": 10290,
+     "median": 5.358,
+     "p90": 12.019,
+     "p99": 24.115,
+     "max": 382.131
+    }
+   },
+   "publisher": {
+    "frames": 2049,
+    "rate_hz": 7.59,
+    "interval_ms": {
+     "n": 2048,
+     "median": 122.477,
+     "p90": 212.683,
+     "p99": 233.522,
+     "max": 451.684
+    },
+    "gaps_over_300ms": [
+     {
+      "after_s": 2.6,
+      "ms": 451.7,
+      "sim_step": 31,
+      "start_host_ms": 1376795262.069
+     }
+    ]
+   },
+   "startup_heap": null
+  },
+  "simulation-test-A-D0-016-attr-003": {
+   "backend": "j3",
+   "forward": "tools/engineering_forward.py",
+   "service_source": "ae77de8 (heap freeze)",
+   "native_status": "AUDIO_EXPOSURE_INTERRUPTED",
+   "process_exit": 0,
+   "grammar_examples_completed": 1,
+   "requested_plays": 0,
+   "integrity_verified": true,
+   "software_reconciliation_complete": false,
+   "fault_codes": [
+    "AUDIO_EXPOSURE_INTERRUPTED",
+    "SESSION_JOIN_DISPOSED"
+   ],
+   "first_refusal": {
+    "kind": "grammar_gate_refused",
+    "code": "GRAMMAR_RESET_ACK_NOT_CURRENT",
+    "effective_age_ms": 275.6,
+    "receipt_elapsed_ms": 54.49,
+    "round_trip_ms": 36.57,
+    "neutral_age_ms": 184.54,
+    "publisher_age_ms": 149.54,
+    "dominant_term": "source age"
+   },
+   "unity_private_connection": {
+    "probes": 224,
+    "relay_residence_ms": {
+     "n": 224,
+     "median": 16.834,
+     "p90": 31.599,
+     "p99": 45.448,
+     "max": 127.059
+    },
+    "request_interval_ms": {
+     "n": 223,
+     "median": 75.706,
+     "p90": 76.579,
+     "p99": 79.427,
+     "max": 131.123
+    }
+   },
+   "service": {
+    "trace_events": 28826,
+    "dropped": 0,
+    "complete": false,
+    "gc_settings_unchanged": true,
+    "gen2": [],
+    "loop_lag_ms": {
+     "n": 5454,
+     "median": 5.435,
+     "p90": 13.535,
+     "p99": 26.053,
+     "max": 38.436
+    }
+   },
+   "publisher": {
+    "frames": 917,
+    "rate_hz": 6.27,
+    "interval_ms": {
+     "n": 916,
+     "median": 154.956,
+     "p90": 223.631,
+     "p99": 235.693,
+     "max": 258.369
+    },
+    "gaps_over_300ms": []
+   },
+   "startup_heap": {
+    "collected": 294,
+    "frozen_objects": 640058,
+    "duration_ms": 507.008585,
+    "enabled": true,
+    "thresholds": [
+     700,
+     10,
+     10
+    ]
+   }
+  }
+ },
+ "co_tenancy": {
+  "note": "Other users' GPU jobs started 14:10-14:15 and 14:58 local, after the PR #216 runs; the shared Quadro RTX 6000 ran at 80-100% utilization during every run here.",
+  "publisher_rate_hz": {
+   "pr216": [
+    17.79,
+    17.78,
+    16.57,
+    16.31
+   ],
+   "i1": 10.35,
+   "i2": 6.09,
+   "j1": 6.45,
+   "j2": 7.59,
+   "j3": 6.27
+  }
+ },
+ "raw_artifact_sha256": {
+  "session-pipe-echo-002.json": "bd59692f32912ec2ef77340a6a9b01d9eececae4ddef2a789fb03955ba097956",
+  "remote/echo-001/server.json": "15c17882062925cc0d455491035a66188bcd50e5210ec4050b6c20f09c2652d7",
+  "echo-001-L1.json": "bb94349aae62512fc32dc3c054feec16391cc6ce09af6dbbd52c519e8f648e99",
+  "echo-001-W1.json": "86e71713d55b0d618d726adcb3c369b783fd5f295137a6869ce1048e1c91cb7d",
+  "echo-001-L2.json": "9f76f2df66d8bdbd14f15591c959a0cbaf28f9dcd1c088b6a0891ea692c4c4bd",
+  "echo-001-L3.json": "6c306fdc6bcc2dfc20068e6314dd68d99ce50fa3c08ff8b9929c9a6b4f18618b",
+  "remote/echo-002/server.json": "04cb2461fa90b64a4d9430ca329d3a912e2a7b9a3ba990aea171a091d6d9e6bb",
+  "echo-002-N1.json": "6cd66368237e98a126a1a6ea9f82d5b5142a55af3be4a9987349ecc38552a911",
+  "echo-002-T1.json": "c9b06d1599d26afb69978c03d0f73a2c7973071940584ce876af6e01f7109491",
+  "echo-002-N2.json": "0b18a828b2e329c42487b6d0208a8a739a67ee85031d73b7a526e668948647dc",
+  "echo-002-T2.json": "346d95660bd5e991adfa97b1e5c3787c2371fa2184ef298c04078d4ffb2d9a94",
+  "echo-002-K1.json": "f9d6e3582b0f229f7f2543cc03ec42f8218e089badd2d6563dc076eb23263996",
+  "echo-001-U1.json": "8d6b2437a63de10a50cc56dbd015fc1e61bf576194b4f96912629cc7ebdbd315",
+  "remote/echo-001/linux-relay-1.json": "aa19fbd43adc40621980b5337ee5a3a66fafd58e9b8be527915b2f3d08d9a563",
+  "remote/r/i1-private-relay-trace.json": "e791568d310e66104735c317a4ae2481c3de0770a146c4bfc6851ebbe3cdf37b",
+  "remote/r/i1-linux-relay.json": "fe4d0afe9af62100e16b1420306560fd0577c4a5cb5a7f50c2d9eada80be4bdf",
+  "i1/N-private.json": "9598e9cfbf489c4ef64642752ff27a150bebd55ed32a1ad535d602f68e2c8bd3",
+  "i1/N-load.json": "2413a8178b87f5c82b8f0f36e5af22daa7c1de48072ad6d0b6dbe0e9f0ef36f9",
+  "i1/T-private.json": "62910ebac1aef828cdf51564e3f9cee8e0d76f43e5be6484aff88e003458efc7",
+  "i1/T-load.json": "fa73c7d07c7ea6b20188841550c15a67ca2c17e5e8eff56e241a541bc4275ee8",
+  "remote/r/i1/joined-e2e/private-timing.json": "f7fb78d56e707f5b2d480b4a2810a47e88c51afd58e48eba6c85a8085b6c7fa1",
+  "remote/r/i1/joined-e2e/publish.csv": "7fca4e973a4389b7f805f2efb2a5d128f105f25c42fd35b6331f1b5fb167fdf9",
+  "remote/r/i1/joined-e2e/summary.json": "8614add6cb342662e6ffa010f49c6e3c152fc863a5ded4ffe182af6eb4880dee",
+  "remote/r/i2-private-relay-trace.json": "f3af2a4bedeace8a0df46c89b38842511b338ca564ee4b4340f6157f35bc84a0",
+  "remote/r/i2-linux-relay.json": "e24e5e97ece490072063d1ff6771b2cc8590588ea6577584017445de8cdb46e3",
+  "i2/N-private.json": "5a46acf47b0231c7edbb9d25404e80749bc5f032b449ac703cc0ee03e40a4cd7",
+  "i2/N-load.json": "2f799b163a6f9f79e7488088719fb504ed819a83836df7d7b02eccac243cae41",
+  "i2/T-private.json": "a0e82c045f0d86e1131f9cc47979e0713efbbda60154127e04067d233c21ad47",
+  "i2/T-load.json": "f705b730fda21cd2715a286f625586d42e19ced1d961d850b76dabd8ecf20e66",
+  "remote/r/i2/joined-e2e/private-timing.json": "c2a99eee2e44f0f59ea4f8e44b088f17b59a11ebb8e3dfd581c581c4f1138dfe",
+  "remote/r/i2/joined-e2e/publish.csv": "832052a7c2f6adcb895654455d02155faed94f4ff2708e46863a75ae87387c2a",
+  "remote/r/i2/joined-e2e/summary.json": "59ff28f9808363197b9eefdd8a5bf6688da5fe6910e20dc3d702a750977b9da0",
+  "remote/attr148-isaac-001/joined-e2e/private-timing.json": "35231a0fcf19e7471722bd4414d3c9c0d251803c264207324a42c93758affad8",
+  "remote/attr148-isaac-001/joined-e2e/publish.csv": "1fc04013b271867d67078fcb1f4484b90d9e575397e3996f71fc967c89268b85",
+  "remote/pr216/o615-native-001/publish.csv": "06edce329dcaf7dd61d23c47d5583e1ceeece73bd36b2d405f6c586a59dedec8",
+  "remote/pr216/o615-native-002/publish.csv": "275f8e68ddc745f1b94217365f7aba2228c6e15aceaae9b437b499745b8d65be",
+  "remote/pr216/o615-native-003/publish.csv": "827365625036e2a7332a3b64a22ce78cd12bc376c7d920ed4ea38667a45ab385",
+  "remote/pr216/o615-native-004/publish.csv": "858a97968767818b89421db477739a0f232fabbedd5881336f31db523e8783a9",
+  "simulation-test-A-D0-016-attr-001/staged/runtime/evidence/joined-9e178276882c481dba22e5f786af1022/joined.local.jsonl": "4b2a4af7ab7458f1a01b7402488a5d4fb5bd82fc8816791b21f48a89c783fa90",
+  "simulation-test-A-D0-016-attr-001/reconciliation.local.json": "c929f703b5ae2fb4431dc0c5846eae2129b042d603855b07f9447256476b9a50",
+  "remote/r/j1/joined-e2e/private-timing.json": "bc39329c6d1fea5d0c680ccb13bd292a8eb89fdd2754fdf2ee9c817d37f0102e",
+  "remote/r/j1/joined-e2e/publish.csv": "68b7435296e86a615146414748e1d97b89e091db2e7fe1fc76a6b90f7a2140a9",
+  "remote/r/j1/joined-e2e/summary.json": "64dc684ddcd25f511a5c5efef5120520ea04bad487d20e3657a2a2c39371808f",
+  "remote/r/j1-private-relay-trace.json": "b7619afe7d362d7a5ce7d38a1841a4d7d6bd11d52f8fedd38d9717f7022f1a67",
+  "simulation-test-A-D0-016-attr-002/staged/runtime/evidence/joined-2cf151f602fb44f5968da9c18b381e01/joined.local.jsonl": "9ce3c8d1e4ceaca0d147956e8c3f35fbbe5404b7d2b13d17adca71cb8380cca8",
+  "simulation-test-A-D0-016-attr-002/reconciliation.local.json": "7e89888f2656efd8d834c78ca27494d49aaaaf85d1550f019872a37bfd05a2e1",
+  "remote/r/j2/joined-e2e/private-timing.json": "e35109e87ba40b8616c83c5bef27c0cb69991c775a8f8daa5d2325ce5ae8db97",
+  "remote/r/j2/joined-e2e/publish.csv": "ddc19e890bd1da54a046b9e954597c43400df0f4a1c2a0d3b447d8552fb57249",
+  "remote/r/j2/joined-e2e/summary.json": "e591b69995a58e17478cb0a73bcd941e8f6b511805414764d71553afd34658d9",
+  "remote/r/j2-private-relay-trace.json": "f0cd5a88db58642670c0b4719280e8345ac025d9a0517d9ea864b144aeeee64a",
+  "simulation-test-A-D0-016-attr-003/staged/runtime/evidence/joined-902321eaebea46f7bb1630f8aadf9af2/joined.local.jsonl": "c3864470addbdfda1a244ac60e9d89e9abf8159d0bd913fb5c5b089e689e0b7d",
+  "simulation-test-A-D0-016-attr-003/reconciliation.local.json": "e77af3eb3a8a2ba35b3f2b7eaf859611709d120ba0f97ac5f6b134009e233b5d",
+  "remote/r/j3/joined-e2e/private-timing.json": "55fa2dee576bf3de6d719f3cfd954ad69c3c4d286c71278e208e5d3c80d787af",
+  "remote/r/j3/joined-e2e/publish.csv": "930d3e492d196b0a3aabd9193e6c88c37cbf0f5e8dd4b8b25cf5b60d57d4c7cd",
+  "remote/r/j3/joined-e2e/summary.json": "9124aa7fa6e58f0993fc4193a8549a40abc8ece482cde857950a8fbc66f132ec",
+  "remote/r/j3-private-relay-trace.json": "54a2831d0811bc94c66837a6799c3eedb584d0d054f6244e863270f2aa8d6570",
+  "j1/N-diag-during-visit.json": "c465c26c2eeed7840500e4df092000cff593164e899a5bdf597739559df2e859"
+ },
+ "owned_resources_stopped": true,
+ "limitations": [
+  "Engineering simulator route only; no participant, acoustic, headset, clock or timing qualification",
+  "Windows and source clocks are not mapped; every stage is a difference within one clock",
+  "Relay and service traces add per-event observer cost; trace windows are bounded and may be incomplete",
+  "The Unity client records exchange timestamps only for a failed exchange, so joined runs use relay-side cadence and residence",
+  "Gate replay is derived from diagnostic probes, not from the native gate",
+  "No probe deadline, freshness bound, session/request validation, persistence gate, fallback or replay rule changed",
+  "Shared-GPU co-tenancy slowed the source to 5-11 Hz on 2026-10-07; those joined refusals were source-age limited. The 2026-10-09 reruns ran on an idle GPU at 16-17 Hz"
+ ],
+ "uncontended_reruns_2026_10_09": {
+  "note": "Shared GPU idle before start (0-4% utilization, 718 MiB, no other compute apps); only this service ran during the attempts.",
+  "player": {
+   "build": "simulation-native-016",
+   "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+   "composition": "main 0aa8eeb + #201 d85cd12 + #199 d98e471 (local test merge, not pushed)",
+   "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+   "rebuild": "not needed: #218 changes no Unity file"
+  },
+  "service": {
+   "commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+   "composition": "ce77221 + #218 head 462bd93 (local test merge, not pushed)",
+   "archive_sha256": "e48180077b52c518ef171d125bc6ad83b7f51ac6da4455303f742e890c4df4d4",
+   "service_py_identical_to": "ae77de8",
+   "relay_sha256": "06a2391b006689c75db84830bbe94e8a25afee2ca4aabe6251ffb39c836e71bf"
+  },
+  "forward": "tools/engineering_forward.py (RequestTTY=force, ObscureKeystrokeTiming=no)",
+  "attempts": {
+   "simulation-test-A-D0-016-attr-004": {
+    "outcome": "Grammar 2/2 completed; first study item and the whole atomic_lessons block 16/16 (48 plays) completed with no health refusal; operator paused before message_lessons; owner WM_CLOSE after the segment",
+    "run": "simulation-test-A-D0-016-attr-004",
+    "physics_steps": 7566,
+    "elapsed_s": 457.0,
+    "startup_heap": {
+     "collected": 294,
+     "frozen_objects": 640075,
+     "duration_ms": 371.330546,
+     "enabled": true,
+     "thresholds": [
+      700,
+      10,
+      10
+     ]
+    },
+    "source_rate_hz": 16.56,
+    "publish_interval_ms": {
+     "n": 7564,
+     "median": 60.481,
+     "p90": 64.144,
+     "p99": 73.923,
+     "max": 133.597
+    },
+    "publish_gaps_over_300ms": 0,
+    "gen2_after_ready_ms": {
+     "n": 14,
+     "max": 0.672
+    },
+    "loop_lag_ms": {
+     "n": 8578,
+     "median": 5.462,
+     "p90": 10.678,
+     "p99": 16.247,
+     "max": 22.901
+    },
+    "trace_events": 120000,
+    "trace_dropped": 120400,
+    "gpu_util_pct": {
+     "samples": 665,
+     "median": 11.0,
+     "max": 15.0
+    },
+    "gpu_mem_mib": {
+     "median": 5688.0,
+     "max": 5688.0
+    },
+    "unity_probes": 5314,
+    "unity_cycle_ms": {
+     "n": 5312,
+     "median": 75.71,
+     "p90": 76.88,
+     "p99": 80.447,
+     "max": 131.284
+    },
+    "unity_relay_residence_ms": {
+     "n": 5314,
+     "median": 10.518,
+     "p90": 21.731,
+     "p99": 27.6,
+     "max": 120.592
+    },
+    "unity_relay_to_ingress_ms": {
+     "n": 2495,
+     "median": 8.796,
+     "p90": 19.172,
+     "p99": 23.693,
+     "max": 27.103
+    },
+    "publisher_age_at_probe_ms": {
+     "n": 2499,
+     "median": 12.344,
+     "p90": 42.203,
+     "p99": 54.294,
+     "max": 126.016
+    },
+    "derived_worst_gate_age_ms": {
+     "n": 2495,
+     "median": 109.236,
+     "p90": 137.516,
+     "p99": 152.014,
+     "max": 299.894,
+     "over_250": 2
+    },
+    "reset_reply_ages_ms": {
+     "n": 36,
+     "neutral_max": 10.885641,
+     "publisher_max": 104.6754
+    },
+    "health_refusals": 0,
+    "requested_plays": 48,
+    "integrity_verified": true,
+    "fault_codes": [
+     "JOIN_HOST_DISABLED",
+     "SESSION_JOIN_DISPOSED"
+    ]
+   },
+   "simulation-test-B-V1-016-attr-005": {
+    "outcome": "profile_menu 1/1 and atom_menus 8/8 (72 plays, store receipts committed) with no health refusal; atomic_lessons preflight then refused MENU_LEDGER_DISPLAY (control_health null, not a #148 health path)",
+    "run": "simulation-test-B-V1-016-attr-005",
+    "physics_steps": 12202,
+    "elapsed_s": 759.7,
+    "startup_heap": {
+     "collected": 294,
+     "frozen_objects": 640071,
+     "duration_ms": 371.224701,
+     "enabled": true,
+     "thresholds": [
+      700,
+      10,
+      10
+     ]
+    },
+    "source_rate_hz": 16.06,
+    "publish_interval_ms": {
+     "n": 12200,
+     "median": 61.104,
+     "p90": 67.494,
+     "p99": 74.944,
+     "max": 138.591
+    },
+    "publish_gaps_over_300ms": 0,
+    "gen2_after_ready_ms": {
+     "n": 12,
+     "max": 0.818
+    },
+    "loop_lag_ms": {
+     "n": 8420,
+     "median": 5.432,
+     "p90": 10.671,
+     "p99": 16.64,
+     "max": 21.108
+    },
+    "trace_events": 120000,
+    "trace_dropped": 293143,
+    "gpu_util_pct": {
+     "samples": 397,
+     "median": 11.0,
+     "max": 51.0
+    },
+    "gpu_mem_mib": {
+     "median": 5688.0,
+     "max": 5688.0
+    },
+    "unity_probes": 8784,
+    "unity_cycle_ms": {
+     "n": 8782,
+     "median": 75.718,
+     "p90": 76.87,
+     "p99": 78.676,
+     "max": 140.864
+    },
+    "unity_relay_residence_ms": {
+     "n": 8784,
+     "median": 11.19,
+     "p90": 22.195,
+     "p99": 26.525,
+     "max": 135.648
+    },
+    "unity_relay_to_ingress_ms": {
+     "n": 2527,
+     "median": 9.429,
+     "p90": 20.85,
+     "p99": 24.445,
+     "max": 29.092
+    },
+    "publisher_age_at_probe_ms": {
+     "n": 2532,
+     "median": 11.577,
+     "p90": 39.657,
+     "p99": 60.452,
+     "max": 116.958
+    },
+    "derived_worst_gate_age_ms": {
+     "n": 2526,
+     "median": 108.005,
+     "p90": 140.879,
+     "p99": 153.105,
+     "max": 291.787,
+     "over_250": 1
+    },
+    "reset_reply_ages_ms": {
+     "n": 22,
+     "neutral_max": 14.624128,
+     "publisher_max": 105.972026
+    },
+    "health_refusals": 0,
+    "requested_plays": 72,
+    "integrity_verified": true,
+    "fault_codes": [
+     "MENU_LEDGER_DISPLAY",
+     "SESSION_JOIN_DISPOSED",
+     "SESSION_PREFLIGHT_FAILED"
+    ]
+   }
+  },
+  "derived_gate_note": "derived_worst_gate_age_ms is an upper bound per traced probe interval: next receipt gap + relay residence + 4.5 ms outside-relay (standalone pty median) + publisher age at ingress; neutral-verification age is not observable on success. Service trace coverage ended at its 120,000-event capacity, so relay-to-ingress, publisher-age and derived rows cover the traced portion only.",
+  "raw_artifact_sha256": {
+   "remote/r/k1/joined-e2e/summary.json": "925a12e69092046c6154961a676d1c65137fcb23393a6967d77c0ef48349ee1e",
+   "remote/r/k1/joined-e2e/private-timing.json": "988100ebc609c905212e08c055c591c1d4117abdb2de70ecfcd466731c6436f5",
+   "remote/r/k1/joined-e2e/publish.csv": "7fd920a70873e7d10fc21802c082dc1b431a54c8ebadc73d1de2fc60a47107a2",
+   "remote/r/k1/joined-e2e/commands.jsonl": "a37b6c950a250a08c1def051c6d82506471bd7db150a920a0098b4a6f267bd8c",
+   "remote/r/k1/joined-e2e/ready.json": "e3f4e1d24a043b4df94a57c1bb3b4bcaf829c59b8b5353016f19f96319f0a635",
+   "remote/r/k1-private-relay-trace.json": "1bf2d244bcc320200df295ec5f3bc77a879034c62890ff537d959f68b17e6d1e",
+   "remote/r/k1-public-relay-trace.json": "b19f06761e1246de4c29ad75c5ee55bd76c2474b50ba261a4a18c7ec65fe4bd9",
+   "remote/r/k1-gpu.csv": "04817cec0a0bba83b1c6ed606392cae3575d4235bc1fb289ca610225835a1d79",
+   "remote/r/k1-launch.json": "991aba8432ba6386a806d462bbf8a646adae85e9f5a6a70f21633dae2d517837",
+   "remote/r/k1-cleanup.json": "bfe7fb86798b8f9469b27b1ab3eea1829544648a01d6b5fb1e0b86593744acd7",
+   "remote/r/k1-stop.json": "b9f8add4158dd5b37c8e944911d3e064f6ea427b47629d0a0f25ba9a62b1f682",
+   "remote/r/k2/joined-e2e/summary.json": "a8971c6140729db237299b91445ce2d96f81a797e3977d5ebf0ba161d8782266",
+   "remote/r/k2/joined-e2e/private-timing.json": "67d86ecd15e2fc0cd4c32ee69b8e14b544530864d3904913a91dc603505750b0",
+   "remote/r/k2/joined-e2e/publish.csv": "78d5303e85024a1eab32ab78a1744a4305bd92c2f67d744e1d96670b056f8553",
+   "remote/r/k2/joined-e2e/commands.jsonl": "59ff728638b6ac0001766dd0261ea59e441ff895ce8fae683e0d785134fc1b98",
+   "remote/r/k2/joined-e2e/ready.json": "f566bce5bb09459acfb70d647ba8be8af1aed0cce013e79962ed38c0b632fcc3",
+   "remote/r/k2-private-relay-trace.json": "8befd9cbcfd8b54444502da137fb510c1474b83943fac479bfc551139f7b99ae",
+   "remote/r/k2-public-relay-trace.json": "8ca451481e5c4ab9c5e8c0fb7015e2c45be5845098a5b444ef699ac58283018c",
+   "remote/r/k2-gpu.csv": "857835f2b7a62f28b4ee99f133e0905970e574191eaa58e686f674082b04e656",
+   "remote/r/k2-launch.json": "41bb20c6375f6d13f889011bdcf9d31a316cde17e7ea47573cbd6ff206a89958",
+   "remote/r/k2-cleanup.json": "e6475fb400770fe270a1ac3d3fc3c8e4bc03f52418d1cec2343c545bcbf8dc7c",
+   "remote/r/k2-stop.json": "6b5da952f502d8c2a00c1828554e935c72ff5e0be44f4b3f51e797adae153fd8",
+   "simulation-test-A-D0-016-attr-004/staged/runtime/evidence/joined-226e4809707f40ad961a0c40bb4a3b51/joined.local.jsonl": "5bd7c7d227328051ab03d238dcf44b4aad5300074e88569db1930ccd1c3d5894",
+   "simulation-test-A-D0-016-attr-004/staged/runtime/evidence/joined-226e4809707f40ad961a0c40bb4a3b51/native-result.local.json": "75d128cba2466f130cd1aa6836632c4d3a9732d93df448a153a22a5feaa21e07",
+   "simulation-test-A-D0-016-attr-004/reconciliation.local.json": "836083a2f0fd6a00bf15c5db9726453afa9e331e6759e388404d0fd852e43634",
+   "simulation-test-A-D0-016-attr-004/mock-run.manifest.json": "db9cbf2897f4a43cc3bb79907bf485701a1e876c11ba222004ebac0f283b04ec",
+   "simulation-test-A-D0-016-attr-004/observer/process-result.local.json": "25df1ab91d974325f2817a21cfa4ab1293d8589ffbe1b0003fb43e51850ad003",
+   "simulation-test-B-V1-016-attr-005/staged/runtime/evidence/joined-e5281ab32bd246cba53052b87cc9d79d/joined.local.jsonl": "6bf5cab01c0830d26407e862ae5633a73df13cfb0b2c5a77ba3cbff3a1b76b23",
+   "simulation-test-B-V1-016-attr-005/staged/runtime/evidence/joined-e5281ab32bd246cba53052b87cc9d79d/native-result.local.json": "986e026ab618ff9dc0d51c7811066b2eb3833017597ffd36b559160c9589493f",
+   "simulation-test-B-V1-016-attr-005/reconciliation.local.json": "7259ffbeafe437526a0528ddd5d9d9658f52b4700e0d25cdd3f2ede7f76fba28",
+   "simulation-test-B-V1-016-attr-005/mock-run.manifest.json": "803d975455ef200cf64dcb9bf04d15ea7fa79a3bea69f4297301dfe029d22fdc",
+   "simulation-test-B-V1-016-attr-005/observer/process-result.local.json": "87437d8ac81fb24ddbbef81057a44e8d50bd48a7c9ef33f7a1d81c405d662ab8"
+  }
+ }
+}

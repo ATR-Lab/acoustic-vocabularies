@@ -86,6 +86,88 @@ continuing. File-time-derived wall boundaries are approximate, not clock
 evidence. Compression was not tested because bulk did not worsen the observed
 private-only failure. All failures and partial coverage remain retained.
 
+## Probe-path attribution (2026-10-07)
+
+The [attribution record](evidence/o615-probe-path-attribution.json) splits each
+probe round trip with the opt-in relay trace (`relay.py --trace`), this service
+trace and a Windows diagnostic client (`spikes/O6.1.5/`). Every stage is a
+difference within one clock. It found two independent causes of the late
+replies in the PR #216 attempts, and neither is the WAN, the relay or the
+Unity client.
+
+1. **Forwarding-only SSH transport.** The documented `ssh -N` connection is
+   non-interactive, so OpenSSH leaves Nagle on. Small replies then wait for
+   delayed acknowledgements (Linux `ss` showed 36 bytes held behind one
+   unacknowledged segment). With a synthetic echo and no Isaac, the time
+   outside the relay was 45-51 ms median and up to 132 ms, while the relay
+   took about 1 ms. Raw TCP to the host was 4 ms median, and an SSH session
+   channel echo was 4.3 ms. `-W` stdio and a direct stream-local forward
+   behaved like `-N`. A pty session with `ObscureKeystrokeTiming=no` sets
+   TCP_NODELAY on the SSH socket at both ends, and cut the outside-relay time
+   to 4.5 ms median and 19 ms maximum. The earlier ABBA screen toggled only the
+   Windows client's local socket, which never reaches the SSH socket. Against
+   the live service, the outside-relay time was 31-42 ms median and up to
+   172 ms with `-N`, and 4.1-4.5 ms median and up to 48 ms with the pty forward.
+   `tools/engineering_forward.py` now opens the forward this way.
+2. **Generation-2 garbage collection in the service.** Traced full
+   collections took 370-487 ms with nothing or almost nothing to free. They
+   stop every Python thread, including this private loop. Each traced run had
+   one 2.7-5.0 s after READY. A second appeared near step 2100-2240, which
+   is about two minutes at the PR #216 rate of 16-18 Hz. The PR #216 backends
+   show 373-425 ms publisher gaps at those same steps. For A full-001 and B
+   menu-002, the last good probe's health sample is 17.9 ms before and 3.2 ms
+   after such a gap began. The next probe therefore met a frozen process. A
+   full-002 had steady 53-60 ms publication, and its preceding probe already
+   took 102 ms, so it is attributed to the SSH transport. The service now runs
+   one full collection before READY and freezes the survivors (640,052
+   objects). Afterward, every generation-2 collection took 0.33-1.47 ms over
+   2,815 steps, with no publisher gap above 300 ms and loop lag at most 45 ms.
+
+In steady state the service's own share stayed small. Relay to parsed ingress
+was 9-15 ms median and 30-49 ms maximum (GIL contention with the simulation
+thread). Ingress to send completion was 1-2 ms median.
+
+Three joined A D0 attempts reused the unchanged simulation-native-016 player.
+Attempt 001 used the documented `-N` forward with concurrent diagnostic probes.
+Attempt 002 used the pty forward with the unfixed service. Attempt 003 used
+both fixes. With the pty forward, the native probe cycle stayed at a 79 ms
+p99, against 130 ms with `-N`. Attempt 002 completed both grammar examples and
+requested the first study item. Every attempt still ended on the unchanged
+250 ms bound, and in each one the dominant term was source age: 162-185 ms
+neutral or publisher age, against receipt plus round trip of 91-122 ms.
+Other users' GPU jobs ran throughout and held this shared host's source at
+6-8 Hz, against 16-18 Hz in PR #216. These attempts therefore do not validate
+the native segment. They do show that the remaining refusal on this host is
+source throughput, not probe transport.
+
+On 2026-10-09 the shared GPU was idle (0-4% before start, with no other compute
+app), and two more attempts ran with both fixes. The player was the same
+unchanged one; #218 touches no Unity file. The service was `ce77221` plus
+#218. During the attempts, GPU utilization was 11% median with a 51% maximum,
+and the source ran at 16.1-16.6 Hz. Publication intervals were at most
+139 ms. No generation-2 collection exceeded 0.82 ms within the traced
+portion; the service trace stopped at its 120,000-event capacity. No health
+gate refused anything.
+
+- **A D0 attempt 004:** both grammar examples, the first study item and all
+  16 atomic lessons (48 plays) completed. The run was then closed at the
+  operator pause.
+- **B V1 attempt 005:** the profile menu and all eight atom menus (72 plays,
+  with committed store receipts) completed. The atomic-lessons preflight then
+  refused with `MENU_LEDGER_DISPLAY`, a menu-ledger display check with no
+  control-health involvement.
+
+In both attempts the native probe cycle stayed at 79-80 ms p99. Relay
+residence was 10.5-11.2 ms median and 27-28 ms p99. The publisher age seen by
+probes was 12 ms median and at most 126 ms. Both exports reconcile with
+integrity verified.
+
+A deployed station must not depend on this route. ADR-003 places one isolated
+Isaac instance per station on its own network. Without the SSH hop, both the
+probe and the source run on the station's own wired link and dedicated GPU.
+Until then, engineering runs need the pty forward and an uncontended GPU, and
+should record co-tenancy, since source age alone can exceed the bound.
+
 ## Reproduce the separate echo screen
 
 These scripts are the executed diagnostic logic with formatting-only changes
