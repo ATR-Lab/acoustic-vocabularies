@@ -75,8 +75,17 @@ the menu event schema.
 Sealing requires all menus, three independently pinned candidate files, eight
 correlated requests/onset authorities/completions per menu, final selection and
 independently re-read store receipt, and all display transitions. The onset check
-uses the event's reported uncertainty, capped at 20 ms; display residuals use a
-separate 20 ms engineering check. Neither is evidence of acoustic timing or a new
+uses the event's reported uncertainty, capped at 20 ms. Display transitions and
+the final choice are observed on the first rendered frame at or after their
+boundary, so their stamps lag by up to a frame plus in-frame work. `MenuTimeline`
+refuses such an observation more than 250 ms after its boundary
+(`MENU_DISPLAY_LATE`/`MENU_DECISION_LATE`) and the active seal applies the same
+bound, the limit already used for onset observation and the frame-gap fault. A
+check first discovered at the seal, after every menu's exposure, would end the
+visit without protecting any exposure. The 20 ms display residual remains a
+separate engineering screen (`MENU_DISPLAY_TIMING_SCREEN_FAILED` in mock-visit
+reconciliation); yoked rows keep the 20 ms comparison against the recorded active
+offsets. None of these is evidence of acoustic or physical display timing or a new
 approved protocol tolerance. Incomplete, interrupted,
 late or malformed segments remain on disk but cannot authorize yoked replay.
 An interruption's event ID is also its `matching_deviation_id`; recovery never

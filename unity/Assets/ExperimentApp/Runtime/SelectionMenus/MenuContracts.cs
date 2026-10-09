@@ -62,6 +62,12 @@ namespace AcousticVocab.SelectionMenus
     }
     internal static class MenuRules
     {
+        // Display transitions and the final choice are observed on the first
+        // rendered frame at/after their boundary. Live refusal and active seal
+        // use this same engineering bound, matching onset observation and the
+        // frame-gap fault. The 20 ms display residual remains a reconciliation
+        // screen; neither is a protocol tolerance or display-timing evidence.
+        internal const double BoundaryObservationMs=250;
         internal static bool Finite(double value)=>!double.IsNaN(value)&&!double.IsInfinity(value);
         internal static bool Id(string value)=>value!=null&&Regex.IsMatch(value,@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z");
         internal static bool Hash(string value)=>value!=null&&Regex.IsMatch(value,@"\A[0-9a-f]{64}\z");

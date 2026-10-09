@@ -175,6 +175,130 @@ namespace AcousticVocab.SelectionMenus.Tests
                 public void Interrupt(string code)=>Timeline?.Interrupt(clock.NowMs);
             }
         }
+        // Native attempt simulation-test-B-V1-016-attr-005: profile block, the
+        // engine's block-boundary pause, explicit resume, eight atom menus whose
+        // display and final-choice events were first observed 20-21 ms after
+        // their boundaries on 11-22 ms Simulator frames, then the post-menu seal.
+        const double FramePeriodMs=11.1,BoundaryHitchMs=14.6,InFrameLatencyMs=6;
+        [Test]public void FrameLateBoundaryEventsThroughRealEngineSealAfterBlockPauseAndExplicitResume()
+        {
+            var keys=new[]{"profile","K-r2","Q-r2","K-a2","Q-a1","K-r1","Q-r1","K-a1","Q-a2"};
+            var binding=new MenuLedgerBinding(Hash,Hash,Hash,Hash,Hash,Hash,"V1","active",keys);string path=Path.Combine(directory,"frame-late.jsonl");
+            var profile=new SlotItem("DEMO-PM-01","profile_menu",null,null,"selection","selection",false,60,8,1);
+            var atoms=keys.Skip(1).Select((key,i)=>new SlotItem("DEMO-AM-0"+(i+1),"atom_menu",key,null,"selection","selection",false,45,8,1)).ToArray();
+            var schedule=new VisitSchedule(Hash,Hash,"DEMO","V1",true,new[]{new ScheduleBlock("profile_menu",new[]{profile}),new ScheduleBlock("atom_menus",atoms)});
+            var clock=new Clock();var journal=new Journal();var leases=new List<FrameLease>();
+            using(var ledger=new MenuLedger(path,binding,created))
+            {
+                Func<ModuleConstructionScope,ISlotContentFactory> route=_=>{var lease=new FrameLease(clock,ledger);leases.Add(lease);return lease;};
+                var routes=new Dictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>>{["profile_menu"]=route,["atom_menus"]=route};
+                using var mux=new ExclusiveContentMultiplexer(schedule,clock,routes);var engine=new FixedSlotEngine(schedule,clock,journal,mux);
+                mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();RunFrames(engine,clock,leases);
+                Assert.That(engine.Status,Is.EqualTo(SessionState.Paused),"Block boundary pause: the operator command is Resume, not Start");
+                Assert.That(engine.CurrentBlock,Is.EqualTo("atom_menus"));Assert.That(engine.CompletedCounts,Is.EqualTo(new[]{1,0}));
+                clock.Time+=233000;mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();RunFrames(engine,clock,leases);
+                Assert.That(engine.Status,Is.EqualTo(SessionState.Complete));Assert.That(engine.CompletedCounts,Is.EqualTo(new[]{1,8}));
+                Assert.That(leases.Count,Is.EqualTo(2));Assert.That(leases.Sum(x=>x.Interrupts),Is.Zero);
+                Assert.That(journal.Records.Select(x=>x.Event),Does.Contain("session_paused").And.Contain("operator_resume"));
+                var rows=ReadLiveLines(path).Skip(1).Select(x=>(JObject)JObject.Parse(x)["record"]).ToArray();
+                Assert.That(rows.Any(x=>(string)x["kind"]=="menu_interrupted"),Is.False);
+                var observed=rows.Where(x=>(string)x["kind"] is "display_request" or "display_changed" or "choice_final").ToArray();Assert.That(observed.Length,Is.EqualTo(9*13));
+                foreach(var row in observed)
+                {
+                    bool isProfile=(string)row["menu_key"]=="profile",decision=(string)row["kind"]=="choice_final"||(string)row["phase"]=="Selected";double[] bounds=isProfile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000};
+                    double due=(string)row["kind"]=="choice_final"?(double)row["expected_mono_ms"]:(double)row["slot_start_mono_ms"]+bounds[(int)(MenuPhase)Enum.Parse(typeof(MenuPhase),(string)row["phase"])-1],residual=(double)row["mono_ms"]-due;
+                    if(isProfile&&decision)Assert.That(residual,Is.InRange(InFrameLatencyMs,FramePeriodMs+InFrameLatencyMs+1e-6),"Profile decision lands on an ordinary frame");
+                    else Assert.That(residual,Is.EqualTo(BoundaryHitchMs+InFrameLatencyMs).Within(1e-6),"Every other boundary observation exceeds the former 20 ms seal-only check");
+                }
+                Assert.That(BoundaryHitchMs+InFrameLatencyMs,Is.GreaterThan(20).And.LessThan(MenuRules.BoundaryObservationMs));
+                Assert.DoesNotThrow(()=>ledger.Seal(Verification()),"Post-menu preflight seal accepts what the live timeline accepted");
+                Assert.Throws<SessionFault>(()=>ledger.Append(new MenuEvent("menu_start",new SlotContext(atoms[0],clock.Time+1000,null),clock.Time,clock.Time+1000,meaningDisplayId:"DEMO-meaning")),"A sealed ledger never reopens");
+            }
+            var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),binding,Verification(),created.AddHours(1),1000,()=>0);
+            Assert.That(replay.For(atoms[4]).DisplayOffsetsMs,Is.EqualTo(new[]{0d,4000,22000,32000,40000,45000}.Select(x=>x+BoundaryHitchMs+InFrameLatencyMs)).Within(1e-6));
+        }
+        static void RunFrames(FixedSlotEngine engine,Clock clock,IEnumerable<FrameLease> leases)
+        {
+            for(int frame=0;engine.Status==SessionState.Running;frame++)
+            {
+                Assert.That(frame,Is.LessThan(100000));double next=clock.Time+FramePeriodMs;
+                foreach(var content in leases.SelectMany(x=>x.Live).Where(x=>x.Timeline!=null))foreach(double offset in content.Boundaries)
+                {double boundary=content.Context.OnsetMonoMs+offset;if(boundary>clock.Time&&boundary<=next)next=Math.Max(next,boundary+BoundaryHitchMs);}
+                clock.Time=next;engine.Tick();
+            }
+        }
+        [TestCase("display")][TestCase("decision")]
+        public void BoundaryObservedBeyondBoundFaultsLiveAndSegmentStaysUnsealable(string late)
+        {
+            string path=Path.Combine(directory,"late-"+late+".jsonl");using var ledger=new MenuLedger(path,Binding(),created);
+            var item=new SlotItem("DEMO-late","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);double clock=0,lag=0;var views=new List<MenuPhase>();int commits=0;
+            var timeline=new MenuTimeline(new SlotContext(item,750,null),Options(Keys[0]),"DEMO-meaning",ledger.Append,null,()=>clock+lag);
+            var plays=new List<(string id,MenuOption option,double at)>();var heard=new HashSet<string>();var done=new HashSet<string>();
+            timeline.PlayRequested+=(_,id,option,at)=>plays.Add((id,option,at));timeline.SelectionRequested+=(_,__)=>commits++;timeline.DisplayChanged+=(phase,_)=>views.Add(phase);
+            timeline.Start(0);double boundary=late=="display"?750:750+32000;
+            for(clock=10;clock<boundary;clock+=10)
+            {timeline.Tick(clock);foreach(var play in plays.ToArray()){if(clock>=play.at&&heard.Add(play.id))timeline.Onset(play.id,play.at,10,clock);if(clock>=play.at+play.option.Wave.SampleCount/48d&&done.Add(play.id))timeline.Completed(play.id,clock);}}
+            int shown=views.Count;clock=boundary;lag=MenuRules.BoundaryObservationMs+.001;
+            var fault=Assert.Throws<SessionFault>(()=>timeline.Tick(clock));Assert.That(fault.Code,Is.EqualTo(late=="display"?"MENU_DISPLAY_LATE":"MENU_DECISION_LATE"));
+            Assert.That(views.Count,Is.EqualTo(shown),"The late transition is refused before the view changes");Assert.That(commits,Is.Zero,"No store commit follows a refused decision");
+            timeline.Interrupt(clock);Assert.That(timeline.Interrupted,Is.True);
+            Assert.That((string)JObject.Parse(ReadLiveLines(path).Last())["record"]["kind"],Is.EqualTo("menu_interrupted"));
+            Assert.Throws<SessionFault>(()=>ledger.Seal(Verification()),"A started, refused segment remains unsealable");
+        }
+        [TestCase("Neutral",20.6,null)][TestCase("Neutral",250,null)][TestCase("Neutral",250.001,"MENU_LEDGER_DISPLAY")]
+        [TestCase("Selected",20.6,null)][TestCase("Selected",250,null)][TestCase("Selected",250.001,"MENU_LEDGER_TIMING")]
+        public void ActiveSealUsesTheLiveObservationBoundForFrameLateBoundaryEvents(string phase,double residual,string refusal)
+        {
+            var records=Events().Select(MenuJson.Event).ToList();string key=Keys[1];
+            double boundary=MenuJson.Number(records.First(x=>(string)x["menu_key"]==key)["slot_start_mono_ms"])+(phase=="Neutral"?40000:32000);
+            var moved=records.Where(x=>(string)x["menu_key"]==key&&MenuJson.Number(x["mono_ms"])==boundary).ToArray();Assert.That(moved.Length,Is.EqualTo(phase=="Neutral"?2:4));
+            foreach(var row in moved)row["mono_ms"]=boundary+residual;
+            TestDelegate validate=()=>MenuReplaySequence.ValidateRecords(records,Binding(),Verification());
+            if(refusal==null)Assert.DoesNotThrow(validate);else Assert.That(Assert.Throws<SessionFault>(validate).Code,Is.EqualTo(refusal));
+        }
+        [TestCase(20,true)][TestCase(21,false)]
+        public void YokedDisplayStillMatchesRecordedActiveOffsetsWithinTwentyMs(double residual,bool accepted)
+        {
+            var replay=Load(Write(Events()));var rows=Events(replay).Select(MenuJson.Event).ToList();
+            var first=rows.First(x=>(string)x["kind"]=="display_request"&&(string)x["phase"]=="Neutral");string key=(string)first["menu_key"];double at=MenuJson.Number(first["mono_ms"]);
+            foreach(var row in rows.Where(x=>(string)x["menu_key"]==key&&MenuJson.Number(x["mono_ms"])==at))row["mono_ms"]=at+residual;
+            TestDelegate compare=()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification());if(accepted)Assert.DoesNotThrow(compare);else Assert.Throws<SessionFault>(compare);
+        }
+        sealed class FrameLease:ISlotContentFactory,ISessionContentPump,IDisposable
+        {
+            readonly Clock clock;readonly MenuLedger ledger;internal readonly List<FrameContent> Live=new List<FrameContent>();public int Interrupts;bool disposed;
+            public FrameLease(Clock clock,MenuLedger ledger){this.clock=clock;this.ledger=ledger;}
+            public ISlotContent Create(SlotItem item){var content=new FrameContent(clock,ledger);Live.Add(content);return content;}
+            // Retires completed menus before disposal, as MenuContentFactory does.
+            public void Pump(){foreach(var content in Live.ToArray())content.Tick(clock.Time);Live.RemoveAll(x=>x.Timeline!=null&&x.Timeline.Complete);}
+            public void Dispose(){if(disposed)return;disposed=true;foreach(var content in Live){Interrupts++;content.Interrupt("SYNTHETIC_LEASE_RETIRED");}}
+        }
+        sealed class FrameContent:ISlotContent
+        {
+            readonly Clock clock;readonly MenuLedger ledger;readonly List<(string id,MenuOption option,double at)> plays=new List<(string id,MenuOption option,double at)>();
+            readonly HashSet<string> heard=new HashSet<string>(),done=new HashSet<string>();int? pending;bool reset;public MenuTimeline Timeline;public SlotContext Context;
+            public FrameContent(Clock clock,MenuLedger ledger){this.clock=clock;this.ledger=ledger;}
+            // Boundaries first observed by a late frame. The profile decision
+            // keeps an ordinary frame so, as in attr-005, the first pre-fix seal
+            // failure is the display check (atom decisions are late as well).
+            public double[] Boundaries=>Context.Item.TrialType=="profile_menu"?new[]{0d,6000,30000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000};
+            public void Prepare(SlotContext value)
+            {
+                Context=value;Timeline=new MenuTimeline(value,Options(value.Item.TrialType=="profile_menu"?"profile":value.Item.ContentId),"DEMO-meaning",ledger.Append,null,()=>clock.Time+InFrameLatencyMs);
+                Timeline.PlayRequested+=(_,id,option,at)=>plays.Add((id,option,at));Timeline.SelectionRequested+=(index,_)=>pending=index;
+            }
+            public SlotReadiness Readiness=>new SlotReadiness(true,true,true,true,true,true,true,true);
+            public bool ResetComplete=>reset;
+            public void RequestCue(SlotContext value,INovelSlotAuthorization permit)=>Timeline.Start(clock.Time);
+            public void OpenResponse(SlotContext value){}public void CloseResponse(SlotContext value){}public void RequestReset(SlotContext value)=>reset=true;
+            public void Interrupt(string code)=>Timeline?.Interrupt(clock.Time);
+            internal void Tick(double now)
+            {
+                if(pending.HasValue){Timeline.ConfirmSelection(pending.Value,Hash,now);pending=null;}
+                Timeline.Tick(now);
+                foreach(var play in plays.ToArray()){if(now>=play.at&&heard.Add(play.id))Timeline.Onset(play.id,play.at,10,now);if(now>=play.at+play.option.Wave.SampleCount/48d&&done.Add(play.id))Timeline.Completed(play.id,now);}
+            }
+        }
         [Test]public void PartialOrExpiredOrFutureOrWrongReceiptLedgerCannotReplay()
         {
             var events=Events();Assert.Throws<SessionFault>(()=>Load(Write(events,false)));var path=Write(events);
