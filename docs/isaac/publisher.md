@@ -168,9 +168,11 @@ hour failures or qualify protected throughput.
 
 ## Interval jitter reduction
 
-This section records a software change and **synthetic host-only** results. No
-Isaac run has used the change yet. Both recorded hour failures stand, and the
-p99 criterion is **not** claimed to pass.
+This section records a software change, synthetic host-only results and one
+native hour with the change. That hour, on 2026-10-09, **failed** the strict
+timing/rate screen with 2 missed deadlines. It met the p99 condition at
+0.626 ms and every other condition (see [native rerun result](#native-rerun-result-2026-10-09)).
+The two earlier recorded hour failures stand unchanged.
 
 ### Hypothesis from retained evidence
 
@@ -362,3 +364,70 @@ explicit platform/dependency skips (websockets/Unix/symlink/locked-CI) and one
 failure. That failure, `test_local_release_tag_matches_exact_commit_and_detects_retarget`,
 needs `git` on `PATH` and passed when rerun with Git available. All 89 schemas
 and 14 synthetic examples validated.
+
+### Native rerun result (2026-10-09)
+
+The run used commit `b714e75`, delivered as a `git archive` whose SHA-256
+(`108c887c…07d6`) and embedded commit ID were verified on the host. It ran in
+the approved `isaac5.1-rendered-cache-20261004` image (`sha256:38495e05…0c80`)
+with `--network none`, one GPU, read-only source and assets, and no
+integration overlay. Scene runner flags were `--capture --reset-check --headless
+--command-check --publisher-seconds 3600 --publisher-collector process`, with
+the defaults `presample`/`freeze`, reach included and 1,000 reset cycles. The
+scene hash `3b6e8f9a…119e` and reset snapshot `e2628102…a80e` match the recorded
+hours. All 1,000 reset cycles passed. The receiver-process hour also ran
+`--disconnect-check`, after its hour; this rerun omitted it, so the disconnect
+result is not re-measured. A 5-second GPU/host monitor ran throughout. Only
+this run's process used the GPU (28–35% utilization). Another user's
+`rosenv` container stayed present and idle, and host 1-minute load was
+1.93–9.98 on 64 logical CPUs. The run is recorded as **uncontended**.
+
+**Steps.** (1) Source check: 70 tests passed at the commit. (2) Host
+characterization with the image's Python 3.11 (synthetic, not Isaac). Wall-clock
+p99 was 4.43/4.24 ms for the recorded loop, 0.10–0.28 ms pre-sampled and
+0.12 ms pre-sampled with `freeze`. The GC probe gave a 136.4 ms automatic
+generation-2 pause by default and at most 25.2 ms with `freeze`.
+(3) Retained-hour attribution: interval deviation correlates with the change
+in `serialize_ms` at Pearson r = 0.79 (thread-receiver hour) and 0.97
+(receiver-process hour). Within 0.5 ms, that change explains 43% and 73% of
+the 1,417 and 9,357 intervals over 3.333 ms. This confirms readback variation
+as the main p99 driver. (4) 20-second diagnostic: p99 2.475 ms, 0 missed
+deadlines, lag p99 2.73 ms, 23 of 601 ticks overrun. The warm-up full
+collection took 421.7 ms over 640,008 objects before the window. (5) A fresh
+hour, below.
+
+| Unchanged screen condition | Hour result | Pass |
+|---|---:|:---:|
+| Completed live hour ≥ 3,600 s | 3600.000514 s | yes |
+| p99 absolute period error ≤ 3.333333 ms | **0.626009 ms** | yes |
+| Zero missed deadlines | **2** | **no** |
+| Zero queue overwrites | 0 | yes |
+| No gap above 250 ms | max 45.057 ms, 0 gaps | yes |
+| Contiguous, validated frames | 107,999 published = received, 0 sequence gaps, all runtime-validated | yes |
+| No publisher fault | none | yes |
+| Diagnostic `deadline_lag_p99_ms` well under 1 ms | 0.265 ms | yes |
+| **Strict timing/rate screen** | `timing_screen: false`, `rate_screen: false` | **FAIL** |
+
+Interval median was 33.333484 ms and p99.9 error was 2.644 ms. Only 54 of
+107,998 intervals exceeded 3.333 ms; each had a late endpoint. The independent
+analyzer recomputation matched the summary, and both retained samples passed
+JSON Schema validation. No generation-1 or generation-2 collection occurred
+during the hour; there were 8 generation-0 passes, the longest 0.105 ms. The
+two missed ticks, at 647.4 s and 2,251.9 s, each ended a stretch of about 1 s
+in which sample plus encode rose to 15.5–19 ms (median 12.9 ms). Physics plus
+readback then exceeded the period on consecutive ticks, and lag grew by about
+1 ms per tick until one tick was skipped, without a burst. Ticks overran in
+1,173 of 107,999 cases (`overrun_ticks`). The remaining failure is therefore
+**readback/physics overrun, not pacing jitter or GC**. The next lever is
+readback cost, such as the #170 guarded handle cache, or physics cost. The
+strict zero-miss condition was not relaxed.
+
+The [measured record](publisher/native-jitter-hour-results.json) retains
+source/archive/image pins, screen results, lag attribution, monitor summary,
+the diagnostic, host characterization and raw-artifact hashes. Raw CSVs, logs
+and monitor samples remain on the host under
+`~/.cache/acoustic-vocab-spikes/2026-10-09/`. All three containers started for
+this run were removed. An unrelated exited container from 2026-10-07 and the
+other user's container were left untouched. This is an unprotected engineering
+workload; it does not qualify protected throughput, network, headset, audio
+or G2.

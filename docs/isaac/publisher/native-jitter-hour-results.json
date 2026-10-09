@@ -1,0 +1,408 @@
+{
+  "evidence_version": 1,
+  "purpose": "Native rerun of the publisher rate hour with interval-jitter reduction, Refs #54",
+  "source_kind": "actual_isaac_sim_5.1",
+  "protected_mode": false,
+  "qualification": false,
+  "result": "FAIL: strict timing/rate screen (2 missed deadlines); p99, gap, overwrite, continuity, validation and fault conditions met",
+  "source": {
+    "commit": "b714e7534db67b2e273def6eb0db4c9ae1640908",
+    "archive": "git archive --format=tar b714e7534db67b2e273def6eb0db4c9ae1640908",
+    "archive_sha256": "108c887c1c2a437d848db7c7fb5aa78f60da76e0e796719be81441b1bc7e07d6",
+    "archive_commit_id_verified": true,
+    "publisher_source_sha256": {
+      "isaac/publisher/pacing.py": "175cb8c8708d49148bb7bc66b2053d387995119c57d2ab7952a791950aac324f",
+      "isaac/publisher/runtime.py": "fae8f699eeed1ea91f6c1054c7dd51b0784f68e3edc3820619aec5b11a86e8de",
+      "isaac/publisher/protocol.py": "895ffc8380f7668583d9b252ccb7941ae3b3044a573739ea16142cf6fc058dde",
+      "isaac/publisher/benchmark.py": "cb09207d16f800856833ca707e909ae1256912a7110d9663dccbbf31889f2832",
+      "isaac/publisher/analyze.py": "f3c9c520ea56cc14aa776c21a804713673dc325d1801fdf9c6dfa341ed26c836",
+      "isaac/publisher/host_timing.py": "b67954982dc99f910127bba746ef2d2dd68f213cf8d1641b9559bce56c389de3",
+      "isaac/workcell/run_scene.py": "6b0d6e6e12fbe3b37b12aa63352c5e5d4a362ac996a3c9ede6acf72e8d858b8c"
+    },
+    "source_check": "tests/isaac/test_publisher_pacing.py, test_publisher_schema.py, test_publisher_rate.py: 70 passed at this commit (Windows validation environment)"
+  },
+  "runtime": {
+    "image": "acoustic-vocab-spike:isaac5.1-rendered-cache-20261004",
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+    "host": "shared lab workstation, Quadro RTX 6000, Xeon Silver 4216 (64 logical), Ubuntu 24.04 container deviation retained",
+    "container": "--network none, --gpus device=0, read-only exact-commit source and asset cache, no integration overlay",
+    "run_scene_flags": "--capture --reset-check --headless --command-check --publisher-seconds 3600 --publisher-collector process (defaults: --publisher-pacing presample --publisher-gc freeze; reach included; 1000 reset cycles)",
+    "deviation_from_recorded_receiver_process_hour": "Same image, mounts, base flags, reach, reset and command check; source is the exact-commit archive instead of workcell+integration overlay; --disconnect-check omitted (it runs after the hour and its collector mode is not exposed by run_scene.py)"
+  },
+  "binding": {
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "scene_reload_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reset_cycles": 1000,
+    "all_reset_cycles_passed": true,
+    "matches_recorded_hours": true
+  },
+  "unchanged_screen": {
+    "completed_live_hour_ge_3600_s": {
+      "value": 3600.000514,
+      "pass": true
+    },
+    "p99_abs_period_error_le_3_333333_ms": {
+      "value": 0.626009,
+      "pass": true
+    },
+    "zero_missed_deadlines": {
+      "value": 2,
+      "pass": false
+    },
+    "zero_queue_overwrites": {
+      "value": 0,
+      "pass": true
+    },
+    "no_gap_over_250_ms": {
+      "value": {
+        "max_gap_ms": 45.05744,
+        "gaps_over_250_ms": 0
+      },
+      "pass": true
+    },
+    "contiguous_validated_frames": {
+      "value": {
+        "frames": 107999,
+        "received": 107999,
+        "sequence_gaps": 0,
+        "runtime_validated": 107999
+      },
+      "pass": true
+    },
+    "no_publisher_fault": {
+      "value": null,
+      "pass": true
+    },
+    "diagnostic_deadline_lag_p99_ms_well_under_1": {
+      "value": 0.265175,
+      "pass": true
+    }
+  },
+  "publisher": {
+    "rate_hz": 30,
+    "duration_s": 3600.000513664,
+    "required_duration_s": 3600,
+    "frames": 107999,
+    "source_kind": "live",
+    "complete": true,
+    "contiguous": true,
+    "simulation_progressing": true,
+    "interval_median_ms": 33.333484,
+    "interval_p99_ms": 33.457017459999996,
+    "absolute_period_error_p99_ms": 0.6260087233333348,
+    "nominal_period_ms": 33.333333333333336,
+    "max_gap_ms": 45.05744,
+    "gaps_over_250_ms": 0,
+    "queue_overwrites": 0,
+    "missed_deadlines": 2,
+    "timing_screen": false,
+    "rate_screen": false,
+    "deadline_lag_median_ms": 0.135323,
+    "deadline_lag_p99_ms": 0.265174960000001,
+    "deadline_lag_max_ms": 33.051463,
+    "raw_csv_sha256": "8c03324592510a9e15ab6e9ad3eb149060f7e9497a193d8fa431ea3214870917",
+    "local_receive_complete": true
+  },
+  "run_metadata": {
+    "pacing_mode": "presample",
+    "collector_mode": "process",
+    "spin_us": 0,
+    "physics_steps": 215998,
+    "processing_ms_max": 45.006011,
+    "overrun_ticks": 1173,
+    "wake_late_ms_max": 2.522378,
+    "start_host_ns": "1553807712878269",
+    "end_host_ns": "1557407713391933",
+    "completed": true,
+    "fault": null
+  },
+  "gc": {
+    "policy": "freeze",
+    "frozen_objects": 640005,
+    "preexisting_frozen": 0,
+    "warmup_collect_ms": 325.257,
+    "by_generation": {
+      "0": {
+        "events": 8,
+        "total_ms": 0.619513,
+        "max_ms": 0.104918,
+        "collected": 0
+      },
+      "1": {
+        "events": 0,
+        "total_ms": 0.0,
+        "max_ms": 0.0,
+        "collected": 0
+      },
+      "2": {
+        "events": 0,
+        "total_ms": 0.0,
+        "max_ms": 0.0,
+        "collected": 0
+      }
+    },
+    "note": "The warm-up full collection (outside the measured window) traversed the live heap in 325 ms; no generation-1 or generation-2 pass occurred during the hour"
+  },
+  "lag_attribution": {
+    "frames": 107999,
+    "lag_over_0_5_ms": 875,
+    "lag_over_3_333_ms": 207,
+    "lag_p50": 0.135323,
+    "lag_p90": 0.179853,
+    "lag_p99": 0.26517,
+    "lag_p999": 8.342053,
+    "lag_max": 33.051463,
+    "serialize_p50": 12.926134,
+    "serialize_p99": 15.337106,
+    "serialize_max": 25.287467,
+    "handoff_p50": 0.124138,
+    "handoff_max": 1.10562,
+    "intervals_over_limit": 54,
+    "over_limit_with_late_endpoint": 54,
+    "missed_rows": 2,
+    "err_p99": 0.625978333333336,
+    "err_p999": 2.6436476666666664,
+    "err_max": 11.724106666666664,
+    "missed_deadline_cause": "Both missed ticks (offsets 647.4 s and 2251.9 s) ended ~1 s stretches in which sample+encode rose to 15.5-19 ms (hour median 12.9 ms), so physics+readback exceeded the 33.3 ms period on consecutive ticks; lag accumulated about 1 ms per tick until it passed one period and a tick was skipped (no burst). No GC pass coincided; GPU showed no foreign process"
+  },
+  "host_monitor": {
+    "window_utc": [
+      "2026-10-09T20:08:40Z",
+      "2026-10-09T21:08:40Z"
+    ],
+    "samples": 706,
+    "interval_s": 5,
+    "gpu_util_pct": {
+      "min": 28,
+      "median": 30,
+      "p99": 31,
+      "max": 35
+    },
+    "gpu_mem_mib": {
+      "min": 6144,
+      "max": 6177
+    },
+    "load1": {
+      "min": 1.93,
+      "median": 2.94,
+      "max": 9.98
+    },
+    "compute_pids_seen": [
+      "3118325"
+    ],
+    "foreign_compute_pids": [],
+    "other_containers": [
+      "rosenv-1005-jazzy-dev-e0b8396d2961"
+    ],
+    "contended": false,
+    "note": "No foreign GPU compute process; another user's rosenv container stayed present and idle; host 1-minute load 1.93-9.98 on 64 logical CPUs"
+  },
+  "diagnostic_20s": {
+    "duration_s": 20.000317991,
+    "frames": 601,
+    "absolute_period_error_p99_ms": 2.4751856733333346,
+    "max_gap_ms": 39.475766,
+    "missed_deadlines": 0,
+    "queue_overwrites": 0,
+    "deadline_lag_p99_ms": 2.730039,
+    "timing_screen": true,
+    "rate_screen": false,
+    "raw_csv_sha256": "73549c95b60cdbc74f06aec18d9382c2a79b63c4aa585f7e1412b4ec7fbca0c1",
+    "overrun_ticks": 23,
+    "warmup_collect_ms": 421.665,
+    "frozen_objects": 640008,
+    "local_received": 601
+  },
+  "retained_hour_attribution": {
+    "workcell-52-labels-v2": {
+      "sha256": "f44bc9ed6cb9ac7be277bbf9156b38fb6445fd0796ecc8501876900d40517b67",
+      "frames": 107917,
+      "intervals_over_limit": 1417,
+      "over_limit_explained_by_serialize_delta_within_0_5_ms": 616,
+      "explained_fraction": 0.4347212420606916,
+      "pearson_interval_deviation_vs_serialize_delta": 0.7914080254930167,
+      "serialize_ms_p50": 12.775663,
+      "serialize_ms_p99": 16.16222,
+      "serialize_ms_max": 24.080083,
+      "missed_rows": 84
+    },
+    "workcell-process-hour": {
+      "sha256": "aa482911e8ed43b1632a23faccb11527c17b4b2c2896fa8c97d4c2b1ce49ad65",
+      "frames": 108001,
+      "intervals_over_limit": 9357,
+      "over_limit_explained_by_serialize_delta_within_0_5_ms": 6831,
+      "explained_fraction": 0.7300416800256493,
+      "pearson_interval_deviation_vs_serialize_delta": 0.9670774683819771,
+      "serialize_ms_p50": 13.1869,
+      "serialize_ms_p99": 19.085016,
+      "serialize_ms_max": 24.113968,
+      "missed_rows": 0
+    }
+  },
+  "host_characterization": {
+    "label": "SYNTHETIC HOST-ONLY TIMING on the remote host with the image's Python 3.11; not Isaac, not qualification",
+    "python": "3.11.13",
+    "wall_clock": "monotonic",
+    "virtual_600s": [
+      {
+        "config": "legacy",
+        "p99_ms": 4.4682,
+        "over_3_333": 339,
+        "intervals": 18000
+      },
+      {
+        "config": "presample",
+        "p99_ms": 0.1573,
+        "over_3_333": 10,
+        "intervals": 18000
+      }
+    ],
+    "wall_60s_abba": [
+      {
+        "order": 0,
+        "config": "legacy",
+        "p99_ms": 4.4281,
+        "max_ms": 7.0142,
+        "over_3_333": 37,
+        "lag_p99_ms": 15.0792,
+        "missed": 0
+      },
+      {
+        "order": 1,
+        "config": "presample",
+        "p99_ms": 0.2787,
+        "max_ms": 2.4299,
+        "over_3_333": 0,
+        "lag_p99_ms": 0.1884,
+        "missed": 0
+      },
+      {
+        "order": 2,
+        "config": "presample_freeze",
+        "p99_ms": 0.1157,
+        "max_ms": 5.6343,
+        "over_3_333": 2,
+        "lag_p99_ms": 0.1843,
+        "missed": 0
+      },
+      {
+        "order": 3,
+        "config": "presample_freeze_manual",
+        "p99_ms": 1.1073,
+        "max_ms": 4.716,
+        "over_3_333": 4,
+        "lag_p99_ms": 0.8769,
+        "missed": 0
+      },
+      {
+        "order": 4,
+        "config": "presample_freeze_manual",
+        "p99_ms": 1.332,
+        "max_ms": 4.151,
+        "over_3_333": 2,
+        "lag_p99_ms": 0.9919,
+        "missed": 0
+      },
+      {
+        "order": 5,
+        "config": "presample_freeze",
+        "p99_ms": 0.1154,
+        "max_ms": 3.1969,
+        "over_3_333": 0,
+        "lag_p99_ms": 0.1761,
+        "missed": 0
+      },
+      {
+        "order": 6,
+        "config": "presample",
+        "p99_ms": 0.0988,
+        "max_ms": 0.9157,
+        "over_3_333": 0,
+        "lag_p99_ms": 0.1781,
+        "missed": 0
+      },
+      {
+        "order": 7,
+        "config": "legacy",
+        "p99_ms": 4.2379,
+        "max_ms": 7.7504,
+        "over_3_333": 38,
+        "lag_p99_ms": 15.144,
+        "missed": 0
+      }
+    ],
+    "gc_pause_probe": {
+      "default": {
+        "surviving_objects_allocated": 600000,
+        "automatic_gen2_events": 1,
+        "gen2_max_ms": 136.368909,
+        "gen2_total_ms": 136.368909,
+        "manual_collection_ms": null,
+        "warmup_collect_ms": null
+      },
+      "freeze": {
+        "surviving_objects_allocated": 600000,
+        "automatic_gen2_events": 2,
+        "gen2_max_ms": 25.204502,
+        "gen2_total_ms": 45.411258000000004,
+        "manual_collection_ms": null,
+        "warmup_collect_ms": 111.044103
+      },
+      "freeze_manual": {
+        "surviving_objects_allocated": 600000,
+        "automatic_gen2_events": 0,
+        "gen2_max_ms": 35.896686,
+        "gen2_total_ms": 35.896686,
+        "manual_collection_ms": 35.931981,
+        "warmup_collect_ms": 110.007637
+      }
+    },
+    "summary_sha256": "4b26080276578897949824aaa77ded31a9e7728775731e9f167c80752e72dd78"
+  },
+  "independent_checks": {
+    "csv_summary_recomputed": true,
+    "retained_samples_json_schema_validated": 2,
+    "reported_file_hashes_match": true,
+    "receiver_count_equals_published": true
+  },
+  "raw_evidence_sha256": {
+    "jitter-hour/publisher-check/publish.csv": "8c03324592510a9e15ab6e9ad3eb149060f7e9497a193d8fa431ea3214870917",
+    "jitter-hour/publisher-check/metadata.json": "3e2c227739370db903114ed5f016b1bc8161c44ab68f95ab3de9f440c5f27809",
+    "jitter-hour/publisher-check/summary.json": "94fb54501d78707043c735bf8fee4c4fa09b80e82d3e3c3f1a59da7f00300912",
+    "jitter-hour/publisher-check/health.json": "89c51d9154526f988ac0a99e6e7668a0054b16244e075cf0cf97bb4958afcb2e",
+    "jitter-hour/publisher-check/sample-first.json": "b7f1e500ae059009360ad7d8fe3ad3e1e25d926944cb906804c44a7022394677",
+    "jitter-hour/publisher-check/sample-last.json": "160886549e43e01f47dff0c3094a32972f2b4275bec5113cd372d563ee7d99d8",
+    "jitter-hour/summary.json": "749e4cda06ae19744ab63f884c6dd45f5cde4a098dbd0a9a4706dbea833ea1e1",
+    "jitter-hour/command-check/summary.json": "03f522be9cc04856916a7b45254a6c589812f1dd3a7210bec4d54b9899db640f",
+    "jitter-hour.log": "454d4d16dc454cfe3a0fe50009e5b5f3e12ce5f85de2ce52ab5552700138318f",
+    "jitter-diag20/publisher-check/publish.csv": "73549c95b60cdbc74f06aec18d9382c2a79b63c4aa585f7e1412b4ec7fbca0c1",
+    "jitter-diag20/publisher-check/metadata.json": "a1ff35f8ff9b60322b19a9d6fecc377ad97e6c7302bed89a4557c0ccf9b5db22",
+    "jitter-diag20/publisher-check/summary.json": "2f5600b0dc923a8d7aec1fcb64dca8658ba31d0bf4f459ed25c66cce0019b5f3",
+    "jitter-diag20.log": "8ec5ade6b49dc864c4af6d146da9e2d971f4c79c8b205daabdc35af8d2268c6b",
+    "monitor.csv": "6d714a9ef620ee2eb110616ce36c7661cd5af3389fcff2b5b7f93f155869ad87",
+    "attribution.json": "41839091f283c5be02c40240688f2759fe938ab316af475d415653d7c9e0c551",
+    "host-timing/host-timing-summary.json": "4b26080276578897949824aaa77ded31a9e7728775731e9f167c80752e72dd78"
+  },
+  "cleanup": {
+    "containers_started": [
+      "av-host-timing",
+      "av-jitter-diag20",
+      "av-jitter-hour"
+    ],
+    "all_removed": true,
+    "monitor_stopped": true,
+    "gpu_after": "0 %, 742 MiB",
+    "untouched": [
+      "rosenv-1005-jazzy-dev-e0b8396d2961 (another user)",
+      "av-i56-a30e950-preflight-001 (exited 2026-10-07, not started by this run)"
+    ]
+  },
+  "limitations": [
+    "Unprotected engineering workload; no neutral-hold, protected throughput, network, headset, audio or G2 claim",
+    "One hour on one shared host; sequential comparison with earlier hours includes workload variation",
+    "Strict screen fails on 2 missed deadlines; no threshold relaxed, no run discarded",
+    "Ubuntu 24.04 container deviation from requested Ubuntu 22.04 remains open"
+  ]
+}
