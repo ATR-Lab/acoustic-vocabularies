@@ -168,11 +168,17 @@ hour failures or qualify protected throughput.
 
 ## Interval jitter reduction
 
-This section records a software change, synthetic host-only results and one
-native hour with the change. That hour, on 2026-10-09, **failed** the strict
-timing/rate screen with 2 missed deadlines. It met the p99 condition at
-0.626 ms and every other condition (see [native rerun result](#native-rerun-result-2026-10-09)).
-The two earlier recorded hour failures stand unchanged.
+This section records the pacing change, synthetic host-only results and two
+native hours on 2026-10-09.
+- **Pacing change alone:** the hour **failed** the strict timing/rate screen
+  with 2 missed deadlines, while meeting p99 (0.626 ms) and every other
+  condition ([native rerun result](#native-rerun-result-2026-10-09)).
+- **With the opt-in guarded handle cache added for publisher readback:** the
+  hour **passed** the unchanged screen, with p99 0.104 ms and zero missed
+  deadlines ([cached-readback hour](#native-cached-readback-hour-2026-10-09)).
+
+The two earlier recorded hour failures stand. The pass covers only this
+unprotected engineering workload with the cache explicitly enabled.
 
 ### Hypothesis from retained evidence
 
@@ -245,7 +251,7 @@ in `serialize_ms` between consecutive rows (see the rerun procedure).
 
 This first change did not use the guarded handle cache from #170. The native
 rerun below then showed overruns, so the cache became the follow-up
-[readback cost reduction](#readback-cost-reduction-pending-native-hour).
+[readback cost reduction](#readback-cost-reduction).
 
 ### Synthetic host-only results (not qualification)
 
@@ -430,10 +436,11 @@ other user's container were left untouched. This is an unprotected engineering
 workload; it does not qualify protected throughput, network, headset, audio
 or G2.
 
-### Readback cost reduction (pending native hour)
+### Readback cost reduction
 
-This is a software change with analysis only. **A further native hour is
-required**, and nothing below is evidence of a pass.
+This subsection gives the software change and the pre-run analysis and
+estimates. The native hour that tested it is reported
+[below](#native-cached-readback-hour-2026-10-09).
 
 **Where the time goes.** In the 2026-10-09 hour, sample plus encode
 (`serialize_ms`) had a median of 12.93 ms, p99 15.34 ms and maximum 25.29 ms.
@@ -542,3 +549,72 @@ Windows verification of this follow-up:
 - All 89 schemas and 14 synthetic examples validated.
 - The live `pxr` cache guard itself is not importable here and is covered by
   the pinned-runtime checks above.
+
+### Native cached-readback hour (2026-10-09)
+
+**Setup.**
+- **Source:** commit `d8c7849`, delivered as a `git archive` whose SHA-256
+  (`2f0d05b3…71d6`) and embedded commit ID were verified on the host.
+- **Runtime:** the same approved image (`sha256:38495e05…0c80`, USD 0.24.5),
+  `--network none`, one GPU, and read-only source and assets.
+- **Flags:** `--capture --reset-check --headless --command-check
+  --publisher-seconds 3600 --publisher-collector process
+  --publisher-handle-cache`, with the defaults `presample`/`freeze`, reach
+  included and 1,000 reset cycles (all passed).
+- **Bindings:** scene `3b6e8f9a…119e` and snapshot `e2628102…a80e` match the
+  recorded hours.
+- **Cache qualification:** the image ID and USD build are unchanged, and the
+  runtime `state.py`/`cache_guard.py` (and the tamper test) are byte-identical
+  to the 2026-10-05 qualification, so the tamper/live-read matrix was not
+  re-run, per the documented rule.
+- **Contention:** the 5-second monitor saw only this run's process on the GPU
+  (28–32% utilization). The other user's `rosenv` container stayed present
+  and idle, and host 1-minute load was 1.66–6.26 on 64 logical CPUs. The run
+  is recorded as **uncontended**.
+
+The 20-second diagnostic with the same flags gave p99 0.353 ms, zero missed
+deadlines and zero overrun ticks. Its object read median was 6.57 ms and
+sample plus encode 8.07 ms, against 14.02 ms in the uncached diagnostic.
+
+| Unchanged screen condition | Hour result | Pass |
+|---|---:|:---:|
+| Completed live hour ≥ 3,600 s | 3600.000249 s | yes |
+| p99 absolute period error ≤ 3.333333 ms | **0.103785 ms** | yes |
+| Zero missed deadlines | **0** | yes |
+| Zero queue overwrites | 0 | yes |
+| No gap above 250 ms | max 40.444 ms, 0 gaps | yes |
+| Contiguous, validated frames | 108,001 published = received, 0 sequence gaps, all runtime-validated | yes |
+| No publisher or guard fault | none | yes |
+| **Strict timing/rate screen** | `timing_screen: true`, `rate_screen: true` | **PASS** |
+
+The diagnostics specified beforehand were all met:
+- `handle_cache_enabled: true`, with runtime source hashes equal to the
+  qualified ones.
+- `stage_ms.objects_ms` median 6.594 ms (p99 8.846 ms, max 15.487 ms).
+- `deadline_lag_p99_ms` 0.184 ms.
+- `overrun_ticks` 44, against 1,173 uncached.
+
+The articulation copy took 0.091 ms median and encoding 1.397 ms. Sample plus
+encode fell from a median of 12.93 to 8.10 ms, p99 15.34 to 10.42 ms and max
+25.29 to 18.86 ms. That is a 4.8 ms median saving, above the 3.15 ms estimate.
+Intervals over 3.333 ms fell from 54 to 13 and maximum lag was 14.69 ms.
+No generation-1 or generation-2 collection ran, and the warm-up collection of
+352 ms over 640,893 objects happened before the window. The independent
+analyzer recomputation matched, both retained samples passed JSON Schema, and
+every reported file hash matched.
+
+The [measured record](publisher/native-cache-hour-results.json) keeps the
+pins, screen and diagnostic results, stage percentiles, the comparison with
+the uncached hour, the monitor summary and raw-artifact hashes. Raw files
+remain under `~/.cache/acoustic-vocab-spikes/2026-10-09/`. Both containers
+started for this run were removed, and the other user's container and the
+earlier exited container were left untouched.
+
+Limits of this result:
+- It is one hour on one shared host, and the comparison with the uncached
+  hour is sequential.
+- It is an unprotected engineering workload with the experimental cache
+  explicitly enabled. The cache remains default-off.
+- It does not qualify protected throughput, neutral hold, network, headset,
+  audio, deployment or G2, and the Ubuntu 24.04 container deviation remains
+  open.

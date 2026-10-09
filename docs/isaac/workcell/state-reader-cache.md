@@ -48,7 +48,9 @@ before the publisher, has no rebuild or uncached fallback, aborts on
 initialization failure and fails the run on a guard fault. It is refused with
 the E2E option or any later workflow on the cached accessor. It records the
 runtime `state.py`/`cache_guard.py` hashes. See the
-[publisher report](../publisher.md#readback-cost-reduction-pending-native-hour).
+[publisher report](../publisher.md#readback-cost-reduction). Its native
+2026-10-09 hour passed the unchanged publisher timing/rate screen with the
+cache enabled. This did not change the cache's default-off status.
 
 ## Validation order
 
