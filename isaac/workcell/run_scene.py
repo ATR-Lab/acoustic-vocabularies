@@ -28,6 +28,24 @@ def validate_cache_profile(args):
         raise ValueError('Experimental handle cache requires only a bounded E2E service, reset check and --skip-reach')
 
 
+def validate_publisher_cache_profile(args):
+    """The publisher cache opt-in covers only the bounded paced rate check.
+
+    The cache is enabled after reset, reach and command checks and before the
+    publisher; any workflow that would run after it on the cached accessor is
+    refused before simulator startup, as is combination with the E2E option.
+    """
+    if not getattr(args, 'publisher_handle_cache', False):
+        return
+    seconds = args.publisher_seconds
+    if (not args.reset_check or not math.isfinite(seconds) or not 0 < seconds <= 3600
+            or args.e2e_handle_cache
+            or any((args.published_command_check, args.disconnect_check, args.demo_check,
+                    args.demo_preflight, args.grip_check, args.protected_stream_seconds,
+                    args.e2e_seconds, args.same_iteration_check))):
+        raise ValueError('Publisher handle cache requires only a bounded publisher check after reset/command checks')
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,required=True)
@@ -43,6 +61,8 @@ def main():
     parser.add_argument('--publisher-gc',choices=('freeze','default','freeze_manual'),default='freeze',
                         help='default reproduces the recorded hour GC behavior')
     parser.add_argument('--publisher-collector',choices=('thread','process'),default='thread')
+    parser.add_argument('--publisher-handle-cache',action='store_true',
+                        help='Experimental #170 guarded USD handle cache for the bounded publisher check only')
     parser.add_argument('--command-check',action='store_true')
     parser.add_argument('--published-command-check',action='store_true')
     parser.add_argument('--disconnect-check',action='store_true')
@@ -65,6 +85,7 @@ def main():
     add_view_arguments(parser)
     early,_=parser.parse_known_args()
     validate_cache_profile(early)
+    validate_publisher_cache_profile(early)
     observation_options=view_options(early)
     verify_loopback_only()
     pins=json.loads((ROOT/'spikes/O5.1.2/pins.json').read_text())
@@ -183,7 +204,8 @@ def main():
             publisher=run_publisher_check(adapter,layout,args.output/'reset-check/neutral_v1.json',
                 args.output/'publisher-check',expected_snapshot_sha256=reset['reset_snapshot_sha256'],
                 seconds=args.publisher_seconds,rate_hz=30,socket_path='/tmp/av-publisher52.sock',
-                collector_mode=args.publisher_collector,pacing=args.publisher_pacing,gc_policy=args.publisher_gc)
+                collector_mode=args.publisher_collector,pacing=args.publisher_pacing,gc_policy=args.publisher_gc,
+                handle_cache=args.publisher_handle_cache)
         disconnect=None
         if args.disconnect_check:
             if reset is None: raise ValueError('Disconnect diagnostic requires actual reset snapshot')
@@ -302,7 +324,8 @@ def main():
             reset_summary=reset,publisher_summary=publisher,command_summary=commands,published_command_summary=published_commands,disconnect_summary=disconnect,
             demo_summary=demos,grip_summary=grip,protected_stream_summary=protected,joined_e2e_summary=e2e,
             same_iteration_summary=same_iteration,
-            e2e_handle_cache_enabled=accessors.handle_cache_enabled,
+            e2e_handle_cache_enabled=accessors.handle_cache_enabled and not args.publisher_handle_cache,
+            publisher_handle_cache_enabled=accessors.handle_cache_enabled and args.publisher_handle_cache,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))

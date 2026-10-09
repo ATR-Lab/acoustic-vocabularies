@@ -243,11 +243,9 @@ in `serialize_ms` between consecutive rows (see the rerun procedure).
 - `run_scene.py` exposes `--publisher-pacing`, `--publisher-gc` and
   `--publisher-collector`.
 
-The guarded handle cache from #170 is **not** used. It would shorten readback
-(9.6 → 6.5 ms median in its profile) and add slack. With pre-sampling,
-readback duration no longer enters the stamp unless a tick overruns. The cache
-remains experimental, is wired only into the joined service, and is the next
-lever if the rerun shows overruns.
+This first change did not use the guarded handle cache from #170. The native
+rerun below then showed overruns, so the cache became the follow-up
+[readback cost reduction](#readback-cost-reduction-pending-native-hour).
 
 ### Synthetic host-only results (not qualification)
 
@@ -431,3 +429,116 @@ this run were removed. An unrelated exited container from 2026-10-07 and the
 other user's container were left untouched. This is an unprotected engineering
 workload; it does not qualify protected throughput, network, headset, audio
 or G2.
+
+### Readback cost reduction (pending native hour)
+
+This is a software change with analysis only. **A further native hour is
+required**, and nothing below is evidence of a pass.
+
+**Where the time goes.** In the 2026-10-09 hour, sample plus encode
+(`serialize_ms`) had a median of 12.93 ms, p99 15.34 ms and maximum 25.29 ms.
+The distribution is bimodal: the main mode is 12.5–13 ms, and about 9% of
+frames sit at 14–15 ms. It is strongly autocorrelated (0.65 at one frame, 0.40
+at 60 frames, 0.22 at 300 frames), and per-minute medians range from 12.86 to
+14.63 ms. Spikes are therefore slowdowns that persist for seconds to minutes,
+consistent with host-level contention on the Python/USD readback, not isolated
+per-frame events. The non-USD part of the path is small. On this laptop the
+synthetic harness's `encode_stage_probe` measures accessor public validation
+at 0.15 ms, projection at 0.03 ms, `validate_frame` at 0.16 ms, JSON at
+0.10 ms (`prepare` 0.32 ms in total) and the stamp join at 0.0003 ms; natively
+encoding was about 1 ms. Almost all of the 12.9 ms is the 60-object USD
+attribute readback plus the articulation copy, which on a GPU pipeline also
+waits for the step's device work. The retained CSV has no finer split, so the
+rate harness now records one.
+
+**Recovered physics.** `isaac/publisher/replay.py` inverts the presample
+loop's lag equation on the 875 ticks whose lag exceeded 0.5 ms. Their median
+physics time is 18.42 ms, leaving roughly 2 ms of slack at the median
+readback. That is why seconds-long slowdowns of 2–4 ms accumulated lag into
+skipped ticks.
+
+**Change.**
+- `run_publisher_check(handle_cache=True)` and the scene-runner flag
+  `--publisher-handle-cache` (default **off**, as in #170) enable the existing
+  guarded cache on the accessor. This happens after reset, reach and command
+  checks and before any publisher output.
+  - It follows #170's rules. Handles, never values, are reused, and every
+    sample still reads all values live. It still runs the structure checks:
+    ancestor identity transforms and visibility, per-object handle validity
+    and transform-op order, visual/semantic agreement, and the layer
+    stack/edit-target/muting signature.
+  - Resyncs, metadata or type changes, layer replacement, reload, muting and
+    edit-target changes fault permanently. Ordinary reset/motion value writes
+    remain live reads.
+  - There is no rebuild and no uncached fallback. Initialization failure
+    aborts before any output. A mid-run guard fault latches
+    `PUBLISHER_FAILURE` and fails the run.
+  - The flag is refused before simulator startup with the E2E cache option or
+    any workflow that would run afterwards on the cached accessor
+    (disconnect, demo, grip, protected stream, E2E, same-iteration,
+    published command).
+  - Metadata records `handle_cache_requested`, `handle_cache_enabled` and the
+    runtime SHA-256 of `state.py`/`cache_guard.py`. The LF-normalized sources
+    are byte-identical to those qualified on 2026-10-05 (USD 0.24.5: the
+    cached matrix rejected 20/20 mutations and verified 2/2 no-ops).
+- Per-frame stage timing (`stage_timing=True` by default) writes
+  `stages.csv`: articulation copy plus joint-order check, object public read,
+  and encode. Metadata gains `stage_ms` percentiles. Storage is packed arrays,
+  with no per-row GC-tracked objects.
+- The wire schema, frame contents and validation are unchanged.
+
+**Expected effect (estimates).** The cache's measured public-read median was
+9.63 → 6.48 ms across unprotected phases, a saving of about **3.15 ms per
+tick** (24% of the 12.9 ms sample+encode median).
+
+| Replay of the 2026-10-09 hour | Missed | p99 (ms) | Intervals > 3.333 ms | Lag > 0.5 ms ticks | Max lag (ms) |
+|---|---:|---:|---:|---:|---:|
+| Identity (recorded S) | 2 | 0.626 | 54 | 875 | 33.05 |
+| S − 3.15 ms | 0 | 0.122 | 6 | 32 | 15.98 |
+| Object share × 0.673 | 0 | 0.122 | 2 | 15 | 8.95 |
+
+The identity replay reproduces the measured misses, p99 and over-limit count.
+In this hour's realization, about 0.75 ms of saving already removes both
+misses. With the cache saving, the replay stays at zero misses with 1 or 2 ms
+of extra physics on every tick, and returns to one miss at +3 ms. The seeded
+synthetic virtual hour, at 18.4 ms physics and 12.9 ms sample+encode, is
+harsher than the real host (uncached p99 3.85 ms against 0.63 ms native) and
+is useful for direction only. Its cached read gives p99 1.45 ms, intervals
+over the limit 1,520 → 122 and overrun ticks 31,812 → 1,813. See the
+[analysis record](publisher/readback-cost-analysis.json).
+
+**Next native hour.** Use the 2026-10-09 procedure and flags, adding
+`--publisher-handle-cache`, in a fresh process at the new commit with the
+cache tamper/live-read checks re-run if the image or USD build changed:
+`--capture --reset-check --headless --command-check --publisher-seconds 3600
+--publisher-collector process --publisher-handle-cache`. A 20 s diagnostic
+with the same flags comes first. To pass the **unchanged** screen it must show
+all of the following:
+- a completed live hour of at least 3,600 s
+- p99 ≤ 3.333333 ms
+- **zero missed deadlines**
+- zero queue overwrites
+- no gap above 250 ms
+- contiguous, validated frames
+- no publisher or guard fault
+
+It should also show:
+- `handle_cache_enabled: true` with source hashes matching the qualified
+  ones
+- `stage_ms.objects_ms` median near 6.5 ms
+- `deadline_lag_p99_ms` below 1 ms
+- `overrun_ticks` well below the previous 1,173
+
+If misses remain, `stages.csv` will show whether the articulation copy, the
+object read or encoding grew in the slow stretches.
+
+Windows verification of this follow-up:
+- 25 new tests cover the cache opt-in order, default-off, initialization
+  abort without output, refusal when already enabled, mid-run guard-fault
+  latch without retry, stage rows matching frames, the runner profile, and
+  replay fidelity and counterfactuals.
+- The full suite, after fixture generation, passed: 984 passed and 32
+  explicit platform/dependency skips.
+- All 89 schemas and 14 synthetic examples validated.
+- The live `pxr` cache guard itself is not importable here and is covered by
+  the pinned-runtime checks above.

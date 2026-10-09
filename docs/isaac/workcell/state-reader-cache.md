@@ -41,6 +41,15 @@ directly; a missing required binding rejects opt-in rather than weakening the
 guard. This guard covers generated workcell geometry, not the separately loaded
 robot asset's appearance or arbitrary third-party code that mutates guard internals.
 
+The paced publisher rate check has a second explicit opt-in,
+`--publisher-handle-cache` (`run_publisher_check(handle_cache=True)`). It
+applies the same rules: it is enabled after the reset/reach/command checks and
+before the publisher, has no rebuild or uncached fallback, aborts on
+initialization failure and fails the run on a guard fault. It is refused with
+the E2E option or any later workflow on the cached accessor. It records the
+runtime `state.py`/`cache_guard.py` hashes. See the
+[publisher report](../publisher.md#readback-cost-reduction-pending-native-hour).
+
 ## Validation order
 
 1. Finish and preserve any active frozen measurement.

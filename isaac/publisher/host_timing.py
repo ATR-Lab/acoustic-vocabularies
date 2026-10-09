@@ -327,6 +327,44 @@ def gc_pause_probe(ballast_objects, batches=600, batch=1000):
     return dict(ballast_objects=ballast_objects, results=results)
 
 
+def encode_stage_probe(registry, neutral, repeats=2000):
+    """Median/p99 of the non-USD sample+encode stages on this host.
+
+    Covers the accessor's public-state validation, the encoder projection,
+    ``validate_frame``, JSON encoding, the complete ``prepare`` and the stamp
+    join. USD attribute reads and the articulation copy need the simulator and
+    are timed per frame by the live harness (``stages.csv``).
+    """
+    from copy import deepcopy
+    from .protocol import StateEncoder, encode, validate_frame
+    from isaac.workcell.state import _validate_states
+    layout = json.loads((ROOT/"apparatus/workcell_layout.json").read_text(encoding="utf-8"))
+    public = {key: {field: value[field] for field in ("position_m", "rotation_xyzw", "visible", "enabled", "state")}
+              for key, value in neutral["objects"].items()}
+    positions = list(neutral["robot"]["joint_positions_rad"])
+    encoder = StateEncoder(registry, "synthetic")
+    frame = encoder._frame(positions, public, .1, 1, lambda: "0")
+    prepared = encoder.prepare(positions, public, .1, 1)
+    stages = {
+        "fresh_containers_deepcopy": lambda: deepcopy(public),
+        "accessor_public_validation": lambda: _validate_states(layout, public, public_only=True),
+        "encoder_projection": lambda: encoder._frame(positions, public, .1, 1, lambda: "0"),
+        "validate_frame": lambda: validate_frame(frame, registry),
+        "json_encode": lambda: encode(frame),
+        "prepare_total": lambda: encoder.prepare(positions, public, .1, 1),
+        "stamp_join": lambda: prepared.head + '"host_monotonic_ns":"1"' + prepared.tail,
+    }
+    result = {}
+    for name, call in stages.items():
+        values = []
+        for _ in range(repeats):
+            began = time.perf_counter_ns()
+            call()
+            values.append((time.perf_counter_ns() - began) / 1e6)
+        result[name] = dict(p50=percentile(values, .5), p99=percentile(values, .99))
+    return dict(repeats=repeats, objects=len(public), joints=len(positions), stages_ms=result)
+
+
 def allocation_probe(registry, neutral, frames=300):
     """Per-frame allocation of the publish path with collection disabled.
 
@@ -511,7 +549,8 @@ def main(argv=None):
                                             churn_per_tick=args.churn_per_tick,
                                             receiver_validates=not args.no_validate, spin_us=args.spin_us,
                                             manual_interval=args.manual_interval)),
-                  allocation_probe=allocation_probe(registry, neutral), virtual_runs=[], wall_runs=[])
+                  allocation_probe=allocation_probe(registry, neutral),
+                  encode_stage_probe=encode_stage_probe(registry, neutral), virtual_runs=[], wall_runs=[])
     if not args.no_gc_probe and args.ballast_objects:
         report["interpreter_frozen_at_start"] = gc.get_freeze_count()
         report["gc_pause_probe"] = gc_pause_probe(args.ballast_objects)

@@ -6,11 +6,13 @@ The pacing check is intentionally separate from unpaced simulator throughput.
 """
 from __future__ import annotations
 
+from array import array
 import asyncio
 import csv
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import threading
 import time
@@ -84,10 +86,68 @@ class LocalCollector:
             raise RuntimeError("Local collector did not stop")
 
 
+class StageTimer:
+    """Per-frame sample/encode stage durations for the rate harness.
+
+    Used as the publisher's ``timing`` hook (encode boundaries) plus explicit
+    notes from the harness ``sample()``. Storage is packed ``array`` buffers,
+    so an hour of rows adds no per-row GC-tracked objects.
+    """
+    STAGES = ("joints_ms", "objects_ms", "encode_ms")
+
+    def __init__(self, clock_ns=time.perf_counter_ns):
+        self.clock_ns = clock_ns
+        self.steps = array("q")
+        self.values = {name: array("d") for name in self.STAGES}
+        self._pending = {}
+        self._encode_began = None
+
+    def note(self, **durations_ms):
+        self._pending.update(durations_ms)
+
+    def record(self, name, a=None, b=None):
+        if name == "encode_begin":
+            self._encode_began = self.clock_ns()
+        elif name == "encode_end" and self._encode_began is not None:
+            encode_ms = (self.clock_ns() - self._encode_began) / 1e6
+            self.steps.append(int(a) if a is not None else -1)
+            self.values["joints_ms"].append(self._pending.get("joints_ms", math.nan))
+            self.values["objects_ms"].append(self._pending.get("objects_ms", math.nan))
+            self.values["encode_ms"].append(encode_ms)
+            self._pending, self._encode_began = {}, None
+
+    def summary(self):
+        result = {}
+        for name, values in self.values.items():
+            ordered = sorted(v for v in values if math.isfinite(v))
+            if not ordered:
+                result[name] = None
+                continue
+            pick = lambda q: ordered[int(q*(len(ordered)-1))]
+            result[name] = dict(count=len(ordered), p50=pick(.5), p90=pick(.9), p99=pick(.99),
+                                p999=pick(.999), max=ordered[-1], mean=sum(ordered)/len(ordered))
+        return result
+
+    def write(self, path):
+        with Path(path).open("x", encoding="utf-8", newline="") as stream:
+            writer = csv.writer(stream)
+            writer.writerow(("sim_step",) + self.STAGES)
+            for index, step in enumerate(self.steps):
+                writer.writerow([step] + ["%.6f" % self.values[name][index] for name in self.STAGES])
+            stream.flush()
+            os.fsync(stream.fileno())
+
+
+def _source_sha256(*relative):
+    root = Path(__file__).resolve().parents[2]
+    return {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in relative}
+
+
 def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snapshot_sha256,
                         seconds=3600, rate_hz=30, station_id="station-01", socket_path=None,
                         joint_csv=None, collector_mode="thread", pacing="presample",
-                        gc_policy="freeze", gc_manual_interval=1800, spin_us=0):
+                        gc_policy="freeze", gc_manual_interval=1800, spin_us=0,
+                        handle_cache=False, stage_timing=True):
     """Advance actual physics at 60 Hz and read/publish at 30 or 60 Hz.
 
     Explicitly an unprotected engineering rate run: gravity/actuator settling
@@ -97,7 +157,17 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
     ``pacing="at_deadline", gc_policy="default"`` reproduces the loop used by
     the recorded failed hours. The defaults pre-sample/encode before the
     deadline and freeze the warm-up heap; see ``pacing`` and docs/isaac/publisher.md.
+
+    ``handle_cache=True`` enables the #170 guarded USD handle cache on the
+    caller's accessor before any output is created. Handles, never values,
+    are reused. Every sample still reads all values live and runs the guard's
+    structure/layer checks; a guard fault fails the run (no rebuild, no
+    uncached fallback). Initialization failure aborts the check.
+    ``stage_timing`` writes per-frame articulation, object-read and encode
+    durations to ``stages.csv`` for attribution.
     """
+    if type(handle_cache) is not bool or type(stage_timing) is not bool:
+        raise ValueError("Explicit boolean handle_cache and stage_timing required")
     if collector_mode not in ("thread", "process"):
         raise ValueError("Explicit thread or process diagnostic collector required")
     if pacing not in PACING_MODES or gc_policy not in GC_POLICIES:
@@ -117,8 +187,19 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
         raise ValueError("Loaded scene differs from captured neutral snapshot")
     joint_csv = joint_csv or Path(__file__).resolve().parents[2]/"docs/spikes/isaac/joint_inventory.csv"
     registry = registry_from_snapshot(layout, snapshot, expected_snapshot_sha256, station_id, joint_csv)
+    accessors = adapter.accessors
+    if handle_cache:
+        # Same rule as the joined-service option: explicit, after the ordinary
+        # reset fixture, abort on any initialization failure.
+        if getattr(accessors, "handle_cache_enabled", False):
+            raise RuntimeError("Handle cache already enabled by another workflow")
+        accessors.enable_handle_cache()
+        if not accessors.handle_cache_enabled:
+            raise RuntimeError("EXPERIMENTAL_HANDLE_CACHE_NOT_ENABLED")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
+    stages = StageTimer() if stage_timing else None
+    clock = time.perf_counter_ns
     socket_path = Path(socket_path) if socket_path else output/"state.sock"
     transport = WebSocketTransport(socket_path=socket_path)
     publisher = collector = None
@@ -129,15 +210,21 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
     policy = GcPolicy(gc_policy, manual_interval=gc_manual_interval)
     try:
         def sample():
+            began = clock()
             if tuple(adapter.robot.joint_names) != registry.joint_names:
                 raise ValueError("Runtime articulation order changed")
             # This run is explicitly unprotected. Read the complete public
             # projection each tick without traversing collision geometry or
             # collecting private reset-only root velocities/body frames.
+            # (On a GPU pipeline this copy also waits for the step's device work.)
             positions = adapter.robot.root_physx_view.get_dof_positions()[0].tolist()
-            objects = adapter.accessors.read_public_state()
+            joints_done = clock()
+            objects = accessors.read_public_state()
+            if stages is not None:
+                stages.note(joints_ms=(joints_done-began)/1e6, objects_ms=(clock()-joints_done)/1e6)
             return positions, objects, None
-        publisher = StatePublisher(registry, sample, transport, output/"publish.csv", rate_hz=rate_hz)
+        publisher = StatePublisher(registry, sample, transport, output/"publish.csv", rate_hz=rate_hz,
+                                   timing=stages)
         transport.health_provider = publisher.health
         collector = collector_factory(socket_path, registry)
 
@@ -193,7 +280,14 @@ def run_publisher_check(adapter, layout, snapshot_path, output, *, expected_snap
                     local_received=collector.count if collector else 0,
                     local_sequence_gaps=collector.sequence_gaps if collector else 0,
                     validation="strict runtime contract for every frame; JSON Schema separately checked on retained samples",
-                    processing_ms_max=loop_stats.get("processing_ms_max") if loop_stats.get("ticks") else None)
+                    processing_ms_max=loop_stats.get("processing_ms_max") if loop_stats.get("ticks") else None,
+                    handle_cache_requested=handle_cache,
+                    handle_cache_enabled=bool(getattr(accessors, "handle_cache_enabled", False)),
+                    handle_cache_source_sha256=_source_sha256("isaac/workcell/state.py", "isaac/workcell/cache_guard.py")
+                    if handle_cache else None,
+                    stage_ms=stages.summary() if stages is not None else None)
+    if stages is not None:
+        stages.write(output/"stages.csv")
     durable(output/"metadata.json", (json.dumps(metadata, indent=2, allow_nan=False)+"\n").encode())
     summary = analyze(output/"publish.csv", metadata)
     if collector:
