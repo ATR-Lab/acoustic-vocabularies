@@ -1615,8 +1615,258 @@
   "Windows and source clocks are not mapped; every stage is a difference within one clock",
   "Relay and service traces add per-event observer cost; trace windows are bounded and may be incomplete",
   "The Unity client records exchange timestamps only for a failed exchange, so joined runs use relay-side cadence and residence",
-  "Shared-GPU co-tenancy slowed the source to 5-11 Hz; joined refusals here were source-age limited, not transport limited",
   "Gate replay is derived from diagnostic probes, not from the native gate",
-  "No probe deadline, freshness bound, session/request validation, persistence gate, fallback or replay rule changed"
- ]
+  "No probe deadline, freshness bound, session/request validation, persistence gate, fallback or replay rule changed",
+  "Shared-GPU co-tenancy slowed the source to 5-11 Hz on 2026-10-07; those joined refusals were source-age limited. The 2026-10-09 reruns ran on an idle GPU at 16-17 Hz"
+ ],
+ "uncontended_reruns_2026_10_09": {
+  "note": "Shared GPU idle before start (0-4% utilization, 718 MiB, no other compute apps); only this service ran during the attempts.",
+  "player": {
+   "build": "simulation-native-016",
+   "source_commit": "ce772216a24a2abe36b0b95359b2d60cd2a19efd",
+   "composition": "main 0aa8eeb + #201 d85cd12 + #199 d98e471 (local test merge, not pushed)",
+   "build_manifest_sha256": "86a0d7baf80dbdd8a9d7556616a3407f52b1d0e38e0a903ef51d147b5e5ae109",
+   "rebuild": "not needed: #218 changes no Unity file"
+  },
+  "service": {
+   "commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+   "composition": "ce77221 + #218 head 462bd93 (local test merge, not pushed)",
+   "archive_sha256": "e48180077b52c518ef171d125bc6ad83b7f51ac6da4455303f742e890c4df4d4",
+   "service_py_identical_to": "ae77de8",
+   "relay_sha256": "06a2391b006689c75db84830bbe94e8a25afee2ca4aabe6251ffb39c836e71bf"
+  },
+  "forward": "tools/engineering_forward.py (RequestTTY=force, ObscureKeystrokeTiming=no)",
+  "attempts": {
+   "simulation-test-A-D0-016-attr-004": {
+    "outcome": "Grammar 2/2 completed; first study item and the whole atomic_lessons block 16/16 (48 plays) completed with no health refusal; operator paused before message_lessons; owner WM_CLOSE after the segment",
+    "run": "simulation-test-A-D0-016-attr-004",
+    "physics_steps": 7566,
+    "elapsed_s": 457.0,
+    "startup_heap": {
+     "collected": 294,
+     "frozen_objects": 640075,
+     "duration_ms": 371.330546,
+     "enabled": true,
+     "thresholds": [
+      700,
+      10,
+      10
+     ]
+    },
+    "source_rate_hz": 16.56,
+    "publish_interval_ms": {
+     "n": 7564,
+     "median": 60.481,
+     "p90": 64.144,
+     "p99": 73.923,
+     "max": 133.597
+    },
+    "publish_gaps_over_300ms": 0,
+    "gen2_after_ready_ms": {
+     "n": 14,
+     "max": 0.672
+    },
+    "loop_lag_ms": {
+     "n": 8578,
+     "median": 5.462,
+     "p90": 10.678,
+     "p99": 16.247,
+     "max": 22.901
+    },
+    "trace_events": 120000,
+    "trace_dropped": 120400,
+    "gpu_util_pct": {
+     "samples": 665,
+     "median": 11.0,
+     "max": 15.0
+    },
+    "gpu_mem_mib": {
+     "median": 5688.0,
+     "max": 5688.0
+    },
+    "unity_probes": 5314,
+    "unity_cycle_ms": {
+     "n": 5312,
+     "median": 75.71,
+     "p90": 76.88,
+     "p99": 80.447,
+     "max": 131.284
+    },
+    "unity_relay_residence_ms": {
+     "n": 5314,
+     "median": 10.518,
+     "p90": 21.731,
+     "p99": 27.6,
+     "max": 120.592
+    },
+    "unity_relay_to_ingress_ms": {
+     "n": 2495,
+     "median": 8.796,
+     "p90": 19.172,
+     "p99": 23.693,
+     "max": 27.103
+    },
+    "publisher_age_at_probe_ms": {
+     "n": 2499,
+     "median": 12.344,
+     "p90": 42.203,
+     "p99": 54.294,
+     "max": 126.016
+    },
+    "derived_worst_gate_age_ms": {
+     "n": 2495,
+     "median": 109.236,
+     "p90": 137.516,
+     "p99": 152.014,
+     "max": 299.894,
+     "over_250": 2
+    },
+    "reset_reply_ages_ms": {
+     "n": 36,
+     "neutral_max": 10.885641,
+     "publisher_max": 104.6754
+    },
+    "health_refusals": 0,
+    "requested_plays": 48,
+    "integrity_verified": true,
+    "fault_codes": [
+     "JOIN_HOST_DISABLED",
+     "SESSION_JOIN_DISPOSED"
+    ]
+   },
+   "simulation-test-B-V1-016-attr-005": {
+    "outcome": "profile_menu 1/1 and atom_menus 8/8 (72 plays, store receipts committed) with no health refusal; atomic_lessons preflight then refused MENU_LEDGER_DISPLAY (control_health null, not a #148 health path)",
+    "run": "simulation-test-B-V1-016-attr-005",
+    "physics_steps": 12202,
+    "elapsed_s": 759.7,
+    "startup_heap": {
+     "collected": 294,
+     "frozen_objects": 640071,
+     "duration_ms": 371.224701,
+     "enabled": true,
+     "thresholds": [
+      700,
+      10,
+      10
+     ]
+    },
+    "source_rate_hz": 16.06,
+    "publish_interval_ms": {
+     "n": 12200,
+     "median": 61.104,
+     "p90": 67.494,
+     "p99": 74.944,
+     "max": 138.591
+    },
+    "publish_gaps_over_300ms": 0,
+    "gen2_after_ready_ms": {
+     "n": 12,
+     "max": 0.818
+    },
+    "loop_lag_ms": {
+     "n": 8420,
+     "median": 5.432,
+     "p90": 10.671,
+     "p99": 16.64,
+     "max": 21.108
+    },
+    "trace_events": 120000,
+    "trace_dropped": 293143,
+    "gpu_util_pct": {
+     "samples": 397,
+     "median": 11.0,
+     "max": 51.0
+    },
+    "gpu_mem_mib": {
+     "median": 5688.0,
+     "max": 5688.0
+    },
+    "unity_probes": 8784,
+    "unity_cycle_ms": {
+     "n": 8782,
+     "median": 75.718,
+     "p90": 76.87,
+     "p99": 78.676,
+     "max": 140.864
+    },
+    "unity_relay_residence_ms": {
+     "n": 8784,
+     "median": 11.19,
+     "p90": 22.195,
+     "p99": 26.525,
+     "max": 135.648
+    },
+    "unity_relay_to_ingress_ms": {
+     "n": 2527,
+     "median": 9.429,
+     "p90": 20.85,
+     "p99": 24.445,
+     "max": 29.092
+    },
+    "publisher_age_at_probe_ms": {
+     "n": 2532,
+     "median": 11.577,
+     "p90": 39.657,
+     "p99": 60.452,
+     "max": 116.958
+    },
+    "derived_worst_gate_age_ms": {
+     "n": 2526,
+     "median": 108.005,
+     "p90": 140.879,
+     "p99": 153.105,
+     "max": 291.787,
+     "over_250": 1
+    },
+    "reset_reply_ages_ms": {
+     "n": 22,
+     "neutral_max": 14.624128,
+     "publisher_max": 105.972026
+    },
+    "health_refusals": 0,
+    "requested_plays": 72,
+    "integrity_verified": true,
+    "fault_codes": [
+     "MENU_LEDGER_DISPLAY",
+     "SESSION_JOIN_DISPOSED",
+     "SESSION_PREFLIGHT_FAILED"
+    ]
+   }
+  },
+  "derived_gate_note": "derived_worst_gate_age_ms is an upper bound per traced probe interval: next receipt gap + relay residence + 4.5 ms outside-relay (standalone pty median) + publisher age at ingress; neutral-verification age is not observable on success. Service trace coverage ended at its 120,000-event capacity, so relay-to-ingress, publisher-age and derived rows cover the traced portion only.",
+  "raw_artifact_sha256": {
+   "remote/r/k1/joined-e2e/summary.json": "925a12e69092046c6154961a676d1c65137fcb23393a6967d77c0ef48349ee1e",
+   "remote/r/k1/joined-e2e/private-timing.json": "988100ebc609c905212e08c055c591c1d4117abdb2de70ecfcd466731c6436f5",
+   "remote/r/k1/joined-e2e/publish.csv": "7fd920a70873e7d10fc21802c082dc1b431a54c8ebadc73d1de2fc60a47107a2",
+   "remote/r/k1/joined-e2e/commands.jsonl": "a37b6c950a250a08c1def051c6d82506471bd7db150a920a0098b4a6f267bd8c",
+   "remote/r/k1/joined-e2e/ready.json": "e3f4e1d24a043b4df94a57c1bb3b4bcaf829c59b8b5353016f19f96319f0a635",
+   "remote/r/k1-private-relay-trace.json": "1bf2d244bcc320200df295ec5f3bc77a879034c62890ff537d959f68b17e6d1e",
+   "remote/r/k1-public-relay-trace.json": "b19f06761e1246de4c29ad75c5ee55bd76c2474b50ba261a4a18c7ec65fe4bd9",
+   "remote/r/k1-gpu.csv": "04817cec0a0bba83b1c6ed606392cae3575d4235bc1fb289ca610225835a1d79",
+   "remote/r/k1-launch.json": "991aba8432ba6386a806d462bbf8a646adae85e9f5a6a70f21633dae2d517837",
+   "remote/r/k1-cleanup.json": "bfe7fb86798b8f9469b27b1ab3eea1829544648a01d6b5fb1e0b86593744acd7",
+   "remote/r/k1-stop.json": "b9f8add4158dd5b37c8e944911d3e064f6ea427b47629d0a0f25ba9a62b1f682",
+   "remote/r/k2/joined-e2e/summary.json": "a8971c6140729db237299b91445ce2d96f81a797e3977d5ebf0ba161d8782266",
+   "remote/r/k2/joined-e2e/private-timing.json": "67d86ecd15e2fc0cd4c32ee69b8e14b544530864d3904913a91dc603505750b0",
+   "remote/r/k2/joined-e2e/publish.csv": "78d5303e85024a1eab32ab78a1744a4305bd92c2f67d744e1d96670b056f8553",
+   "remote/r/k2/joined-e2e/commands.jsonl": "59ff728638b6ac0001766dd0261ea59e441ff895ce8fae683e0d785134fc1b98",
+   "remote/r/k2/joined-e2e/ready.json": "f566bce5bb09459acfb70d647ba8be8af1aed0cce013e79962ed38c0b632fcc3",
+   "remote/r/k2-private-relay-trace.json": "8befd9cbcfd8b54444502da137fb510c1474b83943fac479bfc551139f7b99ae",
+   "remote/r/k2-public-relay-trace.json": "8ca451481e5c4ab9c5e8c0fb7015e2c45be5845098a5b444ef699ac58283018c",
+   "remote/r/k2-gpu.csv": "857835f2b7a62f28b4ee99f133e0905970e574191eaa58e686f674082b04e656",
+   "remote/r/k2-launch.json": "41bb20c6375f6d13f889011bdcf9d31a316cde17e7ea47573cbd6ff206a89958",
+   "remote/r/k2-cleanup.json": "e6475fb400770fe270a1ac3d3fc3c8e4bc03f52418d1cec2343c545bcbf8dc7c",
+   "remote/r/k2-stop.json": "6b5da952f502d8c2a00c1828554e935c72ff5e0be44f4b3f51e797adae153fd8",
+   "simulation-test-A-D0-016-attr-004/staged/runtime/evidence/joined-226e4809707f40ad961a0c40bb4a3b51/joined.local.jsonl": "5bd7c7d227328051ab03d238dcf44b4aad5300074e88569db1930ccd1c3d5894",
+   "simulation-test-A-D0-016-attr-004/staged/runtime/evidence/joined-226e4809707f40ad961a0c40bb4a3b51/native-result.local.json": "75d128cba2466f130cd1aa6836632c4d3a9732d93df448a153a22a5feaa21e07",
+   "simulation-test-A-D0-016-attr-004/reconciliation.local.json": "836083a2f0fd6a00bf15c5db9726453afa9e331e6759e388404d0fd852e43634",
+   "simulation-test-A-D0-016-attr-004/mock-run.manifest.json": "db9cbf2897f4a43cc3bb79907bf485701a1e876c11ba222004ebac0f283b04ec",
+   "simulation-test-A-D0-016-attr-004/observer/process-result.local.json": "25df1ab91d974325f2817a21cfa4ab1293d8589ffbe1b0003fb43e51850ad003",
+   "simulation-test-B-V1-016-attr-005/staged/runtime/evidence/joined-e5281ab32bd246cba53052b87cc9d79d/joined.local.jsonl": "6bf5cab01c0830d26407e862ae5633a73df13cfb0b2c5a77ba3cbff3a1b76b23",
+   "simulation-test-B-V1-016-attr-005/staged/runtime/evidence/joined-e5281ab32bd246cba53052b87cc9d79d/native-result.local.json": "986e026ab618ff9dc0d51c7811066b2eb3833017597ffd36b559160c9589493f",
+   "simulation-test-B-V1-016-attr-005/reconciliation.local.json": "7259ffbeafe437526a0528ddd5d9d9658f52b4700e0d25cdd3f2ede7f76fba28",
+   "simulation-test-B-V1-016-attr-005/mock-run.manifest.json": "803d975455ef200cf64dcb9bf04d15ea7fa79a3bea69f4297301dfe029d22fdc",
+   "simulation-test-B-V1-016-attr-005/observer/process-result.local.json": "87437d8ac81fb24ddbbef81057a44e8d50bd48a7c9ef33f7a1d81c405d662ab8"
+  }
+ }
 }

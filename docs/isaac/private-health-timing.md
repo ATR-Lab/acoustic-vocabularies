@@ -140,6 +140,28 @@ Other users' GPU jobs ran throughout and held this shared host's source at
 the native segment. They do show that the remaining refusal on this host is
 source throughput, not probe transport.
 
+On 2026-10-09 the shared GPU was idle (0-4% before start, with no other compute
+app), and two more attempts ran with both fixes. The player was the same
+unchanged one; #218 touches no Unity file. The service was `ce77221` plus
+#218. During the attempts, GPU utilization was 11% median with a 51% maximum,
+and the source ran at 16.1-16.6 Hz. Publication intervals were at most
+139 ms. No generation-2 collection exceeded 0.82 ms within the traced
+portion; the service trace stopped at its 120,000-event capacity. No health
+gate refused anything.
+
+- **A D0 attempt 004:** both grammar examples, the first study item and all
+  16 atomic lessons (48 plays) completed. The run was then closed at the
+  operator pause.
+- **B V1 attempt 005:** the profile menu and all eight atom menus (72 plays,
+  with committed store receipts) completed. The atomic-lessons preflight then
+  refused with `MENU_LEDGER_DISPLAY`, a menu-ledger display check with no
+  control-health involvement.
+
+In both attempts the native probe cycle stayed at 79-80 ms p99. Relay
+residence was 10.5-11.2 ms median and 27-28 ms p99. The publisher age seen by
+probes was 12 ms median and at most 126 ms. Both exports reconcile with
+integrity verified.
+
 A deployed station must not depend on this route. ADR-003 places one isolated
 Isaac instance per station on its own network. Without the SSH hop, both the
 probe and the source run on the station's own wired link and dedicated GPU.
