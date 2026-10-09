@@ -77,7 +77,12 @@ participants, reveal allocations, construct content factories or grant readiness
 
 The owner calls `OperatorMailbox.Tick()` on its engine thread. This is the sole
 driver of `FixedSlotEngine.Tick()`: a factory implementing `ISessionContentPump`
-is pumped by the engine before slot and response boundaries. Do not add a separate
+is pumped by the engine before slot and response boundaries. The engine samples
+the time for response-window, retained-tail and reset-deadline boundaries before
+that pump, so a content deadline at the same instant (for example a panel
+timeout at the anchored response deadline) is recorded before the boundary even
+when the pump itself takes time. Cue and readiness gates use a fresh sample taken
+after the pump. Do not add a separate
 Unity Update scheduler for module deadlines. Disposal or a durable-write/host
 failure latches the adapter and stops active content; recovery requires a new
 trusted owner and explicit console load. Restart does not replay unacknowledged

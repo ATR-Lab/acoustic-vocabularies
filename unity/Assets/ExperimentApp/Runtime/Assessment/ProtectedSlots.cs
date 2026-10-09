@@ -106,7 +106,9 @@ namespace AcousticVocab.Assessment
             if(failed||disposed)return;
             try
             {
-                panel.Tick();scene.Pump();double now=clock.NowMs;
+                // Sample slot time before the panel advances its own deadline, so
+                // a slot never hides a panel whose timeout it has not yet seen.
+                double now=clock.NowMs;panel.Tick();scene.Pump();
                 foreach(var slot in timeline.ToArray())slot.Tick(now);
                 timeline.RemoveAll(x=>x.Prepared&&now>=x.Context.EndMonoMs);
             }

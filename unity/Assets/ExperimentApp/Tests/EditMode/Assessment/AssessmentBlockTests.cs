@@ -40,7 +40,9 @@ namespace AcousticVocab.Assessment.Tests
         {
             public bool ModeReady{get;set;}=true;public bool NeutralReady{get;set;}=true;
             public bool ResetComplete{get;set;}=true;public bool FocusOk{get;set;}=true;
-            public int Resets;public void BeginTrial(){}public void RequestReset(){Resets++;}public void Pump(){}
+            public int Resets;public void BeginTrial(){}public void RequestReset(){Resets++;}
+            // One-shot work inside the content pump (private control, frame drain) that takes real time.
+            public Action OnPump;public void Pump(){var work=OnPump;OnPump=null;work?.Invoke();}
         }
         sealed class Audio:IAssessmentAudio
         {
@@ -127,6 +129,30 @@ namespace AcousticVocab.Assessment.Tests
             Assert.That(f.Journal.Rows.Count(x=>x.Event=="response"),Is.EqualTo(rows.Length));Assert.That(f.Audio.Requests,Is.EqualTo(rows.Length));
             Assert.That(f.Audio.Types.Count(x=>x=="novel"),Is.EqualTo(novel));
             Assert.That(f.Journal.Rows.Where(x=>x.Event=="state_before"&&x.State==ItemState.CueRequested).All(x=>x.ExposureConsumed),Is.True);
+        }
+        // Native attempt simulation-test-B-V1-017-menu-006, trained item 3 of 4: the
+        // frame's content pump began 5 ms before the anchored response deadline
+        // and took 10 ms, so the engine's close sample fell after it. The panel
+        // timeout at that same instant must be durably recorded before Closed.
+        [TestCase("trained",12000,14000)][TestCase("atomic",7000,9000)]
+        public void PanelTimeoutIsRecordedBeforeCloseWhenThePumpStraddlesTheDeadline(string type,int deadline,int slot)
+        {
+            const int count=4,straddled=2;var f=new Fixture(type:type,count:count);f.Start();
+            for(int k=0;k<count;k++)
+            {
+                double onset=750+k*slot;
+                if(k==straddled){f.Through(onset+deadline-5);f.Scene.OnPump=()=>f.Clock.NowMs+=10;f.At(f.Clock.NowMs);Assert.That(f.Clock.NowMs,Is.EqualTo(onset+deadline+5));}
+                f.Through(onset+slot);Assert.That(f.Engine.Status,Is.Not.EqualTo(SessionState.Faulted));
+                Assert.That(f.Journal.Rows.Where(x=>x.Event=="item_fault").Select(x=>x.TechnicalFaultCode),Is.Empty);
+            }
+            f.Through(750+count*slot+100);Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Complete));
+            Assert.That(f.Journal.Rows.Where(x=>x.Event=="response").Select(x=>x.ResponseCode),Is.EqualTo(Enumerable.Repeat("timeout",count)));
+            Assert.That(f.Panel.Events.Select(x=>x.Kind),Does.Not.Contain("panel_aborted"));
+            Assert.That(f.Panel.Events.Count(x=>x.Kind=="timeout"),Is.EqualTo(count));
+            string id=type+"-"+straddled;var rows=f.Journal.Rows.Where(x=>x.TrialId==id).ToList();
+            int response=rows.FindIndex(x=>x.Event=="response"),closed=rows.FindIndex(x=>x.Event=="state_before"&&x.State==ItemState.Closed);
+            Assert.That(response,Is.GreaterThanOrEqualTo(0).And.LessThan(closed),"The timeout is durable before the engine closes the response window");
+            Assert.That(rows[closed].MonoMs,Is.GreaterThanOrEqualTo(750+straddled*slot+deadline));
         }
         [TestCase("trained",12000,14000)][TestCase("atomic",7000,9000)]
         public void CommitWrongDontKnowTimeoutHaveIdenticalAcknowledgmentSuffix(string type,int deadline,int end)
