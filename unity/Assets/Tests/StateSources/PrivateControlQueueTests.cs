@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using AcousticVocab.StateIntegration;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -217,6 +218,49 @@ namespace AcousticVocab.Tests
             Assert.That(PrivateModeResetClient.FailureCode(new System.Net.WebSockets.WebSocketException()),Is.EqualTo("CONTROL_SOCKET_ERROR"));
             Assert.That(PrivateModeResetClient.FailureCode(new ControlFault("CONTROL_TRANSPORT_DEADLINE")),Is.EqualTo("CONTROL_TRANSPORT_DEADLINE"));
             Assert.That(PrivateModeResetClient.FailureCode(new Exception("private text must not leak")),Is.EqualTo("CONTROL_WORKER_EXCEPTION"));
+        }
+        // #148 decision after attempt simulation-test-B-V1-018-assess-007: an idle
+        // profile-menu preflight saw a ~415 ms main-thread stall with four
+        // 75 ms-cadence health replies queued and latched CONTROL_QUEUED.
+        [Test]public void IdlePreflightDropsStaleProbesAfterMainThreadStallAndGrantsOnlyOnAFreshProbe()
+        {
+            client.DropStaleHealthProbesWhile(()=>true);string reset=Admit();int rows=journal.Count;
+            now=300;ReceiveHealth(Health(200).ToString(),290,295);Assert.That(client.ResetAcknowledged(reset),Is.True);
+            for(int i=0;i<4;i++)ReceiveHealth(Health(210+i).ToString(),303+75*i,310+75*i); // worker keeps probing while Update stalls
+            now=800;Assert.That(client.ResetAcknowledged(reset),Is.False,"Stale replies never grant");Assert.That(client.NeutralHoldHealthy,Is.False);
+            var detail=client.ReadinessDiagnostic(reset);Assert.That((bool)detail["failed"],Is.False,"No permanent latch while unexposed");
+            Assert.That((int)detail["stale_probes_dropped"],Is.EqualTo(4));Assert.That((int)detail["queued_arrivals"],Is.Zero);
+            Assert.That((double)detail["last_stale_probe_age_ms"],Is.EqualTo(265));Assert.That((double)detail["last_stale_probe_dropped_local_mono_ms"],Is.EqualTo(800));
+            Assert.That(journal.Skip(rows).Select(x=>(string)x["kind"]),Is.EqualTo(Enumerable.Repeat("stale_health_probe_dropped",4)));
+            Assert.That(journal.Skip(rows).Select(x=>(double)x["queue_age_ms"]),Is.EqualTo(new[]{490d,415,340,265}));
+            now=805;Assert.That(client.ResetAcknowledged(reset),Is.False,"Still no fresh correlated probe");
+            now=830;ReceiveHealth(Health(300).ToString(),815,825);Assert.That(client.ResetAcknowledged(reset),Is.True,"Only a fresh correlated probe restores the grant");
+            Assert.That((double)client.ReadinessDiagnostic(reset)["effective_age_ms"],Is.EqualTo(30),"The 250 ms bound is applied unchanged to the fresh probe");
+        }
+        [TestCase("exposure_pending")][TestCase("never_configured")]
+        public void StaleProbeWhileExposurePendingStillLatches(string policy)
+        {
+            bool unexposed=true;if(policy=="exposure_pending")client.DropStaleHealthProbesWhile(()=>unexposed);
+            string reset=Admit();unexposed=false; // a cue is pending/scheduled or within its gate
+            for(int i=0;i<4;i++)ReceiveHealth(Health(210+i).ToString(),303+75*i,310+75*i);now=800;
+            Assert.That(Assert.Throws<ControlFault>(()=>client.ResetAcknowledged(reset)).Code,Is.EqualTo("CONTROL_QUEUED"));
+            var detail=client.ReadinessDiagnostic(reset);Assert.That((bool)detail["failed"],Is.True);Assert.That((int)detail["stale_probes_dropped"],Is.Zero);
+            Assert.That((string)detail["first_failure_code"],Is.EqualTo("CONTROL_QUEUED"));
+            now=830;ReceiveHealth(Health(300).ToString(),815,825);Assert.That(client.ResetAcknowledged(reset),Is.False,"The latch is permanent");
+        }
+        [Test]public void StaleCommandReplyAtIdlePreflightStillLatches()
+        {
+            client.DropStaleHealthProbesWhile(()=>true);Admit();string reset=client.RequestReset();
+            now=400;client.ReceiveReply(reset,Reply(reset,"reset",30).ToString(),50,60);
+            Assert.That(Assert.Throws<ControlFault>(()=>client.Pump()).Code,Is.EqualTo("CONTROL_QUEUED"));
+            var detail=client.ReadinessDiagnostic(reset);Assert.That((bool)detail["failed"],Is.True);Assert.That((bool)detail["exact_reset_recorded"],Is.False);Assert.That((int)detail["stale_probes_dropped"],Is.Zero);
+        }
+        [Test]public void StalePolicyIsSetOnceAndAThrowingPredicateIsStrict()
+        {
+            client.DropStaleHealthProbesWhile(()=>throw new InvalidOperationException("synthetic"));
+            Assert.That(Assert.Throws<ControlFault>(()=>client.DropStaleHealthProbesWhile(()=>true)).Code,Is.EqualTo("CONTROL_POLICY"));
+            string reset=Admit();ReceiveHealth(Health(30).ToString(),50,60);now=400;
+            Assert.That(Assert.Throws<ControlFault>(()=>client.ResetAcknowledged(reset)).Code,Is.EqualTo("CONTROL_QUEUED"));
         }
         [Test]public void GetterDrainIsBoundedToTheBatchPresentAtEntry()
         {

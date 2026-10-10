@@ -35,6 +35,16 @@ transaction duration, with at least 1 ms yield. Reset acknowledgment history,
 continuous source confirmation, and all participant qualification gates remain
 unchanged.
 
+A queued reply older than 250 ms when the main thread reads it fails the client
+permanently, with one exception decided under #148. While a joined preflight lease
+is uncommitted, the engine awaits an operator command and no grammar exposure has
+begun (no exposure pending, scheduled or granted), a stale **health-probe** reply
+is dropped instead. The drop is journaled as `stale_health_probe_dropped` and
+counted in the readiness diagnostic. The gate is invalidated, so a new fresh
+correlated probe is required before any grant. Stale command replies, and any
+stale reply outside that state, keep the permanent latch. The 250 ms bound is not
+extended, and stale data never grants.
+
 Standalone installed-Mono diagnostics reproduced slow HTTP response headers:
 20 requests had median 123.692 ms RTT, while median headers-to-body completion
 was 0.041 ms and final data-to-EOF was 0.009 ms. This was the installed 32-bit
