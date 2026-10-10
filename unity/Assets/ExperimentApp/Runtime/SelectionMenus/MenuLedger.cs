@@ -88,7 +88,7 @@ namespace AcousticVocab.SelectionMenus
             try
             {
                 var envelope=new JObject{["version"]=1,["sequence"]=sequence,["previous_sha256"]=previous,["record"]=record};string hash=PcmWave.Hash(MenuJson.Bytes(envelope));envelope["sha256"]=hash;
-                byte[] line=MenuJson.Bytes(envelope);MenuRules.Require(line.Length<=16384,"MENU_LEDGER_LINE");output.Write(line,0,line.Length);output.WriteByte(10);output.Flush(true);previous=hash;sequence++;
+                byte[] line=MenuJson.Bytes(envelope);MenuRules.Require(line.Length<=16384,"MENU_LEDGER_LINE");output.Write(line,0,line.Length);output.WriteByte(10);MainThreadStages.Flush(output,"menu_ledger");previous=hash;sequence++;
             }
             catch{failed=true;throw new SessionFault("MENU_LEDGER_WRITE_FAILED");}
         }

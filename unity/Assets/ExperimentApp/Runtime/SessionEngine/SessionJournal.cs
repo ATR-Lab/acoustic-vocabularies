@@ -91,7 +91,7 @@ namespace AcousticVocab.SessionEngine
                 var row=new JObject { ["version"]=1,["sequence"]=sequence,["previous_sha256"]=previous,
                     ["record"]=record==null?JValue.CreateNull():(JToken)Serialize(record),["recovered_tail"]=recoveredTail==null?JValue.CreateNull():(JToken)recoveredTail };
                 string hash=PcmWave.Hash(SessionJson.Bytes(row));row["sha256"]=hash;
-                byte[] bytes=SessionJson.Bytes(row);output.Write(bytes,0,bytes.Length);output.Flush(true);
+                byte[] bytes=SessionJson.Bytes(row);output.Write(bytes,0,bytes.Length);AcousticVocab.Foundation.MainThreadStages.Flush(output,"session_journal");
                 if(record!=null)records.Add(record);sequence++;previous=hash;
             }
             catch {failed=true;throw new SessionFault("SESSION_JOURNAL_WRITE_FAILED");}

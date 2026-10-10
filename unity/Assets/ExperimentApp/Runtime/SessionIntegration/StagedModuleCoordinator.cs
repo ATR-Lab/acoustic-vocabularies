@@ -33,7 +33,7 @@ namespace AcousticVocab.SessionIntegration
                 if(candidate==null&&modules.CanPrepare(engine))
                 {
                     if(!routes.TryGetValue(engine.CurrentBlock,out var create))throw new SessionFault("SESSION_MODULE_ROUTES");
-                    ticket=modules.BeginPreparation(engine);candidate=create(ticket.Scope)??throw new SessionFault("SESSION_PREFLIGHT_MISSING");
+                    AcousticVocab.Foundation.MainThreadStages.Mark("stage_begin_preparation");ticket=modules.BeginPreparation(engine);candidate=create(ticket.Scope)??throw new SessionFault("SESSION_PREFLIGHT_MISSING");AcousticVocab.Foundation.MainThreadStages.Mark("stage_candidate_created");
                 }
                 candidate?.Pump();
             }
