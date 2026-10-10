@@ -5,15 +5,19 @@ using AcousticVocab.ResponsePanel;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StateIntegration;
 using AcousticVocab.StudyAudio;
+using Newtonsoft.Json.Linq;
 
 namespace AcousticVocab.Assessment
 {
-    public sealed class UnityProtectedState : IProtectedState
+    public sealed class UnityProtectedState : IProtectedState,IProtectedStateDiagnostics
     {
         readonly PrivateModeResetClient control;
         readonly StateSourceHost source;
         readonly FoundationBootstrap foundation;
         string reset,confirmed;
+        // First failing term of the latest evaluation (null when it passed),
+        // recorded in the unchanged short-circuit order without extra reads.
+        string neutralFailure,modeFailure;double neutralAt=-1,modeAt=-1;
         public UnityProtectedState(PrivateModeResetClient control,StateSourceHost source,FoundationBootstrap foundation)
         {
             this.control=control??throw new ArgumentNullException(nameof(control));
@@ -27,9 +31,15 @@ namespace AcousticVocab.Assessment
             control.Pump();
             if(reset!=null&&confirmed!=reset&&control.ResetAcknowledged(reset)&&source.ConfirmReset())confirmed=reset;
         }
-        public bool ModeReady=>control.ModeAcknowledged&&control.NeutralHoldHealthy;
-        public bool NeutralReady=>reset!=null&&confirmed==reset&&control.ResetAcknowledged(reset)&&source.CheckExposureReady();
+        public bool ModeReady
+        {get{modeFailure=!control.ModeAcknowledged?"control_mode_not_acknowledged":!control.NeutralHoldHealthy?"control_neutral_hold_not_healthy":null;modeAt=AudioPlayer.Now*1000;return modeFailure==null;}}
+        public bool NeutralReady
+        {get{neutralFailure=reset==null?"reset_not_requested":confirmed!=reset?"reset_not_confirmed":!control.ResetAcknowledged(reset)?"control_reset_not_acknowledged":!source.CheckExposureReady()?"source_exposure_not_ready":null;neutralAt=AudioPlayer.Now*1000;return neutralFailure==null;}}
         public bool ResetComplete=>NeutralReady;
+        // Non-pumping snapshot: never advances control or grants exposure.
+        public JObject Readiness()=>new JObject{["neutral_failure"]=neutralFailure,["neutral_evaluated_mono_ms"]=neutralAt<0?JValue.CreateNull():new JValue(neutralAt),
+            ["mode_failure"]=modeFailure,["mode_evaluated_mono_ms"]=modeAt<0?JValue.CreateNull():new JValue(modeAt),
+            ["source"]=source.ExposureDiagnostic(),["control"]=control.ReadinessDiagnostic(reset)};
         public bool FocusOk=>foundation.Ready;
     }
 

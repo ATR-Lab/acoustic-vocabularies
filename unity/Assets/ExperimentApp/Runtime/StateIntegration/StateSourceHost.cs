@@ -88,7 +88,20 @@ namespace AcousticVocab.StateIntegration
         }
         static string ReadBounded(string path,long maximum)
         { var file=new FileInfo(path); if(!file.Exists || file.Length>maximum) throw new StateFault("SOURCE_CONFIG_MISSING_OR_LARGE"); return File.ReadAllText(path); }
-        void OnEvent(SourceEvent value) { journal.Record(value); Event?.Invoke(value); }
+        void OnEvent(SourceEvent value) { lastEvent=value.Code; lastEventAt=value.ObservedMonoSeconds; journal.Record(value); Event?.Invoke(value); }
+        // Cheap, default-on evidence of why a per-trial neutral grant ended.
+        // Observation only: it never grants, extends or restores exposure.
+        string lossCause,lastEvent; double lossAt=-1,confirmedAt=-1,lastEventAt=-1;
+        void Lost(string cause,double now){ if(confirmedAtBoundary){ lossCause=cause; lossAt=now; } confirmedAtBoundary=false; }
+        static JToken Time(double value)=>value<0||double.IsNaN(value)||double.IsInfinity(value)?JValue.CreateNull():new JValue(value);
+        public JObject ExposureDiagnostic()
+        {
+            var live=source as LiveIsaacSource;
+            return new JObject{["initialized"]=Initialized,["foundation_ready"]=foundation!=null&&foundation.Ready,["confirmed_at_boundary"]=confirmedAtBoundary,
+                ["confirmed_mono_s"]=Time(confirmedAt),["grant_loss_cause"]=lossCause,["grant_loss_mono_s"]=Time(lossAt),
+                ["last_source_event"]=lastEvent,["last_source_event_mono_s"]=Time(lastEventAt),["stale"]=source?.Stale,
+                ["last_receipt_mono_s"]=Time(live?.Latest==null?-1:live.LastReceivedMonoSeconds)};
+        }
         void Fail(string code)
         {
             if(failed) return; failed=true; confirmedAtBoundary=false; if(workcell!=null) workcell.gameObject.SetActive(false); socket?.Dispose();
@@ -105,7 +118,9 @@ namespace AcousticVocab.StateIntegration
             try
             {
                 double now=LiveSocketClient.Now;if(socket!=null)now=socket.Pump(now);var frame=source.Render(now);
-                if(!foundation.Ready || (simulation==null?!source.ResetConfirmed:!LocalNeutral(now,frame))) confirmedAtBoundary=false;
+                if(!foundation.Ready) Lost("foundation_not_ready",now);
+                else if(simulation==null){ if(!source.ResetConfirmed) Lost("source_reset_not_confirmed",now); }
+                else { string cause=LocalNeutralLoss(now,frame); if(cause!=null) Lost(cause,now); }
                 if(frame!=null) renderer.Apply(frame);
                 workcell.gameObject.SetActive(foundation.Ready && frame!=null);
                 if(foundation.Ready && frame!=null && frame.Provenance=="live" && workcell.gameObject.activeInHierarchy && source is LiveIsaacSource live && live.Latest!=null)
@@ -125,7 +140,10 @@ namespace AcousticVocab.StateIntegration
         {
             return RefreshSource() && confirmedAtBoundary && foundation.Ready && (simulation!=null?LocalNeutral(LiveSocketClient.Now,source.Render(LiveSocketClient.Now)):source.ResetConfirmed&&!source.Stale);
         }
-        bool LocalNeutral(double now,SceneFrame rendered)=>simulation!=null&&source is LiveIsaacSource live&&live.LocalProgressFresh(now)&&NeutralComparison.Matches(live.Latest,snapshot.Neutral)&&NeutralComparison.Matches(rendered,snapshot.Neutral);
+        bool LocalNeutral(double now,SceneFrame rendered)=>simulation!=null&&LocalNeutralLoss(now,rendered)==null;
+        // Same terms and order as before; names the first one that failed.
+        string LocalNeutralLoss(double now,SceneFrame rendered)=>source is not LiveIsaacSource live?"source_not_live":!live.LocalProgressFresh(now)?"local_progress_not_fresh":
+            !NeutralComparison.Matches(live.Latest,snapshot.Neutral)?"latest_not_neutral":!NeutralComparison.Matches(rendered,snapshot.Neutral)?"rendered_not_neutral":null;
         // Explicit per-trial gate. A rendered neutral never manufactures the
         // backend reset acknowledgment; the session must require both.
         public bool ConfirmReset()
@@ -137,7 +155,7 @@ namespace AcousticVocab.StateIntegration
                 var frame=source.Render(now);bool valid=simulation!=null?LocalNeutral(now,frame):source.ConfirmReset(snapshot.Neutral,now);
                 if(frame!=null) renderer.Apply(frame);
                 OnEvent(new SourceEvent(simulation!=null?(valid?"SIMULATION_LOCAL_RESET_CONFIRMED":"SIMULATION_LOCAL_RESET_REFUSED"):(valid?"STATE_RESET_CONFIRMED":"STATE_RESET_REFUSED"),now,now));
-                confirmedAtBoundary=valid;
+                confirmedAtBoundary=valid;if(valid)confirmedAt=now;
                 return valid;
             }
             catch(StateFault error) { Fail(error.Message); return false; }

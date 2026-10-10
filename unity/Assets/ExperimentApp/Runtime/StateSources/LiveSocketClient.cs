@@ -114,6 +114,18 @@ namespace AcousticVocab.StateSources
                 await Task.Delay(1000,cancellation);
             }
         }
+        // The server echoes c0_s verbatim, but Unity's Mono double parser does
+        // not always return the correctly rounded value: about 2 in 10,000
+        // Stopwatch-second stamps come back one ULP away. Correlate to exactly
+        // one outstanding echo within 1 us (echoes are sent 1 s apart) and keep
+        // that echo's original send time. Anything else stays uncorrelated.
+        internal const double EchoMatchSeconds=1e-6;
+        bool TakeEcho(double echoed,out double sent)
+        {
+            sent=double.NaN;int matches=0;
+            foreach(double pending in echoes.Keys)if(Math.Abs(pending-echoed)<=EchoMatchSeconds){sent=pending;matches++;}
+            return matches==1&&echoes.TryRemove(sent,out _);
+        }
         double ProcessingTime(double previous)
         {
             double value=processingClock();
@@ -142,8 +154,7 @@ namespace AcousticVocab.StateSources
                     if((string)json["kind"]=="echo")
                     {
                         StateParser.Keys(json,"kind","c0_s","s1_ns","s2_ns");
-                        double sent=StateParser.Number(json["c0_s"]);
-                        if(!echoes.TryRemove(sent,out _)) throw new StateFault("STATE_ECHO_CORRELATION");
+                        if(!TakeEcho(StateParser.Number(json["c0_s"]),out double sent)) throw new StateFault("STATE_ECHO_CORRELATION");
                         clock?.Echo(sent,StateParser.Nanoseconds(json["s1_ns"]),StateParser.Nanoseconds(json["s2_ns"]),item.Received);
                     }
                     else frame=parseFrame(item.Raw,registry);

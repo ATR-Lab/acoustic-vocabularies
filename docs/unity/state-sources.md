@@ -26,7 +26,11 @@ after a qualified headset path supplies its jitter measurements.
 The receiver uses a bounded eight-message queue and a reconnecting
 `ClientWebSocket`. No network callback accesses a Unity transform. A correlated
 echo is sent once per second; its four timestamps bound clock offset without
-assuming symmetric network delays. An independently supported drift bound and
+assuming symmetric network delays. The server echoes `c0_s` verbatim, but Unity's
+Mono double parser returns about 2 in 10,000 Stopwatch-second stamps one ULP
+away, so a reply is correlated to exactly one outstanding echo within 1 µs and
+keeps that echo's original send time; any other reply is still
+`STATE_ECHO_CORRELATION` and invalidates the source. An independently supported drift bound and
 evidence hash are required before a live source can confirm reset readiness.
 With no clock evidence the source can be used for engineering preview, but it
 cannot authorize a cue. Echo alone is not clock qualification.
