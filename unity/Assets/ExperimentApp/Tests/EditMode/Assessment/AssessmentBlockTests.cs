@@ -53,8 +53,9 @@ namespace AcousticVocab.Assessment.Tests
             {Requests++;Types.Add(c.Item.TrialType);Novel=novel;if(Confirm)QualifiedOnsetMonoMs=c.OnsetMonoMs;}
             public void Stop(string code){Stops++;}
         }
-        sealed class Panel:IAssessmentPanel
+        sealed class Panel:IAssessmentPanel,IAssessmentPanelDiagnostics
         {
+            public JObject Readiness()=>new JObject{["input_available"]=Ready};
             public readonly ResponseState State;public readonly List<PanelProcessEvent> Events=new List<PanelProcessEvent>();
             public bool Ready{get;set;}=true;public bool ThrowHide;public event Action<string> Responded;
             public Panel(Clock clock){State=new ResponseState(()=>clock.NowMs,Events.Add);State.Responded+=r=>Responded?.Invoke(r.Code==ResponseCode.Commit?"commit":r.Code==ResponseCode.DontKnow?"dont_know":"timeout");}
@@ -308,6 +309,22 @@ namespace AcousticVocab.Assessment.Tests
             Assert.That(f.Journal.Rows.Where(x=>x.Event=="item_fault").Select(x=>x.TechnicalFaultCode),Is.EqualTo(new[]{"ASSESSMENT_NEUTRAL_LOST","OPERATOR_ADAPTER_FAILED","SESSION_JOIN_DISPOSED"}));
             Assert.That(f.Journal.Rows.Count(x=>x.Event=="state_before"&&x.State==ItemState.Reset),Is.EqualTo(1),"Reset is entered once");
             Assert.That(f.Engine.PrimaryFaultCode,Is.EqualTo("ASSESSMENT_NEUTRAL_LOST"));
+        }
+        // Native attempt simulation-test-B-V1-019-echo-009, B-C01-M1-V1-TR-01: the
+        // player's exposure gate turned false 118 ms after the audio request and
+        // AUDIO_EXPOSURE_INTERRUPTED carried no record of which term failed.
+        [TestCase("neutral")][TestCase("mode")][TestCase("focus")][TestCase("panel")]
+        public void ExposureGateLossNamesTheFirstFailedTermForAPendingCue(string term)
+        {
+            var f=new Fixture(type:"trained",count:2);f.Start();f.Through(120);
+            Assert.That(f.Engine.CurrentState,Is.EqualTo(ItemState.CueRequested));Assert.That(f.Factory.ExposureGate,Is.True);Assert.That(f.Factory.ReadinessLoss,Is.Null,"A passing gate records nothing");
+            if(term=="neutral")f.Scene.NeutralReady=false;if(term=="mode")f.Scene.ModeReady=false;if(term=="focus")f.Scene.FocusOk=false;if(term=="panel")f.Panel.Ready=false;
+            f.Clock.NowMs=238;Assert.That(f.Factory.ExposureGate,Is.False,"The player reads the gate during the pending cue");
+            var loss=f.Factory.ReadinessLoss;Assert.That((string)loss["trigger"],Is.EqualTo("exposure_gate"));Assert.That((string)loss["gate_failure"],Is.EqualTo(term));
+            Assert.That((string)loss["attempt_id"],Is.EqualTo("trained-0"));Assert.That((double)loss["onset_mono_ms"],Is.EqualTo(750));Assert.That((double)loss["observed_mono_ms"],Is.EqualTo(238));
+            Assert.That((bool)loss["panel"]["input_available"],Is.EqualTo(term!="panel"));
+            f.Scene.NeutralReady=false;f.Scene.ModeReady=false;f.Clock.NowMs=240;Assert.That(f.Factory.ExposureGate,Is.False);
+            Assert.That((string)f.Factory.ReadinessLoss["gate_failure"],Is.EqualTo(term),"Only the first failure is kept");
         }
     }
 }

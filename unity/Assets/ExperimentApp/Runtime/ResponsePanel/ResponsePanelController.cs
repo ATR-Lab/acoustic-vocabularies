@@ -24,6 +24,12 @@ namespace AcousticVocab.ResponsePanel
         public bool FaultLatched { get; private set; }
         public bool? ConfiguredLeftHand => settings?.LeftHand;
         public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
+        double inputChangedMs = -1;
+        // Observation only: the individual ReadyForTrial terms and when tracked
+        // input last changed. Never polls input or changes readiness.
+        public JObject ReadinessDiagnostic() => new JObject { ["active"] = isActiveAndEnabled, ["focused"] = focused, ["paused"] = paused, ["state_present"] = State != null,
+            ["foundation_ready"] = foundation != null && foundation.Ready, ["input_available"] = InputAvailable, ["fault_latched"] = FaultLatched, ["last_fault"] = lastFault,
+            ["input_changed_mono_ms"] = inputChangedMs < 0 ? JValue.CreateNull() : new JValue(inputChangedMs) };
         public event Action<PanelResponse> Responded;
         // Synchronous durable subscriber boundary; failures propagate into ResponseState's abort latch.
         public event Action<PanelProcessEvent> ProcessRecorded;
@@ -120,6 +126,7 @@ namespace AcousticVocab.ResponsePanel
                     triggerArmed = false; triggerDown = false; pokeArmed = false; haveTip = false;
                     ray.enabled = false; tip.SetActive(false);
                 }
+                if (available != InputAvailable) inputChangedMs = PanelJournal.NowMs;
                 InputAvailable = available;
                 if (!engineeringStarted && settings.EngineeringMode != "disabled" && ReadyForTrial)
                 {
