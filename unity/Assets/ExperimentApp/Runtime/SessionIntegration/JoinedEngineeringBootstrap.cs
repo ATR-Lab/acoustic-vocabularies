@@ -259,6 +259,8 @@ namespace AcousticVocab.SessionIntegration
         void Fail(string code)
         {
             if(failed||closed)return;failed=true;string reported=new SessionFault(code).Code;Report(owner?.Engine.PrimaryFaultCode??reported);
+            // Default-on: the untyped content exception behind SESSION_CONTENT_*.
+            try{var detail=owner?.Engine.ContentFailureDetail;if(detail!=null)audit?.Write("module",new JObject{["kind"]="content_failure_detail",["primary_code"]=owner.Engine.PrimaryFaultCode,["exception"]=detail});}catch{}
             // Keep secondary failures visible without presenting cleanup's
             // invalidated control state as the original terminal cause.
             try{audit?.Write("fault",new JObject{["code"]=StatusCode});}catch{}

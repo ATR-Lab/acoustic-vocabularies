@@ -14,6 +14,8 @@ engine close/reset boundary. Every actual audio request separately binds
 its cue duration, including the final lesson presentation. No study timing,
 selected rate, wave, allocation or answer is invented by the monitor.
 
+The audio sink reports the planned onset in seconds, so a cue anchored at the slot onset can arrive one ULP outside its attempt (onset ms/1000×1000). The monitor snaps only a difference of at most 1 µs (`RepresentationToleranceMs`) onto the attempt bounds; any larger out-of-bounds cue is still refused. An untyped content exception behind `SESSION_CONTENT_*` is recorded as a `content_failure_detail` joined audit entry: the exception type, plus the message only when it is a bounded code.
+
 Raw rows identify a host render callback, its full interval, a cue/response
 window and the clipped overlap. A positive overlap charges the full interval to
 that attempt conservatively. An exact boundary touch contributes nothing. Old

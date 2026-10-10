@@ -38,6 +38,15 @@ namespace AcousticVocab.SessionEngine
         public string ScheduleSha256 => schedule.Sha256;
         public string PackageSha256 => schedule.PackageSha256;
         public string PrimaryFaultCode { get; private set; }
+        // The first untyped content exception behind a generic SESSION_CONTENT_*
+        // fault: exception type plus its message only when that is a bounded
+        // code (no free text, paths or answers). Evidence for the fault record.
+        public string ContentFailureDetail { get; private set; }
+        void NoteContentFailure(Exception error)
+        {
+            if(ContentFailureDetail!=null||error==null)return;string message=error.Message;
+            ContentFailureDetail=error.GetType().Name+(message!=null&&Regex.IsMatch(message,@"\A[A-Z][A-Z0-9_]{0,63}\z")?":"+message:"");
+        }
         public bool DiagnosticFailed { get; private set; }
         public IReadOnlyList<int> CompletedCounts => Array.AsReadOnly(schedule.Blocks.Select(block => block.Items.Count(item => completed.Contains(item.TrialId))).ToArray());
         public bool NeedsOperatorConfirmation => Status==SessionState.AwaitingOperator || Status==SessionState.Paused;
@@ -124,7 +133,7 @@ namespace AcousticVocab.SessionEngine
                 Transition(ItemState.Loaded);content.Prepare(context);
             }
             catch(SessionFault error) { Fault(error.Code); }
-            catch(Exception) { Fault("SESSION_CONTENT_PREPARE_FAILED"); }
+            catch(Exception error) { NoteContentFailure(error);Fault("SESSION_CONTENT_PREPARE_FAILED"); }
         }
         public void Tick()
         {
@@ -134,7 +143,7 @@ namespace AcousticVocab.SessionEngine
                 pumping=true;
                 try { pump.Pump(); }
                 catch(SessionFault error) { Fault(error.Code); }
-                catch(Exception) { Fault("SESSION_CONTENT_PUMP_FAILED"); }
+                catch(Exception error) { NoteContentFailure(error);Fault("SESSION_CONTENT_PUMP_FAILED"); }
                 finally { pumping=false; }
                 if(Status!=SessionState.Running) return;
             }
@@ -187,7 +196,7 @@ namespace AcousticVocab.SessionEngine
             }
             catch(SessionFault error) { Fault(error.Code); }
             catch(AudioFault error) { Fault(error.Code); }
-            catch(Exception) { Fault("SESSION_CONTENT_FAILED"); }
+            catch(Exception error) { NoteContentFailure(error);Fault("SESSION_CONTENT_FAILED"); }
         }
         void RefuseGate(string code,SlotReadiness ready,double checkedAt)
         {
