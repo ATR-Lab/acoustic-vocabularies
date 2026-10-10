@@ -4,6 +4,7 @@ using System.Linq;
 using AcousticVocab.ResponsePanel;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StudyAudio;
+using Newtonsoft.Json.Linq;
 
 namespace AcousticVocab.Assessment
 {
@@ -17,6 +18,8 @@ namespace AcousticVocab.Assessment
         bool ResetComplete { get; }
         bool FocusOk { get; }
     }
+    // Optional non-pumping readiness evidence, captured only on failure.
+    public interface IProtectedStateDiagnostics { JObject Readiness(); }
     public interface IAssessmentAudio
     {
         void Prepare(SlotContext context);
@@ -57,6 +60,15 @@ namespace AcousticVocab.Assessment
         readonly List<ProtectedSlot> timeline=new List<ProtectedSlot>();
         ProtectedSlot responseOwner;
         bool failed,disposed;
+        // Which readiness term ended a started trial, and when. Evidence only;
+        // a diagnostic failure never masks or replaces the original fault.
+        public JObject ReadinessLoss{get;private set;}
+        void CaptureReadinessLoss(SlotContext context,double now)
+        {
+            if(ReadinessLoss!=null)return;
+            try{var value=(scene as IProtectedStateDiagnostics)?.Readiness()??new JObject();value["attempt_id"]=context.Item.TrialId;value["onset_mono_ms"]=context.OnsetMonoMs;value["observed_mono_ms"]=now;ReadinessLoss=value;}
+            catch{ReadinessLoss=new JObject{["attempt_id"]=context.Item.TrialId,["observed_mono_ms"]=now,["diagnostic_failed"]=true};}
+        }
         public ProtectedContentFactory(ISessionClock clock,IProtectedState scene,IAssessmentAudio audio,IAssessmentPanel panel,
             IAssessmentView view,AssessmentStages stages,SpeechBank speech,Action<string> response,Action<string> fault,Func<string,bool> cueAuthority)
         {
@@ -173,7 +185,7 @@ namespace AcousticVocab.Assessment
                     return;
                 }
                 if(!requested||now<Context.OnsetMonoMs)return;
-                if(!resetRequested&&(!owner.scene.NeutralReady||!owner.scene.ModeReady))throw new AssessmentFault("ASSESSMENT_NEUTRAL_LOST");
+                if(!resetRequested&&(!owner.scene.NeutralReady||!owner.scene.ModeReady)){owner.CaptureReadinessLoss(Context,now);throw new AssessmentFault("ASSESSMENT_NEUTRAL_LOST");}
                 if(Context.Item.Plays>0&&owner.audio.FaultCode!=null)throw new AssessmentFault(owner.audio.FaultCode);
                 if(Context.Item.Plays>0&&!anchor.HasValue)
                 {
