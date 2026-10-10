@@ -102,17 +102,40 @@ namespace AcousticVocab.StateSources
                     try { await Task.Delay(1000,lifetime.Token); } catch(OperationCanceledException) { }
             }
         }
+        // Outstanding echoes are only consumed by the main-thread Pump. During a
+        // main-thread stall they accumulate; clearing them all at eight (the old
+        // rule) discarded echoes whose replies were still queued, and a reply
+        // dropped by queue overflow leaked its entry. Expire by age instead,
+        // far beyond the 5 s echo-age limit, and bound memory by evicting only
+        // the oldest. A reply for an expired or unknown echo stays uncorrelated.
+        internal const double EchoRetentionSeconds=30;internal const int EchoCapacity=64;
+        internal void RememberEcho(double sent)
+        {
+            foreach(double old in echoes.Keys)if(old<sent-EchoRetentionSeconds)echoes.TryRemove(old,out _);
+            while(echoes.Count>=EchoCapacity){double oldest=double.PositiveInfinity;foreach(double key in echoes.Keys)if(key<oldest)oldest=key;if(!echoes.TryRemove(oldest,out _))break;}
+            echoes.TryAdd(sent,0);
+        }
         async Task SendEchoes(ClientWebSocket client,CancellationToken cancellation)
         {
             while(!cancellation.IsCancellationRequested)
             {
-                double sent=Now;
-                if(echoes.Count>=8) echoes.Clear();
-                echoes.TryAdd(sent,0);
+                double sent=Now;RememberEcho(sent);
                 byte[] bytes=Encoding.UTF8.GetBytes(new JObject { ["kind"]="echo",["c0_s"]=sent }.ToString(Formatting.None));
                 await client.SendAsync(new ArraySegment<byte>(bytes),WebSocketMessageType.Text,true,cancellation);
                 await Task.Delay(1000,cancellation);
             }
+        }
+        // The server echoes c0_s verbatim, but Unity's Mono double parser does
+        // not always return the correctly rounded value: about 2 in 10,000
+        // Stopwatch-second stamps come back one ULP away. Correlate to exactly
+        // one outstanding echo within 1 us (echoes are sent 1 s apart) and keep
+        // that echo's original send time. Anything else stays uncorrelated.
+        internal const double EchoMatchSeconds=1e-6;
+        bool TakeEcho(double echoed,out double sent)
+        {
+            sent=double.NaN;int matches=0;
+            foreach(double pending in echoes.Keys)if(Math.Abs(pending-echoed)<=EchoMatchSeconds){sent=pending;matches++;}
+            return matches==1&&echoes.TryRemove(sent,out _);
         }
         double ProcessingTime(double previous)
         {
@@ -142,8 +165,7 @@ namespace AcousticVocab.StateSources
                     if((string)json["kind"]=="echo")
                     {
                         StateParser.Keys(json,"kind","c0_s","s1_ns","s2_ns");
-                        double sent=StateParser.Number(json["c0_s"]);
-                        if(!echoes.TryRemove(sent,out _)) throw new StateFault("STATE_ECHO_CORRELATION");
+                        if(!TakeEcho(StateParser.Number(json["c0_s"]),out double sent)) throw new StateFault("STATE_ECHO_CORRELATION");
                         clock?.Echo(sent,StateParser.Nanoseconds(json["s1_ns"]),StateParser.Nanoseconds(json["s2_ns"]),item.Received);
                     }
                     else frame=parseFrame(item.Raw,registry);

@@ -106,6 +106,7 @@ namespace AcousticVocab.SessionIntegration
             if(diagnosticQuitAt.HasValue&&Time.realtimeSinceStartupAsDouble>=diagnosticQuitAt.Value)
             {diagnosticQuitAt=null;Report("JOIN_DIAGNOSTIC_QUIT_REQUESTED");Close();Application.Quit(0);return;}
             if(closed||failed||!attempted)return;
+            RecordStall();
             try
             {
                 if(data==null)
@@ -159,7 +160,9 @@ namespace AcousticVocab.SessionIntegration
                     mailbox=new OperatorMailbox(config.Directory("operator_mailbox"),nonce,config.RequireFile("run_sheet_manifest").Sha256,owner.Engine,commands,Admission,Health,()=>clock.NowMs,stageBeforeResume:CommitOperatorResume,boundaryControl:_=>{if(grammarStage?.Running==true)grammarInterrupted=true;});
                     Report("JOIN_PREFLIGHT");
                 }
-                store?.Pump();bool stageHold=HandleAssessmentBoundary();if(!stageHold)staged.Pump();mailbox.Tick(); // sole engine.Tick owner
+                MainThreadStages.Mark("store_pump");store?.Pump();MainThreadStages.Mark("assessment_boundary");bool stageHold=HandleAssessmentBoundary();
+                if(!stageHold){MainThreadStages.Mark("staged_pump");staged.Pump();}MainThreadStages.Mark("engine_tick");mailbox.Tick(); // sole engine.Tick owner
+                MainThreadStages.Mark("update_tail");
                 if(grammarInterrupted){Fail("JOIN_GRAMMAR_INTERRUPTED");return;}
                 simulationInputs?.Tick(clock.NowMs);
                 if(stageHold){staged.PumpPending();if(simulation!=null&&StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"&&Flag("-simulationQuitOnComplete")){Close();Application.Quit(StatusCode=="JOIN_COMPLETE_FORMS_RECORDED"?0:1);}return;}
@@ -167,6 +170,15 @@ namespace AcousticVocab.SessionIntegration
                 Report(owner.Engine.NeedsOperatorConfirmation?(staged.Ready?"JOIN_READY_EXPLICIT_RESUME":"JOIN_PREFLIGHT"):"JOIN_"+owner.Engine.Status.ToString().ToUpperInvariant());
             }
             catch(SessionFault error){Fail(error.Code);}catch{Fail("JOIN_RUNTIME_FAILED");}
+        }
+        // Default-on stall attribution: a gap above 250 ms between owner updates
+        // records the recent stage markers, slow durable flushes and GC counts.
+        readonly MainThreadStallMonitor stallMonitor=new MainThreadStallMonitor();
+        void RecordStall()
+        {
+            JObject stall;try{stall=stallMonitor.Observe(clock.NowMs);}catch{return;}
+            MainThreadStages.Mark("update_begin");
+            if(stall!=null){stall["status"]=StatusCode;try{audit?.Write("module",stall);}catch{}Debug.Log("JOINED_MAIN_THREAD_STALL "+stall.ToString(Newtonsoft.Json.Formatting.None));}
         }
         bool CommitOperatorResume(FixedSlotEngine engine,OperatorRequest request)
         {
@@ -176,8 +188,8 @@ namespace AcousticVocab.SessionIntegration
         MenuLedgerVerification MenuVerification()
         {
             var items=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
-            return new MenuLedgerVerification(key=>assets.Menus.Prepare(items[key],store.Profile).Options.ToArray(),
-                (key,index,receipt)=>store.VerifyRecordedSelection(key,index,receipt,assets.Menus),key=>assets.Menus.Prepare(items[key],store.Profile).MeaningDisplayId);
+            return MenuLedgerVerification.FromMaterials(key=>assets.Menus.Prepare(items[key],store.Profile),
+                (key,index,receipt)=>store.VerifyRecordedSelection(key,index,receipt,assets.Menus));
         }
         bool HandleAssessmentBoundary()
         {
@@ -262,7 +274,7 @@ namespace AcousticVocab.SessionIntegration
             // Keep secondary failures visible without presenting cleanup's
             // invalidated control state as the original terminal cause.
             try{audit?.Write("fault",new JObject{["code"]=StatusCode});}catch{}
-            try{audit?.Write("module",new JObject{["kind"]="terminal_fault_diagnostic",["primary_code"]=StatusCode,["reported_code"]=reported,["diagnostic_failed"]=owner?.Engine.DiagnosticFailed??false,["control_health"]=activePreflight?.Diagnostic()});}catch{}
+            try{audit?.Write("module",new JObject{["kind"]="terminal_fault_diagnostic",["primary_code"]=StatusCode,["reported_code"]=reported,["diagnostic_failed"]=owner?.Engine.DiagnosticFailed??false,["control_health"]=activePreflight?.Diagnostic(),["assessment_readiness"]=ActiveAssessment?.ReadinessLoss?.DeepClone()});}catch{}
             try{owner?.Engine.Fault(reported);}catch{}try{player?.Abort(StatusCode);}catch{}Close();
         }
         void OnApplicationFocus(bool focused)
@@ -326,12 +338,15 @@ namespace AcousticVocab.SessionIntegration
                 try
                 {
                     if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
-                    phase="control_start";if(control==null){if(!SealBeforePostMenu())return;StartControl();}
+                    phase="control_start";if(control==null){MainThreadStages.Mark("preflight_seal_before_post_menu");if(!SealBeforePostMenu())return;MainThreadStages.Mark("preflight_start_control");StartControl();}
                     phase="control_pump";control.Pump();
                     phase="request_reset";if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
-                    phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
+                    // Re-confirm only when the grant is not already current. A
+                    // confirmation is a durable source-journal write; repeating
+                    // it on every idle frame put an fsync on each Update.
+                    phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset)&&(!renderer||!host.source.CheckExposureReady()))renderer=host.source.ConfirmReset();
                     phase="finish_grammar";if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
-                    phase="prepare_factory";if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
+                    phase="prepare_factory";if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){MainThreadStages.Mark("preflight_create_factory");preparedFactory=CreateFactory();MainThreadStages.Mark("preflight_factory_created");scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
                     phase="ready_check";if(Ready)wasReady=true;
                 }
                 catch(Exception error)

@@ -84,7 +84,7 @@ namespace AcousticVocab.FrameBudget
         static void WriteNew(string path,byte[] bytes){using var f=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read);f.Write(bytes,0,bytes.Length);f.Flush(true);}
         static string N(object value)=>value==null?"":Convert.ToString(value,CultureInfo.InvariantCulture);
         void Need()=>Check.That(!failed&&!closed,"FRAME_LOG_UNAVAILABLE");
-        void Flush(){frames.Flush();events.Flush();frameFile.Flush(true);eventFile.Flush(true);}
+        void Flush(){frames.Flush();events.Flush();MainThreadStages.Flush(frameFile,"frame_evidence");MainThreadStages.Flush(eventFile,"frame_events");}
         void Do(Action action){lock(sync){Need();try{action();}catch{failed=true;throw new FrameFault("FRAME_LOG_FAILED");}}}
         public void Interval(FrameInterval x)=>Do(()=>{var s=x.Sample;frames.WriteLine(string.Join(",",new object[]{x.Attempt.AttemptId,x.Attempt.OpportunityId,x.Window.Id,x.Window.Kind,s.FrameIndex,x.FromMs,x.ToMs,x.IntervalMs,x.OverlapMs,s.CpuMs,s.GpuMs,s.RuntimeRefreshHz,s.UnityFixedStepMs,s.PhysicsSteps,s.PresentedCount,s.DroppedCount}.Select(N)));});
         public void Fault(FrameFaultRecord x)=>Do(()=>{events.WriteLine(new JObject{["kind"]="fault",["attempt_id"]=x.Attempt.AttemptId,["opportunity_id"]=x.Attempt.OpportunityId,["observed_mono_ms"]=x.ObservedMs,["technical_fault_code"]=x.Code,["render_gap_ms"]=x.GapMs,["watchdog"]=x.Watchdog}.ToString(Formatting.None));Flush();});
