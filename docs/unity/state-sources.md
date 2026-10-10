@@ -35,6 +35,14 @@ evidence hash are required before a live source can confirm reset readiness.
 With no clock evidence the source can be used for engineering preview, but it
 cannot authorize a cue. Echo alone is not clock qualification.
 
+The [native rerun record](state-sources-native-019.validation.json) covers #224. Simulator player `simulation-native-019` was built clean from a local test merge of `de0a5ac` (main, #201, #199, #221, #223), this change and #226. It ran two B V1 active attempts. Neither attempt reached trained item 4, so the `ASSESSMENT_NEUTRAL_LOST` path was not exercised.
+
+- **Attempt 009** completed the menus (ledger sealed), atomic lessons and message lessons. It then stopped at trained item 1 with `AUDIO_EXPOSURE_INTERRUPTED`. The audio gate closed 118 ms after the cue request and 465 ms before onset. No readiness snapshot is journaled for that interruption.
+  - At the atom-menu to atomic-lessons boundary there was a 4.8 s main-thread gap. The public receive queue overflowed, and this change logged one `STATE_ECHO_CORRELATION` before `STATE_RECOVERED`.
+- **Attempt 010** stopped in message lesson 5 with `CONTROL_UNAVAILABLE`. A 0.85 s plus 0.49 s main-thread gap overflowed the private receive queue (`CONTROL_ARRIVAL_CAPACITY`).
+
+Both exports reconcile with integrity verified. This is simulator engineering evidence only.
+
 The valid-sample receive gap is measured using the host monotonic clock. Above
 250 ms it emits one `STATE_STALE` event and holds the last rendered pose.
 Recovery emits a separate `STATE_RECOVERED` record with the full gap duration,
