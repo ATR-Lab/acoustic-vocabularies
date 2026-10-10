@@ -301,6 +301,372 @@
     }
   },
   "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+  "native_validation_a30e950": {
+    "add_one_selected_variants": [
+      {
+        "entry_residual_mm": 0.091,
+        "lean_direction_rad": "3pi/4",
+        "lean_rad": 0.15,
+        "pair": "ADD_ONE/tray_A",
+        "pickup_palm_yaw_rad": "pi",
+        "placement_headroom": 0.024,
+        "placement_residual_mm": 0.488,
+        "placement_residual_orientation_mrad": 1.63,
+        "prior_refused_variants": 13,
+        "transport_max_joint_step_rad": 0.356,
+        "washer_yaw_rad": "0"
+      },
+      {
+        "entry_residual_mm": 0.091,
+        "lean_direction_rad": "3pi/4",
+        "lean_rad": 0.15,
+        "pair": "ADD_ONE/tray_B",
+        "pickup_palm_yaw_rad": "pi",
+        "placement_headroom": 0.893,
+        "placement_residual_mm": 0.053,
+        "prior_refused_variants": 14,
+        "transport_max_joint_step_rad": 0.654,
+        "washer_yaw_rad": "-pi/4"
+      },
+      {
+        "entry_residual_mm": 0.053,
+        "lean_direction_rad": "pi/4",
+        "lean_rad": 0.15,
+        "pair": "ADD_ONE/tray_C",
+        "pickup_palm_yaw_rad": "-3pi/4",
+        "placement_headroom": 0.992,
+        "placement_residual_mm": 0.004,
+        "prior_refused_variants": 9,
+        "transport_max_joint_step_rad": 0.212,
+        "washer_yaw_rad": "0"
+      },
+      {
+        "entry_residual_mm": 0.093,
+        "lean_direction_rad": "0",
+        "lean_rad": 0.3,
+        "pair": "ADD_ONE/tray_D",
+        "pickup_palm_yaw_rad": "pi",
+        "placement_headroom": 0.787,
+        "placement_residual_mm": 0.107,
+        "prior_refused_variants": 19,
+        "transport_max_joint_step_detail": "right_wrist_yaw_joint -1.614 -> 1.114 rad between transport keyframes u=0.4883 and u=0.5017 (about 0.13 s of the 10 s display); the swept-path checks passed across it",
+        "transport_max_joint_step_rad": 2.728,
+        "washer_yaw_rad": "-pi/4"
+      }
+    ],
+    "attempts": [
+      {
+        "demo_check_summary_sha256": "7c5ec4a7956deed6e0d6a0b19fc6a7b6f2cc7104924e0535c9654347da060289",
+        "exit_code": 0,
+        "feasible_pairs": 32,
+        "gpu_utilization_percent_during_run": {
+          "max": 100,
+          "mean": 94.2,
+          "median": 99.0,
+          "min": 32,
+          "note": "includes this run's own load; one other user's process was present at launch (33%)",
+          "samples_5s": 1158
+        },
+        "interrupted_session_note": "launched by an earlier session that was interrupted before finalizing; the exited container was inspected, recorded and removed on 2026-10-10. Its GPU sampler had already stopped; it is counted only over the container's own window.",
+        "launched_utc": "2026-10-08T02:14:40Z",
+        "planning_pairs": 32,
+        "planning_reset_ok": true,
+        "preflight_sha256": "8758f9dc93ae533fc3770d9cbc6e0c868863c3f5a4a513d26d44ea84d18fd62f",
+        "reset_cycles_passed": 1000,
+        "reset_snapshot_sha256": "4e3d9890560b0930eb1e542da33ff16f341a5517f0887ff3ce168fa81d68e85d",
+        "run": "preflight-001",
+        "run_seconds": 5795.1,
+        "scene_sha256": "7a13f7b5d1de43c99fb6bb233ddbfaa12b4a254b0068aa638774034bb8652083",
+        "step": 2,
+        "valid_preflight_of_a30e950": true
+      },
+      {
+        "cup_clearance_sha256": "7e5f09314cc388e65e4e00f14dfedfa96e4e691b12a930c586a875916be54818",
+        "exit_code": 0,
+        "feasible_pairs": 32,
+        "gpu_utilization_percent_during_run": {
+          "max": 70,
+          "mean": 18.7,
+          "median": 20,
+          "min": 0,
+          "note": "host otherwise idle (0% before launch, no other compute process); includes this run's own load",
+          "samples_5s": 643
+        },
+        "index_sha256": "397350f9c9fc44ca55fdb852ffc8526e5cccdfdd1a72f26a805c624f89c980a5",
+        "launched_utc": "2026-10-10T03:00:06Z",
+        "output_files": 276,
+        "output_manifest_sha256": "ee4eb0beb18630baf3f5b608c086536e93fc4a976f0f086792a5664f8133dd59",
+        "planning_pairs": 32,
+        "planning_reset_ok": true,
+        "plans_sha256": "46257c7458096148a236ac3b61c1fb55fbfc5157a482fd6421b90afe986e226d",
+        "preflight_byte_identical_to_preflight_001": true,
+        "preflight_sha256": "8758f9dc93ae533fc3770d9cbc6e0c868863c3f5a4a513d26d44ea84d18fd62f",
+        "reset_cycles_passed": 1000,
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "run": "full-001",
+        "run_seconds": 3220.4,
+        "scene_note": "--capture loads the canonical camera-bearing workcell (scene 3b6e8f9a..., snapshot e2628102...); the preflight-only run loads the camera-free scene 7a13f7b5.... Planning is unaffected: preflight.json is byte-identical.",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "schedule_validation_sha256": "ff8acd57d7e9e1895f5be0bca14837f9ef717c5250a3af68fa8410ba5b0007f7",
+        "step": "3-5 (full suite; its planning pass repeats step 2)",
+        "summary_sha256": "397350f9c9fc44ca55fdb852ffc8526e5cccdfdd1a72f26a805c624f89c980a5"
+      }
+    ],
+    "date": "2026-10-08 (step 2, interrupted session) and 2026-10-10 (steps 2 repeat to 6)",
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+    "isolation": "--network none (network_interfaces: lo only), source read-only at /work, assets read-only at /assets, fresh /results; both containers removed after exit",
+    "layout_sha256": "173048c7109741b3c8b3e34e9166a480e17b72fcc3b60f15a1edacba482879eb",
+    "planned_swept_path_minima_mm": {
+      "carried_washer_to_wall": {
+        "tray_A": 2.46,
+        "tray_B": 2.46,
+        "tray_C": 2.47,
+        "tray_D": 2.48
+      },
+      "finger": {
+        "tray_A": 7.21,
+        "tray_B": 7.21,
+        "tray_C": 9.61,
+        "tray_D": 9.58
+      },
+      "max_carried_tilt_mrad": {
+        "tray_A": 8.2,
+        "tray_B": 28.7,
+        "tray_C": 3.2,
+        "tray_D": 36.2
+      },
+      "other_washers": {
+        "tray_A": 3.53,
+        "tray_B": 3.53,
+        "tray_C": 1.88,
+        "tray_D": 0.82
+      },
+      "rest_of_hand": {
+        "tray_A": 50.4,
+        "tray_B": 50.4,
+        "tray_C": 49.9,
+        "tray_D": 44.7
+      },
+      "rows": {
+        "tray_A": 1016,
+        "tray_B": 1191,
+        "tray_C": 1057,
+        "tray_D": 1438
+      },
+      "transport_carried_outside_cup": {
+        "tray_A": 114.0,
+        "tray_B": 75.9,
+        "tray_C": 114.0,
+        "tray_D": 113.9
+      },
+      "transport_reach_sphere": {
+        "tray_A": 101.9,
+        "tray_B": 8.08,
+        "tray_C": 96.0,
+        "tray_D": 80.3
+      }
+    },
+    "planner_iterations_this_run": 0,
+    "private_evidence_archive_sha256": "a0137a60e0d7baa6a4c1c20992a2dc6716c349dedc900f4a78d5f6815847aba4",
+    "private_outputs": "host ~/.cache/acoustic-vocab-spikes/2026-10-07/i56-native2 (results/i56-a30e950-*, i56-a30e950-evidence.tgz); not published",
+    "procedure": "docs/isaac/demos.md, Native validation and re-record procedure",
+    "recording_complete": true,
+    "recording_complete_note": "true in the private index: all 40 complete, schedule_ok, replay and following reset ok, and the suite validation passed. collision_reviewed and grasp_contact_validated stay false; this does not qualify the library before the human visual review.",
+    "review_flags_for_step_7": [
+      "ADD_ONE/tray_D: right_wrist_yaw_joint turns 2.73 rad between two adjacent transport keyframes (u 0.4883-0.5017) while the washer is attached",
+      "ADD_ONE/tray_C and tray_D: after release the palm's 0.19 m reach sphere meets the cup on the return to neutral (uncertified samples above); hand meshes clear by >= 5 mm, forearm/wrist not screened",
+      "ADD_ONE/tray_A: placement residual 0.488 mm, inside the unchanged 0.5 mm limit with little headroom",
+      "All ADD_ONE plans: right_shoulder_pitch_joint moves about 2.8-3.7 rad between neutral (u=0) and corridor entry (u=0.06), and back between u=0.82 and 1.0"
+    ],
+    "source_archive_sha256": "e8515ec4802595f5be49690caa16dfef107a402c5840146b4cafd18522deaf18",
+    "source_revision": "a30e9508fcb3a24b303e9a126bb48f7fb89187ef",
+    "source_transfer": "git archive of the exact commit (hash reproduced locally); pax commit id and all 2059 files byte-verified on the host before each launch",
+    "step_2_preflight": "32/32 feasible (twice, byte-identical preflight.json)",
+    "step_3_full_suite": {
+      "actual_public_v2_frames": 12000,
+      "capture_complete": 40,
+      "capture_host_seconds": {
+        "max": 10.98,
+        "min": 9.739,
+        "note": "unpaced capture provenance only; not a timing screen or playback schedule"
+      },
+      "execution_ok": 40,
+      "following_reset_ok": 40,
+      "frames_per_recording": 300,
+      "protected_real_factory": {
+        "factory_ran": false,
+        "rejected": 32,
+        "state_unchanged": true
+      },
+      "recording_complete": true,
+      "recordings": 40,
+      "replay_end_state_ok": 40,
+      "schedule_ok": 40,
+      "visual_capture_images": 224,
+      "visual_capture_sets": 32
+    },
+    "step_4_schedule_validation": {
+      "identical_physics_steps": 600,
+      "measured_physics_dt_seconds": 0.016666666666666666,
+      "recordings": 40,
+      "refusal": null,
+      "rows_recorded_physics_steps_600": 40
+    },
+    "step_5_cup_clearance": {
+      "all_ok": true,
+      "items": 5,
+      "rows": [
+        {
+          "frames_sha256": "01adf5802cb876cc6465761b67c46cc94b8bcf4186bed58d51cb38731c5d7da3",
+          "identical_to": 8,
+          "number": 0,
+          "ok": true,
+          "pair": "ADD_ONE/tray_A (orientation)",
+          "uncertified": 0
+        },
+        {
+          "frames_sha256": "01adf5802cb876cc6465761b67c46cc94b8bcf4186bed58d51cb38731c5d7da3",
+          "max": {
+            "carried_tilt_mrad": 8.2,
+            "contact_offset_mm": 0.23,
+            "corridor_orientation_mrad": 1.83
+          },
+          "min_mm": {
+            "carried": 2.47,
+            "finger": 7.21,
+            "other_washers": 3.53,
+            "reach_outside_pad": 24.3,
+            "rest_of_hand": 50.4,
+            "transport_carried": 114.3,
+            "transport_reach": 102.2
+          },
+          "number": 8,
+          "ok": true,
+          "pair": "ADD_ONE/tray_A",
+          "uncertified": 0
+        },
+        {
+          "frames_sha256": "4a6a2731b3a8c55f4731ceeb79f79e3462faa7e126db1f53dc1407b59b00c662",
+          "max": {
+            "carried_tilt_mrad": 27.9,
+            "contact_offset_mm": 0.23,
+            "corridor_orientation_mrad": 1.83
+          },
+          "min_mm": {
+            "carried": 2.47,
+            "finger": 7.21,
+            "other_washers": 3.53,
+            "reach_outside_pad": 8.19,
+            "rest_of_hand": 50.4,
+            "transport_carried": 75.9,
+            "transport_reach": 8.08
+          },
+          "number": 9,
+          "ok": true,
+          "pair": "ADD_ONE/tray_B",
+          "uncertified": 0
+        },
+        {
+          "frames_sha256": "8e145c1f032ae733730a2769d55ee5c57066d3eb16cae86f304ec35536ec4e56",
+          "max": {
+            "carried_tilt_mrad": 2.7,
+            "contact_offset_mm": 0.1,
+            "corridor_orientation_mrad": 1.66
+          },
+          "min_mm": {
+            "carried": 2.47,
+            "finger": 9.62,
+            "other_washers": 1.88,
+            "rest_of_hand": 49.9,
+            "transport_carried": 114.2,
+            "transport_reach": 96.4
+          },
+          "number": 10,
+          "ok": true,
+          "pair": "ADD_ONE/tray_C",
+          "uncertified": 10,
+          "uncertified_samples": "268-277 (u 0.896-0.926, return to neutral after release); reach-sphere clearance down to 1.43 mm"
+        },
+        {
+          "frames_sha256": "c3d3c4cde16a77fe45c6bf18e1173d437998120d7953fb38a4bfe54c87433257",
+          "max": {
+            "carried_tilt_mrad": 28.8,
+            "contact_offset_mm": 0.18,
+            "corridor_orientation_mrad": 1.52
+          },
+          "min_mm": {
+            "carried": 2.48,
+            "finger": 9.59,
+            "other_washers": 0.82,
+            "rest_of_hand": 44.7,
+            "transport_carried": 114.1,
+            "transport_reach": 80.3
+          },
+          "number": 11,
+          "ok": true,
+          "pair": "ADD_ONE/tray_D",
+          "uncertified": 9,
+          "uncertified_samples": "260-268 (u 0.870-0.896, return to neutral after release); reach sphere overlaps the cup by up to 10.7 mm"
+        }
+      ],
+      "violations": 0
+    },
+    "step_6_pinned_mesh_screen": {
+      "all_margin_ok": true,
+      "command": "python -m isaac.demos.grip_geometry --all-hand-meshes --margin 0.005 (Windows, user-approved hash-verified pinned G1 meshes)",
+      "limits": "vertex sampling, not triangle distance; hand meshes only, so forearm/wrist clearance near the cup is left to visual review",
+      "meshes": "8 right-hand links (palm, index 0/1, middle 0/1, thumb 0/1/2); wrist and forearm links are not in the corridor frames",
+      "rows": [
+        {
+          "below_margin": 0,
+          "cup_vertex_intersections": 0,
+          "margin_ok": true,
+          "number": 0,
+          "report_sha256": "b106de459fe24209bf64d7a23dc88cfcff676f291012a170d3344bb129fef5a0",
+          "rows_screened": 97,
+          "samples": "18-114"
+        },
+        {
+          "below_margin": 0,
+          "cup_vertex_intersections": 0,
+          "margin_ok": true,
+          "number": 8,
+          "report_sha256": "b106de459fe24209bf64d7a23dc88cfcff676f291012a170d3344bb129fef5a0",
+          "rows_screened": 97,
+          "samples": "18-114"
+        },
+        {
+          "below_margin": 0,
+          "cup_vertex_intersections": 0,
+          "margin_ok": true,
+          "number": 9,
+          "report_sha256": "822cd6d685127baa49b4d513f1e077114a5c9c91c9cd9567c562b30a0bb2d9ec",
+          "rows_screened": 97,
+          "samples": "18-114"
+        },
+        {
+          "below_margin": 0,
+          "cup_vertex_intersections": 0,
+          "margin_ok": true,
+          "number": 10,
+          "report_sha256": "53e4c70dfd2e288ca31074f9bf3adbae523ded51fb9daf93a782afb760080d8f",
+          "rows_screened": 107,
+          "samples": "18-114 and uncertified 268-277"
+        },
+        {
+          "below_margin": 0,
+          "cup_vertex_intersections": 0,
+          "margin_ok": true,
+          "number": 11,
+          "report_sha256": "e4fd8c974734dbc358349122431e9c82c8fa93849c38de83c2131c44775b9096",
+          "rows_screened": 106,
+          "samples": "18-114 and uncertified 260-268"
+        }
+      ]
+    },
+    "step_7_visual_review": "not started (human). Material collected in the private evidence archive: 32 x 7 execution captures, observer/detail images, all 40 NDJSON recordings and the corridor frames."
+  },
   "native_validation_d185b7c": {
     "attempts": [
       {
@@ -402,11 +768,10 @@
     "visual_review": "not started (human step 7; nothing recorded)"
   },
   "remaining": [
-    "ADD_ONE/tray_D: no supply-cup corridor variant reaches entry and tray_D placement within the IK limits (native preflight 31/32)",
-    "Collision-aware pickup without cup wall penetration (corridor plan not yet native-screened)",
-    "Reachable corrected transfer and release for all actions",
-    "Review full40 actual motions for visual intelligibility and collisions",
-    "Re-record all40 on the fixed sim-step schedule (not yet run: preflight 31/32); do not time-compress failed captures",
+    "Human visual review of all 40 a30e950 recordings (procedure step 7), including the review flags in native_validation_a30e950",
+    "Forearm/wrist clearance near the supply cup (only the eight hand meshes are screened)",
+    "Unity #62/#66 consumers: new capture fields and sample-index host pacing (procedure step 8)",
+    "REMOVE_ONE return-cup release check (legacy virtual grip)",
     "Methodology/operator review"
   ],
   "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
