@@ -36,8 +36,9 @@ namespace AcousticVocab.Assessment.Tests
             public IReadOnlyList<AssessmentRecord> Records=>Rows;
             public void Append(AssessmentRecord r){if(Fail)throw new IOException();Rows.Add(r);}
         }
-        sealed class Scene:IProtectedState
+        sealed class Scene:IProtectedState,IProtectedStateDiagnostics
         {
+            public JObject Readiness()=>new JObject{["neutral_failure"]=NeutralReady?null:"source_exposure_not_ready",["mode_failure"]=ModeReady?null:"control_neutral_hold_not_healthy"};
             public bool ModeReady{get;set;}=true;public bool NeutralReady{get;set;}=true;
             public bool ResetComplete{get;set;}=true;public bool FocusOk{get;set;}=true;
             public int Resets;public void BeginTrial(){}public void RequestReset(){Resets++;}public void Pump(){}
@@ -288,6 +289,25 @@ namespace AcousticVocab.Assessment.Tests
             string path=Path.Combine(Path.GetTempPath(),"assessment-"+Guid.NewGuid().ToString("N"),"stages.local.jsonl");
             using(var first=new AssessmentJournal(path,Hash)){first.Append(new AssessmentRecord("forms_started",Hash,0,"forms"));Assert.Throws<AssessmentFault>(()=>new AssessmentJournal(path,Hash));}
             using var recovered=new AssessmentJournal(path,Hash);Assert.That(recovered.Records.Count,Is.EqualTo(1));
+        }
+        // Native attempt simulation-test-B-V1-018-assess-008, B-C01-M1-V1-TR-04:
+        // neutral readiness was lost 9,593 ms after onset with no reset requested
+        // and no record of which term failed. Shutdown then issued a further
+        // Reset transition and backend reset for every secondary fault.
+        [Test]public void NeutralLossNamesTheFailedTermAndSecondaryFaultsDoNotResetAgain()
+        {
+            var f=new Fixture(type:"trained",count:2);f.Start();f.Through(750+9593-50);
+            Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Running));Assert.That(f.Engine.CurrentState,Is.EqualTo(ItemState.ResponseOpen));
+            int resets=f.Scene.Resets;f.Scene.ResetComplete=false;f.Scene.NeutralReady=false;f.At(750+9593);
+            var loss=f.Factory.ReadinessLoss;Assert.That(loss,Is.Not.Null);
+            Assert.That((string)loss["attempt_id"],Is.EqualTo("trained-0"));Assert.That((double)loss["observed_mono_ms"],Is.EqualTo(750+9593));
+            Assert.That((double)loss["onset_mono_ms"],Is.EqualTo(750));Assert.That((string)loss["neutral_failure"],Is.EqualTo("source_exposure_not_ready"));
+            Assert.That(f.Scene.Resets,Is.EqualTo(resets+1),"The first fault requests one reset");
+            f.Engine.Fault("OPERATOR_ADAPTER_FAILED");f.Engine.Fault("SESSION_JOIN_DISPOSED");
+            Assert.That(f.Scene.Resets,Is.EqualTo(resets+1),"Secondary faults never send another backend reset");
+            Assert.That(f.Journal.Rows.Where(x=>x.Event=="item_fault").Select(x=>x.TechnicalFaultCode),Is.EqualTo(new[]{"ASSESSMENT_NEUTRAL_LOST","OPERATOR_ADAPTER_FAILED","SESSION_JOIN_DISPOSED"}));
+            Assert.That(f.Journal.Rows.Count(x=>x.Event=="state_before"&&x.State==ItemState.Reset),Is.EqualTo(1),"Reset is entered once");
+            Assert.That(f.Engine.PrimaryFaultCode,Is.EqualTo("ASSESSMENT_NEUTRAL_LOST"));
         }
     }
 }

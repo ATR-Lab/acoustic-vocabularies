@@ -23,7 +23,7 @@ namespace AcousticVocab.SessionEngine
         double lastNow=-1,nextOnset,tailEnd;
         SessionState? stateAfterTail;
         int blockIndex,itemIndex,retryIndex;
-        bool pausedRequested,stopRequested,inRetry,consumed,opened,closed,transitioning,pumping,faulting;
+        bool pausedRequested,stopRequested,inRetry,consumed,opened,closed,transitioning,pumping,faulting,faultResetRequested;
         string fault,response;
         AudibleStatus audible;
         ISlotContent content;
@@ -108,7 +108,7 @@ namespace AcousticVocab.SessionEngine
         {
             if(Status!=SessionState.Running) return;
             var item=NextItem();if(item==null) { Status=SessionState.Complete;Write("visit_complete",Now(),null);return; }
-            consumed=false;audible=item.Plays==0?AudibleStatus.NoCue:AudibleStatus.NotRequested;fault=response=null;opened=closed=false;
+            consumed=false;audible=item.Plays==0?AudibleStatus.NoCue:AudibleStatus.NotRequested;fault=response=null;opened=closed=faultResetRequested=false;
             // Start-plan failures are pre-admission faults. Detach all prior
             // ownership before asking a factory for the upcoming slot timing.
             content=null;context=default;permit=null;CurrentState=null;
@@ -265,9 +265,12 @@ namespace AcousticVocab.SessionEngine
             // A started opportunity is kept through its fixed end; no new cue
             // can occur. Before a request, this is an unplayed safe boundary.
             if(CurrentState<ItemState.CueRequested || CurrentState==null) AtBoundary();
-            else
+            // A later (secondary) fault on the same started item is recorded
+            // above, but its fault reset was already requested: never re-enter
+            // Reset or send another backend reset command during shutdown.
+            else if(!faultResetRequested)
             {
-                closed=true;permit=null;
+                closed=true;permit=null;faultResetRequested=true;
                 Transition(ItemState.Reset);
                 try { content.RequestReset(context); } catch { }
             }

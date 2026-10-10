@@ -100,6 +100,24 @@ namespace AcousticVocab.Tests
             Assert.That(source.Latest,Is.Null);Assert.That(events.Last().Code,Is.EqualTo("STATE_QUEUED_TOO_LONG"));
             Assert.That(events.Last().ObservedMonoSeconds,Is.EqualTo(1.3));
         }
+        // Native attempt simulation-test-B-V1-018-assess-008: an echoed Stopwatch
+        // stamp parsed one ULP away invalidated the live source mid-trial
+        // (STATE_ECHO_CORRELATION, then ASSESSMENT_NEUTRAL_LOST). 779.0214292 s is
+        // one of the stamps Unity's Mono parser returns one ULP high.
+        [TestCase("sent_decimal",true)][TestCase("one_ulp_high",true)][TestCase("two_microseconds",false)]
+        public void EchoCorrelatesToItsOwnSendDespiteParserUlpError(string wire,bool correlated)
+        {
+            var pending=(System.Collections.Concurrent.ConcurrentDictionary<double,byte>)typeof(LiveSocketClient).GetField("echoes",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(client);
+            // Stopwatch.GetTimestamp()/Frequency at 10 MHz; correctly rounded decimal 779.0214292.
+            double sent=(double)7790214292L/10000000;Assert.That(BitConverter.DoubleToInt64Bits(sent),Is.EqualTo(4650063560776517999));
+            // The server's shortest round-trip text for that send, for the double one ULP above it, and for a send 2 us away.
+            string text=wire=="sent_decimal"?"779.0214292":wire=="one_ulp_high"?"779.0214292000001":"779.0214312";
+            pending.TryAdd(sent,0);pending.TryAdd(sent-1,0);
+            client.ReceiveRaw(Raw(0,.99),.99);client.ReceiveRaw("{\"kind\":\"echo\",\"c0_s\":"+text+",\"s1_ns\":\"900000000\",\"s2_ns\":\"900000000\"}",.995);client.Pump(1);
+            Assert.That(source.LocalProgressFresh(1),Is.EqualTo(correlated));
+            Assert.That(events.Any(x=>x.Code=="STATE_ECHO_CORRELATION"),Is.EqualTo(!correlated));
+            Assert.That(pending.Keys,correlated?Is.EquivalentTo(new[]{sent-1}):Is.EquivalentTo(new[]{sent,sent-1}),"Only the matching send is consumed");
+        }
         [Test] public void EchoKeepsOriginalCorrelationAndReceiptTime()
         {
             client.Dispose();var qualified=new SourceClock(0,5,new string('d',64));source=new LiveIsaacSource(0,0,qualified);source.Event+=events.Add;

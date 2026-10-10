@@ -262,7 +262,7 @@ namespace AcousticVocab.SessionIntegration
             // Keep secondary failures visible without presenting cleanup's
             // invalidated control state as the original terminal cause.
             try{audit?.Write("fault",new JObject{["code"]=StatusCode});}catch{}
-            try{audit?.Write("module",new JObject{["kind"]="terminal_fault_diagnostic",["primary_code"]=StatusCode,["reported_code"]=reported,["diagnostic_failed"]=owner?.Engine.DiagnosticFailed??false,["control_health"]=activePreflight?.Diagnostic()});}catch{}
+            try{audit?.Write("module",new JObject{["kind"]="terminal_fault_diagnostic",["primary_code"]=StatusCode,["reported_code"]=reported,["diagnostic_failed"]=owner?.Engine.DiagnosticFailed??false,["control_health"]=activePreflight?.Diagnostic(),["assessment_readiness"]=ActiveAssessment?.ReadinessLoss?.DeepClone()});}catch{}
             try{owner?.Engine.Fault(reported);}catch{}try{player?.Abort(StatusCode);}catch{}Close();
         }
         void OnApplicationFocus(bool focused)
