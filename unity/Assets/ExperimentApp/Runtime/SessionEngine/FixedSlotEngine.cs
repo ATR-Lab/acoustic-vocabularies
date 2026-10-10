@@ -129,6 +129,12 @@ namespace AcousticVocab.SessionEngine
         public void Tick()
         {
             if(Status!=SessionState.Running || transitioning || pumping || faulting) return;
+            // Content-owned boundaries (response window, retained tail, reset
+            // deadline) are evaluated at an instant sampled before the pump, so
+            // every content deadline at or before it, such as a panel timeout at
+            // the same anchored instant, is processed and durably recorded first.
+            // Cue/readiness safety gates use the fresh post-pump sample below.
+            double boundary=Now();
             if(factory is ISessionContentPump pump)
             {
                 pumping=true;
@@ -141,7 +147,7 @@ namespace AcousticVocab.SessionEngine
             double now=Now();
             if(stateAfterTail.HasValue)
             {
-                if(now>=tailEnd) { Status=stateAfterTail.Value;stateAfterTail=null;Write(Status==SessionState.Complete?"visit_complete":Status==SessionState.Stopped?"session_stopped":"session_paused",now,null); }
+                if(boundary>=tailEnd) { Status=stateAfterTail.Value;stateAfterTail=null;Write(Status==SessionState.Complete?"visit_complete":Status==SessionState.Stopped?"session_stopped":"session_paused",now,null); }
                 return;
             }
             if(content==null) return;
@@ -170,11 +176,11 @@ namespace AcousticVocab.SessionEngine
                 }
                 if(CurrentState>=ItemState.CueRequested && fault==null && (!content.Readiness.FocusOk || !content.Readiness.InputOk))
                 { Fault("SESSION_FOCUS_OR_INPUT_LOST");return; }
-                if(CurrentState==ItemState.CueRequested && now>=context.OnsetMonoMs+context.Item.ResponseOpensSeconds*1000)
+                if(CurrentState==ItemState.CueRequested && boundary>=context.OnsetMonoMs+context.Item.ResponseOpensSeconds*1000)
                 {
                     Transition(ItemState.ResponseOpen);opened=true;content.OpenResponse(context);
                 }
-                if((CurrentState==ItemState.ResponseOpen || CurrentState==ItemState.CueRequested) && now>=context.OnsetMonoMs+context.Item.ResponseClosesSeconds*1000)
+                if((CurrentState==ItemState.ResponseOpen || CurrentState==ItemState.CueRequested) && boundary>=context.OnsetMonoMs+context.Item.ResponseClosesSeconds*1000)
                 {
                     Transition(ItemState.Closed);closed=true;content.CloseResponse(context);
                     Transition(ItemState.Reset);content.RequestReset(context);
@@ -182,7 +188,7 @@ namespace AcousticVocab.SessionEngine
                 if(CurrentState==ItemState.Reset)
                 {
                     if(content.ResetComplete) FinishItem();
-                    else if(now>=context.EndMonoMs) { fault=fault??"SESSION_RESET_DEADLINE_MISSED";pausedRequested=true;FinishItem(); }
+                    else if(boundary>=context.EndMonoMs) { fault=fault??"SESSION_RESET_DEADLINE_MISSED";pausedRequested=true;FinishItem(); }
                 }
             }
             catch(SessionFault error) { Fault(error.Code); }
