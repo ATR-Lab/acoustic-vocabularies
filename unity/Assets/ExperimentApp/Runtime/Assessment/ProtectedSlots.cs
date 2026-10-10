@@ -20,6 +20,7 @@ namespace AcousticVocab.Assessment
     }
     // Optional non-pumping readiness evidence, captured only on failure.
     public interface IProtectedStateDiagnostics { JObject Readiness(); }
+    public interface IAssessmentPanelDiagnostics { JObject Readiness(); }
     public interface IAssessmentAudio
     {
         void Prepare(SlotContext context);
@@ -97,7 +98,32 @@ namespace AcousticVocab.Assessment
             }
             catch { Fail("ASSESSMENT_RESPONSE_LOG_FAILED"); }
         }
-        public bool ExposureGate=>!disposed&&!failed&&scene.NeutralReady&&scene.ModeReady&&scene.FocusOk&&panel.Ready;
+        // The player evaluates this only while scheduling or playing. Same terms
+        // and short-circuit order as before; the first failing scene/panel term
+        // of a live factory is recorded (AUDIO_EXPOSURE_INTERRUPTED evidence).
+        public bool ExposureGate
+        {
+            get
+            {
+                if(disposed||failed)return false;
+                string term=!scene.NeutralReady?"neutral":!scene.ModeReady?"mode":!scene.FocusOk?"focus":!panel.Ready?"panel":null;
+                if(term!=null)CaptureGateLoss(term);
+                return term==null;
+            }
+        }
+        void CaptureGateLoss(string term)
+        {
+            if(ReadinessLoss!=null)return;
+            var slot=timeline.LastOrDefault(x=>x.Prepared&&x.Requested);double now=clock.NowMs;
+            try
+            {
+                var value=(scene as IProtectedStateDiagnostics)?.Readiness()??new JObject();value["trigger"]="exposure_gate";value["gate_failure"]=term;
+                value["attempt_id"]=slot?.Context.Item.TrialId;value["onset_mono_ms"]=slot==null?JValue.CreateNull():new JValue(slot.Context.OnsetMonoMs);value["observed_mono_ms"]=now;
+                if(panel is IAssessmentPanelDiagnostics diagnostics)value["panel"]=diagnostics.Readiness();
+                ReadinessLoss=value;
+            }
+            catch{ReadinessLoss=new JObject{["trigger"]="exposure_gate",["gate_failure"]=term,["observed_mono_ms"]=now,["diagnostic_failed"]=true};}
+        }
         void Fail(string code)
         {
             if(failed)return;failed=true;
@@ -141,6 +167,7 @@ namespace AcousticVocab.Assessment
             bool requested,openRequested,panelOpened,shown,acknowledged,resetRequested,ended;
             double? anchor;
             public ProtectedSlot(ProtectedContentFactory owner){this.owner=owner;}
+            public bool Requested=>requested;
             public void Prepare(SlotContext context)
             {
                 Context=context;Prepared=true;owner.scene.BeginTrial();
