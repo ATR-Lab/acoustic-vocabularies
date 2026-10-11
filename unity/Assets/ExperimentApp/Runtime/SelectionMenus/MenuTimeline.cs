@@ -28,7 +28,9 @@ namespace AcousticVocab.SelectionMenus
             MenuRules.Require(MenuRules.Id(meaningDisplayId),"MENU_DISPLAY_ID");this.meaningDisplayId=meaningDisplayId;
             this.context=context;this.options=(MenuOption[])options.Clone();this.persist=durableSink;this.replay=replay;observed=observedClock;profile=context.Item.TrialType=="profile_menu";
             offsets=replay==null?(profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000}):(double[])replay.OffsetsMs.Clone();
-            displayOffsets=replay?.DisplayOffsetsMs??(profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000});
+            // Audio replays the active onsets exactly; display transitions follow
+            // this run's own schedule (#220 follow-up), not active frame times.
+            displayOffsets=MenuRules.DisplayOffsets(profile);
             MenuRules.Require(options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_DURATION");
             if(replay!=null)
             {
@@ -40,11 +42,14 @@ namespace AcousticVocab.SelectionMenus
         double ChoiceDeadline=>profile?45000:32000;
         double NeutralStart=>profile?58000:40000;
         void Clock(double now){MenuRules.Require(MenuRules.Finite(now)&&now>=0&&now>=last,"MENU_CLOCK");last=now;}
-        void Emit(string kind,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? isDefault=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null)
+        double Emit(string kind,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? isDefault=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null)
         {
             double stamp=observed==null?now:observed();MenuRules.Require(MenuRules.Finite(stamp)&&stamp>=now,"MENU_CLOCK");
-            persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt,uncertainty,meaningDisplayId));
+            persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt,uncertainty,meaningDisplayId));return stamp;
         }
+        // Checks the durable stamp itself, so the live refusal and the seal
+        // check can never disagree about the same recorded boundary event.
+        void Observed(double stamp,double boundaryMs,string code)=>MenuRules.Require(stamp<=context.OnsetMonoMs+boundaryMs+MenuRules.BoundaryObservationMs,code);
         public void Start(double now){Clock(now);MenuRules.Require(!started&&!failed&&now<=context.OnsetMonoMs,"MENU_START");started=true;Emit("menu_start",now,context.OnsetMonoMs,source:replay?.StartEventId);Tick(now);}
         public void Choose(int index,double now)
         {
@@ -64,7 +69,7 @@ namespace AcousticVocab.SelectionMenus
             {
                 MenuRules.Require(elapsed<offsets[6]-150,"MENU_DECISION_LATE");
                 final=replay?.SelectedIndex??(choice==0?1:choice);defaulted=replay?.Defaulted??choice==0;
-                Emit("choice_final",now,context.OnsetMonoMs+ChoiceDeadline,source:replay?.SelectionEventId,selected:final,isDefault:defaulted);finalized=true;
+                Observed(Emit("choice_final",now,context.OnsetMonoMs+ChoiceDeadline,source:replay?.SelectionEventId,selected:final,isDefault:defaulted),ChoiceDeadline,"MENU_DECISION_LATE");finalized=true;
                 if(Yoked)ConfirmSelection(final,replay.SelectionReceiptSha256,now);else SelectionRequested?.Invoke(final,defaulted);
             }
             MenuPhase wanted=elapsed<displayOffsets[0]?MenuPhase.Hidden:elapsed<displayOffsets[1]?MenuPhase.Instructions:elapsed<displayOffsets[2]?MenuPhase.Audition:
@@ -73,8 +78,10 @@ namespace AcousticVocab.SelectionMenus
             {
                 MenuRules.Require((int)wanted<=(int)Phase+1,"MENU_DISPLAY_BOUNDARY_MISSED");
                 if(wanted==MenuPhase.Ended)MenuRules.Require(committed&&completed.All(x=>x),"MENU_INCOMPLETE");
-                Emit("display_request",now,source:replay?.DisplayRequestEvents?[(int)wanted-1],phase:wanted,selected:wanted==MenuPhase.Selected?final:(int?)null);
-                Phase=wanted;DisplayChanged?.Invoke(Phase,Phase==MenuPhase.Selected?final:(int?)null);Emit("display_changed",now,source:replay?.DisplayChangedEvents?[(int)Phase-1],phase:Phase,selected:Phase==MenuPhase.Selected?final:(int?)null);
+                double boundary=displayOffsets[(int)wanted-1];
+                Observed(Emit("display_request",now,source:replay?.DisplayRequestEvents?[(int)wanted-1],phase:wanted,selected:wanted==MenuPhase.Selected?final:(int?)null),boundary,"MENU_DISPLAY_LATE");
+                Phase=wanted;DisplayChanged?.Invoke(Phase,Phase==MenuPhase.Selected?final:(int?)null);
+                Observed(Emit("display_changed",now,source:replay?.DisplayChangedEvents?[(int)Phase-1],phase:Phase,selected:Phase==MenuPhase.Selected?final:(int?)null),boundary,"MENU_DISPLAY_LATE");
             }
             for(int i=0;i<8;i++)
             {

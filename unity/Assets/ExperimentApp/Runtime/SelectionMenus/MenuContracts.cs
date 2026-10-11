@@ -62,6 +62,18 @@ namespace AcousticVocab.SelectionMenus
     }
     internal static class MenuRules
     {
+        // Display transitions and the final choice are observed on the first
+        // rendered frame at/after their boundary. Live refusal, the active and
+        // yoked seals and the yoked comparison use this same engineering bound,
+        // each against the run's own scheduled boundary, matching onset
+        // observation and the frame-gap fault. The 20 ms display residual
+        // remains a reconciliation screen; neither is a protocol tolerance or
+        // display-timing evidence.
+        internal const double BoundaryObservationMs=250;
+        // Scheduled display boundaries (Instructions..Ended) from the slot start.
+        // Every run, active or yoked, schedules and is checked against these;
+        // an active run's frame-late observations never become a yoked schedule.
+        internal static double[] DisplayOffsets(bool profile)=>profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000};
         internal static bool Finite(double value)=>!double.IsNaN(value)&&!double.IsInfinity(value);
         internal static bool Id(string value)=>value!=null&&Regex.IsMatch(value,@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z");
         internal static bool Hash(string value)=>value!=null&&Regex.IsMatch(value,@"\A[0-9a-f]{64}\z");

@@ -5,6 +5,13 @@ from collections import defaultdict
 
 from .records import exact, guid, hash_value, number, require, strict
 
+# Mirrors MenuRules.DisplayOffsets and MenuRules.BoundaryObservationMs: scheduled
+# display boundaries from the slot start (Instructions..Ended) and the bound on
+# a frame-late observation of one. Not a protocol or photon-timing tolerance.
+DISPLAY_PHASES = ["Instructions", "Audition", "Choice", "Selected", "Neutral", "Ended"]
+DISPLAY_BOUNDS = {"profile": [0, 6000, 30000, 45000, 58000, 60000], "atom": [0, 4000, 22000, 32000, 40000, 45000]}
+BOUNDARY_OBSERVATION_MS = 250
+
 
 def operator(chains, schedule_hash):
     accepted, incomplete = [], set()
@@ -239,7 +246,8 @@ def menu(chains, attempts, items, requests, role, schedule_hash, package_hash):
 
 
 def compare_yoked(active, yoked, active_file_hash):
-    """Compare full visit timing, including between-menu pauses, across clocks."""
+    """Compare visit timing across clocks: exact menu spacing within each menu
+    block; each block starts at its own operator boundary resume (#245)."""
     a_bind, y_bind = active[0]["record"]["binding"], yoked[0]["record"]["binding"]
     require(a_bind["role"] == "active" and y_bind["role"] == "yoked", "MOCK_YOKED_ROLES")
     for key in ("package_sha256", "bank_sha256", "allocation_sha256", "unit_binding_sha256", "review_sha256", "visit", "menu_keys"):
@@ -249,16 +257,22 @@ def compare_yoked(active, yoked, active_file_hash):
     a = {r["record"]["event_id"]:r["record"] for r in active[1:-1]}
     grouped = defaultdict(list)
     for row in a.values(): grouped[row["menu_key"]].append(row)
-    a_start = min(r["slot_start_mono_ms"] for r in a.values())
+    # Menu blocks: the profile menu is its own block; atom menus form one block.
+    def block(row): return "profile" if row["menu_key"] == "profile" else "atom"
+    a_start = {}
+    for r in a.values(): a_start[block(r)] = min(a_start.get(block(r), r["slot_start_mono_ms"]), r["slot_start_mono_ms"])
     y_rows = [r["record"] for r in yoked[1:-1]]
     require(y_rows, "MOCK_YOKED_EMPTY")
-    y_start = min(r["slot_start_mono_ms"] for r in y_rows)
+    y_start = {}
+    for r in y_rows: y_start[block(r)] = min(y_start.get(block(r), r["slot_start_mono_ms"]), r["slot_start_mono_ms"])
+    require(set(y_start) <= set(a_start) and sorted(y_start, key=y_start.get) == sorted(y_start, key=a_start.get), "MOCK_YOKED_PAUSE_MISMATCH")
     compared = 0
     for row in y_rows:
         require(row["kind"] != "choice_revised" and row["yoked_source_event_id"] in a, "MOCK_YOKED_SOURCE_EVENT")
         source = a[row["yoked_source_event_id"]]
         require(row["menu_key"] == source["menu_key"] and row["meaning_display_id"] == source["meaning_display_id"], "MOCK_YOKED_CONTENT")
-        require(abs((row["slot_start_mono_ms"] - y_start) - (source["slot_start_mono_ms"] - a_start)) <= 1e-6, "MOCK_YOKED_PAUSE_MISMATCH")
+        b = block(row)
+        require(abs((row["slot_start_mono_ms"] - y_start[b]) - (source["slot_start_mono_ms"] - a_start[b])) <= 1e-6, "MOCK_YOKED_PAUSE_MISMATCH")
         if row["kind"] in {"play_request", "onset_authority", "play_complete"}:
             require(source["kind"] == "play_request" and all(row[k] == source[k] for k in ("presentation_index","candidate_id","pcm_sha256","file_sha256")), "MOCK_YOKED_AUDIO_CONTENT")
             onsets = [r for r in grouped[row["menu_key"]] if r["kind"] == "onset_authority" and r["presentation_index"] == row["presentation_index"]]
@@ -270,7 +284,12 @@ def compare_yoked(active, yoked, active_file_hash):
         elif row["kind"] in {"display_request","display_changed"}:
             require(source["kind"] == row["kind"] and source["phase"] == row["phase"], "MOCK_YOKED_DISPLAY_SOURCE")
             displays=[r for r in grouped[row["menu_key"]] if r["kind"] == "display_changed" and r["phase"] == row["phase"]]
-            require(len(displays)==1 and abs(row["mono_ms"] - row["slot_start_mono_ms"] - (displays[0]["mono_ms"] - source["slot_start_mono_ms"])) <= 20, "MOCK_YOKED_DISPLAY_TIMING")
+            # Each run against its own scheduled boundary with the live/seal
+            # observation bound; two frame-late observations of the same
+            # deterministic schedule need not agree within 20 ms (#220).
+            scheduled = DISPLAY_BOUNDS["profile" if row["menu_key"] == "profile" else "atom"][DISPLAY_PHASES.index(row["phase"])]
+            late = row["mono_ms"] - row["slot_start_mono_ms"] - scheduled
+            require(len(displays)==1 and 0 <= late <= BOUNDARY_OBSERVATION_MS, "MOCK_YOKED_DISPLAY_TIMING")
         elif row["kind"] in {"choice_final","selection_verified"}:
             require(source["kind"] == row["kind"] and all(row[k] == source[k] for k in ("selected_index","defaulted","receipt_sha256")), "MOCK_YOKED_SELECTION")
         else: require(row["kind"] == source["kind"] == "menu_start", "MOCK_YOKED_EVENT_KIND")
