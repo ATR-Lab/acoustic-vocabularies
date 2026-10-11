@@ -1,0 +1,312 @@
+{
+  "scope": "Native SIMULATION_TEST run for #231 (frame cue representation) with dummy responses armed at launch; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#231",
+    "#82",
+    "#69"
+  ],
+  "player": {
+    "build_id": "simulation-native-021",
+    "source_commit": "05e1b67729e86f070a05a3edd88561ad4b44ae4b",
+    "composition": {
+      "base": "b02e34c4ddc5afd322988148e5fcd5c6f44e48f7 (main 0aa8eeb + #201 + #199 + #221 + #223 + #225 + #226)",
+      "pr229": "3ed17a8160a468e7748727f019b4b51fdb4b44c0 (merge 793f4c1; LiveSocketClient.cs resolved byte-identically to e2d531a)",
+      "pr230": "aca36118c86afd50bafb563058d5fb021014b67a (merge 4ae6d4e)",
+      "pr232": "0377cc6173df8ad5e065183ffe947632a718e2a0 (merge 05e1b67)",
+      "note": "local test merges; not pushed"
+    },
+    "dirty_source": false,
+    "editor": "6000.6.0f1",
+    "target": "StandaloneWindows64",
+    "build_manifest_sha256": "c0172da3a3020a2fa0ea07e5703d6636a01d0fadd286c58d81c0ad0a37efb93a"
+  },
+  "isaac_service": {
+    "source_commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+    "forward": "tools/engineering_forward.py",
+    "source_rate_hz": 16.42,
+    "publish_interval_max_ms": 150.9,
+    "gpu_util_median_pct": 11.0,
+    "gpu_util_max_pct": 72.0
+  },
+  "attempt": {
+    "run": "simulation-test-B-V1-021-full-013",
+    "study": "B",
+    "visit": "V1",
+    "role": "active",
+    "launch_flags": [
+      "-simulationDummyResponses",
+      "-simulationQuitOnComplete"
+    ],
+    "operator": "Load retried until accepted; Start; Resume at each block boundary; no mid-run arm file",
+    "blocks": {
+      "profile_menu": "1/1",
+      "atom_menus": "8/8",
+      "atomic_lessons": "8/8",
+      "message_lessons": "2/8 (stopped in item 3)"
+    },
+    "menu_ledger_sealed": true,
+    "dummy_inputs": [
+      {
+        "kind": "driver_armed",
+        "attempt_id": null,
+        "response": null,
+        "index": null
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-PM-01",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-01",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-02",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-03",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-04",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-05",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-06",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-07",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "menu",
+        "attempt_id": "B-C01-M1-V1-AM-08",
+        "response": null,
+        "index": 1
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-01",
+        "response": "commit",
+        "index": 0
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-02",
+        "response": "commit",
+        "index": 1
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-03",
+        "response": "commit",
+        "index": 2
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-04",
+        "response": "dont_know",
+        "index": 3
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-05",
+        "response": "timeout",
+        "index": 4
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-06",
+        "response": "commit",
+        "index": 5
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-07",
+        "response": "commit",
+        "index": 6
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-AL-08",
+        "response": "commit",
+        "index": 7
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-ML-01",
+        "response": "dont_know",
+        "index": 8
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-ML-02",
+        "response": "timeout",
+        "index": 9
+      },
+      {
+        "kind": "panel",
+        "attempt_id": "B-C01-M1-V1-ML-03",
+        "response": "commit",
+        "index": 10
+      }
+    ],
+    "ml03_cue": "admitted: display_request, retrieval_opportunity and panel_open followed (attempt 011 refused this cue, #231)",
+    "content_failure_detail_records": 0,
+    "gate_failure_records": 0,
+    "stall_checks": {
+      "sample_rows": 17926,
+      "sample_gaps_over_250ms": [
+        {
+          "start_ms": 678575.2,
+          "gap_ms": 996.4,
+          "stall_records": []
+        }
+      ],
+      "main_thread_stall_records": [],
+      "state_source_codes": {
+        "STATE_SOURCE_INITIALIZED": 1,
+        "STATE_TRANSPORT_RESTART": 1,
+        "STATE_TRANSPORT_CONNECTED": 1,
+        "STATE_QUEUED_TOO_LONG": 13,
+        "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+        "STATE_STALE": 2,
+        "STATE_RECOVERED": 2,
+        "SIMULATION_LOCAL_RESET_CONFIRMED": 43,
+        "STATE_SEQUENCE_GAP": 1,
+        "STATE_HOST_DISABLED": 1
+      },
+      "reset_confirmed_events": 43,
+      "reset_confirmed_during_idle": 0,
+      "stale_health_probe_dropped": 0
+    },
+    "new_fault": {
+      "code": "JOIN_RUNTIME_FAILED",
+      "attempt_id": "B-C01-M1-V1-ML-03",
+      "block": "message_lessons",
+      "panel_mode": "LessonMessage",
+      "panel_role": "Command",
+      "panel_opens_mono_ms": 677545.17,
+      "dummy_input_mono_ms": 678550.21,
+      "dummy_input": {
+        "response": "commit",
+        "target": "A",
+        "action": "ADD_ONE",
+        "index": 10
+      },
+      "panel_events": [
+        {
+          "event": "panel_open",
+          "mono_ms": 677575.5088,
+          "input": null,
+          "selected_target": null,
+          "selected_action": null
+        },
+        {
+          "event": "select_target",
+          "mono_ms": 678550.9803,
+          "input": "A",
+          "selected_target": "A",
+          "selected_action": null
+        },
+        {
+          "event": "panel_aborted",
+          "mono_ms": 678559.3735,
+          "input": null,
+          "selected_target": "A",
+          "selected_action": null
+        }
+      ],
+      "fault_mono_ms": 678553.03,
+      "control_effective_age_ms": 70.87,
+      "mechanism": "SimulationInputDriver commit presses target 'A' then action 'ADD_ONE'; the LessonMessage Command panel recorded select_target A but no action selection, so commit did not lock, SimulationResponse returned false, the driver threw SIMULATION_INPUT_REJECTED, and the joined owner's generic catch reported JOIN_RUNTIME_FAILED",
+      "note": "First commit on a Command-role panel in this schedule (earlier commits were single-role atomic panels); deterministic for this policy and schedule"
+    }
+  },
+  "reconciliation": {
+    "integrity_verified": true,
+    "software_reconciliation_complete": false,
+    "scheduled_plays": 134,
+    "requested_plays": 104,
+    "software_completed_plays": 103,
+    "content_hash_verified_plays": 104,
+    "completed_opportunities": 19,
+    "scheduled_opportunities": 39,
+    "selection_count": 8,
+    "fault_codes": [
+      "JOIN_RUNTIME_FAILED",
+      "OPERATOR_ADAPTER_FAILED",
+      "SESSION_JOIN_DISPOSED"
+    ],
+    "incomplete_reasons": [
+      "ACTUAL_DISPLAY_TRACE_MISSING",
+      "AUDIO_CALLBACK_OR_COMPLETION_MISSING",
+      "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+      "FORMS_DISPLAY_TRACE_INCOMPLETE",
+      "FORMS_INCOMPLETE",
+      "FRAME_BUDGET_SCREEN_FAILED",
+      "FRAME_CAPTURE_INCOMPLETE",
+      "FRAME_FAULT_PRESENT",
+      "LESSON_EVENT_COVERAGE_INCOMPLETE",
+      "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+      "LESSON_TYPED_INTERRUPTED",
+      "LESSON_TYPED_INTERVALS_INCOMPLETE",
+      "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+      "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+      "NATIVE_RUN_END_INCOMPLETE",
+      "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+      "SCHEDULED_PLAYS_INCOMPLETE",
+      "VISIT_COMPLETE_RECORD_MISSING"
+    ],
+    "process_exit": 0
+  },
+  "raw_artifact_sha256": {
+    "joined.local.jsonl": "fe815324e55845e7a406a41a7e01a6723ce6c266232413c9a3befef593c9b02d",
+    "menus.local.jsonl": "b5ad44a2db36ab5a66ca4762c43b64040845a70b6c0b385c7d64ff1178385a2e",
+    "events-0000.local.jsonl": "124c4271fa7e34ee6f841497a43d34bbb20e05d8ef1706d647bd7abdf93a2e8c",
+    "native-result.local.json": "6214da789f1fecd0546c0e3a188531a952938c31b2f513f41c893e35d98b7824",
+    "export manifest.json": "1555cf71e25cb96305cca587703d59d4900bc50eef7011fdd8a18ef758353a07",
+    "mock-run.manifest.json": "4028f82ffe427498780d094eb7029fdba72d4606100fbfb649d8968ed3d258a3",
+    "reconciliation.local.json": "5a3f60c894fa80447d3a4c2e505c8f9516ef738d642bca0e1eb4728a10f06401",
+    "process-result.local.json": "ee121551abb9a58397c722472ed9b36a8ea782ff7ace3bd1e03824dab5ca8e2e",
+    "native.log": "edd5b1bda238e5d7569d93baa8b0a3ad10b5b4bc8e5c617c025c5de89ba0f302",
+    "launch-spec.local.json": "ac47704e09328570fcbd64aaded614f6127cc656781bf80e67d3fab3fcf35924",
+    "isaac summary.json": "776ef09dee375abb2c37eb7216956624b4f628752ef42bb0bc8c82daed684501",
+    "isaac publish.csv": "cadb816bbe102dd78f5e1e91718fda8835f15b8387557ebdf49b7dfc8b20a328",
+    "operator-logs/foundation-3b1ac2ef45e045d0855a949cb62a350f.jsonl": "9a1268390d1923562b965a84232d1f7d20b7fcca1c6e4cb830f115b1117bf67f",
+    "operator-logs/foundation-a05a394b74dd4dc583357ee79072c904.jsonl": "dcecad8567342a207142938296dcc2eb2ca203c805097c286fe291af9b2916f0",
+    "operator-logs/panel-51941dfca123404f9fd00717d504c077.jsonl": "015b04b7d1fff0d6ac18637de04a0a3c82298082ad07db525f804b1c2464c2e7",
+    "operator-logs/sample-age-d905f26df0c041c2b3b3053cde01744b.csv": "8189958e013c67490ca038ab687e5dd1704047be34380d1e5a013a7dc504ad04",
+    "operator-logs/shutdown-8a5413bcf3d4437697f202817dda3f8b.local.jsonl": "d3047e41688dac7e396b969110672bce4892864d84cbb4093d9876a7457e8578"
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; dummy responses are synthetic DEMO inputs, not participant behavior",
+    "The visit did not complete and forms were not reached",
+    "Raw artifacts and operator logs stay private; only hashes are published"
+  ]
+}

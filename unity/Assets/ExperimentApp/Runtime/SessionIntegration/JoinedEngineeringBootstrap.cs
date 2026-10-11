@@ -148,6 +148,7 @@ namespace AcousticVocab.SessionIntegration
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
+                    owner.Engine.ContentFailed+=RecordContentFailure;
                     if(assets.Grammar!=null)
                     {
                         grammarStage=new JoinedGrammarStage(data,assets.Grammar,assets.GrammarReview,assets.Schedule.Sha256,()=>clock.NowMs);
@@ -256,9 +257,18 @@ namespace AcousticVocab.SessionIntegration
                     ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
                 ["control_health"]=activePreflight?.Diagnostic()});
         }
+        // Each content fault is explained when it happens, including one the
+        // visit pauses on and an operator may resume from (attempt 031, #247).
+        internal void RecordContentFailure(string code,string attemptId,string exception)
+        {
+            try{audit?.Write("module",new JObject{["kind"]="content_failure",["code"]=code,["attempt_id"]=attemptId,["exception"]=exception,
+                ["observed_mono_ms"]=clock.NowMs,["control_health"]=activePreflight?.Diagnostic()});}catch{}
+        }
         void Fail(string code)
         {
             if(failed||closed)return;failed=true;string reported=new SessionFault(code).Code;Report(owner?.Engine.PrimaryFaultCode??reported);
+            // Default-on: the untyped content exception behind SESSION_CONTENT_*.
+            try{var detail=owner?.Engine.ContentFailureDetail;if(detail!=null)audit?.Write("module",new JObject{["kind"]="content_failure_detail",["primary_code"]=owner.Engine.PrimaryFaultCode,["exception"]=detail});}catch{}
             // Keep secondary failures visible without presenting cleanup's
             // invalidated control state as the original terminal cause.
             try{audit?.Write("fault",new JObject{["code"]=StatusCode});}catch{}
