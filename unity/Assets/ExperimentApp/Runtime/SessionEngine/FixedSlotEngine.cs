@@ -253,6 +253,15 @@ namespace AcousticVocab.SessionEngine
             if(content!=null && CurrentState>=ItemState.CueRequested) { fault=fault??"SESSION_OPERATOR_STOP";content.Interrupt(fault);Write("stop_requested",Now(),CurrentState); }
             AtBoundary();
         }
+        // Owner disposal. Once visit_complete is recorded the engine holds no item
+        // or tail, so closing (forms recorded, quit-on-complete, operator close) is
+        // clean and records nothing. Any earlier dispose, including during the
+        // final retained tail or at a block boundary, is still a fault.
+        public void CloseForDisposal(string code)
+        {
+            if(Status==SessionState.Complete && content==null && stateAfterTail==null) return;
+            Fault(code);
+        }
         public void Fault(string code)
         {
             if(Status==SessionState.Faulted || faulting) return;

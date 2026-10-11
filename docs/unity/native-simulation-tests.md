@@ -178,6 +178,10 @@ audit, command journal, joined journal, raw data segments, frame evidence, menu
 ledger where applicable, and immutable export bundle. Native completion requires
 the durable visit history, full retained tail, completed forms, successful cleanup,
 and export. `-simulationQuitOnComplete` exits nonzero if cleanup or export fails.
+Disposing the joined owner after `visit_complete` closes the engine without a
+record. A dispose before then, including during the final retained tail or at a
+block boundary, still writes `item_fault` `SESSION_JOIN_DISPOSED`, and so does
+any real fault raised after completion.
 An inventory flag alone cannot establish completion.
 The journal's `native_run_end` is only a close intent, with `complete:false`.
 After every cleanup stage and the export attempt, the player writes
