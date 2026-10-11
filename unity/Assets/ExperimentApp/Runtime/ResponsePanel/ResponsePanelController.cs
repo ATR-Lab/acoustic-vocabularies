@@ -22,11 +22,8 @@ namespace AcousticVocab.ResponsePanel
         public bool InputConfigured => settings!=null;
         public bool UsesLeftHand => settings!=null&&settings.LeftHand;
         public bool FaultLatched { get; private set; }
-        // Set once when startup refuses the configuration (for example
-        // panel_glyph_does_not_fit); never cleared, so no recovery can arm the panel.
-        public string ConfigurationRefused { get; private set; }
         public bool? ConfiguredLeftHand => settings?.LeftHand;
-        public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched && ConfigurationRefused == null;
+        public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
         public event Action<PanelResponse> Responded;
         // Synchronous durable subscriber boundary; failures propagate into ResponseState's abort latch.
         public event Action<PanelProcessEvent> ProcessRecorded;
@@ -81,6 +78,10 @@ namespace AcousticVocab.ResponsePanel
             }
         }
 
+        // Set once when startup refuses the configuration (for example
+        // panel_glyph_does_not_fit). Startup also latches the fault, and safe-
+        // boundary recovery refuses while this is set, so the panel never arms.
+        public string ConfigurationRefused { get; private set; }
         public void Open(PanelRequest request)
         {
             if (!ReadyForTrial) throw new InvalidOperationException("Panel is not ready at a safe boundary");
