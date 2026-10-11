@@ -110,6 +110,9 @@ namespace AcousticVocab.SessionIntegration
             {
                 if(data==null)
                 {
+                    // A refused panel geometry can never become ready; end the run with
+                    // its own code before any private output instead of waiting.
+                    if(panel.ConfigurationRefused!=null)throw new SessionFault("JOIN_PANEL_CONFIGURATION_REFUSED");
                     if(!foundation.Ready||!source.Initialized||!panel.ReadyForTrial)return;ValidateProvisioned();
                     if(source.LoadedConfigurationSha256!=config.RequireFile("state_source").Sha256||source.LoadedNeutralSha256!=config.RequireFile("neutral").Sha256||panel.LoadedConfigurationSha256!=config.RequireFile("response_panel").Sha256)throw new SessionFault("JOIN_LOADED_CONFIG_MISMATCH");
                     // Identity and cross-file pins have already passed before

@@ -22,8 +22,11 @@ namespace AcousticVocab.ResponsePanel
         public bool InputConfigured => settings!=null;
         public bool UsesLeftHand => settings!=null&&settings.LeftHand;
         public bool FaultLatched { get; private set; }
+        // Set once when startup refuses the configuration (for example
+        // panel_glyph_does_not_fit); never cleared, so no recovery can arm the panel.
+        public string ConfigurationRefused { get; private set; }
         public bool? ConfiguredLeftHand => settings?.LeftHand;
-        public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched;
+        public bool ReadyForTrial => isActiveAndEnabled && focused && !paused && State != null && foundation.Ready && InputAvailable && !FaultLatched && ConfigurationRefused == null;
         public event Action<PanelResponse> Responded;
         // Synchronous durable subscriber boundary; failures propagate into ResponseState's abort latch.
         public event Action<PanelProcessEvent> ProcessRecorded;
@@ -67,8 +70,9 @@ namespace AcousticVocab.ResponsePanel
                 CreatePresentation(StationConfig.ReferencePose(config));
                 foundation.Faulted += FoundationFault;
             }
-            catch (Exception)
+            catch (Exception error)
             {
+                ConfigurationRefused = error is ConfigurationFault fault ? fault.Message : "panel_configuration_or_log_unavailable";
                 if (journal == null)
                     try { journal = new PanelJournal(Path.Combine(Application.persistentDataPath, "operator-logs"),
                         StationConfig.ParseStrict(Resources.Load<TextAsset>("BuildIdentity").text),
@@ -84,7 +88,7 @@ namespace AcousticVocab.ResponsePanel
         }
         public bool ConfirmInputRecoveryAtSafeBoundary()
         {
-            if (!isActiveAndEnabled || !focused || paused || State == null || !foundation.Ready || !InputAvailable) return false;
+            if (!isActiveAndEnabled || !focused || paused || State == null || !foundation.Ready || !InputAvailable || ConfigurationRefused != null) return false;
             FaultLatched = false; lastFault = null; return true;
         }
         public void CloseAtBoundary() { State?.Abort(); if (panel != null) panel.gameObject.SetActive(false); }
@@ -202,6 +206,7 @@ namespace AcousticVocab.ResponsePanel
             ray.startWidth = ray.endWidth = .0015f; ray.sharedMaterial = Material("Unlit/Color", Color.cyan); ray.enabled = false;
             tip = GameObject.CreatePrimitive(PrimitiveType.Sphere); tip.name = "Index tip"; tip.transform.SetParent(panel, false); tip.transform.localScale = Vector3.one * .008f;
             DisposeObject(tip.GetComponent<Collider>()); tip.GetComponent<Renderer>().sharedMaterial = Material("Unlit/Color", Color.cyan); tip.SetActive(false);
+            VerifyLabelFit();
             panel.gameObject.SetActive(false);
         }
         Vector3 Grid(int index, float shift) => new Vector3((index % 4 - 1.5f) * (settings.ButtonWidth + settings.Gap), shift - index / 4 * (settings.ButtonHeight + settings.Gap), 0);
@@ -219,38 +224,58 @@ namespace AcousticVocab.ResponsePanel
             var surface = box.GetComponent<MeshRenderer>(); surface.sharedMaterial = Material("Unlit/Color", new Color(.12f, .16f, .2f));
             keys.Add(new Key { Kind = kind, Value = value, Root = root, Collider = box.GetComponent<BoxCollider>(), Surface = surface, Text = Text(root, "", new Vector3(0, 0, -.012f)) });
         }
+        readonly Dictionary<TextMesh, string> labelValues = new Dictionary<TextMesh, string>();
         void Label(TextMesh label, string value, float width)
         {
-            if (label.text == value) return;
-            label.text = value; label.transform.localScale = Vector3.one;
-            if (value.Length == 0) return;
+            if (labelValues.TryGetValue(label, out string shown) && shown == value) return;
+            labelValues.Remove(label); label.text = value; label.transform.localScale = Vector3.one;
+            if (value.Length == 0) { labelValues[label] = value; return; }
             Vector3 bounds = label.GetComponent<MeshRenderer>().localBounds.size;
-            if (bounds.y <= 0 || bounds.x <= 0) throw new InvalidOperationException("Glyph bounds unavailable");
+            if (bounds.y <= 0 || bounds.x <= 0) throw new InvalidOperationException("PANEL_GLYPH_BOUNDS_UNAVAILABLE");
             float distance = Vector3.Distance(StationConfig.ReferencePose(foundation.Configuration).position, label.transform.position);
             float inkHeight = PanelTypography.LocalInkHeight(label);
             float scale = 2 * distance * Mathf.Tan(settings.TextAngleDegrees * Mathf.Deg2Rad / 2) / inkHeight;
-            if (bounds.x * scale > width * .9f || inkHeight * scale > settings.ButtonHeight * .8f) throw new InvalidOperationException("Configured glyph size does not fit button");
-            label.transform.localScale = Vector3.one * scale;
+            if (bounds.x * scale > width * .9f || inkHeight * scale > settings.ButtonHeight * .8f) throw new InvalidOperationException("PANEL_GLYPH_DOES_NOT_FIT");
+            // Recorded only after the fit succeeds, so a refused label is measured
+            // again (and refused again) instead of staying unscaled on screen.
+            label.transform.localScale = Vector3.one * scale; labelValues[label] = value;
+        }
+        // Every label any role or action family can place, measured at its own key
+        // before any session starts. A geometry whose labels cannot all fit (attempt
+        // 021-full-013: 1.0 deg glyphs on 0.135 m buttons, action row) is a
+        // configuration fault at startup, never a mid-visit fault on first selection.
+        void VerifyLabelFit()
+        {
+            try
+            {
+                Layout(PanelRole.Action, -1, null, null, false, false); Layout(PanelRole.Target, -1, null, null, false, false);
+                for (int family = 0; family < PublicCommands.Actions.Count / 4; family++) Layout(PanelRole.Command, family, null, null, false, false);
+            }
+            catch (InvalidOperationException error) when (error.Message.StartsWith("PANEL_GLYPH_", StringComparison.Ordinal)) { throw new ConfigurationFault(error.Message.ToLowerInvariant()); }
+            finally { foreach (var key in keys) Label(key.Text, "", settings.ButtonWidth); Label(roleLabel, "", settings.ButtonWidth * 4); }
         }
         void Refresh()
         {
             if (State?.Request == null) return;
-            var role = State.Request.Role; int family = PublicCommands.Family(State.SelectedTarget);
+            Layout(State.Request.Role, PublicCommands.Family(State.SelectedTarget), State.SelectedTarget, State.SelectedAction, State.WindowOpen, State.CanCommit);
+        }
+        void Layout(PanelRole role, int family, string selectedTarget, string selectedAction, bool windowOpen, bool canCommit)
+        {
             for (int i = 0; i < keys.Count; i++)
             {
-                var key = keys[i]; bool show = true, selected = false, enabled = State.WindowOpen;
+                var key = keys[i]; bool show = true, selected = false, enabled = windowOpen;
                 string text;
                 if (i < 8)
                 {
                     key.Kind = role == PanelRole.Action ? "action" : "target"; key.Value = role == PanelRole.Action ? PublicCommands.Actions[i] : PublicCommands.Targets[i];
-                    text = key.Value.Replace('_', ' '); selected = key.Value == State.SelectedTarget || key.Value == State.SelectedAction;
+                    text = key.Value.Replace('_', ' '); selected = key.Value == selectedTarget || key.Value == selectedAction;
                 }
                 else if (i < 12)
                 {
                     show = role == PanelRole.Command && family >= 0; key.Value = PublicCommands.Actions[Math.Max(0, family) * 4 + i - 8];
-                    text = key.Value.Replace('_', ' '); selected = key.Value == State.SelectedAction;
+                    text = key.Value.Replace('_', ' '); selected = key.Value == selectedAction;
                 }
-                else { text = key.Value == "commit" ? "Commit" : "Don't know"; if (key.Value == "commit") enabled = State.CanCommit; }
+                else { text = key.Value == "commit" ? "Commit" : "Don't know"; if (key.Value == "commit") enabled = canCommit; }
                 key.Root.gameObject.SetActive(show); if (!show) continue;
                 Label(key.Text, text, settings.ButtonWidth * (i >= 12 ? 1.5f : 1));
                 key.Surface.sharedMaterial.color = selected ? new Color(.04f, .36f, .5f) : enabled ? new Color(.15f, .2f, .25f) : new Color(.075f, .085f, .095f);

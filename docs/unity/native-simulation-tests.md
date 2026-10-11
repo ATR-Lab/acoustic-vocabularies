@@ -150,7 +150,12 @@ driver can then be armed by a create-new private
 The driver persists its origin and actions, uses the same panel/menu/rating
 callbacks, and obeys actual readiness/deadline gates. It repeats three dummy
 Commits, one Don't know, and one timeout, chooses menu option 1, and selects the
-rating scale midpoint. It does not inspect correct answers. The optional
+rating scale midpoint. It does not inspect correct answers. A refused input ends
+the run as `SIMULATION_INPUT_REJECTED`, `SIMULATION_MENU_REJECTED` or
+`SIMULATION_RATING_REJECTED`; an exception from the real view ends it as
+`SIMULATION_INPUT_FAILED`, after an `input_failure` row records the input kind,
+attempt ID and exception type (with its message only when that is a bare
+code). Neither is reported as the generic `JOIN_RUNTIME_FAILED`. The optional
 `-simulationDummyResponses` flag arms the same driver immediately and must not be
 used when recording an initial manual-input check.
 
