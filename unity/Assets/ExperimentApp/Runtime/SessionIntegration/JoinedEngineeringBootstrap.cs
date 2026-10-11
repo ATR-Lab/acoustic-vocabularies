@@ -318,6 +318,10 @@ namespace AcousticVocab.SessionIntegration
             void StartControl()
             {
                 control=scope.Own(new PrivateModeResetClient(host.config.ControlEndpoint,host.config.ControlSessionId,kind==JoinedModuleKind.Teaching?"teaching":"test",x=>host.audit.Write("control",x)));
+                // #148 decision: only while this lease is uncommitted, the engine
+                // awaits an operator command and no grammar exposure has begun,
+                // or after visit_complete (#242).
+                control.DropStaleHealthProbesWhile(Unexposed);
                 host.audit.Write("module",new JObject{["kind"]="prepare",["block"]=block,["module"]=kind.ToString()});control.RequestMode();
             }
             public void Pump()
@@ -379,6 +383,11 @@ namespace AcousticVocab.SessionIntegration
                 if(code==null&&!control.NeutralHoldHealthy)code="GRAMMAR_PRIVATE_HOLD_NOT_CURRENT";
                 if(code==null)return true;GrammarGateRefused(code);return false;
             }
+            bool Unexposed()=>!committed&&host.owner.Engine.NeedsOperatorConfirmation&&!(host.grammarStage!=null&&host.grammarStage.Started&&!host.grammarStage.Complete)||AfterVisitComplete();
+            // Maintainer decision (#242): once visit_complete is recorded no cue
+            // can be scheduled, so the post-visit forms are unexposed even though
+            // this lease committed. The post-W4 optional stage is excluded.
+            bool AfterVisitComplete()=>host.owner.Engine.Status==SessionState.Complete&&host.ActiveAssessment?.Stages?.OptionalStarted!=true;
             bool AwaitingGrammar=>kind==JoinedModuleKind.Teaching&&host.grammarStage!=null&&!host.grammarStage.Complete;
             bool AwaitingGrammarStart=>AwaitingGrammar&&!host.grammarStage.Started;
             bool AwaitingYokedAnchor=>kind==JoinedModuleKind.Menus&&host.yokedAuthority!=null&&host.yokedAuthority.Replay==null;
