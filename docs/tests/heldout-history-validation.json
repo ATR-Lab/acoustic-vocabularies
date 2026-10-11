@@ -120,5 +120,75 @@
   "omitted_run_custody_verified": false,
   "acoustic_qualified": false,
   "participant_qualified": false,
-  "issue78_accepted": false
+  "issue78_accepted": false,
+  "native_isaac2_study_a": {
+    "label": "Study A A-C01-L01 reference, D0 attempts 017-020 on isaac2 (player simulation-native-023, Isaac 22897c4 + #236 --observer-prim-only)",
+    "scanner_source_commit": "0b0a8cdda64ea791bf4fa5cb8a282935738eb168",
+    "plan": {
+      "sha256": "6ab5934412d867ce445c91c570a058d345e25d74fa3dec7b7cdd846892dbe424",
+      "study": "A",
+      "role": "reference",
+      "runs_in_process_utc_order": [
+        {
+          "attempt": "017",
+          "manifest_sha256": "7b0907af180658e2e3cdeee311e14ac5c85298b5afad4dd94061a55c2180bd92",
+          "native_outcome": "LESSON_INPUT_LOST in atomic lessons (Windows focus loss); 22 plays"
+        },
+        {
+          "attempt": "018",
+          "manifest_sha256": "257314e0ad0aca418b6fbcc9e7b67b689a605f97571cec1d79def89862bed3ad",
+          "native_outcome": "LESSON_FOCUS_LOST in atomic lessons (Windows focus loss); 37 plays"
+        },
+        {
+          "attempt": "019",
+          "manifest_sha256": "335bfd8058e6f1c7b32435128ca7070e8a86aa4fadeade9044e15fa8c777be89",
+          "native_outcome": "all 108 opportunities and 212 plays, visit_complete, then ASSESSMENT_RUNTIME_FAILED in the forms"
+        },
+        {
+          "attempt": "020",
+          "manifest_sha256": "4e5410747ebaf10290043e433e0ab44c8cf24ebbab21536b19f8ff2fc3eb9618",
+          "native_outcome": "same as 019"
+        }
+      ],
+      "note": "Every retained attempt, including the failed 017/018, in actual process-UTC order; the plan itself stays private"
+    },
+    "result": {
+      "exit_code": 2,
+      "printed": "MOCK_TRAINED_FILE_HASH",
+      "result_file_written": false,
+      "cause": "verify_history re-runs reconcile for each run; reconcile (tools/mock_visit/content.py) refuses 019's Study A message-lesson requests, which are runtime composites with waveform_sha256 null, because it expects the trained message WAV file hash. The scan stops before any held-out check."
+    },
+    "failed_attempts_only": {
+      "runs": [
+        "017",
+        "018"
+      ],
+      "plan_sha256": "9f56a07802d14df2329c07067c4bc02deeed2f62e9bc797a7939e31513ff98dd",
+      "exit_code": 3,
+      "result_sha256": "8a9360c642e83f9bd91756b44e66c1002369147e718f48e791e589156b1d64a3",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "SCHEDULED_NOVEL_REQUESTS_MISSING"
+        ],
+        "visits_present": 2,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 59,
+        "audio_observations": 118,
+        "grammar_audio_events": 12,
+        "ledger_audio_references": 396,
+        "authorized_heldout_requests": 0,
+        "heldout_callback_events": 0
+      },
+      "claim": "Diagnostic plan with only the two failed attempts; shows failed runs are accepted as incomplete history (NATIVE_RUN_INCOMPLETE), never as absence proof"
+    },
+    "d7_run": false,
+    "claim": "No complete D0/D7 history exists; no held-out absence is claimed. Hashes only; raw plans, manifests and journals stay private."
+  }
 }
