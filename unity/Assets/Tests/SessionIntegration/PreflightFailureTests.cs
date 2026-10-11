@@ -75,6 +75,54 @@ namespace AcousticVocab.SessionIntegration.Tests
                 var payload=ReadPayload();Assert.That((string)payload["phase"],Is.EqualTo("control_pump"));Assert.That((string)payload["control_health"]["first_failure_code"],Is.EqualTo("CONTROL_QUEUED"));
             }
         }
+        // Attempts simulation-test-A-D0-023-isaac2-019/-020 (#242): after
+        // visit_complete the committed assessment lease saw a forms-transition
+        // stall with 4/3 health replies queued and latched CONTROL_QUEUED. Once
+        // the actual engine is Complete no cue can be scheduled; mid-visit the
+        // committed lease keeps the permanent latch.
+        sealed class EngineJournal:ISessionJournal{readonly System.Collections.Generic.List<SessionRecord> rows=new System.Collections.Generic.List<SessionRecord>();public System.Collections.Generic.IReadOnlyList<SessionRecord> Records=>rows;public void Append(SessionRecord r)=>rows.Add(r);}
+        sealed class EngineContent:ISlotContentFactory,ISlotContent
+        {
+            public ISlotContent Create(SlotItem item)=>this;public SlotReadiness Readiness=>new SlotReadiness(true,true,true,true,true,true,true,true);public bool ResetComplete=>true;
+            public void Prepare(SlotContext c){}public void RequestCue(SlotContext c,AcousticVocab.StudyAudio.INovelSlotAuthorization p){}public void OpenResponse(SlotContext c){}public void CloseResponse(SlotContext c){}public void RequestReset(SlotContext c){}public void Interrupt(string code){}
+        }
+        FixedSlotEngine InstallCommittedLeaseEngine(bool complete)
+        {
+            T New<T>(params object[] a)=>(T)Activator.CreateInstance(typeof(T),Fields,null,a,null);
+            var item=New<SlotItem>("DEMO-forms","atomic","K-a1","action","atomic","protected",false,10,0,1);
+            var schedule=New<VisitSchedule>(new string('a',64),new string('b',64),"DEMO-person","D0",true,new[]{New<ScheduleBlock>("atomic",new[]{item})},"A","S",null);
+            var engineClock=new Clock{Value=0};var engine=new FixedSlotEngine(schedule,engineClock,new EngineJournal(),new EngineContent());engine.ConfirmResume();engine.Tick();
+            if(complete)for(double t=250;t<=30000&&engine.Status!=SessionState.Complete;t+=250){engineClock.Value=t;engine.Tick();}
+            else{engineClock.Value=1000;engine.Tick();}
+            Assert.That(engine.Status,Is.EqualTo(complete?SessionState.Complete:SessionState.Running));
+            var owner=System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(SessionIntegrationOwner));
+            typeof(SessionIntegrationOwner).GetField("<Engine>k__BackingField",Fields).SetValue(owner,engine);
+            typeof(JoinedEngineeringBootstrap).GetField("owner",Fields).SetValue(host,owner);
+            preflightType.GetField("committed",Fields).SetValue(preflight,true);
+            var unexposed=preflightType.GetMethod("Unexposed",Fields);client.DropStaleHealthProbesWhile(()=>(bool)unexposed.Invoke(preflight,null));
+            return engine;
+        }
+        [TestCase(true)][TestCase(false)]
+        public void ActualCommittedLeaseDropsStaleHealthProbesOnlyAfterVisitComplete(bool complete)
+        {
+            InstallCommittedLeaseEngine(complete);
+            var receive=typeof(PrivateModeResetClient).GetMethod("ReceiveHealthProbe",Fields);
+            for(int i=0;i<4;i++)receive.Invoke(client,new object[]{Guid.NewGuid().ToString("N"),"{}",93d+75*i,100d+75*i});
+            clock.Value=100+75*3+333; // the 019 forms frame: 323 ms stall
+            // After commit the lease's client is pumped by the assessment host
+            // (019: first_failure_phase "pump"), under the policy the lease installed.
+            if(complete)
+            {
+                Assert.DoesNotThrow(()=>client.Pump());
+                var detail=client.ReadinessDiagnostic(null);Assert.That((bool)detail["failed"],Is.False);Assert.That((int)detail["stale_probes_dropped"],Is.EqualTo(4));
+                Assert.That((int)detail["queued_arrivals"],Is.Zero);Assert.That(client.NeutralHoldHealthy,Is.False,"A fresh probe is still required; stale data never grants");
+            }
+            else
+            {
+                Assert.That(Assert.Throws<ControlFault>(()=>client.Pump()).Code,Is.EqualTo("CONTROL_QUEUED"),"Mid-visit the committed lease keeps the latch");
+                var detail=client.ReadinessDiagnostic(null);Assert.That((int)detail["stale_probes_dropped"],Is.Zero);Assert.That((bool)detail["failed"],Is.True);
+            }
+        }
         [Test]public void ActualInitialTimeoutKeepsBoundedOriginalCodeAndDoesNotQueryControlReadiness()
         {
             preflightType.GetField("started",Fields).SetValue(preflight,-16000d);var error=PumpFailure();Assert.That(error,Is.TypeOf<SessionFault>());Assert.That(((SessionFault)error).Code,Is.EqualTo("JOIN_PREFLIGHT_TIMEOUT"));
