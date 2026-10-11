@@ -28,7 +28,7 @@ from . import native, content, provenance
 MAX_FILE = 64 * 1024**2
 MAX_CAPTURE = 1024**3
 MAX_RUN_BYTES = 2 * 1024**3
-KINDS = {"export_manifest", "joined_journal", "menu_journal", "operator_journal",
+KINDS = {"export_manifest", "joined_journal", "menu_journal", "menu_replay_source", "operator_journal",
          "frame_manifest", "capture", "fault_plan", "content_binding", "package_manifest",
          "selection_snapshot", "speech_manifest", "fixture_index", "fixture_provenance", "process_result", "native_result", "other"}
 TIMING = {"profile_menu": (60, 8), "atom_menus": (45, 8),
@@ -429,6 +429,15 @@ def reconcile(manifest_path, expected_hash):
     incomplete.update(material_missing)
     if not check_forms(result["forms"], m["study"], m["visit"], items, result["done"], records): incomplete.add("FORMS_INCOMPLETE")
     if m["process_exit"] != 0: incomplete.add("NATIVE_PROCESS_NOT_SUCCESSFUL")
+    # A yoked run's staged copy of the ACTIVE member's sealed ledger is its
+    # replay source, never its own menu journal (#246). Manifests emitted before
+    # the distinct tag listed it as menu_journal; it is recognized by the pinned
+    # staged path either way.
+    replay_pin = config["files"].get("menu_replay_ledger")
+    replay_path = None if replay_pin is None else (Path(relative(m["config"]["path"])).parent / relative(replay_pin["path"])).as_posix()
+    replay_items = list(artifacts["menu_replay_source"]) + [x for x in artifacts["menu_journal"] if relative(x[0]["path"]) == replay_path]
+    artifacts["menu_journal"] = [x for x in artifacts["menu_journal"] if relative(x[0]["path"]) != replay_path]
+    require(len(replay_items) <= 1 and all(relative(a["path"]) == replay_path for a, _ in replay_items), "MOCK_MENU_REPLAY_SOURCE_COUNT")
     supplemental = {}
     for kind, chain_kind in (("joined_journal", "joined"), ("menu_journal", "menu"), ("operator_journal", "operator")):
         supplemental[kind] = [verify_chain([(a["path"], raw)], chain_kind) for a, raw in artifacts[kind]]
@@ -464,6 +473,11 @@ def reconcile(manifest_path, expected_hash):
     if any(i["block"] in {"profile_menu", "atom_menus"} for i in items.values()):
         if not supplemental["menu_journal"]: incomplete.add("MENU_LEDGER_MISSING")
         else: incomplete.update(native.menu(supplemental["menu_journal"], result["attempts"], items, result["requests"], m["role"], m["schedule"]["sha256"], m["package_sha256"]))
+        if m["role"] == "yoked" and not replay_items: incomplete.add("MENU_REPLAY_SOURCE_MISSING")
+    if replay_items:
+        require(m["role"] == "yoked", "MOCK_MENU_REPLAY_SOURCE_ROLE")
+        source, source_raw = replay_items[0]
+        native.replay_source(verify_chain([(source["path"], source_raw)], "menu"), source["sha256"], config, m["package_sha256"], supplemental["menu_journal"])
     grammar_count=0
     if any(i["block"].endswith("lessons") for i in items.values()):
         incomplete.update(native.grammar(result["grammar"], result["requests"]))

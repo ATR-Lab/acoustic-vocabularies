@@ -48,6 +48,10 @@ def emit(root, *, run_id, role, config, config_sha256, capability, capability_sh
     pin(package_name,c["files"]["package_manifest"]["sha256"])
     speech_name=None if c["files"].get("speech_manifest") is None else (Path(config).parent/relative(c["files"]["speech_manifest"]["path"])).as_posix()
     selected_name=relative(selection_snapshot) if selection_snapshot else None
+    # A yoked run stages a copy of the ACTIVE member's sealed ledger as its
+    # replay source. It is not this run's menu journal (#246).
+    replay_pin=c["files"].get("menu_replay_ledger")
+    replay_name=None if replay_pin is None else (Path(config).parent/relative(replay_pin["path"])).as_posix()
     artifacts=[]; total=0; exports=0
     for f in sorted(root.rglob("*")):
         no_links(f)
@@ -69,6 +73,8 @@ def emit(root, *, run_id, role, config, config_sha256, capability, capability_sh
         elif name==package_name:kind="package_manifest"
         elif name==speech_name:kind="speech_manifest"
         elif name==selected_name:kind="selection_snapshot"
+        elif name==replay_name:
+            require(sha(raw)==replay_pin["sha256"],"MOCK_MENU_REPLAY_SOURCE_PIN");kind="menu_replay_source"
         elif f.name=="joined.local.jsonl":kind="joined_journal"
         elif f.name=="menus.local.jsonl":kind="menu_journal"
         elif re.fullmatch(r"operator-[0-9a-f]{32}\.local\.jsonl",f.name):kind="operator_journal"
