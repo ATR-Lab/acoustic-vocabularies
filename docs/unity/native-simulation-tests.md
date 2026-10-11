@@ -159,6 +159,24 @@ code). Neither is reported as the generic `JOIN_RUNTIME_FAILED`. The optional
 `-simulationDummyResponses` flag arms the same driver immediately and must not be
 used when recording an initial manual-input check.
 
+The [isaac2 run record](native-simulation-tests-isaac2-022.validation.json) is for
+#233. Simulator player `simulation-native-022` (`05e1b67` plus this change) ran on
+the new isaac2 host (RTX 4060 Ti, driver 595.99.02). The staging used the
+provisional 1.0° / 0.18 m panel geometry with a −0.18 m vertical offset, and the
+dummy driver was armed at launch. One B V1 active visit completed every block and
+the end-of-visit forms (`JOIN_COMPLETE_FORMS_RECORDED`, exit 0): 39 of 39
+opportunities and 134 of 134 plays, including 30 panel responses, 9 menu choices
+and 5 ratings. It reconciled with integrity verified. Reconciliation is still not
+complete, for two reasons:
+
+- A `SESSION_JOIN_DISPOSED` item fault is written at the quit-on-complete teardown.
+- The frame-budget and display-timing screens remain.
+
+Isaac Sim's RTX renderer crashes on this driver. The service therefore ran without
+`--capture`, through a launcher that spawns the same observer camera prim, and its
+scene and reset-snapshot hashes match the pins. That run produces no evidence PNGs.
+The visit does not depend on Isaac rendering.
+
 The player requests 48 kHz and a 512-frame Unity DSP buffer for this process and
 checks the actual returned format. This is not an OS route change or an acoustic
 calibration. Actual scheduled audio, output callbacks, delivered-sample coverage,
