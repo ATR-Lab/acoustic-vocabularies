@@ -1,0 +1,133 @@
+{
+  "scope": "Native SIMULATION_TEST rerun for #220 (menu ledger display seal); engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-09",
+  "refs": [
+    "#220",
+    "#82",
+    "#70"
+  ],
+  "player": {
+    "build_id": "simulation-native-017",
+    "source_commit": "ce9404dc09376a5472b0210abef24c894b6ffabe",
+    "composition": {
+      "main": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "pr201": "d85cd121d8ef80a7c74cbe52e2344267d1b4e245",
+      "pr199": "d98e471ea1462b911ee9e1cc54c310ef67cef8f0",
+      "pr221": "9f87ce3b8ace19e61dfddefb5d3f36caa0facae8",
+      "note": "local test merge ce9404d = ce77221 (main + #201 + #199) + #221; not pushed"
+    },
+    "dirty_source": false,
+    "editor": "6000.6.0f1",
+    "target": "StandaloneWindows64",
+    "build_manifest_sha256": "6de69c40c9e5e0065fca0a82f241eaa8594b3ee41f83c8c2df28c7cfbe101b8e"
+  },
+  "isaac_service": {
+    "source_commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+    "note": "ce77221 + #218 (startup heap freeze), approved image, --network none",
+    "forward": "tools/engineering_forward.py (#218)",
+    "physics_steps": 19890,
+    "elapsed_s": 1184.5,
+    "source_rate_hz": 16.79,
+    "publish_interval_max_ms": 148.3,
+    "gpu_util_median_pct": 11,
+    "gpu_util_max_pct": 62,
+    "fault": null
+  },
+  "attempt": {
+    "run": "simulation-test-B-V1-017-menu-006",
+    "study": "B",
+    "visit": "V1",
+    "role": "active",
+    "fresh_demo_menu_store": true,
+    "operator": "Start from awaiting_operator only; Resume at each block-boundary pause (profile->atom, atom->atomic lessons, ->message lessons, ->trained)",
+    "blocks": {
+      "profile_menu": "1/1",
+      "atom_menus": "8/8",
+      "atomic_lessons": "8/8",
+      "message_lessons": "8/8",
+      "trained": "2/4 (stopped)",
+      "novel": "0/2",
+      "atomic": "0/8"
+    },
+    "menu_ledger": {
+      "sealed": true,
+      "menu_count": 9,
+      "record_counts": {
+        "header": 1,
+        "menu_start": 9,
+        "display_request": 54,
+        "display_changed": 54,
+        "play_request": 72,
+        "onset_authority": 72,
+        "play_complete": 72,
+        "choice_final": 9,
+        "selection_verified": 9,
+        "sealed": 1
+      }
+    },
+    "atomic_lessons_preflight": "passed (no MENU_LEDGER_DISPLAY preflight_failure)",
+    "preflight_failures": [],
+    "native_status": "ASSESSMENT_RESPONSE_LOG_MISSING",
+    "health_gate_refusals": 0,
+    "terminal_note": "Stopped at trained item B-C01-M1-V1-TR-03 with ASSESSMENT_RESPONSE_LOG_MISSING; control health at that point 49.3 ms effective (separate defect, not #220)",
+    "process_exit": 0
+  },
+  "reconciliation": {
+    "integrity_verified": true,
+    "software_reconciliation_complete": false,
+    "scheduled_plays": 134,
+    "requested_plays": 123,
+    "callback_observed_plays": 123,
+    "software_completed_plays": 123,
+    "content_hash_verified_plays": 123,
+    "selection_count": 8,
+    "fault_codes": [
+      "ASSESSMENT_RESPONSE_LOG_MISSING",
+      "OPERATOR_ADAPTER_FAILED",
+      "SESSION_JOIN_DISPOSED"
+    ],
+    "incomplete_reasons": [
+      "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+      "FORMS_DISPLAY_TRACE_INCOMPLETE",
+      "FORMS_INCOMPLETE",
+      "FRAME_BUDGET_SCREEN_FAILED",
+      "FRAME_CAPTURE_INCOMPLETE",
+      "FRAME_FAULT_PRESENT",
+      "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+      "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+      "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+      "NATIVE_RUN_END_INCOMPLETE",
+      "PROTECTED_DISPLAY_TRACE_INCOMPLETE",
+      "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+      "VISIT_COMPLETE_RECORD_MISSING"
+    ],
+    "previous_attempt_attr_005_reasons_removed": [
+      "MENU_LEDGER_UNSEALED",
+      "MENU_SEAL_MISSING"
+    ]
+  },
+  "raw_artifact_sha256": {
+    "joined.local.jsonl": "4119e5b8f9c73f9fb50fbef5e876751031d8e812e40423db41f4d23ec8cc9de7",
+    "menus.local.jsonl": "66861b19415a0a7c2b8611f795e5fdf25d41bfceac8b1e573983f2d14e823645",
+    "native-result.local.json": "416f81984db235a93ba71809897c40c4302e15dc7c6ce8a8d78fa71536e123f7",
+    "events-0000.local.jsonl": "fbe5ed0cfeba6745fb623b6fc79030fc6e300882fe6a225bde7da21f83adb27b",
+    "export manifest.json": "109b212e23011b8a7c8ce25efa3118a786d714541ad36071320707a1dab26072",
+    "exposure-ledger.csv": "ca054b6eef9f50ddb8b544a11aef71d7b1450a9bd2ad0f3359a51fb1295ed6ba",
+    "mock-run.manifest.json": "6ded724f89c55860331627b3b9edbf58315b05b9aaad37ab09cdcce712ec02ad",
+    "reconciliation.local.json": "f9665cd764af38c60c0e8aa920bc1b3f0aa8e94ba0913c7e484a0a6d3802c105",
+    "process-result.local.json": "8371574f8670f6c388ef9a22b6810ea5513dcaca7d6cd4466871e5a918047c5c",
+    "console audit.local.jsonl": "2f8e5a903c18c687e39871b8262dab15aecd8637f5b8a5f5c8548b8a36d25274",
+    "restaging-report.local.json": "d11408d3920523ae20921f0c5d5ddf1153dd84d35db3c34ef4b0891663d3e489",
+    "isaac summary.json": "664a2cf72c6bd3e76cf241fc510f0c33fb5e29b6c58e2c845db2f1b11af90d21",
+    "isaac publish.csv": "517bcf856270fe7ed4b0b2140989d000199e0e6dd50a934d4734b9fb573e88a7",
+    "gpu samples": "8bd8f742549ea1277f621154b0e3ce7efeed1f20b6555f26ecde224b75cd3b44"
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; no headset, acoustic, display or physical timing qualification",
+    "One attempt; the visit did not complete (assessment logging defect in trained block)",
+    "MENU_DISPLAY_TIMING_SCREEN_FAILED and FRAME_BUDGET_SCREEN_FAILED remain engineering screens",
+    "Raw artifacts stay private; only hashes are published"
+  ]
+}

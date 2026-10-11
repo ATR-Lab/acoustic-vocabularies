@@ -74,6 +74,12 @@ the contents or meaning of video.
   identity, complete sample count and sample provenance. Acoustic onset columns
   stay null/blank. Software estimates remain separate and bounded by their
   reported uncertainty, at most 20 ms.
+- When a yoked menu ledger is compared with its pinned active ledger, audio stays
+  tight: a yoked play request must equal the active onset exactly, and the yoked
+  onset must be within its own uncertainty. A yoked display event must fall
+  0–250 ms after the yoked run's own scheduled boundary. It is not compared with
+  the active run's observed frame time (`MOCK_YOKED_DISPLAY_TIMING`; same bound
+  as `MenuRules.BoundaryObservationMs`).
 - Actual sealed A/B package files, 48 kHz mono canonical PCM16 WAVs, trained and
   held-out composition hashes, selected B ranks, and stored speech selections
   are checked. Held-out PCM is never generated to disk by this verifier.

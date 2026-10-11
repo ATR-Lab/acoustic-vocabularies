@@ -79,6 +79,11 @@ namespace AcousticVocab.SelectionMenus
                 MenuRules.Require(groups.Count>0&&groups.Count<=binding.MenuKeys.Count&&attempts.TryGetValue(attemptId,out var selectedGroup),"MENU_LEDGER_SEQUENCE");attempts[attemptId].Add(row);
             }
             MenuRules.Require(groups.Count==binding.MenuKeys.Count,"MENU_LEDGER_INCOMPLETE");var entries=new List<Entry>();double previousEnd=-1;
+            // Boundary events (display transitions, final choice) are frame-
+            // quantized observations: active and yoked seals apply the bound
+            // MenuTimeline enforces live, each against its own scheduled times.
+            // Audio onsets below stay tight (exact plan, onset uncertainty).
+            double observation=MenuRules.BoundaryObservationMs;
             for(int g=0;g<groups.Count;g++)
             {
                 var rows=groups[g];var first=rows[0];string key=binding.MenuKeys[g],attempt=(string)first["attempt_id"],opportunity=(string)first["opportunity_id"];double start=MenuJson.Number(first["slot_start_mono_ms"]);bool profile=key=="profile";
@@ -87,7 +92,7 @@ namespace AcousticVocab.SelectionMenus
                 MenuRules.Require(options!=null&&options.Length==3&&options.All(x=>x!=null)&&options.Select(x=>x.CandidateId).Distinct().Count()==3&&options.Select(x=>x.Wave.PcmSha256).Distinct().Count()==3&&options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_LEDGER_ASSETS");
                 double choiceOpen=start+(profile?30000:22000),deadline=start+(profile?45000:32000);
                 var choice=One(rows,"choice_final");int selected=MenuJson.Integer(choice["selected_index"],1,3);MenuRules.Require(choice["defaulted"].Type==JTokenType.Boolean,"MENU_LEDGER_CHOICE");bool defaulted=(bool)choice["defaulted"];
-                MenuRules.Require(MenuJson.Number(choice["expected_mono_ms"])==deadline&&MenuJson.Number(choice["mono_ms"])>=deadline&&MenuJson.Number(choice["mono_ms"])<=deadline+20,"MENU_LEDGER_TIMING");
+                MenuRules.Require(MenuJson.Number(choice["expected_mono_ms"])==deadline&&MenuJson.Number(choice["mono_ms"])>=deadline&&MenuJson.Number(choice["mono_ms"])<=deadline+observation,"MENU_LEDGER_TIMING");
                 var revisions=rows.Where(x=>(string)x["kind"]=="choice_revised").ToArray();foreach(var revision in revisions)MenuRules.Require(MenuJson.Number(revision["mono_ms"])>=choiceOpen&&MenuJson.Number(revision["mono_ms"])<deadline,"MENU_LEDGER_CHOICE");
                 MenuRules.Require(assigned?revisions.Length==0:defaulted?revisions.Length==0&&selected==1:revisions.Length>0&&MenuJson.Integer(revisions.Last()["selected_index"],1,3)==selected,"MENU_LEDGER_CHOICE");
                 var receipt=One(rows,"selection_verified");MenuRules.Require(MenuJson.Integer(receipt["selected_index"],1,3)==selected&&receipt["defaulted"].Type==JTokenType.Boolean&&(bool)receipt["defaulted"]==defaulted&&MenuJson.Number(receipt["mono_ms"])>=MenuJson.Number(choice["mono_ms"])&&MenuRules.Hash((string)receipt["receipt_sha256"])&&verification.Receipt(key,selected,(string)receipt["receipt_sha256"]),"MENU_LEDGER_RECEIPT");
@@ -101,10 +106,10 @@ namespace AcousticVocab.SelectionMenus
                     MenuRules.Require(planned==start+nominal[n-1]&&requested>=previousComplete&&requested>=planned-750&&requested<=planned-150&&Math.Abs(actual-planned)<=MenuJson.Number(onset["onset_uncertainty_ms"])+.000001&&observed>=requested&&observed<=planned+250&&done>=observed&&done>=actual+option.Wave.SampleCount/48d-20&&done<=previousEnd&&(n<=6||MenuJson.Number(receipt["mono_ms"])<=requested),"MENU_LEDGER_TIMING");
                     offsets[n-1]=actual-start;source[n-1]=(string)request["event_id"];previousComplete=done;
                 }
-                var phases=new[]{MenuPhase.Instructions,MenuPhase.Audition,MenuPhase.Choice,MenuPhase.Selected,MenuPhase.Neutral,MenuPhase.Ended};double[] boundaries=replayPlan?[g].Replay.DisplayOffsetsMs??(profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000});
+                var phases=new[]{MenuPhase.Instructions,MenuPhase.Audition,MenuPhase.Choice,MenuPhase.Selected,MenuPhase.Neutral,MenuPhase.Ended};double[] boundaries=MenuRules.DisplayOffsets(profile);
                 var displays=rows.Where(x=>(string)x["kind"] is "display_request" or "display_changed").ToArray();MenuRules.Require(displays.Length==12,"MENU_LEDGER_DISPLAY");
                 for(int d=0;d<6;d++)for(int edge=0;edge<2;edge++)
-                {var display=displays[d*2+edge];double stamp=MenuJson.Number(display["mono_ms"]);MenuRules.Require((string)display["kind"]==(edge==0?"display_request":"display_changed")&&(string)display["phase"]==phases[d].ToString()&&stamp>=start+boundaries[d]&&stamp<=start+boundaries[d]+20&&(phases[d]==MenuPhase.Selected?MenuJson.Integer(display["selected_index"],1,3)==selected:display["selected_index"].Type==JTokenType.Null),"MENU_LEDGER_DISPLAY");}
+                {var display=displays[d*2+edge];double stamp=MenuJson.Number(display["mono_ms"]);MenuRules.Require((string)display["kind"]==(edge==0?"display_request":"display_changed")&&(string)display["phase"]==phases[d].ToString()&&stamp>=start+boundaries[d]&&stamp<=start+boundaries[d]+observation&&(phases[d]==MenuPhase.Selected?MenuJson.Integer(display["selected_index"],1,3)==selected:display["selected_index"].Type==JTokenType.Null),"MENU_LEDGER_DISPLAY");}
                 MenuRules.Require(ReferenceEquals(rows.Last(),displays.Last()),"MENU_LEDGER_SEQUENCE");entries.Add(new Entry{Key=key,Start=start,Replay=new MenuReplay(offsets,source,selected,defaulted,(string)choice["event_id"],(string)receipt["receipt_sha256"],displays.Where((x,i)=>i%2==1).Select(x=>MenuJson.Number(x["mono_ms"])-start).ToArray(),displays.Where((x,i)=>i%2==0).Select(x=>(string)x["event_id"]).ToArray(),displays.Where((x,i)=>i%2==1).Select(x=>(string)x["event_id"]).ToArray(),(string)first["event_id"],(string)receipt["event_id"])});
             }
             return entries.ToArray();
@@ -136,7 +141,11 @@ namespace AcousticVocab.SelectionMenus
                 {
                     MenuRules.Require(Enum.TryParse((string)row["phase"],out MenuPhase phase)&&phase>=MenuPhase.Instructions&&phase<=MenuPhase.Ended,"MENU_YOKED_DISPLAY");int n=(int)phase-1;
                     expectedSource=kind=="display_request"?source.DisplayRequestEvents[n]:source.DisplayChangedEvents[n];
-                    MenuRules.Require(Math.Abs(MenuJson.Number(row["mono_ms"])-start-source.DisplayOffsetsMs[n])<=20,"MENU_YOKED_DISPLAY");
+                    // Against the yoked run's own scheduled boundary, not the active
+                    // run's observed frame time: two frame-late observations of the
+                    // same deterministic schedule need not agree within 20 ms.
+                    double scheduled=MenuRules.DisplayOffsets(entry.Key=="profile")[n],late=MenuJson.Number(row["mono_ms"])-start-scheduled;
+                    MenuRules.Require(late>=0&&late<=MenuRules.BoundaryObservationMs,"MENU_YOKED_DISPLAY");
                 }
                 else if(kind is "choice_final" or "selection_verified")
                 {expectedSource=kind=="choice_final"?source.SelectionEventId:source.VerificationEventId;MenuRules.Require(MenuJson.Integer(row["selected_index"],1,3)==source.SelectedIndex&&(bool)row["defaulted"]==source.Defaulted&&(kind!="selection_verified"||(string)row["receipt_sha256"]==source.SelectionReceiptSha256),"MENU_YOKED_CHOICE");}
