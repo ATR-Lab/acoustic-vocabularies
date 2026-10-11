@@ -1,0 +1,305 @@
+{
+  "scope": "Native SIMULATION_TEST Study A D0 reference-role attempts on isaac2; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#81",
+    "#82",
+    "#78"
+  ],
+  "player": {
+    "build_id": "simulation-native-023",
+    "source_commit": "c183821d6d453ada21e0d23871d420a0be8df704",
+    "composition": "b826e60 + #237 bd99132; local test merge, not pushed",
+    "build_manifest_sha256": "9f2f62493fc11f86c165f7c49658aa90abeeb9ee2ee925ed0975edafcf36289a",
+    "dirty_source": false
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "composition": "22897c4 + #236 50c7d0f; local test merge, not pushed",
+    "launch": "--headless --observer-prim-only --reset-check --reset-cycles 1 --skip-reach",
+    "forward": "tools/engineering_forward.py --host isaac2"
+  },
+  "staging": {
+    "study": "A",
+    "visit": "D0",
+    "coded_id": "A-C01-L01",
+    "unit_id": "A-C01",
+    "role": "reference",
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "operator": "Start, then Resume at block boundaries"
+  },
+  "schedule": {
+    "blocks": {
+      "atomic_lessons": 16,
+      "message_lessons": 36,
+      "trained": 36,
+      "novel": 4,
+      "atomic": 16
+    },
+    "scheduled_opportunities": 108,
+    "scheduled_plays": 212
+  },
+  "result": "Neither attempt completed. Both ended fail-closed on a Windows focus loss caused by a concurrent batchmode Unity test run in another session; no player or Isaac defect caused the stop. D7 and the held-out history scan were not run.",
+  "attempts": {
+    "simulation-test-A-D0-023-isaac2-017": {
+      "backend": "k14",
+      "stopped_at": "atomic lesson A-C01-L01-D0-AL-08 (8 of 16)",
+      "primary_code": "LESSON_INPUT_LOST",
+      "fault_mono_ms": 166709.2,
+      "cause": "foundation fault application_focus_lost at player monotonic 166,664.3 ms; the response panel reported foundation_fault and TeachingContent maps any panel fault to LESSON_INPUT_LOST",
+      "focus_thief": "not captured directly; coincides with another session's batchmode Unity EditMode test run (unity-tests o615-yokedbound-edit-1, started 22:44:39 local; fault ~22:44:58)",
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.98,
+        "publish_interval_ms": {
+          "median": 28.5,
+          "max": 64.1
+        },
+        "physics_steps": 17094,
+        "elapsed_s": 451.6,
+        "end_reason": "private_stop",
+        "fault": null,
+        "artifact_sha256": {
+          "ready.json": "2c0feff9cf77f09636bec0ba2f3f3cec3abd01f9dfbbed2d1cd1218d9fcb0ade",
+          "joined-summary.json": "774e8b64f6cab1b3220619755b48a71391be250066911d3c8baaaa5fe92d1bc3",
+          "scene-summary.json": "32d73d81780bafe9a9bfe3cd0404700cd41424aeafe4b9f5b06e80bfcfa96b3a",
+          "publish.csv": "b47e85230069f37b2c24bb620c56d3a28ee4104892f87baa9604d8f8017eb58d"
+        }
+      },
+      "native_status": "LESSON_INPUT_LOST",
+      "native_result": {
+        "status": "LESSON_INPUT_LOST",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "panel": 7
+      },
+      "stall_checks": {
+        "sample_rows": 10795,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 166734.8,
+            "gap_ms": 702.1,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 2,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 16,
+          "STATE_SEQUENCE_GAP": 1
+        },
+        "reset_confirmed_events": 16,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 212,
+        "requested_plays": 22,
+        "callback_observed_plays": 22,
+        "software_completed_plays": 22,
+        "content_hash_verified_plays": 22,
+        "completed_opportunities": 7,
+        "scheduled_opportunities": 108,
+        "selection_count": null,
+        "fault_codes": [
+          "LESSON_INPUT_LOST",
+          "OPERATOR_ADAPTER_FAILED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "FRAME_CAPTURE_INCOMPLETE",
+          "FRAME_FAULT_PRESENT",
+          "LESSON_EVENT_COVERAGE_INCOMPLETE",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "LESSON_TYPED_INTERRUPTED",
+          "LESSON_TYPED_INTERVALS_INCOMPLETE",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "SCHEDULED_PLAYS_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": false
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "68f8d7b2318701aeaafbe16b3bcc232d19785474ed6fa468ba1b4b64ec0d78d3",
+        "events-0000.local.jsonl": "0d09165d16aaa68165f7d4529e9350cfeb371dae38e553c477df1dc3d003e102",
+        "native-result.local.json": "f8b576a9dd9772e056cf8e77774fb03ed94dbf01e73747fcd6aa8afeeea3d4a8",
+        "export manifest.json": "b5bf14900bf9c6c8774ac5ad945350218d8f5a9a6f1faae1804af26686d47cb7",
+        "mock-run.manifest.json": "7b0907af180658e2e3cdeee311e14ac5c85298b5afad4dd94061a55c2180bd92",
+        "reconciliation.local.json": "b746375e21fc27ab9397846062008767660eac0055fbc26a185eb9f34923170e",
+        "process-result.local.json": "a7352da6866b3204de755b4bf6150e5a07c16d9e41dad836499ad6cf6def5cb7",
+        "native.log": "5d54d5776709aa902e721d70b9b4f6263fce32eb31767903f7718760441deb3d",
+        "launch-spec.local.json": "07d047d4c29666fee19f95508d76ad97567c1f6a9437b3a1f3d6e53562f2e504",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "operator-logs/foundation-9b1dad012dd94d1899f05e670757b875.jsonl": "f2cba7528ef72984d5569f6a0d094704a4e629d7cf865a901599685273ffb7e1",
+        "operator-logs/foundation-a5c8bdead28d40598fe63c5b6f097d46.jsonl": "d00f9559eb8d3ba7e90491fb3c3197aa6396d74aabf3140b7d1ec2b29f33fb6b",
+        "operator-logs/panel-034ee05b897b43c496be26605e13bd3d.jsonl": "3680a972211979d5cc395115a6e374a4769e5f3bbf1f2697a03b2013e1264864",
+        "operator-logs/sample-age-8e902c2c2610435d8b4ab44c92c3fb22.csv": "43082bbc6574c994226193fa62c4a3552f76a6bb15bc593299cb74acdadb8710",
+        "manual-close.local.txt": "dd4f434808a8b4553f794607405e0274fcd7fa5d6bbc25b267fd2127dc5f9812"
+      }
+    },
+    "simulation-test-A-D0-023-isaac2-018": {
+      "backend": "k15",
+      "stopped_at": "atomic lesson A-C01-L01-D0-AL-13 (13 of 16)",
+      "primary_code": "LESSON_FOCUS_LOST",
+      "fault_mono_ms": 264571.2,
+      "cause": "the lesson exposure focus check failed first; the foundation then recorded application_focus_lost at 265,531.7 ms",
+      "focus_thief": "foreground-window log: Unity.exe pid 13980 window 'Unity' took the foreground at 22:55:35 local; it is another session's batchmode EditMode test run (unity-tests o615-yokedbound-edit-2, started 22:55:25)",
+      "foreground_log_sha256": "810a05d7f50bb82ed9302b031354042a93f64b26647f996e7f0ac4288980c732",
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.96,
+        "publish_interval_ms": {
+          "median": 28.4,
+          "max": 73.8
+        },
+        "physics_steps": 14404,
+        "elapsed_s": 378.0,
+        "end_reason": "private_stop",
+        "fault": null,
+        "artifact_sha256": {
+          "ready.json": "e04922f62587ccac98de8c45b53f1d6cb6a50f432ef47a75e1d8d90f1ad0129c",
+          "joined-summary.json": "adb820b9182c45e50c83ae209019d944a7813e845e19ae4417cd83e9ff2155a3",
+          "scene-summary.json": "42a30b65326a4c1e9d47337838eb77878bf701cdc49a04b3a4dc48ebc71dbd29",
+          "publish.csv": "b0b3a50c6d2f0aa9a2282ed359ec86e1c76325971f8f56eeac91412683add08f"
+        }
+      },
+      "native_status": "LESSON_FOCUS_LOST",
+      "native_result": {
+        "status": "LESSON_FOCUS_LOST",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "panel": 12
+      },
+      "stall_checks": {
+        "sample_rows": 8394,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 264585.7,
+            "gap_ms": 986.2,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 2,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 26,
+          "STATE_SEQUENCE_GAP": 1,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 26,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 212,
+        "requested_plays": 37,
+        "callback_observed_plays": 37,
+        "software_completed_plays": 37,
+        "content_hash_verified_plays": 37,
+        "completed_opportunities": 12,
+        "scheduled_opportunities": 108,
+        "selection_count": null,
+        "fault_codes": [
+          "LESSON_FOCUS_LOST",
+          "OPERATOR_ADAPTER_FAILED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "FRAME_CAPTURE_INCOMPLETE",
+          "FRAME_FAULT_PRESENT",
+          "LESSON_EVENT_COVERAGE_INCOMPLETE",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "LESSON_TYPED_INTERRUPTED",
+          "LESSON_TYPED_INTERVALS_INCOMPLETE",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "SCHEDULED_PLAYS_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": false
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "f485ff50947980524cf49564d677472d5dbf5de981b4d3b98070edf1a6e78a7c",
+        "events-0000.local.jsonl": "1ce31d558e78a9d9fdf903751cae25bf1ecdb4cc48ed179783b891f36c30b4a4",
+        "native-result.local.json": "e2d8c1439c62140f10fc342ba05711c403411a51d7869c38055965bd7325bfd0",
+        "export manifest.json": "bf0e98e4a8535074545fa3e69d7e4654232216f4c6cb771cce9c933f5d053603",
+        "mock-run.manifest.json": "257314e0ad0aca418b6fbcc9e7b67b689a605f97571cec1d79def89862bed3ad",
+        "reconciliation.local.json": "9a9692b181d4d3a7465a9758ba73194cc78ca555056fd28b444956c196585368",
+        "process-result.local.json": "fbadec7c46794093fae41baaea93d5f1117072fe4c8f765a36dfef8e27d63f54",
+        "native.log": "e7044199e7a1c5aa5be40791058a596e2cdb1b79e4c11b57c16a1f19f674a8c6",
+        "launch-spec.local.json": "f4485844bc896f22bdeb4d93ffb976f832e085dbacecb63305359092391f2541",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "operator-logs/foundation-6351365ca9cc4b7c8b0783399752420b.jsonl": "68e2969c426f86686d9bf83f511ab5d4d317eae26d94800568906166b30d1d3f",
+        "operator-logs/foundation-cb13ef071fa44a989937b94cb5f69675.jsonl": "57941494758588f3feddc55d609e2b4bf4c4c5c26d7359d7a51c2d4a922fa3bb",
+        "operator-logs/panel-b1995df1601e4eec90b52d070153b678.jsonl": "9d45333b0de085c6293ee8acfeb06154ed6262078e466bb5cc5154fe10895991",
+        "operator-logs/sample-age-95517849a61941aea15e126d460603ff.csv": "9ab909e76c7e9c29df64e068a643e68678295a4c65b9edc460f7453d06f566bc",
+        "operator-logs/shutdown-4ba29f3caea14b0cb9abaa8529d4b531.local.jsonl": "dc40b59b871aa9f31df00eeb270f7c6e3174a0bf1a45b533f26661abfc2345a3",
+        "manual-close.local.txt": "c618777f38bfbd2b175380acc2bcee269fa83f6ea4f271c7f54b949a6cf90e2f"
+      }
+    }
+  },
+  "observations": [
+    "The same focus-loss cause produced LESSON_INPUT_LOST (017, panel foundation_fault path) and LESSON_FOCUS_LOST (018, lesson focus check) depending on which detector fired first; the panel fault reason is discarded by TeachingContent.PanelFault.",
+    "After the terminal fault the player stayed open until the operator closed its window (recorded in manual-close.local.txt), as after attempt 014."
+  ],
+  "limitations": [
+    "Meta XR Simulator on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2, so no Isaac evidence PNGs",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts stay private; only hashes are published"
+  ]
+}
