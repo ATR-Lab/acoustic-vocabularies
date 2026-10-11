@@ -45,6 +45,21 @@ completion from records. An optional `--selection-snapshot` names an additional
 final snapshot inside the root; if present it must exactly match the final
 durable mailbox response. It cannot replace missing store history.
 
+A yoked run stages a copy of the active member's sealed ledger at the config's
+`menu_replay_ledger` path. The emitter tags that file `menu_replay_source`, and
+its hash must equal the config pin. It is not the run's own `menu_journal`.
+
+The verifier checks the replay source as the active member's ledger:
+- its header must bind role `active`, the pinned `yoked_active_schedule` and the
+  package;
+- it must be sealed and complete;
+- it must share the yoked journal's unit binding, visit and menu keys;
+- it must be the exact file named by the yoked seal's `active_ledger_sha256`.
+
+The yoked run's own menu journal is checked against the yoked role. Manifests
+written before the distinct tag listed the staged copy as `menu_journal`; the
+verifier recognizes it by its pinned path (attempts 030/031, #246).
+
 The native player must also finish its create-new/fsynced
 `joined-<nonce>/native-result.local.json` **after all cleanup and export
 attempts**. This closed record binds the process ID, source commit, configuration,
