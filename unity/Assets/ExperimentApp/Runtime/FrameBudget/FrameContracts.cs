@@ -81,9 +81,21 @@ namespace AcousticVocab.FrameBudget
         {
             lock(sync){Clock(now);Check.That(attempt!=null&&response!=null&&response.Kind=="response"&&now<=response.StartMs&&response.StartMs>=attempt.StartMs&&response.EndMs<=attempt.EndMs&&!failed&&ids.Count<10000&&ids.Add(attempt.AttemptId),"FRAME_ATTEMPT_INVALID");var a=new Active{Attempt=attempt,BaselineMissing=!previous.HasValue};a.Windows.Add(response);active.Add(attempt.AttemptId,a);}
         }
+        // A cue anchored at the slot onset arrives as seconds (ms/1000*1000),
+        // which can land one ULP before the attempt start (attr-011: onset
+        // 1031101.5334 ms, cue 1031101.5333999998 ms). Only a representation
+        // difference up to 1 us is snapped onto the attempt bounds.
+        public const double RepresentationToleranceMs=.001;
         public void Cue(string attemptId,FrameWindow cue,double now)
         {
-            lock(sync){Clock(now);Check.That(active.TryGetValue(attemptId,out var a)&&cue!=null&&cue.Kind=="cue"&&now<=cue.StartMs&&cue.StartMs>=a.Attempt.StartMs&&cue.EndMs<=a.Attempt.EndMs&&!a.Cancelled&&!a.Windows.Any(w=>w.Id==cue.Id)&&a.Windows.Count(w=>w.Kind=="cue")<a.Attempt.ExpectedCues,"FRAME_CUE_INVALID");a.Windows.Add(cue);}
+            lock(sync)
+            {
+                Clock(now);Check.That(active.TryGetValue(attemptId,out var a)&&cue!=null&&cue.Kind=="cue","FRAME_CUE_INVALID");
+                double start=cue.StartMs<a.Attempt.StartMs&&a.Attempt.StartMs-cue.StartMs<=RepresentationToleranceMs?a.Attempt.StartMs:cue.StartMs;
+                double end=cue.EndMs>a.Attempt.EndMs&&cue.EndMs-a.Attempt.EndMs<=RepresentationToleranceMs?a.Attempt.EndMs:cue.EndMs;
+                Check.That(now<=start&&start>=a.Attempt.StartMs&&end<=a.Attempt.EndMs&&end>start&&!a.Cancelled&&!a.Windows.Any(w=>w.Id==cue.Id)&&a.Windows.Count(w=>w.Kind=="cue")<a.Attempt.ExpectedCues,"FRAME_CUE_INVALID");
+                a.Windows.Add(start==cue.StartMs&&end==cue.EndMs?cue:new FrameWindow(cue.Id,cue.Kind,start,end));
+            }
         }
         void Fault(Active a,string code,double now,double gap,bool watchdog)
         {
