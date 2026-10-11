@@ -178,6 +178,18 @@ audit, command journal, joined journal, raw data segments, frame evidence, menu
 ledger where applicable, and immutable export bundle. Native completion requires
 the durable visit history, full retained tail, completed forms, successful cleanup,
 and export. `-simulationQuitOnComplete` exits nonzero if cleanup or export fails.
+Disposing the joined owner after `visit_complete` closes the engine without a
+record. A dispose before then, including during the final retained tail or at a
+block boundary, still writes `item_fault` `SESSION_JOIN_DISPOSED`, and so does
+any real fault raised after completion.
+The [isaac2 023 run record](native-simulation-tests-isaac2-023.validation.json)
+checks this natively. Player `simulation-native-023` is `b826e60` plus this change.
+The Isaac service is `22897c4` plus the in-repo `--observer-prim-only` flag, and the
+scene and reset hashes match their pins. One B V1 active visit with dummy responses
+recorded `JOIN_COMPLETE_FORMS_RECORDED` (exit 0, 134 of 134 plays, 39 of 39
+opportunities). No fault was recorded and no session row follows `visit_complete`.
+Reconciliation remains incomplete only for the frame-budget and display-timing
+screens.
 An inventory flag alone cannot establish completion.
 The journal's `native_run_end` is only a close intent, with `complete:false`.
 After every cleanup stage and the export attempt, the player writes

@@ -59,7 +59,8 @@ namespace AcousticVocab.SessionIntegration
         {
             if(closed||disposing)return;disposing=true;Exception first=null;
             // Keep durable observers attached while interrupting and stopping.
-            try{Engine.Fault("SESSION_JOIN_DISPOSED");}catch(Exception e){first=e;}
+            // A completed visit closes cleanly; only an unfinished one is faulted.
+            try{Engine.CloseForDisposal("SESSION_JOIN_DISPOSED");}catch(Exception e){first=e;}
             try{player.Abort("SESSION_JOIN_DISPOSED");}catch(Exception e){first??=e;}
             try{mux.Dispose();}catch(Exception e){first??=e;}
             closed=true;try{panelData.Dispose();}catch(Exception e){first??=e;}try{audioData.Dispose();}catch(Exception e){first??=e;}
