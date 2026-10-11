@@ -1,0 +1,121 @@
+{
+  "scope": "SIMULATION_TEST",
+  "participant": false,
+  "qualification": false,
+  "record": "isaac2 host record and renderer-free launch check",
+  "host": {
+    "name": "isaac2",
+    "gpu": "NVIDIA GeForce RTX 4060 Ti 16 GB",
+    "driver": "595.99.02 (open kernel module)",
+    "cuda": "13.2",
+    "os": "Ubuntu 26.04",
+    "kernel": "7.0.0-38-generic",
+    "cpu": "AMD Ryzen 7 5700G",
+    "container_runtime": "Docker 29.9 with the containerd image store",
+    "nvidia_container_toolkit": "1.20.1",
+    "host_changes_made": false
+  },
+  "rtx_crash": {
+    "signature": "SIGSEGV in librtx.scenedb.plugin.so from omni::usd::UsdManager::createHydraEngine",
+    "python_path": "run_scene.py AppLauncher -> SimulationApp.__init__ -> create_new_stage -> omni.kit.widget.viewport __enable_hydra_engine",
+    "seconds_after_start": "7-9",
+    "kit_known_bad_driver_range": "[0, 535.129); 595.99.02 is not listed",
+    "launch_variants_all_crashed": [
+      "rendered-cache image, --capture",
+      "plain image, --capture",
+      "--runtime=nvidia with NVIDIA_VISIBLE_DEVICES=all and NVIDIA_DRIVER_CAPABILITIES=all (8.8 s)",
+      "--gpus all (8.7 s)",
+      "two Kit renderer argument variants"
+    ],
+    "interpretation": "The RTX renderer cannot start on this driver/host; physics, USD export and the joined service do not need it."
+  },
+  "images": {
+    "note": "The containerd image store reports different image IDs from the classic store on mlws. Equality was verified from the ordered RootFS layer list and the image config, not from the ID.",
+    "verification": "sha256 of the ordered RootFS.Layers list and of the image config JSON, each equal to the pinned mlws image",
+    "entries": [
+      {
+        "image": "acoustic-vocab-spike:isaac5.1-rendered-cache-20261004",
+        "mlws_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+        "isaac2_id": "sha256:9de700ffcd67d9510f036ee88b118adab20fb1dbb7ce634d11d9cbab1474ea9b",
+        "layers": 19,
+        "layer_list_sha256": "22f6bdcb98ca0ea245751c1921df49f3637e0fa160ab5e1a2d42c1235644c5c8",
+        "config_sha256": "4341ac1c958aa369b20ee795f1693d49e6daad62e2866d5f143466428cef0604",
+        "equal_to_pinned": true
+      },
+      {
+        "image": "plain Isaac Sim 5.1 / Isaac Lab 2.3.2 image",
+        "mlws_id": "sha256:6121207fd77c365293aa7d981f8cba88bd0a3b4cdcf380e2e97019b2ca8922c3",
+        "isaac2_id": "sha256:4f088712f2011ffdb2a2a48ae87a9b738a4d130b5f986269624614905e441fb9",
+        "layers": 18,
+        "layer_list_sha256": "98f5fbb13a9430cea37f0e61a0b9b31f516944b1ab795b1bcc4cdc91974ddd40",
+        "config_sha256": "ba64aa5f53effa29063d9984664b5f672b33096a28ffff5472ad84f8fdf23677",
+        "equal_to_pinned": true
+      },
+      {
+        "image": "rosbridge image",
+        "mlws_id": "sha256:8ac407e2fadf88b0fcbed24ec03102ba5eef7c3e21954f33e1f82a350f785564",
+        "isaac2_id": "sha256:8062e372517c3e5cb272e833616819ae9f95ca431a73f2e89a8beb8c8998b7e4",
+        "layers": 11,
+        "layer_list_sha256": "f397c3d8b0ae7db5469c845a292b2f9d2f8064b371fc2ec25e9de410816ef8df",
+        "config_sha256": "d6ef062772106f28011b24e6ba277cb7a9bf08959a170cd54eeef95f9e83aa66",
+        "equal_to_pinned": true
+      }
+    ],
+    "driver_libraries": "The image keeps 0-byte *.570.211.01 placeholder libraries from its mlws commit; the sonames resolve to the 595.99.02 libraries injected by the container toolkit."
+  },
+  "assets": {
+    "archive_sha256": "06fbf14549be3a81e3dbd4a8a019e7f060f48de1556b70f291a18ac8f9ead4b0",
+    "files": 423,
+    "tree_manifest_sha256": "ae8111623d68a4fdd01500ce135225f5a661d1efb09189cff52f2c8d10d349f0",
+    "equal_to_mlws": true
+  },
+  "scene_identity": {
+    "pinned_scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "pinned_reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "without_observer_prim_scene_sha256": "7a13f7b5d1de43c99fb6bb233ddbfaa12b4a254b0068aa638774034bb8652083",
+    "without_observer_prim_note": "Omitting --capture also omits /World/ObserverReference, so the exported scene no longer matches and Unity refuses it (STATE_HASH_IDENTITY)."
+  },
+  "observer_prim_only_check": {
+    "kind": "Isaac-only joined service, no native player",
+    "source_git": "cbb0cd96bd7d996e7140433f2d08492a0690bf85",
+    "source_archive_sha256": "31c4fc2e66c5e6111bf3fecf5654f062d3954a8fd2820e3942187606953c5f3b",
+    "image": "acoustic-vocab-spike:isaac5.1-rendered-cache-20261004",
+    "flags": "--headless --observer-prim-only --reset-check --reset-cycles 1 --skip-reach --e2e-seconds 45, plus the standard --e2e-* station, session, UID and socket arguments",
+    "ready_seconds": 7.7,
+    "ready_utc": "2026-10-11T02:01:34Z",
+    "observer_mode": "prim_only",
+    "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "scene_reload_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reload_state_identical": true,
+    "physics_steps": 1572,
+    "elapsed_seconds": 45.019021538,
+    "end_reason": "duration",
+    "fault": null,
+    "service_completed": true,
+    "native_visit_completed": false,
+    "evidence_png_files": 0,
+    "fatal_log_lines": 0,
+    "owned_container_removed": true,
+    "unrelated_container_preserved": true,
+    "hashes": {
+      "joined-e2e/ready.json": "944129b5f5dd1779a150b4d2b792222f9d5172dd35b3cbac31f2c0f1d2db3785",
+      "joined-e2e/summary.json": "ffb79574aeff10ac869574f75f91d303741ed02f86691f8dc6fae93e8bb4e990",
+      "summary.json": "a7c9ef2dbad9145a67bdfabc3504492d25bcd479dba19d5b6a65107d4c981361"
+    }
+  },
+  "prior_native_visit": {
+    "note": "Attempt 015 used an out-of-tree launcher equivalent to --observer-prim-only and produced the same scene and reset hashes.",
+    "player": "simulation-native-022",
+    "outcome": "JOIN_COMPLETE_FORMS_RECORDED, exit 0, 134/134 plays, 39/39 opportunities",
+    "isaac_publish_hz": 29.94,
+    "evidence": "docs/unity/native-simulation-tests-isaac2-022.validation.json (PR #234)"
+  },
+  "limitations": [
+    "Renderer-free launches produce no evidence images; observer, tray and container views must come from a host where RTX starts.",
+    "Physics/state services only; no rendering, camera, publication-rate, clock, acoustic, headset, motion or participant qualification.",
+    "The RTX crash is recorded, not diagnosed; no driver, kernel, package or image change was made.",
+    "One Isaac-only check of the in-repo flag; the native visit used the equivalent out-of-tree launcher."
+  ]
+}

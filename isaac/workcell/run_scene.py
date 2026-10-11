@@ -14,6 +14,7 @@ sys.path.insert(0,str(ROOT/'spikes/O5.1.2'))
 from evidence import verify_loopback_only, require_revision
 from isaac.workcell.layout import canonical_bytes, digest, preconditions
 from isaac.view_capture.options import add_arguments as add_view_arguments, profile_options as view_options
+from isaac.workcell.observer import observer_camera_cfg, observer_mode, spawn_observer_prim
 
 
 def validate_cache_profile(args):
@@ -36,6 +37,8 @@ def main():
     parser.add_argument('--reset-cycles',type=int,default=1000)
     parser.add_argument('--skip-reach',action='store_true')
     parser.add_argument('--capture',action='store_true')
+    parser.add_argument('--observer-prim-only',action='store_true',
+                        help='Spawn the observer camera prim without a camera sensor or RTX renderer; no evidence images')
     parser.add_argument('--integration-overlay',type=Path)
     parser.add_argument('--publisher-seconds',type=float,default=0.)
     parser.add_argument('--command-check',action='store_true')
@@ -73,6 +76,7 @@ def main():
         import isaac
         isaac.__path__.append(str(args.integration_overlay/'isaac'))
     args.output.mkdir(parents=True,exist_ok=False)
+    mode=observer_mode(args.capture,args.observer_prim_only)
     if args.capture: args.enable_cameras=True
     app=AppLauncher(args).app
     try:
@@ -103,10 +107,13 @@ def main():
         observer=layout['observer']; camera=None
         if args.capture:
             from isaaclab.sensors import Camera,CameraCfg
-            camera=Camera(CameraCfg(prim_path='/World/ObserverReference',update_period=0.,
-                width=observer['width'],height=observer['height'],data_types=['rgb'],
-                spawn=sim_utils.PinholeCameraCfg(focal_length=observer['focal_length_mm'],
-                    horizontal_aperture=observer['horizontal_aperture_mm'],clipping_range=(.01,100.))))
+            camera=Camera(observer_camera_cfg(observer,sim_utils,CameraCfg))
+        elif args.observer_prim_only:
+            # Same prim at the same point in scene construction, without the renderer.
+            from isaaclab.sensors import CameraCfg
+            from isaaclab.sensors.camera import camera as camera_module
+            spawn_observer_prim(observer_camera_cfg(observer,sim_utils,CameraCfg),torch,
+                                camera_module.convert_camera_frame_orientation_convention)
         # Export before runtime targets/measurements; no wall-clock data enters USD.
         scene_path=args.output/'workcell.usda'
         stage.GetRootLayer().Export(str(scene_path))
@@ -296,7 +303,7 @@ def main():
             reset_summary=reset,publisher_summary=publisher,command_summary=commands,published_command_summary=published_commands,disconnect_summary=disconnect,
             demo_summary=demos,grip_summary=grip,protected_stream_summary=protected,joined_e2e_summary=e2e,
             same_iteration_summary=same_iteration,
-            e2e_handle_cache_enabled=accessors.handle_cache_enabled,
+            e2e_handle_cache_enabled=accessors.handle_cache_enabled,observer_mode=mode,
             pins=pins,isaac_build=Path('/isaac-sim/VERSION').read_text().strip(),
             hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir()) if p.is_file()})
         (args.output/'summary.json').write_bytes(canonical_bytes(summary))
