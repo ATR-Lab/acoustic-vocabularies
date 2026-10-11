@@ -1,0 +1,265 @@
+{
+  "scope": "Native SIMULATION_TEST Study A A-C01-L01 reference on isaac2 with #243/#244 (player) and #173+#241 (reconciliation/scan); engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#242",
+    "#240",
+    "#78",
+    "#81",
+    "#82"
+  ],
+  "player": {
+    "build_id": "simulation-native-024",
+    "source_commit": "c2ff3266e856459be931c43a3330b45f684b8620",
+    "composition": "c183821 (b826e60 + #237) + #243 229edc9b9e0fa67e05765a977034c5dfe2bdcda4 (merge eaf2d9a) + #244 e877f400e33ad044af8f22663d82795ba6d2fdf7 (merge c2ff326); local test merges, not pushed",
+    "build_manifest_sha256": "855d0e1167ea0077ed9cb2179ebb2c29b6ccd25b41952752bff8b90b3a559e52",
+    "dirty_source": false
+  },
+  "tooling": {
+    "source_commit": "294f69d737d7f5e7b18267460ccfb0f7d6eb7f4d",
+    "composition": "#173 6d9ed0a + #241 be806be6d722d10f5a99a08ed237106e707d7a65; local test merge, not pushed",
+    "tests": "tests/test_mock_visit_holdouts.py + tests/test_mock_visit_study_a_messages.py: 29 passed, 1 skipped (sealed producer packages)"
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "launch": "--headless --observer-prim-only --reset-check --reset-cycles 1 --skip-reach"
+  },
+  "staging": {
+    "coded_id": "A-C01-L01",
+    "unit_id": "A-C01",
+    "role": "reference",
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "unity_processes_before_each_launch": 0
+  },
+  "d0": {
+    "simulation-test-A-D0-024-isaac2-021": {
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "panel": 108,
+        "rating": 2
+      },
+      "stall_checks": {
+        "sample_rows": 49222,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 1923320.7,
+            "gap_ms": 4483.6,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 221,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 221,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 212,
+        "requested_plays": 212,
+        "callback_observed_plays": 212,
+        "software_completed_plays": 212,
+        "content_hash_verified_plays": 212,
+        "completed_opportunities": 108,
+        "scheduled_opportunities": 108,
+        "selection_count": null,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "96d670f923203834af8625c287406aa18265d777625ef9fb0e133a909623d1e8",
+        "events-0000.local.jsonl": "d0ad743e81931b4d029d82c846c23d768d5c8b5e40224743f6bf598cff600180",
+        "native-result.local.json": "f9e5b25e353b869df59f0da0ca4bd33eb1f44bad854090a234f63d398c4043fc",
+        "export manifest.json": "86be499a619371a9166d6e2e0e7ac53d8fb9fd08cf95f56aa75b92326d48ad45",
+        "mock-run.manifest.json": "e751a5d1c8d866c6e423cd2684fda632e51a3ac11d48bc01f5e7aa2e1b83ef65",
+        "reconciliation.local.json": "a2e36a24372d4c23baceeac9bd09181bd09e0e61ea83a298bef1dda3fa102b33",
+        "process-result.local.json": "a321832506ba996640567520f196409bae64ece74fd9c88f6a38fb816786eb51",
+        "native.log": "2320fb8c3fbd37c42674096d5230c462744d5b6f1156189022719aeb8cfcaf46",
+        "launch-spec.local.json": "2b498e9e1322ad55490b3cd97e1dd70e1cd7e7ff5cf9e568df2b7dc4c97b91ee",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "operator-logs/foundation-bc7da791331148c9a71ce44c34363e4d.jsonl": "b5b3f3ee762b53a075fd80b63b63c0f34e9dce61ee2fce73f590f0e81a8983d6",
+        "operator-logs/foundation-f30cf78cebfd42aba542538c40ff8886.jsonl": "69b9ae51464c0a4293d6ffbf177cb9ac2c7ab00c71fd199e23f94db476d49356",
+        "operator-logs/panel-e6f0fb58b0c144909f4445eaa1afa8da.jsonl": "ebb604e53883cd395606a94539322c202281880bee8e447d82ef4f2a7bf52688",
+        "operator-logs/sample-age-38bbe244316b4fd08557efb387f3a947.csv": "f00573865d281b3b1e2781ee691996e0b7a88f049e32f9cb5106f911b7fb3e8c",
+        "operator-logs/shutdown-4ec223df3f0b4719806d706542fc5ffd.local.jsonl": "069f3124661ae94919f3ead0f7c1d466c3ca5b82d4a1dcee7502b47d708163c5",
+        "foreground.local.log": "219a32883df5740f81511794f4d3e763b8942d151877a2011c72e614451d6cc4"
+      },
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.93,
+        "publish_interval_ms": {
+          "median": 30.4,
+          "p99": 50.0,
+          "max": 84.2
+        },
+        "physics_steps": 76794,
+        "elapsed_s": 2120.1,
+        "end_reason": "private_stop",
+        "fault": null,
+        "artifact_sha256": {
+          "ready.json": "306a07cd7307eecb5872e46031d3bda6782fedc5dd9363829cf444b58d18b827",
+          "joined-summary.json": "4681d3998941781887fea172798cfbd171ee95120c921ff41f337a602c9564b7",
+          "scene-summary.json": "bad310fc676a5302ddaddc67419aac81ced2c35c1506c79647000190f988b606",
+          "publish.csv": "a383c6b13b14836c20ffb235b362d165bf86bde15e1dd0e2249c00eb6d08043c"
+        }
+      },
+      "forms_transition": {
+        "tail_end_to_rating_difficulty_ms": 25.7,
+        "main_thread_stall_records": 0,
+        "control_queued": 0,
+        "note": "previously 270-286 ms inside assessment_boundary in 019/020"
+      },
+      "session_rows_after_visit_complete": 0,
+      "foreground_focus_changes_during_visit": 0,
+      "largest_sample_gap": {
+        "gap_ms": 4483.6,
+        "where": "after native_run_end, closure/export teardown"
+      }
+    }
+  },
+  "d0_previous_rereconciled_with_tooling": {
+    "simulation-test-A-D0-023-isaac2-019": {
+      "reconciliation_sha256": "e4014e52893da0b1af8a2f6e8a780d2a13715c84940252346fd733a88ef3c8b6",
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "requested_plays": 212,
+      "content_hash_verified_plays": 212,
+      "fault_codes": [
+        "ASSESSMENT_RUNTIME_FAILED",
+        "SESSION_JOIN_DISPOSED"
+      ],
+      "incomplete_reasons": [
+        "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+        "FORMS_DISPLAY_TRACE_INCOMPLETE",
+        "FORMS_INCOMPLETE",
+        "FRAME_BUDGET_SCREEN_FAILED",
+        "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+        "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+        "NATIVE_RUN_END_INCOMPLETE"
+      ]
+    },
+    "simulation-test-A-D0-023-isaac2-020": {
+      "reconciliation_sha256": "db6e0d23c7cda9fd425ea26930e7f4b93c57dd3c44956d552bdf101d3942b77d",
+      "integrity_verified": true,
+      "software_reconciliation_complete": false,
+      "requested_plays": 212,
+      "content_hash_verified_plays": 212,
+      "fault_codes": [
+        "ASSESSMENT_RUNTIME_FAILED",
+        "SESSION_JOIN_DISPOSED"
+      ],
+      "incomplete_reasons": [
+        "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+        "FORMS_DISPLAY_TRACE_INCOMPLETE",
+        "FORMS_INCOMPLETE",
+        "FRAME_BUDGET_SCREEN_FAILED",
+        "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+        "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+        "NATIVE_RUN_END_INCOMPLETE"
+      ]
+    }
+  },
+  "d7": {
+    "completed": false,
+    "attempts": {
+      "simulation-test-A-D7-024-isaac2-022": {
+        "outcome": "JOIN_SPEECH_MANIFEST_MISSING at startup; private staging omitted the D7 validity-speech manifest; no session, no export, cannot be reconciled (MOCK_CLOSED_EXPORT_REQUIRED)",
+        "process_result_sha256": "5d245983d0e19ce6f93bcc047cd92097bdc3f0c157079e4b8021e67d828f6e53"
+      },
+      "simulation-test-A-D7-024-isaac2-023": {
+        "outcome": "Staged with a DEMO engineering_unreviewed validity-speech bank (64 files, manifest a7b8cddbdb65886949fe56acf3bc8ff053a206f23bbfdbf56f98098f97af3749) and fixture set 3afc0c945e8c888548e8626091e91548de79af214d4bd2643c7704bd8f81dc69. The player reached JOIN_READY_EXPLICIT_RESUME. Console load was refused anchor_missing (no D0 anchor in the private console config). The console was restarted with anchors {D0: 2026-10-11} after removing its own two stale writer locks; load then required an audited visit_window deviation, which was recorded. The visit was never started and was torn down pending a decision on this procedure.",
+        "console_audit_sha256": "82e0dfbfd2784306819d1e36fd6c0d327810346586f99ffc173e8b0feee3f8c7",
+        "console_restart_note_sha256": "515b9d28eaf7e034313d28f4b1b57780ee3e096c4dd1966b92c4b02b2b4000fb",
+        "process_result_sha256": "d711a15f5a506758b54afb72049c364b650b26ae4a4810ced324b322236ed654"
+      }
+    }
+  },
+  "heldout_scan": {
+    "tooling": "294f69d",
+    "all_retained_d0": {
+      "plan_sha256": "1819c16f111b05e5802d245de38091be51ac3e30ac408cdbeabd158865ed6823",
+      "runs": [
+        "simulation-test-A-D0-023-isaac2-017",
+        "simulation-test-A-D0-023-isaac2-018",
+        "simulation-test-A-D0-023-isaac2-019",
+        "simulation-test-A-D0-023-isaac2-020",
+        "simulation-test-A-D0-024-isaac2-021"
+      ],
+      "exit_code": 2,
+      "printed": "HOLDOUT_CONSUMED_PHRASE_REPLAY"
+    },
+    "through_019": {
+      "plan_sha256": "9c9b11e29f73622361c967aacb8e0f98b20d13c2f937c0cd32755c4bc3aba3eb",
+      "runs": [
+        "simulation-test-A-D0-023-isaac2-017",
+        "simulation-test-A-D0-023-isaac2-018",
+        "simulation-test-A-D0-023-isaac2-019"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "1f0f53cbfd663dd804fadebdd1708c36c70a23cf039f29374d0af141cc2dea30",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "SCHEDULED_NOVEL_REQUESTS_MISSING"
+        ],
+        "visits_present": 3,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 271,
+        "authorized_heldout_requests": 4,
+        "heldout_callback_events": 8
+      }
+    },
+    "interpretation": "019 (failed in the forms after the novel block) consumed the four held-out phrases with authorized requests. 020 and 021 cued the same phrases again, so the scanner refuses the history; A-C01-L01 cannot produce a passing held-out history and a D7 for this person would not change that.",
+    "excluded": [
+      "simulation-test-A-D7-024-isaac2-022 and -023: no closed export or run manifest"
+    ]
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2, so no Isaac evidence PNGs",
+    "DEMO validity speech is engineering_unreviewed TTS",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts and plans stay private; only hashes are published"
+  ]
+}
