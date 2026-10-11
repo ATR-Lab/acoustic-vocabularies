@@ -190,5 +190,67 @@
     },
     "d7_run": false,
     "claim": "No complete D0/D7 history exists; no held-out absence is claimed. Hashes only; raw plans, manifests and journals stay private."
+  },
+  "native_isaac2_study_a_rerun": {
+    "label": "Study A A-C01-L01 reference on isaac2 after #243/#244 (player simulation-native-024) with scan tooling #173 6d9ed0a + #241 be806be (local merge 294f69d)",
+    "scanner_source_commit": "294f69d737d7f5e7b18267460ccfb0f7d6eb7f4d",
+    "attempts": {
+      "017": "D0 LESSON_INPUT_LOST (focus loss), 22 plays",
+      "018": "D0 LESSON_FOCUS_LOST (focus loss), 37 plays",
+      "019": "D0 all 212 plays incl. 4 authorized held-out novel requests, then ASSESSMENT_RUNTIME_FAILED in the forms",
+      "020": "same as 019",
+      "021": "D0 JOIN_COMPLETE_FORMS_RECORDED, 212/212 plays, reconciliation faults [] (timing screens only)",
+      "022": "D7 JOIN_SPEECH_MANIFEST_MISSING at startup; no export, not a scan input",
+      "023": "D7 never started; no export, not a scan input"
+    },
+    "all_retained": {
+      "plan": {
+        "sha256": "1819c16f111b05e5802d245de38091be51ac3e30ac408cdbeabd158865ed6823",
+        "runs": [
+          "017",
+          "018",
+          "019",
+          "020",
+          "021"
+        ]
+      },
+      "exit_code": 2,
+      "printed": "HOLDOUT_CONSUMED_PHRASE_REPLAY",
+      "result_file_written": false,
+      "cause": "019 consumed the four held-out phrases at their durable novel cue intents (authorized requests); 020 cued the same phrases again, which the scanner refuses. Reconciliation of every run, including 019/020, now passes content verification with #241."
+    },
+    "through_019": {
+      "plan": {
+        "sha256": "9c9b11e29f73622361c967aacb8e0f98b20d13c2f937c0cd32755c4bc3aba3eb",
+        "runs": [
+          "017",
+          "018",
+          "019"
+        ]
+      },
+      "exit_code": 3,
+      "result_sha256": "1f0f53cbfd663dd804fadebdd1708c36c70a23cf039f29374d0af141cc2dea30",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "SCHEDULED_NOVEL_REQUESTS_MISSING"
+        ],
+        "visits_present": 3,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 271,
+        "audio_observations": 542,
+        "grammar_audio_events": 18,
+        "ledger_audio_references": 4604,
+        "authorized_heldout_requests": 4,
+        "heldout_callback_events": 8
+      }
+    },
+    "claim": "Failed attempts that reach the novel block consume held-out phrases; a later attempt for the same person is refused, so A-C01-L01 can no longer yield a passing history. No complete D0/D7 history; no absence claim. Hashes only; plans stay private."
   }
 }
