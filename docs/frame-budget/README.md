@@ -16,6 +16,15 @@ selected rate, wave, allocation or answer is invented by the monitor.
 
 The audio sink reports the planned onset in seconds, so a cue anchored at the slot onset can arrive one ULP outside its attempt (onset ms/1000×1000). The monitor snaps only a difference of at most 1 µs (`RepresentationToleranceMs`) onto the attempt bounds; any larger out-of-bounds cue is still refused. An untyped content exception behind `SESSION_CONTENT_*` is recorded as a `content_failure_detail` joined audit entry: the exception type, plus the message only when it is a bounded code.
 
+The [native rerun record](native-021.validation.json) covers #231. Simulator player `simulation-native-021` was built clean from a local test merge of `b02e34c`, #229, #230 and this change. It ran B V1 active with `-simulationDummyResponses` passed at launch.
+
+- The menus completed with the ledger sealed, and atomic lessons completed 8/8.
+- Message lesson 3, where #231 had refused the onset cue, now admitted it and proceeded to its display, retrieval opportunity and response panel.
+- There was no `content_failure_detail`, `gate_failure` or `main_thread_stall` record.
+- The visit then stopped at that panel with `JOIN_RUNTIME_FAILED`. The simulation driver's first commit on a `Command`-role panel selected target `A`, but its fixed action `ADD_ONE` produced no action selection. The commit did not lock, so the driver raised `SIMULATION_INPUT_REJECTED`.
+
+The export reconciles with integrity verified: 104 of 134 plays were requested. This is simulator engineering evidence only.
+
 Raw rows identify a host render callback, its full interval, a cue/response
 window and the clipped overlap. A positive overlap charges the full interval to
 that attempt conservatively. An exact boundary touch contributes nothing. Old
