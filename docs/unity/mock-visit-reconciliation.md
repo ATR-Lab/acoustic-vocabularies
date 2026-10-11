@@ -54,6 +54,17 @@ completion requires its cleanup/export success flags and
 evidence remains incomplete. The earlier `native_run_end` journal row is a
 pre-cleanup intent, never proof that disposal or export succeeded.
 
+The report carries two completion flags, and they mean different things:
+
+| Report field | Source | Meaning |
+|---|---|---|
+| `native_claimed_complete` | the inventory manifest's `complete` | Always `false`, because the emitter never infers success from files. It is not the native player's claim and does not feed `software_reconciliation_complete`. |
+| `native_post_cleanup_complete` | the verified `native-result.local.json` | The player's post-cleanup claim: `true` only with cleanup and export success and `JOIN_COMPLETE_FORMS_RECORDED`. A `complete` value that disagrees with those fields is refused (`MOCK_NATIVE_RESULT_FALSE_SUCCESS`). |
+
+A completed native visit therefore reports `native_claimed_complete: false` with
+`native_post_cleanup_complete: true`. `software_reconciliation_complete` is true
+only when no incomplete reason remains, including the engineering screens.
+
 Files, links, paths, JSON duplicates, finite numbers, sizes and closed record
 shapes are checked. JSON/journals are capped at 64 MiB, manifests at 1 MiB where
 specified. Captures are hashed in chunks, at most 1 GiB each and 2 GiB total run
