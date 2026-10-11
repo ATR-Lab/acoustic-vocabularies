@@ -28,13 +28,13 @@ namespace AcousticVocab.SelectionMenus
     public sealed class MenuReplaySequence : ISlotStartPlan
     {
         internal sealed class Entry
-        {internal string Key;internal double Start;internal MenuReplay Replay;}
-        readonly Entry[] entries;readonly MenuLedgerBinding activeBinding;readonly double anchor;readonly Func<double> clock;
+        {internal string Key;internal double Start;internal MenuReplay Replay;internal double Anchor;internal int SegmentFirst;internal bool Planned;}
+        readonly Entry[] entries;readonly MenuLedgerBinding activeBinding;readonly Func<double> clock;
         public string LedgerSha256{get;}
         public DateTimeOffset CreatedUtc{get;}
         public double SourceSpanMs=>entries.Last().Start+(entries.Last().Key=="profile"?60000:45000)-entries[0].Start;
         MenuReplaySequence(Entry[] entries,string hash,DateTimeOffset created,double anchor,Func<double> clock,MenuLedgerBinding binding)
-        {activeBinding=binding;this.entries=entries;LedgerSha256=hash;CreatedUtc=created;this.anchor=anchor;this.clock=clock;}
+        {activeBinding=binding;this.entries=entries;LedgerSha256=hash;CreatedUtc=created;this.clock=clock;foreach(var e in entries){e.Anchor=anchor;e.SegmentFirst=0;e.Planned=false;}}
         static string Key(SlotItem item)=>item.TrialType=="profile_menu"?"profile":item.ContentId;
         public MenuReplay For(SlotItem item)
         {MenuRules.Require(item!=null&&item.Phase=="selection","MENU_REPLAY_SLOT");return Find(Key(item)).Replay;}
@@ -42,10 +42,31 @@ namespace AcousticVocab.SelectionMenus
         public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)
         {
             MenuRules.Require(item!=null&&item.Phase=="selection"&&MenuRules.Finite(baseOnsetMonoMs)&&baseOnsetMonoMs>=0,"MENU_REPLAY_SLOT");
-            double target=anchor+Find(Key(item)).Start-entries[0].Start,now=clock();
+            var entry=Find(Key(item));double target=entry.Anchor+entry.Start-entries[entry.SegmentFirst].Start,now=clock();
             // No tolerance can move an old cue into the present. A reviewed
             // reconstruction supplies a new explicit anchor and its own record.
-            MenuRules.Require(MenuRules.Finite(target)&&MenuRules.Finite(now)&&now>=0&&baseOnsetMonoMs<=target&&now<=target-150,"MENU_REPLAY_ANCHOR_MISSED");return target-baseOnsetMonoMs;
+            MenuRules.Require(MenuRules.Finite(target)&&MenuRules.Finite(now)&&now>=0&&baseOnsetMonoMs<=target&&now<=target-150,"MENU_REPLAY_ANCHOR_MISSED");
+            entry.Planned=true;return target-baseOnsetMonoMs;
+        }
+        // Maintainer decision (#245): each yoked menu block is anchored at its own
+        // boundary resume plus the configured lead. The active run's spacing is
+        // replayed exactly within the block; operator pauses between blocks are
+        // not. Load's anchor (the yoked start) remains the first block's anchor.
+        // A block is re-anchored only while none of its menus has been planned,
+        // so a refused resume can be retried and no started menu ever moves.
+        int[] BlockIndices(IReadOnlyList<string> keys)
+        {
+            MenuRules.Require(keys!=null&&keys.Count>0&&keys.Distinct().Count()==keys.Count,"MENU_REPLAY_BLOCK_ANCHOR");
+            var indices=keys.Select(k=>Array.IndexOf(entries,Find(k))).OrderBy(i=>i).ToArray();
+            MenuRules.Require(indices.Last()-indices[0]==indices.Length-1,"MENU_REPLAY_BLOCK_ANCHOR");return indices;
+        }
+        public bool BlockAnchorable(IReadOnlyList<string> keys)=>!BlockIndices(keys).Any(i=>entries[i].Planned);
+        public bool AnchorBlock(IReadOnlyList<string> keys,double anchorMonoMs)
+        {
+            var indices=BlockIndices(keys);MenuRules.Require(MenuRules.Finite(anchorMonoMs)&&anchorMonoMs>=clock(),"MENU_REPLAY_BLOCK_ANCHOR");
+            if(indices.Any(i=>entries[i].Planned))return false;
+            foreach(int i in indices){entries[i].Anchor=anchorMonoMs;entries[i].SegmentFirst=indices[0];}
+            return true;
         }
         public static MenuReplaySequence Load(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,double sessionAnchorMonoMs,Func<double> clock)
         {
@@ -119,12 +140,15 @@ namespace AcousticVocab.SelectionMenus
         internal MenuReplayComparison CompareYokedRecords(IReadOnlyList<JObject> rows,MenuLedgerBinding binding,MenuLedgerVerification verification)
         {
             MenuRules.Require(binding!=null&&binding.Role=="yoked"&&binding.MenuKeys.SequenceEqual(entries.Select(x=>x.Key))&&binding.PackageSha256==activeBinding.PackageSha256&&binding.BankSha256==activeBinding.BankSha256&&binding.AllocationSha256==activeBinding.AllocationSha256&&binding.UnitBindingSha256==activeBinding.UnitBindingSha256&&binding.ReviewSha256==activeBinding.ReviewSha256&&binding.Visit==activeBinding.Visit,"MENU_YOKED_BINDING");
-            var normalized=new List<JObject>();double? firstStart=null;
+            var normalized=new List<JObject>();var segmentStarts=new Dictionary<int,double>();
             foreach(var sourceRow in rows)
             {
                 MenuJson.CheckEvent(sourceRow);var row=(JObject)sourceRow.DeepClone();var entry=Find((string)row["menu_key"]);var source=entry.Replay;double start=MenuJson.Number(row["slot_start_mono_ms"]);string kind=(string)row["kind"];
-                if(kind=="menu_start"&&entry==entries[0]){MenuRules.Require(!firstStart.HasValue,"MENU_YOKED_SEQUENCE");firstStart=start;}
-                MenuRules.Require(firstStart.HasValue&&Math.Abs((start-firstStart.Value)-(entry.Start-entries[0].Start))<.000001,"MENU_YOKED_PAUSE_MISMATCH");
+                // Relative spacing is exact within each anchored block; the gap
+                // between blocks is the yoked run's own boundary resume.
+                var first=entries[entry.SegmentFirst];
+                if(kind=="menu_start"&&entry==first){MenuRules.Require(!segmentStarts.ContainsKey(entry.SegmentFirst),"MENU_YOKED_SEQUENCE");segmentStarts[entry.SegmentFirst]=start;}
+                MenuRules.Require(segmentStarts.TryGetValue(entry.SegmentFirst,out double segmentStart)&&Math.Abs((start-segmentStart)-(entry.Start-first.Start))<.000001,"MENU_YOKED_PAUSE_MISMATCH");
                 string expectedSource=null;
                 if(kind=="menu_start")expectedSource=source.StartEventId;
                 else if(kind is "play_request" or "onset_authority" or "play_complete")

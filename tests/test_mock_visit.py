@@ -358,6 +358,29 @@ class Supplemental(unittest.TestCase):
             a,y=self.yoke_display(0,yoked_late)
             with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_DISPLAY_TIMING"):native.compare_yoked(a,y,H)
 
+    def yoke_blocks(self, yoked_pause, drift=0.0):
+        """V1 shape: profile menu block, then two atom menus; the active
+        operator paused 2,952 ms at the boundary (attempts 029/030)."""
+        keys=["profile","K-a1","K-a2"]
+        binding=dict(package_sha256=H,bank_sha256=H,allocation_sha256=H,unit_binding_sha256=H,review_sha256=H,visit="V1",menu_keys=keys,role="active")
+        a_starts=[1000.,1000.+60000+2952,1000.+60000+2952+45000]
+        y_starts=[10000.,10000.+60000+yoked_pause,10000.+60000+yoked_pause+45000+drift]
+        a=[dict(record=dict(binding=binding))];y=[dict(record=dict(binding=dict(binding,role="yoked")))]
+        for i,(key,sa,sy) in enumerate(zip(keys,a_starts,y_starts)):
+            src=dict(event_id=f"{i+1:032x}",menu_key=key,meaning_display_id="m",slot_start_mono_ms=sa,kind="menu_start")
+            a.append(dict(record=src));y.append(dict(record=dict(src,yoked_source_event_id=src["event_id"],slot_start_mono_ms=sy)))
+        a.append(dict(record=dict(kind="sealed")));y.append(dict(record=dict(kind="sealed_yoked",active_ledger_sha256=H)))
+        return a,y
+
+    def test_each_yoked_menu_block_starts_at_its_own_boundary_resume(self):
+        # #245: slower (4,093 ms, attempt 030) and faster yoked resumes both pass.
+        for pause in (4093.0,2952.0,500.0,60000.0):
+            a,y=self.yoke_blocks(pause)
+            self.assertTrue(native.compare_yoked(a,y,H)["software_trace_timing_matched"],pause)
+        for drift in (0.001,-0.001,250.0):
+            a,y=self.yoke_blocks(4093.0,drift)
+            with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_PAUSE_MISMATCH"):native.compare_yoked(a,y,H)
+
     def test_yoked_audio_onset_stays_tight_when_displays_relax(self):
         a,y=self.yoke_display(0,249);y[1]["record"]["expected_mono_ms"]+=2.001
         with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_OUTPUT_TIMING"):native.compare_yoked(a,y,H)

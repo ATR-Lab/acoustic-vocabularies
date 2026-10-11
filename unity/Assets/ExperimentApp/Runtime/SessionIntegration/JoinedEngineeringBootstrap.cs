@@ -409,10 +409,18 @@ namespace AcousticVocab.SessionIntegration
                     host.yokedAuthority.BindForExplicitStart(request.RequestId,request.Sequence,request.Command);
                     preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);
                 }
+                else if(kind==JoinedModuleKind.Menus&&host.yokedAuthority?.Replay!=null)
+                {
+                    // A later yoked menu block starts from its own boundary resume
+                    // (attempts 030/031: the active pause was replayed and missed).
+                    var request=host.resumeRequest??throw new SessionFault("JOIN_YOKED_OPERATOR_REQUIRED");
+                    host.yokedAuthority.AnchorBlockAtResume(request.RequestId,request.Sequence,request.Command,BlockMenuKeys());
+                }
                 committed=true;host.activePreflight=this;scope.RegisterCleanup(()=>{if(ReferenceEquals(host.activePreflight,this))host.activePreflight=null;});
                 host.audit.Write("module",new JObject{["kind"]="commit",["block"]=block,["module"]=kind.ToString()});return preparedFactory;
             }
             internal JObject Diagnostic()=>control?.ReadinessDiagnostic(null);
+            IReadOnlyList<string> BlockMenuKeys()=>host.assets.Schedule.Blocks.Single(b=>b.Name==block).Items.Where(i=>i.Phase=="selection").Select(i=>i.TrialType=="profile_menu"?"profile":i.ContentId).ToList().AsReadOnly();
             ISlotContentFactory CreateFactory()
             {
                 var shared=host.owner.Shared;

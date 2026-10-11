@@ -27,7 +27,7 @@ namespace AcousticVocab.SelectionMenus.Tests
             using var reader=new StreamReader(stream);var rows=new List<string>();string line;
             while((line=reader.ReadLine())!=null)rows.Add(line);return rows.ToArray();
         }
-        static List<MenuEvent> Events(MenuReplaySequence replay=null,string[] keys=null,double observedDelay=0)
+        static List<MenuEvent> Events(MenuReplaySequence replay=null,string[] keys=null,double observedDelay=0,Func<int,double> gapAfter=null)
         {
             var result=new List<MenuEvent>();keys??=Keys;double start=750;
             for(int menu=0;menu<keys.Length;menu++)
@@ -37,7 +37,7 @@ namespace AcousticVocab.SelectionMenus.Tests
                 timeline.PlayRequested+=(_,id,option,at)=>plays.Add((id,option,at));if(replay==null)timeline.SelectionRequested+=(index,unused)=>timeline.ConfirmSelection(index,Hash,start+(profile?45000:32000));timeline.Start(start-750);
                 for(double now=start;now<=start+item.SlotSeconds*1000+20;now+=10)
                 {clock=now;timeline.Tick(now);foreach(var play in plays.ToArray()){if(now>=play.at&&heard.Add(play.id))timeline.Onset(play.id,play.at,10,now);if(now>=play.at+play.option.Wave.SampleCount/48d&&done.Add(play.id))timeline.Completed(play.id,now);}}
-                Assert.That(timeline.Complete,Is.True);start+=item.SlotSeconds*1000+5000;
+                Assert.That(timeline.Complete,Is.True);start+=item.SlotSeconds*1000+(gapAfter?.Invoke(menu)??5000);
             }
             return result;
         }
@@ -56,6 +56,59 @@ namespace AcousticVocab.SelectionMenus.Tests
             Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),3,"resume"));
             now=6000;Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(first,now));Assert.That(records.Count,Is.EqualTo(1));
             var report=replay.CompareYoked(Events(replay),Binding("yoked"),Verification());Assert.That(report.AudioPlays,Is.EqualTo(32));
+        }
+        // Attempts 030/031: one start anchor put the active operator's 2,952 ms
+        // boundary pause into the yoked schedule; a 4,093 ms yoked resume missed
+        // the next block's anchor and every later resume re-faulted. Each block
+        // is now anchored at its own resume; spacing inside a block stays exact.
+        static readonly string[] FirstBlock={Keys[0],Keys[1]},SecondBlock={Keys[2],Keys[3]};
+        static SlotItem MenuItem(string key)=>new SlotItem("DEMO-"+key,"atom_menu",key,null,"selection","selection",false,45,8,1);
+        const double ActivePause=2952;
+        [TestCase(4093)][TestCase(ActivePause)][TestCase(400)][TestCase(60000)]
+        public void YokedMenuBlocksStartAtTheirOwnBoundaryResume(double yokedPause)
+        {
+            string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000)),pin=PcmWave.Hash(File.ReadAllBytes(path));double now=0;var records=new List<YokedAnchorRecord>();
+            var authority=new YokedReplayAuthority(5000,new string('b',32),pin,Hash,()=>now,records.Add,anchor=>MenuReplaySequence.Load(path,pin,Binding(),Verification(),created.AddHours(1),anchor,()=>now));
+            var replay=authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start");double first=records[0].AnchorMonoMs;
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[0]),first-2000),Is.EqualTo(2000));now=first+45000;
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[1]),first+50000),Is.Zero,"Exact active spacing inside the first block");
+            // The yoked operator resumes the second block after its own pause.
+            now=first+50000+45000+yokedPause;
+            Assert.That(authority.AnchorBlockAtResume(Guid.NewGuid().ToString("N"),3,"resume",SecondBlock),Is.True);
+            Assert.That(records.Count,Is.EqualTo(2));Assert.That(records[1].Policy,Is.EqualTo("block_resume_plus_lead"));Assert.That(records[1].MenuKeys,Is.EqualTo(SecondBlock));
+            Assert.That((string)records[1].ToJson()["policy"],Is.EqualTo("block_resume_plus_lead"));Assert.That(records[1].AnchorMonoMs,Is.EqualTo(now+5000));
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[2]),now+2000),Is.EqualTo(3000),"Block anchored at its resume plus the yoked lead");
+            double blockAnchor=now+5000;now=blockAnchor+45000;
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[3]),blockAnchor+50000),Is.Zero,"Active spacing inside the block is preserved");
+            Assert.That(authority.AnchorBlockAtResume(Guid.NewGuid().ToString("N"),4,"resume",SecondBlock),Is.False,"A started block never moves");Assert.That(records.Count,Is.EqualTo(2));
+            // The yoked ledger: blocks separated by the yoked pause plus lead, exact inside.
+            var yoked=Events(replay,gapAfter:m=>m==1?yokedPause+5000:5000);
+            Assert.That(replay.CompareYoked(yoked,Binding("yoked"),Verification()).AudioPlays,Is.EqualTo(32));
+            using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in yoked)ledger.Append(row);
+            Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));
+        }
+        [Test]public void OneStartAnchorStillMissesASlowerBlockResume()
+        {
+            string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000));var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>1000+50000+45000+4093);
+            Assert.That(Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(MenuItem(Keys[2]),1000+50000+45000+4093+2000)).Code,Is.EqualTo("MENU_REPLAY_ANCHOR_MISSED"),"The 030 defect without a block anchor");
+        }
+        [TestCase(0,.001)][TestCase(2,-.001)][TestCase(2,250)]
+        public void DriftInsideAnAnchoredBlockIsStillRefused(int gapIndex,double drift)
+        {
+            string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000));double now=0;
+            var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>now);
+            Assert.That(replay.AnchorBlock(SecondBlock,200000),Is.True);
+            var yoked=Events(replay,gapAfter:m=>(m==1?4093:5000)+(m==gapIndex?drift:0)).Select(MenuJson.Event).ToList();
+            Assert.That(Assert.Throws<SessionFault>(()=>replay.CompareYokedRecords(yoked,Binding("yoked"),Verification())).Code,Is.EqualTo("MENU_YOKED_PAUSE_MISMATCH"));
+        }
+        [Test]public void BlockAnchorsMustBeContiguousKnownAndRetryableUntilPlanned()
+        {
+            string path=Write(Events());double now=500;var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>now);
+            Assert.Throws<SessionFault>(()=>replay.AnchorBlock(new[]{Keys[1],Keys[3]},9000),"Not contiguous");
+            Assert.Throws<SessionFault>(()=>replay.AnchorBlock(new[]{"K-zz"},9000),"Unknown key");
+            Assert.Throws<SessionFault>(()=>replay.AnchorBlock(SecondBlock,100),"Anchor in the past");
+            Assert.That(replay.AnchorBlock(SecondBlock,9000),Is.True);Assert.That(replay.AnchorBlock(SecondBlock,12000),Is.True,"A refused resume can be retried before any menu is planned");
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[2]),11000),Is.EqualTo(1000));Assert.That(replay.AnchorBlock(SecondBlock,15000),Is.False);
         }
         [Test]public void FailedDurableAnchorNeverLoadsAndCannotRetryIntoANewClock()
         {
