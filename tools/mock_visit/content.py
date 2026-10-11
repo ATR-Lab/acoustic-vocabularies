@@ -228,7 +228,12 @@ def verify(root, artifacts, items, requests, package_hash, read, relative, obser
                 require(len(matching) == 1, "MOCK_MESSAGE_SELECTION_MISSING"); c = matching[0]
             require(p["pcm_sha256"] == c["composite_sha256"], "MOCK_DELIVERED_MESSAGE_HASH")
             expected_samples=c["n_samples"]
-            if m["study"] == "A" and msg["status"] == "trained": require(p["waveform_sha256"] == msg["file_sha256"], "MOCK_TRAINED_FILE_HASH")
+            # Study A trained-block plays use the package WAV (package-format.md
+            # §5). Message lessons (A and B) compose the trained message from
+            # the verified atoms so the aligned lesson has its constituent
+            # boundaries; they carry composite provenance like Study B.
+            if m["study"] == "A" and msg["status"] == "trained" and item["block"] != "message_lessons":
+                require(p["waveform_sha256"] == msg["file_sha256"], "MOCK_TRAINED_FILE_HASH")
             else:
                 require(p["waveform_sha256"] is None and p["action_pcm_sha256"] == atoms[a_key]["pcm_sha256"]
                         and p["referent_pcm_sha256"] == atoms[r_key]["pcm_sha256"], "MOCK_COMPOSITE_PROVENANCE")
