@@ -83,3 +83,23 @@ and SSH forward were closed, with unrelated workloads preserved. This is an
 operator-ended backend window, not a completed hour or native visit.
 A later visit uses a fresh output directory and independently pinned
 control session, after the previous client and owned service are closed.
+
+## Renderer-free launch
+
+On a host whose driver cannot start the RTX renderer, replace `--capture` with
+`--observer-prim-only`. The two flags are mutually exclusive. The runner then
+spawns the same `/World/ObserverReference` camera prim from the same
+configuration, following the Isaac Lab `Camera` constructor's USD steps, but
+creates no camera sensor, render product or renderer. The exported scene keeps
+the pinned hash `3b6e8f9a…` and the reset snapshot stays `e2628102…`. Without
+either flag the observer prim is missing, the scene hash changes and Unity
+refuses the scene (`STATE_HASH_IDENTITY`).
+
+Use it only when RTX cannot start on the host and the run needs physics/state
+services only. It writes no evidence PNGs (observer, tray or container views);
+those must come from a host where `--capture` works. The joined service already
+steps physics with `render=False`, so the visit does not depend on rendering.
+The summary records `observer_mode` (`camera`, `prim_only` or `none`). Before
+relying on it on a new host, check natively that `joined-e2e/ready.json` shows
+both pinned hashes. The [isaac2 host record](e2e/2026-10-11-isaac2-host.json)
+has the RTX crash signature, image layer-equality checks and that native check.
