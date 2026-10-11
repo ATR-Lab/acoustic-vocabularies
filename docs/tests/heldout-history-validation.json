@@ -252,5 +252,74 @@
       }
     },
     "claim": "Failed attempts that reach the novel block consume held-out phrases; a later attempt for the same person is refused, so A-C01-L01 can no longer yield a passing history. No complete D0/D7 history; no absence claim. Hashes only; plans stay private."
+  },
+  "native_isaac2_study_a_l02": {
+    "label": "Study A A-C01-L02 reference: D0 then same-day D7 on isaac2 (player simulation-native-024, Meta XR Simulator v207), first native two-visit history",
+    "scanner_source_commit": "294f69d737d7f5e7b18267460ccfb0f7d6eb7f4d",
+    "attempts": {
+      "024": "D0 blocked by XR_ERROR_RUNTIME_UNAVAILABLE (simulator self-update); no session, no export, no run manifest",
+      "026": "D0 JOIN_COMPLETE_FORMS_RECORDED, 212/212 plays, reconciliation faults [] (timing screens only)",
+      "027": "D7 JOIN_COMPLETE_FORMS_RECORDED under one audited visit_window deviation, 64/64 plays, faults [] (FRAME_BUDGET_SCREEN_FAILED only)"
+    },
+    "retained_with_manifests": {
+      "plan_sha256": "0705e8ac9d7bc1eca9280ce9cb455aeb5741a7756b3a4eba79f0a97dcdbdbaef",
+      "runs": [
+        "026",
+        "027"
+      ],
+      "exit_code": 3,
+      "result_sha256": "a44253e4b58718d94110fed69eb43a171f4bdf8bee7364e97ccaa212789b710d",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 2,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 276,
+        "audio_observations": 552,
+        "grammar_audio_events": 6,
+        "ledger_audio_references": 4208,
+        "authorized_heldout_requests": 8,
+        "heldout_callback_events": 16
+      }
+    },
+    "with_attempt_024_listed": {
+      "plan_sha256": "99be288b68e0804570878ebec712fea5acc073b5e552a156d1e56d9951ae59d2",
+      "runs": [
+        "024",
+        "026",
+        "027"
+      ],
+      "exit_code": 3,
+      "result_sha256": "af9330288ff13bb83c9318af03a14bb9320bd8a6d89137182adb3f849ee6f930",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "PINNED_RUN_MISSING"
+        ],
+        "visits_present": 2,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 276,
+        "audio_observations": 552,
+        "grammar_audio_events": 6,
+        "ledger_audio_references": 4208,
+        "authorized_heldout_requests": 8,
+        "heldout_callback_events": 16
+      }
+    },
+    "attempt_024_treatment": "A pinned run path that does not exist is skipped without reading or hash-checking it and adds PINNED_RUN_MISSING (diagnostic plan uses an all-zero placeholder hash).",
+    "claim": "No held-out replay or contamination across D0 and D7 (276 study requests, 8 authorized held-out requests). software_history_complete stays false only because both visits remain software-reconciliation incomplete on the simulator timing screens. No absence or acceptance claim; hashes only."
   }
 }
