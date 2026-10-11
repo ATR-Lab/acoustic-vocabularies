@@ -5,6 +5,13 @@ from collections import defaultdict
 
 from .records import exact, guid, hash_value, number, require, strict
 
+# Mirrors MenuRules.DisplayOffsets and MenuRules.BoundaryObservationMs: scheduled
+# display boundaries from the slot start (Instructions..Ended) and the bound on
+# a frame-late observation of one. Not a protocol or photon-timing tolerance.
+DISPLAY_PHASES = ["Instructions", "Audition", "Choice", "Selected", "Neutral", "Ended"]
+DISPLAY_BOUNDS = {"profile": [0, 6000, 30000, 45000, 58000, 60000], "atom": [0, 4000, 22000, 32000, 40000, 45000]}
+BOUNDARY_OBSERVATION_MS = 250
+
 
 def operator(chains, schedule_hash):
     accepted, incomplete = [], set()
@@ -270,7 +277,12 @@ def compare_yoked(active, yoked, active_file_hash):
         elif row["kind"] in {"display_request","display_changed"}:
             require(source["kind"] == row["kind"] and source["phase"] == row["phase"], "MOCK_YOKED_DISPLAY_SOURCE")
             displays=[r for r in grouped[row["menu_key"]] if r["kind"] == "display_changed" and r["phase"] == row["phase"]]
-            require(len(displays)==1 and abs(row["mono_ms"] - row["slot_start_mono_ms"] - (displays[0]["mono_ms"] - source["slot_start_mono_ms"])) <= 20, "MOCK_YOKED_DISPLAY_TIMING")
+            # Each run against its own scheduled boundary with the live/seal
+            # observation bound; two frame-late observations of the same
+            # deterministic schedule need not agree within 20 ms (#220).
+            scheduled = DISPLAY_BOUNDS["profile" if row["menu_key"] == "profile" else "atom"][DISPLAY_PHASES.index(row["phase"])]
+            late = row["mono_ms"] - row["slot_start_mono_ms"] - scheduled
+            require(len(displays)==1 and 0 <= late <= BOUNDARY_OBSERVATION_MS, "MOCK_YOKED_DISPLAY_TIMING")
         elif row["kind"] in {"choice_final","selection_verified"}:
             require(source["kind"] == row["kind"] and all(row[k] == source[k] for k in ("selected_index","defaulted","receipt_sha256")), "MOCK_YOKED_SELECTION")
         else: require(row["kind"] == source["kind"] == "menu_start", "MOCK_YOKED_EVENT_KIND")

@@ -28,7 +28,9 @@ namespace AcousticVocab.SelectionMenus
             MenuRules.Require(MenuRules.Id(meaningDisplayId),"MENU_DISPLAY_ID");this.meaningDisplayId=meaningDisplayId;
             this.context=context;this.options=(MenuOption[])options.Clone();this.persist=durableSink;this.replay=replay;observed=observedClock;profile=context.Item.TrialType=="profile_menu";
             offsets=replay==null?(profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000}):(double[])replay.OffsetsMs.Clone();
-            displayOffsets=replay?.DisplayOffsetsMs??(profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000});
+            // Audio replays the active onsets exactly; display transitions follow
+            // this run's own schedule (#220 follow-up), not active frame times.
+            displayOffsets=MenuRules.DisplayOffsets(profile);
             MenuRules.Require(options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_DURATION");
             if(replay!=null)
             {
