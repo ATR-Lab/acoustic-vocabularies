@@ -75,27 +75,93 @@ the menu event schema.
 Sealing requires all menus, three independently pinned candidate files, eight
 correlated requests/onset authorities/completions per menu, final selection and
 independently re-read store receipt, and all display transitions. The onset check
-uses the event's reported uncertainty, capped at 20 ms; display residuals use a
-separate 20 ms engineering check. Neither is evidence of acoustic timing or a new
+uses the event's reported uncertainty, capped at 20 ms. Display transitions and
+the final choice are observed on the first rendered frame at or after their
+boundary, so their stamps lag by up to a frame plus in-frame work. `MenuTimeline`
+refuses such an observation more than 250 ms after its boundary
+(`MENU_DISPLAY_LATE`/`MENU_DECISION_LATE`). The active and yoked seals and the
+yoked comparison apply the same bound, the limit already used for onset
+observation and the frame-gap fault. A check first discovered at the seal, after
+every menu's exposure, would end the visit without protecting any exposure.
+
+Each run is measured against its own scheduled boundaries (`MenuRules.DisplayOffsets`).
+The comparison is never between the active run's observed frame time and the
+yoked run's. Two late-frame observations of the same deterministic boundary can
+differ by up to the bound, so the former 20 ms active-to-yoked display
+comparison failed on frame jitter alone. That comparison was removed after the
+#220 follow-up. The yoked comparison (`MENU_YOKED_DISPLAY`) and the mock-visit
+reconciler (`MOCK_YOKED_DISPLAY_TIMING`) now require 0–250 ms after the yoked
+run's own boundary. Audio stays tight: a yoked play request must equal the
+recorded active onset exactly, and its onset must be within its own reported
+uncertainty (≤20 ms).
+
+The 20 ms display residual remains a separate engineering screen for active runs
+(`MENU_DISPLAY_TIMING_SCREEN_FAILED` in mock-visit reconciliation). None of
+these is evidence of acoustic or physical display timing or a new
 approved protocol tolerance. Incomplete, interrupted,
 late or malformed segments remain on disk but cannot authorize yoked replay.
 An interruption's event ID is also its `matching_deviation_id`; recovery never
 automatically repeats a partial exposure. Explicit reconstruction/owner review is
 needed before a replacement active sequence can be admitted.
 
+The [native rerun record](selection-menus-native-017.validation.json) covers #220.
+Simulator player `simulation-native-017` was built clean from a local test merge
+of main, #201, #199 and this change. It ran B V1 active with a fresh DEMO store
+and Resume at each block-boundary pause. The profile menu and all eight atom
+menus completed, and the ledger sealed (`menu_count` 9). The atomic-lessons
+preflight passed. Atomic lessons (8/8) and message lessons (8/8) followed.
+The visit then stopped in the second trained assessment item with the separate
+`ASSESSMENT_RESPONSE_LOG_MISSING`. Reconciliation verified integrity and
+recorded 123 of 123 requested plays with software completion. It no longer
+lists the unsealed-ledger reasons. It still reports the
+`MENU_DISPLAY_TIMING_SCREEN_FAILED` and frame-budget screens. This is
+simulator engineering evidence only.
+
 `MenuReplaySequence.Load` requires an independently pinned sealed active-file
 hash and active binding, verifies canonical bytes/hash chain/schema, independent
 assets and actual store receipts, and refuses age outside 0–24 hours. The session
-owner supplies the UTC time and explicit monotonic replay anchor. Recorded
-inter-menu gaps are retained, never added again on resume or compressed after a
-missed anchor. A missed anchored start faults before content creation or any
-exposure consumption; previous completed trial history remains intact.
+owner supplies the UTC time and explicit monotonic replay anchor.
+
+By maintainer decision (#247), the joined yoked owner does all of that work during
+the idle, unexposed preflight. `MenuReplaySequence.Preload` verifies the sequence
+without anchoring it (`MENU_REPLAY_UNANCHORED`), `YokedReplayAuthority.Preverify`
+runs it, and the yoked menu factory is created over that sequence. This happens
+before the preflight reports ready.
+
+The result is tied to a cheap fingerprint of its inputs: the pinned ledger file's
+size and time, and the store's state. Any change invalidates it, and the
+verification is redone at the preflight. A pinned-hash mismatch is refused there.
+The 24-hour age window is enforced again at Start.
+
+The operator Start does no ledger, audio or view work. It checks that the result
+is still current (`JOIN_YOKED_PREVERIFY_STALE` otherwise), writes the durable
+`yoked_anchor` record and anchors the sequence. In attempt 031 that work ran in
+the Start frame and stalled it about 260 ms, after which the menu prepare latched
+`CONTROL_QUEUED`. The health policy is unchanged: stale probes are not dropped at
+the pre-cue prepare.
+
+That anchor (the yoked start plus the configured lead) applies to the first menu
+block. By maintainer decision (#245), every later menu block is anchored at its
+own explicit boundary resume plus the same lead (`AnchorBlockAtResume`, a durable
+`yoked_anchor` record with policy `block_resume_plus_lead` and the block's menu
+keys). Recorded inter-menu gaps are kept exactly within a block. The active
+operator's pause between blocks is not replayed: in attempts 030/031 it was, and
+a slower yoked resume missed the anchor on every retry.
+
+A block is re-anchored only while none of its menus has been planned, so a
+refused resume can be retried and a started menu never moves. A missed anchored
+start still faults before content creation or any exposure consumption, and
+previous completed trial history remains intact.
 
 Yoked audio uses recorded onset offsets and stored final selection. Yoked display
-transitions use recorded observed offsets. Every yoked event references its
+transitions follow the same scheduled boundaries as the active run. The active
+run's observed display offsets are retained in the replay record but are not used
+as a yoked schedule. Every yoked event references its
 corresponding active source event. No active cursor or intermediate choice is
 copied. `CompareYoked`/`SealYoked` check independent hashes, meanings, role/unit
-bindings, all eight audio events, selected/defaulted outcome, relative gaps and
+bindings, all eight audio events, selected/defaulted outcome, relative gaps
+within each anchored block (`MENU_YOKED_PAUSE_MISMATCH`; the mock-visit
+reconciler applies the same rule per menu block) and
 bounded timing against that exact active sequence. A returned comparison means
 those checks passed; it does not assert a headset or acoustic measurement.
 

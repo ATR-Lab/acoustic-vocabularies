@@ -27,7 +27,7 @@ namespace AcousticVocab.SelectionMenus.Tests
             using var reader=new StreamReader(stream);var rows=new List<string>();string line;
             while((line=reader.ReadLine())!=null)rows.Add(line);return rows.ToArray();
         }
-        static List<MenuEvent> Events(MenuReplaySequence replay=null,string[] keys=null,double observedDelay=0)
+        static List<MenuEvent> Events(MenuReplaySequence replay=null,string[] keys=null,double observedDelay=0,Func<int,double> gapAfter=null)
         {
             var result=new List<MenuEvent>();keys??=Keys;double start=750;
             for(int menu=0;menu<keys.Length;menu++)
@@ -37,19 +37,31 @@ namespace AcousticVocab.SelectionMenus.Tests
                 timeline.PlayRequested+=(_,id,option,at)=>plays.Add((id,option,at));if(replay==null)timeline.SelectionRequested+=(index,unused)=>timeline.ConfirmSelection(index,Hash,start+(profile?45000:32000));timeline.Start(start-750);
                 for(double now=start;now<=start+item.SlotSeconds*1000+20;now+=10)
                 {clock=now;timeline.Tick(now);foreach(var play in plays.ToArray()){if(now>=play.at&&heard.Add(play.id))timeline.Onset(play.id,play.at,10,now);if(now>=play.at+play.option.Wave.SampleCount/48d&&done.Add(play.id))timeline.Completed(play.id,now);}}
-                Assert.That(timeline.Complete,Is.True);start+=item.SlotSeconds*1000+5000;
+                Assert.That(timeline.Complete,Is.True);start+=item.SlotSeconds*1000+(gapAfter?.Invoke(menu)??5000);
             }
             return result;
         }
         string Write(IReadOnlyList<MenuEvent> events,bool seal=true,MenuLedgerBinding binding=null)
         {string path=Path.Combine(directory,Guid.NewGuid().ToString("N")+".jsonl");using(var writer=new MenuLedger(path,binding??Binding(),created)){foreach(var row in events)writer.Append(row);if(seal)writer.Seal(Verification());}return path;}
         MenuReplaySequence Load(string path,DateTimeOffset? now=null,MenuLedgerVerification verification=null)=>MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),verification??Verification(),now??created.AddHours(1),1000,()=>0);
-        [Test]public void ExplicitJoinedAnchorIsDurableBeforeRealReplayLoadAndNeverReanchors()
+        // #247 maintainer decision: the replay is fully verified at the idle
+        // preflight; Start only checks freshness, records the anchor and anchors.
+        YokedReplayAuthority Authority(string path,string pin,Func<double> clock,Action<YokedAnchorRecord> persist,Func<string> inputs=null,MenuLedgerVerification verification=null,
+            MenuLedgerBinding binding=null,Func<DateTimeOffset> utc=null)
+            =>new YokedReplayAuthority(5000,new string('b',32),pin,binding?.ScheduleSha256??Hash,clock,persist,
+                ()=>MenuReplaySequence.Preload(path,pin,binding??Binding(),verification??Verification(),created.AddHours(1),clock),inputs??(()=>"unchanged"),utc??(()=>created.AddHours(1)));
+        sealed class CountingVerification
+        {
+            internal int Calls;
+            internal MenuLedgerVerification Value=>new MenuLedgerVerification(k=>{Calls++;return Options(k);},(k,i,h)=>{Calls++;return i==1&&h==Hash;},k=>{Calls++;return "DEMO-meaning";});
+        }
+        [Test]public void PreverifiedReplayIsAnchoredOnlyByTheDurableStartRecord()
         {
             string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));double now=1000;var records=new List<YokedAnchorRecord>();
-            var authority=new YokedReplayAuthority(5000,new string('b',32),pin,Hash,()=>now,records.Add,anchor=>
-            {Assert.That(records.Count,Is.EqualTo(1));Assert.That(records[0].AnchorMonoMs,Is.EqualTo(anchor));return MenuReplaySequence.Load(path,pin,Binding(),Verification(),created.AddHours(1),anchor,()=>now);});
-            string id=Guid.NewGuid().ToString("N");var replay=authority.BindForExplicitStart(id,2,"resume");
+            var authority=Authority(path,pin,()=>now,records.Add);authority.Preverify();
+            Assert.That(records,Is.Empty,"Verification writes no anchor");Assert.That(authority.Preverified,Is.True);Assert.That(authority.Prepared.Anchored,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.Prepared.MinimumGapBeforeMs(new SlotItem("DEMO-first","atom_menu",Keys[0],null,"selection","selection",false,45,8,1),1750)).Code,Is.EqualTo("MENU_REPLAY_UNANCHORED"));
+            string id=Guid.NewGuid().ToString("N");var replay=authority.BindForExplicitStart(id,2,"resume");Assert.That(replay,Is.SameAs(authority.Prepared));Assert.That(authority.Preverified,Is.False,"Consumed");
             Assert.That(records[0].OperatorRequestId,Is.EqualTo(id));Assert.That(records[0].ClockEpoch,Is.EqualTo(new string('b',32)));Assert.That(records[0].AnchorMonoMs,Is.EqualTo(6000));
             var first=new SlotItem("DEMO-first","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);
             Assert.That(replay.MinimumGapBeforeMs(first,1750),Is.EqualTo(4250));Assert.That(authority.Replay,Is.SameAs(replay));
@@ -57,18 +69,107 @@ namespace AcousticVocab.SelectionMenus.Tests
             now=6000;Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(first,now));Assert.That(records.Count,Is.EqualTo(1));
             var report=replay.CompareYoked(Events(replay),Binding("yoked"),Verification());Assert.That(report.AudioPlays,Is.EqualTo(32));
         }
-        [Test]public void FailedDurableAnchorNeverLoadsAndCannotRetryIntoANewClock()
+        // Attempts 030/031: one start anchor put the active operator's 2,952 ms
+        // boundary pause into the yoked schedule; a 4,093 ms yoked resume missed
+        // the next block's anchor and every later resume re-faulted. Each block
+        // is now anchored at its own resume; spacing inside a block stays exact.
+        static readonly string[] FirstBlock={Keys[0],Keys[1]},SecondBlock={Keys[2],Keys[3]};
+        static SlotItem MenuItem(string key)=>new SlotItem("DEMO-"+key,"atom_menu",key,null,"selection","selection",false,45,8,1);
+        const double ActivePause=2952;
+        [TestCase(4093)][TestCase(ActivePause)][TestCase(400)][TestCase(60000)]
+        public void YokedMenuBlocksStartAtTheirOwnBoundaryResume(double yokedPause)
         {
-            int loads=0;var authority=new YokedReplayAuthority(2000,Guid.NewGuid().ToString("N"),Hash,Hash,()=>100,_=>throw new IOException("Synthetic journal failure"),_=>{loads++;return null;});
-            Assert.Throws<IOException>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(loads,Is.Zero);
+            string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000)),pin=PcmWave.Hash(File.ReadAllBytes(path));double now=0;var records=new List<YokedAnchorRecord>();
+            var authority=Authority(path,pin,()=>now,records.Add);authority.Preverify();
+            var replay=authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start");double first=records[0].AnchorMonoMs;
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[0]),first-2000),Is.EqualTo(2000));now=first+45000;
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[1]),first+50000),Is.Zero,"Exact active spacing inside the first block");
+            // The yoked operator resumes the second block after its own pause.
+            now=first+50000+45000+yokedPause;
+            Assert.That(authority.AnchorBlockAtResume(Guid.NewGuid().ToString("N"),3,"resume",SecondBlock),Is.True);
+            Assert.That(records.Count,Is.EqualTo(2));Assert.That(records[1].Policy,Is.EqualTo("block_resume_plus_lead"));Assert.That(records[1].MenuKeys,Is.EqualTo(SecondBlock));
+            Assert.That((string)records[1].ToJson()["policy"],Is.EqualTo("block_resume_plus_lead"));Assert.That(records[1].AnchorMonoMs,Is.EqualTo(now+5000));
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[2]),now+2000),Is.EqualTo(3000),"Block anchored at its resume plus the yoked lead");
+            double blockAnchor=now+5000;now=blockAnchor+45000;
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[3]),blockAnchor+50000),Is.Zero,"Active spacing inside the block is preserved");
+            Assert.That(authority.AnchorBlockAtResume(Guid.NewGuid().ToString("N"),4,"resume",SecondBlock),Is.False,"A started block never moves");Assert.That(records.Count,Is.EqualTo(2));
+            // The yoked ledger: blocks separated by the yoked pause plus lead, exact inside.
+            var yoked=Events(replay,gapAfter:m=>m==1?yokedPause+5000:5000);
+            Assert.That(replay.CompareYoked(yoked,Binding("yoked"),Verification()).AudioPlays,Is.EqualTo(32));
+            using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in yoked)ledger.Append(row);
+            Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));
+        }
+        [Test]public void OneStartAnchorStillMissesASlowerBlockResume()
+        {
+            string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000));var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>1000+50000+45000+4093);
+            Assert.That(Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(MenuItem(Keys[2]),1000+50000+45000+4093+2000)).Code,Is.EqualTo("MENU_REPLAY_ANCHOR_MISSED"),"The 030 defect without a block anchor");
+        }
+        [TestCase(0,.001)][TestCase(2,-.001)][TestCase(2,250)]
+        public void DriftInsideAnAnchoredBlockIsStillRefused(int gapIndex,double drift)
+        {
+            string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000));double now=0;
+            var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>now);
+            Assert.That(replay.AnchorBlock(SecondBlock,200000),Is.True);
+            var yoked=Events(replay,gapAfter:m=>(m==1?4093:5000)+(m==gapIndex?drift:0)).Select(MenuJson.Event).ToList();
+            Assert.That(Assert.Throws<SessionFault>(()=>replay.CompareYokedRecords(yoked,Binding("yoked"),Verification())).Code,Is.EqualTo("MENU_YOKED_PAUSE_MISMATCH"));
+        }
+        [Test]public void BlockAnchorsMustBeContiguousKnownAndRetryableUntilPlanned()
+        {
+            string path=Write(Events());double now=500;var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>now);
+            Assert.Throws<SessionFault>(()=>replay.AnchorBlock(new[]{Keys[1],Keys[3]},9000),"Not contiguous");
+            Assert.Throws<SessionFault>(()=>replay.AnchorBlock(new[]{"K-zz"},9000),"Unknown key");
+            Assert.Throws<SessionFault>(()=>replay.AnchorBlock(SecondBlock,100),"Anchor in the past");
+            Assert.That(replay.AnchorBlock(SecondBlock,9000),Is.True);Assert.That(replay.AnchorBlock(SecondBlock,12000),Is.True,"A refused resume can be retried before any menu is planned");
+            Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[2]),11000),Is.EqualTo(1000));Assert.That(replay.AnchorBlock(SecondBlock,15000),Is.False);
+        }
+        [Test]public void FailedDurableAnchorNeverSchedulesAndCannotRetryIntoANewClock()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var authority=Authority(path,pin,()=>100,_=>throw new IOException("Synthetic journal failure"));authority.Preverify();
+            Assert.Throws<IOException>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(authority.Replay,Is.Null);Assert.That(authority.Prepared.Anchored,Is.False);
             Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"resume"));
         }
-        [Test]public void WrongIndependentActiveScheduleCannotBeAuthorizedByLedgerHeader()
+        [Test]public void WrongIndependentActiveScheduleIsRefusedAtPreflightBeforeAnyAnchor()
         {
             string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var wrong=new MenuLedgerBinding(Hash,Hash,Hash,new string('f',64),Hash,Hash,"V2","active",Keys);int writes=0;
-            var authority=new YokedReplayAuthority(5000,Guid.NewGuid().ToString("N"),pin,wrong.ScheduleSha256,()=>100,_=>writes++,anchor=>MenuReplaySequence.Load(path,pin,wrong,Verification(),created.AddHours(1),anchor,()=>100));
-            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(writes,Is.EqualTo(1));Assert.That(authority.Replay,Is.Null);
-            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start"));
+            var authority=Authority(path,pin,()=>100,_=>writes++,binding:wrong);
+            Assert.Throws<SessionFault>(()=>authority.Preverify());Assert.That(writes,Is.Zero);Assert.That(authority.Prepared,Is.Null);Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));Assert.That(writes,Is.Zero);
+        }
+        // #247 regressions: Start performs no ledger, audio or receipt verification;
+        // a changed input invalidates the preflight result and it is redone there;
+        // a tampered ledger is refused at preflight.
+        [Test]public void StartPerformsNoLedgerOrAudioVerification()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var counting=new CountingVerification();var records=new List<YokedAnchorRecord>();
+            var authority=Authority(path,pin,()=>100,records.Add,verification:counting.Value);authority.Preverify();
+            int verified=counting.Calls;Assert.That(verified,Is.GreaterThan(0));Assert.That(authority.Verifications,Is.EqualTo(1));
+            authority.Preverify();Assert.That(counting.Calls,Is.EqualTo(verified),"A current result is not redone");
+            File.Delete(path); // Start must not even read the ledger file
+            var replay=authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start");
+            Assert.That(counting.Calls,Is.EqualTo(verified),"No candidate audio, meaning or receipt verification at Start");Assert.That(authority.Verifications,Is.EqualTo(1));
+            Assert.That(records.Single().AnchorMonoMs,Is.EqualTo(5100));Assert.That(replay.Anchored,Is.True);
+        }
+        [Test]public void ChangedInputsInvalidateAndAreReverifiedAtPreflightNotAtStart()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));string inputs="store-1";var records=new List<YokedAnchorRecord>();
+            var authority=Authority(path,pin,()=>100,records.Add,()=>inputs);authority.Preverify();var prepared=authority.Prepared;
+            inputs="store-2";Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));Assert.That(records,Is.Empty,"A stale Start is refused, not consumed");
+            authority.Preverify();Assert.That(authority.Verifications,Is.EqualTo(2));Assert.That(authority.Prepared,Is.SameAs(prepared),"A factory holding the sequence stays bound");
+            Assert.That(authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),3,"start"),Is.SameAs(prepared));Assert.That(records.Count,Is.EqualTo(1));
+        }
+        [Test]public void TamperedLedgerIsRefusedAtPreflight()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));string inputs="original";var authority=Authority(path,pin,()=>100,_=>{},()=>inputs);authority.Preverify();
+            var bytes=File.ReadAllBytes(path);bytes[bytes.Length/2]^=1;File.WriteAllBytes(path,bytes);inputs="ledger-rewritten";
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.Preverify()).Code,Is.EqualTo("MENU_LEDGER_HASH"));Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));
+        }
+        [Test]public void PreverifiedReplayExpiresWithTheLedgerAgeWindow()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var utc=created.AddHours(1);var authority=Authority(path,pin,()=>100,_=>{},utc:()=>utc);authority.Preverify();
+            utc=created.AddHours(24).AddSeconds(1);Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));
         }
         [Test]public void SealedIndependentAssetBoundLedgerPreservesAllPlaysSourceIdsAndPauses()
         {
@@ -82,8 +183,20 @@ namespace AcousticVocab.SelectionMenus.Tests
          using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in rows)ledger.Append(row);Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));}
         [Test]public void WrongYokedMeaningBindingOrSourceEventCannotMatch()
         {var replay=Load(Write(Events()));var rows=Events(replay).Select(MenuJson.Event).ToList();rows[0]["yoked_source_event_id"]=Guid.NewGuid().ToString("N");Assert.Throws<SessionFault>(()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification()));}
-        [Test]public void RecordedDisplayOffsetsRemainAuthoritativeInYokedRun()
-        {var active=Events(observedDelay:10);var replay=Load(Write(active));var yoked=Events(replay);var compared=replay.CompareYoked(yoked,Binding("yoked"),Verification());Assert.That(compared.AudioPlays,Is.EqualTo(32));Assert.That(yoked.First(x=>x.Kind=="display_changed").MonoMs-yoked.First().SlotStartMonoMs,Is.EqualTo(10));}
+        // #220 follow-up: display transitions follow each run's own schedule. The
+        // active run's frame-late observations are evidence, never the yoked
+        // schedule, so two late observations of one boundary are not compounded.
+        [TestCase(20.6)][TestCase(249)]
+        public void YokedDisplaysFollowTheirOwnScheduleThroughTimelineCompareAndSeal(double late)
+        {
+            var replay=Load(Write(Events(observedDelay:late)));var yoked=Events(replay,observedDelay:late);
+            Assert.That(yoked.First(x=>x.Kind=="display_changed").MonoMs-yoked.First().SlotStartMonoMs,Is.EqualTo(late).Within(1e-6),"Scheduled at the nominal boundary, observed one late frame after it");
+            Assert.That(replay.CompareYoked(yoked,Binding("yoked"),Verification()).AudioPlays,Is.EqualTo(32));
+            using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in yoked)ledger.Append(row);
+            Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));
+        }
+        [Test]public void YokedDisplayBeyondTheObservationBoundFaultsLive()
+        {var replay=Load(Write(Events()));Assert.That(Assert.Throws<SessionFault>(()=>Events(replay,observedDelay:251)).Code,Is.EqualTo("MENU_DISPLAY_LATE"));}
         [TestCase(false,2,true)][TestCase(false,19,false)][TestCase(true,2,true)][TestCase(true,19,false)]
         public void ActiveAndYokedOnsetsAreBoundedByTheirOwnUncertainty(bool yoked,double residual,bool accepted)
         {
@@ -173,6 +286,143 @@ namespace AcousticVocab.SelectionMenus.Tests
                 public void RequestCue(SlotContext value,INovelSlotAuthorization permit)=>Timeline.Start(clock.NowMs);
                 public void OpenResponse(SlotContext value){}public void CloseResponse(SlotContext value){}public void RequestReset(SlotContext value){}
                 public void Interrupt(string code)=>Timeline?.Interrupt(clock.NowMs);
+            }
+        }
+        // Native attempt simulation-test-B-V1-016-attr-005: profile block, the
+        // engine's block-boundary pause, explicit resume, eight atom menus whose
+        // display and final-choice events were first observed 20-21 ms after
+        // their boundaries on 11-22 ms Simulator frames, then the post-menu seal.
+        const double FramePeriodMs=11.1,BoundaryHitchMs=14.6,InFrameLatencyMs=6;
+        [Test]public void FrameLateBoundaryEventsThroughRealEngineSealAfterBlockPauseAndExplicitResume()
+        {
+            var keys=new[]{"profile","K-r2","Q-r2","K-a2","Q-a1","K-r1","Q-r1","K-a1","Q-a2"};
+            var binding=new MenuLedgerBinding(Hash,Hash,Hash,Hash,Hash,Hash,"V1","active",keys);string path=Path.Combine(directory,"frame-late.jsonl");
+            var profile=new SlotItem("DEMO-PM-01","profile_menu",null,null,"selection","selection",false,60,8,1);
+            var atoms=keys.Skip(1).Select((key,i)=>new SlotItem("DEMO-AM-0"+(i+1),"atom_menu",key,null,"selection","selection",false,45,8,1)).ToArray();
+            var schedule=new VisitSchedule(Hash,Hash,"DEMO","V1",true,new[]{new ScheduleBlock("profile_menu",new[]{profile}),new ScheduleBlock("atom_menus",atoms)});
+            var clock=new Clock();var journal=new Journal();var leases=new List<FrameLease>();
+            using(var ledger=new MenuLedger(path,binding,created))
+            {
+                Func<ModuleConstructionScope,ISlotContentFactory> route=_=>{var lease=new FrameLease(clock,ledger);leases.Add(lease);return lease;};
+                var routes=new Dictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>>{["profile_menu"]=route,["atom_menus"]=route};
+                using var mux=new ExclusiveContentMultiplexer(schedule,clock,routes);var engine=new FixedSlotEngine(schedule,clock,journal,mux);
+                mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();RunFrames(engine,clock,leases);
+                Assert.That(engine.Status,Is.EqualTo(SessionState.Paused),"Block boundary pause: the operator command is Resume, not Start");
+                Assert.That(engine.CurrentBlock,Is.EqualTo("atom_menus"));Assert.That(engine.CompletedCounts,Is.EqualTo(new[]{1,0}));
+                clock.Time+=233000;mux.PrepareBlockAtBoundary(engine);engine.ConfirmResume();RunFrames(engine,clock,leases);
+                Assert.That(engine.Status,Is.EqualTo(SessionState.Complete));Assert.That(engine.CompletedCounts,Is.EqualTo(new[]{1,8}));
+                Assert.That(leases.Count,Is.EqualTo(2));Assert.That(leases.Sum(x=>x.Interrupts),Is.Zero);
+                Assert.That(journal.Records.Select(x=>x.Event),Does.Contain("session_paused").And.Contain("operator_resume"));
+                var rows=ReadLiveLines(path).Skip(1).Select(x=>(JObject)JObject.Parse(x)["record"]).ToArray();
+                Assert.That(rows.Any(x=>(string)x["kind"]=="menu_interrupted"),Is.False);
+                var observed=rows.Where(x=>(string)x["kind"] is "display_request" or "display_changed" or "choice_final").ToArray();Assert.That(observed.Length,Is.EqualTo(9*13));
+                foreach(var row in observed)
+                {
+                    bool isProfile=(string)row["menu_key"]=="profile",decision=(string)row["kind"]=="choice_final"||(string)row["phase"]=="Selected";double[] bounds=isProfile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000};
+                    double due=(string)row["kind"]=="choice_final"?(double)row["expected_mono_ms"]:(double)row["slot_start_mono_ms"]+bounds[(int)(MenuPhase)Enum.Parse(typeof(MenuPhase),(string)row["phase"])-1],residual=(double)row["mono_ms"]-due;
+                    if(isProfile&&decision)Assert.That(residual,Is.InRange(InFrameLatencyMs,FramePeriodMs+InFrameLatencyMs+1e-6),"Profile decision lands on an ordinary frame");
+                    else Assert.That(residual,Is.EqualTo(BoundaryHitchMs+InFrameLatencyMs).Within(1e-6),"Every other boundary observation exceeds the former 20 ms seal-only check");
+                }
+                Assert.That(BoundaryHitchMs+InFrameLatencyMs,Is.GreaterThan(20).And.LessThan(MenuRules.BoundaryObservationMs));
+                Assert.DoesNotThrow(()=>ledger.Seal(Verification()),"Post-menu preflight seal accepts what the live timeline accepted");
+                Assert.Throws<SessionFault>(()=>ledger.Append(new MenuEvent("menu_start",new SlotContext(atoms[0],clock.Time+1000,null),clock.Time,clock.Time+1000,meaningDisplayId:"DEMO-meaning")),"A sealed ledger never reopens");
+            }
+            var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),binding,Verification(),created.AddHours(1),1000,()=>0);
+            Assert.That(replay.For(atoms[4]).DisplayOffsetsMs,Is.EqualTo(new[]{0d,4000,22000,32000,40000,45000}.Select(x=>x+BoundaryHitchMs+InFrameLatencyMs)).Within(1e-6));
+        }
+        static void RunFrames(FixedSlotEngine engine,Clock clock,IEnumerable<FrameLease> leases)
+        {
+            for(int frame=0;engine.Status==SessionState.Running;frame++)
+            {
+                Assert.That(frame,Is.LessThan(100000));double next=clock.Time+FramePeriodMs;
+                foreach(var content in leases.SelectMany(x=>x.Live).Where(x=>x.Timeline!=null))foreach(double offset in content.Boundaries)
+                {double boundary=content.Context.OnsetMonoMs+offset;if(boundary>clock.Time&&boundary<=next)next=Math.Max(next,boundary+BoundaryHitchMs);}
+                clock.Time=next;engine.Tick();
+            }
+        }
+        [TestCase("display")][TestCase("decision")]
+        public void BoundaryObservedBeyondBoundFaultsLiveAndSegmentStaysUnsealable(string late)
+        {
+            string path=Path.Combine(directory,"late-"+late+".jsonl");using var ledger=new MenuLedger(path,Binding(),created);
+            var item=new SlotItem("DEMO-late","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);double clock=0,lag=0;var views=new List<MenuPhase>();int commits=0;
+            var timeline=new MenuTimeline(new SlotContext(item,750,null),Options(Keys[0]),"DEMO-meaning",ledger.Append,null,()=>clock+lag);
+            var plays=new List<(string id,MenuOption option,double at)>();var heard=new HashSet<string>();var done=new HashSet<string>();
+            timeline.PlayRequested+=(_,id,option,at)=>plays.Add((id,option,at));timeline.SelectionRequested+=(_,__)=>commits++;timeline.DisplayChanged+=(phase,_)=>views.Add(phase);
+            timeline.Start(0);double boundary=late=="display"?750:750+32000;
+            for(clock=10;clock<boundary;clock+=10)
+            {timeline.Tick(clock);foreach(var play in plays.ToArray()){if(clock>=play.at&&heard.Add(play.id))timeline.Onset(play.id,play.at,10,clock);if(clock>=play.at+play.option.Wave.SampleCount/48d&&done.Add(play.id))timeline.Completed(play.id,clock);}}
+            int shown=views.Count;clock=boundary;lag=MenuRules.BoundaryObservationMs+.001;
+            var fault=Assert.Throws<SessionFault>(()=>timeline.Tick(clock));Assert.That(fault.Code,Is.EqualTo(late=="display"?"MENU_DISPLAY_LATE":"MENU_DECISION_LATE"));
+            Assert.That(views.Count,Is.EqualTo(shown),"The late transition is refused before the view changes");Assert.That(commits,Is.Zero,"No store commit follows a refused decision");
+            timeline.Interrupt(clock);Assert.That(timeline.Interrupted,Is.True);
+            Assert.That((string)JObject.Parse(ReadLiveLines(path).Last())["record"]["kind"],Is.EqualTo("menu_interrupted"));
+            Assert.Throws<SessionFault>(()=>ledger.Seal(Verification()),"A started, refused segment remains unsealable");
+        }
+        [TestCase("Neutral",20.6,null)][TestCase("Neutral",250,null)][TestCase("Neutral",250.001,"MENU_LEDGER_DISPLAY")]
+        [TestCase("Selected",20.6,null)][TestCase("Selected",250,null)][TestCase("Selected",250.001,"MENU_LEDGER_TIMING")]
+        public void ActiveSealUsesTheLiveObservationBoundForFrameLateBoundaryEvents(string phase,double residual,string refusal)
+        {
+            var records=Events().Select(MenuJson.Event).ToList();string key=Keys[1];
+            double boundary=MenuJson.Number(records.First(x=>(string)x["menu_key"]==key)["slot_start_mono_ms"])+(phase=="Neutral"?40000:32000);
+            var moved=records.Where(x=>(string)x["menu_key"]==key&&MenuJson.Number(x["mono_ms"])==boundary).ToArray();Assert.That(moved.Length,Is.EqualTo(phase=="Neutral"?2:4));
+            foreach(var row in moved)row["mono_ms"]=boundary+residual;
+            TestDelegate validate=()=>MenuReplaySequence.ValidateRecords(records,Binding(),Verification());
+            if(refusal==null)Assert.DoesNotThrow(validate);else Assert.That(Assert.Throws<SessionFault>(validate).Code,Is.EqualTo(refusal));
+        }
+        [TestCase("Neutral",20.6,null)][TestCase("Neutral",249,null)][TestCase("Neutral",251,"MENU_YOKED_DISPLAY")]
+        [TestCase("Selected",20.6,null)][TestCase("Selected",249,null)][TestCase("Selected",251,"MENU_YOKED_DISPLAY")]
+        public void YokedDisplayIsBoundedAgainstItsOwnScheduleNotActiveObservations(string phase,double residual,string refusal)
+        {
+            // Every active boundary was itself observed 249 ms late; the yoked
+            // observation is compared with its own schedule, not with that frame.
+            string key=Keys[1];var replay=Load(Write(Events(observedDelay:249)));var rows=Events(replay).Select(MenuJson.Event).ToList();
+            double boundary=MenuJson.Number(rows.First(x=>(string)x["menu_key"]==key)["slot_start_mono_ms"])+(phase=="Neutral"?40000:32000);
+            var moved=rows.Where(x=>(string)x["menu_key"]==key&&MenuJson.Number(x["mono_ms"])==boundary).ToArray();Assert.That(moved.Length,Is.EqualTo(phase=="Neutral"?2:4));
+            foreach(var row in moved)row["mono_ms"]=boundary+residual;
+            TestDelegate compare=()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification());
+            if(refusal==null)Assert.DoesNotThrow(compare);else Assert.That(Assert.Throws<SessionFault>(compare).Code,Is.EqualTo(refusal));
+        }
+        [TestCase(2,true)][TestCase(2.001,false)]
+        public void YokedAudioOnsetStaysTightWhileDisplaysUseTheObservationBound(double drift,bool accepted)
+        {
+            var replay=Load(Write(Events()));var rows=Events(replay,observedDelay:249).Select(MenuJson.Event).ToList();
+            var onset=rows.First(x=>(string)x["kind"]=="onset_authority");onset["expected_mono_ms"]=(double)onset["expected_mono_ms"]+drift;onset["onset_uncertainty_ms"]=2;
+            TestDelegate compare=()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification());
+            if(accepted)Assert.DoesNotThrow(compare);else Assert.That(Assert.Throws<SessionFault>(compare).Code,Is.EqualTo("MENU_YOKED_TIMING"));
+        }
+        sealed class FrameLease:ISlotContentFactory,ISessionContentPump,IDisposable
+        {
+            readonly Clock clock;readonly MenuLedger ledger;internal readonly List<FrameContent> Live=new List<FrameContent>();public int Interrupts;bool disposed;
+            public FrameLease(Clock clock,MenuLedger ledger){this.clock=clock;this.ledger=ledger;}
+            public ISlotContent Create(SlotItem item){var content=new FrameContent(clock,ledger);Live.Add(content);return content;}
+            // Retires completed menus before disposal, as MenuContentFactory does.
+            public void Pump(){foreach(var content in Live.ToArray())content.Tick(clock.Time);Live.RemoveAll(x=>x.Timeline!=null&&x.Timeline.Complete);}
+            public void Dispose(){if(disposed)return;disposed=true;foreach(var content in Live){Interrupts++;content.Interrupt("SYNTHETIC_LEASE_RETIRED");}}
+        }
+        sealed class FrameContent:ISlotContent
+        {
+            readonly Clock clock;readonly MenuLedger ledger;readonly List<(string id,MenuOption option,double at)> plays=new List<(string id,MenuOption option,double at)>();
+            readonly HashSet<string> heard=new HashSet<string>(),done=new HashSet<string>();int? pending;bool reset;public MenuTimeline Timeline;public SlotContext Context;
+            public FrameContent(Clock clock,MenuLedger ledger){this.clock=clock;this.ledger=ledger;}
+            // Boundaries first observed by a late frame. The profile decision
+            // keeps an ordinary frame so, as in attr-005, the first pre-fix seal
+            // failure is the display check (atom decisions are late as well).
+            public double[] Boundaries=>Context.Item.TrialType=="profile_menu"?new[]{0d,6000,30000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000};
+            public void Prepare(SlotContext value)
+            {
+                Context=value;Timeline=new MenuTimeline(value,Options(value.Item.TrialType=="profile_menu"?"profile":value.Item.ContentId),"DEMO-meaning",ledger.Append,null,()=>clock.Time+InFrameLatencyMs);
+                Timeline.PlayRequested+=(_,id,option,at)=>plays.Add((id,option,at));Timeline.SelectionRequested+=(index,_)=>pending=index;
+            }
+            public SlotReadiness Readiness=>new SlotReadiness(true,true,true,true,true,true,true,true);
+            public bool ResetComplete=>reset;
+            public void RequestCue(SlotContext value,INovelSlotAuthorization permit)=>Timeline.Start(clock.Time);
+            public void OpenResponse(SlotContext value){}public void CloseResponse(SlotContext value){}public void RequestReset(SlotContext value)=>reset=true;
+            public void Interrupt(string code)=>Timeline?.Interrupt(clock.Time);
+            internal void Tick(double now)
+            {
+                if(pending.HasValue){Timeline.ConfirmSelection(pending.Value,Hash,now);pending=null;}
+                Timeline.Tick(now);
+                foreach(var play in plays.ToArray()){if(now>=play.at&&heard.Add(play.id))Timeline.Onset(play.id,play.at,10,now);if(now>=play.at+play.option.Wave.SampleCount/48d&&done.Add(play.id))Timeline.Completed(play.id,now);}
             }
         }
         [Test]public void PartialOrExpiredOrFutureOrWrongReceiptLedgerCannotReplay()
