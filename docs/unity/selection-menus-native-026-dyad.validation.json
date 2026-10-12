@@ -1,0 +1,661 @@
+{
+  "scope": "Native SIMULATION_TEST Study B V1 dyad rerun (active then yoked) on isaac2 for #245/#246/#247 via #248/#251, #250 and #249; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-12",
+  "refs": [
+    "#245",
+    "#246",
+    "#247",
+    "#81",
+    "#82"
+  ],
+  "host_load": "isaac2 load average 0.00 before the active run; another session's GoStdTests-test rose to 152-181% CPU (load average 2-3.5) during the yoked runs and was left untouched; Isaac publication fell to 25.8-28.8 Hz",
+  "player": {
+    "build_id": "simulation-native-026",
+    "source_commit": "0d1892f23c2e61412ed7207ddafce601831a62e2",
+    "composition": "c5c2e7a (player 025) + #251 9e431902215464787d6b352256e1befa05d1c5f6 (includes #248 5437073; merge b4f8019) + #250 312ae6f254ead002c4deba5934f72a3b776a14eb (merge 0d1892f); no conflicts; local test merges, not pushed",
+    "build_manifest_sha256": "d24541dfa43397b403e8adbab29949c36d034dcf1448b18c77c885d9906b7f0f",
+    "dirty_source": false
+  },
+  "tooling": {
+    "source_commit": "e9d3b365ceb7057202804c623d76d03e511d4835",
+    "composition": "82c948c + #249 171ba47568395fea81623bacd96587176fa62824; tests/test_mock_visit*.py 99 passed, 1 skipped"
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "launch": "--observer-prim-only"
+  },
+  "staging": {
+    "unit": "B-C01",
+    "active": "B-C01-M1",
+    "yoked": "B-C01-M2",
+    "station_headset_unit_id": "meta-xr-simulator-v207",
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "active_choice": "fresh active V1 with the new player (029's ledger was within 24 h but from player 025)",
+    "yoked_start": {
+      "policy": "operator_start_plus_lead",
+      "lead_ms": 5000
+    },
+    "snapshot_file_sha256": "3435b4815d3a30dfd798ae2cf329524b42d76714b8664e1b3d2fbd247dd72179"
+  },
+  "active": {
+    "simulation-test-B-V1-026-C01A-isaac2-032": {
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "menu": 9,
+        "panel": 30,
+        "rating": 5
+      },
+      "stall_checks": {
+        "sample_rows": 24815,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 980826.5,
+            "gap_ms": 1562.1,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 13,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 85,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 134,
+        "callback_observed_plays": 134,
+        "software_completed_plays": 134,
+        "content_hash_verified_plays": 134,
+        "completed_opportunities": 39,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "5e4569fe371c3ce5c9f3f207270b793f175f48d132de2b753b82d3122ac1edb4",
+        "events-0000.local.jsonl": "3ffa5bbc0b88b6f30e0320a531a2558a828c2a30083307a337b2263e9ed94c34",
+        "native-result.local.json": "43f802fe6e366b5fb58d6619a59092d8147fcafe95692b269998d6bf0c1b5ab4",
+        "export manifest.json": "c4a036d6a5c7ecc2e3dcb5bcedb0d644e57b1a57e8cc00030d49b0d948ad58e9",
+        "mock-run.manifest.json": "27d091e801f479804e28c27f2bf0e0a641575d0b33ba5fee4fa19d6aacabee77",
+        "reconciliation.local.json": "30b7b5da394cdf957be08d3e0b21c60b8d121b1ce30fd86ffd7e9d5581c3c437",
+        "process-result.local.json": "5ba38fb49be4f10e7f5c6e91e0fc1efd5a7d1967b0f0334fa4276e788b1c990e",
+        "native.log": "409116a3fdb5035ee8013509e1de24fa36ff5effbd7d749781a2fbbe5d7cdb3a",
+        "launch-spec.local.json": "7a40bf8e38efa79e454fe1833a26a3683e544a774c7267c59254c94881063fc3",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+        "operator-logs/foundation-10806ae313744bf5889f24aca5ca2aae.jsonl": "ffa77a44e97c2cd6be6d2948607fa25288ea1f1885712f64280867780305e940",
+        "operator-logs/foundation-34774b0235ce4077947d694015931787.jsonl": "6a8d10e055de4fc54ff7c89b32452e78340d24b352b3254d2acee5f5c04f5500",
+        "operator-logs/panel-5ecad5705ee54b1aaa2ef15ab7a1cd8f.jsonl": "0523463ac33da155da242932a7c09df227fd4947972a227067c04e425be09a8c",
+        "operator-logs/sample-age-da3d2ef25bba42c9bc1eec5291cd71b7.csv": "52346c685e6afef9e5bd6ef3cfd149f840c3af002a8541300bfe3c91462e16fd",
+        "operator-logs/shutdown-0b865d597de04e23acf52af912d4f098.local.jsonl": "6e1beda3dfdf04a93c9cbdd10bffe72030a8fa52f526373f076c4afb4fcdadbc",
+        "foreground.local.log": "e5dfe2d91ea2f39c8e0c01bc704dfcc4dcabfe2838396b5e464f94af81310b5c"
+      },
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 27.84,
+        "publish_interval_ms": {
+          "median": 32.1,
+          "max": 148.8
+        },
+        "physics_steps": 36250,
+        "end_reason": "private_stop",
+        "fault": null
+      },
+      "yoked_modules": [],
+      "control_queued_rows": 0,
+      "item_fault_counts": {},
+      "ledger_record_counts": {
+        "header": 1,
+        "menu_start": 9,
+        "display_request": 54,
+        "display_changed": 54,
+        "play_request": 72,
+        "onset_authority": 72,
+        "play_complete": 72,
+        "choice_revised": 9,
+        "choice_final": 9,
+        "selection_verified": 9,
+        "sealed": 1
+      },
+      "ledger_rows_with_yoked_source": 0,
+      "boundary_pause_profile_to_atom_ms": 2775,
+      "sealed_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380"
+    }
+  },
+  "yoked": {
+    "simulation-test-B-V1-026-C01Y-isaac2-033": {
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "panel": 30,
+        "rating": 5
+      },
+      "stall_checks": {
+        "sample_rows": 25119,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 15527.4,
+            "gap_ms": 370.9,
+            "stall_records": [
+              {
+                "gap_ms": 455.6,
+                "slow_flushes": 0,
+                "last_stage": "source_late_update"
+              }
+            ]
+          },
+          {
+            "start_ms": 997577.3,
+            "gap_ms": 1581.6,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [
+          {
+            "observed_mono_ms": 15928.7,
+            "gap_ms": 455.6,
+            "slow_flushes": 0,
+            "gc": [
+              34,
+              34,
+              34
+            ],
+            "stages": [
+              "store_pump",
+              "assessment_boundary",
+              "staged_pump",
+              "engine_tick",
+              "update_tail",
+              "source_late_update"
+            ]
+          }
+        ],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 16,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 3,
+          "STATE_STALE": 3,
+          "STATE_RECOVERED": 2,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 86,
+          "STATE_SEQUENCE_GAP": 2,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 86,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 1
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 134,
+        "callback_observed_plays": 134,
+        "software_completed_plays": 134,
+        "content_hash_verified_plays": 134,
+        "completed_opportunities": 39,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "ACTIVE_LEDGER_COMPARISON_REQUIRED",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "03c864b608ad058e90d05bd83bb78da9ebec8ee4fdab40968e73af7e31c9b0ad",
+        "events-0000.local.jsonl": "ec99e08b046a8600c29c4993f7109cc378b4e75c7eed155b8656dd45531a2ac4",
+        "native-result.local.json": "40171b03488224d05b992c4f6f6844bfb23550a8e1af06aedbe30e7fc18e28b0",
+        "export manifest.json": "bf8a70aa6583878a483a7931961325ea599aa9417e81d46af3bd6845f5b751cb",
+        "mock-run.manifest.json": "53c4cd5f616b6885be7f7021538f47aa7be472dfe805d71395e7aa9ff35a8025",
+        "reconciliation.local.json": "3ff35be873db025d7afd60fb7ee9d5bc21e78a3383c8ada6e7d90d9d2087cad9",
+        "process-result.local.json": "e05f81a400b5c09951261e7b722b8e512f27fb41a797c7c1bb3e641201717281",
+        "native.log": "1c3894de753b4a1c5cffd088e15ae96343241262d4d25b480f6b61b26dbbba7c",
+        "launch-spec.local.json": "18695ee583159b7193cbbf16e0eb70e17ab452b9f235bb1d35e9f8f6858a852b",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "cca95d45853a2f42139169faf8ff3d08e6f785996295237aabe93138b908e425",
+        "operator-logs/foundation-44f71f89497b426bb108703def118fb5.jsonl": "b0b671139b6589510681d59afd7eb9a538691369dce1a8f0a8acfcb3dc6a5937",
+        "operator-logs/foundation-c7a90e955f314ba3b3a4180e89fe0c2e.jsonl": "cb02e69e55a7cd9ee4ab71df8ff4dc4f2f4dcf40274e09676cd05f413e8d7cd6",
+        "operator-logs/panel-911bcd428217453188f99e02d6b22977.jsonl": "c4bcd532e36b3d0e36614726104012f67404f8a4e0b050b63f84205d356d479d",
+        "operator-logs/sample-age-2b80185bdff04d51b7a5df40886676e3.csv": "48bddce0360fac83785e79c0e852dc77f904f467a1236913eaffa64242b57b91",
+        "operator-logs/shutdown-2c8d29b6b85c4bf2b165920fe53b750d.local.jsonl": "e61f9f97fc8c278611f1cc47af1d98d8383eae924a70b3f641e0ecab8bd47eb0",
+        "foreground.local.log": "e6a942697a6bd4c830be9d067e897ffcaad7d6eb7e0b2a41f40025daed141e44"
+      },
+      "console_config_sha256": "d88d689562858180d9f7a2af0fcb2b0cd8eb82f81ffc2301b1ec274611c8dae3",
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 28.78,
+        "publish_interval_ms": {
+          "median": 31.3,
+          "max": 102.1
+        },
+        "physics_steps": 37726,
+        "end_reason": "private_stop",
+        "fault": null
+      },
+      "yoked_modules": [
+        {
+          "kind": "yoked_replay_preverified",
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "sequence": 10
+        },
+        {
+          "kind": "main_thread_stall",
+          "gap_ms": 455.5891999999985,
+          "status": "JOIN_PREFLIGHT",
+          "sequence": 12
+        },
+        {
+          "kind": "yoked_anchor",
+          "policy": "operator_start_plus_lead",
+          "command": "start",
+          "requested_mono_ms": 32657.159999999996,
+          "anchor_mono_ms": 37657.159999999996,
+          "lead_ms": 5000,
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "sequence": 14
+        },
+        {
+          "kind": "yoked_anchor",
+          "policy": "block_resume_plus_lead",
+          "command": "resume",
+          "requested_mono_ms": 106697.2259,
+          "anchor_mono_ms": 111697.2259,
+          "lead_ms": 5000,
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "sequence": 26
+        },
+        {
+          "kind": "yoked_sealed",
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "menus": 9,
+          "audio_plays": 72,
+          "sequence": 62
+        }
+      ],
+      "control_queued_rows": 0,
+      "item_fault_counts": {},
+      "ledger_record_counts": {
+        "header": 1,
+        "menu_start": 9,
+        "display_request": 54,
+        "display_changed": 54,
+        "play_request": 72,
+        "onset_authority": 72,
+        "play_complete": 72,
+        "choice_final": 9,
+        "selection_verified": 9,
+        "sealed_yoked": 1
+      },
+      "ledger_rows_with_yoked_source": 351,
+      "operator": {
+        "start_after_ready_s": 15.5,
+        "profile_to_atom_resume_s": 8.53,
+        "other_boundary_resumes_s": "0.72-0.82",
+        "note": "atom->atomic boundary: first two fast Resumes answered paused and start_blocked, the third ran (no fault)"
+      }
+    },
+    "simulation-test-B-V1-026-C01Y-isaac2-034": {
+      "native_status": "MENU_REPLAY_ANCHOR_MISSED",
+      "native_result": {
+        "status": "MENU_REPLAY_ANCHOR_MISSED",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1
+      },
+      "stall_checks": {
+        "sample_rows": 21340,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 15150.3,
+            "gap_ms": 306.6,
+            "stall_records": [
+              {
+                "gap_ms": 423.3,
+                "slow_flushes": 0,
+                "last_stage": "source_late_update"
+              }
+            ]
+          }
+        ],
+        "main_thread_stall_records": [
+          {
+            "observed_mono_ms": 15507.6,
+            "gap_ms": 423.3,
+            "slow_flushes": 0,
+            "gc": [
+              34,
+              34,
+              34
+            ],
+            "stages": [
+              "store_pump",
+              "assessment_boundary",
+              "staged_pump",
+              "engine_tick",
+              "update_tail",
+              "source_late_update"
+            ]
+          }
+        ],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 7,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 1,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 2,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 215,
+          "STATE_SEQUENCE_GAP": 1,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 215,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 24,
+        "callback_observed_plays": 24,
+        "software_completed_plays": 24,
+        "content_hash_verified_plays": 24,
+        "completed_opportunities": 3,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "JOIN_HOST_DISABLED",
+          "MENU_REPLAY_ANCHOR_MISSED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "ACTIVE_LEDGER_COMPARISON_REQUIRED",
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "GRAMMAR_COMPLETION_MISSING",
+          "MENU_DISPLAY_COVERAGE_INCOMPLETE",
+          "MENU_LEDGER_UNSEALED",
+          "MENU_SEAL_MISSING",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "STORE_FINAL_FRESH_VERIFICATION_MISSING",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": false
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "8bca74cef8b1f48ff6cf171f9ffe5ca74c9d7bed8313e6fe7957439c7925f49c",
+        "events-0000.local.jsonl": "2578353fc03e3c325c43d8af702066820e2c240ca8a198f912c2488e3ee17aee",
+        "native-result.local.json": "5d6b79055d45857509ae1df720d2869e9bb15dc9849910d6e1f561b48fb903dd",
+        "export manifest.json": "b8b99e7687da591e447d0e1e69094053b7c91518fc56611db68cabd7f969f002",
+        "mock-run.manifest.json": "1da357225bbda33994063208a0990fa3b61472fc0f4aca1852afa6efb7de15b3",
+        "reconciliation.local.json": "66673b04e3350f26d54ec30ccda33f6896db18bd3930cf00d6f7905963735524",
+        "process-result.local.json": "d36e2ab0fb623149e8b8c1f85dab344edcd088f0fe47f13a3d583bbdfe2bc7c4",
+        "native.log": "5d28a1d3230c9664ca8d04da866611da46d3412aba9fab0773539127df46faa3",
+        "launch-spec.local.json": "978f408aa1942603eb9efbf424559f8d187a77b6ec1681e425538f9dfe2a8932",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "29a99650fe97c5ca98381aa80718b01508f739d6c77a2e4e0d69df4749a31384",
+        "operator-logs/foundation-3ec0fe975f5943f89f9b3af5ad978d7c.jsonl": "956a5d41b4dde10d47a39d0a511d86cb9a3ed964169b453afd6d67ea0aaed6df",
+        "operator-logs/foundation-a39869bcac76442bb5d1e6358e95ce40.jsonl": "52113fbefda8a99ee05f34a80e3f524f94a6398ce81ca59c52cf80a073f5c89c",
+        "operator-logs/panel-d53c195460424e92819c95df5193aec4.jsonl": "874492e7fc4bf0449b7f604641e8daf59321b9fa390934230089aca092e3923b",
+        "operator-logs/sample-age-0acc8a2c314c4eb585e82e5472843ab7.csv": "346c0511a36203ec6673831e86b91ce2c7026bb52898cdc6c02ebf742b98249e",
+        "operator-logs/shutdown-f0f20e30dd8941bd83b32739e5381c16.local.jsonl": "a363e9da2b529a373491ba3c84930a1bccd028a3482f130b067a84e505c98607",
+        "foreground.local.log": "244c8b78b9332942a7e095b217c890813dd35348880ca5bb25115ed40f66bc9a"
+      },
+      "console_config_sha256": "8f1ee5ed45b08b85295266ce52517045a871613e456a5802996557ed9149ac60",
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 25.75,
+        "publish_interval_ms": {
+          "median": 36.8,
+          "max": 109.4
+        },
+        "physics_steps": 22310,
+        "end_reason": "private_stop",
+        "fault": null
+      },
+      "yoked_modules": [
+        {
+          "kind": "yoked_replay_preverified",
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "sequence": 10
+        },
+        {
+          "kind": "main_thread_stall",
+          "gap_ms": 423.27700000000186,
+          "status": "JOIN_READY_EXPLICIT_RESUME",
+          "sequence": 12
+        },
+        {
+          "kind": "yoked_anchor",
+          "policy": "operator_start_plus_lead",
+          "command": "start",
+          "requested_mono_ms": 21875.454999999998,
+          "anchor_mono_ms": 26875.454999999998,
+          "lead_ms": 5000,
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "sequence": 13
+        },
+        {
+          "kind": "yoked_anchor",
+          "policy": "block_resume_plus_lead",
+          "command": "resume",
+          "requested_mono_ms": 87928.6141,
+          "anchor_mono_ms": 92928.6141,
+          "lead_ms": 5000,
+          "active_ledger_sha256": "ebee7aab93552e073d6da183440d1c733ad14f02eafe934dff29f5e3c86e5380",
+          "sequence": 25
+        }
+      ],
+      "control_queued_rows": 0,
+      "item_fault_counts": {
+        "MENU_REPLAY_ANCHOR_MISSED": 207,
+        "JOIN_HOST_DISABLED": 1,
+        "SESSION_JOIN_DISPOSED": 1
+      },
+      "ledger_record_counts": {
+        "header": 1,
+        "menu_start": 3,
+        "display_request": 17,
+        "display_changed": 17,
+        "play_request": 24,
+        "onset_authority": 24,
+        "play_complete": 24,
+        "choice_final": 3,
+        "selection_verified": 3,
+        "menu_interrupted": 1
+      },
+      "ledger_rows_with_yoked_source": 115,
+      "operator": {
+        "start_after_ready_s": 3.4,
+        "profile_to_atom_resume_s": 1.05,
+        "planned_operator_stop": "after atom menus and one atomic lesson (never reached)"
+      },
+      "failure": {
+        "code": "MENU_REPLAY_ANCHOR_MISSED",
+        "item": "B-C01-M2-V1-AM-03 (K-a2)",
+        "fault_mono_ms": 178087.0,
+        "after_block_resume_ms": 90157,
+        "anchor_due_after_block_resume_ms": 94998,
+        "check": "MenuReplaySequence.cs:58 (baseOnsetMonoMs <= target && now <= target-150)",
+        "same_margin_in_033_passed": true,
+        "retries": "17 re-faults then 199 Resume commands answered command_uncertain"
+      }
+    }
+  },
+  "heldout_scan": {
+    "tooling": "e9d3b36",
+    "yoked_B_C01_M2_all": {
+      "plan_sha256": "7f165268ccb57df8baf53e47ad5425719240414008bcc58a9120578521258082",
+      "runs": [
+        "simulation-test-B-V1-025-C01Y-isaac2-030",
+        "simulation-test-B-V1-025-C01Y-isaac2-031",
+        "simulation-test-B-V1-026-C01Y-isaac2-033",
+        "simulation-test-B-V1-026-C01Y-isaac2-034"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "f69573e70b32b598c6a3dfbdb25c07e67710e21823373e43df57fda49cfe2b29",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "SCHEDULED_NOVEL_REQUESTS_MISSING"
+        ],
+        "visits_present": 4,
+        "audio_requests": 166,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    },
+    "yoked_B_C01_M2_before_034": {
+      "plan_sha256": "86384ce3acc67ab9af0872c023b5fe48058238050ee4a4fc8a569eebb2164739",
+      "runs": [
+        "simulation-test-B-V1-025-C01Y-isaac2-030",
+        "simulation-test-B-V1-025-C01Y-isaac2-031",
+        "simulation-test-B-V1-026-C01Y-isaac2-033"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "d239a1e62b5799e1de28a7917058511687e8bd5e952b128d7bf0c298b0b369d5",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "SCHEDULED_NOVEL_REQUESTS_MISSING"
+        ],
+        "visits_present": 3,
+        "audio_requests": 142,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    },
+    "yoked_033_only_diagnostic": {
+      "plan_sha256": "990bd83d465d78b60707fd8a6a8fb9eeaefadaa4e0f14989501071b219c895c7",
+      "runs": [
+        "simulation-test-B-V1-026-C01Y-isaac2-033"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "2754235e49434acdce4ea4b7bd0ba9b8bccec8c3526ddedd41bcdcf6ea10bffb",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 1,
+        "audio_requests": 134,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    },
+    "active_B_C01_M1_all": {
+      "plan_sha256": "03bb428f0acbb49f3540bacf99ed31b396cf8208dceaec88b43fe5920c72d6d9",
+      "runs": [
+        "simulation-test-B-V1-016-menu-002",
+        "simulation-test-B-V1-016-attr-005",
+        "simulation-test-B-V1-017-menu-006",
+        "simulation-test-B-V1-018-assess-007",
+        "simulation-test-B-V1-018-assess-008",
+        "simulation-test-B-V1-019-echo-009",
+        "simulation-test-B-V1-019-echo-010",
+        "simulation-test-B-V1-020-stall-011",
+        "simulation-test-B-V1-020-stall-012",
+        "simulation-test-B-V1-021-full-013",
+        "simulation-test-B-V1-022-isaac2-014",
+        "simulation-test-B-V1-022-isaac2-015",
+        "simulation-test-B-V1-023-isaac2-016",
+        "simulation-test-B-V1-025-C01A-isaac2-029",
+        "simulation-test-B-V1-026-C01A-isaac2-032"
+      ],
+      "exit_code": 2,
+      "printed": "HOLDOUT_CONSUMED_PHRASE_REPLAY"
+    },
+    "note": "With #249 the yoked runs, including 030/031 from the old manifest writer, reconcile in the scan; the active member's history was already refused by earlier attempts"
+  },
+  "new_defects": [
+    {
+      "code": "MENU_REPLAY_ANCHOR_MISSED",
+      "component": "player yoked replay (per-block anchors)",
+      "description": "Attempt 034 (early Start 3.4 s after ready, profile-to-atom Resume after 1.05 s, faster than the active 2.78 s): the block anchor was recorded (block_resume_plus_lead, Resume+5000 ms) and AM-01/AM-02 replayed on time, but at the AM-02 Done -> AM-03 transition (mono 178,087, about 4.84 s before AM-03's anchor) the item faulted MENU_REPLAY_ANCHOR_MISSED from MenuReplaySequence.cs:58. Attempt 033 had the same within-block margin and passed all 8 menus. The fault then repeats on every Resume, as before. Root cause not determined from the records; one observation."
+    }
+  ],
+  "limitations": [
+    "Meta XR Simulator v207 on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2",
+    "The early-Start case could only be checked through the profile menu and two atom menus",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts and plans stay private; only hashes are published"
+  ]
+}
