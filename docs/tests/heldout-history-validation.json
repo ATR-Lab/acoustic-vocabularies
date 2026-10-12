@@ -321,5 +321,86 @@
     },
     "attempt_024_treatment": "A pinned run path that does not exist is skipped without reading or hash-checking it and adds PINNED_RUN_MISSING (diagnostic plan uses an all-zero placeholder hash).",
     "claim": "No held-out replay or contamination across D0 and D7 (276 study requests, 8 authorized held-out requests). software_history_complete stays false only because both visits remain software-reconciliation incomplete on the simulator timing screens. No absence or acceptance claim; hashes only."
+  },
+  "native_isaac2_study_b_c02": {
+    "label": "Study B fresh DEMO dyad B-C02 (active B-C02-M2, yoked B-C02-M1) on isaac2, player simulation-native-028; series stopped at V2 active",
+    "scanner_source_commit": "e9d3b365ceb7057202804c623d76d03e511d4835",
+    "attempts": {
+      "039": "V1 active JOIN_COMPLETE_FORMS_RECORDED, reconciliation faults []",
+      "041": "V1 yoked JOIN_COMPLETE_FORMS_RECORDED, faults []",
+      "042": "V2 active MENU_STORE_TIMEOUT at the first atom-menu commit (the bridge committed 7 ms after the 2.0 s timeout)"
+    },
+    "active_B_C02_M2_all": {
+      "plan_sha256": "fb5fb198f0e1ef53d3e4aaf8d702dd9b18d8d9153b103fa0a03fba854326e1e6",
+      "runs": [
+        "simulation-test-B-V1-028-C02A-isaac2-039",
+        "simulation-test-B-V2-028-C02A-isaac2-042"
+      ],
+      "exit_code": 2,
+      "printed": "MOCK_MENU_SELECTION_MISSING"
+    },
+    "active_B_C02_M2_V1_only_diagnostic": {
+      "plan_sha256": "73d7a4da8106ff1fc0cf8e41482ad18289c6e6a904370c39342208b73197dbdd",
+      "runs": [
+        "simulation-test-B-V1-028-C02A-isaac2-039"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "c6a27eadafd3d2a774fe4fdb57a59518bd10b5276a6ecfac273524f258eed643",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 1,
+        "missing_complete_visits": [
+          "V1",
+          "V2",
+          "V3",
+          "W1",
+          "W4"
+        ],
+        "audio_requests": 134,
+        "audio_observations": 268,
+        "grammar_audio_events": 6,
+        "ledger_audio_references": 1048,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    },
+    "yoked_B_C02_M1_all": {
+      "plan_sha256": "5ea96d7a039dfe9f7f9d6da2ddbb55e8f8df6d3289fd374aa431840ba80af831",
+      "runs": [
+        "simulation-test-B-V1-028-C02Y-isaac2-041"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "de001663f369a1d39a7b937d5deaaa68a36fb9313de867dca733c77e0463813d",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 1,
+        "missing_complete_visits": [
+          "V1",
+          "V2",
+          "V3",
+          "W1",
+          "W4"
+        ],
+        "audio_requests": 134,
+        "audio_observations": 268,
+        "grammar_audio_events": 6,
+        "ledger_audio_references": 1048,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    },
+    "claim": "The scanner reconciles each run; the failed V2 active run is refused (MOCK_MENU_SELECTION_MISSING), which blocks the active member's whole history. V1 for both members is a valid incomplete history with no contamination. No complete history; no absence claim. Hashes only."
   }
 }
