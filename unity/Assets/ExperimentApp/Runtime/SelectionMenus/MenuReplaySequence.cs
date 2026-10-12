@@ -42,12 +42,34 @@ namespace AcousticVocab.SelectionMenus
         public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)
         {
             MenuRules.Require(item!=null&&item.Phase=="selection"&&MenuRules.Finite(baseOnsetMonoMs)&&baseOnsetMonoMs>=0,"MENU_REPLAY_SLOT");
-            var entry=Find(Key(item));MenuRules.Require(MenuRules.Finite(entry.Anchor),"MENU_REPLAY_UNANCHORED");
-            double target=entry.Anchor+entry.Start-entries[entry.SegmentFirst].Start,now=clock();
+            var entry=Find(Key(item));var first=entries[entry.SegmentFirst];double now=clock();
+            if(!MenuRules.Finite(entry.Anchor)){Refuse("unanchored",entry,first,now,baseOnsetMonoMs,double.NaN);throw new SessionFault("MENU_REPLAY_UNANCHORED");}
+            double target=entry.Anchor+entry.Start-first.Start;
+            // The engine's fixed-slot base (previous onset + slot) and the replay
+            // target (anchor + recorded spacing) are the same instant computed in
+            // two orders. Attempt 034 refused AM-03 because the base exceeded the
+            // target by 2.9e-11 ms (one ULP). Only a representation difference of
+            // at most 1 us is absorbed; the onset is then the engine's base.
+            if(MenuRules.Finite(target)&&baseOnsetMonoMs>target&&baseOnsetMonoMs-target<=RepresentationToleranceMs)target=baseOnsetMonoMs;
             // No tolerance can move an old cue into the present. A reviewed
             // reconstruction supplies a new explicit anchor and its own record.
-            MenuRules.Require(MenuRules.Finite(target)&&MenuRules.Finite(now)&&now>=0&&baseOnsetMonoMs<=target&&now<=target-150,"MENU_REPLAY_ANCHOR_MISSED");
+            string clause=!MenuRules.Finite(target)||!MenuRules.Finite(now)||now<0?"nonfinite":baseOnsetMonoMs>target?"base_after_target":now>target-150?"start_too_late":null;
+            if(clause!=null){Refuse(clause,entry,first,now,baseOnsetMonoMs,target);throw new SessionFault("MENU_REPLAY_ANCHOR_MISSED");}
             entry.Planned=true;return target-baseOnsetMonoMs;
+        }
+        public const double RepresentationToleranceMs=.001;
+        // Test support: the start plan of recorded native timelines (keys and exact
+        // recorded slot starts) without replay content.
+        internal static MenuReplaySequence ForRecordedStarts(IReadOnlyList<(string key,double start)> starts,double anchor,Func<double> clock)
+            =>new MenuReplaySequence(starts.Select(s=>new Entry{Key=s.key,Start=s.start}).ToArray(),new string('0',64),DateTimeOffset.UtcNow,anchor,clock,null);
+        // Bounded evidence for a refused replay start: which clause failed and the
+        // values it compared (no content or answers).
+        public event Action<JObject> AnchorRefused;
+        void Refuse(string clause,Entry entry,Entry first,double now,double baseOnset,double target)
+        {
+            static JToken N(double value)=>MenuRules.Finite(value)?new JValue(value):JValue.CreateNull();
+            try{AnchorRefused?.Invoke(new JObject{["kind"]="replay_anchor_refused",["clause"]=clause,["menu_key"]=entry.Key,["segment_first_key"]=first.Key,["now_mono_ms"]=N(now),
+                ["base_onset_mono_ms"]=N(baseOnset),["target_mono_ms"]=N(target),["anchor_mono_ms"]=N(entry.Anchor),["start_margin_ms"]=N(target-150-now),["base_excess_ms"]=N(baseOnset-target)});}catch{}
         }
         // Maintainer decision (#245): each yoked menu block is anchored at its own
         // boundary resume plus the configured lead. The active run's spacing is

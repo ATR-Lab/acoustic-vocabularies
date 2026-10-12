@@ -152,6 +152,16 @@ namespace AcousticVocab.SessionIntegration
                                 var info=new FileInfo(ledger.Path);
                                 return string.Join("|",info.Exists,info.Exists?info.Length:-1,info.Exists?info.LastWriteTimeUtc.Ticks:0,store?.SnapshotSha256,store?.Profile,YokedStoreReady);
                             },()=>DateTimeOffset.UtcNow);
+                        yokedAuthority.ReportRefusalsTo(x=>{try{audit.Write("module",x);}catch{}});
+                        // 033/034: staged across frames and a worker so the idle preflight
+                        // no longer stalls; same pins and refusals as the synchronous path.
+                        var menuItems=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
+                        yokedPreverifier=new YokedReplayPreverifier(yokedAuthority,assets.YokedActiveBinding.MenuKeys,
+                            key=>{var material=assets.Menus.Prepare(menuItems[key],store.Profile);return (material.Options.ToArray(),material.MeaningDisplayId);},
+                            (key,index,receipt)=>store.VerifyRecordedSelection(key,index,receipt,assets.Menus),
+                            verification=>MenuReplaySequence.Preload(ledger.Path,ledger.Sha256,assets.YokedActiveBinding,verification,DateTimeOffset.UtcNow,()=>clock.NowMs),
+                            ()=>store?.Profile+"|"+store?.SnapshotSha256,
+                            ()=>audit.Write("module",new JObject{["kind"]="yoked_replay_preverified",["active_ledger_sha256"]=yokedAuthority.Prepared.LedgerSha256,["observed_mono_ms"]=clock.NowMs,["staged"]=true}));
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
@@ -181,6 +191,7 @@ namespace AcousticVocab.SessionIntegration
             try{if(!staged.PrepareExplicitResume(engine,request))return false;staged.CommitForResume(engine);return true;}finally{resumeRequest=null;}
         }
         bool YokedStoreReady=>store!=null&&store.Ready&&store.OldHashesVerified;
+        YokedReplayPreverifier yokedPreverifier;
         MenuLedgerVerification MenuVerification()
         {
             var items=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
@@ -339,7 +350,7 @@ namespace AcousticVocab.SessionIntegration
                     // #247: verify the replay (and redo it after any input change) and
                     // create the yoked factory here, at the idle, unexposed preflight,
                     // never at the operator Start.
-                    phase="preverify_replay";if(ControlReady&&AwaitingYokedAnchor&&host.YokedStoreReady&&!host.yokedAuthority.Preverified)host.yokedAuthority.Preverify();
+                    phase="preverify_replay";if(ControlReady&&AwaitingYokedAnchor&&host.YokedStoreReady)host.yokedPreverifier.Pump();
                     if(ControlReady&&AwaitingYokedAnchor&&preparedFactory==null&&host.yokedAuthority.Preverified){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);}
                     phase="request_reset";if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
                     phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
