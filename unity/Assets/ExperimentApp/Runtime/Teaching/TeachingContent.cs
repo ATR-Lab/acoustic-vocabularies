@@ -92,7 +92,16 @@ namespace AcousticVocab.Teaching
             content.Timeline.Response(catalog.Feedback(content.Material,value),value.ResponseMonoMs,value.Code==ResponseCode.Timeout);
             responseSink(value.Code==ResponseCode.Commit?"commit":value.Code==ResponseCode.DontKnow?"dont_know":"timeout");
         }
-        void PanelFault(string _) => faultSink("LESSON_INPUT_LOST");
+        void PanelFault(string reason) => faultSink(PanelFaultCode(reason));
+        // Attempt A-D0 017: a foundation focus fault reached the lesson as the
+        // panel's `foundation_fault` but was reported as LESSON_INPUT_LOST. The
+        // panel's bounded reason is kept in the lesson code; free text never is.
+        public static string PanelFaultCode(string reason)=>reason switch
+        {
+            "input_lost"=>"LESSON_INPUT_LOST",
+            "application_focus_lost"=>"LESSON_FOCUS_LOST",
+            _=>reason!=null&&System.Text.RegularExpressions.Regex.IsMatch(reason,@"\A[a-z][a-z0-9_]{0,48}\z")?"LESSON_PANEL_"+reason.ToUpperInvariant():"LESSON_PANEL_FAULT",
+        };
         public void Dispose()
         {
             if(disposed)return;
