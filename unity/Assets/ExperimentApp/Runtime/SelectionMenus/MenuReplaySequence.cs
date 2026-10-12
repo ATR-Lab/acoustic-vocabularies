@@ -28,13 +28,13 @@ namespace AcousticVocab.SelectionMenus
     public sealed class MenuReplaySequence : ISlotStartPlan
     {
         internal sealed class Entry
-        {internal string Key;internal double Start;internal MenuReplay Replay;}
-        readonly Entry[] entries;readonly MenuLedgerBinding activeBinding;readonly double anchor;readonly Func<double> clock;
+        {internal string Key;internal double Start;internal MenuReplay Replay;internal double Anchor;internal int SegmentFirst;internal bool Planned;}
+        Entry[] entries;readonly MenuLedgerBinding activeBinding;readonly Func<double> clock;
         public string LedgerSha256{get;}
-        public DateTimeOffset CreatedUtc{get;}
+        public DateTimeOffset CreatedUtc{get;private set;}
         public double SourceSpanMs=>entries.Last().Start+(entries.Last().Key=="profile"?60000:45000)-entries[0].Start;
         MenuReplaySequence(Entry[] entries,string hash,DateTimeOffset created,double anchor,Func<double> clock,MenuLedgerBinding binding)
-        {activeBinding=binding;this.entries=entries;LedgerSha256=hash;CreatedUtc=created;this.anchor=anchor;this.clock=clock;}
+        {activeBinding=binding;this.entries=entries;LedgerSha256=hash;CreatedUtc=created;this.clock=clock;foreach(var e in entries){e.Anchor=anchor;e.SegmentFirst=0;e.Planned=false;}}
         static string Key(SlotItem item)=>item.TrialType=="profile_menu"?"profile":item.ContentId;
         public MenuReplay For(SlotItem item)
         {MenuRules.Require(item!=null&&item.Phase=="selection","MENU_REPLAY_SLOT");return Find(Key(item)).Replay;}
@@ -42,14 +42,82 @@ namespace AcousticVocab.SelectionMenus
         public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)
         {
             MenuRules.Require(item!=null&&item.Phase=="selection"&&MenuRules.Finite(baseOnsetMonoMs)&&baseOnsetMonoMs>=0,"MENU_REPLAY_SLOT");
-            double target=anchor+Find(Key(item)).Start-entries[0].Start,now=clock();
+            var entry=Find(Key(item));var first=entries[entry.SegmentFirst];double now=clock();
+            if(!MenuRules.Finite(entry.Anchor)){Refuse("unanchored",entry,first,now,baseOnsetMonoMs,double.NaN);throw new SessionFault("MENU_REPLAY_UNANCHORED");}
+            double target=entry.Anchor+entry.Start-first.Start;
+            // The engine's fixed-slot base (previous onset + slot) and the replay
+            // target (anchor + recorded spacing) are the same instant computed in
+            // two orders. Attempt 034 refused AM-03 because the base exceeded the
+            // target by 2.9e-11 ms (one ULP). Only a representation difference of
+            // at most 1 us is absorbed; the onset is then the engine's base.
+            if(MenuRules.Finite(target)&&baseOnsetMonoMs>target&&baseOnsetMonoMs-target<=RepresentationToleranceMs)target=baseOnsetMonoMs;
             // No tolerance can move an old cue into the present. A reviewed
             // reconstruction supplies a new explicit anchor and its own record.
-            MenuRules.Require(MenuRules.Finite(target)&&MenuRules.Finite(now)&&now>=0&&baseOnsetMonoMs<=target&&now<=target-150,"MENU_REPLAY_ANCHOR_MISSED");return target-baseOnsetMonoMs;
+            string clause=!MenuRules.Finite(target)||!MenuRules.Finite(now)||now<0?"nonfinite":baseOnsetMonoMs>target?"base_after_target":now>target-150?"start_too_late":null;
+            if(clause!=null){Refuse(clause,entry,first,now,baseOnsetMonoMs,target);throw new SessionFault("MENU_REPLAY_ANCHOR_MISSED");}
+            entry.Planned=true;return target-baseOnsetMonoMs;
+        }
+        public const double RepresentationToleranceMs=.001;
+        // Test support: the start plan of recorded native timelines (keys and exact
+        // recorded slot starts) without replay content.
+        internal static MenuReplaySequence ForRecordedStarts(IReadOnlyList<(string key,double start)> starts,double anchor,Func<double> clock)
+            =>new MenuReplaySequence(starts.Select(s=>new Entry{Key=s.key,Start=s.start}).ToArray(),new string('0',64),DateTimeOffset.UtcNow,anchor,clock,null);
+        // Bounded evidence for a refused replay start: which clause failed and the
+        // values it compared (no content or answers).
+        public event Action<JObject> AnchorRefused;
+        void Refuse(string clause,Entry entry,Entry first,double now,double baseOnset,double target)
+        {
+            static JToken N(double value)=>MenuRules.Finite(value)?new JValue(value):JValue.CreateNull();
+            try{AnchorRefused?.Invoke(new JObject{["kind"]="replay_anchor_refused",["clause"]=clause,["menu_key"]=entry.Key,["segment_first_key"]=first.Key,["now_mono_ms"]=N(now),
+                ["base_onset_mono_ms"]=N(baseOnset),["target_mono_ms"]=N(target),["anchor_mono_ms"]=N(entry.Anchor),["start_margin_ms"]=N(target-150-now),["base_excess_ms"]=N(baseOnset-target)});}catch{}
+        }
+        // Maintainer decision (#245): each yoked menu block is anchored at its own
+        // boundary resume plus the configured lead. The active run's spacing is
+        // replayed exactly within the block; operator pauses between blocks are
+        // not. Load's anchor (the yoked start) remains the first block's anchor.
+        // A block is re-anchored only while none of its menus has been planned,
+        // so a refused resume can be retried and no started menu ever moves.
+        int[] BlockIndices(IReadOnlyList<string> keys)
+        {
+            MenuRules.Require(keys!=null&&keys.Count>0&&keys.Distinct().Count()==keys.Count,"MENU_REPLAY_BLOCK_ANCHOR");
+            var indices=keys.Select(k=>Array.IndexOf(entries,Find(k))).OrderBy(i=>i).ToArray();
+            MenuRules.Require(indices.Last()-indices[0]==indices.Length-1,"MENU_REPLAY_BLOCK_ANCHOR");return indices;
+        }
+        public bool BlockAnchorable(IReadOnlyList<string> keys)=>!BlockIndices(keys).Any(i=>entries[i].Planned);
+        public bool AnchorBlock(IReadOnlyList<string> keys,double anchorMonoMs)
+        {
+            var indices=BlockIndices(keys);MenuRules.Require(MenuRules.Finite(anchorMonoMs)&&anchorMonoMs>=clock(),"MENU_REPLAY_BLOCK_ANCHOR");
+            if(indices.Any(i=>entries[i].Planned))return false;
+            foreach(int i in indices){entries[i].Anchor=anchorMonoMs;entries[i].SegmentFirst=indices[0];}
+            return true;
+        }
+        // Maintainer decision (#247): the yoked start anchors an already fully
+        // verified sequence. Preload does the whole ledger, asset and receipt
+        // verification during the idle preflight and leaves every menu
+        // unanchored (MENU_REPLAY_UNANCHORED) until AnchorStart.
+        public static MenuReplaySequence Preload(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,Func<double> clock)
+            =>LoadCore(path,expectedFileSha256,expectedActiveBinding,verification,nowUtc,double.NaN,clock);
+        public bool Anchored=>entries.All(e=>MenuRules.Finite(e.Anchor));
+        public void AnchorStart(double anchorMonoMs)
+        {
+            MenuRules.Require(MenuRules.Finite(anchorMonoMs)&&anchorMonoMs>=clock()&&entries.All(e=>!MenuRules.Finite(e.Anchor)&&!e.Planned),"MENU_REPLAY_START_ANCHOR");
+            foreach(var e in entries){e.Anchor=anchorMonoMs;e.SegmentFirst=0;}
+        }
+        // A re-verification of the same pinned ledger replaces the verified
+        // entries in place, so a factory already holding this sequence stays bound.
+        public void AdoptVerified(MenuReplaySequence fresh)
+        {
+            MenuRules.Require(fresh!=null&&fresh!=this&&fresh.LedgerSha256==LedgerSha256&&JToken.DeepEquals(fresh.activeBinding.Json(),activeBinding.Json())&&!Anchored&&!fresh.Anchored&&entries.All(e=>!e.Planned)&&fresh.entries.Select(e=>e.Key).SequenceEqual(entries.Select(e=>e.Key)),"MENU_REPLAY_REVERIFY");
+            entries=fresh.entries;CreatedUtc=fresh.CreatedUtc;
         }
         public static MenuReplaySequence Load(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,double sessionAnchorMonoMs,Func<double> clock)
         {
-            MenuRules.Require(MenuRules.Hash(expectedFileSha256)&&expectedActiveBinding!=null&&expectedActiveBinding.Role=="active"&&verification!=null&&nowUtc.Offset==TimeSpan.Zero&&MenuRules.Finite(sessionAnchorMonoMs)&&sessionAnchorMonoMs>=0&&clock!=null,"MENU_REPLAY_BINDING");
+            MenuRules.Require(MenuRules.Finite(sessionAnchorMonoMs),"MENU_REPLAY_BINDING");
+            return LoadCore(path,expectedFileSha256,expectedActiveBinding,verification,nowUtc,sessionAnchorMonoMs,clock);
+        }
+        static MenuReplaySequence LoadCore(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,double sessionAnchorMonoMs,Func<double> clock)
+        {
+            MenuRules.Require(MenuRules.Hash(expectedFileSha256)&&expectedActiveBinding!=null&&expectedActiveBinding.Role=="active"&&verification!=null&&nowUtc.Offset==TimeSpan.Zero&&(double.IsNaN(sessionAnchorMonoMs)||sessionAnchorMonoMs>=0)&&clock!=null,"MENU_REPLAY_BINDING");
             MenuJson.NoLinks(path);var info=new FileInfo(path);MenuRules.Require(info.Exists&&info.Length>0&&info.Length<=32*1024*1024,"MENU_LEDGER_SIZE");byte[] bytes=File.ReadAllBytes(path);
             MenuRules.Require(PcmWave.Hash(bytes)==expectedFileSha256&&bytes[bytes.Length-1]==10,"MENU_LEDGER_HASH");
             var lines=new UTF8Encoding(false,true).GetString(bytes).Split('\n');MenuRules.Require(lines.Length>=4&&lines.Length<=10001&&lines.Last()=="","MENU_LEDGER_LINE");
@@ -79,6 +147,11 @@ namespace AcousticVocab.SelectionMenus
                 MenuRules.Require(groups.Count>0&&groups.Count<=binding.MenuKeys.Count&&attempts.TryGetValue(attemptId,out var selectedGroup),"MENU_LEDGER_SEQUENCE");attempts[attemptId].Add(row);
             }
             MenuRules.Require(groups.Count==binding.MenuKeys.Count,"MENU_LEDGER_INCOMPLETE");var entries=new List<Entry>();double previousEnd=-1;
+            // Boundary events (display transitions, final choice) are frame-
+            // quantized observations: active and yoked seals apply the bound
+            // MenuTimeline enforces live, each against its own scheduled times.
+            // Audio onsets below stay tight (exact plan, onset uncertainty).
+            double observation=MenuRules.BoundaryObservationMs;
             for(int g=0;g<groups.Count;g++)
             {
                 var rows=groups[g];var first=rows[0];string key=binding.MenuKeys[g],attempt=(string)first["attempt_id"],opportunity=(string)first["opportunity_id"];double start=MenuJson.Number(first["slot_start_mono_ms"]);bool profile=key=="profile";
@@ -87,7 +160,7 @@ namespace AcousticVocab.SelectionMenus
                 MenuRules.Require(options!=null&&options.Length==3&&options.All(x=>x!=null)&&options.Select(x=>x.CandidateId).Distinct().Count()==3&&options.Select(x=>x.Wave.PcmSha256).Distinct().Count()==3&&options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_LEDGER_ASSETS");
                 double choiceOpen=start+(profile?30000:22000),deadline=start+(profile?45000:32000);
                 var choice=One(rows,"choice_final");int selected=MenuJson.Integer(choice["selected_index"],1,3);MenuRules.Require(choice["defaulted"].Type==JTokenType.Boolean,"MENU_LEDGER_CHOICE");bool defaulted=(bool)choice["defaulted"];
-                MenuRules.Require(MenuJson.Number(choice["expected_mono_ms"])==deadline&&MenuJson.Number(choice["mono_ms"])>=deadline&&MenuJson.Number(choice["mono_ms"])<=deadline+20,"MENU_LEDGER_TIMING");
+                MenuRules.Require(MenuJson.Number(choice["expected_mono_ms"])==deadline&&MenuJson.Number(choice["mono_ms"])>=deadline&&MenuJson.Number(choice["mono_ms"])<=deadline+observation,"MENU_LEDGER_TIMING");
                 var revisions=rows.Where(x=>(string)x["kind"]=="choice_revised").ToArray();foreach(var revision in revisions)MenuRules.Require(MenuJson.Number(revision["mono_ms"])>=choiceOpen&&MenuJson.Number(revision["mono_ms"])<deadline,"MENU_LEDGER_CHOICE");
                 MenuRules.Require(assigned?revisions.Length==0:defaulted?revisions.Length==0&&selected==1:revisions.Length>0&&MenuJson.Integer(revisions.Last()["selected_index"],1,3)==selected,"MENU_LEDGER_CHOICE");
                 var receipt=One(rows,"selection_verified");MenuRules.Require(MenuJson.Integer(receipt["selected_index"],1,3)==selected&&receipt["defaulted"].Type==JTokenType.Boolean&&(bool)receipt["defaulted"]==defaulted&&MenuJson.Number(receipt["mono_ms"])>=MenuJson.Number(choice["mono_ms"])&&MenuRules.Hash((string)receipt["receipt_sha256"])&&verification.Receipt(key,selected,(string)receipt["receipt_sha256"]),"MENU_LEDGER_RECEIPT");
@@ -101,10 +174,10 @@ namespace AcousticVocab.SelectionMenus
                     MenuRules.Require(planned==start+nominal[n-1]&&requested>=previousComplete&&requested>=planned-750&&requested<=planned-150&&Math.Abs(actual-planned)<=MenuJson.Number(onset["onset_uncertainty_ms"])+.000001&&observed>=requested&&observed<=planned+250&&done>=observed&&done>=actual+option.Wave.SampleCount/48d-20&&done<=previousEnd&&(n<=6||MenuJson.Number(receipt["mono_ms"])<=requested),"MENU_LEDGER_TIMING");
                     offsets[n-1]=actual-start;source[n-1]=(string)request["event_id"];previousComplete=done;
                 }
-                var phases=new[]{MenuPhase.Instructions,MenuPhase.Audition,MenuPhase.Choice,MenuPhase.Selected,MenuPhase.Neutral,MenuPhase.Ended};double[] boundaries=replayPlan?[g].Replay.DisplayOffsetsMs??(profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000});
+                var phases=new[]{MenuPhase.Instructions,MenuPhase.Audition,MenuPhase.Choice,MenuPhase.Selected,MenuPhase.Neutral,MenuPhase.Ended};double[] boundaries=MenuRules.DisplayOffsets(profile);
                 var displays=rows.Where(x=>(string)x["kind"] is "display_request" or "display_changed").ToArray();MenuRules.Require(displays.Length==12,"MENU_LEDGER_DISPLAY");
                 for(int d=0;d<6;d++)for(int edge=0;edge<2;edge++)
-                {var display=displays[d*2+edge];double stamp=MenuJson.Number(display["mono_ms"]);MenuRules.Require((string)display["kind"]==(edge==0?"display_request":"display_changed")&&(string)display["phase"]==phases[d].ToString()&&stamp>=start+boundaries[d]&&stamp<=start+boundaries[d]+20&&(phases[d]==MenuPhase.Selected?MenuJson.Integer(display["selected_index"],1,3)==selected:display["selected_index"].Type==JTokenType.Null),"MENU_LEDGER_DISPLAY");}
+                {var display=displays[d*2+edge];double stamp=MenuJson.Number(display["mono_ms"]);MenuRules.Require((string)display["kind"]==(edge==0?"display_request":"display_changed")&&(string)display["phase"]==phases[d].ToString()&&stamp>=start+boundaries[d]&&stamp<=start+boundaries[d]+observation&&(phases[d]==MenuPhase.Selected?MenuJson.Integer(display["selected_index"],1,3)==selected:display["selected_index"].Type==JTokenType.Null),"MENU_LEDGER_DISPLAY");}
                 MenuRules.Require(ReferenceEquals(rows.Last(),displays.Last()),"MENU_LEDGER_SEQUENCE");entries.Add(new Entry{Key=key,Start=start,Replay=new MenuReplay(offsets,source,selected,defaulted,(string)choice["event_id"],(string)receipt["receipt_sha256"],displays.Where((x,i)=>i%2==1).Select(x=>MenuJson.Number(x["mono_ms"])-start).ToArray(),displays.Where((x,i)=>i%2==0).Select(x=>(string)x["event_id"]).ToArray(),displays.Where((x,i)=>i%2==1).Select(x=>(string)x["event_id"]).ToArray(),(string)first["event_id"],(string)receipt["event_id"])});
             }
             return entries.ToArray();
@@ -114,12 +187,15 @@ namespace AcousticVocab.SelectionMenus
         internal MenuReplayComparison CompareYokedRecords(IReadOnlyList<JObject> rows,MenuLedgerBinding binding,MenuLedgerVerification verification)
         {
             MenuRules.Require(binding!=null&&binding.Role=="yoked"&&binding.MenuKeys.SequenceEqual(entries.Select(x=>x.Key))&&binding.PackageSha256==activeBinding.PackageSha256&&binding.BankSha256==activeBinding.BankSha256&&binding.AllocationSha256==activeBinding.AllocationSha256&&binding.UnitBindingSha256==activeBinding.UnitBindingSha256&&binding.ReviewSha256==activeBinding.ReviewSha256&&binding.Visit==activeBinding.Visit,"MENU_YOKED_BINDING");
-            var normalized=new List<JObject>();double? firstStart=null;
+            var normalized=new List<JObject>();var segmentStarts=new Dictionary<int,double>();
             foreach(var sourceRow in rows)
             {
                 MenuJson.CheckEvent(sourceRow);var row=(JObject)sourceRow.DeepClone();var entry=Find((string)row["menu_key"]);var source=entry.Replay;double start=MenuJson.Number(row["slot_start_mono_ms"]);string kind=(string)row["kind"];
-                if(kind=="menu_start"&&entry==entries[0]){MenuRules.Require(!firstStart.HasValue,"MENU_YOKED_SEQUENCE");firstStart=start;}
-                MenuRules.Require(firstStart.HasValue&&Math.Abs((start-firstStart.Value)-(entry.Start-entries[0].Start))<.000001,"MENU_YOKED_PAUSE_MISMATCH");
+                // Relative spacing is exact within each anchored block; the gap
+                // between blocks is the yoked run's own boundary resume.
+                var first=entries[entry.SegmentFirst];
+                if(kind=="menu_start"&&entry==first){MenuRules.Require(!segmentStarts.ContainsKey(entry.SegmentFirst),"MENU_YOKED_SEQUENCE");segmentStarts[entry.SegmentFirst]=start;}
+                MenuRules.Require(segmentStarts.TryGetValue(entry.SegmentFirst,out double segmentStart)&&Math.Abs((start-segmentStart)-(entry.Start-first.Start))<.000001,"MENU_YOKED_PAUSE_MISMATCH");
                 string expectedSource=null;
                 if(kind=="menu_start")expectedSource=source.StartEventId;
                 else if(kind is "play_request" or "onset_authority" or "play_complete")
@@ -136,7 +212,11 @@ namespace AcousticVocab.SelectionMenus
                 {
                     MenuRules.Require(Enum.TryParse((string)row["phase"],out MenuPhase phase)&&phase>=MenuPhase.Instructions&&phase<=MenuPhase.Ended,"MENU_YOKED_DISPLAY");int n=(int)phase-1;
                     expectedSource=kind=="display_request"?source.DisplayRequestEvents[n]:source.DisplayChangedEvents[n];
-                    MenuRules.Require(Math.Abs(MenuJson.Number(row["mono_ms"])-start-source.DisplayOffsetsMs[n])<=20,"MENU_YOKED_DISPLAY");
+                    // Against the yoked run's own scheduled boundary, not the active
+                    // run's observed frame time: two frame-late observations of the
+                    // same deterministic schedule need not agree within 20 ms.
+                    double scheduled=MenuRules.DisplayOffsets(entry.Key=="profile")[n],late=MenuJson.Number(row["mono_ms"])-start-scheduled;
+                    MenuRules.Require(late>=0&&late<=MenuRules.BoundaryObservationMs,"MENU_YOKED_DISPLAY");
                 }
                 else if(kind is "choice_final" or "selection_verified")
                 {expectedSource=kind=="choice_final"?source.SelectionEventId:source.VerificationEventId;MenuRules.Require(MenuJson.Integer(row["selected_index"],1,3)==source.SelectedIndex&&(bool)row["defaulted"]==source.Defaulted&&(kind!="selection_verified"||(string)row["receipt_sha256"]==source.SelectionReceiptSha256),"MENU_YOKED_CHOICE");}

@@ -139,12 +139,29 @@ namespace AcousticVocab.SessionIntegration
                     if(assets.YokedActiveBinding!=null)
                     {
                         var ledger=config.RequireFile("menu_replay_ledger");
+                        // #247: the full, pinned verification runs at the idle preflight;
+                        // the fingerprint invalidates it if the ledger file or store changes.
                         yokedAuthority=new YokedReplayAuthority(config.YokedAnchorLeadMs.Value,nonce,ledger.Sha256,assets.YokedActiveSchedule.Sha256,()=>clock.NowMs,
-                            record=>audit.Write("module",record.ToJson()),anchor=>
+                            record=>audit.Write("module",record.ToJson()),()=>
                             {
-                                if(store==null||!store.Ready||!store.OldHashesVerified)throw new SessionFault("JOIN_YOKED_STORE_NOT_READY");
-                                ledger.ReadVerified();return MenuReplaySequence.Load(ledger.Path,ledger.Sha256,assets.YokedActiveBinding,MenuVerification(),DateTimeOffset.UtcNow,anchor,()=>clock.NowMs);
-                            });
+                                if(!YokedStoreReady)throw new SessionFault("JOIN_YOKED_STORE_NOT_READY");
+                                ledger.ReadVerified();var replay=MenuReplaySequence.Preload(ledger.Path,ledger.Sha256,assets.YokedActiveBinding,MenuVerification(),DateTimeOffset.UtcNow,()=>clock.NowMs);
+                                audit.Write("module",new JObject{["kind"]="yoked_replay_preverified",["active_ledger_sha256"]=replay.LedgerSha256,["observed_mono_ms"]=clock.NowMs});return replay;
+                            },()=>
+                            {
+                                var info=new FileInfo(ledger.Path);
+                                return string.Join("|",info.Exists,info.Exists?info.Length:-1,info.Exists?info.LastWriteTimeUtc.Ticks:0,store?.SnapshotSha256,store?.Profile,YokedStoreReady);
+                            },()=>DateTimeOffset.UtcNow);
+                        yokedAuthority.ReportRefusalsTo(x=>{try{audit.Write("module",x);}catch{}});
+                        // 033/034: staged across frames and a worker so the idle preflight
+                        // no longer stalls; same pins and refusals as the synchronous path.
+                        var menuItems=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
+                        yokedPreverifier=new YokedReplayPreverifier(yokedAuthority,assets.YokedActiveBinding.MenuKeys,
+                            key=>{var material=assets.Menus.Prepare(menuItems[key],store.Profile);return (material.Options.ToArray(),material.MeaningDisplayId);},
+                            (key,index,receipt)=>store.VerifyRecordedSelection(key,index,receipt,assets.Menus),
+                            verification=>MenuReplaySequence.Preload(ledger.Path,ledger.Sha256,assets.YokedActiveBinding,verification,DateTimeOffset.UtcNow,()=>clock.NowMs),
+                            ()=>store?.Profile+"|"+store?.SnapshotSha256,
+                            ()=>audit.Write("module",new JObject{["kind"]="yoked_replay_preverified",["active_ledger_sha256"]=yokedAuthority.Prepared.LedgerSha256,["observed_mono_ms"]=clock.NowMs,["staged"]=true}));
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
@@ -173,6 +190,8 @@ namespace AcousticVocab.SessionIntegration
             if(resumeRequest!=null||request==null)throw new SessionFault("JOIN_OPERATOR_REENTRANCY");resumeRequest=request;
             try{if(!staged.PrepareExplicitResume(engine,request))return false;staged.CommitForResume(engine);return true;}finally{resumeRequest=null;}
         }
+        bool YokedStoreReady=>store!=null&&store.Ready&&store.OldHashesVerified;
+        YokedReplayPreverifier yokedPreverifier;
         MenuLedgerVerification MenuVerification()
         {
             var items=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);
@@ -328,6 +347,11 @@ namespace AcousticVocab.SessionIntegration
                     if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
                     phase="control_start";if(control==null){if(!SealBeforePostMenu())return;StartControl();}
                     phase="control_pump";control.Pump();
+                    // #247: verify the replay (and redo it after any input change) and
+                    // create the yoked factory here, at the idle, unexposed preflight,
+                    // never at the operator Start.
+                    phase="preverify_replay";if(ControlReady&&AwaitingYokedAnchor&&host.YokedStoreReady)host.yokedPreverifier.Pump();
+                    if(ControlReady&&AwaitingYokedAnchor&&preparedFactory==null&&host.yokedAuthority.Preverified){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);}
                     phase="request_reset";if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
                     phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
                     phase="finish_grammar";if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
@@ -382,7 +406,9 @@ namespace AcousticVocab.SessionIntegration
             bool AwaitingGrammar=>kind==JoinedModuleKind.Teaching&&host.grammarStage!=null&&!host.grammarStage.Complete;
             bool AwaitingGrammarStart=>AwaitingGrammar&&!host.grammarStage.Started;
             bool AwaitingYokedAnchor=>kind==JoinedModuleKind.Menus&&host.yokedAuthority!=null&&host.yokedAuthority.Replay==null;
-            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingYokedAnchor||AwaitingGrammarStart)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo&&host.simulation==null);
+            // A yoked first menu block is ready only with its factory created over a
+            // still-current pre-verified replay (#247).
+            public bool Ready=>!committed&&(preparedFactory!=null||AwaitingGrammarStart)&&(!AwaitingYokedAnchor||host.yokedAuthority.Preverified)&&ControlReady&&!(block=="validity"&&host.assets.Schedule.Demo&&host.simulation==null);
             public bool PrepareExplicitResume(OperatorRequest request)
             {
                 if(!Ready)throw new SessionFault("JOIN_PREFLIGHT_NOT_READY");
@@ -406,13 +432,22 @@ namespace AcousticVocab.SessionIntegration
                 if(AwaitingYokedAnchor)
                 {
                     var request=host.resumeRequest??throw new SessionFault("JOIN_YOKED_OPERATOR_REQUIRED");
+                    // Only the freshness check, the durable anchor record and the
+                    // anchor itself: no ledger, audio or view work at Start (#247).
                     host.yokedAuthority.BindForExplicitStart(request.RequestId,request.Sequence,request.Command);
-                    preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);
+                }
+                else if(kind==JoinedModuleKind.Menus&&host.yokedAuthority?.Replay!=null)
+                {
+                    // A later yoked menu block starts from its own boundary resume
+                    // (attempts 030/031: the active pause was replayed and missed).
+                    var request=host.resumeRequest??throw new SessionFault("JOIN_YOKED_OPERATOR_REQUIRED");
+                    host.yokedAuthority.AnchorBlockAtResume(request.RequestId,request.Sequence,request.Command,BlockMenuKeys());
                 }
                 committed=true;host.activePreflight=this;scope.RegisterCleanup(()=>{if(ReferenceEquals(host.activePreflight,this))host.activePreflight=null;});
                 host.audit.Write("module",new JObject{["kind"]="commit",["block"]=block,["module"]=kind.ToString()});return preparedFactory;
             }
             internal JObject Diagnostic()=>control?.ReadinessDiagnostic(null);
+            IReadOnlyList<string> BlockMenuKeys()=>host.assets.Schedule.Blocks.Single(b=>b.Name==block).Items.Where(i=>i.Phase=="selection").Select(i=>i.TrialType=="profile_menu"?"profile":i.ContentId).ToList().AsReadOnly();
             ISlotContentFactory CreateFactory()
             {
                 var shared=host.owner.Shared;
@@ -434,7 +469,7 @@ namespace AcousticVocab.SessionIntegration
                 else
                 {
                     var view=go.AddComponent<MenuSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.presentationParent=host.foundation.presentationRoot.transform;view.font=host.font;view.Faulted+=host.Fail;scope.RegisterCleanup(view.Uninstall);
-                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay,engineeringPreview:true,bindAudio:shared.BindAudio,cueRefused:host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay??host.yokedAuthority?.Prepared,engineeringPreview:true,bindAudio:shared.BindAudio,cueRefused:host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 host.audit.Write("module",new JObject{["kind"]="prepared_view",["block"]=block,["module"]=kind.ToString()});return result;
             }

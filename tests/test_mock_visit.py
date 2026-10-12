@@ -342,6 +342,49 @@ class Supplemental(unittest.TestCase):
         y[1]["record"]["expected_mono_ms"]+=19
         with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_OUTPUT_TIMING"):native.compare_yoked(a,y,H)
 
+    def yoke_display(self, active_late, yoked_late, phase="Neutral"):
+        a,y=self.yoke_rows();at=dict(Neutral=40000,Selected=32000)[phase]
+        source=dict(event_id="c"*32,menu_key="K-a1",meaning_display_id="m",slot_start_mono_ms=1000.,kind="display_changed",phase=phase,mono_ms=1000.+at+active_late)
+        a.insert(-1,dict(record=source))
+        y.insert(-1,dict(record=dict(source,yoked_source_event_id="c"*32,slot_start_mono_ms=10000.,mono_ms=10000.+at+yoked_late)))
+        return a,y
+
+    def test_yoked_display_is_bounded_against_its_own_schedule(self):
+        # #220: both runs observe the same deterministic boundary on a late frame.
+        for active_late,yoked_late in ((0,20.6),(0,249),(249,0),(249,249),(20.6,249)):
+            a,y=self.yoke_display(active_late,yoked_late)
+            self.assertTrue(native.compare_yoked(a,y,H)["software_trace_timing_matched"],(active_late,yoked_late))
+        for yoked_late in (251,-0.001):
+            a,y=self.yoke_display(0,yoked_late)
+            with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_DISPLAY_TIMING"):native.compare_yoked(a,y,H)
+
+    def yoke_blocks(self, yoked_pause, drift=0.0):
+        """V1 shape: profile menu block, then two atom menus; the active
+        operator paused 2,952 ms at the boundary (attempts 029/030)."""
+        keys=["profile","K-a1","K-a2"]
+        binding=dict(package_sha256=H,bank_sha256=H,allocation_sha256=H,unit_binding_sha256=H,review_sha256=H,visit="V1",menu_keys=keys,role="active")
+        a_starts=[1000.,1000.+60000+2952,1000.+60000+2952+45000]
+        y_starts=[10000.,10000.+60000+yoked_pause,10000.+60000+yoked_pause+45000+drift]
+        a=[dict(record=dict(binding=binding))];y=[dict(record=dict(binding=dict(binding,role="yoked")))]
+        for i,(key,sa,sy) in enumerate(zip(keys,a_starts,y_starts)):
+            src=dict(event_id=f"{i+1:032x}",menu_key=key,meaning_display_id="m",slot_start_mono_ms=sa,kind="menu_start")
+            a.append(dict(record=src));y.append(dict(record=dict(src,yoked_source_event_id=src["event_id"],slot_start_mono_ms=sy)))
+        a.append(dict(record=dict(kind="sealed")));y.append(dict(record=dict(kind="sealed_yoked",active_ledger_sha256=H)))
+        return a,y
+
+    def test_each_yoked_menu_block_starts_at_its_own_boundary_resume(self):
+        # #245: slower (4,093 ms, attempt 030) and faster yoked resumes both pass.
+        for pause in (4093.0,2952.0,500.0,60000.0):
+            a,y=self.yoke_blocks(pause)
+            self.assertTrue(native.compare_yoked(a,y,H)["software_trace_timing_matched"],pause)
+        for drift in (0.001,-0.001,250.0):
+            a,y=self.yoke_blocks(4093.0,drift)
+            with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_PAUSE_MISMATCH"):native.compare_yoked(a,y,H)
+
+    def test_yoked_audio_onset_stays_tight_when_displays_relax(self):
+        a,y=self.yoke_display(0,249);y[1]["record"]["expected_mono_ms"]+=2.001
+        with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_OUTPUT_TIMING"):native.compare_yoked(a,y,H)
+
     def test_yoked_intermediate_choice_forbidden(self):
         a,y=self.yoke_rows();y[1]["record"]["kind"]="choice_revised"
         with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_SOURCE_EVENT"):native.compare_yoked(a,y,H)
