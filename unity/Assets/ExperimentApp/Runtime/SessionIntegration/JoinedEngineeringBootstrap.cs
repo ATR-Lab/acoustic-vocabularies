@@ -336,13 +336,15 @@ namespace AcousticVocab.SessionIntegration
                     if(committed)throw new SessionFault("JOIN_PREFLIGHT_CONSUMED");if(!wasReady&&host.clock.NowMs-started>15000)throw new SessionFault("JOIN_PREFLIGHT_TIMEOUT");
                     phase="control_start";if(control==null){if(!SealBeforePostMenu())return;StartControl();}
                     phase="control_pump";control.Pump();
+                    // #247: verify the replay (and redo it after any input change) and
+                    // create the yoked factory here, at the idle, unexposed preflight,
+                    // never at the operator Start.
+                    phase="preverify_replay";if(ControlReady&&AwaitingYokedAnchor&&host.YokedStoreReady&&!host.yokedAuthority.Preverified)host.yokedAuthority.Preverify();
+                    if(ControlReady&&AwaitingYokedAnchor&&preparedFactory==null&&host.yokedAuthority.Preverified){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);}
                     phase="request_reset";if(control.ModeAcknowledged&&reset==null)reset=control.RequestReset();
                     phase="confirm_renderer";if(reset!=null&&control.ResetAcknowledged(reset))renderer=host.source.ConfirmReset();
                     phase="finish_grammar";if(teachingView!=null&&teachingView.GrammarComplete&&!host.grammarStage.Complete)host.grammarStage.Finish();
-                    // #247: verify the replay (and redo it after any input change) here,
-                    // at the idle, unexposed preflight, never at the operator Start.
-                    phase="preverify_replay";if(ControlReady&&AwaitingYokedAnchor&&host.YokedStoreReady&&!host.yokedAuthority.Preverified)host.yokedAuthority.Preverify();
-                    phase="prepare_factory";if(ControlReady&&preparedFactory==null&&!AwaitingGrammar&&(!AwaitingYokedAnchor||host.yokedAuthority.Preverified)){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
+                    phase="prepare_factory";if(ControlReady&&preparedFactory==null&&!AwaitingYokedAnchor&&!AwaitingGrammar){preparedFactory=CreateFactory();scope.Own((IDisposable)preparedFactory);if(kind==JoinedModuleKind.Assessment&&block!="validity")host.ActiveAssessment.ShowInstruction(block);}
                     phase="ready_check";if(Ready)wasReady=true;
                 }
                 catch(Exception error)
