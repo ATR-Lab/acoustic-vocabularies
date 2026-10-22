@@ -39,6 +39,45 @@ namespace AcousticVocab.SelectionMenus.Tests
             try{using var port=new FileMenuStore(mailbox,binding,package,File.ReadAllBytes(Path.Combine(root,"initial-snapshot.json")),(string)summary["initial_manifest_sha256"],null,(string)initial["snapshot_sha256"],package.AtomIds.Where(x=>x.EndsWith("1")||x.EndsWith("2")),_=>intents++,()=>now);Assert.That(port.Ready,Is.False);Assert.That(intents,Is.EqualTo(1));Assert.That(Directory.GetFiles(Path.Combine(mailbox,"requests"),"*.json").Length,Is.EqualTo(1));Assert.That(Directory.GetFiles(Path.Combine(mailbox,"requests"),"*.tmp"),Is.Empty);now=2001;Assert.Throws<SessionFault>(port.Pump);Assert.That(port.OldHashesVerified,Is.False);}
             finally{if(Directory.Exists(mailbox))Directory.Delete(mailbox,true);}
         }
+        [Test]public void ValidAtomReplyAfterTimeoutCannotAuthorizeSelectionAndRemainsRetained()
+        {
+            string mailbox=Path.Combine(Path.GetTempPath(),"av-late-atom-"+Guid.NewGuid().ToString("N"));double now=0;int intents=0,verified=0;
+            void Seal(JObject value,string field){value.Remove(field);value[field]=PcmWave.Hash(MenuJson.Bytes(value));}
+            JObject Reply(JObject request,JToken receipt,JObject snapshot)
+            {
+                var reply=new JObject{["schema_version"]=1,["request_id"]=request["request_id"],["request_sha256"]=PcmWave.Hash(MenuJson.Bytes(request)),["config_sha256"]=binding.ConfigSha256,["receipt"]=receipt,["snapshot"]=snapshot,["error"]=JValue.CreateNull()};
+                Seal(reply,"response_sha256");return reply;
+            }
+            try
+            {
+                var before=Profile();
+                using var port=new FileMenuStore(mailbox,binding,package,MenuJson.Bytes(before.Document),before.ManifestHash,before.Head,before.SnapshotHash,package.AtomIds.Where(x=>x.EndsWith("1")||x.EndsWith("2")),row=>{if((string)row["event"]=="menu_store_intent")intents++;if((string)row["event"]=="menu_store_verified")verified++;},()=>now);
+                var verifyRequest=JObject.Parse(File.ReadAllText(Directory.GetFiles(Path.Combine(mailbox,"requests"),"*.json").Single()));
+                File.WriteAllBytes(Path.Combine(mailbox,"responses",(string)verifyRequest["request_id"]+".json"),MenuJson.Bytes(Reply(verifyRequest,JValue.CreateNull(),(JObject)before.Document.DeepClone())));
+                port.Pump();Assert.That(port.Ready,Is.True);Assert.That(verified,Is.EqualTo(1));
+
+                string id=port.RequestSelection("K-a1","P1",1),requestPath=Path.Combine(mailbox,"requests",id+".json"),responsePath=Path.Combine(mailbox,"responses",id+".json");
+                byte[] requestBytes=File.ReadAllBytes(requestPath);var request=MenuStoreCodec.Parse(requestBytes);
+                // Rebind the actual producer payload to this fresh request. Its
+                // verified audio and before/after store states stay unchanged.
+                var receipt=(JObject)atomResponse["receipt"].DeepClone();receipt["request_id"]=id;receipt["request_sha256"]=PcmWave.Hash(MenuJson.Bytes(request));Seal(receipt,"receipt_sha256");
+                var after=(JObject)atomResponse["snapshot"].DeepClone();after["entries"][0]["selection_receipt_sha256"]=receipt["receipt_sha256"];Seal(after,"manifest_sha256");
+                Assert.That(MenuStoreCodec.Receipt(receipt,after,request,before,binding,package).Entries.ContainsKey("K-a1"),Is.True,"The late receipt is valid independently of its arrival time");
+                byte[] lateReply=MenuJson.Bytes(Reply(request,receipt,after));
+
+                now=2001;Assert.That(Assert.Throws<SessionFault>(port.Pump).Code,Is.EqualTo("MENU_STORE_TIMEOUT"));
+                File.WriteAllBytes(responsePath,lateReply);now=2002;port.Pump();
+                Assert.That(port.Ready,Is.False);Assert.That(port.OldHashesVerified,Is.False);
+                Assert.That(port.TryGetReceipt(id,out var acknowledged),Is.False);Assert.That(acknowledged,Is.Null);
+                Assert.That(Assert.Throws<SessionFault>(()=>port.RequestSelection("K-a2","P1",1)).Code,Is.EqualTo("MENU_STORE_NOT_READY"));
+                Assert.That(Assert.Throws<SessionFault>(()=>port.RequestVerification()).Code,Is.EqualTo("MENU_STORE_NOT_READY"));
+                Assert.That(Assert.Throws<SessionFault>(()=>port.Get("K-a1")).Code,Is.EqualTo("MENU_STORE_SELECTION_UNVERIFIED"));
+                Assert.That(intents,Is.EqualTo(2));Assert.That(verified,Is.EqualTo(1),"The late commit is never acknowledged in the visit journal");
+                Assert.That(Directory.GetFiles(Path.Combine(mailbox,"requests"),"*.json").Length,Is.EqualTo(2));
+                Assert.That(File.ReadAllBytes(requestPath),Is.EqualTo(requestBytes));Assert.That(File.ReadAllBytes(responsePath),Is.EqualTo(lateReply));
+            }
+            finally{if(Directory.Exists(mailbox))Directory.Delete(mailbox,true);}
+        }
         [Test]public void NetworkMailboxAndPartialWaveReconstructionAreRefusedBeforePublishing()
         {
             var atoms=package.AtomIds.Where(x=>x.EndsWith("1")||x.EndsWith("2"));
