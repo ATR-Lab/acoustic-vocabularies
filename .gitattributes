@@ -55,3 +55,4 @@ tests/sound/fixtures/** -text
 tests/golden/** -text
 # Release freeze archives (docs/release/README.md): hashed bytes must survive checkout.
 docs/protocol/v*/** -text
+tests/isaac/fixtures/** -text
