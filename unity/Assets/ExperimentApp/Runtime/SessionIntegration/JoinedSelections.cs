@@ -82,7 +82,7 @@ namespace AcousticVocab.SessionIntegration
         }
 
         public static MenuStoreBinding CreateStoreBinding(byte[] bridgeBytes,string rawBridgePin,byte[] verifiedPackageManifest,
-            LoadedAudioPackage package,string expectedUnitId,string expectedBankSha256)
+            LoadedAudioPackage package,string expectedUnitId,string expectedBankSha256,byte[] verifiedBankManifest=null)
         {
             Need(bridgeBytes!=null&&bridgeBytes.Length>0&&bridgeBytes.Length<=65536&&PcmWave.Hash(bridgeBytes)==rawBridgePin&&package!=null&&package.Demo&&package.Study=="B","JOIN_STORE_CONFIG_PIN");
             var config=Json(bridgeBytes);
@@ -95,6 +95,15 @@ namespace AcousticVocab.SessionIntegration
             Need(verifiedPackageManifest!=null&&verifiedPackageManifest.Length>0&&verifiedPackageManifest.Length<=2*1024*1024,"JOIN_STORE_PACKAGE_PIN");
             string manifestText=new UTF8Encoding(false,true).GetString(verifiedPackageManifest);var manifest=Json(verifiedPackageManifest);
             Need(PackageLoader.CanonicalPackageHash(manifestText)==package.PackageSha256&&Text(manifest["package_sha256"])==package.PackageSha256&&manifest["bank"] is JObject&&Text(manifest["bank"]["bank_sha256"])==expectedBankSha256,"JOIN_STORE_PACKAGE_PIN");
+            if(package.BankFormat==QualifiedBank.Format)
+            {
+                // MenuCatalog verifies every bank option. Independently bind the
+                // service's raw manifest pin to the exact bytes that loader saw.
+                Need(verifiedBankManifest!=null&&verifiedBankManifest.Length>0&&verifiedBankManifest.Length<=4*1024*1024&&PcmWave.Hash(verifiedBankManifest)==Text(config["bank_file_sha256"]),"JOIN_STORE_BANK_FILE_PIN");
+                var bank=Json(verifiedBankManifest);
+                Need(Text(bank["format"])==QualifiedBank.Format&&Text(bank["bank_id"])==package.PackageId&&Text(bank["dyad_slot"])==expectedUnitId&&QualifiedBank.CanonicalSha256(bank)==expectedBankSha256,"JOIN_STORE_BANK_BINDING");
+            }
+            else Need(verifiedBankManifest==null,"JOIN_STORE_BANK_FORMAT");
             return new MenuStoreBinding(bridgeUnit,Text(config["book_id"]),expectedBankSha256,package.PackageSha256,PcmWave.Hash(Encoding.ASCII.GetBytes(Canonical(config))));
         }
         // The synthetic #11 bridge reserves a DEMO- namespace. Keep the actual

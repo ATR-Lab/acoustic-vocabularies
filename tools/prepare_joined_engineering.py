@@ -135,7 +135,7 @@ def relative(value):
 
 
 def cap(name):
-    return (32 if name == "menu_replay_ledger" else 16 if name in (
+    return (32 if name == "menu_replay_ledger" else 4 if name == "bank_manifest" else 16 if name in (
         "schedule", "neutral", "run_sheet_csv", "yoked_active_schedule", "yoked_active_run_sheet_csv"
     ) else 1) * 1024**2
 
@@ -260,14 +260,16 @@ def prepare(map_path, map_sha256, output):
     need(is_hash(map_sha256), "MAP_PIN")
     doc = strict_json(read_file(map_path, MAX_MAP, map_sha256))
     need(isinstance(doc, dict) and "version" in doc and "scope" in doc, "MAP_SHAPE")
-    need(type(doc.get("version")) is int and doc["version"] in (1, 2, 3)
+    need(type(doc.get("version")) is int and doc["version"] in (1, 2, 3, 4)
          and doc.get("scope") == "DEMO_ENGINEERING", "MAP_SCOPE")
     version = doc["version"]
     exact(doc, ("version", "scope", "protocol_version", "identity", "files", "directories", "pins", "control")
           + (("yoked_start",) if version >= 2 else ()))
     if version >= 2:
         yoked_start_check(doc["yoked_start"])
-    optional_files = OPTIONAL_FILES + (YOKED_FILES if version >= 2 else ()) + (("grammar_review",) if version == 3 else ())
+    optional_files = (OPTIONAL_FILES + (YOKED_FILES if version >= 2 else ())
+                      + (("grammar_review",) if version >= 3 else ())
+                      + (("bank_manifest",) if version >= 4 else ()))
     need(opaque_id(doc["protocol_version"]), "PROTOCOL_ID")
     exact(doc["identity"], IDENTITY_NAMES, "IDENTITY_SHAPE")
     for key, value in doc["identity"].items():

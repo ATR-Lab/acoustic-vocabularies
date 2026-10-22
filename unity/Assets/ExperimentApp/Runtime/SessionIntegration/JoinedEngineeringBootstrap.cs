@@ -144,7 +144,7 @@ namespace AcousticVocab.SessionIntegration
                     if(!frames.Ready)return;
                     if(assets.Package.Study=="B")
                     {
-                        var binding=JoinedSelections.CreateStoreBinding(config.RequireFile("menu_bridge_config").ReadVerified(),config.RequireFile("menu_bridge_config").Sha256,config.RequireFile("package_manifest").ReadVerified(),assets.Package,config.UnitId,config.Pin("bank_sha256"));
+                        var binding=JoinedSelections.CreateStoreBinding(config.RequireFile("menu_bridge_config").ReadVerified(),config.RequireFile("menu_bridge_config").Sha256,config.RequireFile("package_manifest").ReadVerified(),assets.Package,config.UnitId,config.Pin("bank_sha256"),config.TryFile("bank_manifest",out var bankManifest)?bankManifest.ReadVerified():null);
                         var wave=assets.Menus==null?JoinedVisitArtifacts.Json(assets.Permutation)["wave_atom_order"]["3"].Select(x=>(string)x).ToArray():assets.Menus.MenuKeys.Where(k=>k!="profile").ToArray();
                         audit.Write("configuration",new JObject{["producer_unit_id"]=config.UnitId,["bridge_unit_id"]=binding.UnitId,["bridge_config_sha256"]=binding.ConfigSha256});
                         store=visit.Own(new FileMenuStore(config.Directory("menu_mailbox"),binding,assets.Package,config.RequireFile("menu_snapshot").ReadVerified(),config.Pin("menu_manifest_sha256"),config.Pin("menu_head_sha256"),config.Pin("menu_snapshot_sha256"),wave,x=>audit.Write("store",x),()=>clock.NowMs,assets.Menus==null||assets.Menus.Role=="yoked"));

@@ -169,6 +169,22 @@ registry, labels and teaching methodology before familiarization. File identity
 alone is not review approval. Familiarization start and later teaching resume
 remain separate explicit operator commands; staging starts neither.
 
+Version 4 retains the version 3 roles and adds nullable `files.bank_manifest`
+(maximum 4 MiB). Supply the exact independently pinned #26 `manifest.json` for a
+qualified Study B package. Older versions cannot carry that new authority. The
+joined menu loader verifies its canonical bank hash, permutation, allocation and
+every package option. The store binding also requires the bridge's
+`bank_file_sha256` to identify these exact raw bytes. A missing or changed manifest
+blocks the qualified path, including visits which read a completed store without
+showing a menu. Provisional DEMO packages keep their existing path.
+
+The Python service uses the locked banks environment for qualified inputs. Its
+existing `bank_path` points to the original verified bank directory's
+`manifest.json`; retain that complete directory for backend verification. Staging
+copies the pinned app-side manifest but does not relocate or rewrite the service
+configuration. The service and app retain their separate raw-file pins. Neither
+version 4 nor a qualified DEMO bank grants participant admission.
+
 ```
 uv run --project sound pytest --import-mode=importlib -p no:cacheprovider tests/test_prepare_joined_engineering.py
 ```
