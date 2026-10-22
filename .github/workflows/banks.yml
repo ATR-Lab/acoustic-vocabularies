@@ -10,6 +10,9 @@ on:
       - "tests/generation/test_bank_manifest.py"
       - "tools/menu_store_bridge.py"
       - "tools/menu_store_fixture.py"
+      - "tools/menu_store_benchmark.py"
+      - "tools/qualified_menu_store_benchmark.py"
+      - "tools/prepare_qualified_join_fixture.py"
       - ".github/workflows/banks.yml"
   push:
     # o4.3.1-bank-builder: runs the 3-OS matrix on the #26 branch before its PR exists
@@ -23,6 +26,9 @@ on:
       - "tests/generation/test_bank_manifest.py"
       - "tools/menu_store_bridge.py"
       - "tools/menu_store_fixture.py"
+      - "tools/menu_store_benchmark.py"
+      - "tools/qualified_menu_store_benchmark.py"
+      - "tools/prepare_qualified_join_fixture.py"
       - ".github/workflows/banks.yml"
   workflow_dispatch:
 

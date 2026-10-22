@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from av_banks import handoff
-from tools.prepare_joined_engineering import PreparationError
-from tools.prepare_qualified_join_fixture import prepare
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.prepare_joined_engineering import PreparationError  # noqa: E402
+from tools.prepare_qualified_join_fixture import prepare  # noqa: E402
 
 
 @pytest.mark.parametrize("bank_dir", ["../outside", "/outside", ".", "bank/../outside"])
