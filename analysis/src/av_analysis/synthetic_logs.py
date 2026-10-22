@@ -760,6 +760,38 @@ def build_synthetic_root(
     return root
 
 
+def unseal_synthetic_keys(root: DataRoot) -> list[str]:
+    """Write the unmasking key a SYNTHETIC root lacks until unblinding (#6 chain).
+
+    ``synth-logs`` writes no ``keys/``: reconciliation and the dashboard run masked. This
+    is the synthetic stand-in for the unblinding step: the Study A book key
+    (``keys/A/<set>-book-key.json``, ``av-schedules/a-book-key``) of the DEMO allocation
+    that ``synth-logs`` built the root from (same label and set). Study B needs no key
+    file. Returns the written ``keys/``-relative paths; an existing identical file is
+    left as it is, a different one is refused.
+    """
+    if not root.synthetic:
+        raise WatermarkError("synthetic keys exist only for SYNTHETIC roots")
+    if root.study not in ("A", "both"):
+        return []
+    sets: tuple[SetName, ...] = ("pilot", "confirmatory")
+    if root.set_name != "both":
+        sets = tuple(s for s in sets if s == root.set_name)
+    written: list[str] = []
+    for set_name in sets:
+        name = f"{set_name}-book-key.json"
+        data = assign_files(demo_seed(root.label), "A", set_name)[name]
+        rel = f"A/{name}"
+        target = root.path / "keys" / rel
+        if target.is_file():
+            if read_bytes(target) != data:
+                raise WatermarkError(f"keys/{rel} differs from the DEMO allocation")
+            continue
+        write_synthetic_input(root, "keys", rel, data)
+        written.append(rel)
+    return written
+
+
 def synthetic_visit_files(root: DataRoot, visit_id: str) -> dict[str, bytes]:
     """The raw files of one clean synthetic visit (file name -> bytes), regenerated from
     the root's DEMO label."""
@@ -1295,6 +1327,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         "fault-suite.csv (exit 1 if a fault is not detected)",
     )
     parser.add_argument(
+        "--unseal-keys",
+        action="store_true",
+        help="with an existing SYNTHETIC root as --out: write its DEMO unmasking key "
+        "(keys/A/<set>-book-key.json), the stand-in for unblinding before 'run'",
+    )
+    parser.add_argument(
         "--examples",
         action="store_true",
         help="write the committed example reports and fault-suite.csv into --out "
@@ -1309,6 +1347,16 @@ def main(args: argparse.Namespace) -> int:
         seeds_ok = args.demo_seed.startswith("DEMO-")
         if not seeds_ok:
             raise ValueError("--demo-seed must start with DEMO-")
+        if args.unseal_keys:
+            root = DataRoot.open(out)
+            if root.label != args.demo_seed:
+                raise ValueError(f"--demo-seed {args.demo_seed} is not the root's label")
+            written = unseal_synthetic_keys(root)
+            for rel in written:
+                print(f"wrote keys/{rel} (SYNTHETIC)")
+            if not written:
+                print("no key to write")
+            return 0
         if args.examples:
             for name in write_examples(out, seed_label=args.demo_seed):
                 print(f"wrote {name}")

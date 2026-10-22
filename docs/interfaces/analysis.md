@@ -234,6 +234,11 @@ Commands (exit 0 success, 1 findings, 2 refused input):
   [--max-persons N]`: a SYNTHETIC root with clean logs for every visit type;
   `--fault NAME --visit ID [--documented]` injects a fault (`codes.FAULT_INJECTIONS`);
   `--fault-suite` runs all of them; `--examples` rewrites the sample reports.
+  The root has no `keys/`, so reconciliation and the dashboard run masked;
+  `synth-logs --demo-seed <label> --out <existing root> --unseal-keys` is the synthetic
+  stand-in for unblinding: it writes the DEMO Study A book key
+  (`keys/A/<set>-book-key.json`) of the same allocation (`unseal_synthetic_keys`), after
+  which `run` works on the same root (#6 chain, `analysis/ci/chain.sh`).
 
 Raw-log rules beyond `vocab` (Pending confirmation by #67, #72, #73; full table in the
 guide): trial-log `message_id` is the cue (message, atom or speech ID; empty for the
