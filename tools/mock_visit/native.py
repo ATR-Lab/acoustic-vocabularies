@@ -245,6 +245,29 @@ def menu(chains, attempts, items, requests, role, schedule_hash, package_hash):
     return incomplete
 
 
+def replay_source(chain, file_hash, config, package_hash, yoked_chains):
+    """The yoked run's staged replay source must be the ACTIVE member's sealed
+    ledger: pinned by the yoked config, bound to the active schedule, and the
+    exact file the yoked seal names. It is never checked as this run's journal."""
+    pin, schedule = config["files"].get("menu_replay_ledger"), config["files"].get("yoked_active_schedule")
+    require(pin is not None and schedule is not None and file_hash == pin["sha256"], "MOCK_MENU_REPLAY_SOURCE_PIN")
+    require(chain and chain[0]["record"].get("kind") == "header", "MOCK_MENU_HEADER")
+    header = chain[0]["record"]; exact(header, "kind format binding created_utc clock_epoch"); binding = header["binding"]
+    exact(binding, "package_sha256 bank_sha256 allocation_sha256 schedule_sha256 unit_binding_sha256 review_sha256 visit role menu_keys")
+    require(header["format"] == "av-menu-ledger/1" and guid(header["clock_epoch"]) and binding["role"] == "active"
+            and binding["package_sha256"] == package_hash and binding["schedule_sha256"] == schedule["sha256"], "MOCK_MENU_REPLAY_SOURCE_BINDING")
+    seal = chain[-1]["record"]
+    require(seal.get("kind") == "sealed" and type(seal.get("menu_count")) is int and seal["menu_count"] == len(binding["menu_keys"])
+            and sum(r["record"].get("kind") == "menu_start" for r in chain[1:-1]) == seal["menu_count"], "MOCK_MENU_REPLAY_SOURCE_UNSEALED")
+    for yoked in yoked_chains:
+        y = yoked[0]["record"]["binding"]
+        require(all(y[k] == binding[k] for k in ("package_sha256", "bank_sha256", "allocation_sha256", "unit_binding_sha256", "review_sha256", "visit", "menu_keys")),
+                "MOCK_YOKED_UNIT_BINDING")
+        last = yoked[-1]["record"]
+        if last.get("kind") == "sealed_yoked": require(last["active_ledger_sha256"] == file_hash, "MOCK_YOKED_SEAL_PIN")
+    return binding
+
+
 def compare_yoked(active, yoked, active_file_hash):
     """Compare visit timing across clocks: exact menu spacing within each menu
     block; each block starts at its own operator boundary resume (#245)."""
