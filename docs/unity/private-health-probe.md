@@ -45,6 +45,15 @@ correlated probe is required before any grant. Stale command replies, and any
 stale reply outside that state, keep the permanent latch. The 250 ms bound is not
 extended, and stale data never grants.
 
+A second unexposed state was added under #242 by maintainer decision. Once
+`visit_complete` is recorded, the engine has no item or tail left, so no cue can
+be scheduled. The same health-probe drop therefore applies after
+`visit_complete` on the committed assessment lease, during the post-visit forms.
+It does not apply to the post-W4 optional stage. In attempts A-D0 019/020, the
+lease's client was pumped through the protected-slot content and latched
+`CONTROL_QUEUED` after a forms-transition stall, so the visit ended
+`ASSESSMENT_RUNTIME_FAILED`. Mid-visit, a committed lease still latches.
+
 Native attempt 009 ([record](private-health-probe-native-019.validation.json), player `simulation-native-019`) idled for 6 minutes before load at the profile-menu preflight. This reproduces the conditions of attempt 007, which refused there with `CONTROL_QUEUED`. About 313 s in, a 0.68 s main-thread gap left eight probe replies queued for 265-480 ms. All eight were journaled as `stale_health_probe_dropped`. No `CONTROL_QUEUED` refusal occurred, and the visit later proceeded through the menus and lessons. The policy does not cover exposed phases. In attempt 010, a gap of about 1.3 s during a message lesson filled the eight-entry receive queue. That ended the run with `CONTROL_ARRIVAL_CAPACITY` and then `CONTROL_UNAVAILABLE`.
 
 Standalone installed-Mono diagnostics reproduced slow HTTP response headers:
