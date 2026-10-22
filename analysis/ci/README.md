@@ -9,6 +9,7 @@ adds only its own script, so no issue edits the workflow:
 | `33.sh` | #33 | synthetic roots for every visit type, sample reconciliation reports, fault-injection suite |
 | `34.sh` | #34 | synthetic section 9 report, null-scenario operating characteristics |
 | `35.sh` | #35 | synthetic dashboard and its screenshot |
+| `chain.sh` | #6 | integration demo: one synthetic root through synth-logs, reconcile, derive, dashboard, unblinding stand-in and `run` for A and B |
 
 Rules:
 
