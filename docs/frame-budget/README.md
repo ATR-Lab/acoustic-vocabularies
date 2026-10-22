@@ -143,7 +143,25 @@ The separately named `FrameProbe` build has no session or audio authority. Suppl
 engineering simulator run. It waits for real Foundation/source/panel readiness,
 captures the actual rendered scene, uses synthetic windows and exits. Build it
 with the existing wrapper `-Target Windows -Scene FrameProbe`; participant
-capture scenes use `-Scene FrameBudget`. Raw logs/configuration/screenshots remain
+capture scenes use `-Scene FrameBudget`.
+
+`-frameProbeStall 0 -frameProbePanelLoss` (a bare switch, same build and gating)
+instead disables the actual `ResponsePanelController` 4 s after capture starts,
+inside the synthetic response window, while frames continue. The controller's own
+disable path drops `InputAvailable` and latches its fault; the next render callback
+reports the interface as unavailable and the monitor raises
+`FRAME_INTERFACE_UNAVAILABLE`. One injection per run: the switch is refused with a
+non-zero stall, with a value, or twice. The probe exits with
+`FRAME_PROBE_PANEL_UNAVAILABLE_BEFORE_INJECTION` if the panel was not available
+before the loss, so the fault can be attributed to the injection, and with
+`FRAME_PROBE_PANEL_LOSS_NOT_OBSERVED` if disabling the controller did not drop its input. The output
+files match the stall runs (`metadata.json`, `frames.csv`, `events.jsonl`,
+`manifest.json`, `probe.json`, `preview.png`). `metadata.json` adds
+`requested_panel_loss` and `injection` (`none`, `stall`, `panel_loss`), and
+`probe.json` adds `injection` and `injected_mono_ms`. EditMode tests cover the
+argument gate and drive the probe's windows and injection time through the
+monitor and CSV evidence. No native panel-loss run is recorded here yet, and a
+simulator run is not a physical interface-loss check. Raw logs/configuration/screenshots remain
 private. The probe's camera capture is supplementary; inspect the actual native
 XR mirror and log camera pose/FOV before making layout judgments.
 
