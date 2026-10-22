@@ -94,6 +94,9 @@ the contents or meaning of video.
 - Actual sealed A/B package files, 48 kHz mono canonical PCM16 WAVs, trained and
   held-out composition hashes, selected B ranks, and stored speech selections
   are checked. Held-out PCM is never generated to disk by this verifier.
+- Delivered message provenance follows `package-format.md` §5:
+  - A Study A trained-block play must name the package WAV's file hash (`MOCK_TRAINED_FILE_HASH`).
+  - Message lessons (A and B), Study B messages and novel messages must be composites. The PCM must equal the package composite, `waveform_sha256` must be null, and both atom PCM hashes must match (`MOCK_COMPOSITE_PROVENANCE`).
 - Profile examples bind the actual reserved registry and allocation's stored
   P1/P2/P3 order. All eight profile plays and each full 96,000-sample completion
   must match. Atom menus bind the ordered ranks 1/1/2/2/3/3 and selected repeats.

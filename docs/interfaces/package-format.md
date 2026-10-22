@@ -151,6 +151,11 @@ pcm(referent)) and `n_samples` = n(action) + 9,600 + n(referent) (composition.md
 - **Trained message, B:** compose in memory from the participant's committed options
   (the selected rank of each atom under the selected profile) and check the result
   against the matching combination before the slot starts.
+- **Message lesson (A and B):** an aligned lesson needs the boundaries of its constituent
+  atoms. The app therefore composes the trained message in memory from the verified
+  atoms (B: the committed options) and checks it against `composite_sha256` before
+  the slot. The playback event has a null `waveform_sha256` and carries both atom PCM
+  hashes. The Study A file rule above applies to trained-block plays, not to lessons.
 - **Held-out message (A and B), novel block only:** compose in memory just before its
   slot, check `composite_sha256`, play once, log the hash. The playback method is the
   open #64 decision (composition.md §6). Never write the buffer to disk.
