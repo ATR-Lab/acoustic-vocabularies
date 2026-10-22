@@ -1,0 +1,445 @@
+{
+  "scope": "Native SIMULATION_TEST reruns for #224 (state echo correlation, neutral readiness) and the #148 stale-probe preflight policy; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-10",
+  "refs": [
+    "#224",
+    "#148",
+    "#82"
+  ],
+  "player": {
+    "build_id": "simulation-native-019",
+    "source_commit": "b02e34c4ddc5afd322988148e5fcd5c6f44e48f7",
+    "composition": {
+      "base": "de0a5ac685df6d206f1dff60edcbdfca86906820 (main 0aa8eeb + #201 d85cd12 + #199 d98e471 + #221 d7eab7a + #223 f28688c)",
+      "pr225": "2e998d689a997d9680af31041ea9161788dd6880",
+      "pr226": "db545a397d9b604deff823cf1753e3f2afd690db",
+      "note": "local test merges de0a5ac -> 84a5b37 (+ #225) -> b02e34c (+ #226); not pushed"
+    },
+    "dirty_source": false,
+    "editor": "6000.6.0f1",
+    "target": "StandaloneWindows64",
+    "build_manifest_sha256": "39ce692e191edc9135afa31eee4579ab70a47c91a0cceec78b97915108e67e23"
+  },
+  "isaac_service": {
+    "source_commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+    "forward": "tools/engineering_forward.py"
+  },
+  "attempts": {
+    "simulation-test-B-V1-019-echo-009": {
+      "native_status": "AUDIO_EXPOSURE_INTERRUPTED",
+      "menu_ledger_sealed": true,
+      "isaac": {
+        "source_rate_hz": 15.27,
+        "publish_interval_max_ms": 188.2,
+        "gpu_util_median_pct": 11.0,
+        "gpu_util_max_pct": 74.0,
+        "physics_steps": 19098,
+        "fault": null
+      },
+      "stale_health_probe_dropped": {
+        "count": 8,
+        "queue_age_ms": [
+          285.8,
+          265.4,
+          421.3,
+          480.0,
+          454.8,
+          405.3,
+          312.1,
+          264.9
+        ],
+        "first_local_mono_ms": 313377.8845,
+        "last_local_mono_ms": 314091.4832
+      },
+      "control_queued_preflight_refusals": 0,
+      "terminal_fault_diagnostic": {
+        "primary_code": "AUDIO_EXPOSURE_INTERRUPTED",
+        "assessment_readiness": null,
+        "control_health": {
+          "effective_age_ms": 116.45880606178952,
+          "receipt_elapsed_ms": 8.309699999867007,
+          "round_trip_ms": 23.06970000010915,
+          "publisher_age_ms": 85.07940606181336,
+          "neutral_age_ms": 28.257114061813354,
+          "queued_arrivals": 0,
+          "pending_commands": 1,
+          "stale_probes_dropped": 0,
+          "first_failure_code": null,
+          "first_failure_phase": null
+        }
+      },
+      "state_source_events": [
+        {
+          "mono_ms": 313692.5,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 313755.5,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.4906422999999904
+        },
+        {
+          "mono_ms": 313814.1,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 313831.9,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.12269919999999956
+        },
+        {
+          "mono_ms": 313847.9,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 313853.3,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.07418000000001257
+        },
+        {
+          "mono_ms": 314108.9,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 314111.6,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.05964969999996583
+        },
+        {
+          "mono_ms": 815064.9,
+          "code": "STATE_ECHO_CORRELATION",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 815068.5,
+          "code": "STATE_RECEIVE_QUEUE_OVERFLOW",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 815068.7,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 815077.7,
+          "code": "STATE_RECOVERED",
+          "duration_s": 4.80530060000001
+        },
+        {
+          "mono_ms": 1183009.7,
+          "code": "STATE_RECEIVE_QUEUE_OVERFLOW",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 1183010.0,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 1183066.7,
+          "code": "STATE_RECOVERED",
+          "duration_s": 1.3548871000000418
+        }
+      ],
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 121,
+        "software_completed_plays": 120,
+        "content_hash_verified_plays": 121,
+        "completed_opportunities": 25,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "AUDIO_EXPOSURE_INTERRUPTED",
+          "OPERATOR_ADAPTER_FAILED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "AUDIO_CALLBACK_OR_COMPLETION_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "FRAME_CAPTURE_INCOMPLETE",
+          "FRAME_FAULT_PRESENT",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "PROTECTED_DISPLAY_TRACE_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "de47f62e34009373f49e4da3e80e2378d38dca588b452be6a96d0819b2499a8c",
+        "native-result.local.json": "80531da4ffeb61933b74792b6aea3d9c5b820a54840c51a19af185fff430fccd",
+        "events-0000.local.jsonl": "b6e99feee518a5ce409c8cd99bb337ef3e6933c72e36d23ecd466773c1b053a7",
+        "export manifest.json": "1b218b369e87f420678f9e887458a0991e6f4200d038acde785d70633badd113",
+        "mock-run.manifest.json": "ce9e74011b3549f0725b83a18c11853b025b6e1eb44dec584fd878b886a61b3c",
+        "reconciliation.local.json": "ba92c93746e56ac98853449a867abd70128aa5e29891698a37839e39dd1e4d15",
+        "process-result.local.json": "4df8fdeedd8ff0a3e05b85b2fe26eaa4bad2938727a2963609ceecaf7699e973",
+        "native.log": "58da588779d9fd11c416199ce7938f597898cac54eee64563a7115c3417e17af",
+        "isaac summary.json": "2a61ac3446a92131a2c469eb0c6a8e5aa7f051b2bc161de3cc8d6a053129dca9",
+        "isaac publish.csv": "4ada09911f7ddcde6277b66a7c7a0c64f93cac1c38a3666c44900ef273dd83fb",
+        "operator-logs/foundation-214bffaceddf48b99e9b157ba119bb02.jsonl": "7d5aae8000d15de42b8216725ea871da21d3d56fb7d157e4102aac8cff087d77",
+        "operator-logs/foundation-e60714a7d68e4a248b6d45fd7718784d.jsonl": "4abb29617a9e3dcb149cc851270e2210d7ffcc2a8e4ef3c9cb95011ec1fd9fee",
+        "operator-logs/panel-f0b72cd7bdd248b2811f8a9c18f6b478.jsonl": "ca1df7775fd0e49b465e5f0ce385f7cdc7eac143aae5faeb7fe76c3895a4e267",
+        "operator-logs/sample-age-3640eb51999b4c35880eafe54506d14c.csv": "16f88040d758998d1edc12fecaadf386176bb3bc60123c3ca96ecfd290f4ca5b",
+        "operator-logs/shutdown-00c80fda0b01494584f2fc7243b05fd2.local.jsonl": "35a40e3ee70d10c92fdfffe9a63b54502fa06057f865f506f052904ea3f529ff",
+        "menus.local.jsonl": "585b5fa9329ba4c58dd3b8fe2d15891c2bc804831bb13e17077bd64e9b703b71"
+      },
+      "operator": "6 min deliberate idle before load at the profile-menu preflight, then Start; Resume at each block boundary",
+      "blocks": {
+        "profile_menu": "1/1",
+        "atom_menus": "8/8",
+        "atomic_lessons": "8/8",
+        "message_lessons": "8/8",
+        "trained": "0/4 (stopped in item 1)",
+        "novel": "0/2",
+        "atomic": "0/8"
+      },
+      "main_thread_pump_gaps": [
+        {
+          "after_mono_s": 313.011,
+          "gap_ms": 681.8
+        },
+        {
+          "after_mono_s": 313.693,
+          "gap_ms": 179.3
+        },
+        {
+          "after_mono_s": 313.872,
+          "gap_ms": 266.3
+        },
+        {
+          "after_mono_s": 810.261,
+          "gap_ms": 4808.1
+        }
+      ],
+      "new_fault": {
+        "code": "AUDIO_EXPOSURE_INTERRUPTED",
+        "attempt_id": "B-C01-M1-V1-TR-01",
+        "block": "trained",
+        "item_index": 0,
+        "state": "CueRequested",
+        "block_resume_mono_ms": 1181031.72,
+        "reset_reply_mono_ms": 1181157.65,
+        "ready_mono_ms": 1181184.85,
+        "audio_request_mono_ms": 1181198.46,
+        "exposure_interrupted_mono_ms": 1181316.83,
+        "scheduled_onset_mono_ms": 1181781.72,
+        "item_fault_mono_ms": 1181786.31,
+        "delivered_samples": 0,
+        "gate": "AudioPlayer.Update: ExposureGate false; ExposureGate = !disposed && !failed && NeutralReady && ModeReady && FocusOk && panel.Ready",
+        "unresolved": "No readiness snapshot is journaled for an audio-gate interruption (assessment_readiness is null); the failing conjunct is not recorded. State-source sample rows were regular (about 40 ms) through the window."
+      }
+    },
+    "simulation-test-B-V1-019-echo-010": {
+      "native_status": "CONTROL_UNAVAILABLE",
+      "menu_ledger_sealed": true,
+      "isaac": {
+        "source_rate_hz": 16.76,
+        "publish_interval_max_ms": 137.3,
+        "gpu_util_median_pct": 11.0,
+        "gpu_util_max_pct": 63.0,
+        "physics_steps": 13087,
+        "fault": null
+      },
+      "stale_health_probe_dropped": {
+        "count": 0,
+        "queue_age_ms": [],
+        "first_local_mono_ms": null,
+        "last_local_mono_ms": null
+      },
+      "control_queued_preflight_refusals": 0,
+      "terminal_fault_diagnostic": {
+        "primary_code": "CONTROL_UNAVAILABLE",
+        "assessment_readiness": null,
+        "control_health": {
+          "effective_age_ms": 1397.0999678255891,
+          "receipt_elapsed_ms": 1362.6979000000283,
+          "round_trip_ms": 12.949099999968894,
+          "publisher_age_ms": 3.010866825592041,
+          "neutral_age_ms": 21.45296782559204,
+          "queued_arrivals": 8,
+          "pending_commands": 0,
+          "stale_probes_dropped": 0,
+          "first_failure_code": "CONTROL_ARRIVAL_CAPACITY",
+          "first_failure_phase": "receive_queue"
+        }
+      },
+      "state_source_events": [
+        {
+          "mono_ms": 447769.2,
+          "code": "STATE_RECEIVE_QUEUE_OVERFLOW",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 447769.4,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 447784.6,
+          "code": "STATE_RECOVERED",
+          "duration_s": 4.8681227999999805
+        },
+        {
+          "mono_ms": 722540.0,
+          "code": "STATE_RECEIVE_QUEUE_OVERFLOW",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 722562.6,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 722868.5,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.8939996999999948
+        },
+        {
+          "mono_ms": 722966.8,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 723017.8,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.10425840000004882
+        },
+        {
+          "mono_ms": 723047.2,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 723047.5,
+          "code": "STATE_RECOVERED",
+          "duration_s": 0.1044505999999501
+        },
+        {
+          "mono_ms": 724165.8,
+          "code": "STATE_RECEIVE_QUEUE_OVERFLOW",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 724166.1,
+          "code": "STATE_STALE",
+          "duration_s": null
+        },
+        {
+          "mono_ms": 724193.1,
+          "code": "STATE_RECOVERED",
+          "duration_s": 1.0999228000000585
+        }
+      ],
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 109,
+        "software_completed_plays": 109,
+        "content_hash_verified_plays": 109,
+        "completed_opportunities": 21,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "CONTROL_UNAVAILABLE",
+          "OPERATOR_ADAPTER_FAILED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "FRAME_CAPTURE_INCOMPLETE",
+          "FRAME_FAULT_PRESENT",
+          "LESSON_EVENT_COVERAGE_INCOMPLETE",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "LESSON_TYPED_INTERRUPTED",
+          "LESSON_TYPED_INTERVALS_INCOMPLETE",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "SCHEDULED_PLAYS_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "09dec56f073d2d8037d0f142c918500736ec78d8e24ef9c25bfa57e4e4429c14",
+        "native-result.local.json": "fbfab6ca58b55e86a6ae6d374a610383670a23904be2a9692888919716e4fbed",
+        "events-0000.local.jsonl": "4456b9fa812bff660cd8cd9cc1b6b88876e60c57a23517de991c9eb10f566a3d",
+        "export manifest.json": "e8598dc3b721f0ff30044b933d1321508bf219f75b62dc8284ff5a0f1ea72589",
+        "mock-run.manifest.json": "9adcaafe9581378aa77b31f7a3504bd8db785bf82fedcf566fa1f957ae58fd0e",
+        "reconciliation.local.json": "8707223d2d922b88d9e6a3edd60de0caffa573f61155c400d4f4e7f91dc8bbc4",
+        "process-result.local.json": "4825d69bd28dc21e45dfe0119c0580304b319b2fdb2234ba80bdb794aa401c24",
+        "native.log": "6870d58bf8561b6640891d868f69ae88c7bb090d93c1ee2adb8cd56f07d86a18",
+        "isaac summary.json": "0df7ea58e0f242f10238403c14266b2aec9451a5f0902d3b1d2cb81cc3893cd9",
+        "isaac publish.csv": "dc0d6f0f651f3529a16f24019b29834f0362144ef6b20d75c28d0c0d7f871cd6",
+        "operator-logs/foundation-33449bb1234044b29fde0e5cd0e0d92a.jsonl": "1de7f6ee00170997df32be67a21039c4b1e682a22cadd075df2991bb857b577f",
+        "operator-logs/foundation-9b3f32f516d9495cb44e3aa06f371389.jsonl": "58f823ee2be8df618beba864f74b509cfc3b92a09882f822c190da678224e416",
+        "operator-logs/panel-3bd2f907658a4d53b7a9c514f8441f40.jsonl": "82f970c30cb94af8cf4ecf0df8a4422f93f56110f83a5d5ff194ded646333db1",
+        "operator-logs/sample-age-52aa61279e60425ba3f3e08d85c3264b.csv": "df4b825a4437d4ba67aefad8968921832412f6127acef25009922dc7edcb1a25",
+        "operator-logs/shutdown-269090402179453ebdd881411a573faf.local.jsonl": "334b364ac47ec31dfb5ee8c65236a9eaa40e2ccc91acfd76690ecfc11f392e68",
+        "menus.local.jsonl": "8a1239ba9a64c53eb4c3e8a2234788174f5be4deeda830b23a81097d0232d67e"
+      },
+      "operator": "Load retried until accepted; Start; Resume at each block boundary",
+      "blocks": {
+        "profile_menu": "1/1",
+        "atom_menus": "8/8",
+        "atomic_lessons": "8/8",
+        "message_lessons": "4/8 (stopped in item 5)",
+        "trained": "0/4"
+      },
+      "main_thread_pump_gaps": [
+        {
+          "after_mono_s": 721.714,
+          "gap_ms": 848.5
+        },
+        {
+          "after_mono_s": 722.563,
+          "gap_ms": 485.2
+        },
+        {
+          "after_mono_s": 723.086,
+          "gap_ms": 1079.6
+        }
+      ],
+      "new_fault": {
+        "code": "CONTROL_UNAVAILABLE",
+        "first_failure": "CONTROL_ARRIVAL_CAPACITY (receive_queue) at 722385.15 ms",
+        "attempt_id": "B-C01-M1-V1-ML-05",
+        "block": "message_lessons",
+        "lesson_interrupted_mono_ms": 722709.65,
+        "fault_mono_ms": 723072.15,
+        "queued_arrivals": 8,
+        "receipt_elapsed_ms": 1362.7,
+        "note": "Main-thread pump gaps of 848.5 ms and 485.2 ms (state-source sample rows) overflowed the eight-entry private receive queue during an exposed lesson; the stale-probe drop does not apply there"
+      }
+    }
+  },
+  "neutral_lost_224_reproduced": false,
+  "trained_item_4_reached": false,
+  "limitations": [
+    "Meta XR Simulator on Windows; no headset, acoustic, display or physical timing qualification",
+    "Neither attempt reached trained item 4, so the #224 ASSESSMENT_NEUTRAL_LOST path was not exercised",
+    "Raw artifacts and operator logs stay private; only hashes are published"
+  ]
+}

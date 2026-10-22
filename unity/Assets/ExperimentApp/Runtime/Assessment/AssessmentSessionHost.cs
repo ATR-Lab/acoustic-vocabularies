@@ -21,6 +21,7 @@ namespace AcousticVocab.Assessment
         public AssessmentScreen screen;
         public AssessmentStages Stages{get;private set;}
         public bool Installed=>factory!=null&&!failed&&isActiveAndEnabled;
+        public Newtonsoft.Json.Linq.JObject ReadinessLoss=>factory?.ReadinessLoss;
         public event Action<string> Faulted;
         ProtectedContentFactory factory;
         UnityAssessmentAudio audio;
