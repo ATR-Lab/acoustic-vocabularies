@@ -77,6 +77,8 @@ namespace AcousticVocab.SelectionMenus
         MenuStoreSnapshot snapshot;JObject pending;double submitted,last=-1;bool failed,disposed;
         public string PackageSha256=>binding.PackageSha256;public string BankSha256=>binding.BankSha256;public string Profile=>snapshot.Profile;
         public bool Ready=>!failed&&!disposed&&pending==null;public bool OldHashesVerified=>Ready;
+        // Identity of the verified store state, for invalidating work verified against it.
+        public string SnapshotSha256=>snapshot.SnapshotHash;
         public FileMenuStore(string mailbox,MenuStoreBinding binding,LoadedAudioPackage package,byte[] initialSnapshot,string manifestPin,string headPin,string snapshotPin,IEnumerable<string> allowedWaveAtoms,Action<JObject> durableCheckpoint,Func<double> monotonicClock,bool readOnly=false)
         {
             MenuRules.Require(binding!=null&&package!=null&&package.Demo&&package.PackageSha256==binding.PackageSha256&&allowedWaveAtoms!=null&&durableCheckpoint!=null&&monotonicClock!=null,"MENU_STORE_CONFIGURATION");this.readOnly=readOnly;this.binding=binding;this.package=package;persist=durableCheckpoint;clock=monotonicClock;allowed=new HashSet<string>(allowedWaveAtoms,StringComparer.Ordinal);MenuRules.Require(allowed.Count is 4 or 8&&allowed.All(package.AtomIds.Contains),"MENU_STORE_WAVE");

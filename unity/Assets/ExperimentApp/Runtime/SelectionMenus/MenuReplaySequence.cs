@@ -29,9 +29,9 @@ namespace AcousticVocab.SelectionMenus
     {
         internal sealed class Entry
         {internal string Key;internal double Start;internal MenuReplay Replay;internal double Anchor;internal int SegmentFirst;internal bool Planned;}
-        readonly Entry[] entries;readonly MenuLedgerBinding activeBinding;readonly Func<double> clock;
+        Entry[] entries;readonly MenuLedgerBinding activeBinding;readonly Func<double> clock;
         public string LedgerSha256{get;}
-        public DateTimeOffset CreatedUtc{get;}
+        public DateTimeOffset CreatedUtc{get;private set;}
         public double SourceSpanMs=>entries.Last().Start+(entries.Last().Key=="profile"?60000:45000)-entries[0].Start;
         MenuReplaySequence(Entry[] entries,string hash,DateTimeOffset created,double anchor,Func<double> clock,MenuLedgerBinding binding)
         {activeBinding=binding;this.entries=entries;LedgerSha256=hash;CreatedUtc=created;this.clock=clock;foreach(var e in entries){e.Anchor=anchor;e.SegmentFirst=0;e.Planned=false;}}
@@ -42,7 +42,8 @@ namespace AcousticVocab.SelectionMenus
         public double MinimumGapBeforeMs(SlotItem item,double baseOnsetMonoMs)
         {
             MenuRules.Require(item!=null&&item.Phase=="selection"&&MenuRules.Finite(baseOnsetMonoMs)&&baseOnsetMonoMs>=0,"MENU_REPLAY_SLOT");
-            var entry=Find(Key(item));double target=entry.Anchor+entry.Start-entries[entry.SegmentFirst].Start,now=clock();
+            var entry=Find(Key(item));MenuRules.Require(MenuRules.Finite(entry.Anchor),"MENU_REPLAY_UNANCHORED");
+            double target=entry.Anchor+entry.Start-entries[entry.SegmentFirst].Start,now=clock();
             // No tolerance can move an old cue into the present. A reviewed
             // reconstruction supplies a new explicit anchor and its own record.
             MenuRules.Require(MenuRules.Finite(target)&&MenuRules.Finite(now)&&now>=0&&baseOnsetMonoMs<=target&&now<=target-150,"MENU_REPLAY_ANCHOR_MISSED");
@@ -68,9 +69,33 @@ namespace AcousticVocab.SelectionMenus
             foreach(int i in indices){entries[i].Anchor=anchorMonoMs;entries[i].SegmentFirst=indices[0];}
             return true;
         }
+        // Maintainer decision (#247): the yoked start anchors an already fully
+        // verified sequence. Preload does the whole ledger, asset and receipt
+        // verification during the idle preflight and leaves every menu
+        // unanchored (MENU_REPLAY_UNANCHORED) until AnchorStart.
+        public static MenuReplaySequence Preload(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,Func<double> clock)
+            =>LoadCore(path,expectedFileSha256,expectedActiveBinding,verification,nowUtc,double.NaN,clock);
+        public bool Anchored=>entries.All(e=>MenuRules.Finite(e.Anchor));
+        public void AnchorStart(double anchorMonoMs)
+        {
+            MenuRules.Require(MenuRules.Finite(anchorMonoMs)&&anchorMonoMs>=clock()&&entries.All(e=>!MenuRules.Finite(e.Anchor)&&!e.Planned),"MENU_REPLAY_START_ANCHOR");
+            foreach(var e in entries){e.Anchor=anchorMonoMs;e.SegmentFirst=0;}
+        }
+        // A re-verification of the same pinned ledger replaces the verified
+        // entries in place, so a factory already holding this sequence stays bound.
+        public void AdoptVerified(MenuReplaySequence fresh)
+        {
+            MenuRules.Require(fresh!=null&&fresh!=this&&fresh.LedgerSha256==LedgerSha256&&JToken.DeepEquals(fresh.activeBinding.Json(),activeBinding.Json())&&!Anchored&&!fresh.Anchored&&entries.All(e=>!e.Planned)&&fresh.entries.Select(e=>e.Key).SequenceEqual(entries.Select(e=>e.Key)),"MENU_REPLAY_REVERIFY");
+            entries=fresh.entries;CreatedUtc=fresh.CreatedUtc;
+        }
         public static MenuReplaySequence Load(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,double sessionAnchorMonoMs,Func<double> clock)
         {
-            MenuRules.Require(MenuRules.Hash(expectedFileSha256)&&expectedActiveBinding!=null&&expectedActiveBinding.Role=="active"&&verification!=null&&nowUtc.Offset==TimeSpan.Zero&&MenuRules.Finite(sessionAnchorMonoMs)&&sessionAnchorMonoMs>=0&&clock!=null,"MENU_REPLAY_BINDING");
+            MenuRules.Require(MenuRules.Finite(sessionAnchorMonoMs),"MENU_REPLAY_BINDING");
+            return LoadCore(path,expectedFileSha256,expectedActiveBinding,verification,nowUtc,sessionAnchorMonoMs,clock);
+        }
+        static MenuReplaySequence LoadCore(string path,string expectedFileSha256,MenuLedgerBinding expectedActiveBinding,MenuLedgerVerification verification,DateTimeOffset nowUtc,double sessionAnchorMonoMs,Func<double> clock)
+        {
+            MenuRules.Require(MenuRules.Hash(expectedFileSha256)&&expectedActiveBinding!=null&&expectedActiveBinding.Role=="active"&&verification!=null&&nowUtc.Offset==TimeSpan.Zero&&(double.IsNaN(sessionAnchorMonoMs)||sessionAnchorMonoMs>=0)&&clock!=null,"MENU_REPLAY_BINDING");
             MenuJson.NoLinks(path);var info=new FileInfo(path);MenuRules.Require(info.Exists&&info.Length>0&&info.Length<=32*1024*1024,"MENU_LEDGER_SIZE");byte[] bytes=File.ReadAllBytes(path);
             MenuRules.Require(PcmWave.Hash(bytes)==expectedFileSha256&&bytes[bytes.Length-1]==10,"MENU_LEDGER_HASH");
             var lines=new UTF8Encoding(false,true).GetString(bytes).Split('\n');MenuRules.Require(lines.Length>=4&&lines.Length<=10001&&lines.Last()=="","MENU_LEDGER_LINE");

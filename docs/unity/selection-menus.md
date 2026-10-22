@@ -122,6 +122,24 @@ hash and active binding, verifies canonical bytes/hash chain/schema, independent
 assets and actual store receipts, and refuses age outside 0–24 hours. The session
 owner supplies the UTC time and explicit monotonic replay anchor.
 
+By maintainer decision (#247), the joined yoked owner does all of that work during
+the idle, unexposed preflight. `MenuReplaySequence.Preload` verifies the sequence
+without anchoring it (`MENU_REPLAY_UNANCHORED`), `YokedReplayAuthority.Preverify`
+runs it, and the yoked menu factory is created over that sequence. This happens
+before the preflight reports ready.
+
+The result is tied to a cheap fingerprint of its inputs: the pinned ledger file's
+size and time, and the store's state. Any change invalidates it, and the
+verification is redone at the preflight. A pinned-hash mismatch is refused there.
+The 24-hour age window is enforced again at Start.
+
+The operator Start does no ledger, audio or view work. It checks that the result
+is still current (`JOIN_YOKED_PREVERIFY_STALE` otherwise), writes the durable
+`yoked_anchor` record and anchors the sequence. In attempt 031 that work ran in
+the Start frame and stalled it about 260 ms, after which the menu prepare latched
+`CONTROL_QUEUED`. The health policy is unchanged: stale probes are not dropped at
+the pre-cue prepare.
+
 That anchor (the yoked start plus the configured lead) applies to the first menu
 block. By maintainer decision (#245), every later menu block is anchored at its
 own explicit boundary resume plus the same lead (`AnchorBlockAtResume`, a durable
