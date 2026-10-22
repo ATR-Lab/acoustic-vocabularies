@@ -53,3 +53,4 @@ sound/testvectors/** -text
 sound/examples/** -text
 tests/sound/fixtures/** -text
 tests/golden/** -text
+tests/isaac/fixtures/** -text

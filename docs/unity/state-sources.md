@@ -43,16 +43,30 @@ The snapshot source checks the exact neutral-file SHA-256 before parsing and
 binds its scene hash, canonical joint names and objects to the rendering
 registry. It projects only public visual state from the #53 snapshot. Recorded
 trajectories are private NDJSON files with one version 2 live-captured frame per
-line. Files are hash checked before use; sequence, session, simulation progress
-and host timestamp order must be consistent. Playback uses elapsed host-stamp
-offsets, never simulation time. The first frame must match neutral. A completed
+line, recorded on the #56 fixed sim-step schedule (`FixedStepSchedule`, mirroring
+`isaac/demos/recording.py`): exactly 300 samples, frame *i* after exactly
+2 (*i* + 1) physics steps at 1/60 s (`sim_step` 2, 4, ..., 600), each sample's
+`sim_time` advancing 2/60 s within 10 us. Files are hash checked before use;
+sequence, session, simulation progress and host timestamp order must be
+consistent. Any other frame count (`TRAJECTORY_SAMPLE_COUNT`), step count
+(`TRAJECTORY_SIM_STEP_SCHEDULE`) or simulation advance
+(`TRAJECTORY_SIM_TIME_SCHEDULE`) is refused, and a pre-fixed-step recording
+(`sim_step` = sample + 1) is refused as `TRAJECTORY_LEGACY_SCHEDULE`. Playback is
+paced on the host monotonic clock by sample index: sample *i* at *i*/30 s after
+start, interpolating continuous coordinates between samples on that timeline
+(discrete state stays left-continuous), and the last sample held until 10 s,
+when the trajectory completes. Simulation time and the captured host stamps
+never pace playback; the stamps are unpaced capture provenance, so their spacing
+and span are not refused. The first frame must match neutral. A completed
 trajectory holds its final frame and does not implicitly confirm a reset.
 Returning to neutral is an explicit operation. Snapshot validation also checks
 the complete #53 field structure, exactly zero commanded velocities, root/frame
-quaternions and finite environment values. Internal recorded gaps above 250 ms
-are refused. Nonfinite/regressing playback start clocks are refused. An optional
-nominal duration holds the last sample through the declared boundary; a capture
-that overruns that boundary is refused rather than compressed.
+quaternions and finite environment values. Nonfinite/regressing playback start
+clocks are refused. A declared nominal duration other than the fixed 10 s is
+refused (`TRAJECTORY_PLAYBACK_DURATION`) rather than compressed or stretched.
+The committed synthetic fixture `tests/isaac/fixtures/fixed-step-demo` is written
+by the real recorder (`python -m isaac.demos.unity_fixture`); its host clock
+deliberately overruns 10 s with a 740 ms stall.
 
 Reset comparison checks both the newest sample and the currently rendered pose:
 43 joints within 0.5 degrees, object positions within 1 mm, object rotations

@@ -53,18 +53,32 @@ as orientation items. The producer must report a complete 40-record suite. The
 consumer checks the exact station, scene, neutral and canonical joint-order hash;
 eight distinct actions; successful reset/replay and execution flags, empty
 execution failures, a protected-factory unchanged-state proof, exact private
-plan identity and a valid expected-object hash; 300 frames at nominal
-30 Hz; a common nominal 10-second duration; retained host timestamps; and no
-time compression. Retained frame timestamps must match the declared span and
-interval statistics. All streams pass the real #62 public-v2 parser and neutral
-start check before any meaning can begin. A reviewed-content run also requires
-the producer's collision and methodology review flags; kinematic display is not
-claimed to validate grasp/contact physics.
+plan identity and a valid expected-object hash. Every one of the 40 rows must
+carry the exact #56 fixed sim-step `capture` record (`isaac/demos/recording.py`;
+see `docs/isaac/demos.md`): the field set is exact, `capture_complete` and
+`schedule_ok` are true, the `schedule` is `fixed_sim_step` with 300 samples at
+30 Hz, 2 physics steps of 1/60 s per sample and 600 total steps, every row
+records the identical 600 physics steps (10 s), `playback_clock` is
+`host_monotonic_fixed_sample_period`, host timestamps are retained and nothing
+is time compressed. A pre-fixed-step capture record (host-span `timing_ok`
+screen) is refused as `ORIENTATION_DEMO_LEGACY_CAPTURE_FORMAT`; any other field
+difference is `ORIENTATION_FIELDS`, and a schedule or duration difference is
+`ORIENTATION_DEMO_SCHEDULE` / `ORIENTATION_DEMO_DURATION`. Each orientation
+stream has 300 frames whose retained host stamps must progress and match
+`capture_host_seconds` and `capture_interval_ms`. Those stamps are unpaced
+capture provenance, so their span (which may exceed 10 s) and gaps are not
+qualification criteria. All streams pass the real #62 public-v2 parser, the
+fixed-step frame check (`sim_step` 2, 4, ..., 600) and neutral start check before
+any meaning can begin. A reviewed-content run also requires the producer's
+collision and methodology review flags; kinematic display is not claimed to
+validate grasp/contact physics.
 
 Snapshot playback uses `StateSourceHost.PlaySnapshotTrajectory`, restores and
 confirms the real neutral before each demo, and waits for the source's completion
-event. It preserves recorded timing and holds the final frame through the common
-nominal end. A late completion beyond one recorded sample period (33.33 ms at
+event. Playback is paced on the host monotonic clock by sample index (sample *i*
+at *i*/30 s, the last sample held to the common 10 s end), never by simulation
+time or the captured host stamps, so every demo has the same displayed duration.
+A late completion beyond one sample period (33.33 ms at
 30 Hz) faults and is logged, rather than shortening or retiming the movement.
 That tolerance is the issue's proposed engineering interpretation and still
 requires protocol review. Missing, incomplete, changed or mismatched demo files
