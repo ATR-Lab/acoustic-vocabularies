@@ -43,7 +43,7 @@ namespace AcousticVocab.Assessment
         public bool FocusOk=>foundation.Ready;
     }
 
-    public sealed class UnityAssessmentPanel : IAssessmentPanel,IDisposable
+    public sealed class UnityAssessmentPanel : IAssessmentPanel,IAssessmentPanelDiagnostics,IDisposable
     {
         readonly ResponsePanelController panel;
         public UnityAssessmentPanel(ResponsePanelController panel)
@@ -57,6 +57,7 @@ namespace AcousticVocab.Assessment
         public void Tick()=>panel.State?.Tick();
         public void Open(PanelRequest request)=>panel.Open(request);
         public void Hide()=>panel.CloseAtBoundary();
+        public JObject Readiness()=>panel.ReadinessDiagnostic();
         public void Dispose()=>panel.Responded-=OnResponse;
     }
 
