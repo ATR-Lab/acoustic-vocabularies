@@ -44,12 +44,24 @@ namespace AcousticVocab.SelectionMenus.Tests
         string Write(IReadOnlyList<MenuEvent> events,bool seal=true,MenuLedgerBinding binding=null)
         {string path=Path.Combine(directory,Guid.NewGuid().ToString("N")+".jsonl");using(var writer=new MenuLedger(path,binding??Binding(),created)){foreach(var row in events)writer.Append(row);if(seal)writer.Seal(Verification());}return path;}
         MenuReplaySequence Load(string path,DateTimeOffset? now=null,MenuLedgerVerification verification=null)=>MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),verification??Verification(),now??created.AddHours(1),1000,()=>0);
-        [Test]public void ExplicitJoinedAnchorIsDurableBeforeRealReplayLoadAndNeverReanchors()
+        // #247 maintainer decision: the replay is fully verified at the idle
+        // preflight; Start only checks freshness, records the anchor and anchors.
+        YokedReplayAuthority Authority(string path,string pin,Func<double> clock,Action<YokedAnchorRecord> persist,Func<string> inputs=null,MenuLedgerVerification verification=null,
+            MenuLedgerBinding binding=null,Func<DateTimeOffset> utc=null)
+            =>new YokedReplayAuthority(5000,new string('b',32),pin,binding?.ScheduleSha256??Hash,clock,persist,
+                ()=>MenuReplaySequence.Preload(path,pin,binding??Binding(),verification??Verification(),created.AddHours(1),clock),inputs??(()=>"unchanged"),utc??(()=>created.AddHours(1)));
+        sealed class CountingVerification
+        {
+            internal int Calls;
+            internal MenuLedgerVerification Value=>new MenuLedgerVerification(k=>{Calls++;return Options(k);},(k,i,h)=>{Calls++;return i==1&&h==Hash;},k=>{Calls++;return "DEMO-meaning";});
+        }
+        [Test]public void PreverifiedReplayIsAnchoredOnlyByTheDurableStartRecord()
         {
             string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));double now=1000;var records=new List<YokedAnchorRecord>();
-            var authority=new YokedReplayAuthority(5000,new string('b',32),pin,Hash,()=>now,records.Add,anchor=>
-            {Assert.That(records.Count,Is.EqualTo(1));Assert.That(records[0].AnchorMonoMs,Is.EqualTo(anchor));return MenuReplaySequence.Load(path,pin,Binding(),Verification(),created.AddHours(1),anchor,()=>now);});
-            string id=Guid.NewGuid().ToString("N");var replay=authority.BindForExplicitStart(id,2,"resume");
+            var authority=Authority(path,pin,()=>now,records.Add);authority.Preverify();
+            Assert.That(records,Is.Empty,"Verification writes no anchor");Assert.That(authority.Preverified,Is.True);Assert.That(authority.Prepared.Anchored,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.Prepared.MinimumGapBeforeMs(new SlotItem("DEMO-first","atom_menu",Keys[0],null,"selection","selection",false,45,8,1),1750)).Code,Is.EqualTo("MENU_REPLAY_UNANCHORED"));
+            string id=Guid.NewGuid().ToString("N");var replay=authority.BindForExplicitStart(id,2,"resume");Assert.That(replay,Is.SameAs(authority.Prepared));Assert.That(authority.Preverified,Is.False,"Consumed");
             Assert.That(records[0].OperatorRequestId,Is.EqualTo(id));Assert.That(records[0].ClockEpoch,Is.EqualTo(new string('b',32)));Assert.That(records[0].AnchorMonoMs,Is.EqualTo(6000));
             var first=new SlotItem("DEMO-first","atom_menu",Keys[0],null,"selection","selection",false,45,8,1);
             Assert.That(replay.MinimumGapBeforeMs(first,1750),Is.EqualTo(4250));Assert.That(authority.Replay,Is.SameAs(replay));
@@ -68,7 +80,7 @@ namespace AcousticVocab.SelectionMenus.Tests
         public void YokedMenuBlocksStartAtTheirOwnBoundaryResume(double yokedPause)
         {
             string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000)),pin=PcmWave.Hash(File.ReadAllBytes(path));double now=0;var records=new List<YokedAnchorRecord>();
-            var authority=new YokedReplayAuthority(5000,new string('b',32),pin,Hash,()=>now,records.Add,anchor=>MenuReplaySequence.Load(path,pin,Binding(),Verification(),created.AddHours(1),anchor,()=>now));
+            var authority=Authority(path,pin,()=>now,records.Add);authority.Preverify();
             var replay=authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start");double first=records[0].AnchorMonoMs;
             Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[0]),first-2000),Is.EqualTo(2000));now=first+45000;
             Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[1]),first+50000),Is.Zero,"Exact active spacing inside the first block");
@@ -110,18 +122,54 @@ namespace AcousticVocab.SelectionMenus.Tests
             Assert.That(replay.AnchorBlock(SecondBlock,9000),Is.True);Assert.That(replay.AnchorBlock(SecondBlock,12000),Is.True,"A refused resume can be retried before any menu is planned");
             Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[2]),11000),Is.EqualTo(1000));Assert.That(replay.AnchorBlock(SecondBlock,15000),Is.False);
         }
-        [Test]public void FailedDurableAnchorNeverLoadsAndCannotRetryIntoANewClock()
+        [Test]public void FailedDurableAnchorNeverSchedulesAndCannotRetryIntoANewClock()
         {
-            int loads=0;var authority=new YokedReplayAuthority(2000,Guid.NewGuid().ToString("N"),Hash,Hash,()=>100,_=>throw new IOException("Synthetic journal failure"),_=>{loads++;return null;});
-            Assert.Throws<IOException>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(loads,Is.Zero);
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var authority=Authority(path,pin,()=>100,_=>throw new IOException("Synthetic journal failure"));authority.Preverify();
+            Assert.Throws<IOException>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(authority.Replay,Is.Null);Assert.That(authority.Prepared.Anchored,Is.False);
             Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"resume"));
         }
-        [Test]public void WrongIndependentActiveScheduleCannotBeAuthorizedByLedgerHeader()
+        [Test]public void WrongIndependentActiveScheduleIsRefusedAtPreflightBeforeAnyAnchor()
         {
             string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var wrong=new MenuLedgerBinding(Hash,Hash,Hash,new string('f',64),Hash,Hash,"V2","active",Keys);int writes=0;
-            var authority=new YokedReplayAuthority(5000,Guid.NewGuid().ToString("N"),pin,wrong.ScheduleSha256,()=>100,_=>writes++,anchor=>MenuReplaySequence.Load(path,pin,wrong,Verification(),created.AddHours(1),anchor,()=>100));
-            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start"));Assert.That(writes,Is.EqualTo(1));Assert.That(authority.Replay,Is.Null);
-            Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start"));
+            var authority=Authority(path,pin,()=>100,_=>writes++,binding:wrong);
+            Assert.Throws<SessionFault>(()=>authority.Preverify());Assert.That(writes,Is.Zero);Assert.That(authority.Prepared,Is.Null);Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),1,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));Assert.That(writes,Is.Zero);
+        }
+        // #247 regressions: Start performs no ledger, audio or receipt verification;
+        // a changed input invalidates the preflight result and it is redone there;
+        // a tampered ledger is refused at preflight.
+        [Test]public void StartPerformsNoLedgerOrAudioVerification()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var counting=new CountingVerification();var records=new List<YokedAnchorRecord>();
+            var authority=Authority(path,pin,()=>100,records.Add,verification:counting.Value);authority.Preverify();
+            int verified=counting.Calls;Assert.That(verified,Is.GreaterThan(0));Assert.That(authority.Verifications,Is.EqualTo(1));
+            authority.Preverify();Assert.That(counting.Calls,Is.EqualTo(verified),"A current result is not redone");
+            File.Delete(path); // Start must not even read the ledger file
+            var replay=authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start");
+            Assert.That(counting.Calls,Is.EqualTo(verified),"No candidate audio, meaning or receipt verification at Start");Assert.That(authority.Verifications,Is.EqualTo(1));
+            Assert.That(records.Single().AnchorMonoMs,Is.EqualTo(5100));Assert.That(replay.Anchored,Is.True);
+        }
+        [Test]public void ChangedInputsInvalidateAndAreReverifiedAtPreflightNotAtStart()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));string inputs="store-1";var records=new List<YokedAnchorRecord>();
+            var authority=Authority(path,pin,()=>100,records.Add,()=>inputs);authority.Preverify();var prepared=authority.Prepared;
+            inputs="store-2";Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));Assert.That(records,Is.Empty,"A stale Start is refused, not consumed");
+            authority.Preverify();Assert.That(authority.Verifications,Is.EqualTo(2));Assert.That(authority.Prepared,Is.SameAs(prepared),"A factory holding the sequence stays bound");
+            Assert.That(authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),3,"start"),Is.SameAs(prepared));Assert.That(records.Count,Is.EqualTo(1));
+        }
+        [Test]public void TamperedLedgerIsRefusedAtPreflight()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));string inputs="original";var authority=Authority(path,pin,()=>100,_=>{},()=>inputs);authority.Preverify();
+            var bytes=File.ReadAllBytes(path);bytes[bytes.Length/2]^=1;File.WriteAllBytes(path,bytes);inputs="ledger-rewritten";
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.Preverify()).Code,Is.EqualTo("MENU_LEDGER_HASH"));Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));
+        }
+        [Test]public void PreverifiedReplayExpiresWithTheLedgerAgeWindow()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var utc=created.AddHours(1);var authority=Authority(path,pin,()=>100,_=>{},utc:()=>utc);authority.Preverify();
+            utc=created.AddHours(24).AddSeconds(1);Assert.That(authority.Preverified,Is.False);
+            Assert.That(Assert.Throws<SessionFault>(()=>authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start")).Code,Is.EqualTo("JOIN_YOKED_PREVERIFY_STALE"));
         }
         [Test]public void SealedIndependentAssetBoundLedgerPreservesAllPlaysSourceIdsAndPauses()
         {

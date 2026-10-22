@@ -23,27 +23,58 @@ namespace AcousticVocab.SessionIntegration
     // it only from the already-durable, hash/nonce-bound operator Resume hook.
     public sealed class YokedReplayAuthority
     {
-        readonly int lead;readonly string epoch,ledger,schedule;readonly Func<double> clock;readonly Action<YokedAnchorRecord> persist;readonly Func<double,MenuReplaySequence> load;
-        bool consumed;
+        readonly int lead;readonly string epoch,ledger,schedule;readonly Func<double> clock;readonly Action<YokedAnchorRecord> persist;
+        readonly Func<MenuReplaySequence> preverify;readonly Func<string> inputs;readonly Func<DateTimeOffset> utcNow;
+        bool consumed;string preparedInputs;
         public MenuReplaySequence Replay{get;private set;}
+        // Fully verified (ledger chain, candidate audio, store receipts) during the
+        // idle, unexposed preflight; unanchored until the operator Start.
+        public MenuReplaySequence Prepared{get;private set;}
+        public int Verifications{get;private set;}
         public YokedAnchorRecord Record{get;private set;}
         readonly System.Collections.Generic.List<YokedAnchorRecord> blockRecords=new System.Collections.Generic.List<YokedAnchorRecord>();
         public System.Collections.Generic.IReadOnlyList<YokedAnchorRecord> BlockRecords=>blockRecords.AsReadOnly();
-        public YokedReplayAuthority(int leadMs,string clockEpoch,string ledgerSha256,string activeScheduleSha256,Func<double> clock,Action<YokedAnchorRecord> persist,Func<double,MenuReplaySequence> load)
+        // preverify: the full, hash-pinned Preload; inputs: a cheap fingerprint of
+        // every input that could change the verification (pinned ledger file,
+        // store state); utcNow: the replay age window is enforced again at Start.
+        public YokedReplayAuthority(int leadMs,string clockEpoch,string ledgerSha256,string activeScheduleSha256,Func<double> clock,Action<YokedAnchorRecord> persist,
+            Func<MenuReplaySequence> preverify,Func<string> inputs,Func<DateTimeOffset> utcNow)
         {
-            if(leadMs<2000||leadMs>60000||!GuidId(clockEpoch)||!Hash(ledgerSha256)||!Hash(activeScheduleSha256)||clock==null||persist==null||load==null)throw new SessionFault("JOIN_YOKED_AUTHORITY");
-            lead=leadMs;epoch=clockEpoch;ledger=ledgerSha256;schedule=activeScheduleSha256;this.clock=clock;this.persist=persist;this.load=load;
+            if(leadMs<2000||leadMs>60000||!GuidId(clockEpoch)||!Hash(ledgerSha256)||!Hash(activeScheduleSha256)||clock==null||persist==null||preverify==null||inputs==null||utcNow==null)throw new SessionFault("JOIN_YOKED_AUTHORITY");
+            lead=leadMs;epoch=clockEpoch;ledger=ledgerSha256;schedule=activeScheduleSha256;this.clock=clock;this.persist=persist;this.preverify=preverify;this.inputs=inputs;this.utcNow=utcNow;
         }
         static bool GuidId(string value)=>value!=null&&Regex.IsMatch(value,@"\A[0-9a-f]{32}\z");
         static bool Hash(string value)=>value!=null&&Regex.IsMatch(value,@"\A[0-9a-f]{64}\z");
+        bool Fresh()
+        {
+            try{var now=utcNow();return Prepared!=null&&preparedInputs!=null&&inputs()==preparedInputs&&now>=Prepared.CreatedUtc&&now-Prepared.CreatedUtc<=TimeSpan.FromHours(24);}
+            catch{return false;}
+        }
+        // True while the pre-verified sequence still matches every pinned input.
+        public bool Preverified=>!consumed&&Fresh();
+        // Maintainer decision (#247): all heavy verification happens here, at the
+        // idle preflight. A changed input invalidates it and it is redone here;
+        // a pinned-hash mismatch is refused here, before any Start.
+        public void Preverify()
+        {
+            if(consumed)throw new SessionFault("JOIN_YOKED_ANCHOR_CONSUMED");
+            if(Fresh())return;
+            preparedInputs=null;string before=inputs();
+            var fresh=preverify()??throw new SessionFault("JOIN_YOKED_REPLAY_MISSING");
+            if(fresh.LedgerSha256!=ledger||fresh.Anchored)throw new SessionFault("JOIN_YOKED_REPLAY_BINDING");
+            Verifications++;if(Prepared==null)Prepared=fresh;else Prepared.AdoptVerified(fresh);preparedInputs=before;
+        }
+        // Start/Commit does no ledger or audio work: it checks the pre-verified
+        // inputs are unchanged, records the durable anchor, then anchors.
         public MenuReplaySequence BindForExplicitStart(string requestId,long sequence,string command)
         {
             if(consumed||!GuidId(requestId)||sequence<1||command is not ("start" or "resume"))throw new SessionFault("JOIN_YOKED_ANCHOR_CONSUMED");
+            if(!Fresh())throw new SessionFault("JOIN_YOKED_PREVERIFY_STALE");
             consumed=true;double now=clock(),anchor=now+lead;
             if(!double.IsFinite(now)||now<0||!double.IsFinite(anchor)||anchor<=now)throw new SessionFault("JOIN_YOKED_ANCHOR_CLOCK");
             var record=new YokedAnchorRecord(epoch,requestId,sequence,command,now,anchor,lead,ledger,schedule);
-            persist(record);Record=record; // durable intent precedes asset load or scheduling
-            Replay=load(anchor)??throw new SessionFault("JOIN_YOKED_REPLAY_MISSING");return Replay;
+            persist(record);Record=record; // durable intent precedes any scheduling
+            Prepared.AnchorStart(anchor);Replay=Prepared;return Replay;
         }
         // Each later menu block is anchored at its own explicit boundary resume
         // plus the same lead; the active operator's pause is never replayed.
