@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "change": "Native process-kill/resume harness for an elapsed SIMULATION_TEST mock block (#67 AC2)",
+  "unity_editor": "6000.6.0f1",
+  "player_build": {
+    "build_id": "o551-sim-001",
+    "source_commit": "aef2be5754db8e50b5c0c5a9f315500c9f15d96f",
+    "dirty_source": false,
+    "target": "StandaloneWindows64",
+    "scene": "SimulationTest (AV_SIMULATION_TEST)",
+    "result": "Succeeded",
+    "errors": 0,
+    "total_bytes": 158745367,
+    "build_manifest_sha256": "ec8a590cd28cf60ca47049c393c47447286a170e12e586d2862b5512004b5457"
+  },
+  "native_run": {
+    "host": "Windows 11 Pro 10.0.26200 workstation; no headset",
+    "openxr_runtime": "Meta XR Simulator 205.0.0",
+    "harness_sha256": "3e965b8f759e09a28c540f17e5aecc3439c9eb37f73af3664b99b460e9d60ddc",
+    "verifier_sha256": "3226dee6e04884169fccc01b945e95dcce9cc29cee9e1703f17f86e883a74353",
+    "items": 4,
+    "kill_target_opportunity": "MOCK-02",
+    "first_process": {
+      "launched_utc": "2026-10-07T17:13:33.7698118Z",
+      "start_accepted_utc": "2026-10-07T17:13:43.5597353Z",
+      "kill_utc": "2026-10-07T17:13:57.5266673Z",
+      "kill_method": "Stop-Process -Force (TerminateProcess)",
+      "exit_code": -1,
+      "durable_records_before_kill": 25,
+      "last_record": "MOCK-02 audio_request; no delivery callback recorded",
+      "segment_sha256": "ed3fc06744422897c5a78e3082fe48c5fb7506f4885e980bdc69661390ff8f50",
+      "result_receipt_written": false
+    },
+    "second_process": {
+      "launched_utc": "2026-10-07T17:13:57.7682726Z",
+      "start_accepted_utc": "2026-10-07T17:14:07.2549237Z",
+      "exit_utc": "2026-10-07T17:14:40.5859255Z",
+      "exit_code": 0,
+      "recovered_records": 25,
+      "recovered_completed_opportunities": 2,
+      "torn_tail_recovery_row": false,
+      "status": "MOCK_BLOCK_COMPLETE",
+      "segment_sha256": "d52cc6c7dd2609aae8f35e7cfaf7ad7f92615bc83e8b19e4e29ba50586b36082",
+      "export_manifest_sha256": "9442b4de411f268017ef0532696e80c92150a8954e682bed5c2c19728ccd3e5f"
+    },
+    "kill_receipt_sha256": "46e34e1165618fe127a0fa72ac5b8b68602cb78df2888a5f352cb341f0720c3e",
+    "verification_sha256": "0dcf49f9358e301f64a98a6f0f8c49f5fc8910822e9c9b049f45f82ff776ca5b",
+    "verification": {
+      "kill_resume_verified": true,
+      "checks_passed": 11,
+      "checks_failed": 0,
+      "first_process_cued": ["MOCK-01", "MOCK-02"],
+      "second_process_first_session_event": "operator_resume",
+      "second_process_cued": ["MOCK-03", "MOCK-04"],
+      "killed_trial_row": {"exposure_consumed": "true", "interrupted": "true", "playback_status": "uncertain", "technical_fault_code": "DATA_INTERRUPTED_ATTEMPT"},
+      "audio_requests_per_opportunity": {"MOCK-01": 1, "MOCK-02": 1, "MOCK-03": 1, "MOCK-04": 1},
+      "exposure_ledger_rows_per_opportunity": {"MOCK-01": 1, "MOCK-02": 1, "MOCK-03": 1, "MOCK-04": 1},
+      "duplicate_first_exposures": [],
+      "data_records": 61,
+      "trial_rows": 4,
+      "exposure_rows": 4
+    },
+    "raw_evidence": "Retained privately under the worktree .local run root; not committed"
+  },
+  "edit_mode": {
+    "total": 885,
+    "passed": 834,
+    "failed": 18,
+    "skipped": 33,
+    "baseline_origin_main": {"total": 874, "passed": 823, "failed": 18, "skipped": 33},
+    "failures_identical_to_baseline": "PackageLoaderTests 7 and TeachingCatalogTests 11 HASH_MISMATCH fixture failures addressed by open PR #201"
+  },
+  "play_mode": {"total": 23, "passed": 23, "failed": 0, "baseline_origin_main": {"total": 23, "passed": 23, "failed": 0}},
+  "python": {"focused": "tests/test_mock_visit_kill_resume.py 8 passed", "repository": {"passed": 939, "skipped": 32, "failed": 1, "failure": "tests/test_lfs_fixtures.py: LFS fixture tests/fixtures/triangle.stl not materialized in this worktree; unrelated"}},
+  "mock_content": true,
+  "acoustic_qualified": false,
+  "headset_qualified": false,
+  "joined_modules_exercised": false,
+  "participant_qualified": false,
+  "limitations": [
+    "One run, one kill point (after the durable cue/audio request, before any delivery callback)",
+    "Synthetic MOCK slots, silent cue, mock readiness gates and mock operator health; no backend, panel, package or participant content",
+    "Meta XR Simulator on a desktop, not a headset; device storage and Android process death are not covered",
+    "Software audio callbacks only; no acoustic onset"
+  ]
+}

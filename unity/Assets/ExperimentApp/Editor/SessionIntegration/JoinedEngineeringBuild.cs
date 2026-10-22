@@ -31,7 +31,13 @@ namespace AcousticVocab.SessionIntegration.Editor
         public static void BuildWindows(){Configure();FoundationBuild.BuildWindows();}
         public static void BuildAndroid(){Configure();FoundationBuild.BuildAndroid();}
         public static void ConfigureSimulation()
-        {Configure();var owner=Object.FindAnyObjectByType<JoinedEngineeringBootstrap>();owner.simulationTestScene=true;EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(),ScenePath);AssetDatabase.SaveAssets();}
+        {
+            Configure();var owner=Object.FindAnyObjectByType<JoinedEngineeringBootstrap>();owner.simulationTestScene=true;
+            // Inert unless launched with -simulationMockBlock and the compiled
+            // capability (#67 process-kill harness); simulation scene only.
+            var mock=owner.gameObject.AddComponent<SimulationMockBlockHost>();mock.player=owner.player;
+            EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(),ScenePath);AssetDatabase.SaveAssets();
+        }
         public static void BuildSimulationWindows(){ConfigureSimulation();FoundationBuild.SimulationTestBuild=true;try{FoundationBuild.BuildWindows();}finally{FoundationBuild.SimulationTestBuild=false;}}
     }
     public static class PreallocationBuild

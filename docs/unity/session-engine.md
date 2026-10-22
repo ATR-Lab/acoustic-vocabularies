@@ -82,6 +82,62 @@ scene does not yet bind participant content. Physical on-device mock blocks, pro
 recovery, qualified onset evidence, #62/#65 bindings and #68–70 modules remain
 pending. Engine recreation is not described as a process-kill test.
 
+## Native process-kill resume harness (#67 AC2)
+
+`tools/session-kill/run-kill-resume.ps1` (PowerShell 7) runs the AC2 check
+against the Windows SimulationTest player:
+
+1. Launch the player with `-simulationMockBlock <run root>` and the pinned
+   simulation capability. The run root must lie inside the capability's
+   `output_directory`.
+2. Send `load` and `start` through the normal durable operator mailbox.
+3. Wait until the planned item's `CueRequested` and `audio_request` rows are
+   durable in the DataJournal and its `Done` row is not.
+4. Terminate the process with `Stop-Process -Force` (TerminateProcess). No
+   shutdown code runs.
+5. Relaunch the player on the same journal and explicitly `start` it again.
+6. Wait for the block to finish and export.
+
+`python -m tools.mock_visit.kill_resume` then checks the retained records:
+
+- Exactly two process clock epochs, in order.
+- The kill came after the last record the harness observed.
+- The killed item was the only open cue. It stays consumed/`Uncertain`, and
+  its trial-log row is `exposure_consumed=true`, `interrupted=true`.
+- The second process's first session event is `operator_resume`.
+- The first cue after resume is the next unplayed item.
+- No item cued before the kill appears again.
+- Every opportunity has at most one audio request and one exposure-ledger row.
+
+`SimulationMockBlockHost` exists only in the SIMULATION_TEST scene. The build
+verifier refuses it anywhere else. It does nothing without `-simulationMockBlock`
+and the compiled capability. It runs the real `FixedSlotEngine`, DataJournal,
+operator mailbox, `AudioPlayer` and export, and its content is synthetic:
+
+- `MOCK-nn` single-play 14 s slots.
+- A 0.5 s silent cue at the capability gain on the simulation audio route.
+- Mock hash, reset, render, panel, focus and input gates.
+- Mock operator health.
+- No backend, package, panel or participant material.
+
+A run therefore establishes process-level journal recovery for the engine. It
+says nothing about joined modules, acoustic onset or headset behaviour.
+
+One run on this workstation (`o551-sim-001`, source `aef2be5`) used the Meta XR
+Simulator 205.0.0 as the OpenXR runtime, on the desktop with no headset. The
+block had four slots, and the kill was planned for `MOCK-02`.
+
+- The first player was killed about 14.0 s after `start` was accepted, immediately after `MOCK-02`'s
+  durable cue and audio request (record 25). This was before any delivery
+  callback was recorded.
+- The relaunched player recovered 25 records and counted 2 opportunities as
+  consumed. It waited for `start`, then cued `MOCK-03` and `MOCK-04`, completed
+  the block, and exported with exit code 0.
+- The verifier passed all eleven checks. There was one audio request and one
+  exposure row per opportunity, with no duplicate first exposure.
+
+Exact pins are in `session-kill-resume.validation.json`.
+
 Hosted repository checks passed. The hosted Unity configuration gate remains
 failed because its isolated licensed runner and required configuration have not
 been provisioned. Local results do not bypass or qualify that gate.

@@ -62,6 +62,17 @@ namespace AcousticVocab.SessionEngine
             string study=null,string setName=null,string speechListSha256=null)
         { Sha256=hash;PackageSha256=package;PersonSlot=person;Visit=visit;Demo=demo;Blocks=Array.AsReadOnly((ScheduleBlock[])blocks.Clone());
           Study=study;SetName=setName;SpeechListSha256=speechListSha256; }
+        // A synthetic DEMO block of single-play 14 s slots (MOCK-01...) for
+        // elapsed-time and process-kill harnesses. It has no package, run sheet,
+        // participant content or answers; its hash names only this definition.
+        public static VisitSchedule SyntheticMockBlock(int count)
+        {
+            if(count<1 || count>36) throw new SessionFault("SESSION_MOCK_BLOCK_INVALID");
+            var items=new SlotItem[count];
+            for(int i=0;i<count;i++) items[i]=new SlotItem("MOCK-"+(i+1).ToString("D2"),"trained","MOCK",null,null,"protected",false,14,1,1);
+            string hash=PcmWave.Hash(System.Text.Encoding.UTF8.GetBytes("av-synthetic-mock-block-v1|trained|14s|plays=1|count="+count));
+            return new VisitSchedule(hash,new string('0',64),"MOCK","MOCK",true,new[]{new ScheduleBlock("trained",items)});
+        }
     }
 
     // All gates are independently provided by the integration. A rendered
