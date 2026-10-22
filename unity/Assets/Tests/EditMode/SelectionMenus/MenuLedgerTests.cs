@@ -207,5 +207,25 @@ namespace AcousticVocab.SelectionMenus.Tests
             var record=MenuJson.Event(Events().First());record["attempt_id"]=123;Assert.Throws<SessionFault>(()=>MenuJson.CheckEvent(record));
             record=MenuJson.Event(Events().First());record["answer"]="not allowed";Assert.Throws<SessionFault>(()=>MenuJson.CheckEvent(record));
         }
+        // Native attempts 008-010: the post-menu seal blocked the main thread for
+        // ~4.8 s because every ledger row re-prepared its menu, re-reading and
+        // re-hashing the three candidate WAVs (39 rows x 8 atom menus).
+        [Test]public void SealPreparesEachMenuOnceAndChecksMeaningPerMenuNotPerRow()
+        {
+            var prepared=new Dictionary<string,int>();int meanings=0,options=0;
+            var verification=MenuLedgerVerification.FromMaterials(key=>{prepared[key]=prepared.TryGetValue(key,out int n)?n+1:1;return new MenuMaterial(key,"DEMO-meaning",null,"instructions","choice",new[]{"1","2","3"},Options(key));},(_,index,hash)=>index==1&&hash==Hash);
+            var counting=new MenuLedgerVerification(key=>{options++;return verification.Options(key);},verification.Receipt,key=>{meanings++;return verification.Meaning(key);});
+            string path=Path.Combine(directory,"seal-reads.jsonl");var events=Events();Assert.That(events.Count,Is.GreaterThan(Keys.Length*30));
+            using(var ledger=new MenuLedger(path,Binding(),created)){foreach(var row in events)ledger.Append(row);ledger.Seal(counting);}
+            Assert.That(prepared.Keys,Is.EquivalentTo(Keys));Assert.That(prepared.Values,Is.All.EqualTo(1),"One package read per menu key");
+            Assert.That(meanings,Is.EqualTo(Keys.Length),"Meaning is verified once per menu");Assert.That(options,Is.EqualTo(Keys.Length));
+            Assert.DoesNotThrow(()=>Load(path,verification:MenuLedgerVerification.FromMaterials(key=>new MenuMaterial(key,"DEMO-meaning",null,"i","c",new[]{"1","2","3"},Options(key)),(_,index,hash)=>index==1&&hash==Hash)));
+        }
+        [Test]public void CachedVerificationStillRefusesAWrongMeaningOnEveryRow()
+        {
+            var records=Events().Select(MenuJson.Event).ToList();records.Last(x=>(string)x["menu_key"]==Keys[2])["meaning_display_id"]="DEMO-other";
+            var verification=MenuLedgerVerification.FromMaterials(key=>new MenuMaterial(key,"DEMO-meaning",null,"i","c",new[]{"1","2","3"},Options(key)),(_,index,hash)=>index==1&&hash==Hash);
+            Assert.That(Assert.Throws<SessionFault>(()=>MenuReplaySequence.ValidateRecords(records,Binding(),verification)).Code,Is.EqualTo("MENU_LEDGER_SEQUENCE"));
+        }
     }
 }

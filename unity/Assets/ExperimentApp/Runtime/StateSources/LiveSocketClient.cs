@@ -102,13 +102,24 @@ namespace AcousticVocab.StateSources
                     try { await Task.Delay(1000,lifetime.Token); } catch(OperationCanceledException) { }
             }
         }
+        // Outstanding echoes are only consumed by the main-thread Pump. During a
+        // main-thread stall they accumulate; clearing them all at eight (the old
+        // rule) discarded echoes whose replies were still queued, and a reply
+        // dropped by queue overflow leaked its entry. Expire by age instead,
+        // far beyond the 5 s echo-age limit, and bound memory by evicting only
+        // the oldest. A reply for an expired or unknown echo stays uncorrelated.
+        internal const double EchoRetentionSeconds=30;internal const int EchoCapacity=64;
+        internal void RememberEcho(double sent)
+        {
+            foreach(double old in echoes.Keys)if(old<sent-EchoRetentionSeconds)echoes.TryRemove(old,out _);
+            while(echoes.Count>=EchoCapacity){double oldest=double.PositiveInfinity;foreach(double key in echoes.Keys)if(key<oldest)oldest=key;if(!echoes.TryRemove(oldest,out _))break;}
+            echoes.TryAdd(sent,0);
+        }
         async Task SendEchoes(ClientWebSocket client,CancellationToken cancellation)
         {
             while(!cancellation.IsCancellationRequested)
             {
-                double sent=Now;
-                if(echoes.Count>=8) echoes.Clear();
-                echoes.TryAdd(sent,0);
+                double sent=Now;RememberEcho(sent);
                 byte[] bytes=Encoding.UTF8.GetBytes(new JObject { ["kind"]="echo",["c0_s"]=sent }.ToString(Formatting.None));
                 await client.SendAsync(new ArraySegment<byte>(bytes),WebSocketMessageType.Text,true,cancellation);
                 await Task.Delay(1000,cancellation);

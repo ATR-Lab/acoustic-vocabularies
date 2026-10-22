@@ -6,6 +6,7 @@ using AcousticVocab.StudyAudio;
 using AcousticVocab.Teaching;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using AcousticVocab.Foundation;
 namespace AcousticVocab.SessionIntegration
 {
     // Supplemental private module/control evidence. Session/audio/panel/frame
@@ -23,7 +24,7 @@ namespace AcousticVocab.SessionIntegration
                     kind is not ("configuration" or "control" or "store" or "lesson" or "module" or "fault" or "view" or "simulation_input"))throw new SessionFault("JOIN_AUDIT_INVALID");
                 var record=new JObject{["version"]=1,["clock_epoch"]=epoch,["sequence"]=sequence,["host_mono_ms"]=now,["previous_sha256"]=previous,["kind"]=kind,["payload"]=payload.DeepClone()};
                 byte[] body=Encoding.UTF8.GetBytes(record.ToString(Formatting.None));if(body.Length>65536)throw new SessionFault("JOIN_AUDIT_LIMIT");string hash=PcmWave.Hash(body);record["sha256"]=hash;
-                byte[] bytes=Encoding.UTF8.GetBytes(record.ToString(Formatting.None)+"\n");output.Write(bytes,0,bytes.Length);output.Flush(true);previous=hash;sequence++;last=now;
+                byte[] bytes=Encoding.UTF8.GetBytes(record.ToString(Formatting.None)+"\n");output.Write(bytes,0,bytes.Length);MainThreadStages.Flush(output,"joined_audit");previous=hash;sequence++;last=now;
             }
             catch{failed=true;throw;}
         }

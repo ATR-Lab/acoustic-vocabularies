@@ -25,7 +25,7 @@ namespace AcousticVocab.Foundation
             var record = data ?? new JObject();
             record["event"] = kind; record["monotonic_ticks"] = Stopwatch.GetTimestamp();
             writer.WriteLine(record.ToString(Formatting.None));
-            stream.Flush(true);
+            MainThreadStages.Flush(stream, "foundation_log");
         }
         public void Dispose() { writer.Dispose(); }
     }

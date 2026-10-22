@@ -19,6 +19,15 @@ namespace AcousticVocab.SelectionMenus
         internal readonly Func<string,string> Meaning;
         public MenuLedgerVerification(Func<string,MenuOption[]> options,Func<string,int,string,bool> receipt,Func<string,string> meaning)
         {Options=options??throw new ArgumentNullException(nameof(options));Receipt=receipt??throw new ArgumentNullException(nameof(receipt));Meaning=meaning??throw new ArgumentNullException(nameof(meaning));}
+        // One independent package read per menu key for this verification.
+        // Preparing a key reads and hash-verifies its candidate WAVs, so a
+        // per-row reread made the post-menu seal block the main thread ~4.8 s.
+        public static MenuLedgerVerification FromMaterials(Func<string,MenuMaterial> prepare,Func<string,int,string,bool> receipt)
+        {
+            if(prepare==null)throw new ArgumentNullException(nameof(prepare));var cache=new Dictionary<string,MenuMaterial>(StringComparer.Ordinal);
+            MenuMaterial Material(string key){if(!cache.TryGetValue(key,out var value)){value=prepare(key)??throw new SessionFault("MENU_LEDGER_ASSETS");cache.Add(key,value);}return value;}
+            return new MenuLedgerVerification(key=>Material(key).Options.ToArray(),receipt,key=>Material(key).MeaningDisplayId);
+        }
     }
     public sealed class MenuReplayComparison
     {
@@ -82,7 +91,8 @@ namespace AcousticVocab.SelectionMenus
             for(int g=0;g<groups.Count;g++)
             {
                 var rows=groups[g];var first=rows[0];string key=binding.MenuKeys[g],attempt=(string)first["attempt_id"],opportunity=(string)first["opportunity_id"];double start=MenuJson.Number(first["slot_start_mono_ms"]);bool profile=key=="profile";
-                MenuRules.Require(start>=previousEnd&&rows.All(x=>(string)x["menu_key"]==key&&(string)x["meaning_display_id"]==verification.Meaning(key)&&(string)x["attempt_id"]==attempt&&(string)x["opportunity_id"]==opportunity&&MenuJson.Number(x["slot_start_mono_ms"])==start)&&MenuJson.Number(first["mono_ms"])<=start&&MenuJson.Number(first["expected_mono_ms"])==start&&!rows.Any(x=>(string)x["kind"]=="menu_interrupted"),"MENU_LEDGER_SEQUENCE");
+                string meaning=verification.Meaning(key); // once per menu, not per row
+                MenuRules.Require(start>=previousEnd&&rows.All(x=>(string)x["menu_key"]==key&&(string)x["meaning_display_id"]==meaning&&(string)x["attempt_id"]==attempt&&(string)x["opportunity_id"]==opportunity&&MenuJson.Number(x["slot_start_mono_ms"])==start)&&MenuJson.Number(first["mono_ms"])<=start&&MenuJson.Number(first["expected_mono_ms"])==start&&!rows.Any(x=>(string)x["kind"]=="menu_interrupted"),"MENU_LEDGER_SEQUENCE");
                 previousEnd=start+(profile?60000:45000);var options=verification.Options(key);
                 MenuRules.Require(options!=null&&options.Length==3&&options.All(x=>x!=null)&&options.Select(x=>x.CandidateId).Distinct().Count()==3&&options.Select(x=>x.Wave.PcmSha256).Distinct().Count()==3&&options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_LEDGER_ASSETS");
                 double choiceOpen=start+(profile?30000:22000),deadline=start+(profile?45000:32000);

@@ -38,7 +38,7 @@ namespace AcousticVocab.ResponsePanel
         static JObject Base(PanelRequest request, double now) => new JObject { ["trial_id"] = request.TrialId, ["mode"] = request.Mode.ToString(), ["role"] = request.Role.ToString(),
             ["mono_ms"] = now, ["anchor_mono_ms"] = request.AnchorMonoMs, ["opens_mono_ms"] = request.OpensMonoMs, ["deadline_mono_ms"] = request.DeadlineMonoMs };
         public void Fault(string reason) => Write(new JObject { ["event"] = "panel_fault", ["reason"] = reason, ["mono_ms"] = NowMs });
-        void Write(JObject value) { writer.WriteLine(value.ToString(Formatting.None)); stream.Flush(true); }
+        void Write(JObject value) { writer.WriteLine(value.ToString(Formatting.None)); AcousticVocab.Foundation.MainThreadStages.Flush(stream, "panel_journal"); }
         public void Dispose() => writer.Dispose();
     }
 }

@@ -110,7 +110,7 @@ namespace AcousticVocab.StateIntegration
             // Bounded codes only; no private paths, endpoint or exception text.
             Debug.LogError("STATE_SOURCE_FAULT "+code); Event?.Invoke(value);
         }
-        void LateUpdate() => RefreshSource();
+        void LateUpdate() { MainThreadStages.Mark("source_late_update"); RefreshSource(); }
         bool RefreshSource()
         {
             if(!Initialized || refreshing) return false;
