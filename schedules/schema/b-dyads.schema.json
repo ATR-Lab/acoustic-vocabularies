@@ -51,6 +51,12 @@
     "dyads": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dyad"}},
     "list_sha256": {"$ref": "#/$defs/sha256"}
   },
+  "allOf": [{
+    "if": {"properties": {"demo": {"const": false}}},
+    "then": {"properties": {"dyads": {"items": {"properties": {
+      "bank_id": {"pattern": "^bank-[PC][0-9]{3}$"}
+    }}}}}
+  }],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "dyad": {
@@ -93,7 +99,7 @@
             }
           }
         },
-        "bank_id": {"type": "string", "pattern": "^bank-[PC][0-9]{3}$", "description": "Placeholder bank ID by dyad-slot sequence until the bank register assigns real IDs."},
+        "bank_id": {"type": "string", "pattern": "^(bank-[PC][0-9]{3}|DEMO-[A-Za-z0-9._-]{1,64})$", "description": "Generated placeholder, or registered DEMO bank when demo is true. Registration precedes sealing and reveal."},
         "profile_menu_order": {
           "type": "array",
           "minItems": 3,

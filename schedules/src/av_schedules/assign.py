@@ -40,8 +40,9 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final
 
 from . import __version__
@@ -332,6 +333,29 @@ class BAllocation:
     allocation_seed: str
     design_table_sha256: str
     dyads: tuple[BDyad, ...]
+
+
+def register_demo_bank(alloc: BAllocation, unit_id: str, bank: str) -> BAllocation:
+    """Bind a DEMO bank before sealing/revealing a synthetic allocation list.
+
+    This leaves the generated design, roles, order and seeds intact. Real allocation
+    registration needs its own reviewed register; this API cannot modify one.
+    """
+    if not alloc.demo or re.fullmatch(r"DEMO-[A-Za-z0-9._-]{1,64}", bank) is None:
+        raise ValueError("DEMO allocation and DEMO bank ID required")
+    matches = [d for d in alloc.dyads if d.unit_id == unit_id]
+    if len(matches) != 1:
+        raise ValueError("exactly one allocation unit required")
+    current = matches[0]
+    if current.bank_id != bank and re.fullmatch(r"bank-[PC][0-9]{3}", current.bank_id) is None:
+        raise ValueError("DEMO bank registration cannot be replaced")
+    registered = replace(
+        alloc, dyads=tuple(replace(d, bank_id=bank) if d is current else d for d in alloc.dyads)
+    )
+    problems = check_b_allocation(registered)
+    if problems:
+        raise ValueError("invalid DEMO allocation: " + "; ".join(problems))
+    return registered
 
 
 def _menu_orders(master: MasterSeed, set_name: SetName, n: int) -> list[tuple[str, str, str]]:

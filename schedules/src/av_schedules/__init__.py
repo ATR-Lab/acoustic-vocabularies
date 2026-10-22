@@ -21,6 +21,7 @@ from .assign import (
     build_b_allocation,
     check_a_allocation,
     check_b_allocation,
+    register_demo_bank,
 )
 from .assign_output import assign_files, load_list
 from .balance import BalanceRow, balance_csv, balance_rows, max_abs_deviation
@@ -128,6 +129,7 @@ __all__ = [
     "build_visit_schedule",
     "cells",
     "check_a_allocation",
+    "register_demo_bank",
     "check_b_allocation",
     "check_planning",
     "check_set",
