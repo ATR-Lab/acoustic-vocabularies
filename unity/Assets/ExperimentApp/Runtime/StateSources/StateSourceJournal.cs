@@ -3,7 +3,9 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using AcousticVocab.Foundation;
 using Newtonsoft.Json.Linq;
 
@@ -14,10 +16,17 @@ namespace AcousticVocab.StateSources
         readonly FoundationLog events;
         readonly BlockingCollection<string> rows=new BlockingCollection<string>(2048);
         readonly Thread thread;
+        readonly TaskCompletionSource<bool> writerEnded=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         volatile Exception failure;
         int disposed;
+        internal const int JoinTimeoutMs=2000;
+        // Retained after Dispose: whether the writer thread ended within the
+        // join bound. A survivor still holds its FileStream into teardown.
+        internal JObject CloseOutcome { get; private set; }
         static string N(double value) => value.ToString("R",CultureInfo.InvariantCulture);
         public StateSourceJournal(string directory,JObject identity,SceneRegistry registry,string kind)
+            :this(directory,identity,registry,kind,WorkerLedger.Process){}
+        internal StateSourceJournal(string directory,JObject identity,SceneRegistry registry,string kind,WorkerLedger ledger)
         {
             Directory.CreateDirectory(directory);
             events=new FoundationLog(directory,identity,registry.StationId,kind);
@@ -37,9 +46,15 @@ namespace AcousticVocab.StateSources
                     writer.Flush(); stream.Flush(true);
                 }
                 catch(Exception error) { failure=error; }
-                finally { stream.Dispose(); }
+                finally
+                {
+                    try { stream.Dispose(); }
+                    finally { if(failure!=null) writerEnded.TrySetException(failure); else writerEnded.TrySetResult(true); }
+                }
             }) { IsBackground=true,Name="state-source-evidence" };
             thread.Start();
+            _=writerEnded.Task.ContinueWith(t=>{_=t.Exception;},TaskScheduler.Default); // cause stays in failure
+            ledger?.Track("state_source_journal_writer",writerEnded.Task);
         }
         public void Record(SourceEvent value)
         {
@@ -64,7 +79,14 @@ namespace AcousticVocab.StateSources
         {
             if(Interlocked.Exchange(ref disposed,1)!=0) return;
             rows.CompleteAdding();
-            bool stopped=thread.Join(2000);
+            var watch=Stopwatch.StartNew();
+            bool stopped=thread.Join(JoinTimeoutMs);
+            // Record the join outcome before closing the event log, both there
+            // and in the native log, so a surviving writer is never silent.
+            CloseOutcome=new JObject { ["writer_stopped"]=stopped,["join_timeout_ms"]=JoinTimeoutMs,
+                ["waited_ms"]=watch.Elapsed.TotalMilliseconds,["writer_failed"]=failure!=null };
+            ShutdownBreadcrumbs.Stage("state_source_journal_closed",CloseOutcome);
+            try { events.Write("state_source_journal_closed",(JObject)CloseOutcome.DeepClone()); } catch(Exception) { }
             events.Dispose();
             if(!stopped || failure!=null) throw new StateFault("STATE_LOG_NOT_FINALIZED");
             rows.Dispose();

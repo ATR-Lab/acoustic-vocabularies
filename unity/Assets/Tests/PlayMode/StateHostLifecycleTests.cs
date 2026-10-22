@@ -36,5 +36,18 @@ namespace AcousticVocab.PlayModeTests
             Assert.That(host.Initialized,Is.False);Assert.That(host.ResetConfirmed,Is.False);
             UnityEngine.Object.Destroy(obj);yield return null;
         }
+        [UnityTest] public IEnumerator QuitShutdownRevokesOnceAndLaterTeardownIsIdempotent()
+        {
+            var obj=new GameObject("State host quit test");var host=obj.AddComponent<StateSourceHost>();
+            typeof(StateSourceHost).GetField("source",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(host,new ReadySource());
+            typeof(StateSourceHost).GetField("confirmedAtBoundary",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(host,true);
+            var events=new List<SourceEvent>();host.Event+=events.Add;
+            LogAssert.Expect(LogType.Error,"STATE_SOURCE_FAULT STATE_HOST_DISABLED");host.ShutdownForQuit();
+            Assert.That(host.Initialized,Is.False);Assert.That(host.CheckExposureReady(),Is.False);
+            host.ShutdownForQuit();host.enabled=false;
+            UnityEngine.Object.Destroy(obj);yield return null;
+            Assert.That(events.Count,Is.EqualTo(1),"Quit, disable and destroy record one disable fault, not three");Assert.That(events[0].Code,Is.EqualTo("STATE_HOST_DISABLED"));
+            LogAssert.NoUnexpectedReceived();
+        }
     }
 }

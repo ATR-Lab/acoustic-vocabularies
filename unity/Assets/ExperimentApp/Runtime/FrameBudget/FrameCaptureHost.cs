@@ -110,7 +110,7 @@ namespace AcousticVocab.FrameBudget
         public void FinishCapture()=>Shutdown("FRAME_OWNER_CLOSED");
         void Shutdown(string code)
         {
-            if(closed)return;closed=true;Application.onBeforeRender-=BeforeRender;watchdog?.Dispose();watchdog=null;
+            if(closed)return;closed=true;Application.onBeforeRender-=BeforeRender;StopWatchdog();
             Exception first=null;
             lock(timingLock)
             {
@@ -119,6 +119,19 @@ namespace AcousticVocab.FrameBudget
                 try{evidence?.Dispose();}catch(Exception e){first??=e;}
             }
             if(first!=null)throw new FrameFault("FRAME_LOG_FAILED");
+        }
+        // Timer.Dispose() alone lets a queued callback still run during
+        // teardown. Wait, bounded and never while holding timingLock, for
+        // in-flight callbacks; a timeout is recorded rather than extended.
+        internal const int WatchdogStopMs=250;
+        void StopWatchdog()
+        {
+            var timer=watchdog;watchdog=null;if(timer==null)return;
+            var stopped=new ManualResetEvent(false);var watch=System.Diagnostics.Stopwatch.StartNew();
+            bool signalled=timer.Dispose(stopped)&&stopped.WaitOne(WatchdogStopMs);
+            // An unsignalled handle stays alive for the timer to set later.
+            if(signalled)stopped.Dispose();
+            ShutdownBreadcrumbs.Stage("frame_watchdog_stopped",new JObject{["callbacks_completed"]=signalled,["waited_ms"]=watch.Elapsed.TotalMilliseconds,["bound_ms"]=WatchdogStopMs});
         }
         void OnDisable(){if(installed)Fail("FRAME_HOST_DISABLED");}
         void OnDestroy(){if(installed&&!closed)Fail("FRAME_HOST_DESTROYED");}
