@@ -33,7 +33,8 @@ REMOVE_ONE uses a two-hand center transfer. Both measured virtual grip frames
 must agree within 3 mm and 0.02 rad before ownership changes. The hands remain
 separate; a failure leaves ownership unchanged and reports an execution failure.
 No layout change or cross-body reach assumption is hidden in this operation.
-The actual-G1 feasibility and all-pair visual collision review are pending.
+All 32 pairs are feasible on the actual G1 at `a30e950`; the all-pair visual
+collision review is pending.
 
 Every execution starts from verified neutral, returns the robot to neutral and
 leaves its intended object consequence. The following explicit reset restores
@@ -44,12 +45,17 @@ logged reset. No result is a semantic response score.
 
 ## Fixed sample and fixed sim-step recording contract
 
-> **Status: software only, not yet re-recorded on Isaac.** The contract below
-> was implemented and unit-tested on Windows while the GPU host was unavailable.
-> The only actual evidence is still the retained suite described under
-> *Bounded grip repair diagnostic*: 4/40 captures passed the earlier host-span
-> timing screen and its index keeps `recording_complete=false`. Neither number
-> changes until the native procedure at the end of this page is run.
+> **Status: recorded on Isaac at `a30e950`; human visual review pending.** The
+> native procedure at the end of this page stopped at its preflight at `d185b7c`
+> (31/32, ADD_ONE/tray_D infeasible). At `a30e950` it passed steps 2-6
+> (*Native run record (a30e950)* below): 32/32 feasible, 40/40 recordings on
+> the fixed 600-step schedule with replay and following reset, the suite
+> validation, the declared-envelope check on actual palm poses and the
+> pinned-mesh screen. The private index has `recording_complete=true`.
+> `collision_reviewed` and `grasp_contact_validated` stay false, and the library
+> is not qualified until the human visual review (step 7) and the Unity consumer
+> update (step 8). The earlier retained suite (4/40 under the host-span screen)
+> is kept unchanged as failed evidence.
 
 Orientation and execution both provisionally use **300 samples at 30 Hz** and a
 **10 s nominal display duration**. These are engineering choices, not approved
@@ -215,29 +221,30 @@ Reproduce the rejection screen in the approved NumPy environment using
 add `--tilted` for the 600-candidate contact-preserving screen. Positive vertex
 intersections reject a candidate; their absence would not establish clearance.
 
-## Supply-cup grasp plan (software only; not yet run on Isaac)
+## Supply-cup grasp plan (redesigned after the d185b7c preflight; see *Transport reorientation*)
 
 The frozen layout leaves 2.5 mm between the outer supply washers and the cup's
 inner walls, and 3 mm between neighbouring washers. No lateral pinch of a supply
 washer fits, which is what the probe and the orientation screen showed. The
-planner's ADD_ONE pickup therefore uses a different plan (`planner._compile_one`,
-geometry in `grip_geometry`):
+planner's ADD_ONE pickup therefore uses a different plan (`planner._compile_add_one`
+and `_compile_one`, geometry in `grip_geometry`):
 
 - **Posture.** Right Dex3 hand with a straight middle finger
   (`middle_0 = middle_1 = 0`), a curled index finger (1.55 / 1.50 rad) and the
   thumb straight along palm +y. All values are within the pinned URDF limits.
-- **Orientation.** Fixed fingers-down palm orientation (palm +x to world -Z),
-  with four bounded palm yaws tried in turn.
+  The posture is fixed from corridor entry to release.
+- **Orientation in the cup.** Fingers-down palm (palm +x to world -Z), optionally
+  leaning by a bounded tilt (below), at one of eight pickup palm yaws (45-degree
+  grid). It is fixed from corridor entry to exit.
 - **Contact point.** The selected top washer's ring at its mid radius
   (9.375 mm from its centre), on the side facing the cup axis.
 - **Path.** The fingertip enters 120 mm above the rim and descends vertically
   in keyframes at most 10 mm apart (15 knots, u = 0.06-0.20). It dwells at
   contact and attaches kinematically, then rises back along the same line
   (u = 0.24-0.38).
-- **No finger motion while attached.** Posture and orientation are fixed from
-  entry to exit. The posture is held through the transfer and release at
-  u = 0.70; the fingers return to neutral only after release. Placement still
-  constrains the full washer pose.
+- **Transport (u = 0.38-0.64).** See *Transport reorientation* below. Placement
+  constrains the full washer pose; release is at u = 0.70 and the fingers return
+  to neutral only after release.
 - **Grasp physics.** Not claimed. The attachment is a kinematic visualization,
   with `grasp_contact_validated` and `collision_reviewed` still false.
 
@@ -262,9 +269,15 @@ Required clearances:
 - **Reach sphere (5 mm).** Must be clear at corridor entry and exit, and at
   every sample where the pad posture is not held.
 
-The planner checks each keyframe, then the straight segments between keyframes
-at <= 1 mm spacing, and refuses any variant that violates a margin (`Supply-cup
-clearance below declared margin`). A cup too narrow for the margin is refused.
+The planner checks each corridor keyframe, then the straight segments between
+keyframes at <= 1 mm spacing, then (new) the joint-interpolated path the runtime
+will actually command from corridor entry to release, evaluated through the
+backend and subdivided until no declared hand point moves more than 1 mm
+between rows. It refuses any variant that violates a margin (`Supply-cup
+clearance below declared margin`) or a carry limit (`Supply-cup carry check
+above declared limit`). A cup too narrow for the margin is refused. Where the
+whole reach sphere clears every wall by the margin and every other washer, the
+finger, body and neighbour checks are implied by it and are not re-evaluated.
 
 **Synthetic results.** With synthetic Cartesian IK, every one of the 300 samples
 for all four trays meets these limits:
@@ -284,6 +297,93 @@ fingertip extent are declarations from the URDF chain and one pinned vertex,
 not measured mesh extents. Isaac interpolates joints between keyframes, so the
 actual swept path must be screened from measured frames (procedure below).
 
+**Native preflight (d185b7c, 2026-10-07).** Planned against actual PhysX
+Jacobians, ADD_ONE/tray_A, tray_B and tray_C compiled, including the declared
+clearance check. ADD_ONE/tray_D did not; all 32 variants (4 palm yaws x 8 washer
+yaws) were refused:
+
+| Palm yaw | First failing keyframe | Best residual (position / orientation) |
+|---|---|---|
+| 0 | u = 0.06, corridor entry | 4.89 mm / 0.0528 rad |
+| pi/2 | u = 0.64, full-pose placement on tray_D | 11.8 mm / 0.262 rad (8 washer yaws; worst 208 mm) |
+| -pi/2 | u = 0.06, corridor entry | 79.6 mm / 0.836 rad |
+| pi | u = 0.06, corridor entry | 215 mm / 1.29 rad |
+
+The limits are 0.5 mm and 0.008 rad. They were not changed. Under palm yaw pi/2,
+the corridor entry solved with a position residual of 0.499 mm, just inside the
+0.5 mm limit. The pickup corridor is reachable for this yaw, but placing the
+washer on tray_D with the pad posture held is not reachable. A repeat preflight
+gave a byte-identical `preflight.json`. Neither the margin nor the variant set
+was changed to obtain a pass.
+
+### Transport reorientation and bounded lean (maintainer decision, October 2026)
+
+The maintainer decided that only the finger posture must stay fixed while the
+washer is attached. The palm may turn once the hand and the carried washer are
+clear of the supply cup, with every existing check still enforced. The redesign
+(`isaac.demos.planner`, `grip_geometry`):
+
+- **What the d185b7c plan actually fixed.** The old plan already let the palm
+  yaw change after the corridor exit: the u = 0.50 keyframe constrained only the
+  washer position, and the u = 0.64 placement yaw was the pickup yaw plus the
+  washer yaw. The binding constraint was different. Under the rigid attachment,
+  the palm's lean relative to the washer is fixed at contact, so a level washer
+  at release needs the pickup's lean. A purely fingers-down pickup therefore
+  forces a fingers-down placement, and no fingers-down placement on tray_D was
+  reachable (both development probes below: 0/16 screened placements, best
+  16 mm). A turn about the vertical alone cannot change that.
+- **Bounded lean.** The pickup palm may lean from fingers-down by 0.15 or 0.30 rad
+  (`MAX_PICKUP_TILT_RAD = 0.30`) about a palm-local axis perpendicular to the
+  finger, in eight directions. Fingers-down is always tried first. The fingertip
+  path in the cup stays vertical, and every corridor check applies unchanged.
+- **Transport.** From the corridor exit (u = 0.38) to 120 mm above the
+  destination (u = 0.50), the carried washer moves in keyframes at most 30 mm
+  apart. Meanwhile the palm turns about the world vertical by the washer yaw, in
+  steps of at most pi/16. The keyframes then descend vertically, at most 30 mm
+  apart, to placement (u = 0.64). A turn about the vertical keeps the lean and
+  keeps the washer level. Every transport keyframe constrains the full pose at
+  the washer centre, so placement error is bounded by the IK limits at the washer.
+- **Clear of the cup before turning.** Inside the corridor (entry to exit), the
+  palm orientation must stay within 0.02 rad of the pickup orientation. After the
+  exit, every sample must have the whole-hand reach sphere at least 5 mm from
+  every wall, and the carried washer at least 5 mm outside the cup's whole
+  volume. These are the new `transport_reach_m` and `transport_carried_m`
+  checks. The finger, body, carried-washer and other-washer checks still apply.
+- **Attachment under turning.** The checks follow the existing attachment model
+  (carried pose = palm x grip, rigid). At every attached sample the carried pose
+  must match that model (planned: 1e-7 m / 1e-7 rad; measured frames:
+  0.5 mm / 5 mrad). The fingertip must stay within 1 mm of its planned contact
+  point on the washer face. The washer must stay level within
+  `CARRIED_TILT_LIMIT_RAD = 0.05`; release still requires 0.012 rad.
+- **Variant search and headroom.** For each lean in order, the planner screens
+  the corridor-entry IK for all eight pickup yaws. The residual is driven to 20 %
+  of the limits, so it measures headroom rather than stopping just under
+  0.5 mm. For the two best pickups, it then screens the full placement pose for
+  all eight placement yaws. Pairs are ranked by headroom tier (>= 0.8, >= 0.5,
+  else), then by the smallest transport turn. Up to four pairs per lean are
+  compiled in full. Entry screens are deterministic, use a target-independent
+  seed label and are reused across trays. Transport keyframes are seeded with the
+  previous keyframe, then the joint interpolation from the exit to the screened
+  placement solution. The IK limits (0.5 mm, 0.008 rad), the margins and the
+  layout are unchanged.
+- **Float32 readback.** PhysX quaternions are float32. `2*acos(|a.b|)` turns a
+  norm error of about 1e-7 into milliradians. The carry checks therefore use
+  `geometry.rotation_angle`, which normalizes both quaternions first.
+
+**Development probes (not the procedure's preflight).** Two ADD_ONE-only probes
+ran the uncommitted planner on the Isaac host. They used the same image,
+isolation and archive verification as the procedure. Only the `--demo-preflight`
+hook was replaced, and they used `--reset-cycles 10`. The GPU was shared, with
+a median of 97-100 % from other users' load.
+
+| Probe (source) | Outcome |
+|---|---|
+| dev1 (`58e1bb7` working-tree snapshot) | **tray_D infeasible.** Lean 0: 2/8 entries feasible, with 0.091-0.098 mm residuals (the d185b7c entry was 0.499 mm), and 0/16 placements feasible. Most lean-0.15/0.30 pairs were refused at contact (u = 0.20-0.25) by the new attachment check, which reported 0.5-2.2 mrad between identical rotations. This was the float32 artefact above, not a carry error. The others were refused for genuine reasons: one IK failure in the corridor, and lean-0.30 pairs with the finger 2.7 mm from the wall. Stopped after 8075 s, during tray_A. |
+| dev2 (`45b99f5`, artefact fixed) | **tray_D feasible.** Pickup yaw -3pi/4, lean 0.30 rad toward pi/4, washer yaw -pi/4. Corridor entry 0.091 mm / 0.0004 rad (headroom 0.82); placement 0.37 mm (headroom 0.26). Swept joint path (1265 rows) minima: finger 9.64 mm, rest of hand 44.6 mm, carried washer 2.30 mm, other washers 0.77 mm, transport reach sphere 70.0 mm, carried washer outside the cup 114 mm. Maxima: carried tilt 5.2 mrad, contact offset 0.34 mm, corridor orientation 3.6 mrad. Largest transport joint step 0.36 rad. 21 earlier pairs were refused, mostly at transport keyframes (IK). tray_A at lean 0 had 4 screened pairs, but all 4 were refused at transport keyframes. The transport seeding toward the screened placement was added for this. Stopped after 3501 s. |
+
+These probes are development evidence only. The procedure's preflight on the
+committed revision is recorded under *Native run record*.
+
 **Not covered:**
 
 - REMOVE_ONE's release into the return cup still uses the legacy virtual grip
@@ -292,7 +392,7 @@ actual swept path must be screened from measured frames (procedure below).
 - The retained pinch probe is unchanged failed evidence.
 - No layout change was made.
 
-## Native validation and re-record procedure (pending GPU host)
+## Native validation and re-record procedure (d185b7c: stopped at step 2; a30e950: steps 2-6 passed, step 7 pending)
 
 Run this only when the shared Isaac host is free. Use the approved isolated
 runtime from `isaac/scenes/README.md`: pinned image, `--network none`, source
@@ -345,3 +445,113 @@ integration overlay is needed because `isaac.demos`, `isaac.reset` and
    sample index on the host clock. Load the re-recorded library through them
    (orientation loader and snapshot player) before any orientation or fallback
    use; a refusal code is a blocking result.
+
+### Native run record (2026-10-07, d185b7c)
+
+The host was shared, not free. Other users' processes kept the GPU at 81-83%
+before launch, and at 76-99% (median 91%) during each run. They were not
+touched. Contention affects wall time only. The source was a `git archive` of
+`d185b7c42d79e09c832beda44307b35979ca81b9`, with its embedded commit id and all
+2059 files byte-verified on the host before each launch. The runtime was the
+approved rendered-cache image (`sha256:38495e05...`, Isaac Sim 5.1.0) with the
+isolation flags above. Both containers were removed after exit. Sanitized
+hashes are in `demo-diagnostics.json` under `native_validation_d185b7c`. Raw
+outputs stay private on the host.
+
+| Step | Outcome |
+|---|---|
+| 1. Source | `d185b7c` (archive; no `.git` in `/work`) |
+| 2. Preflight | **31/32 feasible: ADD_ONE/tray_D infeasible** (grasp-plan section above). 1000/1000 reset cycles and the planning reset passed; the scene and reset snapshot hashes were identical across both runs. A repeat run gave a byte-identical `preflight.json`. |
+| 3. Full suite | **Not run.** Step 2 requires 32/32, and `run_demo_check` refuses to record otherwise. |
+| 4. `schedule-validation.json` | Not produced. `identical_physics_steps`, `schedule_ok`, replay and reset counts: none. |
+| 5. `cup-clearance.json` | Not produced. |
+| 6. Pinned-mesh screen | Not run: no corridor frames. |
+| 7. Visual review | Not started (human). |
+
+`recording_complete` stays false. The retained suite (4/40 under the earlier
+host-span screen) is still the only recording evidence. The fixed sim-step
+schedule and the supply-cup corridor still need a native recording, and that
+waits until ADD_ONE/tray_D is resolved. This run does not change the plan, the
+margins or the IK limits. (Superseded by the `a30e950` run below; this record
+is kept unchanged.)
+
+### Native run record (a30e950; 2026-10-08 and 2026-10-10)
+
+The source was a `git archive` of `a30e9508fcb3a24b303e9a126bb48f7fb89187ef`
+(archive hash reproduced locally), with its embedded commit id and all 2059
+files byte-verified on the host before each launch. The image and isolation
+were the same as for `d185b7c` (`network_interfaces: lo` only). Both containers
+were removed after exit. No planner change was made: the margins, IK limits,
+variants and layout are those of `a30e950`. Sanitized hashes are in
+`demo-diagnostics.json` under `native_validation_a30e950`. Raw outputs and a
+private evidence archive stay on the host.
+
+- **preflight-001 (2026-10-08).** Launched by an earlier session that was
+  interrupted before it finalized. The exited container was inspected and
+  removed on 2026-10-10. It ran to completion (exit 0, 5795 s) and is a valid
+  step 2 of `a30e950`. Another user's process was on the GPU at launch.
+- **full-001 (2026-10-10).** The host was otherwise idle (0 % GPU before
+  launch). Exit 0, 3220 s. Its planning pass repeats step 2. `--capture` loads
+  the canonical camera-bearing workcell (scene `3b6e8f9a...`, snapshot
+  `e2628102...`). The preflight-only run loads the camera-free scene
+  (`7a13f7b5...`, snapshot `4e3d9890...`).
+
+| Step | Outcome |
+|---|---|
+| 1. Source | `a30e950` (archive; no `.git` in `/work`) |
+| 2. Preflight | **32/32 feasible**, in both runs, with byte-identical `preflight.json`. Planning reset ok; 1000/1000 reset cycles in each run. |
+| 3. Full suite | **40/40** recordings complete, 300 frames each (12,000 public v2 frames). 40/40 executions ok, replay end states ok and following resets ok. Protected real factory: 32/32 rejected, state unchanged, factory not run. 32 execution capture sets (224 images). |
+| 4. `schedule-validation.json` | Measured dt 1/60 s, `refusal` null, `suite.identical_physics_steps` 600 over 40 recordings. Every row has `schedule_ok`, `replay_end_state_ok` and `reset_ok`, so the private index has `recording_complete=true`. Unpaced capture took 9.74-10.98 s per recording (provenance only). |
+| 5. `cup-clearance.json` | 5/5 ADD_ONE items `ok`, `violations` empty. Uncertified: tray_C samples 268-277 and tray_D samples 260-268 (below). |
+| 6. Pinned-mesh screen | 5/5 `margin_ok: true`: no `cup_vertex_intersections`, no `below_margin` rows (eight right-hand meshes, 5 mm). |
+| 7. Visual review | **Not started (human).** The material is collected; review flags are below. |
+
+**Selected ADD_ONE variants.** The fingers-down pickup was again infeasible for
+tray_D (lean 0: 2/8 entries, 0/16 placements). Every tray used a leaning pickup.
+
+| Pair | Pickup yaw, lean | Washer yaw | Entry / placement residual | Refused before |
+|---|---|---|---|---|
+| tray_A | pi, 0.15 rad toward 3pi/4 | 0 | 0.091 mm / 0.488 mm | 13 |
+| tray_B | pi, 0.15 rad toward 3pi/4 | -pi/4 | 0.091 mm / 0.053 mm | 14 |
+| tray_C | -3pi/4, 0.15 rad toward pi/4 | 0 | 0.053 mm / 0.004 mm | 9 |
+| tray_D | pi, 0.30 rad toward 0 | -pi/4 | 0.093 mm / 0.107 mm | 19 |
+
+The refused variants failed at transport IK, at the carried-tilt limit or at a
+declared clearance, or their lean had no screened pair. Each reason is kept in
+the private plans.
+
+**Clearances.** The first value is from the planned swept joint path, the
+second from the measured palm poses. Values for trays A / B / C / D, in mm:
+
+| Check | Planned (swept) | Measured |
+|---|---|---|
+| Finger capsule to wall | 7.21 / 7.21 / 9.61 / 9.58 | 7.21 / 7.21 / 9.62 / 9.59 |
+| Rest of hand | 50.4 / 50.4 / 49.9 / 44.7 | 50.4 / 50.4 / 49.9 / 44.7 |
+| Carried washer to wall | 2.46 / 2.46 / 2.47 / 2.48 | 2.47 / 2.47 / 2.47 / 2.48 |
+| Finger to other washers | 3.53 / 3.53 / 1.88 / 0.82 | 3.53 / 3.53 / 1.88 / 0.82 |
+| Transport reach sphere | 101.9 / 8.08 / 96.0 / 80.3 | 102.2 / 8.08 / 96.4 / 80.3 |
+| Carried washer outside cup | 114.0 / 75.9 / 114.0 / 113.9 | 114.3 / 75.9 / 114.2 / 114.1 |
+| Max carried tilt (mrad) | 8.2 / 28.7 / 3.2 / 36.2 | 8.2 / 27.9 / 2.7 / 28.8 |
+
+**Review flags for step 7.** These pass every automated check. They are listed
+because the checks do not establish them:
+
+- **tray_D wrist turn.** `right_wrist_yaw_joint` turns 2.73 rad between two
+  adjacent transport keyframes (u = 0.4883-0.5017, about 0.13 s of the 10 s
+  display), with the washer attached. The swept-path checks passed across it.
+  The largest transport joint step on the other trays is 0.65 rad.
+- **Return near the cup.** After release, on the return to neutral, the palm's
+  0.19 m reach sphere meets the cup: tray_C samples 268-277 (clearance down to
+  1.43 mm) and tray_D samples 260-268 (overlap up to 10.7 mm). These are the
+  `uncertified` rows. The eight hand meshes in those rows clear the walls by at
+  least 5 mm. The corridor frames hold only hand links, so wrist and forearm
+  clearance near the cup is not screened.
+- **tray_A placement.** The residual is 0.488 mm, inside the unchanged 0.5 mm
+  limit with little headroom.
+- **Arm swing.** In all ADD_ONE plans, `right_shoulder_pitch_joint` moves about
+  2.8-3.7 rad from neutral to corridor entry (u = 0-0.06), and back after
+  u = 0.82.
+
+`collision_reviewed` and `grasp_contact_validated` remain false. The library is
+not qualified until the human review (step 7) is recorded. Step 8, loading the
+`a30e950` library through the updated Unity consumers, has not been run.

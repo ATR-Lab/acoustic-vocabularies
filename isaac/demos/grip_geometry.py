@@ -4,10 +4,13 @@ The cup is the frozen #52 ``build_usd.shell``: five axis-aligned 4 mm boxes
 (Bottom/Back/Front/Left/Right). Two uses share that model:
 
 * The planned ADD_ONE pickup (``planner``) enters the supply cup with one
-  straight middle finger pointing down, while every other hand link stays above
-  the rim. A declared envelope (a capsule around the distal finger column, a
-  half-space bounding the rest of the hand, and a reach sphere outside the
-  corridor) must keep at least ``CLEARANCE_MARGIN_M`` from every wall box.
+  straight middle finger pointing down (leaning at most ``MAX_PICKUP_TILT_RAD``),
+  while every other hand link stays above the rim. A declared envelope (a
+  capsule around the distal finger column, a half-space bounding the rest of
+  the hand, and a reach sphere containing the whole hand) must keep at least
+  ``CLEARANCE_MARGIN_M`` from every wall box. The palm orientation is fixed
+  inside the cup; it may turn about the vertical during transport only while
+  the reach sphere and the carried washer are clear of the cup by the margin.
   The envelope is an engineering declaration from the pinned URDF chain; it is
   not the STL mesh and does not prove whole-robot collision freedom.
 * The read-only CLI screens actual PhysX link frames with pinned STL vertices.
@@ -21,7 +24,7 @@ import math
 from pathlib import Path
 import struct
 
-from .geometry import add, axis_angle, compose, mul, pose, relative, sub
+from .geometry import add, axis_angle, compose, mul, pose, relative, rotate, rotation_angle, sub
 from .grip_probe import CONTACT_POINTS, MESH_SHA256
 from .recording import write_json
 
@@ -55,6 +58,20 @@ TIP_LOCAL = (.0777+.0458+CONTACT_POINTS['right_hand_middle_1_link'][0], *FINGER_
 # Straight middle finger, curled index, thumb along palm +y (all within URDF limits).
 PAD_POSTURE = {'thumb_0': 0., 'thumb_1': 0., 'thumb_2': 0., 'middle_0': 0., 'middle_1': 0.,
                'index_0': 1.55, 'index_1': 1.50}
+# Bounded pickup lean (#56 maintainer decision, October 2026). The palm may lean
+# from fingers-down about a palm-local axis perpendicular to the finger. Under
+# the rigid attachment the lean relative to the washer is fixed at contact, so a
+# lean at placement requires the same lean at pickup. Every check still applies.
+MAX_PICKUP_TILT_RAD = .30
+PICKUP_TILTS = ((0., 0.),)+tuple((tilt, k*math.pi/4) for tilt in (.15, .30) for k in range(8))
+# Inside the cup the palm keeps the pickup orientation within this tolerance
+# (IK orientation limit 0.008 rad plus joint interpolation between knots).
+CORRIDOR_ORIENTATION_TOLERANCE_RAD = .02
+# Attachment while carried: the washer follows palm * grip exactly (runtime
+# model) and stays level within this bound; release requires 0.012 rad.
+CARRIED_TILT_LIMIT_RAD = .05
+PLANNED_ATTACHMENT_TOLERANCE = (1e-7, 1e-7)     # metres, radians (pure arithmetic)
+MEASURED_ATTACHMENT_TOLERANCE = (5e-4, 5e-3)    # PhysX readback vs USD object pose
 
 
 def box_vertex_depth(point, center, dimensions):
@@ -116,6 +133,27 @@ def fingers_down_orientation(palm_yaw):
     return mul(axis_angle([0, 0, 1], palm_yaw), axis_angle([0, 1, 0], math.pi/2))
 
 
+def hand_orientation(palm_yaw, tilt=0., tilt_direction=0.):
+    """Fingers-down palm yawed about world Z, leaned by ``tilt`` about the
+    palm-local axis (0, cos d, sin d), which is perpendicular to the finger.
+
+    ``hand_orientation(a+b, t, d) == R_z(b) * hand_orientation(a, t, d)``, so a
+    yaw about the vertical keeps the lean and keeps a carried washer level.
+    """
+    if not 0. <= tilt <= MAX_PICKUP_TILT_RAD+1e-12:
+        raise ValueError('Pickup lean outside the declared bound')
+    base = fingers_down_orientation(palm_yaw)
+    if tilt == 0.:
+        return base
+    return mul(base, axis_angle([0., math.cos(tilt_direction), math.sin(tilt_direction)], tilt))
+
+
+def tilt_from_level(rotation):
+    """Angle (rad) between an object's local +Z and world +Z."""
+    z = rotate(rotation, [0., 0., 1.])
+    return math.acos(max(-1., min(1., z[2]/math.sqrt(sum(v*v for v in z)))))
+
+
 def pad_posture(names, positions, side):
     if side != 'right':
         raise ValueError('The supply-cup pad posture is defined for the right Dex3 hand only')
@@ -131,13 +169,15 @@ def washer_rim_vertices(definition):
     return [(r*math.cos(i*2*math.pi/32), r*math.sin(i*2*math.pi/32), z) for z in (-h, h) for i in range(32)]
 
 
-def supply_cup_corridor(layout, neutral, washer_id, palm_yaw, *, cup_id='supply_cup',
-                        margin=CLEARANCE_MARGIN_M):
+def supply_cup_corridor(layout, neutral, washer_id, palm_yaw, *, tilt=0., tilt_direction=0.,
+                        cup_id='supply_cup', margin=CLEARANCE_MARGIN_M):
     """Vertical fingertip corridor to the top face of ``washer_id``.
 
     The contact point lies on the washer ring at its mid radius, displaced
     toward the cup axis so the finger capsule is as far from the walls as the
-    ring allows. Returns world tip heights (entry first) and the declared model.
+    ring allows. The fingertip path is vertical; the palm keeps
+    ``hand_orientation(palm_yaw, tilt, tilt_direction)``. Returns world tip
+    heights (entry first) and the declared model.
     """
     definitions = {item['id']: item for item in layout['objects']}
     washer, cup = definitions[washer_id], definitions[cup_id]
@@ -163,12 +203,18 @@ def supply_cup_corridor(layout, neutral, washer_id, palm_yaw, *, cup_id='supply_
                  and definitions[key]['kind'] == 'washer' and value['state'].get('location') == cup_id]
     if any(abs(sum(v*v for v in neutral[key]['rotation_xyzw'][:2])) > 1e-12 for key, _, _ in neighbors):
         raise ValueError('Neighbor washer bounding boxes require level washers')
-    return dict(cup=cup_id, walls=cup_wall_boxes(layout, cup_id), neighbors=neighbors,
+    walls = cup_wall_boxes(layout, cup_id)
+    low = [min(c[i]-s[i]/2 for _, c, s in walls) for i in range(3)]
+    high = [max(c[i]+s[i]/2 for _, c, s in walls) for i in range(3)]
+    return dict(cup=cup_id, walls=walls, neighbors=neighbors,
+                cup_box=([(a+b)/2 for a, b in zip(low, high)], [b-a for a, b in zip(low, high)]),
                 rim_top_m=rim, pick_m=pick,
-                tip_heights_m=heights, palm_yaw_rad=palm_yaw,
-                orientation_xyzw=fingers_down_orientation(palm_yaw), tip_local_m=list(TIP_LOCAL),
+                tip_heights_m=heights, palm_yaw_rad=palm_yaw, tilt_rad=tilt, tilt_direction_rad=tilt_direction,
+                orientation_xyzw=hand_orientation(palm_yaw, tilt, tilt_direction), tip_local_m=list(TIP_LOCAL),
                 finger_radius_m=FINGER_RADIUS_M, body_limit_palm_x_m=BODY_LIMIT_PALM_X_M,
                 hand_reach_m=HAND_REACH_M, margin_m=margin, carried_min_clearance_m=CARRIED_MIN_CLEARANCE_M,
+                corridor_orientation_tolerance_rad=CORRIDOR_ORIENTATION_TOLERANCE_RAD,
+                carried_tilt_limit_rad=CARRIED_TILT_LIMIT_RAD,
                 washer_vertices_local_m=washer_rim_vertices(washer),
                 model='declared_capsule_halfspace_reach_envelope_not_mesh')
 
@@ -186,11 +232,15 @@ def envelope_clearance(corridor, palm_pose, carried_pose=None):
         if value < finger:
             finger, limiting = value, name
         # Separation of the hand half-space {palm x <= limit} from the wall box:
-        # the smallest palm-frame x of any box corner, minus the limit.
+        # the smallest palm-frame x of any box corner, minus the limit. The rest
+        # of the hand also lies inside the reach sphere, so its clearance is at
+        # least the larger of the half-space and the sphere separation (this
+        # only matters for a leaning palm far from the cup).
         corners = [[c+s/2*sign for c, s, sign in zip(center, size, signs)]
                    for signs in [(sx, sy, sz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]]
         local_x = [relative(palm_pose, (corner, [0., 0., 0., 1.]))[0][0] for corner in corners]
-        body = min(body, min(local_x)-corridor['body_limit_palm_x_m'])
+        sphere = point_box_signed_distance(palm_pose[0], center, size)-corridor['hand_reach_m']
+        body = min(body, max(min(local_x)-corridor['body_limit_palm_x_m'], sphere))
         if carried_pose is not None:
             for vertex in corridor['washer_vertices_local_m']:
                 point = compose(carried_pose, (vertex, [0., 0., 0., 1.]))[0]
@@ -207,40 +257,123 @@ def reach_clearance(corridor, palm_pose):
                for _, center, size in corridor['walls'])-corridor['hand_reach_m']
 
 
-def path_clearance(corridor, samples, *, strict_reach=True, stop_on_violation=False):
+def carried_cup_clearance(corridor, carried_pose):
+    """Clearance (m) of the carried washer's ring vertices from the whole cup
+    volume (walls and interior); positive only when the washer is out of the cup."""
+    center, size = corridor['cup_box']
+    return min(point_box_signed_distance(compose(carried_pose, (vertex, [0., 0., 0., 1.]))[0], center, size)
+               for vertex in corridor['washer_vertices_local_m'])
+
+
+def attachment_deviation(corridor, palm_pose, carried_pose):
+    """The runtime attachment model is carried = palm * grip (rigid). Returns the
+    carried pose's position/rotation deviation from that model and the distance
+    of the fingertip from its planned contact point on the washer face."""
+    expected = compose(palm_pose, corridor['grip_relative_pose'])
+    tip = compose(palm_pose, (corridor['tip_local_m'], [0., 0., 0., 1.]))[0]
+    contact = compose(carried_pose, (corridor['contact_local_m'], [0., 0., 0., 1.]))[0]
+    return math.dist(expected[0], carried_pose[0]), rotation_angle(expected[1], carried_pose[1]), math.dist(tip, contact)
+
+
+CONTACT_TOLERANCE_M = .001   # Fingertip to planned contact point (IK limit 0.5 mm at contact).
+
+
+def path_clearance(corridor, samples, *, strict_reach=True, stop_on_violation=False,
+                   attachment_tolerance=PLANNED_ATTACHMENT_TOLERANCE):
     """Check every sample: declared envelope while the pad posture is held
     (corridor entry through release), reach sphere otherwise.
 
+    Inside the corridor (entry to exit) the palm must keep the pickup
+    orientation. After ``transport_from`` (the corridor exit) the palm may turn,
+    so every sample there also requires the whole-hand reach sphere and the
+    carried washer to be clear of the cup by the margin. While a washer is
+    carried and the corridor records the grip, the carried pose must follow
+    the runtime attachment (palm * grip), the fingertip must stay at its contact
+    point and the washer must stay level within ``carried_tilt_limit_rad``.
+
     ``samples`` rows hold ``u``, ``palm`` (position, xyzw) and optional
-    ``carried`` washer pose. Returns minima and every violation; never raises.
-    With ``strict_reach=False`` an outside-corridor sample whose reach sphere
-    meets the cup is listed as ``uncertified`` (the pinned-mesh screen decides)
-    instead of as a violation.
+    ``carried`` washer pose. Returns minima, maxima and every violation; never
+    raises. With ``strict_reach=False`` an outside-pad-posture sample whose
+    reach sphere meets the cup is listed as ``uncertified`` (the pinned-mesh
+    screen decides) instead of as a violation.
     """
     margin = corridor['margin_m']
-    minima = dict(finger_m=math.inf, body_m=math.inf, carried_m=math.inf, neighbors_m=math.inf, reach_m=math.inf)
+    pad_until = corridor.get('pad_until', corridor['exit'])
+    transport_from = corridor.get('transport_from')
+    attached = 'grip_relative_pose' in corridor
+    minima = dict(finger_m=math.inf, body_m=math.inf, carried_m=math.inf, neighbors_m=math.inf, reach_m=math.inf,
+                  transport_reach_m=math.inf, transport_carried_m=math.inf)
+    maxima = dict(corridor_orientation_rad=0., attachment_position_m=0., attachment_rotation_rad=0.,
+                  contact_offset_m=0., carried_tilt_rad=0.)
     violations, uncertified = [], []
+    implied = 0
     for row in samples:
         palm = (list(row['palm'][0]), list(row['palm'][1]))
-        if corridor['enter'] <= row['u'] <= corridor.get('pad_until', corridor['exit']):
-            value = envelope_clearance(corridor, palm, row.get('carried'))
-            checks = [('finger_m', value['finger_m'], margin), ('body_m', value['body_m'], margin),
-                      ('neighbors_m', value['neighbors_m'], 0.)]
-            if value['carried_m'] is not None:
-                checks.append(('carried_m', value['carried_m'], corridor['carried_min_clearance_m']))
+        carried = row.get('carried')
+        u = row['u']
+        if corridor['enter'] <= u <= pad_until:
+            reach = reach_clearance(corridor, palm)
+            neighbors_sphere = min((point_box_signed_distance(palm[0], center, size)-corridor['hand_reach_m']
+                                    for _, center, size in corridor['neighbors']), default=math.inf)
+            if reach >= margin and neighbors_sphere >= 0.:
+                # The whole declared hand (capsule and the rest) lies inside the
+                # reach sphere, which clears every wall by the margin and every
+                # other washer: the finger, body and neighbour checks hold. Only
+                # exactly evaluated rows enter their minima.
+                implied += 1
+                checks = []
+                if carried is not None:
+                    checks.append(('carried_m', min(point_box_signed_distance(
+                        compose(carried, (vertex, [0., 0., 0., 1.]))[0], center, size)
+                        for vertex in corridor['washer_vertices_local_m'] for _, center, size in corridor['walls']),
+                        corridor['carried_min_clearance_m']))
+            else:
+                value = envelope_clearance(corridor, palm, carried)
+                checks = [('finger_m', value['finger_m'], margin), ('body_m', value['body_m'], margin),
+                          ('neighbors_m', value['neighbors_m'], 0.)]
+                if value['carried_m'] is not None:
+                    checks.append(('carried_m', value['carried_m'], corridor['carried_min_clearance_m']))
+            limits = []
+            if transport_from is not None and u > transport_from:
+                checks.append(('transport_reach_m', reach, margin))
+                if carried is not None:
+                    checks.append(('transport_carried_m', carried_cup_clearance(corridor, carried), margin))
+            else:
+                limits.append(('corridor_orientation_rad', rotation_angle(palm[1], corridor['orientation_xyzw']),
+                               corridor.get('corridor_orientation_tolerance_rad', CORRIDOR_ORIENTATION_TOLERANCE_RAD)))
+            if carried is not None and attached:
+                position, rotation, contact = attachment_deviation(corridor, palm, carried)
+                limits += [('attachment_position_m', position, attachment_tolerance[0]),
+                           ('attachment_rotation_rad', rotation, attachment_tolerance[1]),
+                           ('contact_offset_m', contact, CONTACT_TOLERANCE_M),
+                           ('carried_tilt_rad', tilt_from_level(carried[1]),
+                            corridor.get('carried_tilt_limit_rad', CARRIED_TILT_LIMIT_RAD))]
         else:
-            checks = [('reach_m', reach_clearance(corridor, palm), margin)]
+            checks, limits = [('reach_m', reach_clearance(corridor, palm), margin)], []
         for key, value, required in checks:
             minima[key] = min(minima[key], value)
             if value < required:
-                item = dict(sample=row.get('sample'), u=row['u'], check=key,
+                item = dict(sample=row.get('sample'), u=u, check=key, kind='min',
                             clearance_m=value, required_m=required)
                 (uncertified if key == 'reach_m' and not strict_reach else violations).append(item)
+        for key, value, limit in limits:
+            maxima[key] = max(maxima[key], value)
+            if value > limit:
+                violations.append(dict(sample=row.get('sample'), u=u, check=key, kind='max', value=value, limit=limit))
         if violations and stop_on_violation:
             break
     return dict(model=corridor['model'], margin_m=margin, samples=len(samples),
                 minima={k: (None if v == math.inf else v) for k, v in minima.items()},
+                maxima=maxima, rows_implied_by_reach_sphere=implied,
                 violations=violations, uncertified=uncertified, ok=not violations)
+
+
+def refusal_message(violation):
+    if violation.get('kind') == 'max':
+        return ('Supply-cup carry check above declared limit: %s=%.6g at u=%.4f (limit %.6g)'
+                % (violation['check'], violation['value'], violation['u'], violation['limit']))
+    return ('Supply-cup clearance below declared margin: %s=%.6f m at u=%.4f (required %.4f m)'
+            % (violation['check'], violation['clearance_m'], violation['u'], violation['required_m']))
 
 
 def require_planned_clearance(corridor, knots, grip):
@@ -272,9 +405,7 @@ def require_planned_clearance(corridor, knots, grip):
             report['violations'].append(dict(u=u, check='entry_exit_reach_m', clearance_m=value,
                                              required_m=corridor['margin_m']))
     if report['violations']:
-        first = report['violations'][0]
-        raise ValueError('Supply-cup clearance below declared margin: %s=%.6f m at u=%.4f (required %.4f m)'
-                         % (first['check'], first['clearance_m'], first['u'], first['required_m']))
+        raise ValueError(refusal_message(report['violations'][0]))
     report['ok'] = True
     return report
 

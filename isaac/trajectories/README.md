@@ -9,7 +9,8 @@ physics steps at 1/60 s, identical for all 40 demos), host-clock playback pacing
 and failed-capture handling.
 
 No actual 40-file trajectory archive has yet been qualified. The fixed-step
-schedule and the supply-cup grasp plan have not yet been recorded on Isaac; the
-retained suite (4/40 earlier timing screens, `recording_complete=false`) is
+schedule and the supply-cup grasp plan have not yet been recorded on Isaac. The
+2026-10-07 native preflight at `d185b7c` found 31/32 pairs feasible
+(ADD_ONE/tray_D infeasible), so no re-record was made. The retained suite (4/40 earlier timing screens, `recording_complete=false`) is
 unchanged. The implementation does not substitute synthetic trajectories for
 measured G1 execution evidence.

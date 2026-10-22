@@ -52,6 +52,18 @@ def angle(a, b):
     return 2*math.acos(dot)
 
 
+def rotation_angle(a, b):
+    """Rotation angle between two orientations, normalizing both first.
+
+    Unlike ``angle``, this is exact for nearly equal quaternions and for
+    float32 readback whose norm differs slightly from one (2*acos(|a.b|) turns
+    a 1e-7 norm error into ~1e-3 rad).
+    """
+    na, nb = norm(a), norm(b)
+    d = mul(inverse([v/na for v in a]), [v/nb for v in b])
+    return 2*math.atan2(norm(d[:3]), abs(d[3]))
+
+
 def smooth(u):
     u = min(1., max(0., u))
     return u*u*(3-2*u)
