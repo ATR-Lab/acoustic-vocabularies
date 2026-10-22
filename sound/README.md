@@ -32,6 +32,7 @@ Nothing needs the network at runtime.
 | `schema/package.schema.json` | Learner and dyad package format: `manifest.json`, `answers.json`, `audio.json`, `allocation.json` ([`package-format.md`](../docs/interfaces/package-format.md)) |
 | `schema/provisional-bank.schema.json` | PROVISIONAL Study B bank input of the dyad package builder (until #26) |
 | `examples/package-demo/` | JSON files of the sealed synthetic package `DEMO-BOOK-P1` (no WAVs) |
+| `examples/integration-demo/summary.json` | Hash table of the O4.1 integration demo: three synthetic books (P1-P3) committed, verified and packaged ([`tools/integration_demo.py`](tools/integration_demo.py)) |
 | `config/validator.json` | Separation threshold (`"0.10"`, pilot default; freezes at G4) |
 | `reserved/registry.json` | Reserved-signal registry: the seven nonlexical assets (#14, [`docs/nonlexical.md`](docs/nonlexical.md)) |
 | `docs/` | Renderer spec and component docs |
@@ -40,7 +41,7 @@ Nothing needs the network at runtime.
 | `testvectors/validator/boundary.json` | Separation-boundary fixtures (synthetic) |
 | `testvectors/store/growth.json` | Store chain heads and snapshots of a synthetic 8 -> 12 -> 16 growth |
 | `testvectors/fallback/demo-manifest.json` | Fallback banks and books from the public seed `DEMO-fallback-v1` (example, not study material) |
-| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`), example package (`build_example_package.py`), run-sheet package hashes (`package_hashes.py`) |
+| `tools/` | Spec evidence and generators: shortest events, headroom sweep, spectral check, test-vector writers, separation boundary, validator benchmark, reserved assets (`make_reserved_assets.py`), store growth demo, fallback builder (`build_fallback.py`), golden manifest (`make_goldens.py`, `check_golden_bump.py`, `compare_golden_digests.py`), example package (`build_example_package.py`), integration demo (`integration_demo.py`), run-sheet package hashes (`package_hashes.py`) |
 | `demo/macos/` | Native macOS demo app that drives the engine through a JSON-lines bridge ([`README.md`](demo/macos/README.md)) |
 | `../tests/golden/manifest.json` | Golden hashes checked on Linux, macOS and Windows, x86_64 and arm64 ([`docs/golden.md`](docs/golden.md)) |
 
@@ -132,6 +133,8 @@ change to rendered bytes bumps it in the same pull request and regenerates
 `uv run --project sound python sound/tools/make_composition_vectors.py`, and rewrites the
 reserved registry with `uv run --project sound python sound/tools/make_reserved_assets.py`
 and the golden manifest with `uv run --project sound python sound/tools/make_goldens.py`.
+Rewrite the integration-demo summary with
+`uv run --project sound python sound/tools/integration_demo.py --write`.
 The golden guard in CI fails a changed golden hash without the version bump
 ([`docs/golden.md`](docs/golden.md)).
 A code change that leaves the bytes unchanged still changes `renderer_hash`: regenerate
