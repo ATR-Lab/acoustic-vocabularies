@@ -126,6 +126,35 @@ class MenuStoreBridge:
         self.directory = self.store.book_dir(self.book_id)
         self.journal = self.directory / 'menu-bridge.jsonl'
         self.pending = self.directory / 'menu-bridge.pending.json'
+        self._qualified_source = None
+
+    def _bank_inventory(self, root):
+        """Complete immutable source proof; timestamps never replace byte hashes."""
+        root = _local_path(root, directory=True)
+        result = []; count = total = 0
+        for parent, dirs, files in os.walk(root, followlinks=False):
+            for name in sorted(dirs + files):
+                path = _local_path(Path(parent)/name, directory=name in dirs)
+                relative = path.relative_to(root).as_posix()
+                if name in dirs:
+                    result.append((relative, 'directory'))
+                    require(len(result) <= 20000, 'BANK_SOURCE_SIZE_OR_KIND')
+                    continue
+                with path.open('rb') as stream:
+                    info = os.fstat(stream.fileno())
+                    require(stat.S_ISREG(info.st_mode) and 0 <= info.st_size <= 64*1024**2,
+                            'BANK_SOURCE_SIZE_OR_KIND')
+                    raw = stream.read(info.st_size + 1)
+                    require(len(raw) == info.st_size, 'BANK_SOURCE_CHANGED')
+                count += 1; total += len(raw)
+                require(count <= 20000 and len(result) < 20000 and total <= 2*1024**3, 'BANK_SOURCE_SIZE_OR_KIND')
+                result.append((relative, len(raw), hashlib.sha256(raw).hexdigest()))
+        return tuple(sorted(result))
+
+    def _recheck_qualified_source(self):
+        if self._qualified_source is not None:
+            root, inventory = self._qualified_source
+            require(self._bank_inventory(root) == inventory, 'BANK_SOURCE_CHANGED')
 
     def _inputs(self):
         c = self.config
@@ -143,12 +172,22 @@ class MenuStoreBridge:
             require(source.name == 'manifest.json', 'BANK_MANIFEST_PATH')
             try:
                 from av_banks.handoff import HandoffError, qualified_dyad_bank
+                from av_banks.manifest import BankManifest, to_dyad_bank
             except ImportError as error:
                 raise BridgeError('QUALIFIED_RUNTIME_UNAVAILABLE') from error
-            try:
-                bank = qualified_dyad_bank(source.parent, expected_bank_sha256=c['bank_sha256'])
-            except HandoffError as error:
-                raise BridgeError('BANK_QUALIFICATION') from error
+            if self._qualified_source is None:
+                before_inventory = self._bank_inventory(source.parent)
+                try:
+                    bank = qualified_dyad_bank(source.parent, expected_bank_sha256=c['bank_sha256'])
+                except HandoffError as error:
+                    raise BridgeError('BANK_QUALIFICATION') from error
+                require(self._bank_inventory(source.parent) == before_inventory, 'BANK_SOURCE_CHANGED')
+                self._qualified_source = (_local_path(source.parent, directory=True), before_inventory)
+            else:
+                self._recheck_qualified_source()
+                # Recreate detached values from the independently pinned bytes.
+                # A successful prior verification alone is never sufficient.
+                bank = to_dyad_bank(BankManifest.from_dict(document))
         else:
             bank = load_dyad_bank(source)
         # A qualified DyadBank's own provisional serialization has a different
@@ -182,6 +221,7 @@ class MenuStoreBridge:
             options[key] = row
         require(len(options) == 192, 'OPTION_INVENTORY')
         require(hashlib.sha256(source.read_bytes()).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
+        self._recheck_qualified_source()
         return bank, package, options
 
     def _request(self, value, *, allow_verify=False):
@@ -297,7 +337,9 @@ class MenuStoreBridge:
     def select(self, value):
         request = self._request(value)
         with store_lock(self.store.root):
-            return self._select_locked(request)
+            receipt = self._select_locked(request)
+            self._recheck_qualified_source()
+            return receipt
 
     def _select_locked(self, request):
         bank, package, options = self._inputs()
@@ -383,7 +425,9 @@ class MenuStoreBridge:
     def verified_snapshot(self, *, expected_head, expected_snapshot_sha256):
         """Strict latest-head handoff for teaching, with no recipe or answer label."""
         with store_lock(self.store.root):
-            return self._verified_snapshot_locked(expected_head, expected_snapshot_sha256)
+            snapshot = self._verified_snapshot_locked(expected_head, expected_snapshot_sha256)
+            self._recheck_qualified_source()
+            return snapshot
 
     def _verified_snapshot_locked(self, expected_head, expected_snapshot_sha256):
         bank, package, options = self._inputs()
@@ -484,6 +528,12 @@ evidence; a request with an existing valid response is never executed again.
     processed = 0
     started = time.monotonic()
     with store_lock(bridge.store.root), store_lock(root):
+        # Qualify immutable source assets at service startup, before enabling a
+        # client. Later requests still re-read every source byte and package.
+        if bridge._qualified_source is None:
+            source = read_json(bridge.config['bank_path'])
+            if isinstance(source, dict) and source.get('format') == QUALIFIED_BANK_FORMAT:
+                bridge._inputs()
         while processed < max_requests and time.monotonic()-started < seconds:
             pending = []
             request_ids = set()
@@ -543,6 +593,7 @@ evidence; a request with an existing valid response is never executed again.
             # Detect a changed request before publishing, even if the commit is now
             # uncertain. The durable intent/journal handles an identical retry.
             require(_mailbox_request(path)[1] == request_hash, 'MAILBOX_REQUEST_CHANGED')
+            bridge._recheck_qualified_source()
             response['response_sha256'] = digest(response)
             _atomic_new(responses/path.name, response)
             processed += 1

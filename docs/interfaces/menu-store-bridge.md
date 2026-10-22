@@ -64,12 +64,42 @@ the full bank directory. `bank_file_sha256` pins that file's bytes.
 `bank_sha256` pins the canonical #26 manifest. The configuration format and
 response fields stay at version 1.
 
-The bridge calls `av_banks.handoff.qualified_dyad_bank` for every input check.
+At startup, the bridge calls `av_banks.handoff.qualified_dyad_bank`.
 This verifies stored provenance, the generation configuration, all option WAVs,
 rerendered hashes and all different-atom pairs. Incomplete banks and reserve-rule
 amendments are refused. The handoff's bank hash remains authoritative. The
 converted `DyadBank.bank_sha256()` covers a provisional representation and is
 not the qualified manifest pin.
+
+The bridge records every source file's byte count and SHA-256 before and after
+that full qualification. Both inventories must match. The proof also includes
+directory names and the presence or absence of an amendment file. Source paths cannot use
+links or Windows reparse points. The inventory permits at most 20,000 entries,
+64 MiB per file and 2 GiB in total.
+
+For each request, the bridge reads and hashes the full inventory again. It
+checks the inventory before and after the normal full package checks, and before
+response publication. Different bytes, added or missing files/directories, links
+or amendments cause refusal. Timestamps alone never establish identity. A
+request recreates bank values from the independently pinned manifest bytes.
+It does not trust a mutable bank object retained from an earlier request.
+Thus unchanged source bytes preserve the startup qualification proof without
+repeated bank rendering and pairwise calculations. Package loading, composite
+checks, actual store verification and all durability steps remain live.
+
+Service startup completes full qualification before it processes requests.
+The client must be enabled after that startup work. Its 2,000 ms deadline still
+starts at request publication and remains unchanged. If a source fault occurs
+after a durable commit, preserve the uncertain result. Only identical-request
+recovery against the exact pinned source may return the original receipt.
+
+`tools/qualified_menu_store_benchmark.py --config <private-config>
+--config-sha256 <raw-pin> --out <fresh-local-directory>` measures one existing
+qualified DEMO configuration with a separate fresh store. Use the banks runtime.
+It records startup verification separately, followed by the profile request and
+16 atom requests. It checks all prior selections and receipt/snapshot bindings.
+Exit 2 retains a valid diagnostic report when a request exceeds 2,000 ms.
+The report always has `participant_ready:false` and `timing_qualified:false`.
 
 The package must record the exact qualified format, version and bank hash.
 It must contain `permutation.json` and `allocation.json`, including the

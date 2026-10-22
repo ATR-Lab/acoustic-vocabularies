@@ -1,7 +1,8 @@
 """Measure 17 real mailbox operations using an existing pinned qualified DEMO bank.
 
 The source bank, package, configuration and store are read only. A new dedicated
-store and mailbox remain under --out. Use an otherwise quiet host for timing.
+store and mailbox remain under --out. Startup verification is recorded separately
+before publishing requests. Use an otherwise quiet host for timing.
 Exit 0 means all invariants passed within the unchanged 2,000 ms deadline.
 Exit 2 retains a valid diagnostic report with one or more deadline misses.
 Neither result qualifies participant timing or apparatus behavior.
@@ -45,7 +46,7 @@ def main(argv=None):
     root.mkdir(parents=True)
     config["store_root"] = str(root / "store")
     bridge_module.write_new(root / "config.json", config)
-    result = run_bridge(bridge_module, config, root, "qualified")
+    result = run_bridge(bridge_module, config, root, "qualified", startup_check=True)
     elapsed = [row["elapsed_ms"] for row in result["operations"]]
     within = all(row["within_client_deadline"] for row in result["operations"])
     report = dict(

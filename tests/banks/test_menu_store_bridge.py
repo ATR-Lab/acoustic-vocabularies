@@ -249,3 +249,118 @@ def test_qualified_fixture_refuses_output_inside_the_source_bank(bridge, tmp_pat
     with pytest.raises(BridgeError, match="FIXTURE_SOURCE_OVERLAP"):
         prepare_fixture(source, pin(source), destination, mode="service")
     assert not destination.exists()
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "options/P3/Q-r4-4.wav",
+        "attempts/1/slots.jsonl",
+        "generation-config.json",
+        "permutation.json",
+        "bank-sha256.txt",
+    ],
+)
+def test_warm_qualified_proof_rechecks_every_source_byte_even_with_old_mtime(
+    bridge, tmp_path, relative
+):
+    import os
+
+    other = copied_bank(bridge, tmp_path)
+    other._inputs()
+    path = Path(other.config["bank_path"]).parent / relative
+    info = path.stat()
+    raw = bytearray(path.read_bytes())
+    raw[-1] ^= 1
+    path.write_bytes(raw)
+    os.utime(path, ns=(info.st_atime_ns, info.st_mtime_ns))
+    with pytest.raises(BridgeError, match="BANK_SOURCE_CHANGED"):
+        other.select(request(other))
+    assert not other.pending.exists() and not other.store.log_path(other.book_id).exists()
+
+
+@pytest.mark.parametrize("change", ["extra", "amendment", "missing", "directory", "link"])
+def test_warm_qualified_proof_refuses_changed_file_inventory(bridge, tmp_path, change):
+    other = copied_bank(bridge, tmp_path)
+    other._inputs()
+    root = Path(other.config["bank_path"]).parent
+    if change == "extra":
+        (root / "extra.json").write_bytes(b"{}\n")
+    elif change == "amendment":
+        (root / "amendments.jsonl").write_bytes(b"")
+    elif change == "missing":
+        (root / "options/P3/Q-r4-4.wav").unlink()
+    elif change == "directory":
+        (root / "extra-directory").mkdir()
+    else:
+        try:
+            (root / "extra-link").symlink_to(root / "manifest.json")
+        except OSError:
+            pytest.skip("host cannot create a symlink")
+    with pytest.raises(BridgeError, match="BANK_SOURCE_CHANGED|MAILBOX_LINK"):
+        other.select(request(other))
+    assert not other.pending.exists()
+
+
+def test_warm_qualified_inputs_are_detached_from_previous_return_values(bridge):
+    first, _, _ = bridge._inputs()
+    expected = dict(first.labels)
+    first.labels["K-a1"] = "changed outside the bridge"
+    first.cells.clear()
+    second, _, _ = bridge._inputs()
+    assert second.labels == expected and len(second.cells) == 48
+
+
+def test_mutation_during_full_qualification_does_not_establish_a_warm_proof(
+    bridge, tmp_path, monkeypatch
+):
+    import av_banks.handoff as handoff
+
+    other = copied_bank(bridge, tmp_path)
+    original = handoff.qualified_dyad_bank
+
+    def interrupted(*args, **kwargs):
+        bank = original(*args, **kwargs)
+        (Path(other.config["bank_path"]).parent / "extra.json").write_bytes(b"{}\n")
+        return bank
+
+    monkeypatch.setattr(handoff, "qualified_dyad_bank", interrupted)
+    with pytest.raises(BridgeError, match="BANK_SOURCE_CHANGED"):
+        other.select(request(other))
+    assert other._qualified_source is None and not other.pending.exists()
+
+
+def test_source_mutation_before_mailbox_publication_preserves_uncertain_commit_recovery(
+    bridge, tmp_path, monkeypatch
+):
+    other = copied_bank(bridge, tmp_path)
+    profile = other.select(request(other))
+    value = request(other, profile, atom="K-a1")
+    mailbox = tmp_path / "mailbox"
+    (mailbox / "requests").mkdir(parents=True)
+    _atomic_new(mailbox / "requests" / (value["request_id"] + ".json"), value)
+    path = Path(other.config["bank_path"]).parent / "options/P3/Q-r4-4.wav"
+    original_bytes = path.read_bytes()
+    original_read = other._verified_snapshot_locked
+
+    def interrupted(*args):
+        snapshot = original_read(*args)
+        changed = bytearray(original_bytes)
+        changed[-1] ^= 1
+        path.write_bytes(changed)
+        return snapshot
+
+    monkeypatch.setattr(other, "_verified_snapshot_locked", interrupted)
+    with pytest.raises(BridgeError, match="BANK_SOURCE_CHANGED"):
+        serve_mailbox(other, mailbox, seconds=30, max_requests=1)
+    assert not (mailbox / "responses" / (value["request_id"] + ".json")).exists()
+    journal = other.journal.read_bytes()
+    store = other.store.log_path(other.book_id).read_bytes()
+    receipt = json.loads(journal.splitlines()[-1])["receipt"]
+    assert receipt["status"] == "committed" and not other.pending.exists()
+    path.write_bytes(original_bytes)
+    serve_mailbox(MenuStoreBridge(other.config), mailbox, seconds=30, max_requests=1)
+    result = read_json(mailbox / "responses" / (value["request_id"] + ".json"))
+    assert result["receipt"] == receipt
+    assert other.journal.read_bytes() == journal
+    assert other.store.log_path(other.book_id).read_bytes() == store
