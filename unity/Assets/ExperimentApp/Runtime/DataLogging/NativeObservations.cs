@@ -92,6 +92,7 @@ namespace AcousticVocab.DataLogging
     public static class NativeObservationExport
     {
         public const string FileName="native-observations.json",ManifestVersion="data-export-native-1";
+        internal static bool RequiresNative(JournalSnapshot snapshot)=>snapshot.Records.Any(r=>r.Kind=="slot_context"||r.Kind=="menu_observation");
         static readonly string[] Kinds={"slot_context","panel_response","panel_process","audio_request","audio_observation","audio_evidence","lesson","assessment_stage","menu_observation","device","choice","session"};
         public static JObject Create(JournalSnapshot snapshot,DataIdentity identity)
         {

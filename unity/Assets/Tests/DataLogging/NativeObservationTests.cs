@@ -84,6 +84,8 @@ namespace AcousticVocab.DataLogging.Tests
             Assert.That(Assert.Throws<DataFault>(()=>ExportBundle.Load(output,DataJson.HashBytes(changed))).Code,Is.EqualTo("DATA_NATIVE_PROJECTION_CHANGED"));
             manifest["schema_version"]="data-export-provisional-1";changed=DataJson.Bytes(manifest);File.WriteAllBytes(manifestPath,changed);
             Assert.That(Assert.Throws<DataFault>(()=>ExportBundle.Load(output,DataJson.HashBytes(changed))).Code,Is.EqualTo("DATA_NATIVE_FORMAT"));
+            entry.Remove();File.Delete(nativePath);changed=DataJson.Bytes(manifest);File.WriteAllBytes(manifestPath,changed);
+            Assert.That(Assert.Throws<DataFault>(()=>ExportBundle.Load(output,DataJson.HashBytes(changed))).Code,Is.EqualTo("DATA_NATIVE_FORMAT"));
         }
     }
 }

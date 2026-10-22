@@ -70,7 +70,7 @@ namespace AcousticVocab.DataLogging
             if(hasLesson){Save(LessonExport.Table,Csv(LessonExport.Headers,LessonExport.Derive(snapshot,identity,tables)));Save(LessonExport.Contract,DataJson.Bytes(LessonExport.HeaderContract()));}
             bool hasAssessment=snapshot.Records.Any(r=>r.Kind=="assessment_stage");
             if(hasAssessment){Save(AssessmentExport.Table,AssessmentExport.Csv(snapshot,identity));Save(AssessmentExport.Contract,DataJson.Bytes(AssessmentExport.HeaderContract()));}
-            bool native=snapshot.Records.Any(r=>r.Kind=="slot_context");
+            bool native=NativeObservationExport.RequiresNative(snapshot);
             if(native)Save(NativeObservationExport.FileName,DataJson.Bytes(NativeObservationExport.Create(snapshot,identity)));
             // Stage templates have no reviewed contract yet. Their presence keeps
             // the whole bundle provisional even if trial headers were reviewed.
@@ -93,7 +93,9 @@ namespace AcousticVocab.DataLogging
             DataJson.Require(seen.Contains(AssessmentExport.Table)==seen.Contains(AssessmentExport.Contract)&&(!seen.Contains(AssessmentExport.Table)||!qualified),"DATA_ASSESSMENT_HEADERS_UNREVIEWED");
             DataJson.Require(new[]{"trial-log.csv","exposure-ledger.csv","header-contract.json"}.All(seen.Contains));files.Add(new ExportFile("manifest.json",bytes.LongLength,expectedManifestSha256));
             var bundle=new ExportBundle(directory,files,expectedManifestSha256,qualified);bundle.VerifyAll();
-            if(native)NativeObservationExport.Verify(File.ReadAllBytes(Path.Combine(directory,NativeObservationExport.FileName)),DataJournal.Verify(Path.Combine(directory,"raw"),identity),identity);
+            var snapshot=DataJournal.Verify(Path.Combine(directory,"raw"),identity);
+            DataJson.Require(native==NativeObservationExport.RequiresNative(snapshot),"DATA_NATIVE_FORMAT");
+            if(native)NativeObservationExport.Verify(File.ReadAllBytes(Path.Combine(directory,NativeObservationExport.FileName)),snapshot,identity);
             return bundle;
         }
         static byte[] Csv(IReadOnlyList<string> headers,IReadOnlyList<IReadOnlyDictionary<string,string>> rows)

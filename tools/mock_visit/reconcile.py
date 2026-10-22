@@ -149,7 +149,8 @@ def export_bundle(path, expected):
     raw_names = sorted(n for n in files if n.startswith("raw/"))
     require(raw_names and raw_names == [f"raw/events-{i:04d}.local.jsonl" for i in range(len(raw_names))], "MOCK_EXPORT_SEGMENTS")
     records = verify_chain([(n, files[n]) for n in raw_names], "data", expected_identity=m["identity"])
-    require(native == ("native-observations.json" in files), "MOCK_NATIVE_FORMAT")
+    require(native == ("native-observations.json" in files)
+            and native == any(r["event_type"] in {"slot_context", "menu_observation"} for r in records), "MOCK_NATIVE_FORMAT")
     if native:
         from .observations import verify_projection
         verify_projection(files["native-observations.json"], records, m["identity"])
