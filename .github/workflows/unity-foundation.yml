@@ -27,6 +27,8 @@ jobs:
       - name: Validate synthetic producer preparation only (no Unity or device claim)
         run: |
           uv sync --project banks --locked
+          uv run --project banks --locked ruff check --config banks/pyproject.toml tools/prepare_unity_ci_fixtures.py
+          uv run --project banks --locked ruff format --config banks/pyproject.toml --check tools/prepare_unity_ci_fixtures.py
           uv run --project banks --locked python tools/prepare_unity_ci_fixtures.py --out .local/unity-ci-fixtures
   configuration:
     name: Unity CI configuration
