@@ -81,7 +81,12 @@ function Test-RunnerFileSystem([string]$Root) {
         $first.WriteByte(42); $first.Flush($true)
         $hard = Join-Path $dir 'hard.bin'
         [void](New-Item -ItemType HardLink -Path $hard -Target $file)
-        if ([IO.File]::ReadAllBytes($hard)[0] -ne 42) { throw 'RUNNER_HARDLINK_REFUSED' }
+        # The source handle is still writable. Windows requires this reader to
+        # share write access too, even though this handle only reads the alias.
+        $reader = [IO.FileStream]::new($hard,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+        try {
+            if ($reader.ReadByte() -ne 42) { throw 'RUNNER_HARDLINK_REFUSED' }
+        } finally { $reader.Dispose() }
         $second = [IO.FileStream]::new($file,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)
         try {
             $first.Lock(0,1); $blocked=$false
