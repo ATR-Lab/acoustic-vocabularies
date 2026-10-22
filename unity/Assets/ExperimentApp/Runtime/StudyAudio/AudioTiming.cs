@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using AcousticVocab.Foundation;
+using Debug = UnityEngine.Debug;
 
 namespace AcousticVocab.StudyAudio
 {
@@ -14,6 +17,16 @@ namespace AcousticVocab.StudyAudio
         public bool IsQualified { get; }
         public bool SimulationOnly { get; private set; }
         public bool CanScheduleSoftware => IsQualified || SimulationOnly;
+        // Set only by FromStationConfig. A record that loaded but cannot qualify
+        // this route leaves the route unmeasured and names the reason here.
+        public string NotQualifiedCode { get; private set; }
+        public string RecordSha256 { get; private set; }
+        public string RecordStatus { get; private set; }
+        // The device format the qualified record was measured with. AudioPlayer
+        // refuses to configure a qualified route on any other format.
+        public int? BoundSampleRateHz { get; private set; }
+        public int? BoundBufferFrames { get; private set; }
+        public int? BoundBufferCount { get; private set; }
         public static AudioRouteCalibration ForSimulation(SimulationTestAuthority authority)
         { if(authority==null || !SimulationTestAuthority.CompiledCapability)throw new AudioFault("AUDIO_SIMULATION_AUTHORITY");return new AudioRouteCalibration("simulation-software-output"){SimulationOnly=true}; }
         public AudioRouteCalibration(string route,double offsetMs,double uncertaintyMs,string evidenceSha256)
@@ -29,27 +42,62 @@ namespace AcousticVocab.StudyAudio
             Route=route;IsQualified=false;
         }
         public static AudioRouteCalibration Unmeasured(string route) => new AudioRouteCalibration(route);
-        // Read station configuration plus a separately provisioned #80 report.
-        // A station offset alone never supplies uncertainty or qualification.
-        public static AudioRouteCalibration FromStationConfig(JObject station,byte[] calibrationBytes)
+        static readonly string[] RetiredReportKeys={"schema_version","route","route_offset_ms","onset_uncertainty_ms","measurement_sha256"};
+
+        // Load the full #80 record pinned by station configuration
+        // (audio.onset_calibration_record_sha256) and bind it to the running
+        // audio setup. Integrity failures throw: a missing or wrong pin, a record
+        // that is not schema-valid, or the retired five-key report. A valid record
+        // that cannot qualify this route returns an unmeasured route, so onset
+        // estimates stay null and trial scheduling stays refused:
+        //  - provisional or synthetic records (warning AUDIO_CALIBRATION_NOT_QUALIFIED);
+        //  - station, route, connection mode, output device, sample rate, DSP
+        //    buffer or station offset differing from the record (logged fault).
+        public static AudioRouteCalibration FromStationConfig(JObject station,byte[] recordBytes,AudioRuntimeRoute runtime)
         {
+            if(station==null || runtime==null || recordBytes==null || recordBytes.Length==0 || recordBytes.Length>65536) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
+            string route,stationId,pin; JObject audio;
             try
             {
-                if(station==null || calibrationBytes==null || calibrationBytes.Length>16384) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
-                var report=PackageRules.Json(calibrationBytes);
-                PackageRules.Keys(report,"schema_version","route","route_offset_ms","onset_uncertainty_ms","measurement_sha256");
-                if(PackageRules.Integer(report["schema_version"])!=1) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
-                string route=PackageRules.String(station["audio"]?["route"]);
-                if(PackageRules.String(report["route"])!=route ||
-                    station["audio"]?["route_offset_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float) ||
-                    report["route_offset_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float) ||
-                    report["onset_uncertainty_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float)) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
-                double offset=(double)report["route_offset_ms"];
-                if((double)station["audio"]["route_offset_ms"]!=offset) throw new AudioFault("AUDIO_CALIBRATION_INVALID");
-                return new AudioRouteCalibration(route,offset,(double)report["onset_uncertainty_ms"],PackageRules.String(report["measurement_sha256"]));
+                audio=(JObject)station["audio"]; route=PackageRules.String(audio["route"]); stationId=PackageRules.String(station["station_id"]);
+                pin=audio["onset_calibration_record_sha256"]?.Type==JTokenType.String?(string)audio["onset_calibration_record_sha256"]:null;
             }
             catch(Exception) { throw new AudioFault("AUDIO_CALIBRATION_INVALID"); }
+            if(!PackageRules.IsHash(pin)) throw new AudioFault("AUDIO_CALIBRATION_PIN_MISSING");
+            string sha=PcmWave.Hash(recordBytes);
+            if(sha!=pin) throw new AudioFault("AUDIO_CALIBRATION_PIN_MISMATCH");
+            JObject document;
+            try { document=PackageRules.Json(recordBytes); }
+            catch(Exception) { throw new AudioFault("AUDIO_CALIBRATION_RECORD_INVALID"); }
+            if(new HashSet<string>(document.Properties().Select(p=>p.Name),StringComparer.Ordinal).SetEquals(RetiredReportKeys))
+                throw new AudioFault("AUDIO_CALIBRATION_REPORT_RETIRED");
+            var record=AudioOnsetCalibrationRecord.Parse(recordBytes);
+
+            if(!record.Qualified)
+            {
+                Debug.LogWarning("AUDIO_CALIBRATION_NOT_QUALIFIED status="+record.Status+" evidence="+record.EvidenceKind+" record_sha256="+sha);
+                return NotQualified(route,"AUDIO_CALIBRATION_NOT_QUALIFIED",record);
+            }
+            string mismatch=
+                record.StationId!=stationId || record.StationId!=runtime.StationId ? "AUDIO_CALIBRATION_STATION_MISMATCH" :
+                record.Route!=route || record.Route!=runtime.Route ? "AUDIO_CALIBRATION_ROUTE_MISMATCH" :
+                record.ConnectionMode!=runtime.ConnectionMode ? "AUDIO_CALIBRATION_CONNECTION_MISMATCH" :
+                record.OutputDevice!=runtime.OutputDevice ? "AUDIO_CALIBRATION_DEVICE_MISMATCH" :
+                record.AppSampleRateHz!=runtime.SampleRateHz ? "AUDIO_CALIBRATION_SAMPLE_RATE_MISMATCH" :
+                record.BufferFrames!=runtime.BufferFrames || record.BufferCount!=runtime.BufferCount ||
+                    audio["buffer_samples"]?.Type!=JTokenType.Integer || (long)audio["buffer_samples"]!=record.BufferFrames ? "AUDIO_CALIBRATION_BUFFER_MISMATCH" :
+                audio["route_offset_ms"]?.Type is not (JTokenType.Integer or JTokenType.Float) || (double)audio["route_offset_ms"]!=record.RouteOffsetMs.Value ? "AUDIO_CALIBRATION_OFFSET_MISMATCH" :
+                null;
+            if(mismatch!=null)
+            {
+                Debug.LogError("AUDIO_CALIBRATION_FAULT "+mismatch+" record_sha256="+sha);
+                return NotQualified(route,mismatch,record);
+            }
+            return new AudioRouteCalibration(route,record.RouteOffsetMs.Value,record.OnsetUncertaintyMs.Value,sha)
+            { RecordSha256=sha,RecordStatus=record.Status,BoundSampleRateHz=record.AppSampleRateHz,BoundBufferFrames=record.BufferFrames,BoundBufferCount=record.BufferCount };
         }
+        static AudioRouteCalibration NotQualified(string route,string code,AudioOnsetCalibrationRecord record) =>
+            new AudioRouteCalibration(route) { NotQualifiedCode=code,RecordSha256=record.Sha256,RecordStatus=record.Status };
         internal static bool Finite(double n) => !double.IsNaN(n) && !double.IsInfinity(n);
     }
 

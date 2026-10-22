@@ -78,6 +78,10 @@ namespace AcousticVocab.StudyAudio
             if(scheduling || current!=null || calibration==null || exposureGate==null || Event==null) throw new AudioFault("AUDIO_CONFIGURATION_INVALID");
             outputRate=AudioSettings.outputSampleRate;AudioSettings.GetDSPBufferSize(out bufferFrames,out bufferCount);
             if(outputRate!=48000 || bufferFrames<1 || bufferFrames>8192 || bufferCount<1) throw new AudioFault("AUDIO_DEVICE_FORMAT");
+            // A record-qualified route is valid only on the device format it was measured with.
+            if(calibration.IsQualified && calibration.BoundSampleRateHz.HasValue &&
+                (outputRate!=calibration.BoundSampleRateHz || bufferFrames!=calibration.BoundBufferFrames || bufferCount!=calibration.BoundBufferCount))
+            { UnityEngine.Debug.LogError("AUDIO_CALIBRATION_FAULT AUDIO_CALIBRATION_RUNTIME_MISMATCH record_sha256="+calibration.RecordSha256); throw new AudioFault("AUDIO_CALIBRATION_RUNTIME_MISMATCH"); }
             route=calibration;gate=exposureGate;configured=true;failed=false;mapping.Reset();
             SetSource();
         }

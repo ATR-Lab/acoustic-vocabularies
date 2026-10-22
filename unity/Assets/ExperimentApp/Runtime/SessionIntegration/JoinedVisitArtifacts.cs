@@ -50,7 +50,8 @@ namespace AcousticVocab.SessionIntegration
             if(simulation!=null){simulation.Attest(doc,"rating",new JObject{["items"]=expected});return true;}
             if(!JToken.DeepEquals(doc["items"],expected))throw new SessionFault("JOIN_RATING_REVIEW");return true;
         }
-        public JoinedVisitArtifacts(JoinedEngineeringConfig config,SimulationTestAuthority simulation=null)
+        // runtime overrides the observed audio setup for tests; production observes the device.
+        public JoinedVisitArtifacts(JoinedEngineeringConfig config,SimulationTestAuthority simulation=null,AudioRuntimeRoute runtime=null)
         {
             Simulation=simulation;Config=config??throw new ArgumentNullException(nameof(config));Package=PackageLoader.Load(config.Directory("package"),config.Pin("package_sha256"),true);
             byte[] manifest=Read("package_manifest");permutation=Read("permutation");
@@ -62,7 +63,13 @@ namespace AcousticVocab.SessionIntegration
             // placeholder route offset/review/gain is promoted by DEMO scope.
             if(simulation!=null){simulation.Bind(Package.PackageSha256,Schedule.Sha256,Package.Demo,Schedule.Demo,config.Directory("evidence"));Route=AudioRouteCalibration.ForSimulation(simulation);Gain=simulation.AudioGain;}
             else{if(!Have("audio_calibration","comfort_gain"))return;
-            Route=AudioRouteCalibration.FromStationConfig(Json(Read("station")),Read("audio_calibration"));if(Route.UncertaintyMs>20)throw new SessionFault("JOIN_ROUTE_UNCERTAINTY");
+            // audio_calibration is the full #80 record, pinned here and by the
+            // station's audio.onset_calibration_record_sha256. A provisional,
+            // synthetic or mismatched record blocks startup with its reason.
+            var station=Json(Read("station"));
+            Route=AudioRouteCalibration.FromStationConfig(station,Read("audio_calibration"),runtime??AudioRuntimeRoute.Observe(station));
+            if(!Route.IsQualified){MissingAuthority="JOIN_"+Route.NotQualifiedCode;return;}
+            if(Route.UncertaintyMs>20)throw new SessionFault("JOIN_ROUTE_UNCERTAINTY");
             var gain=config.RequireFile("comfort_gain");gain.ReadVerified();string expected=PcmWave.Hash(Encoding.ASCII.GetBytes(config.CodedId))+".local.jsonl";
             if(Path.GetFileName(gain.Path)!=expected)throw new SessionFault("JOIN_GAIN_BINDING");Gain=ComfortableGainStore.RestoreVerified(gain.ReadVerified(),gain.Sha256,config.CodedId);}
             if(Blocks.Values.Any(k=>k is JoinedModuleKind.Teaching or JoinedModuleKind.Menus))

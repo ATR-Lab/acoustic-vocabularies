@@ -69,4 +69,9 @@ stored record against its schema and its output hashes.
   `audio_request_mono_ms`. The app derives `audio_onset_estimate_mono_ms` as
   `scheduled_onset_mono_ms` plus `route_offset_ms`, matching Unity's
   `AudioTiming.Schedule`. It logs `onset_uncertainty_ms` from the current qualified
-  record. The Unity loader that reads these records is separate work.
+  record. Unity loads a record only through its SHA-256 pin in station
+  configuration (`audio.onset_calibration_record_sha256`). It treats provisional
+  and synthetic records as unmeasured, and it invalidates a record whose station,
+  route, connection mode, output device, sample rate or DSP buffer differs from the
+  running setup. See
+  [study-audio.md](../../docs/unity/study-audio.md#onset-calibration-record-80).
