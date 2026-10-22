@@ -61,6 +61,22 @@ namespace AcousticVocab.StateIntegration
         }
         public bool ModeAcknowledged => !failed&&!disposed&&modeAcknowledged;
         public string RequiredMode => mode;
+        // Owner-supplied predicate: true only while no exposure is pending,
+        // scheduled or granted (an unexposed preflight awaiting the operator).
+        // Only then is a stale HEALTH-PROBE reply dropped, recorded and the gate
+        // invalidated so a fresh correlated probe is required before any grant.
+        // Command replies and any stale reply otherwise keep the permanent latch;
+        // the 250 ms bound is never extended and stale data never grants.
+        Func<bool> unexposed;int droppedProbes;double lastDropAge=-1,lastDropAt=-1;
+        public void DropStaleHealthProbesWhile(Func<bool> unexposedPredicate)
+        {Require(unexposedPredicate!=null&&unexposed==null&&!failed&&!disposed,"CONTROL_POLICY");unexposed=unexposedPredicate;}
+        bool Unexposed(){try{return unexposed?.Invoke()==true;}catch{return false;}}
+        void DropStaleProbe(Arrival item,double readAt)
+        {
+            healthGate.Invalidate();latestObservationWasProbe=false;droppedProbes++;lastDropAge=readAt-item.Received;lastDropAt=readAt;
+            persist(new JObject{["kind"]="stale_health_probe_dropped",["local_mono_ms"]=readAt,["request_id"]=item.Id,["sent_local_mono_ms"]=item.Sent,
+                ["received_local_mono_ms"]=item.Received,["queue_age_ms"]=readAt-item.Received,["maximum_queue_age_ms"]=250,["dropped_total"]=droppedProbes});
+        }
         // Exposure reads run on the owning main thread. A durable write or a
         // different Unity Update order can leave newer real replies queued.
         // Drain that bounded batch before testing freshness; never wait for the
@@ -81,6 +97,9 @@ namespace AcousticVocab.StateIntegration
             value["last_probe_sent_local_mono_ms"]=probeSent<0?JValue.CreateNull():new JValue(probeSent);
             value["last_probe_health_sample_host_mono_ms"]=probeSample<0?JValue.CreateNull():new JValue(probeSample);
             value["pending_commands"]=pending.Count;
+            value["stale_probes_dropped"]=droppedProbes;
+            value["last_stale_probe_age_ms"]=lastDropAge<0?JValue.CreateNull():new JValue(lastDropAge);
+            value["last_stale_probe_dropped_local_mono_ms"]=lastDropAt<0?JValue.CreateNull():new JValue(lastDropAt);
             value["last_command_received_local_mono_ms"]=commandReceived<0?JValue.CreateNull():new JValue(commandReceived);
             value["last_command_health_sample_host_mono_ms"]=commandSample<0?JValue.CreateNull():new JValue(commandSample);
             lock(diagnosticLock)
@@ -139,7 +158,9 @@ namespace AcousticVocab.StateIntegration
                 Interlocked.Decrement(ref queued);
                 try
                 {
-                    double readAt=now();Require(readAt>=item.Received&&readAt-item.Received<=250,"CONTROL_QUEUED");
+                    double readAt=now();
+                    if(item.Health&&readAt>=item.Received&&readAt-item.Received>250&&Unexposed()){DropStaleProbe(item,readAt);continue;}
+                    Require(readAt>=item.Received&&readAt-item.Received<=250,"CONTROL_QUEUED");
                     var value=StationConfig.ParseStrict(item.Raw);
                     if(item.Health)
                     {

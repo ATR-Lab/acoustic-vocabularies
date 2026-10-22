@@ -52,6 +52,29 @@ namespace AcousticVocab.SessionIntegration.Tests
             Overflow();audit.Dispose();var error=PumpFailure();Assert.That(error,Is.TypeOf<ControlFault>());Assert.That(((ControlFault)error).Code,Is.EqualTo("CONTROL_UNAVAILABLE"));
             scope.Dispose();Assert.That((bool)client.ReadinessDiagnostic(null)["disposed"],Is.True);Assert.That(new FileInfo(path).Length,Is.Zero);
         }
+        // Attempt simulation-test-B-V1-018-assess-007 through the actual Preflight
+        // pump: four health replies queued during a main-thread stall, the newest
+        // 266 ms old when Update resumes. Only the unexposed policy drops them.
+        [TestCase(true)][TestCase(false)]
+        public void ActualIdlePreflightSurvivesStaleHealthProbesOnlyUnderTheUnexposedPolicy(bool unexposed)
+        {
+            if(unexposed)client.DropStaleHealthProbesWhile(()=>true);
+            var receive=typeof(PrivateModeResetClient).GetMethod("ReceiveHealthProbe",Fields);
+            for(int i=0;i<4;i++)receive.Invoke(client,new object[]{Guid.NewGuid().ToString("N"),"{}",93d+75*i,100d+75*i});
+            clock.Value=100+75*3+266;
+            if(unexposed)
+            {
+                Assert.DoesNotThrow(()=>preflightType.GetMethod("Pump").Invoke(preflight,null));
+                var detail=client.ReadinessDiagnostic(null);Assert.That((bool)detail["failed"],Is.False);Assert.That((int)detail["stale_probes_dropped"],Is.EqualTo(4));
+                Assert.That((int)detail["queued_arrivals"],Is.Zero);Assert.That(client.NeutralHoldHealthy,Is.False,"A fresh probe is still required");
+                audit.Dispose();Assert.That(new FileInfo(path).Length,Is.Zero,"No preflight failure is recorded");
+            }
+            else
+            {
+                var error=PumpFailure();Assert.That(error,Is.TypeOf<ControlFault>());Assert.That(((ControlFault)error).Code,Is.EqualTo("CONTROL_QUEUED"));
+                var payload=ReadPayload();Assert.That((string)payload["phase"],Is.EqualTo("control_pump"));Assert.That((string)payload["control_health"]["first_failure_code"],Is.EqualTo("CONTROL_QUEUED"));
+            }
+        }
         [Test]public void ActualInitialTimeoutKeepsBoundedOriginalCodeAndDoesNotQueryControlReadiness()
         {
             preflightType.GetField("started",Fields).SetValue(preflight,-16000d);var error=PumpFailure();Assert.That(error,Is.TypeOf<SessionFault>());Assert.That(((SessionFault)error).Code,Is.EqualTo("JOIN_PREFLIGHT_TIMEOUT"));
