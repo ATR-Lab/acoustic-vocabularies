@@ -116,7 +116,19 @@
     },
     "unitree_dds_enabled": {
       "const": false
+    },
+    "command_cache_size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 262144,
+      "description": "Optional hot in-memory idempotency reply cache (default 1024). Older entries are evicted to the durable command log, never forgotten."
+    },
+    "command_request_capacity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 262144,
+      "description": "Optional maximum request IDs remembered per control session (default 16384); must be at least command_cache_size. Reaching it faults admission."
     }
   },
-  "description": "Private station syntax. Python validator additionally enforces loopback peers, canonical bytes and fleet uniqueness."
+  "description": "Private station syntax. Python validator additionally enforces loopback peers, canonical bytes, fleet uniqueness and command_cache_size <= command_request_capacity."
 }

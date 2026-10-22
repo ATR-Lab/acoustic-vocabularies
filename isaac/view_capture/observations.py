@@ -135,11 +135,12 @@ The header also counts toward serialized-byte capacity. No ring overwrites.
     def command_sink(self, durable_sink):
         def write(event):
             try:
-                durable_sink(event)  # No lineage before durable success.
+                locator = durable_sink(event)  # No lineage before durable success.
             except Exception:
                 self.fail('OBS_COMMAND_LOG_FAILED')
                 raise
             self.command_written(event)
+            return locator  # Lets the dispatcher evict idempotency entries to the durable log.
         return write
 
     def command_written(self, event):
