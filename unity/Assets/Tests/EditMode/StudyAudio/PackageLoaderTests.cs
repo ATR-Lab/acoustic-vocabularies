@@ -156,6 +156,22 @@ namespace AcousticVocab.Tests.StudyAudio
             Assert.That(PackageLoader.CanonicalPackageHash(raw),Is.EqualTo((string)JObject.Parse(raw)["package_sha256"]));
             Assert.Throws<AudioIntegrityException>(()=>PackageLoader.CanonicalPackageHash(raw.Replace("\"demo\": true","\"demo\": true, \"demo\": true")));
         }
+        [Test] public void BookRecordIsClosedToTheFourDocumentedHashes()
+        {
+            string path=Path.Combine(directory,"manifest.json"); string original=File.ReadAllText(path);
+            var book=(JObject)JObject.Parse(original)["book"];
+            Assert.That(book.Properties().Select(p=>p.Name).OrderBy(n=>n,StringComparer.Ordinal),Is.EqualTo(new[]{"frozen_head","renderer_hash","snapshot_sha256","validator_hash"}));
+            Assert.That(Load().PackageSha256,Is.EqualTo(Hash));
+            foreach(Action<JObject> change in new Action<JObject>[]{
+                b=>b.Remove("renderer_hash"),b=>b.Remove("validator_hash"),
+                b=>{b.Remove("renderer_hash");b.Remove("validator_hash");},
+                b=>b["extra_hash"]=new string('a',64),b=>b["validator_hash"]="NOT-A-HASH",b=>b["renderer_hash"]=new string('A',64)})
+            {
+                var manifest=JObject.Parse(original); change((JObject)manifest["book"]);
+                manifest["package_sha256"]=PackageLoader.CanonicalPackageHash(manifest.ToString()); WriteJson(path,manifest);
+                Assert.Throws<AudioIntegrityException>(()=>Load());
+            }
+        }
         [Test] public void JsonExtensionsAndDuplicateKeysFailBeforeHashing()
         {
             foreach(string raw in new[]{"{\"v\":0x1}","{\"v\":01}","{\"v\":1,}","{'v':1}","{\"v\":NaN}","{\"v\":1,\"v\":1}","{\"v\":\"line\nfeed\"}"})
