@@ -193,3 +193,27 @@ The sound workflow collects these tests on Linux, macOS and Windows with its
 existing locked dependencies. Root checks without NumPy skip the module with an
 explicit reason. Tests use a real sealed synthetic producer package and test-only
 transport data; they do not generate reviewed or participant-ready inputs.
+
+For a repeatable private loader/bridge fixture, first build the existing seeded
+DEMO bank with `tools/qualified_bank_fixture.py`, then run:
+
+```sh
+uv run --project banks python tools/prepare_qualified_join_fixture.py \
+  --qualified-root "$PWD/.local/qualified-bank-demo" \
+  --out "$PWD/.local/qualified-join-demo"
+```
+
+This registers the DEMO bank in a freshly sealed allocation list before reveal,
+checks the selected unit's ten real schedules and run sheets, seals its package,
+and stages a version 4 active V1 join with explicit SIMULATION_TEST materials and
+capability. It never changes the source bank. Its apparatus files are transport
+fixtures for domain-loader tests; they do not provision an approved station or
+assert full-set balance. The result lists the joined-config, capability and
+independent store-service paths. Use those with `SimulationAuthorityTests` and
+`MenuStoreInterop`; start and qualify the Python service before enabling a client.
+
+Joined engineering data journals use `ExportCodedId`, a conspicuous `DEMO-` alias
+of the unchanged schedule slot (`slot_context.person_slot`). Already marked DEMO
+or SYNTHETIC IDs are retained; long IDs use `DEMO-` plus their SHA-256 to fit the
+data identity contract. Supply this explicit slot-to-coded mapping in offline
+references. This keeps synthetic imports within their existing identity gate.

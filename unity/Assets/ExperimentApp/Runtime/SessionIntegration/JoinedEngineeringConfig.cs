@@ -49,6 +49,10 @@ namespace AcousticVocab.SessionIntegration
         public string StationId { get; }
         public string UnitId { get; }
         public string CodedId { get; }
+        // Joined engineering is always DEMO. Keep the producer's schedule slot
+        // intact while making exported data identity conspicuously synthetic.
+        public string ExportCodedId=>CodedId.StartsWith("DEMO-",StringComparison.Ordinal)||CodedId.StartsWith("SYNTHETIC-",StringComparison.Ordinal)?CodedId:
+            "DEMO-"+(CodedId.Length<=75?CodedId:PcmWave.Hash(Encoding.ASCII.GetBytes(CodedId)));
         public string SessionId { get; }
         public string VisitId { get; }
         public string BuildId { get; }

@@ -14,8 +14,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-from tools.prepare_joined_engineering import digest, json_bytes, local_path, need, write_new  # noqa: E402
+sys.path[:0] = [str(ROOT), str(ROOT / "schedules/src")]
+from tools.prepare_joined_engineering import (  # noqa: E402
+    digest,
+    json_bytes,
+    local_path,
+    need,
+    write_new,
+)
 from tools.prepare_joined_engineering import prepare as stage  # noqa: E402
 
 

@@ -130,7 +130,7 @@ namespace AcousticVocab.SessionIntegration
                     // Identity and cross-file pins have already passed before
                     // creating any private output or starting control services.
                     nonce=Guid.NewGuid().ToString("N");evidenceRoot=Path.Combine(config.Directory("evidence"),"joined-"+nonce);Directory.CreateDirectory(evidenceRoot);
-                    var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.CodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
+                    var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.ExportCodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
                     if(simulation!=null)simulationClosure=new SimulationRunClosure(Path.Combine(evidenceRoot,"native-result.local.json"),nonce,config.ConfigSha256,simulation.RawSha256,sourceCommit,System.Diagnostics.Process.GetCurrentProcess().Id,
                         ()=>ExportBundle.Create(Path.Combine(config.Directory("evidence"),"data"),Path.Combine(config.Directory("evidence"),"export-"+nonce),data.Identity,ExportHeaders.Provisional()),()=>clock.NowMs);
                     audit=visit.Own(new JoinedAudit(Path.Combine(evidenceRoot,"joined.local.jsonl"),()=>clock.NowMs));

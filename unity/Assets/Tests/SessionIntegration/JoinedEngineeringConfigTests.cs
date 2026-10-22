@@ -77,6 +77,15 @@ namespace AcousticVocab.SessionIntegration.Tests
             File.AppendAllText(pinned.Path,"changed");Assert.Throws<SessionFault>(()=>pinned.ReadVerified());
             value["version"]=3;Assert.Throws<SessionFault>(()=>Load());
         }
+        [Test]public void EngineeringExportAliasPreservesScheduleIdentityAndFitsDataContract()
+        {
+            value["identity"]["coded_id"]="B-C01-M2";var c=Load();
+            Assert.That(c.CodedId,Is.EqualTo("B-C01-M2"));Assert.That(c.ExportCodedId,Is.EqualTo("DEMO-B-C01-M2"));
+            value["identity"]["coded_id"]="DEMO-already";Assert.That(Load().ExportCodedId,Is.EqualTo("DEMO-already"));
+            value["identity"]["coded_id"]=new string('x',96);c=Load();
+            Assert.That(c.ExportCodedId,Is.EqualTo("DEMO-"+PcmWave.Hash(Encoding.ASCII.GetBytes(c.CodedId))));
+            Assert.That(c.ExportCodedId.Length,Is.LessThanOrEqualTo(80));
+        }
         void Refused(Action<JObject> change,string code=null)
         {
             change(value);var fault=Assert.Throws<SessionFault>(()=>Load());if(code!=null)Assert.That(fault.Code,Is.EqualTo(code));
