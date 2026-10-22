@@ -132,8 +132,7 @@ class DyadBank:
             if ranks != list(range(1, OPTIONS_PER_CELL + 1)):
                 raise BankError(f"{profile} {atom}: options must have ranks 1-4 in order")
             if self.handoff is not None and not all(
-                o.file_sha256 is not None and _SHA256_RE.fullmatch(o.file_sha256)
-                for o in options
+                o.file_sha256 is not None and _SHA256_RE.fullmatch(o.file_sha256) for o in options
             ):
                 raise BankError(
                     f"{profile} {atom}: a qualified bank names every option's file_sha256"
