@@ -1,0 +1,356 @@
+{
+  "scope": "Native SIMULATION_TEST full B V1 visit on the new isaac2 host with #234; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#233",
+    "#82",
+    "#69"
+  ],
+  "host": {
+    "name": "isaac2 (pierrot-ubuntu)",
+    "gpu": "NVIDIA GeForce RTX 4060 Ti 16 GB",
+    "driver": "595.99.02 (open kernel module), CUDA 13.2",
+    "os": "Ubuntu 26.04, kernel 7.0.0-38",
+    "docker": "29.9 with nvidia runtime and containerd image store; NVIDIA Container Toolkit 1.20.1",
+    "cpu": "AMD Ryzen 7 5700G (16 threads)",
+    "previous_host": "mlws (Quadro RTX 6000, driver 570.211.01, shared)"
+  },
+  "images": {
+    "note": "verified by RootFS layer list and config, not .Id (containerd store reports OCI manifest digests)",
+    "rendered_cache": {
+      "mlws_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+      "isaac2_id": "sha256:9de700ffcd67d9510f036ee88b118adab20fb1dbb7ce634d11d9cbab1474ea9b",
+      "layers": 19,
+      "layer_list_sha256": "22f6bdcb98ca0ea245751c1921df49f3637e0fa160ab5e1a2d42c1235644c5c8",
+      "config_sha256": "4341ac1c958aa369b20ee795f1693d49e6daad62e2866d5f143466428cef0604"
+    },
+    "plain": {
+      "mlws_id": "sha256:6121207fd77c365293aa7d981f8cba88bd0a3b4cdcf380e2e97019b2ca8922c3",
+      "isaac2_id": "sha256:4f088712f2011ffdb2a2a48ae87a9b738a4d130b5f986269624614905e441fb9",
+      "layers": 18,
+      "layer_list_sha256": "98f5fbb13a9430cea37f0e61a0b9b31f516944b1ab795b1bcc4cdc91974ddd40"
+    },
+    "rosbridge": {
+      "mlws_id": "sha256:8ac407e2fadf88b0fcbed24ec03102ba5eef7c3e21954f33e1f82a350f785564",
+      "isaac2_id": "sha256:8062e372517c3e5cb272e833616819ae9f95ca431a73f2e89a8beb8c8998b7e4",
+      "layers": 11,
+      "layer_list_sha256": "f397c3d8b0ae7db5469c845a292b2f9d2f8064b371fc2ec25e9de410816ef8df"
+    }
+  },
+  "assets": {
+    "archive_sha256": "06fbf14549be3a81e3dbd4a8a019e7f060f48de1556b70f291a18ac8f9ead4b0",
+    "extracted_files": 423,
+    "tree_manifest_sha256": "ae8111623d68a4fdd01500ce135225f5a661d1efb09189cff52f2c8d10d349f0",
+    "note": "identical to mlws asset-cache/assets"
+  },
+  "rtx_crash": {
+    "signature": "SIGSEGV in librtx.scenedb.plugin.so (rtx.scenedb init) from omni::usd::UsdManager::createHydraEngine, Python path SimulationApp.__init__ -> create_new_stage -> omni.kit.widget.viewport __enable_hydra_engine",
+    "kit_driver_note": "Kit lists only [0, 535.129) as known-bad; 595.99.02 is untested",
+    "attempts": [
+      {
+        "name": "smoke1",
+        "image": "rendered-cache",
+        "gpu": "--gpus device=0",
+        "capture": true,
+        "outcome": "crash 7 s after start: SIGSEGV in librtx.scenedb.plugin during SimulationApp Hydra RTX engine creation"
+      },
+      {
+        "name": "smoke2",
+        "image": "plain (isaac5.1-20261004)",
+        "gpu": "--gpus device=0",
+        "capture": true,
+        "outcome": "same crash; rules out the Quadro-warmed caches"
+      },
+      {
+        "name": "smoke3",
+        "image": "rendered-cache",
+        "gpu": "--runtime=nvidia NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=all",
+        "capture": true,
+        "outcome": "same crash at 8.8 s"
+      },
+      {
+        "name": "smoke4",
+        "image": "rendered-cache",
+        "gpu": "--gpus all",
+        "capture": true,
+        "outcome": "same crash at 8.7 s"
+      },
+      {
+        "name": "smoke6",
+        "image": "rendered-cache",
+        "kit_args": "--/rtx/verifyDriverVersion/enabled=false --/renderer/multiGpu/enabled=false --/app/asyncRendering=false --/rtx-transient/resourcemanager/enableTextureStreaming=false --/app/hydraEngine/waitIdle=true",
+        "capture": true,
+        "outcome": "same crash at 8.8 s"
+      },
+      {
+        "name": "smoke7",
+        "image": "rendered-cache",
+        "kit_args": "--/rtx/rendermode=RaytracedLighting --/renderer/active=rtx --/rtx/scenedb/enableFabricSceneDelegate=false --/app/useFabricSceneDelegate=false",
+        "capture": true,
+        "outcome": "same crash at 8.7 s"
+      },
+      {
+        "name": "smoke5",
+        "image": "rendered-cache",
+        "capture": false,
+        "outcome": "READY in 7.7 s, service completed (45 s), but scene_sha256 7a13f7b5... differs from the pin because the observer camera prim is absent; joined attempt 014 then refused STATE_HASH_IDENTITY / JOIN_PREFLIGHT_TIMEOUT"
+      },
+      {
+        "name": "smoke8",
+        "image": "rendered-cache",
+        "capture": false,
+        "launcher": "run_scene_norender.py",
+        "outcome": "READY in 7.7 s, service completed, scene_sha256 equals the pin 3b6e8f9a..."
+      }
+    ],
+    "conclusion": "All RTX-renderer launch variants crash identically; a host driver change would be required to use the RTX renderer (e.g. --capture) on isaac2."
+  },
+  "workaround": {
+    "description": "run_scene.py started WITHOUT --capture (no RTX Hydra engine or camera render product) through /launch/run_scene_norender.py, which spawns the identical observer camera USD prim (same CameraCfg and spawn steps as Camera.__init__) right after the robot Articulation, so the exported scene keeps the pinned hash",
+    "launcher_sha256": "f83ff03760609e6e4707e87741e83d0bb01c9ad922ca33614fa6c703f613257a",
+    "verified": {
+      "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e (equals isaac/snapshots/neutral_v1.json)",
+      "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e (equals mlws runs)"
+    },
+    "differs_from_mlws": [
+      "no observer.png / trays-detail.png / containers-detail.png / neutral-observer.png evidence images",
+      "headless kit without the RTX renderer"
+    ],
+    "visit_dependency": "None: the service steps physics with sim.step(render=False), publishes state read from USD/physics, and run_scene uses capture only for the evidence PNGs (reset check capture_image is optional). Unity renders the participant view from the public state."
+  },
+  "player": {
+    "build_id": "simulation-native-022",
+    "source_commit": "b826e6062fd71574ebc2f65693a548f8783e0d8e",
+    "composition": "05e1b67 (b02e34c + #229 3ed17a8 + #230 aca3611 + #232 0377cc6) + #234 e8df923c576cd2045df5f3f7cb1414396b05b659; local test merge, not pushed",
+    "build_manifest_sha256": "dbbba8927d435e56f8c82b204b08080bdf6b73af46c32127e44160b020b495e1",
+    "dirty_source": false
+  },
+  "staging": {
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18,
+      "button_height_m": 0.065,
+      "gap_m": 0.012,
+      "distance_m": 0.7
+    },
+    "note": "button width per the documented provisional geometry; vertical offset kept at -0.18 by maintainer decision"
+  },
+  "isaac_service": {
+    "source_commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+    "forward": "tools/engineering_forward.py --host isaac2",
+    "publish_rate_hz": 29.94,
+    "publish_interval_ms": {
+      "median": 30.9,
+      "p99": 50.2,
+      "max": 77.7
+    },
+    "physics_steps": 35094,
+    "elapsed_s": 1003.7,
+    "startup_heap": {
+      "collected": 0,
+      "frozen_objects": 410878,
+      "duration_ms": 136.792991,
+      "enabled": true,
+      "thresholds": [
+        700,
+        10,
+        10
+      ]
+    },
+    "gpu_util_pct": {
+      "median": 9.0,
+      "max": 13.0
+    },
+    "gpu_mem_mib_max": 2318.0
+  },
+  "attempts": {
+    "simulation-test-B-V1-022-isaac2-014": {
+      "note": "no --capture, no launcher: scene hash mismatch",
+      "native_status": "SESSION_PREFLIGHT_FAILED",
+      "native_result": {
+        "status": "SESSION_PREFLIGHT_FAILED",
+        "complete": false,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [
+        {
+          "code": "JOIN_PREFLIGHT_TIMEOUT",
+          "phase": "timeout",
+          "block": "profile_menu"
+        }
+      ],
+      "simulation_inputs": {
+        "driver_armed": 1
+      },
+      "stall_checks": {
+        "sample_rows": 3552,
+        "sample_gaps_over_250ms": [],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_HASH_IDENTITY": 4257,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 1,
+          "STATE_STALE": 1,
+          "SIMULATION_LOCAL_RESET_REFUSED": 1291,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 0,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 0,
+        "callback_observed_plays": 0,
+        "software_completed_plays": 0,
+        "content_hash_verified_plays": 0,
+        "completed_opportunities": 0,
+        "scheduled_opportunities": 39,
+        "selection_count": 0,
+        "fault_codes": [
+          "JOIN_PREFLIGHT_TIMEOUT",
+          "SESSION_JOIN_DISPOSED",
+          "SESSION_PREFLIGHT_FAILED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "GRAMMAR_COMPLETION_MISSING",
+          "MENU_LEDGER_UNSEALED",
+          "MENU_SEAL_MISSING",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "OPERATOR_LOAD_START_MISSING",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "STORE_FINAL_WAVE_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": false
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "62abf6a7cdad290b2e88522cd8be62d9bb3be0861fe1de7ceeecd21b32c41567",
+        "events-0000.local.jsonl": "8072111f084f87a1e126829304489f3a2107c5e73dd7e4d425b109ceec95545f",
+        "native-result.local.json": "bfb6ff3a9b46be20e5564f6c806ad9874fd69d888307b2ac8fe38cf57e3fafcc",
+        "export manifest.json": "de74051121e394ad09d66d671ceeb3075aefc348fde57a4731b300abf397861f",
+        "mock-run.manifest.json": "3f1b1d2c158dfe0c104778d802f4176cf1129e62dec9444a5f33a75e41096981",
+        "reconciliation.local.json": "c152f25a8b77f0c35059c5e84a5b8c6e37f4e94500012c5e045c9bd23008db9b",
+        "process-result.local.json": "f3ec5ec81013bf26c732a9509860bf3fd7f097a2a7cd58425b05ede4fa85c2e8",
+        "native.log": "b3d90db80c4f9729ffd23e9cdd1569d4fd03566da1e37a2e2baf188c450dda2e",
+        "launch-spec.local.json": "f313d43ec71a15c685ea1d685c5c2af91e6488fcf462e0de8664e3edf7ec8e4e",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "f5059bf8438ed0add390bbcd807c9f8cd30a9a7b45d57c44efc69009fef87eb1",
+        "operator-logs/foundation-db0c058e0ae7468e90103413d17ceb7d.jsonl": "0bda692cd803fdb1d8e7a14118b72ca7cde3e38d9903129fd6dd7fcb3c55ccc0",
+        "operator-logs/foundation-e2b9c4df6dbb4efe89bd656281684a71.jsonl": "3e0b7ef50197a6ff2d3e8ec4b0a030635f5a45c0fdd7271dd68a302cbf3884cf",
+        "operator-logs/panel-90f285828ae949e6a336e6ea24ec3d84.jsonl": "b87793938660fe9507cdd8ca077d2c46d64c1e4cd4584e42c003f6cbee18067c",
+        "operator-logs/sample-age-7cbe4166b807452fbf20e380f81c6f43.csv": "34e7fd2d02b18be37956e3e8698decfd49f4a7bde7298e965f9633c402896e0c",
+        "operator-logs/shutdown-c1feb85412aa4cb1b44339cfc590206b.local.jsonl": "8b7cd2fa4e7aa61c3ea5eeca1f7d9488fb2ff6aecbdbeeb10e9acfa0cba5b893"
+      }
+    },
+    "simulation-test-B-V1-022-isaac2-015": {
+      "note": "no-render launcher; -simulationDummyResponses at launch",
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "menu": 9,
+        "panel": 30,
+        "rating": 5
+      },
+      "stall_checks": {
+        "sample_rows": 24446,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 976229.4,
+            "gap_ms": 1674.8,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 85,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 134,
+        "callback_observed_plays": 134,
+        "software_completed_plays": 134,
+        "content_hash_verified_plays": 134,
+        "completed_opportunities": 39,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "efe72d38bbb74d0aa469ce755b354a0c2479f0618fe6c446facc438f059bf565",
+        "events-0000.local.jsonl": "3d644bfdd08972a92830333f82562c001dcceee7d958827ba0b5d741d0c1bcdb",
+        "native-result.local.json": "c799c03902a4962d0f3efc342ad97364e5dae21b48c053964e10d54c5cec4862",
+        "export manifest.json": "9a90762f7ed83f05a39025a3861edc25366c4dd2e024782efff46af568f8e867",
+        "mock-run.manifest.json": "99504b79f5e303f6ea9755732e94a008ae3e12b64cb07691aa1874e3a7d34274",
+        "reconciliation.local.json": "34a39004102fe86dfebbdbc9d48d7831b07a90656323a782527b9bbd2553e3e8",
+        "process-result.local.json": "c342c5c0ff98d22e1446c79cd8eef74288ddc20034f4edf040245e7ea2b49c5b",
+        "native.log": "31beb7d90faf4fc37f0ddcbd33565be075ba33b2a799d19f62a4a85a4fccc575",
+        "launch-spec.local.json": "e84f9e3e959f738f10457063d6cb97977252ac74ef914e256ff21aaee5669b1d",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "aa1e138d470124ca18aa910fcbada2ff768795380f6c83fd4f4caf42b8de1118",
+        "operator-logs/foundation-527ce576097d4665ac6b1de2cefe5d18.jsonl": "22e978992c84458cfd161e94f57338938c1d3dea416bf5ae3c38a2ad8ebf9dd2",
+        "operator-logs/foundation-5b70d53ba9494cb38e70596b38f662a7.jsonl": "2691882984c47eff9cb235ca128e09589a4b592b2602160c6c628530b98941ea",
+        "operator-logs/panel-69f8cd66f0b24ae99b5c072f9d12fdf4.jsonl": "dd05d6c859ff7b4a852f38ae576fbb5575b57d64dd24a2a151378a1bada482b6",
+        "operator-logs/sample-age-1d86585006f343ddb08668ccd5ac44df.csv": "cee936ec1ee8b93e1c3c42db92b83317cdf20f40ceb77c8328e9f680dc2aeaf5",
+        "operator-logs/shutdown-e4edd68cf71f423b8feb8b8e252f40d9.local.jsonl": "ce8289632b24a5f9493cb46baf65fe450f80307e2fee0039ef7117fe0c8208ee",
+        "isaac/k12-gpu.csv": "036cc58f9f0f307c14a97419d848f5a9243bd16c3bb95c6c798ecc20b9c109d1",
+        "isaac/k12-launch.json": "dc5ef70a17dfabe126f7f5176a4fc3c0ca9b45e85b0fb1b101b64edbd02248d3",
+        "isaac/publish.csv": "1f66876101bcc0b5c0bbb45af8a9e8951861eaec8110cb35ca5b0875cede57cf",
+        "isaac/summary.json": "7ac2d166180bf170e361b9ed5e0775d64ab054c82e02ccfab4ac9e4a788456ba"
+      }
+    }
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2 (see workaround)",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts stay private; only hashes are published"
+  ]
+}

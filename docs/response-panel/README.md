@@ -96,7 +96,14 @@ Label height uses font glyph image extents and the measured TextMesh advance sca
 then `height = 2 * distance * tan(angle / 2)` at the calibrated eye reference.
 Renderer line bounds alone include unused line spacing and understate visible
 glyph size. A label that does not fit its button at the configured size raises a
-fault; it is never silently shrunk. This is a geometric setup, not a measured
+fault; it is never silently shrunk. When the panel is created, every label any
+role or action family can show is measured at its own key, so a geometry that
+cannot fit them all (for example 1.0° glyphs on the 0.135 m default buttons:
+the second-row Command actions overflow) is refused at startup as
+`panel_glyph_does_not_fit`, never on a participant's first target selection.
+The refusal is permanent for that process, and the joined runner ends with
+`JOIN_PANEL_CONFIGURATION_REFUSED` before creating private output. 1.0° needs
+the 0.18 m provisional button width. This is a geometric setup, not a measured
 legibility result; off-axis glyph viewing and font rasterization still need the
 headset ladder. [Unity's glyph metrics](https://docs.unity.com/en-us/engine/6000.5/script-reference/unityengine/characterinfo)
 define the image extents used here.
