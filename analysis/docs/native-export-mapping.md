@@ -35,7 +35,7 @@ Supplement: av-native-observations v1 JSON projects exact verified journal event
 | `trained_status` | offline | schedule item.trained_status |
 | `prior_complete_phrase_exposures` | offline observed-history fold | consuming actual plays strictly before this attempt across prior imported visits; no planned credits |
 | `prior_atom_exposures` | offline observed-history fold | same fold for actual atom components; no zero if required earlier history absent |
-| `waveform_sha256` | native | first requested play producer hash preserved; compare package independently |
+| `waveform_sha256` | native | first requested play producer waveform hash, or actual journal PCM hash when no file identity exists; compare package independently |
 | `scheduled_onset_mono_ms` | native | first audio_request scheduled_mono_ms, or observed slot context for no-cue; not schedule wall-time invention |
 | `audio_request_mono_ms` | native | first actual audio_request request_mono_ms |
 | `audio_onset_estimate_mono_ms` | native | producer calibrated/observed onset estimate; unknown empty |
@@ -75,7 +75,7 @@ Supplement: av-native-observations v1 JSON projects exact verified journal event
 | `atom_or_message_id` | offline + native | scheduled cue or actual option item from menu facts; never native audio_id GUID as semantic item |
 | `candidate_id` | native | actual menu option/profile choice ID; empty non-menu |
 | `accepted_or_rejected` | native | actual terminal decision accepted/rejected; empty non-menu; pending means unresolved, no coercion |
-| `waveform_sha256` | native | producer play hash, package comparison independent |
+| `waveform_sha256` | native | producer waveform hash, or actual journal PCM hash for in-memory composition; package comparison independent |
 | `whole_phrase` | offline | true iff joined item is complete message; false atom/profile/speech |
 | `presentation_index` | native derived | 1-based order of request in actual attempt audio_request_ids |
 | `meaning_display_id` | native | observed menu/lesson display span associated with play; empty explicit absence |
@@ -164,3 +164,8 @@ authority in this format), simulator time (not observed in this format), and per
 elapsed wall-clock delay (no observed wall-clock/monotonic anchor). An unreported onset
 also leaves response time unknown. These cells are not invented from nominal schedules,
 software completion, planned exposure counts, or function return values.
+
+For in-memory composition, a missing native file hash maps to the actual journal PCM
+hash in the protocol waveform cell. The adapter records the source basis, preserves
+the original null/file-hash absence, and leaves playback uncertainty unchanged. It never
+substitutes an expected package hash for an observed requested-content hash.

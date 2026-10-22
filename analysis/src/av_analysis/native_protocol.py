@@ -47,6 +47,7 @@ from .templates import (
     EXTENSION_COLUMNS,
     TEMPLATES,
     TRIAL_LOG_COLUMNS,
+    VISIT_RUN_SHEET_COLUMNS,
 )
 from .vocab import CONSUMING_AUDIBLE_STATUS
 
@@ -949,6 +950,11 @@ def map_native_protocol(
             else _ms(sp["scheduled_onset_mono_ms"]),
             pcm_sha256=bundle.journal.requests[ids[0]][2] if ids else "",
         )
+        # Composed-in-memory audio has no WAV file hash even when the package also
+        # contains an equivalent file. The protocol waveform cell accepts the actual
+        # requested PCM identity; it is never filled with an expected package hash.
+        if ids and not row["waveform_sha256"]:
+            row["waveform_sha256"] = row["pcm_sha256"]
         _require(
             sp["dictionary_policy"] == "prohibited",
             "EXPORT_NATIVE_POLICY",
@@ -1047,6 +1053,11 @@ def map_native_protocol(
             "all_slot_sources": [e["source_event_sha256"] for e in slots[attempt]],
             "software_callback_ends": [],
             "play_sources": [],
+            "waveform_hash_basis": "producer_waveform_sha256"
+            if native["waveform_sha256"]
+            else "journal_pcm_sha256"
+            if ids
+            else "not_requested",
         }
         for request in ids:
             audio = native_plays[request]
@@ -1062,7 +1073,7 @@ def map_native_protocol(
                 yoked_source_event_id=audio["yoked_source_event_id"],
                 stage=item["trial_type"],
                 atom_or_message_id=cue,
-                waveform_sha256=audio["waveform_sha256"],
+                waveform_sha256=audio["waveform_sha256"] or bundle.journal.requests[request][2],
                 whole_phrase=str(is_message(cue)).lower(),
                 presentation_index=str(ids.index(request) + 1),
                 audio_onset_mono_ms=_ms(audio["audio_onset_estimate_mono_ms"]),
@@ -1109,7 +1120,15 @@ def map_native_protocol(
             play.update(facts)
             play_rows.append(play)
             _consume(play, phrase, atoms)
-            sources["play_sources"].append({"audio_request_id": request, "sources": spans})
+            sources["play_sources"].append(
+                {
+                    "audio_request_id": request,
+                    "sources": spans,
+                    "waveform_hash_basis": "producer_waveform_sha256"
+                    if audio["waveform_sha256"]
+                    else "journal_pcm_sha256",
+                }
+            )
             sources["software_callback_ends"].extend(
                 {
                     "audio_request_id": request,
@@ -1133,16 +1152,53 @@ def map_native_protocol(
                 "EXPORT_NATIVE_DOMAIN",
                 f"{template}: mapped values outside protocol domains: {problems[:1]}",
             )
+    measurement_reasons = {
+        "audio_onset_estimate_mono_ms": "no producer audible-onset estimate was recorded",
+        "onset_uncertainty_ms": "no producer onset uncertainty was recorded",
+        "audio_onset_mono_ms": "no producer audible-onset estimate was recorded",
+        "audio_offset_mono_ms": (
+            "no acoustic offset authority; software completions retained separately"
+        ),
+        "frame_freeze_ms": "no frame-freeze duration observation was recorded; not assumed zero",
+        "sim_time": "no simulator time observation in native contract",
+        "actual_delay_hours": "no observed wall-clock/monotonic anchor for per-item encounters",
+        "response_time_ms": "no observed commit/audible onset in a declared common clock",
+    }
+    unknown_measurements = [
+        {"table": table, "row": row[key], "column": column, "reason": reason}
+        for table, rows, key in (
+            ("trial-log", trial_rows, "trial_id"),
+            ("exposure-ledger", play_rows, "event_id"),
+        )
+        for row in rows
+        for column, reason in measurement_reasons.items()
+        if column in row
+        and not row[column]
+        and (
+            column
+            not in (
+                "audio_onset_estimate_mono_ms",
+                "onset_uncertainty_ms",
+                "audio_offset_mono_ms",
+                "response_time_ms",
+            )
+            or row.get("playback_status") != "not_requested"
+        )
+    ]
     unknowns = {
         "trial-log": tuple(
             c
             for c in TRIAL_LOG_COLUMNS
-            if any(not r[c] for r in trial_rows)
-            and c in ("audio_offset_mono_ms", "sim_time", "actual_delay_hours", "response_time_ms")
+            if any(not r[c] for r in trial_rows) and c in measurement_reasons
         ),
-        "exposure-ledger": ("audio_offset_mono_ms",) if play_rows else (),
+        "exposure-ledger": tuple(
+            c
+            for c in EXPOSURE_LEDGER_COLUMNS
+            if c in measurement_reasons and any(not r[c] for r in play_rows)
+        ),
         "deviations": (),
     }
+    operator_rows = _table(run_sheet, VISIT_RUN_SHEET_COLUMNS, "native run sheet")
     report = {
         "format": "av-analysis/native-protocol-mapping",
         "format_version": 1,
@@ -1157,14 +1213,25 @@ def map_native_protocol(
         "operator_run_sheet_sha256": sha256_bytes(run_sheet),
         "operator_deviations_sha256": sha256_bytes(deviations),
         "optional_unknown_columns": unknowns,
-        "unknown_reasons": {
-            "audio_offset_mono_ms": (
-                "no acoustic offset authority; software completions retained separately"
-            ),
-            "sim_time": "no simulator time observation in native contract",
-            "actual_delay_hours": "no observed wall-clock/monotonic anchor for per-item encounters",
-            "response_time_ms": "no observed commit/audible onset in a declared common clock",
-        },
+        "unknown_reasons": measurement_reasons,
+        "unknown_measurements": unknown_measurements,
+        "missing_operator_observations": [
+            {
+                "block": row["block"],
+                "column": column,
+                "reason": "not supplied in pinned operator form",
+            }
+            for row in operator_rows
+            for column in (
+                "start_time",
+                "end_time",
+                "comfort_check",
+                "phone_locked",
+                "operator_signoff",
+            )
+            if not row[column]
+        ],
+        "reference_input_problems": [{"path": p, "reason": why} for p, why in refs.problems],
         "attempts": provenance,
     }
     columns_t = (*TRIAL_LOG_COLUMNS, *EXTENSION_COLUMNS["trial-log"])

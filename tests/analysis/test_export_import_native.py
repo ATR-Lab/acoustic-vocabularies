@@ -425,6 +425,29 @@ def test_native_uncertain_onset_is_preserved_without_precise_reaction_time(nativ
     assert trial["exposure_consumed"] == "true"
 
 
+def test_native_memory_composition_maps_actual_pcm_without_inventing_a_file_or_delivery(
+    native_case,
+):
+    case = native_case
+    case.trial.update(waveform_sha256="", playback_status="uncertain")
+    case.play.update(waveform_sha256="", audible_status="uncertain", playback_status="uncertain")
+    case.rows[2]["payload"]["waveform_sha256"] = None
+    plan = case.plan()
+    (trial,) = rows(plan.files["trial-log.csv"])
+    (play,) = rows(plan.files["exposure-ledger.csv"])
+    pcm = case.rows[2]["payload"]["pcm_sha256"]
+    assert trial["waveform_sha256"] == play["waveform_sha256"] == pcm
+    assert trial["pcm_sha256"] == play["pcm_sha256"] == pcm
+    assert trial["playback_status"] == play["audible_status"] == "uncertain"
+    assert trial["technical_fault_code"] == ""  # Missing source fault stays missing.
+    report = json.loads(plan.files["mapping/native-protocol.json"])
+    assert report["attempts"][0]["waveform_hash_basis"] == "journal_pcm_sha256"
+    assert any(r["column"] == "frame_freeze_ms" for r in report["unknown_measurements"])
+    assert report["producer_headers_qualified"] is False
+    (original,) = rows(plan.files["export/bundle/trial-log.csv"])
+    assert original["waveform_sha256"] == ""
+
+
 def test_native_same_clock_guard_refuses_cross_epoch_response(native_case):
     native_case.rows[6]["clock_epoch"] = "0" * 32
     with pytest.raises(ei.ExportRefused, match="EXPORT_NATIVE_TIME"):
