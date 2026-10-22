@@ -47,7 +47,7 @@ def g4(draft):
     values = {k: ("3" * 64 if k.endswith("hash") else "SYNTHETIC-" + k)
               for k in m.GENERATION_FIELDS}
     value = {"schema_version": 1, "record_type": "g4-generation-freeze-handoff",
-             "freeze_reference": "SYNTHETIC-NO-APPROVAL", "fields": values}
+             "freeze_reference": "SYNTHETIC-NO-APPROVAL", "freeze_status": "draft", "fields": values}
     data = m.canonical(value)
     path = root / "g4.json"
     path.write_bytes(data)
@@ -85,8 +85,170 @@ def test_g4_fields_copied_only_from_pinned_record(draft):
     result = m.collect(*save(draft))
     for name in m.GENERATION_FIELDS:
         assert result["fields"][name]["value"] == record["fields"][name]
-        assert result["fields"][name]["source"] == "g4:" + draft[1]["g4_freeze"]["expected_sha256"]
+        assert result["fields"][name]["source"] == "g4-draft:" + draft[1]["g4_freeze"]["expected_sha256"]
     assert not m.public_summary(result)["g4_approval_verified"]
+
+
+# --- G4 freeze manifest (#25) -> handoff -> collector (#83) -----------------------------
+# The committed draft is real `python -m av_generation.freeze` output (its CI guard keeps it
+# equal to a regeneration); tests/generation/test_freeze_apparatus_handoff.py repeats the
+# chain on a freshly built draft. Nothing here is, or may be presented as, a G4 freeze.
+
+def freeze_source():
+    # Same choice as av_generation.freeze.active_manifest_path: frozen file, else the draft.
+    generation = ROOT / "generation"
+    found = [*sorted(generation.glob("FREEZE-v*.*[0-9].json"), reverse=True), generation / "FREEZE-v1.0.draft.json"]
+    found = [p for p in found if p.is_file()]
+    if not found:
+        pytest.skip("no committed G4 freeze manifest")
+    return json.loads(found[0].read_bytes())
+
+
+def items(freeze):
+    return {item["key"]: item for item in freeze["items"]}
+
+
+def write_freeze(draft, freeze, name="FREEZE-v1.0.draft.json"):
+    path = draft[0] / name
+    path.write_text(json.dumps(freeze, indent=2) + "\n", encoding="utf-8")
+    return str(path), m.digest(path.read_bytes())
+
+
+def convert(draft, freeze):
+    path, pin = write_freeze(draft, freeze)
+    output = draft[0] / "g4-handoff.json"
+    assert m.main(["g4-handoff", "--freeze", path, "--freeze-sha256", pin, "--output", str(output)]) == 0
+    draft[1]["g4_freeze"] = {"status": "recorded", "path": output.name,
+                             "expected_sha256": m.digest(output.read_bytes())}
+    return json.loads(output.read_bytes()), pin
+
+
+def test_freeze_manifest_to_handoff_to_collector(draft, capsys):
+    freeze = source = freeze_source()
+    handoff, pin = convert(draft, freeze)
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["g4_approval_verified"] is False
+    assert handoff["freeze_status"] == summary["freeze_status"] == source["status"]
+    assert pin in handoff["freeze_reference"]
+    result = m.collect(*save(draft))
+    m.validate(result, "apparatus-manifest.schema.json")
+    assert b"null" not in m.canonical(result)
+    expected = {**source["apparatus"], "model_id_provisional": items(source)["model.id"]["value"]}
+    assert set(expected) == set(m.GENERATION_FIELDS)
+    prefix = "g4:" if source["status"] == "frozen" else "g4-draft:"
+    for name, value in expected.items():
+        field = result["fields"][name]
+        if value is None:  # pending in #25: stays pending, with the freeze's fill-in source
+            assert field["status"] == "pending" and "G4 not frozen (#25)" in field["reason"]
+        else:
+            assert field == {"status": "recorded", "value": value,
+                             "source": prefix + draft[1]["g4_freeze"]["expected_sha256"]}
+    output = draft[0] / "manifest.json"
+    m.write_new(str(output), result)
+    assert m.verify(str(output), m.digest(output.read_bytes()))["g4_approval_verified"] is False
+
+
+def test_model_id_reconciled_from_frozen_config_when_recorded(draft):
+    freeze = freeze_source()
+    by_key = items(freeze)
+    model = {"model_id": by_key["model.id"]["value"], "revision": by_key["model.revision"]["value"]}
+    by_key["config.document"].update(value={"model": model}, sha256=m.digest(m.canonical({"model": model})))
+    assert m.freeze_to_handoff(freeze, "0" * 64, "x")["fields"]["model_id_provisional"] == model["model_id"]
+    model["model_id"] = "SYNTHETIC/other-model"
+    by_key["config.document"].update(value={"model": model}, sha256=m.digest(m.canonical({"model": model})))
+    with pytest.raises(m.ManifestFault, match="FREEZE_MODEL_CONFLICT"):
+        m.freeze_to_handoff(freeze, "0" * 64, "x")
+
+
+def synthetic_frozen(freeze):
+    """Every pending item filled with labelled synthetic values, signed by both roles."""
+    for item in freeze["items"]:
+        if item["value"] is None:
+            hashed = item["key"].endswith(("sha256", "bank_hash"))
+            item["value"] = "5" * 64 if hashed else "SYNTHETIC-NOT-G4"
+            item["sha256"] = item["value"] if hashed else None
+    by_key = items(freeze)
+    model = {"model_id": by_key["model.id"]["value"], "revision": by_key["model.revision"]["value"]}
+    by_key["config.document"].update(value={"model": model}, sha256=m.digest(m.canonical({"model": model})))
+    freeze["apparatus"].update(runtime_precision="SYNTHETIC-NOT-G4", fallback_bank_hash="5" * 64,
+                               prompt_hash=m.digest(m.canonical({"a3_sha256": "5" * 64, "b_sha256": "5" * 64})))
+    issue = "https://github.com/ATR-Lab/acoustic-vocabularies/issues/25"
+    freeze.update(status="frozen", repo_commit="0" * 40, tag="SYNTHETIC-NOT-G4", signoff=[
+        {"role": "owner", "date": "2000-01-01", "reference": issue},
+        {"role": "advisor", "date": "2000-01-01", "reference": issue}])
+    return freeze
+
+
+def test_frozen_status_only_mirrors_a_signed_freeze_manifest(draft):
+    freeze = synthetic_frozen(freeze_source())
+    handoff, _ = convert(draft, freeze)
+    assert handoff["freeze_status"] == "frozen"
+    assert all(isinstance(v, str) for v in handoff["fields"].values())
+    result = m.collect(*save(draft))
+    assert result["fields"]["prompt_hash"]["source"].startswith("g4:")
+    assert m.public_summary(result)["g4_approval_verified"] is False
+    freeze["signoff"][1]["role"] = "owner"
+    with pytest.raises(m.ManifestFault, match="FREEZE_SIGNOFF_MISSING"):
+        m.freeze_to_handoff(freeze, "0" * 64, "x")
+
+
+def test_frozen_handoff_with_pending_field_refused(draft):
+    _, record = g4(draft)
+    record.update(freeze_status="frozen")
+    record["fields"]["prompt_hash"] = m.pending("not frozen")
+    with pytest.raises(m.ManifestFault, match="SCHEMA_INVALID"):
+        m.validate(record, "g4-manifest-handoff.schema.json")
+    record.update(freeze_status="draft")
+    m.validate(record, "g4-manifest-handoff.schema.json")
+
+
+def tamper_value(freeze):
+    items(freeze)["renderer.recipe_schema_hash"]["value"] = "6" * 64
+
+
+def tamper_value_and_hash(freeze):
+    items(freeze)["renderer.recipe_schema_hash"].update(value="6" * 64, sha256="6" * 64)
+
+
+def tamper_object(freeze):
+    item = next(i for i in freeze["items"] if isinstance(i["value"], dict))
+    item["value"] = {**item["value"], "synthetic": 1}
+
+
+def forge_frozen(freeze):
+    freeze["status"] = "frozen"
+
+
+@pytest.mark.parametrize("tamper, code", [
+    (tamper_value, "FREEZE_ITEM_HASH_MISMATCH"),
+    (tamper_object, "FREEZE_ITEM_HASH_MISMATCH"),
+    (tamper_value_and_hash, "FREEZE_APPARATUS_MISMATCH"),
+    (lambda f: f["apparatus"].update(model_revision="7" * 40), "FREEZE_APPARATUS_MISMATCH"),
+    (lambda f: f["items"].append(copy.deepcopy(f["items"][0])), "FREEZE_ITEM_DUPLICATE"),
+    (lambda f: f.update(items=[i for i in f["items"] if i["key"] != "model.id"]), "FREEZE_ITEM_MISSING"),
+    (lambda f: f.update(items=[i for i in f["items"] if i["key"] != "prompts.b_sha256"]), "FREEZE_ITEM_MISSING"),
+    (lambda f: f["apparatus"].pop("prompt_hash"), "FREEZE_SCHEMA_INVALID"),
+    (lambda f: f["apparatus"].update(model_id_provisional="invented"), "FREEZE_SCHEMA_INVALID"),
+    (forge_frozen, "FREEZE_SCHEMA_INVALID"),
+    (lambda f: items(f)["model.revision"].update(value="not-a-revision"), "FREEZE_VALUE_INVALID"),
+    (lambda f: f.update(format="something-else"), "FREEZE_FORMAT_INVALID"),
+])
+def test_tampered_or_incomplete_freeze_manifest_refused(draft, tamper, code):
+    freeze = freeze_source()
+    tamper(freeze)
+    path, pin = write_freeze(draft, freeze)
+    with pytest.raises(m.ManifestFault, match=code):
+        m.read_freeze(path, pin)
+    assert m.main(["g4-handoff", "--freeze", path, "--freeze-sha256", pin,
+                   "--output", str(draft[0] / "refused.json")]) == 2
+    assert not (draft[0] / "refused.json").exists()
+
+
+def test_freeze_manifest_changed_after_pin_refused(draft):
+    path, pin = write_freeze(draft, freeze_source())
+    Path(path).write_bytes(Path(path).read_bytes().replace(b"Qwen", b"Qwex"))
+    with pytest.raises(m.ManifestFault, match="HASH_MISMATCH"):
+        m.read_freeze(path, pin)
 
 
 @pytest.mark.parametrize("field", m.GENERATION_FIELDS)

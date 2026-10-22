@@ -7,6 +7,9 @@ on:
       - "tests/generation/**"
       - "sound/**"
       - ".github/workflows/generation.yml"
+      # tests/generation/test_freeze_apparatus_handoff.py: G4 freeze -> apparatus handoff
+      - "tools/apparatus_manifest.py"
+      - "apparatus/schemas/*manifest*.schema.json"
   push:
     # o4.2.1-llm-server: runs the 3-OS matrix on the skeleton before the parallel issues
     # build on it (no PR exists yet); remove it once #16 is merged.
@@ -16,6 +19,8 @@ on:
       - "tests/generation/**"
       - "sound/**"
       - ".github/workflows/generation.yml"
+      - "tools/apparatus_manifest.py"
+      - "apparatus/schemas/*manifest*.schema.json"
   workflow_dispatch:
 
 permissions:
