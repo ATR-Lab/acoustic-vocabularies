@@ -224,14 +224,20 @@ G4 freeze guard (section 2). `build` prints a JSON summary and exits 0 (all comp
 | `proposer` | `SlotProposer` protocol (`check_config(config)`, `propose(cell, *, seed_key, slot_id) -> Proposal`); `LlmSlotProposer(client, prompt_set, decoding_schema, *, prompt_builder=build_b_prompt, parser=parse_output, threshold=None)` (the CLI passes the config threshold to the prompt builder); `check_prompt_inputs`, `b_prompt_sha256(prompt_set)` (#17's `b_sha256`); `Proposal`; `ProposerConfigError` |
 | `run` | `build_banks(specs, *, runs_root, run_id, config, proposer, clock, kind=None, freeze_manifest=None, freeze_manifest_sha256=None, llm_runtime=None, workers=3, parallel_banks=1, ledger_factory=slot_ledger) -> RunResult`; `read_freeze_manifest(path, *, kind) -> (manifest, file SHA-256)` (the G4 freeze guard for confirmatory runs; pass both to `build_banks`); `run_kind(specs, kind=None)`; `E_RUN`, `E_FREEZE_GUARD` |
 | `manifest` | `BankManifest` (typed `bank-manifest`; `.read`, `.write`, `.bank_sha256()`, `.cell()`, `.menu(amendments)`), `read_manifest`, `read_amendments`, `manifest_from_files`, `AttemptSummary` (`attempt.json`), `to_dyad_bank(manifest) -> av_sound.dyad_bank.DyadBank` |
+| `handoff` | `qualified_dyad_bank(bank_dir, *, expected_bank_sha256) -> DyadBank`: `verify_bank`, the pinned bank hash, `complete`, no amendments, then `to_dyad_bank`; `HandoffError` (`E_HANDOFF`, `.problems`) |
 | `verify` | `verify_bank(bank_dir) -> VerifyReport` (`ok`, `problems`, `bank_sha256`, `pairs_checked`, ...); `check_pairs`, `check_against`; `PAIRS_PER_PROFILE = 1920` |
 | `amend` | `amend_bank(bank_dir, *, profile, atom_id, rank, reason, unheard_confirmed, date=None) -> AmendResult`; `AmendError` (`E_HEARD`, `E_BANK`, `E_CELL`, `E_RECHECK`, `E_INPUT`) |
 | `permutation` | `load_permutation(path) -> UnitPermutation`, `parse_permutation`, `expected_unit_id(bank_id)`, `check_bank_unit(bank_id, permutation)` |
 | `layout`, `throughput` | `BankLayout`, `option_wav`, `option_id`; `throughput(records, wall_ms)` |
 
 For #13: `to_dyad_bank(read_manifest(bank_dir))` gives the `DyadBank` the dyad package
-builder takes (option `source` = slot ID). Amendments are applied by consumers with
-`effective_menu`, not by the conversion.
+builder takes (option `source` = slot ID, `file_sha256` = the option WAV's hash, and a
+`handoff` naming `av-banks/bank-manifest` v1 and the bank hash, which the package records
+as its `bank`). Amendments are applied by consumers with `effective_menu`, not by the
+conversion. Use `handoff.qualified_dyad_bank(bank_dir, expected_bank_sha256=...)` to
+package a bank: it verifies the directory and the pin first and refuses an amended bank
+until the package and the #70 menus apply amendments. #70 menus verify the package
+against the manifest bytes (`docs/unity/selection-menus.md`).
 
 ## 8. Tests
 
