@@ -163,10 +163,20 @@ simulator engineering evidence only.
 `MenuReplaySequence.Load` requires an independently pinned sealed active-file
 hash and active binding, verifies canonical bytes/hash chain/schema, independent
 assets and actual store receipts, and refuses age outside 0–24 hours. The session
-owner supplies the UTC time and explicit monotonic replay anchor. Recorded
-inter-menu gaps are retained, never added again on resume or compressed after a
-missed anchor. A missed anchored start faults before content creation or any
-exposure consumption; previous completed trial history remains intact.
+owner supplies the UTC time and explicit monotonic replay anchor.
+
+That anchor (the yoked start plus the configured lead) applies to the first menu
+block. By maintainer decision (#245), every later menu block is anchored at its
+own explicit boundary resume plus the same lead (`AnchorBlockAtResume`, a durable
+`yoked_anchor` record with policy `block_resume_plus_lead` and the block's menu
+keys). Recorded inter-menu gaps are kept exactly within a block. The active
+operator's pause between blocks is not replayed: in attempts 030/031 it was, and
+a slower yoked resume missed the anchor on every retry.
+
+A block is re-anchored only while none of its menus has been planned, so a
+refused resume can be retried and a started menu never moves. A missed anchored
+start still faults before content creation or any exposure consumption, and
+previous completed trial history remains intact.
 
 Yoked audio uses recorded onset offsets and stored final selection. Yoked display
 transitions follow the same scheduled boundaries as the active run. The active
@@ -174,7 +184,9 @@ run's observed display offsets are retained in the replay record but are not use
 as a yoked schedule. Every yoked event references its
 corresponding active source event. No active cursor or intermediate choice is
 copied. `CompareYoked`/`SealYoked` check independent hashes, meanings, role/unit
-bindings, all eight audio events, selected/defaulted outcome, relative gaps and
+bindings, all eight audio events, selected/defaulted outcome, relative gaps
+within each anchored block (`MENU_YOKED_PAUSE_MISMATCH`; the mock-visit
+reconciler applies the same rule per menu block) and
 bounded timing against that exact active sequence. A returned comparison means
 those checks passed; it does not assert a headset or acoustic measurement.
 
