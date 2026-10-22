@@ -23,7 +23,7 @@ from av_analysis.templates import TEMPLATES
 def test_every_command_is_registered():
     parser, handlers = build_parser()
     assert set(handlers) == {"init-root", "schemas", "check-templates", "refresh", *ISSUE_COMMANDS}
-    assert {owner for _, owner, _ in ISSUE_COMMANDS.values()} == {"#33", "#34", "#35"}
+    assert {owner for _, owner, _ in ISSUE_COMMANDS.values()} == {"#33", "#34", "#35", "#81"}
     help_text = parser.format_help()
     for name in handlers:
         assert name in help_text
@@ -85,6 +85,13 @@ def test_issue_commands_parse_their_arguments(name):
         "run": ["--study", "A", "--data", "d"],
         "simulate": ["--scenario", "null-A", "--seed", "DEMO-x", "--out", "o"],
         "dashboard": ["--root", "r"],
+        "import-export": [
+            "A-C01-L01-D7",
+            *("--root", "r", "--export", "e", "--export-manifest-sha256", "h"),
+            *("--run-sheet", "s", "--run-sheet-sha256", "h"),
+            *("--deviations", "d", "--deviations-sha256", "h"),
+        ],
+        "block-durations": ["A-C01-L01-D7", "--root", "r"],
     }
     args = parser.parse_args([name, *required[name]])
     assert args.command == name

@@ -7,16 +7,18 @@ implemented yet is skipped). Issue commands are registered from their owning mod
 each of which defines ``add_arguments(parser)`` and ``main(args) -> int``, so an issue
 edits only its own module:
 
-=============  ========================  =====
-Command        Module                    Owner
-=============  ========================  =====
-``synth-logs`` ``synthetic_logs``        #33
-``reconcile``  ``reconcile``             #33
-``derive``     ``derive``                #33
-``run``        ``pipeline``              #34
-``simulate``   ``simulate``              #34
-``dashboard``  ``monitoring``            #35
-=============  ========================  =====
+=====================  ========================  =====
+Command                Module                    Owner
+=====================  ========================  =====
+``synth-logs``         ``synthetic_logs``        #33
+``reconcile``          ``reconcile``             #33
+``derive``             ``derive``                #33
+``run``                ``pipeline``              #34
+``simulate``           ``simulate``              #34
+``dashboard``          ``monitoring``            #35
+``import-export``      ``export_import``         #81
+``block-durations``    ``block_durations``       #81
+=====================  ========================  =====
 
 Exit codes: 0 success, 1 findings (failed checks, drift), 2 usage or refused input,
 3 command not implemented yet.
@@ -48,6 +50,16 @@ ISSUE_COMMANDS: Final[dict[str, tuple[str, str, str]]] = {
     "run": ("pipeline", "#34", "produce the analysis plan section 9 outputs"),
     "simulate": ("simulate", "#34", "synthetic datasets and operating characteristics"),
     "dashboard": ("monitoring", "#35", "regenerate the integrity monitoring dashboard"),
+    "import-export": (
+        "export_import",
+        "#81",
+        "map a verified station export into a raw visit folder",
+    ),
+    "block-durations": (
+        "block_durations",
+        "#81",
+        "compare run-sheet block durations with the booked visit length",
+    ),
 }
 # ``refresh``: the issue commands run in order, each with ``--root`` (and these arguments).
 REFRESH_STEPS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (

@@ -55,9 +55,10 @@ output folder of the set, without the book key):
 `av-analysis/exit-manifest`, `format_version` 1, `data_kind`, `visit_id`, `session_id`,
 `station_id`, `closed` (`complete`/`interrupted`), `source` and `files` (`path`, `bytes`,
 `sha256` of every other file in the folder). It is a projection of the data logger's
-ExportBundle manifest (#72, `docs/data/README.md`), written when an export is imported
-into a data root (**Pending** agreement with #72/#73); the synthetic generator writes
-`source` null, a REAL root requires it.
+ExportBundle manifest (#72, `docs/data/README.md`), written by `av-analysis
+import-export` when an export is imported into a data root (below; the projection still
+awaits agreement with #72/#73); the synthetic generator writes `source` null, a REAL root
+requires it.
 
 | Exit manifest | ExportBundle manifest (`data-export-provisional-1`) |
 | --- | --- |
@@ -69,20 +70,58 @@ into a data root (**Pending** agreement with #72/#73); the synthetic generator w
 | `source.protocol_version`, `source.build_sha256` | `identity.protocol_version`, `identity.build_sha256` |
 | `source.headers_qualified`, `source.unacknowledged_torn_tail` | same names |
 | `source.record_count`, `source.trial_rows`, `source.exposure_rows` | same names |
-| `files` | the template CSVs written by the column adapter, the operator's run sheet and deviations, and any export files kept (for example under `export/`), hashed at import |
+| `files` | the template CSVs written by the column adapter, the operator's run sheet and deviations, and the export files kept unchanged (`export/bundle/` with the bundle's `manifest.json`, `export/console/deviations.provisional.csv`), hashed at import |
+
+**Importing an export (#81).** `av-analysis import-export VISIT_ID --root DIR --export
+DIR --export-manifest-sha256 HEX --run-sheet FILE --run-sheet-sha256 HEX --deviations FILE
+--deviations-sha256 HEX` (module `export_import`; exit 0 written, 2 refused with nothing
+written) maps one provisional ExportBundle plus the operator console's run-sheet and
+deviation exports (#73) into a new `raw/<visit_id>/`. It verifies before mapping: the
+bundle manifest against the SHA-256 supplied out of band, every listed file's size and
+hash, the exact file inventory, the journal hash chain, identity, record count, head hash
+and torn-tail acknowledgements, the CSV identity and row counts, and the SHA-256 of both
+console files. It refuses column drift (the header contract, both CSV headers, the run
+sheet and the deviation export must have exactly the known columns), bundles with lesson
+or assessment tables (no mapping yet), and a `VISIT_ID` that is not the person slot the
+reveal log binds to the export's `coded_id` plus the export's visit, or that the run sheet
+does not name. Every template column has one documented source
+(`export_import.TRIAL_SOURCES`, `EXPOSURE_SOURCES`, `DEVIATION_SOURCES`): a provisional
+column copied unchanged, the bound visit, a derivation from the verified export
+(`presentation_index`, `pcm_sha256`, the deviation category), or none, written empty so
+that `reconcile` reports it; values are never repaired. Files are created exclusively and
+read back, the exit manifest last. A REAL root also refuses unqualified headers, torn
+tails and synthetic markers; a SYNTHETIC root refuses coded IDs without a marker.
+Limitations: synthetic only (no native export has been imported or reconciled yet); the
+published samples verify but name visit `DEMO`, so the end-to-end test binds a re-chained
+copy to a `synth-logs` slot, and its reconciliation fails on content, not integrity; many
+template columns have no producer source yet (list in
+[`analysis/docs/reconciliation.md`](../../analysis/docs/reconciliation.md), section 3).
+
+**Block durations (#81).** `av-analysis block-durations VISIT_ID --root DIR [--out FILE]`
+(module `block_durations`) compares each run-sheet block's `end_time - start_time` with
+its scheduled seconds and the visit's first start to last end with the booked minutes
+that `av_schedules.run_sheet_output` renders (`booked_minutes`, `scheduled_seconds`; a
+frozen `<set>-run-sheets-manifest.json` under `inputs/schedules/<study>/` must agree),
+with the `derive` overrun rule; unrecorded times stay null. The run sheet must match the
+exit manifest. `--out` writes
+[`block-durations.schema.json`](../../analysis/schema/block-durations.schema.json) with
+exclusive create. The console's run sheets leave block times blank for now, so only
+`synth-logs` sheets have actual durations.
 
 **Watermark.** JSON outputs carry top-level `data_kind`; CSV outputs a first column
 `data_kind`; HTML `<meta name="av-data-kind" content="SYNTHETIC|REAL">`; Markdown a line
 `av-data-kind: SYNTHETIC|REAL`; synthetic HTML and Markdown a visible `SYNTHETIC` banner.
 `paths.write_output` refuses anything else and any write into a root of the other kind.
 `raw/`, `inputs/` and `keys/` are written only by the synthetic generators, through
-`paths.write_synthetic_input` (SYNTHETIC roots only, content marked as real refused).
+`paths.write_synthetic_input` (SYNTHETIC roots only, content marked as real refused), and
+by `import-export`, which only creates a new `raw/<visit_id>/` (exclusive create).
 
 ### Raw-log values (**Pending** confirmation by #67, #72, #73)
 
 Where the provisional data logger on main already emits a value (#72,
-`data-csv-provisional-1`), the analysis accepts the producer's value; the column adapter
-from the provisional headers to the template headers is still **Pending**.
+`data-csv-provisional-1`), the analysis accepts the producer's value; `import-export`
+(above) maps the provisional headers to the template headers and copies those values
+unchanged. Its null columns and the console reason -> category map await agreement.
 
 | Column | Values | Source |
 | --- | --- | --- |
@@ -157,7 +196,7 @@ columns `operator`, `reviewer` and `operator_signoff`.
 `av-analysis` (`uv run --project analysis av-analysis ...` or `python -m av_analysis`):
 `init-root`, `schemas [--write]`, `check-templates [DIR]`, `refresh --root DIR`
 (skeleton); `synth-logs`, `reconcile`, `derive` (#33); `run`, `simulate` (#34);
-`dashboard` (#35). Exit codes: 0 success, 1 findings, 2 refused input, 3 not implemented
+`dashboard` (#35); `import-export`, `block-durations` (#81). Exit codes: 0 success, 1 findings, 2 refused input, 3 not implemented
 yet. `refresh` is the operator sequence after a visit: `reconcile --all`, `derive`,
 `dashboard`; it continues after findings, stops at a refused input and skips a command
 that is not implemented yet.
