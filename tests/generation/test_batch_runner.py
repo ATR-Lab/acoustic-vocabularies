@@ -297,7 +297,17 @@ def test_logs_are_audit_ready(real_run):
     assert events["feedback_sent"] == 3 * 16 * 3
     assert events["appointment_start"] == events["appointment_end"] == 4
     components = {e.component for e in logs["timing"]}
-    assert {"orchestrator", "a1"} <= components
+    assert {"orchestrator", "a1", "llm", "renderer"} <= components
+    # one sitting: the LLM probe and the renderer self-test, logged as startup intervals
+    startup = [e for e in logs["timing"] if e.event in ("startup_start", "startup_end")]
+    assert [(e.event, e.component) for e in startup] == [
+        ("startup_start", "llm"),
+        ("startup_end", "llm"),
+        ("startup_start", "renderer"),
+        ("startup_end", "renderer"),
+    ]
+    assert all(e.duration_ms is not None and e.duration_ms >= 0 for e in startup[1::2])
+    assert {e.batch_id for e in startup} == {batch.orchestrator.config.batch_id}
     # the runner's terminal lines name no book and no designer
     text = "\n".join(lines)
     assert "A1 designer page: http://127.0.0.1:" in text and "Atoms finished: 16/16" in text
@@ -815,6 +825,9 @@ def test_cli_runs_appointments_with_the_real_components_and_resumes(tmp_path, ca
     timing = read_records(run_dir / "logs/timing.jsonl", TimingEvent)
     assert [e.appointment for e in timing if e.event == "appointment_start"] == [1, 2]
     assert any(e.event == "resume" for e in timing)
+    # every sitting logs its startup: two processes, each the LLM probe and the renderer
+    starts = [e.component for e in timing if e.event == "startup_start"]
+    assert starts == ["llm", "renderer", "llm", "renderer"]
     # a resume of a run that never started is refused
     assert br.main(["run", *_cli(tmp_path, "DEMO-cli-02"), *common, "--resume"]) == 1
     assert "E_RUN_DIR" in capsys.readouterr().err
@@ -858,3 +871,44 @@ def test_a_closed_run_is_left_untouched_when_reopened(real_run, mock_llm_url):
     assert lines == ["Atoms finished: 16/16; the run is closed"]
     after = {p: p.read_bytes() for p in batch.layout.root.rglob("*") if p.is_file()}
     assert after == before
+
+
+# ---------------------------------------------------------------------------
+# Startup timing (#22 follow-up)
+
+
+def test_a_sitting_without_a_working_renderer_does_not_start(tmp_path, monkeypatch):
+    """The renderer self-test runs before the run directory exists: a wrong waveform is
+    `E_RENDERER` and leaves nothing behind."""
+
+    class Wrong:
+        pcm_sha256 = "0" * 64
+
+    monkeypatch.setattr(br, "validate", lambda *a, **k: Wrong())
+    run_dir = tmp_path / "DEMO-startup-01"
+    with pytest.raises(br.RunnerError) as err:
+        br.open_batch(
+            demo_inputs("sim"),
+            run_dir,
+            kind=RunKind.SYNTHETIC,
+            clock=ManualClock(),
+            proposers="sim",
+        )
+    assert err.value.code == br.E_RENDERER
+    assert not run_dir.exists()
+
+
+@pytest.mark.parametrize("log_startup", [True, False])
+def test_sim_sittings_log_the_renderer_startup_unless_the_caller_does(tmp_path, log_startup):
+    batch = br.open_batch(
+        demo_inputs("sim"),
+        tmp_path / "DEMO-startup-02",
+        kind=RunKind.SYNTHETIC,
+        clock=ManualClock(),
+        proposers="sim",
+        log_startup=log_startup,
+    )
+    timing = _logs(batch.layout)["timing"]
+    startup = [(e.event, e.component) for e in timing if e.event.startswith("startup_")]
+    expected = [("startup_start", "renderer"), ("startup_end", "renderer")]
+    assert startup == (expected if log_startup else [])
