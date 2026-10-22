@@ -14,7 +14,18 @@ namespace AcousticVocab.DataLogging
             DataJson.Require(DataJson.Hash(scheduleSha256),"DATA_ASSESSMENT_SCHEDULE");schedule=scheduleSha256;
             DataJson.Require(Records.All(r=>r.ScheduleSha256==schedule),"DATA_ASSESSMENT_SCHEDULE");
         }
-        public IReadOnlyList<AssessmentRecord> Records=>journal.Records.Where(r=>r.Kind=="assessment_stage").Select(r=>AssessmentRecordCodec.FromJson(r.Payload)).ToList().AsReadOnly();
+        // Decoded once per appended record, as SessionDataJournal: forms code
+        // reads this per frame and the append-only journal never rewrites rows.
+        readonly List<AssessmentRecord> decoded=new List<AssessmentRecord>();int scanned;
+        public IReadOnlyList<AssessmentRecord> Records
+        {
+            get
+            {
+                var source=journal.Records;
+                for(;scanned<source.Count;scanned++)if(source[scanned].Kind=="assessment_stage")decoded.Add(AssessmentRecordCodec.FromJson(source[scanned].Payload));
+                return Array.AsReadOnly(decoded.ToArray());
+            }
+        }
         public void Append(AssessmentRecord record)
         {
             DataJson.Require(record!=null&&record.ScheduleSha256==schedule,"DATA_ASSESSMENT_SCHEDULE");

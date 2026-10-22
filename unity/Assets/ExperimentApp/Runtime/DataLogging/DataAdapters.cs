@@ -12,7 +12,22 @@ namespace AcousticVocab.DataLogging
     {
         readonly DataJournal journal;
         public SessionDataJournal(DataJournal journal){this.journal=journal??throw new ArgumentNullException(nameof(journal));}
-        public IReadOnlyList<SessionRecord> Records=>journal.Records.Where(r=>r.Kind=="session").Select(r=>SessionRecordCodec.FromJson(r.Payload)).ToList().AsReadOnly();
+        // The engine, assessment stages and joined owner read this every frame
+        // at a boundary. Re-decoding the whole visit per read (1,640 session rows
+        // in A D0) allocated enough at the forms transition to force full
+        // collections on the main thread (attempts A-D0 019/020). The durable
+        // journal only appends, so each record is decoded once; every read still
+        // returns an independent snapshot.
+        readonly List<SessionRecord> decoded=new List<SessionRecord>();int scanned;
+        public IReadOnlyList<SessionRecord> Records
+        {
+            get
+            {
+                var source=journal.Records;
+                for(;scanned<source.Count;scanned++)if(source[scanned].Kind=="session")decoded.Add(SessionRecordCodec.FromJson(source[scanned].Payload));
+                return Array.AsReadOnly(decoded.ToArray());
+            }
+        }
         public void Append(SessionRecord record)=>journal.Append(new EventDraft("session",new EventContext(record.OpportunityId,record.TrialId),SessionRecordCodec.ToJson(record)));
     }
     public sealed class AudioRequestContext
