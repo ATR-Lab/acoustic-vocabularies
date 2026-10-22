@@ -574,4 +574,164 @@ class ManifestEmitter(unittest.TestCase):
             with self.assertRaisesRegex(EvidenceError,"MOCK_MANIFEST_EXISTS"):emit(root,**args)
 
 
+ACCESS_VIOLATION = 3221225477  # 0xC0000005, as independently observed in #150.
+NONCE = "5" * 32
+EPOCH = "c" * 32
+SOURCE = "b" * 40
+
+
+class EndToEndProcessExit(unittest.TestCase):
+    """Synthetic closed run on disk through top-level ``reconcile()`` (#150).
+
+    Mirrors only the *shape* of an interrupted native attempt: a synthetic DEMO
+    schedule, an intact closed export, and a post-cleanup receipt reporting
+    successful cleanup/export. No captured evidence or private bytes are used.
+    """
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+
+    def save(self, name, raw):
+        path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(raw)
+        return dict(path=name, sha256=sha(raw))
+
+    def build_run(self, *, process_exit=0, manifest_exit=None, receipt=True, terminal=None):
+        """Write a closed run and return ``(manifest_path, manifest_sha256)``."""
+        from tools.mock_visit.reconcile import TRIAL_COLUMNS, EXPOSURE_COLUMNS
+        repo = Path(__file__).resolve().parents[1]
+        schedule = self.save("schedule.json", (repo/"schedules/examples/demo/A/A-C01/schedules/A-C01-L01/D0.json").read_bytes())
+        protocol, build_id = "simulation-test-v1", "simulation-test"
+        identity = dict(session_id="SIMULATION_TEST", coded_id="A-C01-L01", visit_id="D0", station_id="SIM",
+                        protocol_version=protocol, build_sha256="d" * 64)
+        config = self.save("config.json", compact(dict(
+            identity=dict({k: identity[k] for k in ("session_id", "coded_id", "visit_id", "station_id")}, build_id=build_id),
+            protocol_version=protocol, directories=dict(evidence="evidence"),
+            files=dict(schedule=schedule), pins=dict(package_sha256=H))))
+        capability = self.save("capability.json", compact(dict(
+            version=1, scope="SIMULATION_TEST", build_id=build_id, protocol_version=protocol,
+            output_directory=str(self.root / "evidence"), schedule_sha256=schedule["sha256"], package_sha256=H,
+            fixture_set_sha256=H, audio_gain=.05, acoustic_qualification=False, participant_admission=False)))
+        build = self.save("build.json", compact(dict(
+            build_identity=dict(schema_version=1, build_id=build_id, commit_sha=SOURCE, protocol_version=protocol,
+                                editor_version="6000.6.0f1", target="StandaloneWindows64", dirty_source=False,
+                                station_schema_sha256=H, development_only=True),
+            result="Succeeded", errors=0, duration_seconds=8.4, total_bytes=10, development_build=False,
+            files=[dict(path="app.exe", bytes=10, sha256=H)])))
+        if receipt:
+            self.save("process.json", compact(dict(
+                version=1, process_id=4242, process_exit=process_exit, source_commit=SOURCE,
+                build_manifest_sha256=build["sha256"], started_utc="2026-10-05T00:00:00Z", ended_utc="2026-10-05T00:01:00Z")))
+        # Intact closed export: one hash-chained visit exit, empty study CSVs.
+        events = chain([dict(schema_version="data-events-provisional-1", event_id="e" * 32, clock_epoch=EPOCH,
+                             host_mono_ms=1000., identity=identity, event_type="visit_exit", opportunity_id=None,
+                             attempt_id=None, audio_request_id=None, payload=dict(code="JOIN_FOCUS_LOST"))])
+        exported = {
+            "raw/events-0000.local.jsonl": events,
+            "trial-log.csv": (",".join(TRIAL_COLUMNS) + "\n").encode(),
+            "exposure-ledger.csv": (",".join(EXPOSURE_COLUMNS) + "\n").encode(),
+            "header-contract.json": compact(dict(
+                schema_version="data-header-contract-provisional-1", qualified=False, review_evidence_sha256=None,
+                trial_template_sha256=None, exposure_template_sha256=None,
+                trial_headers=TRIAL_COLUMNS, exposure_headers=EXPOSURE_COLUMNS)),
+        }
+        export_dir = f"evidence/export-{NONCE}"
+        for name, raw in exported.items(): self.save(f"{export_dir}/{name}", raw)
+        export = self.save(f"{export_dir}/manifest.json", compact(dict(
+            schema_version="data-export-provisional-1", export_id="f" * 32, identity=identity,
+            headers_qualified=False, unacknowledged_torn_tail=False, record_count=1,
+            last_record_sha256=strict(events)["sha256"], trial_rows=0, exposure_rows=0,
+            files=[dict(path=n, bytes=len(r), sha256=sha(r)) for n, r in exported.items()])))
+        joined_dir = f"evidence/joined-{NONCE}"
+        self.save(f"{joined_dir}/joined.local.jsonl", chain([dict(
+            version=1, clock_epoch=EPOCH, host_mono_ms=1500., kind="module",
+            payload=dict(kind="native_run_end", status="JOIN_FOCUS_LOST", complete=False,
+                         scope="SIMULATION_TEST", participant_admission=False))], "joined"))
+        # Post-cleanup receipt: cleanup and export both reported successful.
+        result = dict(version=1, scope="SIMULATION_TEST", session_nonce=NONCE, process_id=4242, source_commit=SOURCE,
+                      config_sha256=config["sha256"], simulation_capability_sha256=capability["sha256"],
+                      status="JOIN_FOCUS_LOST", complete=False, cleanup_succeeded=True, export_succeeded=True,
+                      export_manifest_sha256=export["sha256"], host_mono_ms=2000., participant_admission=False)
+        result.update(terminal or {})
+        self.save(f"{joined_dir}/native-result.local.json", compact(result))
+        kinds = {"process.json": "process_result", f"{export_dir}/manifest.json": "export_manifest",
+                 f"{joined_dir}/native-result.local.json": "native_result", f"{joined_dir}/joined.local.jsonl": "joined_journal"}
+        artifacts = [dict(kind=kinds.get(name, "other"), path=name, sha256=sha(raw), bytes=len(raw))
+                     for name, raw in sorted((f.relative_to(self.root).as_posix(), f.read_bytes())
+                                             for f in self.root.rglob("*") if f.is_file())]
+        manifest = dict(version=1, scope="SIMULATION_TEST", run_id="synthetic-process-exit", study="A", visit="D0",
+                        role="reference", source_commit=SOURCE, build_manifest=build, config=config,
+                        simulation_capability=capability, schedule=schedule, package_sha256=H, fixture_set_sha256=H,
+                        artifacts=artifacts, complete=False,
+                        process_exit=process_exit if manifest_exit is None else manifest_exit)
+        raw = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
+        path = self.root / "mock-run.manifest.json"; path.write_bytes(raw)
+        return path, sha(raw)
+
+    def reconcile(self, **kwargs):
+        from tools.mock_visit.reconcile import reconcile
+        return reconcile(*self.build_run(**kwargs))
+
+    def test_clean_exit_with_intact_export_has_no_process_failure(self):
+        report = self.reconcile(process_exit=0)
+        self.assertTrue(report["integrity_verified"])
+        self.assertEqual(report["process_exit"], 0)
+        self.assertNotIn("NATIVE_PROCESS_NOT_SUCCESSFUL", report["incomplete_reasons"])
+        # A clean exit is not an acceptance certificate for an interrupted visit.
+        self.assertFalse(report["software_reconciliation_complete"])
+        self.assertIn("NATIVE_POST_CLEANUP_RESULT_INCOMPLETE", report["incomplete_reasons"])
+
+    def test_nonzero_exit_is_retained_separately_from_verified_export(self):
+        clean = self.reconcile(process_exit=0)
+        self.setUp()
+        failed = self.reconcile(process_exit=ACCESS_VIOLATION)
+        self.assertTrue(failed["integrity_verified"])
+        self.assertEqual(failed["process_exit"], ACCESS_VIOLATION)
+        self.assertIn("NATIVE_PROCESS_NOT_SUCCESSFUL", failed["incomplete_reasons"])
+        self.assertFalse(failed["software_reconciliation_complete"])
+        # The only difference the exit makes is the separate process failure.
+        self.assertEqual(set(failed["incomplete_reasons"]) - set(clean["incomplete_reasons"]), {"NATIVE_PROCESS_NOT_SUCCESSFUL"})
+        self.assertEqual(set(clean["incomplete_reasons"]) - set(failed["incomplete_reasons"]), set())
+        for key in ("requested_plays", "completed_opportunities", "scheduled_opportunities", "process_interval"):
+            self.assertEqual(failed[key], clean[key], key)
+
+    def test_successful_cleanup_export_receipt_cannot_override_nonzero_exit(self):
+        terminal = dict(status="JOIN_COMPLETE_FORMS_RECORDED", complete=True)
+        report = self.reconcile(process_exit=ACCESS_VIOLATION, terminal=terminal)
+        self.assertTrue(report["integrity_verified"]); self.assertTrue(report["native_post_cleanup_complete"])
+        self.assertNotIn("NATIVE_POST_CLEANUP_RESULT_INCOMPLETE", report["incomplete_reasons"])
+        self.assertIn("NATIVE_PROCESS_NOT_SUCCESSFUL", report["incomplete_reasons"])
+        self.assertFalse(report["software_reconciliation_complete"])
+
+    def test_manifest_and_process_receipt_exit_must_agree(self):
+        for receipt_exit, manifest_exit in ((ACCESS_VIOLATION, 0), (0, ACCESS_VIOLATION), (ACCESS_VIOLATION, 1)):
+            self.setUp()
+            with self.subTest(receipt=receipt_exit, manifest=manifest_exit), \
+                    self.assertRaisesRegex(EvidenceError, "MOCK_PROCESS_BINDING"):
+                self.reconcile(process_exit=receipt_exit, manifest_exit=manifest_exit)
+
+    def test_missing_process_receipt_is_refused(self):
+        with self.assertRaisesRegex(EvidenceError, "MOCK_PROCESS_RESULT_REQUIRED"):
+            self.reconcile(process_exit=ACCESS_VIOLATION, receipt=False)
+
+    def test_cli_exit_codes_keep_refusal_and_process_failure_distinct(self):
+        import contextlib, io
+        from unittest.mock import patch
+        from tools.mock_visit import reconcile as module
+        def run(path, pin, out):
+            argv = ["reconcile", "--manifest", str(path), "--sha256", pin, "--out", str(out)]
+            with patch("sys.argv", argv), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+                return module.main(), err.getvalue()
+        path, pin = self.build_run(process_exit=ACCESS_VIOLATION)
+        code, _ = run(path, pin, self.root / "report.json")
+        self.assertEqual(code, 3)
+        report = strict((self.root / "report.json").read_bytes())
+        self.assertTrue(report["integrity_verified"]); self.assertIn("NATIVE_PROCESS_NOT_SUCCESSFUL", report["incomplete_reasons"])
+        self.setUp()
+        path, pin = self.build_run(process_exit=ACCESS_VIOLATION, receipt=False)
+        code, err = run(path, pin, self.root / "report.json")
+        self.assertEqual((code, err.strip()), (2, "MOCK_PROCESS_RESULT_REQUIRED"))
+        self.assertFalse((self.root / "report.json").exists())
+
+
 if __name__=="__main__": unittest.main()
