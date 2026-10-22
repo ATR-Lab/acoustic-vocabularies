@@ -7,6 +7,8 @@
     "AcousticVocab.Foundation",
     "AcousticVocab.Teaching"
     ,"AcousticVocab.SessionIntegration"
+    ,"AcousticVocab.DataLogging"
+    ,"AcousticVocab.ResponsePanel"
   ],
   "includePlatforms": [
     "Editor"
