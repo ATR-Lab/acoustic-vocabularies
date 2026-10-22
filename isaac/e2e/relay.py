@@ -30,7 +30,36 @@ def validate_endpoint(path, port, seconds):
     return info.st_dev,info.st_ino
 
 
-async def relay(path, port, seconds):
+class RelayTrace:
+    """Opt-in byte-count/timestamp observer; never retains or interprets bytes.
+
+    Rows are (host monotonic ns, connection index, direction, event, bytes):
+    direction 0 is TCP client to Unix service, 1 is service to TCP client;
+    event 0 is the read call returning, 1 is write drain completion.
+    Capacity is fixed; overflow drops rows and marks coverage incomplete.
+    """
+    def __init__(self, path, capacity=200000):
+        self.path=Path(path)
+        if self.path.exists(): raise FileExistsError('Do not replace relay trace evidence')
+        if type(capacity) is not int or not 1<=capacity<=400000: raise ValueError('Bounded trace capacity required')
+        self.rows=[];self.capacity=capacity;self.dropped=0;self.started=time.monotonic_ns()
+
+    def record(self, connection, direction, event, size):
+        stamp=time.monotonic_ns()
+        if len(self.rows)<self.capacity: self.rows.append((stamp,connection,direction,event,size))
+        else: self.dropped+=1
+
+    def close(self):
+        report=dict(version=1,scope='relay byte-timing diagnostic',qualification=False,
+            clock='Python time.monotonic_ns on relay host',fields=('host_ns','connection','direction','event','bytes'),
+            directions={'0':'tcp_to_unix','1':'unix_to_tcp'},events={'0':'read_returned','1':'write_drained'},
+            start_host_ns=self.started,closed_host_ns=time.monotonic_ns(),capacity=self.capacity,
+            events_recorded=len(self.rows),dropped=self.dropped,complete=self.dropped==0,rows=self.rows)
+        with self.path.open('x',encoding='utf-8') as stream:
+            json.dump(report,stream,separators=(',',':'));stream.write('\n');stream.flush();os.fsync(stream.fileno())
+
+
+async def relay(path, port, seconds, trace=None):
     identity=validate_endpoint(path,port,seconds)
     peers=set(); tasks=set(); stopping=asyncio.Event(); count=failures=0
     async def handle(reader,writer):
@@ -41,13 +70,15 @@ async def relay(path, port, seconds):
             if len(tasks)>16: raise RuntimeError('Relay connection limit')
             if validate_endpoint(path,port,seconds)!=identity: raise RuntimeError('Unix endpoint replaced')
             upstream_reader,upstream=await asyncio.wait_for(asyncio.open_unix_connection(str(path)),2)
-            peers.add(upstream);count+=1
-            async def pump(source,target):
+            peers.add(upstream);count+=1;connection=count
+            async def pump(source,target,direction):
                 while True:
                     data=await source.read(65536)
+                    if trace is not None: trace.record(connection,direction,0,len(data))
                     if not data: break
                     target.write(data);await target.drain()
-            copies=[asyncio.create_task(pump(reader,upstream)),asyncio.create_task(pump(upstream_reader,writer))]
+                    if trace is not None: trace.record(connection,direction,1,len(data))
+            copies=[asyncio.create_task(pump(reader,upstream,0)),asyncio.create_task(pump(upstream_reader,writer,1))]
             try:
                 done,pending=await asyncio.wait(copies,return_when=asyncio.FIRST_COMPLETED)
                 for work in done:work.result()
@@ -80,6 +111,7 @@ async def relay(path, port, seconds):
         for sig in (signal.SIGTERM,signal.SIGINT):loop.remove_signal_handler(sig)
         print(json.dumps(dict(event='closed',connections=count,connection_errors=failures,
                               elapsed_seconds=time.monotonic()-started)),flush=True)
+        if trace is not None: trace.close()
 
 
 def main():
@@ -87,7 +119,9 @@ def main():
     parser.add_argument('--socket',type=Path,required=True)
     parser.add_argument('--port',type=int,required=True)
     parser.add_argument('--seconds',type=float,required=True)
-    args=parser.parse_args();asyncio.run(relay(args.socket,args.port,args.seconds))
+    parser.add_argument('--trace',type=Path,help='Opt-in fresh JSON path for byte-timing rows (diagnostic only)')
+    args=parser.parse_args()
+    asyncio.run(relay(args.socket,args.port,args.seconds,RelayTrace(args.trace) if args.trace else None))
 
 
 if __name__=='__main__':main()

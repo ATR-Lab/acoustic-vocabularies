@@ -47,8 +47,24 @@ or termination signal. It never changes host networking/firewall settings.
 For the Windows diagnostic, the intended SSH-local forwards are
 `127.0.0.1:18765` to remote loopback18766 for `/state`, and `127.0.0.1:18767` to
 remote loopback18768 for `/commands`. `/health` stays on each corresponding
-listener. Record owned process IDs and stop only those relays/forwards after the
-native client closes. Unrelated containers and GPU processes must be preserved.
+listener. Open them with `python tools/engineering_forward.py --host <alias>
+--seconds <lease>` (`--start` launches it), not a forwarding-only `ssh -N`. A
+`-N` connection is non-interactive, so OpenSSH leaves Nagle enabled on it and
+small private replies waited for delayed acknowledgements (#148; see
+[private health timing](private-health-timing.md)). The helper requests a
+pseudo-terminal running a bounded remote `sleep`, which sets TCP_NODELAY at
+both ends, and disables keystroke-timing obfuscation. It changes only client
+options; listeners stay on 127.0.0.1 and no host setting changes. Record owned
+process IDs and stop only those relays/forwards after the native client closes.
+Unrelated containers and GPU processes must be preserved. The relay accepts an
+optional `--trace <fresh.json>` that records byte counts and host monotonic
+times per read and drain, never payload bytes. Keep Unix socket paths under 108
+bytes; a longer path makes every relay connection fail.
+
+Before the paced loop (and so before READY) the service runs one full garbage
+collection and moves the surviving startup heap to the permanent generation
+(`gc.freeze`). Collection stays enabled with unchanged thresholds. The summary
+records `startup_heap` (collected, frozen objects, duration).
 
 Leave independent source-clock evidence null when it is unavailable. The normal
 Unity live source can display actual progressing frames but must continue to
