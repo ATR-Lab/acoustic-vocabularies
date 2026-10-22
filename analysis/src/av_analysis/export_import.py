@@ -36,6 +36,12 @@ into ``raw/<visit_id>/`` of a data root, where ``reconcile`` reads them. Rules:
 A REAL root additionally refuses an export whose headers are not qualified, which has an
 unacknowledged torn tail or whose identity carries a synthetic marker; a SYNTHETIC root
 refuses an identity without one. Only synthetic exports have been imported so far.
+
+``data-export-native-1`` additionally requires a source-exact native observation
+projection. The offline ``native_protocol`` adapter fills protocol metadata from pinned
+references and observed runtime facts, accepts full operator deviation records, and
+preserves lesson/assessment auxiliary evidence. It retains the producer's unqualified
+status and reports optional unknown measurements; see ``docs/native-export-mapping.md``.
 """
 
 from __future__ import annotations
@@ -68,6 +74,8 @@ from .templates import (
 from .vocab import VISITS
 
 EXPORT_FORMAT: Final = "data-export-provisional-1"
+NATIVE_EXPORT_FORMAT: Final = "data-export-native-1"
+NATIVE_OBSERVATIONS: Final = "native-observations.json"
 CSV_FORMAT: Final = "data-csv-provisional-1"
 EVENTS_FORMAT: Final = "data-events-provisional-1"
 HEADER_CONTRACT_FORMAT: Final = "data-header-contract-provisional-1"
@@ -567,11 +575,12 @@ def _check_manifest(doc: object) -> dict[str, Any]:
     m = _exact(doc, MANIFEST_FIELDS, "export manifest")
     identity = _exact(m["identity"], IDENTITY_FIELDS, "export manifest identity")
     _require(
-        m["schema_version"] == EXPORT_FORMAT
+        m["schema_version"] in (EXPORT_FORMAT, NATIVE_EXPORT_FORMAT)
         and isinstance(m["export_id"], str)
         and _HEX32.fullmatch(m["export_id"]) is not None,
         "EXPORT_VERSION",
-        f"export manifest: schema_version must be {EXPORT_FORMAT} with a GUID export_id",
+        "export manifest: schema_version must be a supported provisional/native version "
+        "with a GUID export_id",
     )
     _require(
         all(isinstance(v, str) and 0 < len(v) <= 96 for v in identity.values())
@@ -603,6 +612,7 @@ def _check_manifest(doc: object) -> dict[str, Any]:
             and (
                 name in BUNDLE_TABLES
                 or name in UNMAPPED_TABLES
+                or (name == NATIVE_OBSERVATIONS and m["schema_version"] == NATIVE_EXPORT_FORMAT)
                 or _SEGMENT_RE.fullmatch(name) is not None
             )
             and name not in names
@@ -620,10 +630,25 @@ def _check_manifest(doc: object) -> dict[str, Any]:
     )
     unmapped = [n for n in names if n in UNMAPPED_TABLES]
     _require(
-        not unmapped,
+        not unmapped or m["schema_version"] == NATIVE_EXPORT_FORMAT,
         "EXPORT_UNMAPPED_TABLE",
         f"no reviewed mapping for {unmapped} yet (lesson and assessment tables)",
     )
+    if m["schema_version"] == NATIVE_EXPORT_FORMAT:
+        _require(
+            NATIVE_OBSERVATIONS in names and m["headers_qualified"] is False,
+            "EXPORT_NATIVE_CONTRACT",
+            "native exports require observations and retain unqualified producer headers",
+        )
+        for table, contract in (
+            ("lesson-exposures.csv", "lesson-header-contract.json"),
+            ("assessment-stages.csv", "assessment-header-contract.json"),
+        ):
+            _require(
+                (table in names) == (contract in names),
+                "EXPORT_NATIVE_CONTRACT",
+                f"{table} and {contract} must occur together",
+            )
     segments = sorted(n for n in names if _SEGMENT_RE.fullmatch(n))
     _require(
         segments and segments == [f"raw/events-{i:04d}.local.jsonl" for i in range(len(segments))],
@@ -785,9 +810,24 @@ def read_bundle(directory: Path, manifest_sha256: str) -> Bundle:
         "EXPORT_JOURNAL_TAIL",
         "journal torn tail disagrees with the export manifest",
     )
-    return Bundle(
+    bundle = Bundle(
         manifest_bytes, manifest_sha256, m, files, tuple(trials), tuple(exposures), journal
     )
+    if m["schema_version"] != NATIVE_EXPORT_FORMAT:
+        for segment in segments:
+            for raw_line in files[segment].splitlines(keepends=True):
+                if raw_line.endswith(b"\n"):
+                    record = strict_json(raw_line, segment)
+                    _require(
+                        record["event_type"] not in ("slot_context", "menu_observation"),
+                        "EXPORT_NATIVE_VERSION",
+                        "native source events cannot be downgraded to a provisional manifest",
+                    )
+    if m["schema_version"] == NATIVE_EXPORT_FORMAT:
+        from .native_protocol import native_events
+
+        native_events(bundle)
+    return bundle
 
 
 def _table(data: bytes, columns: Sequence[str], name: str) -> list[dict[str, str]]:
@@ -1095,6 +1135,21 @@ def plan_import(
     """Bind, map and project; raises :class:`ExportRefused` before anything is written."""
     binding = bind(root, bundle, visit_id)
     check_run_sheet(run_sheet, binding, bundle.identity["coded_id"])
+    if bundle.manifest["schema_version"] == NATIVE_EXPORT_FORMAT:
+        from .native_protocol import map_native_protocol
+
+        mapped, unknown = map_native_protocol(root, binding, bundle, run_sheet, deviations)
+        native_files = {
+            **mapped,
+            "visit-run-sheet.csv": run_sheet,
+            f"{KEPT_BUNDLE}/{MANIFEST_NAME}": bundle.manifest_bytes,
+            KEPT_DEVIATIONS: deviations,
+        }
+        for path, data in bundle.files.items():
+            native_files[f"{KEPT_BUNDLE}/{path}"] = data
+        return ImportPlan(
+            visit_id, native_files, exit_manifest(root, bundle, binding, native_files), unknown
+        )
     files: dict[str, bytes] = {
         "trial-log.csv": map_trial_log(bundle, binding),
         "exposure-ledger.csv": map_exposure_ledger(bundle, binding),
@@ -1216,5 +1271,8 @@ def main(args: argparse.Namespace) -> int:
         f"headers_qualified {str(source['headers_qualified']).lower()}"
     )
     for table, columns in plan.null_columns.items():
-        print(f"{table}: {len(columns)} template columns have no producer source (empty)")
+        if source["format"] == NATIVE_EXPORT_FORMAT:
+            print(f"{table}: {len(columns)} optional measurement columns have unknown values")
+        else:
+            print(f"{table}: {len(columns)} template columns have no producer source (empty)")
     return 0
