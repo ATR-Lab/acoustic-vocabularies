@@ -20,6 +20,7 @@ from tools.prepare_joined_engineering import (  # noqa: E402
     json_bytes,
     local_path,
     need,
+    relative,
     write_new,
 )
 from tools.prepare_joined_engineering import prepare as stage  # noqa: E402
@@ -64,14 +65,15 @@ def prepare(source, output):
     )
     index = json.loads((source / "fixture.json").read_bytes())
     need(index["demo"] is True and index["participant_ready"] is False, "QUALIFIED_JOIN_DEMO")
-    bankdir = local_path(source / index["bank_dir"])
+    bankdir = local_path(source / relative(index["bank_dir"]))
     bank = qualified_dyad_bank(bankdir, expected_bank_sha256=index["bank_sha256"])
+    need(bank.demo is True and bank.bank_id == index["bank_id"], "QUALIFIED_JOIN_BANK_ID")
     master = demo_seed("DEMO-o4.4.1-example")
     unit = build_units(master, "B", "confirmatory")[0]
     permutation = permutation_json(unit)
     need((bankdir / "permutation.json").read_bytes() == permutation, "QUALIFIED_JOIN_PERMUTATION")
     allocation = register_demo_bank(
-        build_b_allocation(master, "confirmatory"), unit.unit_id, index["bank_id"]
+        build_b_allocation(master, "confirmatory"), unit.unit_id, bank.bank_id
     )
     dyad = next(d for d in allocation.dyads if d.unit_id == unit.unit_id)
     person = next(m.slot_id for m in dyad.members if m.role == "active")
