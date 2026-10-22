@@ -15,8 +15,10 @@ before another activation. Both share identical fixed seated panel geometry.
 
 ## Measurements
 
-[Input spike PR](https://github.com/ATR-Lab/acoustic-vocabularies/pull/95)
-contains the harness and analysis, not human results. Require three internal
+The [input analysis](../../spikes/O5.1.7/input_analysis.py) and
+[runbook](../spikes/O5.1.7-runbook.md), merged in
+[PR98](https://github.com/ATR-Lab/acoustic-vocabularies/pull/98), contain the
+harness and analysis, not human results. Require three internal
 testers, 32 legal commands each per method, alternating method order, captured
 loss/recovery, wrong-selection/accidental-Commit counts and a legibility ladder.
 Median/p95 prompt-to-Commit, minimum legible angle and chosen angle are Pending.

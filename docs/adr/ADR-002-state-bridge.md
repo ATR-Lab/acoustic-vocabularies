@@ -4,7 +4,8 @@ Status: Proposed — transport and rate pending measurements
 
 ## Context
 
-WBS O5.1.8 / #50, informed by #44, #46 and #47. Unity renders public simulation
+WBS O5.1.8 / #50, informed by #44, #46 and #47. Code merged for #54 and #55
+supplies the development state and command contracts. Unity renders public simulation
 state. Trial, target, intended command and correctness information never belong
 in this stream. Unitree DDS must remain isolated from physical robot networks.
 
@@ -55,8 +56,7 @@ changes. These are documented spike deviations, not baseline qualification.
 Short custom-transport SSH/Python diagnostics received 900 live frames at 30 Hz
 and 1,798 at 60 Hz, without sequence loss/reordering. They nevertheless recorded
 three and ten receive gaps above 250 ms (maxima 593.727 ms and 1,856.458 ms).
-The [diagnostic report](https://github.com/ATR-Lab/acoustic-vocabularies/blob/o5.1.5-state-bridge-spike/docs/spikes/bridge/diagnostic-results.md)
-retains this failing evidence. It cannot establish either required topology,
+The [diagnostic report](../spikes/bridge/diagnostic-results.md) retains this failing evidence. It cannot establish either required topology,
 rendered-state freshness or an attribution to a particular network component.
 
 A separate 30 Hz live ROS/Python diagnostic received 900 states in 30.007 s,
@@ -68,31 +68,54 @@ The real ROS# Unity rendering diagnostic applied 601 frames over 19.9955 s;
 callback median/p95 was 0.3082/0.5207 ms. Callback cost excludes the full render
 frame and does not establish headset timing or end-to-end latency.
 
+The merged #54 custom publisher ([notes](../isaac/publisher.md)) completed two
+paced 30 Hz one-hour runs with 60 Hz physics on the documented Ubuntu 24.04
+deviation. Both **FAIL** the strict timing/rate screen: zero missed deadlines and
+p99 absolute period error <=3.333333 ms. The
+[in-process receiver run](../isaac/publisher/actual-hour-results.json) received
+107,917 frames in 3,600.013 s with 84 missed deadlines and 3.575965 ms p99 error.
+The [separate receiver run](../isaac/publisher/receiver-process-hour-results.json)
+received 108,001 frames with zero missed deadlines but 6.069881 ms p99 error.
+Neither had a sequence gap, queue overwrite or gap above 250 ms (maxima 45.270
+and 43.907 ms). The paired unpaced disconnect diagnostics failed, then passed,
+the 5% throughput screen; that pass does not qualify paced or protected
+throughput. These unprotected local-socket workloads do not measure Wi-Fi,
+source clocks or headset rendering. No hour run has passed.
+
 ## Decision
 
-Evaluate B as the simpler candidate, with A retained for comparison. Do not freeze
-a rate or transport without evidence. The proposed public envelope is in
-[`schemas/bridge-state.schema.json`](schemas/bridge-state.schema.json), matching
-#47's tested contract. CI validates a clearly synthetic example and rejects
-top-level and nested answer metadata. When the spike is integrated, CI checks
-that the two schema copies agree.
+Evaluate B as the simpler candidate, with A retained for comparison. B is the
+#54 development publisher at a provisional 30 Hz; that is not a frozen transport
+or rate. Do not freeze either without passing evidence. The public envelope
+[`schemas/bridge-state.schema.json`](schemas/bridge-state.schema.json) mirrors
+the shipped version 2 contract
+[`isaac/publisher/state-v2.schema.json`](../../isaac/publisher/state-v2.schema.json).
+`tests/test_adr_contracts.py` fails if the copies differ beyond `$comment`,
+validates a clearly synthetic example and rejects top-level, object and
+visual-state answer metadata. The #47 version 1 spike envelope remains at
+[`apparatus/schemas/bridge-state.schema.json`](../../apparatus/schemas/bridge-state.schema.json)
+for its retained evidence; version 1 clients must reject version 2.
 
 | Field | Meaning |
 | --- | --- |
-| `version`, `kind` | Contract version 1 and `state` discriminator |
+| `version`, `kind` | Contract version 2 and `state` discriminator |
 | `source_kind` | `live` or explicitly `synthetic` for harness tests |
-| `session_id`, `seq` | New random publisher epoch after restart; increasing integer sequence |
+| `station_id` | Anonymous logical station ID such as `station-01`; not a host or device name |
+| `scene_sha256`, `reset_snapshot_sha256` | Loaded scene hash and hashed neutral reset snapshot the frame is bound to |
+| `session_id`, `seq` | New random publisher epoch after restart; contiguous integer sequence |
 | `host_monotonic_ns` | Decimal string from publisher host monotonic clock; never subtract it from another host's clock without a measured mapping |
 | `sim_time`, `sim_step` | Simulation diagnostics, never response-time origin |
-| `joint_names`, `joint_positions` | Canonical ordered names and matching finite positions in radians |
-| `objects` | Public object ID, position metres and XYZW rotation only |
+| `joint_names`, `joint_positions` | Exactly 43 canonical ordered names and matching finite positions in radians |
+| `objects` | Full sorted public inventory: ID, position metres, XYZW rotation, `visible`, `enabled` and closed visual `state` |
 
-Reject unknown fields, duplicate joints, length mismatch, nonfinite values and
-unexpected session/sequence transitions. Use local receive time for liveness,
-and check source progress and mapped publish age conservatively to reject queued
-old frames. A valid packet alone must not clear a fault after a source stall.
-Array-length equality, finite IEEE values, normalized quaternions and measured
-canonical order also require runtime validation; JSON Schema alone is insufficient.
+Visual `state` permits only `card_face`, `arrow_angle_rad`, `lid_open_fraction`,
+`tag_attached` and a registered `location`. Reject unknown fields, duplicate
+joints, length mismatch, nonfinite values and unexpected session/sequence
+transitions. Use local receive time for liveness, and check source progress and
+mapped publish age conservatively to reject queued old frames. A valid packet
+alone must not clear a fault after a source stall. Finite IEEE values,
+normalized quaternions, measured canonical order and the immutable scene
+registry also require runtime validation; JSON Schema alone is insufficient.
 Do not expose trial information in object names or encode hidden answer metadata.
 
 Proposed per-station ports: `8765 + station_index` for custom state and
@@ -106,15 +129,28 @@ State older than 250 ms triggers a fault and pauses the next exposure. A reconne
 must not silently resume a protected test. Exact recovery behavior is validated
 in #47 and later implemented only after G1.
 
-A separate proposed command schema is in `schemas/control-command.schema.json`.
-Only engineering reset/pause/resume/health are drafted here. The real command API
-and acknowledgement/idempotency behavior belong to #55; no API is implemented
-or study actions assigned by this ADR. An operator command is never a state frame.
+Commands use a separate private channel. Its shipped #55 envelope is
+[`isaac/commands/command.schema.json`](../../isaac/commands/command.schema.json),
+mirrored and equality-checked as
+[`schemas/control-command.schema.json`](schemas/control-command.schema.json).
+Replies and terminal log events use
+[`reply.schema.json`](../../isaac/commands/reply.schema.json) and
+[`command-event.schema.json`](../../isaac/commands/command-event.schema.json).
+Each request carries version 1, kind `private_command`, the fresh
+`control_session_id` from private `/health`, a unique 32-hex `request_id`,
+`command` and closed `args`. Commands are `reset`, `hold_neutral`, `demo` (legal
+tray/container action-target pairs only), `set_mode` (`teaching`, `test`,
+`post_endpoint`), `pause`, `resume`, `stop` and `health`. Acknowledgement,
+idempotency and the protected-test lock are in [commands](../isaac/commands.md).
+Public `/state` closes on command-shaped messages; an operator command is never
+a state frame. This ADR assigns no study actions.
 
 ## Consequences
 
-#54/#62 use a public state contract; #55 owns an isolated command channel after
-G1. Monotonic domains, origin epochs and canonical-name revisions must be logged.
+The merged #54 publisher emits version 2, #55 provides the isolated command
+channel and #62 owns version 2 clients; none of these freezes transport or rate
+before G1. Monotonic domains, origin epochs and canonical-name revisions must be
+logged.
 Zero steady-state >250 ms gaps is the proposed screen; failures remain evidence
 against the candidate. Recorded trajectories are a possible G2 fallback for
 review, never an unannounced substitute for the requested live stream.
@@ -122,7 +158,8 @@ review, never an unannounced substitute for the requested live stream.
 ## Manifest fields
 
 `bridge_transport`, `schema_version`, `publish_hz`, `ports`, `clock_mapping`,
-`stale_ms`, `canonical_joint_order_sha256`, `reconnect_policy`, `source_kind`.
+`stale_ms`, `canonical_joint_order_sha256`, `reconnect_policy`, `source_kind`,
+`station_id`, `scene_sha256`, `reset_snapshot_sha256`.
 
 ## Revisit trigger
 

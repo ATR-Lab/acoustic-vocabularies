@@ -1,13 +1,35 @@
 {
-  "version": 1,
+  "version": 2,
   "kind": "state",
   "source_kind": "synthetic",
+  "station_id": "station-01",
+  "scene_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "reset_snapshot_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
   "session_id": "00000000000000000000000000000000",
   "seq": 1,
   "host_monotonic_ns": "1000000000",
   "sim_time": 0.016666666666666666,
   "sim_step": 1,
-  "joint_names": ["engineering_joint_0", "engineering_joint_1"],
-  "joint_positions": [0.0, 0.1],
-  "objects": [{"id": "placeholder_0", "position_m": [0, 0, 0], "rotation_xyzw": [0, 0, 0, 1]}]
+  "joint_names": [
+    "engineering_joint_00", "engineering_joint_01", "engineering_joint_02", "engineering_joint_03",
+    "engineering_joint_04", "engineering_joint_05", "engineering_joint_06", "engineering_joint_07",
+    "engineering_joint_08", "engineering_joint_09", "engineering_joint_10", "engineering_joint_11",
+    "engineering_joint_12", "engineering_joint_13", "engineering_joint_14", "engineering_joint_15",
+    "engineering_joint_16", "engineering_joint_17", "engineering_joint_18", "engineering_joint_19",
+    "engineering_joint_20", "engineering_joint_21", "engineering_joint_22", "engineering_joint_23",
+    "engineering_joint_24", "engineering_joint_25", "engineering_joint_26", "engineering_joint_27",
+    "engineering_joint_28", "engineering_joint_29", "engineering_joint_30", "engineering_joint_31",
+    "engineering_joint_32", "engineering_joint_33", "engineering_joint_34", "engineering_joint_35",
+    "engineering_joint_36", "engineering_joint_37", "engineering_joint_38", "engineering_joint_39",
+    "engineering_joint_40", "engineering_joint_41", "engineering_joint_42"
+  ],
+  "joint_positions": [
+    0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+  ],
+  "objects": [
+    {"id": "placeholder_card_0", "position_m": [0, 0, 0], "rotation_xyzw": [0, 0, 0, 1], "visible": true, "enabled": true, "state": {"card_face": 1, "location": "placeholder_tray_0"}},
+    {"id": "placeholder_container_0", "position_m": [0.1, 0, 0], "rotation_xyzw": [0, 0, 0, 1], "visible": true, "enabled": false, "state": {"lid_open_fraction": 0.5, "tag_attached": false}}
+  ]
 }
