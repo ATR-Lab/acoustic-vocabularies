@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.SessionIntegration;
 using AcousticVocab.StudyAudio;
@@ -99,6 +100,42 @@ namespace AcousticVocab.SelectionMenus.Tests
             using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in yoked)ledger.Append(row);
             Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));
         }
+        // Dyad 032/033/034: the active member's exact recorded slot starts. Atom
+        // menus are back to back (45 s); the engine's next base is previous onset
+        // + 45 s, the replay target is block anchor + recorded spacing.
+        static readonly (string,double)[] Active032={("profile",17848.5282),("K-r2",81383.6218),("Q-r2",126383.6218),("K-a2",171383.6218),("Q-a1",216383.6218),
+            ("K-r1",261383.6218),("Q-r1",306383.62179999996),("K-a1",351383.62179999996),("Q-a2",396383.62179999996)};
+        [TestCase(92928.6141,4842)][TestCase(111697.2259,4843)]   // 034 (fast resume: AM-03 base exceeded target by one ULP), 033 (slow resume)
+        public void RecordedYokedTimelinesReplayEveryAtomMenuOnTheEngineSlotBase(double blockAnchor,double prepareLeadMs)
+        {
+            double now=0;var replay=MenuReplaySequence.ForRecordedStarts(Active032,1000,()=>now);var refusals=new List<JObject>();replay.AnchorRefused+=refusals.Add;
+            var atoms=Active032.Skip(1).Select(x=>x.Item1).ToArray();now=blockAnchor-5000;Assert.That(replay.AnchorBlock(atoms,blockAnchor),Is.True);
+            double onset=double.NaN;
+            for(int k=0;k<atoms.Length;k++)
+            {
+                double baseOnset=k==0?blockAnchor:onset+45*1000.0;now=baseOnset-prepareLeadMs;
+                double gap=replay.MinimumGapBeforeMs(MenuItem(atoms[k]),baseOnset);onset=baseOnset+gap;
+                Assert.That(onset-blockAnchor-(Active032[k+1].Item2-Active032[1].Item2),Is.EqualTo(0).Within(1e-6),"Recorded spacing inside the block is kept");
+            }
+            Assert.That(refusals,Is.Empty);
+        }
+        [Test]public void ThirtyFourAnchorArithmeticReproducesTheOneUlpExcess()
+        {
+            double baseOnset=137928.6141+45*1000.0,target=92928.6141+171383.6218-81383.6218;
+            Assert.That(baseOnset,Is.GreaterThan(target),"The recorded 034 values: base exceeds target");Assert.That(baseOnset-target,Is.LessThan(MenuReplaySequence.RepresentationToleranceMs));
+        }
+        [Test]public void ReplayRefusalNamesTheFailedClauseAndValues()
+        {
+            double now=0;var replay=MenuReplaySequence.ForRecordedStarts(Active032,1000,()=>now);var refusals=new List<JObject>();replay.AnchorRefused+=refusals.Add;
+            var atoms=Active032.Skip(1).Select(x=>x.Item1).ToArray();Assert.That(replay.AnchorBlock(atoms,100000),Is.True);
+            double target=100000+Active032[2].Item2-Active032[1].Item2;now=target-5000;
+            Assert.That(Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(MenuItem(atoms[1]),target+.002)).Code,Is.EqualTo("MENU_REPLAY_ANCHOR_MISSED"),"Beyond 1 us is still refused");
+            Assert.That((string)refusals[0]["clause"],Is.EqualTo("base_after_target"));Assert.That((double)refusals[0]["base_excess_ms"],Is.EqualTo(.002).Within(1e-6));
+            Assert.That((string)refusals[0]["menu_key"],Is.EqualTo(atoms[1]));Assert.That((string)refusals[0]["segment_first_key"],Is.EqualTo(atoms[0]));
+            now=target-149;Assert.Throws<SessionFault>(()=>replay.MinimumGapBeforeMs(MenuItem(atoms[1]),target-1000));
+            Assert.That((string)refusals[1]["clause"],Is.EqualTo("start_too_late"));Assert.That((double)refusals[1]["start_margin_ms"],Is.EqualTo(-1).Within(1e-6));
+            Assert.That(refusals.All(x=>x["now_mono_ms"].Type==JTokenType.Float&&x["target_mono_ms"].Type==JTokenType.Float),Is.True);
+        }
         [Test]public void OneStartAnchorStillMissesASlowerBlockResume()
         {
             string path=Write(Events(gapAfter:m=>m==1?ActivePause:5000));var replay=MenuReplaySequence.Load(path,PcmWave.Hash(File.ReadAllBytes(path)),Binding(),Verification(),created.AddHours(1),1000,()=>1000+50000+45000+4093);
@@ -121,6 +158,35 @@ namespace AcousticVocab.SelectionMenus.Tests
             Assert.Throws<SessionFault>(()=>replay.AnchorBlock(SecondBlock,100),"Anchor in the past");
             Assert.That(replay.AnchorBlock(SecondBlock,9000),Is.True);Assert.That(replay.AnchorBlock(SecondBlock,12000),Is.True,"A refused resume can be retried before any menu is planned");
             Assert.That(replay.MinimumGapBeforeMs(MenuItem(Keys[2]),11000),Is.EqualTo(1000));Assert.That(replay.AnchorBlock(SecondBlock,15000),Is.False);
+        }
+        // 033/034: a synchronous Preverify stalled the idle preflight 423-455 ms.
+        YokedReplayPreverifier Staged(YokedReplayAuthority authority,string path,string pin,List<string> log,Func<string,int,string,bool> receipt=null)
+        {
+            int main=Thread.CurrentThread.ManagedThreadId;
+            return new YokedReplayPreverifier(authority,Keys,k=>{log.Add("prepare:"+k+":"+(Thread.CurrentThread.ManagedThreadId==main));return (Options(k),"DEMO-meaning");},
+                (k,i,r)=>{log.Add("receipt:"+(Thread.CurrentThread.ManagedThreadId==main));return receipt?.Invoke(k,i,r)??(i==1&&r==Hash);},
+                v=>{log.Add("preload:"+(Thread.CurrentThread.ManagedThreadId==main));return MenuReplaySequence.Preload(path,pin,Binding(),v,created.AddHours(1),()=>100);},()=>"P2|snapshot");
+        }
+        static bool Finish(YokedReplayPreverifier staged)
+        {var watch=System.Diagnostics.Stopwatch.StartNew();while(watch.ElapsedMilliseconds<20000){if(staged.Pump())return true;Thread.Sleep(2);}return false;}
+        [Test]public void StagedPreverificationSpreadsTheWorkAndCompletesInOrderOnTheMainThread()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var log=new List<string>();var authority=Authority(path,pin,()=>100,_=>{});var staged=Staged(authority,path,pin,log);
+            for(int i=0;i<Keys.Length;i++){Assert.That(staged.Pump(),Is.False);Assert.That(staged.MaterialsPrepared,Is.EqualTo(i+1),"One menu's candidates per frame");Assert.That(authority.Preverified,Is.False);}
+            Assert.That(staged.Pump(),Is.False);Assert.That(staged.Running,Is.True);Assert.That(authority.Preverified,Is.False,"Not ready while the worker runs, so a Start cannot coincide");
+            Assert.That(Finish(staged),Is.True);Assert.That(authority.Preverified,Is.True);Assert.That(authority.Verifications,Is.EqualTo(1));
+            Assert.That(log.Where(x=>x.StartsWith("prepare:")).All(x=>x.EndsWith(":True")),Is.True,"Candidate audio is read on the main thread");
+            Assert.That(log.Single(x=>x.StartsWith("preload:")),Is.EqualTo("preload:False"),"Ledger hashing and validation run on a worker");
+            Assert.That(log.Where(x=>x.StartsWith("receipt:")),Is.EqualTo(Enumerable.Repeat("receipt:True",Keys.Length)),"Store receipts are verified on the main thread after the worker");
+            Assert.That(authority.BindForExplicitStart(Guid.NewGuid().ToString("N"),2,"start").Anchored,Is.True);
+        }
+        [Test]public void StagedPreverificationKeepsEveryRefusal()
+        {
+            string path=Write(Events()),pin=PcmWave.Hash(File.ReadAllBytes(path));var bytes=File.ReadAllBytes(path);bytes[bytes.Length/2]^=1;File.WriteAllBytes(path,bytes);
+            var authority=Authority(path,pin,()=>100,_=>{});var staged=Staged(authority,path,pin,new List<string>());
+            Assert.That(Assert.Throws<SessionFault>(()=>Finish(staged)).Code,Is.EqualTo("MENU_LEDGER_HASH"),"A tampered ledger is refused on the main thread");Assert.That(authority.Preverified,Is.False);
+            string good=Write(Events()),goodPin=PcmWave.Hash(File.ReadAllBytes(good));var second=Authority(good,goodPin,()=>100,_=>{});
+            Assert.That(Assert.Throws<SessionFault>(()=>Finish(Staged(second,good,goodPin,new List<string>(),(k,i,r)=>false))).Code,Is.EqualTo("MENU_LEDGER_RECEIPT"));Assert.That(second.Preverified,Is.False);
         }
         [Test]public void FailedDurableAnchorNeverSchedulesAndCannotRetryIntoANewClock()
         {

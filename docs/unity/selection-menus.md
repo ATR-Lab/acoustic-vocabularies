@@ -183,6 +183,31 @@ the Start frame and stalled it about 260 ms, after which the menu prepare latche
 `CONTROL_QUEUED`. The health policy is unchanged: stale probes are not dropped at
 the pre-cue prepare.
 
+Done as one synchronous call, that verification still stalled the idle preflight
+423–455 ms (attempts 033/034). `YokedReplayPreverifier` therefore stages it in
+three steps (#252):
+1. On the main thread, one menu key per frame, it reads and hash-verifies that
+   key's candidate audio through the package's own checks.
+2. On a worker thread, it checks the ledger file pin and the canonical chain and
+   validates the records against those immutable, already verified candidates.
+3. Back on the main thread, in order, it verifies every store selection receipt
+   the ledger names, then the authority accepts the result.
+
+The preflight is not ready until step 3, so an operator Start cannot coincide
+with any of it. Every pin and refusal is kept, and a failure surfaces on the main
+thread.
+
+The engine schedules each atom menu at the previous onset plus 45 s. The replay
+target is the block anchor plus the recorded spacing. These are the same instant
+computed in two orders. In attempt 034 the engine's base exceeded the target by
+one ULP (2.9e-11 ms) at AM-03, and the start was refused. A representation
+difference of at most 1 µs (`RepresentationToleranceMs`) is now absorbed onto the
+engine's base. Any larger lateness is refused, and the refusal is journaled as
+`replay_anchor_refused`. That record names the failed clause
+(`base_after_target`, `start_too_late`, `unanchored` or `nonfinite`) and the
+values compared: now, base, target, anchor, start margin, base excess, and the
+segment's first key.
+
 That anchor (the yoked start plus the configured lead) applies to the first menu
 block. By maintainer decision (#245), every later menu block is anchored at its
 own explicit boundary resume plus the same lead (`AnchorBlockAtResume`, a durable
