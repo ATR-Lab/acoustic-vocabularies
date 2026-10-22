@@ -29,6 +29,10 @@ namespace AcousticVocab.StudyAudio
         public string PackageId { get; }
         public string PackageSha256 { get; }
         public bool Demo { get; }
+        // Study B only: the bank format the package records (#13): the verified
+        // #26 manifest or the explicitly provisional DEMO input. Null for Study A.
+        public string BankFormat { get; }
+        public string BankSha256 { get; }
         public int CombinationsChecked { get; }
         public IReadOnlyList<string> AtomIds => Array.AsReadOnly(PackageRules.Atoms.ToArray());
         internal LoadedAudioPackage(string root,string manifestHash,JObject manifest,
@@ -39,6 +43,7 @@ namespace AcousticVocab.StudyAudio
             Study=(string)manifest["study"]; PackageId=(string)manifest["package_id"];
             PackageSha256=(string)manifest["package_sha256"]; Demo=(bool)manifest["demo"];
             profile=(string)manifest["profile"]; CombinationsChecked=checkedCount;
+            BankFormat=(string)manifest["bank"]?["format"]; BankSha256=(string)manifest["bank"]?["bank_sha256"];
         }
         string Key(string id,string selectedProfile,int actionRank=0,int referentRank=0)
         {
@@ -127,6 +132,15 @@ namespace AcousticVocab.StudyAudio
             catch(AudioIntegrityException) { throw; }
             catch(Exception) { throw new AudioIntegrityException(); }
         }
+        // Strict JSON (no extensions, duplicate keys or trailing data) for an
+        // independently pinned document bound to a package, e.g. the #26 bank
+        // manifest. Hashing and shape checks stay with the caller.
+        public static JObject ParseStrictDocument(byte[] bytes,int maximumBytes)
+        {
+            try { PackageRules.Require(bytes!=null && bytes.Length>0 && bytes.Length<=maximumBytes); return PackageRules.Json(bytes); }
+            catch(AudioIntegrityException) { throw; }
+            catch(Exception) { throw new AudioIntegrityException(); }
+        }
         static LoadedAudioPackage LoadChecked(string root,string expected,bool allowDemo)
         {
             PackageRules.Require(PackageRules.IsHash(expected));
@@ -150,7 +164,8 @@ namespace AcousticVocab.StudyAudio
             else
             {
                 PackageRules.Keys(manifest["bank"],"format","format_version","bank_sha256");
-                PackageRules.Require((string)manifest["bank"]["format"]=="av-sound/provisional-bank" && PackageRules.Integer(manifest["bank"]["format_version"])==1 && PackageRules.IsHash((string)manifest["bank"]["bank_sha256"]));
+                string bankFormat=(string)manifest["bank"]["format"];
+                PackageRules.Require((bankFormat=="av-banks/bank-manifest" || bankFormat=="av-sound/provisional-bank") && PackageRules.Integer(manifest["bank"]["format_version"])==1 && PackageRules.IsHash((string)manifest["bank"]["bank_sha256"]));
             }
             PackageRules.Require((string)manifest["package_sha256"]==expected && CanonicalPackageHash(Encoding.UTF8.GetString(manifestBytes))==expected);
             var files=new Dictionary<string,AudioFileRecord>(StringComparer.Ordinal);

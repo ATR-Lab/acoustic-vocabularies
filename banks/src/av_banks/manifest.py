@@ -54,7 +54,7 @@ from av_generation.jsonio import (
 )
 from av_generation.outcomes import SlotOutcome
 from av_generation.records import Document, SlotRecord, read_records
-from av_sound.dyad_bank import BankOption, DyadBank
+from av_sound.dyad_bank import BankHandoff, BankOption, DyadBank
 from av_sound.recipe import Recipe
 from jsonschema import Draft202012Validator
 
@@ -429,16 +429,30 @@ def manifest_from_files(path: str | os.PathLike[str]) -> BankManifest:
 
 def to_dyad_bank(manifest: BankManifest) -> DyadBank:
     """The manifest as `av_sound.dyad_bank.DyadBank` (complete banks only; option
-    `source` = the slot ID). Amendments are not applied (see the module docstring)."""
+    `source` = the slot ID, `file_sha256` = the option WAV's hash). Its `handoff` names
+    this manifest (`av-banks/bank-manifest` v1 and the bank hash), so a package built
+    from it records the #26 identity rather than the provisional one. Amendments are
+    not applied (see the module docstring); `av_banks.handoff.qualified_dyad_bank`
+    verifies the bank directory first and refuses an amended bank."""
     if manifest.status != "complete":
         raise ManifestError(f"bank {manifest.bank_id} is {manifest.status}; nothing to package")
     cells = {
         (cell.profile, cell.atom_id): tuple(
-            BankOption(o.rank, Recipe.from_dict(o.recipe), o.pcm_sha256, o.slot_id)
+            BankOption(
+                o.rank,
+                Recipe.from_dict(o.recipe),
+                o.pcm_sha256,
+                o.slot_id,
+                file_sha256=o.file_sha256,
+            )
             for o in cell.options
         )
         for cell in manifest.cells
     }
     return DyadBank(
-        bank_id=manifest.bank_id, demo=manifest.demo, labels=dict(manifest.labels), cells=cells
+        bank_id=manifest.bank_id,
+        demo=manifest.demo,
+        labels=dict(manifest.labels),
+        cells=cells,
+        handoff=BankHandoff(BANK_MANIFEST_FORMAT, BANK_MANIFEST_VERSION, manifest.bank_sha256()),
     )
