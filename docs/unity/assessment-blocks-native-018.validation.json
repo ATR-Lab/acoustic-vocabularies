@@ -1,0 +1,205 @@
+{
+  "scope": "Native SIMULATION_TEST rerun for #222 (assessment response close race); engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-10",
+  "refs": [
+    "#222",
+    "#82",
+    "#69"
+  ],
+  "player": {
+    "build_id": "simulation-native-018",
+    "source_commit": "de0a5ac685df6d206f1dff60edcbdfca86906820",
+    "composition": {
+      "main": "0aa8eebb227e169d48051ed574d52ea8fbbdb51c",
+      "pr201": "d85cd121d8ef80a7c74cbe52e2344267d1b4e245",
+      "pr199": "d98e471ea1462b911ee9e1cc54c310ef67cef8f0",
+      "pr221": "d7eab7ada38e11a1d96f32f24dc052599fd3c70f",
+      "pr223": "f28688c87846f62833c51c8cb8982e4706985bda",
+      "note": "local test merges ce77221 (main + #201 + #199) -> 8557bca (+ #221) -> de0a5ac (+ #223); not pushed"
+    },
+    "dirty_source": false,
+    "editor": "6000.6.0f1",
+    "target": "StandaloneWindows64",
+    "build_manifest_sha256": "af78e20cf61a8eba3f51bd820a1aee32b90c20be9be8e524e9c93b02a46ba56e"
+  },
+  "isaac_service": {
+    "source_commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+    "note": "ce77221 + #218 (startup heap freeze); approved image, --network none",
+    "forward": "tools/engineering_forward.py (#218)"
+  },
+  "operator": "Start only from awaiting_operator; Resume at each block-boundary pause; fresh DEMO menu store per attempt",
+  "attempts": {
+    "simulation-test-B-V1-018-assess-007": {
+      "native_status": "SESSION_PREFLIGHT_FAILED",
+      "menu_ledger_sealed": false,
+      "isaac": {
+        "source_rate_hz": 16.19,
+        "publish_interval_max_ms": 124.3,
+        "gpu_util_median_pct": 11.0,
+        "gpu_util_max_pct": 73.0,
+        "physics_steps": 7437,
+        "fault": null
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 0,
+        "software_completed_plays": 0,
+        "content_hash_verified_plays": 0,
+        "completed_opportunities": 0,
+        "scheduled_opportunities": 39,
+        "selection_count": 0,
+        "fault_codes": [
+          "JOIN_RUNTIME_FAILED",
+          "SESSION_JOIN_DISPOSED",
+          "SESSION_PREFLIGHT_FAILED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "GRAMMAR_COMPLETION_MISSING",
+          "MENU_LEDGER_UNSEALED",
+          "MENU_SEAL_MISSING",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "OPERATOR_LOAD_START_MISSING",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "STORE_FINAL_WAVE_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "11e0ed2a1273f35eb62290afaf0037573a96e62306547262bdcbf40bfb940c56",
+        "native-result.local.json": "ec7bb887af1630a559fd4d4664eeb87f7f03943832aa4e3404798d0f9f357dac",
+        "events-0000.local.jsonl": "4a6112d635a0af1424aacb890d5d81f5938e46353c2001c87381628b73e8f5b7",
+        "export manifest.json": "d18d2c442fb40213ec9129c01bffd13d0ca404502e6f9b1be4321d182d9623b4",
+        "mock-run.manifest.json": "11bbab2f49a1ee0c6e13f937f8fa3e435d7f2b9722f580ed5be6649fd86f5887",
+        "reconciliation.local.json": "dcaafa52b817c936f2b3482d8a64d189015945de411ce98e623316152a0ac587",
+        "process-result.local.json": "f8c4318ae1ebe27a50d00498520aec93debbb73474e7aac28cce19cab6c2e56b",
+        "console audit.local.jsonl": "c738d0bbf85df3f29e2280ae1e6a4834b2ac360bb6b011cf9189f88f4111c51c",
+        "native.log": "f1f52009cc11d704bf4382bd0f91e5d9c7f4f69b7a45ea95c2bdee9e5728e1fe",
+        "isaac summary.json": "1e72cff6e3aea6c0c55d7a6c3c37977986c218d71499839483b9753fae467e2a",
+        "isaac publish.csv": "755c054428d31191058673a62995fb33f629245e0b91a28b1fd081597c62c14e",
+        "menus.local.jsonl": "14b8fccf2696ba43ab9865e361a6d470829dee9d6abc40ff865d4040d8b1eb71",
+        "frames.csv": "9881a506eb9a86387bc4bd5bbfa0b7fdb17a5af4bb4b12b098b46370b14e58ce"
+      },
+      "notes": "Operator load was sent 0.3 s before the engine's prepared view and was rejected; the driver did not retry, so the player idled. At local mono 383,050 ms (about 6 min, still at the profile-menu prepare_factory phase) preflight refused CONTROL_QUEUED: four queued health replies, receipt age 423 ms, RTT 29.5 ms, source ages about 2 ms. No exposure occurred."
+    },
+    "simulation-test-B-V1-018-assess-008": {
+      "native_status": "ASSESSMENT_NEUTRAL_LOST",
+      "menu_ledger_sealed": true,
+      "isaac": {
+        "source_rate_hz": 16.32,
+        "publish_interval_max_ms": 143.5,
+        "gpu_util_median_pct": 11.0,
+        "gpu_util_max_pct": 74.0,
+        "physics_steps": 16191,
+        "fault": null
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 124,
+        "software_completed_plays": 124,
+        "content_hash_verified_plays": 124,
+        "completed_opportunities": 28,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "ASSESSMENT_NEUTRAL_LOST",
+          "OPERATOR_ADAPTER_FAILED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "FRAME_CAPTURE_INCOMPLETE",
+          "FRAME_FAULT_PRESENT",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "PROTECTED_DISPLAY_TRACE_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "a1514a9844a57771507c91071fff089d5827d28fafde344be4761af6f6f1ea3f",
+        "native-result.local.json": "689c0e4b6d5b11dfdb0adf6390ad82d0c59d320aa9e94ab4110b8df97f52595a",
+        "events-0000.local.jsonl": "f18dc6c61c8ddeb23377de76da5e98d8afb2d8f5b566f0209d865a47f3d7b739",
+        "export manifest.json": "aba93d5d84642fd63ac77d8ab307148037841195ad77e9464d3277a94ba6f10d",
+        "mock-run.manifest.json": "a6c50784c97d092e5a1437defd43faeede17e845d7cd7d390191168b55e989b0",
+        "reconciliation.local.json": "2953827fb96d30e0a6eae3e8a1c630734ff25c199bca3401021539f61958d274",
+        "process-result.local.json": "c3888857171c47be5e699e3b865d016155ff228cb8f28a206d1746cdd21f242d",
+        "console audit.local.jsonl": "8c7e38d4fd9f785f3ce2168365ad42472364ff2a798260a97c0bfcbb7d06fded",
+        "native.log": "88a607dfac6081a30f48a602ccabeb0aac4f7354a642193e7f3dbc502f2290e1",
+        "isaac summary.json": "7a371d03f61efa0f88c404e8ae98f89b2a9cb224a2636912714db662265db538",
+        "isaac publish.csv": "55321c4c8018a9bc473f31b627c9fb35dc6fd8383b5ca2a2a88a69f2a83f24b0",
+        "menus.local.jsonl": "c16769281a93ba5257ae7af714535d60755e5f8eef1efb8a211ac1bdd725c82a",
+        "frames.csv": "df37bff0ca315756edd3a4a5f5c940bde410b5b10dbc3958f9cae8d7fbc1b2d9"
+      },
+      "blocks": {
+        "profile_menu": "1/1",
+        "atom_menus": "8/8",
+        "atomic_lessons": "8/8",
+        "message_lessons": "8/8",
+        "trained": "3/4 (stopped in item 4)",
+        "novel": "0/2",
+        "atomic": "0/8"
+      },
+      "trained_item_3": {
+        "attempt_id": "B-C01-M1-V1-TR-03",
+        "onset_mono_ms": 842099.5683,
+        "panel_open": 842137.3776,
+        "deadline_lock": 854103.1157,
+        "panel_timeout": 854103.8628,
+        "timeout_response_recorded": 854104.6521,
+        "session_response_timeout": 854110.987,
+        "closed": 854121.7524,
+        "reset": 854128.9822,
+        "done": 854342.5517,
+        "note": "Previously ASSESSMENT_RESPONSE_LOG_MISSING (#222); now the timeout is recorded before Closed and the item completes"
+      },
+      "new_fault": {
+        "code": "ASSESSMENT_NEUTRAL_LOST",
+        "attempt_id": "B-C01-M1-V1-TR-04",
+        "block": "trained",
+        "item_index": 3,
+        "state": "ResponseOpen",
+        "scheduled_onset_mono_ms": 856099.5683,
+        "panel_open": 856141.2303,
+        "panel_aborted": 865692.6306,
+        "item_fault": 865695.782,
+        "onset_to_fault_ms": 9593.1,
+        "response_deadline_ms_after_onset": 12000,
+        "control_health_after_fault": {
+          "effective_age_ms": 95.94,
+          "receipt_elapsed_ms": 77.18,
+          "round_trip_ms": 7.03,
+          "publisher_age_ms": 11.48,
+          "pending_commands": 1
+        },
+        "frames_before_fault": "steady 21-23 ms render intervals to 865688.9 ms",
+        "isaac_streams": "no publisher or public-relay gap within 11 s before the fault (max publish interval 143.5 ms for the whole run)",
+        "thrown_at": "ProtectedSlots.Tick: !resetRequested && (!NeutralReady || !ModeReady); NeutralReady = reset confirmed && control.ResetAcknowledged(reset) && source.CheckExposureReady()",
+        "unresolved": "Which NeutralReady/ModeReady conjunct failed is not recorded"
+      }
+    }
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; no headset, acoustic, display or physical timing qualification",
+    "Neither attempt completed the visit",
+    "Raw artifacts stay private; only hashes are published"
+  ]
+}
