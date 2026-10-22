@@ -34,6 +34,16 @@ time is not used for human intervals. Missing/late scheduling, journal failures,
 focus/input loss, missing onset authority, or reset failures stop further plays
 and require explicit recovery; nothing is replayed automatically.
 
+A response-panel fault keeps the panel's bounded reason in the lesson code:
+- `input_lost` → `LESSON_INPUT_LOST`;
+- `application_focus_lost` → `LESSON_FOCUS_LOST`;
+- any other lowercase panel code `x` → `LESSON_PANEL_X` (for example `LESSON_PANEL_FOUNDATION_FAULT`);
+- anything else → `LESSON_PANEL_FAULT`.
+
+Free text never enters a code. The first fault remains the primary fault. Before
+this change, attempt A-D0 017 reported a foundation focus fault as
+`LESSON_INPUT_LOST`.
+
 Aligned whole-message lessons use the qualified `AUDIO_ONSET_ESTIMATED` event,
 actual action PCM sample count / 48000, exactly 9600 silent samples, and referent
 sample count. Highlights are off through the 200 ms gap and throughout retrieval.

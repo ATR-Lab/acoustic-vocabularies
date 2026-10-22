@@ -223,6 +223,21 @@ and capability pins, session nonce, and the exact closed export manifest hash.
 Failure to publish a receipt cannot qualify the run. Repeated Close calls do not
 retry a failed teardown or replace an existing result.
 
+**After a terminal fault the player stays open on purpose (#255).** The fault
+runs `Close()` immediately: every cleanup step, the export and the
+`native-result.local.json` receipt carrying the fault status and
+`complete:false`. In attempts 014, 017 and 018 the receipt was published 0.05–1 s
+after the fault. Nothing waits for the window to close.
+
+The latched status stays visible so the operator can inspect and record it.
+`-simulationQuitOnComplete` quits only after `JOIN_COMPLETE_FORMS_RECORDED`.
+Closing the window later runs the #199 quit coordinator, whose `Close()` is
+idempotent and leaves the published receipt unchanged.
+
+The process exit code after a manual close is not evidence of success.
+Reconciliation takes completion only from the post-cleanup receipt, so a fault is
+never masked. Record each manual close in the attempt notes.
+
 Run the independent native reconciliation tool against those actual artifacts.
 It must distinguish software callback observations from acoustic evidence and
 identify unexecuted visits, faults, or captures. Preserve failed attempts rather

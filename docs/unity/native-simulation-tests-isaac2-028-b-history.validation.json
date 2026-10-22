@@ -1,0 +1,489 @@
+{
+  "scope": "Native SIMULATION_TEST Study B multi-visit dyad history attempt (fresh DEMO unit B-C02) on isaac2; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-12",
+  "refs": [
+    "#81",
+    "#78",
+    "#82"
+  ],
+  "host_load": "isaac2 shared with another session's compile/test/bench jobs (load average about 1-14 at launches; recorded per run in isaac2-load-at-launch.txt hashes)",
+  "player": {
+    "build_id": "simulation-native-028",
+    "source_commit": "afaff5577bd7c8fe291198930f8e45a6c5d6f064",
+    "composition": "c5c2e7a + #250 312ae6f + #253 354e4c0 (= 2ec4d30) + #256 23cbf6514576da8b6a7d8f227f72721ff1f4e723; no conflicts; local test merges, not pushed",
+    "build_manifest_sha256": "bb1e2815d91423c4b14fd65865ea5f667ed2ef5ca5205ef3cfddb0dbc6602a49",
+    "dirty_source": false
+  },
+  "tooling": {
+    "source_commit": "e9d3b365ceb7057202804c623d76d03e511d4835"
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "launch": "--observer-prim-only"
+  },
+  "fresh_unit": {
+    "unit": "B-C02",
+    "active": "B-C02-M2",
+    "yoked": "B-C02-M1",
+    "chain": "Repo producer tooling (python -m av_schedules curriculum/schedules/run-sheets, --demo-seed DEMO-local, B confirmatory) with a private DEMO package-hash mapping binding B-C02 to its own sealed DEMO package and every other unit unchanged; no hand-edited run sheets",
+    "mapping_sha256": "f7a740a6b22590c05cbd68e3c29e5f14fbd6fde5dd2f24d05afdc7a2bbc3d21b",
+    "run_sheets_manifest_sha256": "693854e9d4f4d60909127b7c3eb9a798cb52ebb3989433c2f5d4f63b8eeb3516",
+    "schedules_manifest_sha256": "c0e84d70e6555104b66a04340f97cf2ecc9a7f4dfa20d91f0151db457ccbda7a",
+    "unchanged_vs_previous_chain": [
+      "B-C02 schedules and permutation",
+      "schedules manifest",
+      "speech list",
+      "B-C01 run sheets"
+    ],
+    "package_sha256": "e40fe3036c4419be58e6d71d5136d515cedd03564c97cde9b901fe2c1f05efb1",
+    "package_extras": {
+      "structured_family": "K",
+      "swap_w1_w4": true
+    },
+    "bank_sha256": "8c285c8cacc96ba16f636b6f241b8a6cf1171e85338b6d960116e58eb6be9a22",
+    "speech_manifest_sha256": "69348214973756d4b553ac95a1107c8c7e9cd79d42434c5e7a61d1a067c8d047",
+    "speech_status": "DEMO engineering_unreviewed TTS",
+    "fixture_set_sha256": "094ea5ec5cfb3a292d68500c4ba94202d37a24f82e1601259a31e981fe22a3aa",
+    "menu_store_initial_manifest_sha256": "af231971c8c61f340617a5f62934410303daad56ad30fba836809cfcb9a65e17"
+  },
+  "staging": {
+    "station_headset_unit_id": "meta-xr-simulator-v207",
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "operator": "per-member-visit fresh console with prepared anchors; Start 5 s (active) / 15 s (yoked) after ready; boundary Resumes about 2.3 s"
+  },
+  "visits": {
+    "V1": {
+      "active simulation-test-B-V1-028-C02A-isaac2-039": {
+        "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "native_result": {
+          "status": "JOIN_COMPLETE_FORMS_RECORDED",
+          "complete": true,
+          "cleanup_succeeded": true,
+          "export_succeeded": true
+        },
+        "preflight_failures": [],
+        "simulation_inputs": {
+          "driver_armed": 1,
+          "menu": 9,
+          "panel": 30,
+          "rating": 5
+        },
+        "stall_checks": {
+          "sample_rows": 24658,
+          "sample_gaps_over_250ms": [
+            {
+              "start_ms": 980014.6,
+              "gap_ms": 1570.5,
+              "stall_records": []
+            }
+          ],
+          "main_thread_stall_records": [],
+          "state_source_codes": {
+            "STATE_SOURCE_INITIALIZED": 1,
+            "STATE_TRANSPORT_RESTART": 1,
+            "STATE_TRANSPORT_CONNECTED": 1,
+            "STATE_QUEUED_TOO_LONG": 14,
+            "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+            "STATE_STALE": 2,
+            "STATE_RECOVERED": 1,
+            "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+            "STATE_HOST_DISABLED": 1
+          },
+          "reset_confirmed_events": 85,
+          "reset_confirmed_during_idle": 0,
+          "stale_health_probe_dropped": 0
+        },
+        "reconciliation": {
+          "integrity_verified": true,
+          "software_reconciliation_complete": false,
+          "native_claimed_complete": false,
+          "scheduled_plays": 134,
+          "requested_plays": 134,
+          "callback_observed_plays": 134,
+          "software_completed_plays": 134,
+          "content_hash_verified_plays": 134,
+          "completed_opportunities": 39,
+          "scheduled_opportunities": 39,
+          "selection_count": 8,
+          "fault_codes": [],
+          "incomplete_reasons": [
+            "FRAME_BUDGET_SCREEN_FAILED",
+            "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+            "MENU_DISPLAY_TIMING_SCREEN_FAILED"
+          ],
+          "process_exit": 0,
+          "native_post_cleanup_complete": true
+        },
+        "raw_artifact_sha256": {
+          "joined.local.jsonl": "92dc99e52d54b8846e76b769f383b3c0835a9fc39e95183f1135807cd6b6e742",
+          "events-0000.local.jsonl": "8b51091685fd73ce7f58f0c7b1c0e1913b9e8149885f741ecb04c8b15f062aa1",
+          "native-result.local.json": "f8ea018f5ff25173e4195870db385e1d6bd3d07457e7cf55acbd11ef1338b50a",
+          "export manifest.json": "77f9933775aa8f0e5efe96ff7c3fe319cb02f958fd2b2947106bedacd7ccef6b",
+          "mock-run.manifest.json": "8d5fb7ae402a5c7c4962555f6d8cb75c66befcfb46d93031b109cdb4197ca289",
+          "reconciliation.local.json": "69ead882d985a65562719747f7a3da8172bba9d52c0e8597eb4435de3b482dc3",
+          "process-result.local.json": "e59c47d590d5b49a1ed29b393a057bb59ac472851fb12c4b4e56d555c7966c98",
+          "native.log": "5385afa7481087d7041a4cdbe36adc8f62f64c9df2bc460cbc887ab05333e8aa",
+          "launch-spec.local.json": "d0eb93257e8c1d870aafe0e88de15a15763bcdae80a02372a7a2ebeb53102167",
+          "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+          "menus.local.jsonl": "1f63b2937b33075c55c5ce8754f42819c0cb8dd2a2d92858099300b6e884b29b",
+          "operator-logs/foundation-81bd1b04fe8d481d9d0f4eea8796d38a.jsonl": "4aabd5502345e39e3ee4a3cf181231617211dfe58bb7190e55f4690d70549346",
+          "operator-logs/foundation-b49762ff00724a6abc7465ca27df9d6d.jsonl": "e333263bb573d4c2e00370b59c68167ef7242c57e4c632819c79bcf30d4ba3fe",
+          "operator-logs/panel-2b9e608b221e4a2d8fbe0333c6f665ad.jsonl": "343a655f3422e4b3c7602a686553bcc6e27da24b2566e44fdc898cbd9ce22cdc",
+          "operator-logs/sample-age-7496b5661e8c4c3fa1ed53fe91be205d.csv": "5de1edc8876afa35484df73a9c0b7cbe187251f514334cf6731a47fec4aa4ae8",
+          "operator-logs/shutdown-86d3f9496a0c4458a0189c643486bf01.local.jsonl": "2018b92d7ac70bfa649c147f64cdafdd789b7137ad3f126d488d45a8d4fe27cf",
+          "foreground.local.log": "3bfa9010f4f4ce00670d5f2763af4bfc9616a245e0c2801020ae554d3f155ed9",
+          "console-prepared.local.json": "f9cccfb3326b3c6ba0ba1c9faa417cb8a787a4b082e0393ae302baa0f5577702",
+          "inputs/station.local.json": "0c8826598023522bdeb62b13cf1b4f8c12aa54deb5c279bf95ce0aff77169e3d",
+          "isaac2-load-at-launch.txt": "4a866b9d5f0ab9f4a8c09a7b526a3b61c0886c580fbbbf35895250982d2fd159"
+        },
+        "console_audit_sha256": "0e6386dd8ddf33311fd39d97e6a28d61baabf11973636973f1619b17283b51ae",
+        "isaac": {
+          "observer_mode": "prim_only",
+          "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+          "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+          "publish_rate_hz": 26.35,
+          "publish_interval_ms": {
+            "median": 34.8,
+            "max": 146.4
+          },
+          "physics_steps": 28086,
+          "end_reason": "private_stop",
+          "fault": null
+        },
+        "menu_bridge_latency_ms": [
+          [
+            "verify",
+            509
+          ],
+          [
+            "profile",
+            1122
+          ],
+          [
+            "atom",
+            1138
+          ],
+          [
+            "atom",
+            1189
+          ],
+          [
+            "atom",
+            1252
+          ],
+          [
+            "atom",
+            1392
+          ],
+          [
+            "atom",
+            1431
+          ],
+          [
+            "atom",
+            1542
+          ],
+          [
+            "atom",
+            1692
+          ],
+          [
+            "atom",
+            1844
+          ],
+          [
+            "verify",
+            899
+          ]
+        ]
+      },
+      "yoked simulation-test-B-V1-028-C02Y-isaac2-041": {
+        "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "native_result": {
+          "status": "JOIN_COMPLETE_FORMS_RECORDED",
+          "complete": true,
+          "cleanup_succeeded": true,
+          "export_succeeded": true
+        },
+        "preflight_failures": [],
+        "simulation_inputs": {
+          "driver_armed": 1,
+          "panel": 30,
+          "rating": 5
+        },
+        "stall_checks": {
+          "sample_rows": 25152,
+          "sample_gaps_over_250ms": [
+            {
+              "start_ms": 467266.9,
+              "gap_ms": 275.9,
+              "stall_records": [
+                {
+                  "gap_ms": 256.3,
+                  "slow_flushes": 0,
+                  "last_stage": "source_late_update"
+                }
+              ]
+            },
+            {
+              "start_ms": 1001520.1,
+              "gap_ms": 1542.7,
+              "stall_records": []
+            }
+          ],
+          "main_thread_stall_records": [
+            {
+              "observed_mono_ms": 467561.7,
+              "gap_ms": 256.3,
+              "slow_flushes": 0,
+              "gc": [
+                5,
+                5,
+                5
+              ],
+              "stages": [
+                "stage_candidate_created",
+                "preflight_seal_before_post_menu",
+                "preflight_start_control",
+                "engine_tick",
+                "update_tail",
+                "source_late_update"
+              ]
+            }
+          ],
+          "state_source_codes": {
+            "STATE_SOURCE_INITIALIZED": 1,
+            "STATE_TRANSPORT_RESTART": 1,
+            "STATE_TRANSPORT_CONNECTED": 1,
+            "STATE_QUEUED_TOO_LONG": 13,
+            "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+            "STATE_STALE": 2,
+            "STATE_RECOVERED": 1,
+            "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+            "STATE_HOST_DISABLED": 1
+          },
+          "reset_confirmed_events": 85,
+          "reset_confirmed_during_idle": 0,
+          "stale_health_probe_dropped": 0
+        },
+        "reconciliation": {
+          "integrity_verified": true,
+          "software_reconciliation_complete": false,
+          "native_claimed_complete": false,
+          "scheduled_plays": 134,
+          "requested_plays": 134,
+          "callback_observed_plays": 134,
+          "software_completed_plays": 134,
+          "content_hash_verified_plays": 134,
+          "completed_opportunities": 39,
+          "scheduled_opportunities": 39,
+          "selection_count": 8,
+          "fault_codes": [],
+          "incomplete_reasons": [
+            "ACTIVE_LEDGER_COMPARISON_REQUIRED",
+            "FRAME_BUDGET_SCREEN_FAILED",
+            "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED"
+          ],
+          "process_exit": 0,
+          "native_post_cleanup_complete": true
+        },
+        "raw_artifact_sha256": {
+          "joined.local.jsonl": "19c9f0718c699b90f78c2a12bba4e2f158c2691eb74138c2effe1065d6cc6fe4",
+          "events-0000.local.jsonl": "0731edb6e7c9b9f375a0872014522cef04c314fd91a385f2cb16b6d27c39f622",
+          "native-result.local.json": "62e7ae7ac36098bdfb737bf5e290a39ec24a46094b178ec06c88d652bca53ece",
+          "export manifest.json": "2d9a6a969b8e3f7193cbde5a2c1cc79828d7fcb1208f86c09d9f508feed352dd",
+          "mock-run.manifest.json": "3405900088257c32601f8b646d80010945d6be77ff8b6498d75d6fa9143317d1",
+          "reconciliation.local.json": "f5c2cfc745ccc80951fd7bec0aa32acdde4d2753a61661bfcfd5b74fc94ee55c",
+          "process-result.local.json": "272d19e71070f6a9387575f7533cad2e4b0cb0afed77745cea3f32c0d029dfc7",
+          "native.log": "59f15a6750ad3bf6c7637bb060a9ccc6a3c85d86aace377d4fff5491acdc76be",
+          "launch-spec.local.json": "21cafbf512d452acdc474c0d3545a46edcdfdad784c97b4632ef7aea3c173bc7",
+          "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+          "menus.local.jsonl": "126fbbb03b057fdfeef76fb63e78ab2c12118b6fe449223906bf3fc9739ea9d2",
+          "operator-logs/foundation-a3ffb7eed95a49feafbb65bafb3162b8.jsonl": "6a39b484ce5013e90f2e2aaa2aa9194c86de545788540c49dfb4f299424ba3fb",
+          "operator-logs/foundation-b857a8139cb74a0a9a069113c9686d4b.jsonl": "88f13a5458f19538b40750b002f04a3f6ba9c38e22a64ed78f7e8cb09a0a1eda",
+          "operator-logs/panel-7b0fd00fe5dd4f79b57b756c7db27c24.jsonl": "098e8e90989eca87f15895cd8cd8fea6e443b9d8e5040e34e58a4d4b0883bd11",
+          "operator-logs/sample-age-4df09b6dd5b34d08bc9493bb657be5ee.csv": "7778c2c99aaa4e42c0b0c24b64d2923558d94cd12c17f35cf9af63f8cd84aee3",
+          "operator-logs/shutdown-2704a8e6e01e4d61a6b4ed36f229d7d9.local.jsonl": "664154bca4d6b5577ec2900b37ad5730e1906e9666bafa6b5ba202ffcf44f7d1",
+          "foreground.local.log": "31f0e13c2f6c77920df46912bd6453a77f215e5514ec809fd082900cfc134e83",
+          "console-prepared.local.json": "b06579b00060784f5b14d6135656feba042ccfb8b2f4e34295a88842e41f434c",
+          "inputs/station.local.json": "0c8826598023522bdeb62b13cf1b4f8c12aa54deb5c279bf95ce0aff77169e3d",
+          "isaac2-load-at-launch.txt": "1707e9eaba4fdb1399c4fc5e1f65ba52cbaf74dbcf206547f23013fdd9a619eb"
+        },
+        "console_audit_sha256": "de858d7f58f6871289414e339282ce04f34bee14ef17195b8daa69bbe2b8a45b",
+        "isaac": {
+          "observer_mode": "prim_only",
+          "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+          "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+          "publish_rate_hz": 29.94,
+          "publish_interval_ms": {
+            "median": 31.2,
+            "max": 78.5
+          },
+          "physics_steps": 35347,
+          "end_reason": "private_stop",
+          "fault": null
+        },
+        "menu_bridge_latency_ms": [
+          [
+            "verify",
+            808
+          ],
+          [
+            "verify",
+            864
+          ]
+        ],
+        "console_anchors": {
+          "active": "2026-10-12T03:14:02.793300+00:00"
+        }
+      }
+    },
+    "V2": {
+      "active simulation-test-B-V2-028-C02A-isaac2-042": {
+        "outcome": "MENU_STORE_TIMEOUT at the first atom-menu commit (B-C02-M2-V2-AM-01, K-a3 rank 1)",
+        "console_anchors": {
+          "V1": "2026-10-11"
+        },
+        "visit_window_deviation": "one audited deviation (console audit id 5) after load raised visit_window",
+        "store_request_mono_ms": 116616.9,
+        "fault_mono_ms": 118627.0,
+        "bridge_response_after_ms": 2007,
+        "late_commit": {
+          "receipt_status": "committed",
+          "before_head": "92df60004fcea5c3eee92b8a53d7b0efddccd488e1df2ecf5015efd87c497974",
+          "after_head": "9cf65f11736e859c1435673f2a30ec8e1d56b23d604ef3055f8c7578d97d6b4c",
+          "after_snapshot_sha256": "e22c6a7f94ea0c34a5653fc9419b680bea9eb5b17a0276865ff733188fb0e1fa",
+          "entries_after": 9
+        },
+        "reconciliation": {
+          "completed": false,
+          "error": "MOCK_MENU_SELECTION_MISSING"
+        },
+        "isaac": {
+          "observer_mode": "prim_only",
+          "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+          "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+          "publish_rate_hz": 29.98,
+          "publish_interval_ms": {
+            "median": 31.0,
+            "max": 63.9
+          },
+          "physics_steps": 11563,
+          "end_reason": "private_stop",
+          "fault": null
+        },
+        "menu_bridge_latency_ms": [
+          [
+            "verify",
+            860
+          ],
+          [
+            "atom",
+            2007
+          ]
+        ],
+        "raw_artifact_sha256": {
+          "joined.local.jsonl": "8ba7b595a3a28cd7fa21f0a1a8b6126b14b52333a98e777e3e74e7c9a9028ca8",
+          "native-result.local.json": "4835dced66d4dfc3f5b52f9f18f7243d8b1cd4397b48ca5ac5caa9472bc44700",
+          "mock-run.manifest.json": "463d58106f39adedfe683531740761bca3443598a353000d0c86570ed53400c5",
+          "process-result.local.json": "7a5991fc74f9bf602dd353ce6b6bb681e7bb13c75b70446afc9719f01cac62d9",
+          "native.log": "b40a34f10f75b58658a6cd6c032bc4c881312ee03d4c787d2d67df333c80e1b4",
+          "console audit": "f2cf4d6de1f4cdf4a4aae1e64bb3e9536d2cee35e6265dbca60422b52f3483c6",
+          "console-prepared.local.json": "ab69afb4a6884c743a83df8a8f68332a8c6310a876c46650dbed631aba012cdb",
+          "foreground.local.log": "233085b673859f39d741a1ba34f32f6531179240327879f824d3ac9e75f7652b",
+          "menu request": "f355d376ed854bbbc7051abff55bcdd429b33b1502a1d287bf969fefe21d895e",
+          "menu response": "858e8fa0354ae93fddf76599e92a7c2cb3dbe8d52b0325431516b48f9232adf7",
+          "operator-logs/foundation-311b26b49d544f619cca38d61044abab.jsonl": "4828eaa60b98a94a0364a5ff6a4482943432309af28458af3b16a0a8696eed61",
+          "operator-logs/foundation-3f6f04d8fde44e92a7ae3ed6b71c18ec.jsonl": "1c2507b045881b3f01c0a448ec28b4561d7d3c1114ba2942060c981c852f5ee2",
+          "operator-logs/panel-b6634ca74a5c4160a6b2f17da2ab7c0e.jsonl": "d9e2842c0bc63f6fc6a49208d4d41c018ffbed2ca1a8693d1ddafe4ee1dff4cc",
+          "operator-logs/sample-age-0e9484f131d84fb4ab53541ac2025739.csv": "adcbf071a42912d23ac31c0a9c42446770d01ac74a07838cbf6c223a0f3ae510",
+          "operator-logs/shutdown-e8c08fdb113644d78b67d11592d9c8ba.local.jsonl": "172f78f96e0ff3e581728219604ac2a614bd4e226c6f243b0c1f2e25cc015eac"
+        }
+      }
+    },
+    "V3": "not run (series stopped)",
+    "W1": "not run",
+    "W4": "not run"
+  },
+  "unused_stagings": [
+    "simulation-test-B-V1-028-C02A-isaac2-038 (stager dropped the speech directory; fixed; no player)",
+    "simulation-test-B-V1-028-C02Y-isaac2-040 (anchor argument quoting; no player)",
+    "simulation-test-B-V1-028-stagecheck-x01, -x02 (staging checks only)"
+  ],
+  "heldout_scan": {
+    "tooling": "e9d3b36",
+    "active_B_C02_M2": {
+      "plan_sha256": "fb5fb198f0e1ef53d3e4aaf8d702dd9b18d8d9153b103fa0a03fba854326e1e6",
+      "runs": [
+        "simulation-test-B-V1-028-C02A-isaac2-039",
+        "simulation-test-B-V2-028-C02A-isaac2-042"
+      ],
+      "exit_code": 2,
+      "printed": "MOCK_MENU_SELECTION_MISSING"
+    },
+    "active_B_C02_M2_V1_only_diagnostic": {
+      "plan_sha256": "73d7a4da8106ff1fc0cf8e41482ad18289c6e6a904370c39342208b73197dbdd",
+      "runs": [
+        "simulation-test-B-V1-028-C02A-isaac2-039"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "c6a27eadafd3d2a774fe4fdb57a59518bd10b5276a6ecfac273524f258eed643",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 1,
+        "audio_requests": 134,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    },
+    "yoked_B_C02_M1": {
+      "plan_sha256": "5ea96d7a039dfe9f7f9d6da2ddbb55e8f8df6d3289fd374aa431840ba80af831",
+      "runs": [
+        "simulation-test-B-V1-028-C02Y-isaac2-041"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "de001663f369a1d39a7b937d5deaaa68a36fb9313de867dca733c77e0463813d",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 1,
+        "audio_requests": 134,
+        "authorized_heldout_requests": 2,
+        "heldout_callback_events": 4
+      }
+    }
+  },
+  "new_defects": [
+    {
+      "code": "MENU_STORE_TIMEOUT",
+      "component": "player FileMenuStore timeout vs menu-store bridge commit latency",
+      "description": "Atom-selection commits through tools/menu_store_bridge.py grow slower with every committed entry of the book: in V1 the eight atom commits took 1138, 1189, 1252, 1392, 1431, 1542, 1692 and 1844 ms in order, and V2's first atom commit (the ninth entry) took 2007 ms, past the player's 2.0 s store timeout. The player faulted MENU_STORE_TIMEOUT at +2010 ms, but the bridge still committed the selection (receipt committed, store head 92df6000... -> 9cf65f11..., 8 -> 9 entries). The run's journal has no store response for that commit, so reconciliation and the member's held-out scan refuse it with MOCK_MENU_SELECTION_MISSING, and the store has advanced past the faulted visit. With this growth, every later B visit's commits (V2/V3 add 4 entries each) would exceed the timeout.",
+      "deterministic": true
+    }
+  ],
+  "limitations": [
+    "Meta XR Simulator v207 on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2",
+    "Only V1 (both members) completed; V2-W4 not reached",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts and plans stay private; only hashes are published"
+  ]
+}
