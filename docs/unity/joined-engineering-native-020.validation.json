@@ -1,0 +1,290 @@
+{
+  "scope": "Native SIMULATION_TEST reruns for #227 (main-thread stalls) with #228/#230 gate diagnostics; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-10",
+  "refs": [
+    "#227",
+    "#228",
+    "#224",
+    "#148",
+    "#82"
+  ],
+  "player": {
+    "build_id": "simulation-native-020",
+    "source_commit": "442dcd5b0461f4ce5014accd74244e7168cb7aef",
+    "composition": {
+      "base": "b02e34c4ddc5afd322988148e5fcd5c6f44e48f7 (de0a5ac + #225 2e998d6 + #226 db545a3)",
+      "pr229": "c18fd362e9d3b765d77ae04f9230c4eccbaea757",
+      "pr230": "aca36118c86afd50bafb563058d5fb021014b67a",
+      "note": "local test merges b02e34c -> e2d531a (+ #229; LiveSocketClient conflict resolved by keeping #229 RememberEcho expiry/cap with #225 SendEchoes(WebSocket)/TakeEcho) -> 442dcd5 (+ #230); not pushed"
+    },
+    "dirty_source": false,
+    "editor": "6000.6.0f1",
+    "target": "StandaloneWindows64",
+    "build_manifest_sha256": "23ac7bfd403943ff1443ade791e3f903ee44a7dcb75b16f78d8370a5fd5d356c"
+  },
+  "isaac_service": {
+    "source_commit": "22897c44e38fbabd03e3576d5c6a5bb75d041e2e",
+    "forward": "tools/engineering_forward.py"
+  },
+  "attempts": {
+    "simulation-test-B-V1-020-stall-011": {
+      "native_status": "SESSION_CONTENT_FAILED",
+      "menu_ledger_sealed": true,
+      "isaac": {
+        "source_rate_hz": 16.95,
+        "publish_interval_max_ms": 135.6,
+        "gpu_util_median_pct": 11.0,
+        "gpu_util_max_pct": 55.0,
+        "physics_steps": 27907,
+        "fault": null
+      },
+      "stall_checks": {
+        "sample_rows": 40585,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 374706.7,
+            "gap_ms": 274.5,
+            "stall_records": [
+              {
+                "gap_ms": 289.1,
+                "slow_flushes": 0,
+                "last_stage": "source_late_update"
+              }
+            ]
+          },
+          {
+            "start_ms": 1030402.5,
+            "gap_ms": 1082.5,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [
+          {
+            "observed_mono_ms": 374995.8,
+            "gap_ms": 289.1,
+            "slow_flushes": 0,
+            "gc": [
+              6,
+              6,
+              6
+            ],
+            "stages": [
+              "store_pump",
+              "assessment_boundary",
+              "staged_pump",
+              "engine_tick",
+              "update_tail",
+              "source_late_update"
+            ]
+          }
+        ],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 13,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 3,
+          "STATE_RECOVERED": 3,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 43,
+          "STATE_SEQUENCE_GAP": 1,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 43,
+        "reset_confirmed_during_idle": 1,
+        "stale_health_probe_dropped": 0
+      },
+      "terminal_fault_diagnostic": {
+        "primary_code": "SESSION_CONTENT_FAILED",
+        "reported_code": "FRAME_ATTEMPT_INTERRUPTED",
+        "assessment_readiness": null,
+        "control_effective_age_ms": 153.15682496252435
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 103,
+        "software_completed_plays": 102,
+        "content_hash_verified_plays": 103,
+        "completed_opportunities": 19,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "FRAME_ATTEMPT_INTERRUPTED",
+          "OPERATOR_ADAPTER_FAILED",
+          "SESSION_CONTENT_FAILED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "ACTUAL_DISPLAY_TRACE_MISSING",
+          "AUDIO_CALLBACK_OR_COMPLETION_MISSING",
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "FRAME_CAPTURE_INCOMPLETE",
+          "FRAME_FAULT_PRESENT",
+          "LESSON_EVENT_COVERAGE_INCOMPLETE",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "LESSON_TYPED_INTERRUPTED",
+          "LESSON_TYPED_INTERVALS_INCOMPLETE",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE",
+          "SCHEDULED_OPPORTUNITIES_INCOMPLETE",
+          "SCHEDULED_PLAYS_INCOMPLETE",
+          "VISIT_COMPLETE_RECORD_MISSING"
+        ],
+        "process_exit": 0
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "d5b19d25b93dd89d72d1859329180c1f29452c8df927a7006cbaff1d11e32c16",
+        "events-0000.local.jsonl": "2b9bd8f4d7205effb590f0399b7c55fbf2177c8a8b8fb5efd4f8ca8ad4fd7186",
+        "export manifest.json": "859e196e4bb7b59d7e7984dd8058c7ccdb8d72166536edad966f0cacddfc407e",
+        "mock-run.manifest.json": "5811ce91a047985f3a85afdb2b04a1af085ed70a11a5d178070d414429bd624c",
+        "reconciliation.local.json": "31895f554c7703d9e40c9a7e30c5c80ccdd3ca7696e46c96e913d42809a29127",
+        "process-result.local.json": "73ad350805c2792752230ea26ee54c67ed5a6844487472e5cfd4235c324a3c46",
+        "native.log": "fbe1384a8c9b1dfb07ac6f5ba6a6d1cc4b03ce93a74c51a67bc8c37af8f5bfba",
+        "isaac summary.json": "6be4d0acf43c457edb9fc46d06a89ee53fb610b1e3d38abcfe6663c9fce26ace",
+        "isaac publish.csv": "04ff020f83e59edb957457c1d3b63d873c6424f9bac4858576d304527d51c2f5",
+        "native-result.local.json": "74b19c88e8001ab1ea69feb07c554d20b7505feef8c918bd0565a4b76ce773fd",
+        "operator-logs/foundation-361635ca3b7e44839c73439745273285.jsonl": "9a62c9f2837afade38468a7ee8df0ba6245f6d393a11a01e736119da7ffe8d61",
+        "operator-logs/foundation-8f9158c6486d4a68a4d766ae98173d1d.jsonl": "3fdd7e0ad45aba027f6836625c47da115e5aefc1e3fe8cc2fa6b9ef79a0d5c72",
+        "operator-logs/panel-1728afc5e48444a196e6290736fbde83.jsonl": "59daaa08035c6902658a0d9cdef2341ca72e50dd14225e30ae3a6d5bca5969ad",
+        "operator-logs/sample-age-bc0340fbf38f46b2a34bf8ec3ce2e22b.csv": "5a2db2f7d61571d0feab79e58aaa1b3be1f57f3de09641004447aac9bd2a936c",
+        "operator-logs/shutdown-9819dfe7e461487b9dd896bc4f513553.local.jsonl": "ff9aadb54eeb0c7c0eea268f2f167c44c013cb30a196fee6a31fda5e6a55632f",
+        "menus.local.jsonl": "ffd54481ac51f6ca4d9d9e5bec61b291310a6484fe152e773dec5f497f318bbf"
+      },
+      "operator": "6 min deliberate idle before load at the profile-menu preflight; Resume at each block boundary",
+      "blocks": {
+        "profile_menu": "1/1",
+        "atom_menus": "8/8",
+        "atomic_lessons": "8/8",
+        "message_lessons": "2/8 (stopped in item 3)",
+        "trained": "0/4"
+      },
+      "new_fault": {
+        "code": "SESSION_CONTENT_FAILED",
+        "reported_code": "FRAME_ATTEMPT_INTERRUPTED",
+        "attempt_id": "B-C01-M1-V1-ML-03",
+        "block": "message_lessons",
+        "item_index": 2,
+        "state": "CueRequested",
+        "ready_mono_ms": 1026831.69,
+        "cue_requested_mono_ms": 1030364.84,
+        "play_request_mono_ms": 1030369.16,
+        "audio_request_mono_ms": 1030372.91,
+        "frame_attempt_interrupted_mono_ms": 1030374.24,
+        "display_request_mono_ms": 1030376.51,
+        "lesson_interrupted_mono_ms": 1030378.41,
+        "previous_item": "B-C01-M1-V1-ML-02 tail still open (slot end 1031101.53); its frame attempt closed FRAME_OWNER_CLOSED at 1030416.50",
+        "control_effective_age_ms": 153.16,
+        "main_thread_gap_before_fault": "none (no sample-age gap over 250 ms before the fault)",
+        "frame_cancel_path": "FrameIntegration.Interrupt -> FrameCaptureHost.Cancel -> FRAME_ATTEMPT_INTERRUPTED; the originating content exception is not journaled",
+        "unresolved": "The exception that interrupted the ML-03 content is not recorded; attempt 012 passed the same item"
+      }
+    },
+    "simulation-test-B-V1-020-stall-012": {
+      "native_status": "JOIN_HOST_DISABLED",
+      "menu_ledger_sealed": true,
+      "isaac": {
+        "source_rate_hz": 16.38,
+        "publish_interval_max_ms": 148.3,
+        "gpu_util_median_pct": 11.0,
+        "gpu_util_max_pct": 72.0,
+        "physics_steps": 23981,
+        "fault": null
+      },
+      "stall_checks": {
+        "sample_rows": 33347,
+        "sample_gaps_over_250ms": [],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 6,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 1,
+          "STATE_STALE": 1,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 85,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "terminal_fault_diagnostic": {
+        "primary_code": "JOIN_HOST_DISABLED",
+        "reported_code": "JOIN_HOST_DISABLED",
+        "assessment_readiness": null,
+        "control_effective_age_ms": 3570.2559699014746
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 134,
+        "software_completed_plays": 134,
+        "content_hash_verified_plays": 134,
+        "completed_opportunities": 39,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [
+          "JOIN_HOST_DISABLED",
+          "SESSION_JOIN_DISPOSED"
+        ],
+        "incomplete_reasons": [
+          "FAULT_PRESENT_REQUIRES_SCENARIO_RECONCILIATION",
+          "FORMS_DISPLAY_TRACE_INCOMPLETE",
+          "FORMS_INCOMPLETE",
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED",
+          "NATIVE_POST_CLEANUP_RESULT_INCOMPLETE",
+          "NATIVE_RUN_END_INCOMPLETE"
+        ],
+        "process_exit": 0
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "d1cf0d970a2325d8c87fa27c471631a7e6e65cea6deeddc83d0d3e141710d2ad",
+        "events-0000.local.jsonl": "fd783dff01627e21cc3f5590b73e4262750b948bcebdd0d9e53357a14fced598",
+        "export manifest.json": "9de8804d040d22af62b86bd9160526686d882ae5e4043d67ac6cedfbebfa5f1c",
+        "mock-run.manifest.json": "d26057843654cbd3b843195873fe1b97ac2baf8ca9b1d85afe5b40945b3b8d0b",
+        "reconciliation.local.json": "758576b13535c84d7bd91e18b080b9a07a641d32696c0bb2a04dc96cf58324c6",
+        "process-result.local.json": "654d9721d4896a1037d871249aa29e77bb6b931984b2c7d98a20b4a5c2b4e465",
+        "native.log": "e53d9326ceaf531d33004ef551aeb466aff933d6fa009391688dae1f280b21f9",
+        "isaac summary.json": "ced7af19ec1db175e6f240e47bed8747924f18aa12715d770f5dcf005162ff1f",
+        "isaac publish.csv": "86693ae511ffd37c5af1331818325f758378ef8bfc3a1dce8bedf2123f8c4326",
+        "native-result.local.json": "7c66ef623c02cccef349569d1f235a1fdc302435c0c91cfd0a4d2bcc067fa89a",
+        "operator-logs/foundation-57f579c8eb0744d9a01a386b5e64ee3f.jsonl": "380fed4f697806ef18c1bce8903b8357d5209015426767f83f58176ecfac110b",
+        "operator-logs/foundation-e15a544de8c84e45a899bea3ce24da34.jsonl": "acebb3591b019847e85172bd1135cde1d08a551fd43acaf5adfa38ce16938105",
+        "operator-logs/panel-e616be36900f4dc19cce79b9b9392d4f.jsonl": "8d46eaabc06865168098c42587e0125d27ed8a7fb0c77f6d985e1ec2cdb2c3d1",
+        "operator-logs/sample-age-b391b6c4cda5405d8b7e3254fc99fb6c.csv": "5d92f6aa510e6c83d67d529dee84c8f4e809a95290ae0102bfc1863d1afe8845",
+        "operator-logs/shutdown-ffcdf32d14564b21bfe151bd0a27617f.local.jsonl": "52c49c0c0bdc268e4f976e93910a83c59962bfd1eaa7220ed162ecec4f857241",
+        "menus.local.jsonl": "cb02bc3efa8d94fb394f70be1d2597bf6c2a1f66db098703bd12b42ec9b90a1d"
+      },
+      "operator": "Load retried until accepted; no idle; Resume at each block boundary",
+      "blocks": {
+        "profile_menu": "1/1",
+        "atom_menus": "8/8",
+        "atomic_lessons": "8/8",
+        "message_lessons": "8/8",
+        "trained": "4/4",
+        "novel": "2/2",
+        "atomic": "8/8",
+        "forms": "not answered"
+      },
+      "end_state": "JOIN_COMPLETE then JOIN_FORMS_REQUIRED; the simulation dummy-input driver was not armed (no -simulationDummyResponses flag or arm file), so no rating was entered; owner WM_CLOSE after about 6 min",
+      "trained_items": "TR-01 and TR-04 both completed (no AUDIO_EXPOSURE_INTERRUPTED, no ASSESSMENT_NEUTRAL_LOST)"
+    }
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; no headset, acoustic, display or physical timing qualification",
+    "Forms were not answered (dummy-input driver unarmed); the visit is not complete",
+    "Raw artifacts and operator logs stay private; only hashes are published"
+  ]
+}

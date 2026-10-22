@@ -61,7 +61,7 @@ namespace AcousticVocab.DataLogging
                     ["event_type"]=draft.Kind,["opportunity_id"]=draft.Context.OpportunityId,["attempt_id"]=draft.Context.AttemptId,["audio_request_id"]=draft.Context.AudioRequestId,["previous_sha256"]=previous,["payload"]=p};
                 string hash=DataJson.HashBytes(DataJson.Bytes(row));row["sha256"]=hash;byte[] bytes=DataJson.Bytes(row);
                 DataJson.Require(bytes.Length<=DataJson.MaxLine&&output.Length+bytes.Length<=MaximumSegmentBytes,"DATA_SEGMENT_LIMIT");
-                output.Write(bytes,0,bytes.Length);BeforeDurableFlush?.Invoke();output.Flush(true);
+                output.Write(bytes,0,bytes.Length);BeforeDurableFlush?.Invoke();AcousticVocab.Foundation.MainThreadStages.Flush(output,"data_journal");
                 var record=new DataRecord(row);records.Add(record);previous=hash;sequence++;return record;
             }
             catch {failed=true;throw new DataFault("DATA_APPEND_FAILED");}
