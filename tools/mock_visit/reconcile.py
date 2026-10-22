@@ -120,7 +120,8 @@ def export_bundle(path, expected):
     root = Path(path).parent
     m = strict(read(path, expected, 1024**2))
     exact(m, "schema_version export_id identity headers_qualified unacknowledged_torn_tail record_count last_record_sha256 trial_rows exposure_rows files")
-    require(m["schema_version"] == "data-export-provisional-1" and guid(m["export_id"]), "MOCK_EXPORT_VERSION")
+    native = m["schema_version"] == "data-export-native-1"
+    require((native or m["schema_version"] == "data-export-provisional-1") and guid(m["export_id"]), "MOCK_EXPORT_VERSION")
     require(m["headers_qualified"] is False and m["unacknowledged_torn_tail"] is False, "MOCK_EXPORT_SCOPE_OR_TAIL")
     require(all(type(m[k]) is int and m[k] >= 0 for k in ("record_count", "trial_rows", "exposure_rows")), "MOCK_EXPORT_COUNTS")
     require(isinstance(m["files"], list) and 4 <= len(m["files"]) <= 1007, "MOCK_EXPORT_FILES")
@@ -148,6 +149,11 @@ def export_bundle(path, expected):
     raw_names = sorted(n for n in files if n.startswith("raw/"))
     require(raw_names and raw_names == [f"raw/events-{i:04d}.local.jsonl" for i in range(len(raw_names))], "MOCK_EXPORT_SEGMENTS")
     records = verify_chain([(n, files[n]) for n in raw_names], "data", expected_identity=m["identity"])
+    require(native == ("native-observations.json" in files)
+            and native == any(r["event_type"] in {"slot_context", "menu_observation"} for r in records), "MOCK_NATIVE_FORMAT")
+    if native:
+        from .observations import verify_projection
+        verify_projection(files["native-observations.json"], records, m["identity"])
     require(len(records) == m["record_count"] and (records[-1]["sha256"] if records else "0" * 64) == m["last_record_sha256"], "MOCK_EXPORT_CHAIN_HEAD")
     trials, exposures = table(files["trial-log.csv"]), table(files["exposure-ledger.csv"])
     require(len(trials) == m["trial_rows"] and len(exposures) == m["exposure_rows"], "MOCK_EXPORT_ROW_COUNT")

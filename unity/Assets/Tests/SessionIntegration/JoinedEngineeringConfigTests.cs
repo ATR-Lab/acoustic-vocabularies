@@ -67,6 +67,25 @@ namespace AcousticVocab.SessionIntegration.Tests
             value["files"]["grammar_review"]=value["files"]["station"].DeepClone();Assert.That(Load().RequireFile("grammar_review").ReadVerified(),Is.Not.Empty);
             value["version"]=2;Assert.Throws<SessionFault>(()=>Load());
         }
+        [Test]public void Version4PinsBankManifestWithoutGivingEarlierVersionsAuthority()
+        {
+            Assert.That(Load().TryFile("bank_manifest",out _),Is.False);
+            Version2();value["version"]=3;value["files"]["grammar_review"]=JValue.CreateNull();
+            Assert.That(Load().TryFile("bank_manifest",out _),Is.False);
+            value["version"]=4;value["files"]["bank_manifest"]=value["files"]["station"].DeepClone();
+            var pinned=Load().RequireFile("bank_manifest");Assert.That(pinned.ReadVerified(),Is.Not.Empty);
+            File.AppendAllText(pinned.Path,"changed");Assert.Throws<SessionFault>(()=>pinned.ReadVerified());
+            value["version"]=3;Assert.Throws<SessionFault>(()=>Load());
+        }
+        [Test]public void EngineeringExportAliasPreservesScheduleIdentityAndFitsDataContract()
+        {
+            value["identity"]["coded_id"]="B-C01-M2";var c=Load();
+            Assert.That(c.CodedId,Is.EqualTo("B-C01-M2"));Assert.That(c.ExportCodedId,Is.EqualTo("DEMO-B-C01-M2"));
+            value["identity"]["coded_id"]="DEMO-already";Assert.That(Load().ExportCodedId,Is.EqualTo("DEMO-already"));
+            value["identity"]["coded_id"]=new string('x',96);c=Load();
+            Assert.That(c.ExportCodedId,Is.EqualTo("DEMO-"+PcmWave.Hash(Encoding.ASCII.GetBytes(c.CodedId))));
+            Assert.That(c.ExportCodedId.Length,Is.LessThanOrEqualTo(80));
+        }
         void Refused(Action<JObject> change,string code=null)
         {
             change(value);var fault=Assert.Throws<SessionFault>(()=>Load());if(code!=null)Assert.That(fault.Code,Is.EqualTo(code));

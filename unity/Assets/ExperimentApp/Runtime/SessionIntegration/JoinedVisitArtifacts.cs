@@ -88,8 +88,10 @@ namespace AcousticVocab.SessionIntegration
             if(Blocks.Values.Contains(JoinedModuleKind.Menus))
             {
                 if(!Have("menu_script","menu_review","menu_allocation","reserved_registry","menu_snapshot","menu_bridge_config"))return;
+                if(Package.BankFormat==QualifiedBank.Format&&!Have("bank_manifest"))return;
                 Menus=MenuCatalog.Load(config.Directory("menu_scripts"),config.RequireFile("menu_script").Sha256,config.RequireFile("menu_review").Sha256,Package,Schedule,Teaching,manifest,Permutation,
-                    Read("menu_allocation"),config.RequireFile("menu_allocation").Sha256,config.Pin("bank_sha256"),config.Directory("menu_examples"),Read("reserved_registry"),config.RequireFile("reserved_registry").Sha256,true,simulation);
+                    Read("menu_allocation"),config.RequireFile("menu_allocation").Sha256,config.Pin("bank_sha256"),config.Directory("menu_examples"),Read("reserved_registry"),config.RequireFile("reserved_registry").Sha256,true,simulation,
+                    config.TryFile("bank_manifest",out var bankManifest)?bankManifest.ReadVerified():null);
                 if(Menus.Role=="yoked")
                 {
                     if(!Have("menu_replay_ledger","yoked_active_schedule","yoked_active_run_sheet_manifest","yoked_active_schedule_manifest","yoked_active_run_sheet_csv"))return;
@@ -102,6 +104,7 @@ namespace AcousticVocab.SessionIntegration
                 }
             }
             if(Package.Study=="B"&&!Have("menu_snapshot","menu_bridge_config"))return;
+            if(Package.Study=="B"&&Package.BankFormat==QualifiedBank.Format&&!Have("bank_manifest"))return;
             if(Blocks.Values.Contains(JoinedModuleKind.Assessment))
             {
                 if(!Have("assessment_script","assessment_review","rating_review"))return;

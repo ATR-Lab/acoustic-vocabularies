@@ -24,7 +24,8 @@ namespace AcousticVocab.SelectionMenus.Tests
     // stays uncertain/consumed. Lesson and menu timelines receive virtual-clock
     // software onsets at their nominal times so they can run; that is not an
     // acoustic or device claim. Menu selection receipts are synthetic (no store).
-    // Validity blocks are omitted: they need a reviewed or simulation speech bank.
+    // Validity uses explicitly synthetic impulse buffers through the existing
+    // SimulationTestAuthority/SpeechBank gate. No speech or intelligibility claim.
     public sealed class EngineHistoryExportTests
     {
         const double Step=50,Uncertainty=10;
@@ -34,6 +35,21 @@ namespace AcousticVocab.SelectionMenus.Tests
         static object Member(object owner,string name)=>owner.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).GetValue(owner);
         static void Write(string path,JObject value)=>File.WriteAllText(path,value.ToString()+"\n",new UTF8Encoding(false));
         static string Sha(string text)=>PcmWave.Hash(Encoding.UTF8.GetBytes(text));
+        static SpeechBank SimulationSpeech(Fixture f,string study,string run,string package,string schedule,string speechList)
+        {
+            var input=f.Index["speech"][study];Assert.That((string)input["scope"],Is.EqualTo("SYNTHETIC_IMPULSE_BUFFERS"));
+            Assert.That((bool)input["recorded_speech"]||(bool)input["intelligibility"]||(bool)input["acoustic_evidence"],Is.False);
+            string directory=Path.Combine(run,"synthetic-speech");Directory.CreateDirectory(directory);
+            foreach(string source in Directory.GetFiles(Path.Combine(f.Root,(string)input["directory"])))File.Copy(source,Path.Combine(directory,Path.GetFileName(source)));
+            string manifest=(string)input["manifest_sha256"],fixture=Environment.GetEnvironmentVariable("AV_ENGINE_HISTORY_FIXTURES_SHA256");
+            Assert.That((string)input["speech_list_sha256"],Is.EqualTo(speechList));
+            var attestation=new JObject{["version"]=1,["scope"]="SIMULATION_TEST",["role"]="speech",["fixture_set_sha256"]=fixture,["bindings"]=new JObject{["manifest_sha256"]=manifest,["speech_list_sha256"]=speechList}};
+            string review=Path.Combine(directory,"listening-review.local.json");Write(review,attestation);byte[] bytes=File.ReadAllBytes(review);
+            string output=Path.Combine(run,".local","simulation-test-validity");Directory.CreateDirectory(output);
+            string capability=Path.Combine(output,"capability.local.json");Write(capability,new JObject{["version"]=1,["scope"]="SIMULATION_TEST",["fixture_set_sha256"]=fixture,["package_sha256"]=package,["schedule_sha256"]=schedule,["build_id"]="DEMO-engine-history",["protocol_version"]="DEMO-protocol",["output_directory"]=output,["audio_gain"]=.05,["participant_admission"]=false,["acoustic_qualification"]=false});
+            var authority=AcousticVocab.Foundation.SimulationTestAuthority.Load(capability,PcmWave.Hash(File.ReadAllBytes(capability)),"DEMO-engine-history","DEMO-protocol");authority.Bind(package,schedule,true,true,output);
+            return SpeechBank.LoadSimulation(directory,manifest,bytes,PcmWave.Hash(bytes),speechList,authority);
+        }
 
         sealed class Clock:ISessionClock{public double Time;public double NowMs=>Time;}
         sealed class Selections:ITeachingSelections
@@ -55,7 +71,7 @@ namespace AcousticVocab.SelectionMenus.Tests
             if(string.IsNullOrEmpty(index))Assert.Ignore("Run tools/prepare_engine_histories.py and supply pinned AV_ENGINE_HISTORY_FIXTURES (synthetic DEMO only)");
             byte[] bytes=File.ReadAllBytes(index);Assert.That(PcmWave.Hash(bytes),Is.EqualTo(Environment.GetEnvironmentVariable("AV_ENGINE_HISTORY_FIXTURES_SHA256")));
             var f=new Fixture{Root=Path.GetDirectoryName(index),Index=JObject.Parse(Encoding.UTF8.GetString(bytes))};
-            Assert.That((string)f.Index["scope"],Is.EqualTo("DEMO_ENGINE_HISTORY"));Assert.That((bool)f.Index["synthetic"],Is.True);
+            Assert.That((int)f.Index["version"],Is.EqualTo(2));Assert.That((string)f.Index["scope"],Is.EqualTo("DEMO_ENGINE_HISTORY"));Assert.That((bool)f.Index["synthetic"],Is.True);
             f.Output=Environment.GetEnvironmentVariable("AV_ENGINE_HISTORY_RESULTS");Assert.That(f.Output,Is.Not.Null.And.Not.Empty);
             var dir=new DirectoryInfo(Directory.GetCurrentDirectory());while(dir!=null&&!Directory.Exists(Path.Combine(dir.FullName,"sound","reserved")))dir=dir.Parent;Assert.That(dir,Is.Not.Null);
             f.Allocation=File.ReadAllBytes(Path.Combine(dir.FullName,(string)f.Index["allocation"]["path"]));f.AllocationSha=PcmWave.Hash(f.Allocation);Assert.That(f.AllocationSha,Is.EqualTo((string)f.Index["allocation"]["sha256"]));
@@ -96,15 +112,18 @@ namespace AcousticVocab.SelectionMenus.Tests
             internal readonly Clock Clock;internal readonly LoadedAudioPackage Package;internal readonly Selections Selections;internal readonly VisitSchedule Schedule;
             internal readonly TeachingCatalog Teaching;internal readonly MenuCatalog Menus;internal readonly LessonDataJournal Lessons;
             internal readonly AudioDataAdapter Audio;internal readonly PanelDataAdapter Panel;internal readonly Action<MenuEvent> MenuSink;
+            internal readonly DataJournal Journal;
+            internal readonly SpeechBank Speech;
             internal FixedSlotEngine Engine;internal MenuReplaySequence Replay;internal Exception Error;internal int MenuIndex;
             internal readonly Dictionary<string,MenuOption[]> Options=new Dictionary<string,MenuOption[]>(StringComparer.Ordinal);
             internal readonly Dictionary<string,string> Meanings=new Dictionary<string,string>(StringComparer.Ordinal);
             internal readonly Dictionary<string,string> Receipts=new Dictionary<string,string>(StringComparer.Ordinal);
             readonly Dictionary<string,AudioRequestContext> bindings=new Dictionary<string,AudioRequestContext>(StringComparer.Ordinal);
             readonly List<Slot> live=new List<Slot>();readonly GameObject host;
-            internal Visit(Clock clock,LoadedAudioPackage package,Selections selections,VisitSchedule schedule,TeachingCatalog teaching,MenuCatalog menus,DataJournal journal,Action<MenuEvent> menuSink)
+            internal Visit(Clock clock,LoadedAudioPackage package,Selections selections,VisitSchedule schedule,TeachingCatalog teaching,MenuCatalog menus,DataJournal journal,Action<MenuEvent> menuSink,SpeechBank speech)
             {
-                Clock=clock;Package=package;Selections=selections;Schedule=schedule;Teaching=teaching;Menus=menus;MenuSink=menuSink;Lessons=new LessonDataJournal(journal,schedule);
+                Clock=clock;Package=package;Selections=selections;Schedule=schedule;Teaching=teaching;Menus=menus;Journal=journal;Speech=speech;
+                MenuSink=e=>{menuSink(e);AcousticVocab.SessionIntegration.NativeMenuDataAdapter.Record(journal,schedule,e,menus.Role);};Lessons=new LessonDataJournal(journal,schedule);
                 host=new GameObject("DEMO engine history inactive adapter host");host.SetActive(false);
                 Audio=new AudioDataAdapter(journal,host.AddComponent<AudioPlayer>(),e=>bindings[e.AudioId],false);
                 Panel=new PanelDataAdapter(journal,host.AddComponent<ResponsePanelController>(),id=>new EventContext(id,id));
@@ -136,7 +155,7 @@ namespace AcousticVocab.SelectionMenus.Tests
             protected Slot(Visit visit){V=visit;}
             public SlotReadiness Readiness=>new SlotReadiness(true,true,true,true,true,true,true,true);
             public virtual bool ResetComplete=>ResetWanted;
-            public virtual void Prepare(SlotContext context){Context=context;}
+            public virtual void Prepare(SlotContext context){Context=context;NativeObservationCodec.BindSlot(V.Journal,V.Schedule,context);}
             public abstract void RequestCue(SlotContext context,INovelSlotAuthorization permit);
             public virtual void OpenResponse(SlotContext context){}
             public virtual void CloseResponse(SlotContext context){}
@@ -214,6 +233,12 @@ namespace AcousticVocab.SelectionMenus.Tests
         }
         sealed class AssessmentSlot:Slot
         {
+            sealed class SpeechOnce:ISpeechSlotAuthorization
+            {
+                readonly string id,manifest,list;bool used;
+                internal SpeechOnce(string id,SpeechBank bank){this.id=id;manifest=bank.ManifestSha256;list=bank.SpeechListSha256;}
+                public bool Consume(string speechId,string manifestSha,string speechListSha){if(used||speechId!=id||manifestSha!=manifest||speechListSha!=list)return false;used=true;return true;}
+            }
             ResponseState state;bool answered;
             internal AssessmentSlot(Visit visit):base(visit){}
             (string profile,int a,int r) Ranks(string message)
@@ -225,7 +250,8 @@ namespace AcousticVocab.SelectionMenus.Tests
             public override void RequestCue(SlotContext context,INovelSlotAuthorization permit)
             {
                 var item=context.Item;if(item.Plays==0)return;PcmWave wave;
-                if(item.TrialType=="atomic")wave=V.Package.Study=="A"?V.Package.ReadAtom(item.ContentId):V.Package.ReadAtom(item.ContentId,V.Selections.Profile,V.Selections.Get(item.ContentId).Rank);
+                if(item.TrialType=="speech"){Assert.That(V.Speech?.SimulationOnly,Is.True);wave=V.Speech.ReadForValidity(item.ContentId,new SpeechOnce(item.ContentId,V.Speech));}
+                else if(item.TrialType=="atomic")wave=V.Package.Study=="A"?V.Package.ReadAtom(item.ContentId):V.Package.ReadAtom(item.ContentId,V.Selections.Profile,V.Selections.Get(item.ContentId).Rank);
                 else{var s=Ranks(item.ContentId);wave=item.Heldout?V.Package.ComposeApprovedNovel(item.ContentId,permit,s.profile,s.a,s.r):V.Package.ReadTrainedMessage(item.ContentId,s.profile,s.a,s.r);}
                 V.Request(context,0,wave,context.OnsetMonoMs);
             }
@@ -245,9 +271,10 @@ namespace AcousticVocab.SelectionMenus.Tests
         {
             var (package,root,manifest,permutationBytes)=f.Packages[study];var permutation=JObject.Parse(Encoding.UTF8.GetString(permutationBytes));
             string scheduleRel="schedules/"+person+"/"+visitId+".json";byte[] scheduleBytes=File.ReadAllBytes(Path.Combine(root,scheduleRel));var doc=JObject.Parse(Encoding.UTF8.GetString(scheduleBytes));
-            var blocks=ScheduleLoader.ValidateBlocks(doc,permutation).Where(b=>b.Name!="validity").ToArray();
-            var schedule=new VisitSchedule(PcmWave.Hash(scheduleBytes),package.PackageSha256,person,visitId,true,blocks,study,(string)doc["set"],null);
+            var blocks=ScheduleLoader.ValidateBlocks(doc,permutation);string speechList=(string)doc["blocks"].SingleOrDefault(b=>(string)b["block"]=="validity")?["validity"]?["speech_list_sha256"];
+            var schedule=new VisitSchedule(PcmWave.Hash(scheduleBytes),package.PackageSha256,person,visitId,true,blocks,study,(string)doc["set"],speechList);
             string run=Path.Combine(f.Output,study,person,visitId);Assert.That(Directory.Exists(run),Is.False,"Use a fresh output root");Directory.CreateDirectory(run);
+            var speech=speechList==null?null:SimulationSpeech(f,study,run,package.PackageSha256,schedule.Sha256,speechList);
             bool teaching=blocks.Any(b=>b.Items.Any(i=>i.Phase=="teaching")),menus=blocks.Any(b=>b.Items.Any(i=>i.Phase=="selection"));
             TeachingCatalog catalog=null;MenuCatalog menuCatalog=null;
             if(teaching)
@@ -263,9 +290,10 @@ namespace AcousticVocab.SelectionMenus.Tests
             }
             MenuLedger ledger=null;string ledgerPath=null;
             if(menuCatalog!=null){ledgerPath=Path.Combine(run,"menus.local.jsonl");ledger=new MenuLedger(ledgerPath,menuCatalog.Binding(unitBinding),Created);}
-            var identity=new DataIdentity(Guid.NewGuid().ToString("N"),person,visitId,"DEMO-STATION","DEMO-protocol",Hash);string raw=Path.Combine(run,"raw");
+            string coded=(string)f.Index["coded_aliases"]?[person];Assert.That(coded,Is.EqualTo("DEMO-"+person));
+            var identity=new DataIdentity(Guid.NewGuid().ToString("N"),coded,visitId,"DEMO-STATION","DEMO-protocol",Hash);string raw=Path.Combine(run,"raw");
             using(var journal=new DataJournal(raw,identity,Guid.NewGuid().ToString("N"),()=>clock.Time))
-            using(var visit=new Visit(clock,package,selections,schedule,catalog,menuCatalog,journal,e=>ledger.Append(e)))
+            using(var visit=new Visit(clock,package,selections,schedule,catalog,menuCatalog,journal,e=>ledger.Append(e),speech))
             {
                 foreach(var item in blocks.SelectMany(b=>b.Items))journal.Append(DataObservations.Opportunity(item.TrialId,"primary","DEMO-masked",schedule.Sha256));
                 var engine=new FixedSlotEngine(schedule,clock,new SessionDataJournal(journal),visit);visit.Engine=engine;int block=0;double limit=clock.Time+4*3600*1000;
@@ -299,13 +327,17 @@ namespace AcousticVocab.SelectionMenus.Tests
             clock.Time+=60000; // inter-visit gap on one virtual clock (no UTC claim)
             var snapshot=DataJournal.Verify(raw,identity);var tables=DataDeriver.Derive(snapshot,identity);derived[person+"/"+visitId]=tables;
             Assert.That(tables.Exposures.All(r=>r["callback_observed"]=="false"&&r["audible_status"]=="uncertain"&&r["exposure_consumed"]=="true"),Is.True);
+            int scheduled=blocks.Sum(b=>b.Items.Count),plays=blocks.SelectMany(b=>b.Items).Sum(i=>i.Plays);
+            int executed=snapshot.Records.Where(r=>r.Kind=="session"&&(string)r.Payload["event"]=="state_after"&&(string)r.Payload["state"]=="Done").Select(r=>r.Context.OpportunityId).Distinct().Count();
+            Assert.That(executed,Is.EqualTo(scheduled));Assert.That(tables.Exposures.Count,Is.EqualTo(plays));
             var bundle=ExportBundle.Create(raw,Path.Combine(run,"export"),identity,ExportHeaders.Provisional());
             string Rel(string path)=>path==null?null:Path.GetRelativePath(f.Output,path).Replace('\\','/');
             return new JObject{["study"]=study,["person_id"]=person,["role"]=role,["visit"]=visitId,["schedule"]=scheduleRel,["schedule_sha256"]=schedule.Sha256,
                 ["omitted_blocks"]=new JArray(doc["blocks"].Select(b=>(string)b["block"]).Where(b=>blocks.All(x=>x.Name!=b))),
                 ["export_manifest"]=Rel(Path.Combine(run,"export","manifest.json")),["export_manifest_sha256"]=bundle.ManifestSha256,
                 ["menu_ledger"]=Rel(ledgerPath),["menu_ledger_sha256"]=ledgerPath==null?null:PcmWave.Hash(File.ReadAllBytes(ledgerPath)),
-                ["exposure_rows"]=tables.Exposures.Count,["trial_rows"]=tables.Trials.Count};
+                ["exposure_rows"]=tables.Exposures.Count,["trial_rows"]=tables.Trials.Count,
+                ["scheduled_opportunities"]=scheduled,["executed_opportunities"]=executed,["scheduled_plays"]=plays,["requested_plays"]=tables.Exposures.Count};
         }
         static int Plays(DerivedTables tables,string code)=>tables.Exposures.Count(r=>r["attempt_id"].Contains("-"+code+"-"));
         void Finish(Fixture f,string study,JArray visits)

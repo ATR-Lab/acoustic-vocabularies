@@ -49,6 +49,10 @@ namespace AcousticVocab.SessionIntegration
         public string StationId { get; }
         public string UnitId { get; }
         public string CodedId { get; }
+        // Joined engineering is always DEMO. Keep the producer's schedule slot
+        // intact while making exported data identity conspicuously synthetic.
+        public string ExportCodedId=>CodedId.StartsWith("DEMO-",StringComparison.Ordinal)||CodedId.StartsWith("SYNTHETIC-",StringComparison.Ordinal)?CodedId:
+            "DEMO-"+(CodedId.Length<=75?CodedId:PcmWave.Hash(Encoding.ASCII.GetBytes(CodedId)));
         public string SessionId { get; }
         public string VisitId { get; }
         public string BuildId { get; }
@@ -103,7 +107,7 @@ namespace AcousticVocab.SessionIntegration
                 string path=System.IO.Path.GetFullPath(configPath),root=System.IO.Path.GetDirectoryName(path);
                 byte[] raw=ReadPinned(path,independentlyPinnedRawSha256,MaximumConfigBytes,null);
                 var document=StationConfig.ParseStrict(new UTF8Encoding(false,true).GetString(raw));
-                Need(document["version"]?.Type==JTokenType.Integer&&((long)document["version"]>=1&&(long)document["version"]<=3),"SESSION_JOIN_CONFIG_VERSION");
+                Need(document["version"]?.Type==JTokenType.Integer&&((long)document["version"]>=1&&(long)document["version"]<=4),"SESSION_JOIN_CONFIG_VERSION");
                 int version=(int)document["version"];
                 Keys(document,version==1?new[]{"version","scope","protocol_version","identity","files","directories","pins","control"}:new[]{"version","scope","protocol_version","identity","files","directories","pins","control","yoked_start"});
                 int? anchorLead=null;
@@ -122,7 +126,7 @@ namespace AcousticVocab.SessionIntegration
                 // an invented ID prefix cannot establish that authority.
                 foreach(string key in new[]{"station_id","unit_id","coded_id","visit_id","build_id"})Need(Id(Text(identity[key])),"SESSION_JOIN_IDENTITY");
                 Need(Guid(Text(identity["session_id"])),"SESSION_JOIN_IDENTITY");
-                var acceptedOptional=optionalFiles.Concat(version>=2?v2Files:Array.Empty<string>()).Concat(version>=3?new[]{"grammar_review"}:Array.Empty<string>()).ToArray();
+                var acceptedOptional=optionalFiles.Concat(version>=2?v2Files:Array.Empty<string>()).Concat(version>=3?new[]{"grammar_review"}:Array.Empty<string>()).Concat(version>=4?new[]{"bank_manifest"}:Array.Empty<string>()).ToArray();
                 var fileRows=Object(document["files"]);Keys(fileRows,requiredFiles.Concat(acceptedOptional).ToArray());
                 var files=new Dictionary<string,PinnedJoinFile>(StringComparer.Ordinal);
                 foreach(string name in requiredFiles.Concat(acceptedOptional))
@@ -131,11 +135,12 @@ namespace AcousticVocab.SessionIntegration
                     if(token.Type==JTokenType.Null){Need(acceptedOptional.Contains(name),"SESSION_JOIN_FILE_REQUIRED");files.Add(name,null);continue;}
                     var row=Object(token);Keys(row,"path","sha256");string sha=Text(row["sha256"]);Need(IsHash(sha),"SESSION_JOIN_FILE_PIN");
                     string full=Resolve(root,Text(row["path"]));
-                    int maximum=name=="menu_replay_ledger"?32*1024*1024:name=="schedule"||name=="neutral"||name=="run_sheet_csv"||name=="yoked_active_schedule"||name=="yoked_active_run_sheet_csv"?16*1024*1024:1024*1024;
+                    int maximum=name=="menu_replay_ledger"?32*1024*1024:name=="bank_manifest"?4*1024*1024:name=="schedule"||name=="neutral"||name=="run_sheet_csv"||name=="yoked_active_schedule"||name=="yoked_active_run_sheet_csv"?16*1024*1024:1024*1024;
                     files.Add(name,new PinnedJoinFile(full,sha,maximum));
                 }
                 if(version==1)foreach(string name in v2Files)files.Add(name,null);
                 if(version<3)files.Add("grammar_review",null);
+                if(version<4)files.Add("bank_manifest",null);
                 var dirRows=Object(document["directories"]);Keys(dirRows,directoryNames);
                 var directories=new Dictionary<string,string>(StringComparer.Ordinal);
                 foreach(string name in directoryNames)

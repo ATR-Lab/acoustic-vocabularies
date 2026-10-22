@@ -33,11 +33,16 @@ def load_bridge(path, name):
     return module
 
 
-def run_bridge(module, config, root, name):
+def run_bridge(module, config, root, name, *, startup_check=False):
     bridge = module.MenuStoreBridge(config)
     bridge.store = VocabularyStore(
         config["store_root"], clock=lambda: datetime(2026, 1, 1, tzinfo=UTC)
     )
+    startup_ms = None
+    if startup_check:
+        started = time.perf_counter_ns()
+        bridge._inputs()
+        startup_ms = (time.perf_counter_ns() - started) / 1_000_000
     mailbox = root / "mailbox"
     (mailbox / "requests").mkdir(parents=True)
     operations = []
@@ -110,6 +115,8 @@ def run_bridge(module, config, root, name):
         ).hexdigest(),
         journal_sha256=hashlib.sha256(bridge.journal.read_bytes()).hexdigest(),
     )
+    if startup_check:
+        report["startup_verification_ms"] = round(startup_ms, 3)
     (root / "store").rename(root / f"{name}-store")
     mailbox.rename(root / f"{name}-mailbox")
     return report

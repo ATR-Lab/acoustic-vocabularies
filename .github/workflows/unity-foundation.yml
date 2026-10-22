@@ -5,6 +5,43 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-provisioning-contracts:
+    name: Windows provisioning contracts
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exercise native filesystem and probe guards (no Unity/license claim)
+        shell: pwsh
+        run: ./tests/powershell/test-provision-unity-windows.ps1 -WindowsFileSystem
+  synthetic-fixtures:
+    name: Synthetic fixture preparation (${{ matrix.os }})
+    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+      - name: Validate synthetic producer preparation only (no Unity or device claim)
+        run: |
+          uv sync --project banks --locked
+          uv run --project banks --locked ruff check --config banks/pyproject.toml tools/prepare_unity_ci_fixtures.py
+          uv run --project banks --locked ruff format --config banks/pyproject.toml --check tools/prepare_unity_ci_fixtures.py
+          uv run --project banks --locked python tools/prepare_unity_ci_fixtures.py --out .local/unity-ci-fixtures
   configuration:
     name: Unity CI configuration
     runs-on: ubuntu-latest
@@ -14,17 +51,35 @@ jobs:
           RUNNER_READY: ${{ vars.UNITY_FOUNDATION_RUNNER_READY }}
           EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
           G1_DESCRIPTION: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          LICENSE_MODE: ${{ vars.UNITY_LICENSE_MODE || 'manual_file' }}
+          LICENSE_FILE_PRESENT: ${{ secrets.UNITY_LICENSE != '' }}
           TRUSTED_SOURCE: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           if [ "$TRUSTED_SOURCE" != "true" ]; then
             echo '::error::Fork code must be reviewed before execution on the licensed Unity runner.'
             exit 1
           fi
-          if [ "$RUNNER_READY" != "true" ] || [ -z "$EDITOR_PATH" ] || [ -z "$UNITY_LICENSE" ] || [ -z "$G1_DESCRIPTION" ]; then
-            echo '::error::Unity CI is not configured. Provision an isolated Windows runner labelled unity-6000.6.0f1, set UNITY_FOUNDATION_RUNNER_READY=true, UNITY_EDITOR_PATH and UNITY_G1_DESCRIPTION_PATH for the verified local asset cache, and store the license only in secret UNITY_LICENSE. Local results do not qualify this gate.'
+          if [ "$RUNNER_READY" != "true" ] || [ -z "$EDITOR_PATH" ] || [ -z "$G1_DESCRIPTION" ]; then
+            echo '::error::Unity CI is not configured. Provision an isolated Windows X64 runner labelled unity-6000.6.0f1, verify its actual licensed editor and asset cache, then set UNITY_FOUNDATION_RUNNER_READY=true, UNITY_EDITOR_PATH and UNITY_G1_DESCRIPTION_PATH. Local results do not qualify this gate.'
             exit 1
           fi
+          case "$LICENSE_MODE" in
+            manual_file)
+              if [ "$LICENSE_FILE_PRESENT" != "true" ]; then
+                echo '::error::manual_file mode requires the Unity-issued license in secret UNITY_LICENSE.'
+                exit 1
+              fi
+              ;;
+            preactivated)
+              # The Windows job must prove actual licensed execution as its runner account.
+              # Unity Personal uses Hub activation, not a manual license-file export.
+              ;;
+            *)
+              echo '::error::UNITY_LICENSE_MODE must be manual_file or preactivated.'
+              exit 1
+              ;;
+          esac
+          echo 'Unity runner configuration supplied; actual Windows license/toolchain preflight is required.'
   quest-and-tests:
     name: Quest build and edit-mode tests
     needs: configuration
@@ -38,19 +93,8 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: "0.11.10"
-      - name: Prepare sealed DEMO integrity inputs
-        shell: pwsh
-        run: |
-          uv sync --project sound --locked
-          if ($LASTEXITCODE -ne 0) { throw 'Locked sound environment failed' }
-          uv run --project sound python tools/prepare_integrity_fixtures.py --out .local/integrity-ci/fixtures
-          if ($LASTEXITCODE -ne 0) { throw 'Integrity fixture generation failed' }
-          $fixture = Join-Path (Get-Location) '.local/integrity-ci/fixtures/fixtures.local.json'
-          $pin = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash.ToLowerInvariant()
-          "AV_INTEGRITY_FIXTURES=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "AV_INTEGRITY_FIXTURES_SHA256=$pin" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "AV_INTEGRITY_RESULTS=$(Join-Path (Get-Location) '.local/integrity-ci/exports')" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Activate using CI secret
+        if: ${{ (vars.UNITY_LICENSE_MODE || 'manual_file') == 'manual_file' }}
         shell: pwsh
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -59,10 +103,36 @@ jobs:
           $licenseFile = Join-Path $env:RUNNER_TEMP ('unity-' + [guid]::NewGuid().ToString('N') + '.ulf')
           try {
             [IO.File]::WriteAllText($licenseFile, $env:UNITY_LICENSE)
-            $process = Start-Process -FilePath $env:UNITY_EDITOR_PATH -ArgumentList @('-batchmode','-nographics','-quit','-manualLicenseFile',('"'+$licenseFile+'"'),'-logFile',('"'+(Join-Path $env:RUNNER_TEMP 'unity-license.log')+'"')) -WindowStyle Hidden -Wait -PassThru
+            $process = Start-Process -FilePath $env:UNITY_EDITOR_PATH -ArgumentList @('-batchmode','-nographics','-quit','-manualLicenseFile',('"'+$licenseFile+'"'),'-logFile',('"'+(Join-Path $env:RUNNER_TEMP 'unity-license.log')+'"')) -WindowStyle Hidden -PassThru
+            # Licensing helper processes can outlive the editor. Wait on this editor only.
+            if (-not $process.WaitForExit(300000)) {
+              $process.Kill()
+              throw 'Unity license activation exceeded five minutes; private log stays on the isolated runner.'
+            }
             if ($process.ExitCode -ne 0) { throw 'Unity license activation failed; private licensing log stays on the isolated runner.' }
           } finally {
             Remove-Item -LiteralPath $licenseFile -Force -ErrorAction SilentlyContinue
+          }
+      - name: Verify actual licensed Windows runner and immutable cache
+        shell: pwsh
+        env:
+          UNITY_EDITOR_PATH: ${{ vars.UNITY_EDITOR_PATH }}
+          G1_DESCRIPTION_JSON: ${{ vars.UNITY_G1_DESCRIPTION_PATH }}
+          UNITY_LICENSE_MODE: ${{ vars.UNITY_LICENSE_MODE || 'manual_file' }}
+        run: |
+          ./tools/provision-unity-windows.ps1 -Unity $env:UNITY_EDITOR_PATH -G1Description $env:G1_DESCRIPTION_JSON -OutputDirectory (Join-Path $PWD '.local/windows-preflight-${{ github.run_id }}-${{ github.run_attempt }}') -LicenseMode $env:UNITY_LICENSE_MODE -IsolationConfirmed -ProbeLicensedEditor
+      - name: Prepare sealed synthetic producer fixtures for every mandatory test
+        shell: pwsh
+        run: |
+          uv sync --project banks --locked
+          if ($LASTEXITCODE -ne 0) { throw 'Locked banks/sound environment failed' }
+          $fixtures = '.local/unity-ci-${{ github.run_id }}-${{ github.run_attempt }}'
+          uv run --project banks --locked python tools/prepare_unity_ci_fixtures.py --out $fixtures
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic Unity fixture generation failed' }
+          $settings = Get-Content -LiteralPath (Join-Path $fixtures 'environment.local.json') -Raw | ConvertFrom-Json
+          foreach ($entry in $settings.PSObject.Properties) {
+            if ($entry.Name -notmatch '^AV_[A-Z0-9_]+$' -or $entry.Value -isnot [string] -or $entry.Value -match '[\r\n]') { throw 'Invalid fixture environment entry' }
+            "$($entry.Name)=$($entry.Value)" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
       - name: Configure, test, and build the participant Quest player
         shell: pwsh
@@ -75,6 +145,6 @@ jobs:
           ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target Test -ProtocolVersion engineering-pending-review -BuildId "$base-tests"
           ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene Workcell -G1Description $env:G1_DESCRIPTION_JSON -Target TestPlayMode -ProtocolVersion engineering-pending-review -BuildId "$base-playmode"
           ./tools/build-unity.ps1 -Unity $env:UNITY_EDITOR_PATH -Scene StateSources -G1Description $env:G1_DESCRIPTION_JSON -Target Android -ProtocolVersion engineering-pending-review -BuildId "$base-android"
-          uv run --project sound python tools/run_integrity.py --fixtures $env:AV_INTEGRITY_FIXTURES --fixtures-sha256 $env:AV_INTEGRITY_FIXTURES_SHA256 --existing-exports $env:AV_INTEGRITY_RESULTS --out .local/integrity-ci/report
+          uv run --project banks --locked python tools/run_integrity.py --fixtures $env:AV_INTEGRITY_FIXTURES --fixtures-sha256 $env:AV_INTEGRITY_FIXTURES_SHA256 --existing-exports $env:AV_INTEGRITY_RESULTS --out '.local/unity-ci-${{ github.run_id }}-${{ github.run_attempt }}/integrity-report'
           if ($LASTEXITCODE -ne 0) { throw 'Native export integrity verification failed' }
       # Raw Unity logs can contain runner paths/account details; publish sanitized derivatives after review.

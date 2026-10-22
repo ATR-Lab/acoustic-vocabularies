@@ -59,6 +59,9 @@ namespace AcousticVocab.SessionIntegration.Tests
             if(assets.Blocks.Values.Contains(JoinedModuleKind.Menus))
             {
                 Assert.That(assets.Menus,Is.Not.Null);
+                if(Environment.GetEnvironmentVariable("AV_SIMULATION_EXPECT_QUALIFIED_BANK")=="1")
+                {Assert.That(assets.Menus.BankQualified,Is.True);Assert.That(assets.Menus.ParticipantBankQualified,Is.False);Assert.That(c.ConfigVersion,Is.EqualTo(4));}
+
                 string expectedRole=Environment.GetEnvironmentVariable("AV_SIMULATION_EXPECT_MENU_ROLE");
                 if(expectedRole!=null)Assert.That(assets.Menus.Role,Is.EqualTo(expectedRole));
                 if(assets.Schedule.Visit=="V1")Assert.That(assets.Menus.MenuKeys.Count,Is.EqualTo(9));

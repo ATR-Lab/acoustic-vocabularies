@@ -90,6 +90,24 @@ namespace AcousticVocab.SessionIntegration.Tests
             Assert.That(JoinedSelections.SharedUnitBindingSha256(package,permutation,bank,"DEMO-other"),Is.Not.EqualTo(hash));Assert.That(JoinedSelections.SharedUnitBindingSha256(package,new string('d',64),bank,"DEMO-UNIT"),Is.Not.EqualTo(hash));
             Assert.Throws<SessionFault>(()=>JoinedSelections.SharedUnitBindingSha256(package,permutation,bank,"DEMO-UNIT\n"));Assert.Throws<SessionFault>(()=>JoinedSelections.SharedUnitBindingSha256(null,permutation,bank,"DEMO-UNIT"));
         }
+        [Test]public void QualifiedStoreBindsTheExactBankManifestBytesAndProducerUnit()
+        {
+            string root=Environment.GetEnvironmentVariable("AV_QUALIFIED_BANK_ROOT");
+            if(root==null||!File.Exists(Path.Combine(root,"fixture.json")))Assert.Ignore("Provision the actual synthetic qualified-bank producer fixture");
+            var index=JObject.Parse(File.ReadAllText(Path.Combine(root,"fixture.json")));
+            string packageRoot=Path.Combine(root,(string)index["package_dir"]),bankPath=Path.Combine(root,(string)index["bank_dir"],"manifest.json");
+            byte[] manifest=File.ReadAllBytes(Path.Combine(packageRoot,"manifest.json")),bank=File.ReadAllBytes(bankPath);
+            var loaded=PackageLoader.Load(packageRoot,(string)index["package_sha256"],true);
+            var config=new JObject{["schema_version"]=1,["demo_only"]=true,["unit_id"]="DEMO-B-C01",["book_id"]="DEMO-qualified-store",
+                ["bank_path"]=bankPath,["bank_file_sha256"]=PcmWave.Hash(bank),["bank_sha256"]=index["bank_sha256"],
+                ["package_path"]=packageRoot,["package_sha256"]=loaded.PackageSha256,["store_root"]=Path.Combine(root,"unused-test-store")};
+            MenuStoreBinding Bind(byte[] rawBank){byte[] raw=CanonicalBytes(config);return JoinedSelections.CreateStoreBinding(raw,PcmWave.Hash(raw),manifest,loaded,"B-C01",(string)index["bank_sha256"],rawBank);}
+            Assert.That(Bind(bank).UnitId,Is.EqualTo("DEMO-B-C01"));
+            Assert.That(Assert.Throws<SessionFault>(()=>Bind(null)).Code,Is.EqualTo("JOIN_STORE_BANK_FILE_PIN"));
+            Assert.That(Assert.Throws<SessionFault>(()=>Bind(bank.Concat(new byte[]{32}).ToArray())).Code,Is.EqualTo("JOIN_STORE_BANK_FILE_PIN"));
+            config["bank_file_sha256"]=new string('a',64);
+            Assert.That(Assert.Throws<SessionFault>(()=>Bind(bank)).Code,Is.EqualTo("JOIN_STORE_BANK_FILE_PIN"));
+        }
         // The snapshots and WAV hashes were produced by the real #11 bridge
         // using the actual existing #13 DEMO package. This test simulates only
         // the correlated verification response; it makes no live-service claim.

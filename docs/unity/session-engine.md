@@ -145,3 +145,28 @@ been provisioned. Local results do not bypass or qualify that gate.
 See [the journal handoff](../interfaces/session-journal.md) for the #72 adapter
 boundary. Exact methodology CSV headers, export, encrypted archival and upload
 are owned by #72 and are not implemented here.
+
+## Mandatory synthetic CI fixtures
+
+The strict Unity wrapper rejects unexpected skipped tests. Prepare the public
+DEMO producers before the test process starts:
+
+```sh
+uv sync --project banks --locked
+uv run --project banks --locked python tools/prepare_unity_ci_fixtures.py \
+  --out .local/unity-ci-demo
+```
+
+The helper writes `environment.local.json` last. Load its `AV_*` entries into the
+Unity test process environment. Use a fresh output directory for each run;
+history exports and receipts are retained with their original hashes. The helper
+prepares sealed packages, reserved sounds, actual menu-store snapshots at 8, 12
+and 16 atoms, a qualified DEMO bank and joined simulation capability, command
+integrity inputs, and full native-history inputs.
+
+The hosted fixture job checks preparation on Linux, macOS and Windows. The
+licensed Windows job uses the same helper before EditMode and PlayMode tests.
+The runner, license and verified asset cache still require explicit provisioning.
+Preparation supplies synthetic software inputs; its success does not qualify
+headset operation, acoustic presentation or participant admission. Recorded
+external-evidence checks keep their existing skip policy.

@@ -97,6 +97,20 @@ copy to a `synth-logs` slot, and its reconciliation fails on content, not integr
 template columns have no producer source yet (list in
 [`analysis/docs/reconciliation.md`](../../analysis/docs/reconciliation.md), section 3).
 
+**Native protocol adapter.** A manifest with `schema_version` `data-export-native-1`
+requires `native-observations.json` (`av-native-observations`, version 1). The projection
+must match every selected verified journal record exactly. The adapter joins executed
+opportunity IDs to pinned private schedule/package/allocation inputs, preserves actual
+responses and audio uncertainty, folds observed prior exposures, and maps lesson/menu
+observations without adding audio presentations. It requires the complete 14-column
+operator deviations file; legacy console columns cannot supply missing operator facts.
+The original bundle and operator bytes are retained. `mapping/native-protocol.json`
+records source hashes, histories, optional unknown measurements and software completion
+observations. Producer `headers_qualified` remains false. This mapping does not establish
+physical audio timing, headset behavior, template approval or a clean reconciliation.
+The [column-by-column source map](../../analysis/docs/native-export-mapping.md) specifies
+all 46 trial, 24 exposure and 14 deviation columns and the native import order.
+
 **Block durations (#81).** `av-analysis block-durations VISIT_ID --root DIR [--out FILE]`
 (module `block_durations`) compares each run-sheet block's `end_time - start_time` with
 its scheduled seconds and the visit's first start to last end with the booked minutes

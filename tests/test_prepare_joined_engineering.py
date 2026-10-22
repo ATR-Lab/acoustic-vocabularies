@@ -112,7 +112,7 @@ def test_actual_package_staged_without_source_or_runtime_mutation(inputs):
 
 
 @pytest.mark.parametrize("lead", [None, 2000, 60000])
-@pytest.mark.parametrize("version", [2, 3])
+@pytest.mark.parametrize("version", [2, 3, 4])
 def test_v2_copies_explicit_policy_and_independent_active_pins_without_anchor(inputs, lead, version):
     doc, root = copy.deepcopy(inputs[0]), inputs[1]
     doc["version"] = version
@@ -207,6 +207,43 @@ def test_v3_rejects_changed_grammar_pin_before_creating_output(inputs):
     doc = copy.deepcopy(inputs[0]); doc.update(version=3, yoked_start=None)
     source = inputs[1] / "grammar-review.local.json"; source.write_bytes(b"changed")
     doc["files"]["grammar_review"] = {"path": str(source), "sha256": "0" * 64}
+    with pytest.raises(stage.PreparationError, match="FILE_PIN"):
+        invoke(inputs, doc=doc)
+    assert not (inputs[1] / "prepared").exists()
+
+
+@pytest.mark.parametrize("provided", [False, True])
+def test_v4_carries_only_independently_pinned_bank_manifest(inputs, provided):
+    doc = copy.deepcopy(inputs[0]); doc.update(version=4, yoked_start=None)
+    raw = b'{"synthetic_transport_fixture":"domain_validation_still_required"}'
+    if provided:
+        source = inputs[1] / "bank-manifest.local.json"; source.write_bytes(raw)
+        doc["files"]["bank_manifest"] = {"path": str(source), "sha256": stage.digest(raw)}
+    report, out = invoke(inputs, doc=doc)
+    config = json.loads((out / "join.local.json").read_bytes())
+    assert config["version"] == 4 and report["participant_admission"] is False
+    assert config["files"]["grammar_review"] is None
+    if provided:
+        assert (out / config["files"]["bank_manifest"]["path"]).read_bytes() == raw
+        assert config["files"]["bank_manifest"]["sha256"] == stage.digest(raw)
+    else:
+        assert config["files"]["bank_manifest"] is None
+    assert stage.cap("bank_manifest") == 4 * 1024**2
+
+
+@pytest.mark.parametrize("version", [1, 2, 3])
+def test_prior_versions_cannot_add_bank_manifest_authority(inputs, version):
+    doc = copy.deepcopy(inputs[0]); doc["version"] = version
+    if version >= 2: doc["yoked_start"] = None
+    doc["files"]["bank_manifest"] = None
+    with pytest.raises(stage.PreparationError, match="FILES_SHAPE"):
+        invoke(inputs, doc=doc)
+
+
+def test_v4_changed_bank_manifest_pin_fails_before_output(inputs):
+    doc = copy.deepcopy(inputs[0]); doc.update(version=4, yoked_start=None)
+    source = inputs[1] / "bank-manifest.local.json"; source.write_bytes(b"changed")
+    doc["files"]["bank_manifest"] = {"path": str(source), "sha256": "0" * 64}
     with pytest.raises(stage.PreparationError, match="FILE_PIN"):
         invoke(inputs, doc=doc)
     assert not (inputs[1] / "prepared").exists()

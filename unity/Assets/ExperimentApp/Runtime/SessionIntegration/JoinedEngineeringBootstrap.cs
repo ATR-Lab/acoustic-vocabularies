@@ -130,7 +130,7 @@ namespace AcousticVocab.SessionIntegration
                     // Identity and cross-file pins have already passed before
                     // creating any private output or starting control services.
                     nonce=Guid.NewGuid().ToString("N");evidenceRoot=Path.Combine(config.Directory("evidence"),"joined-"+nonce);Directory.CreateDirectory(evidenceRoot);
-                    var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.CodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
+                    var build=Resources.Load<TextAsset>("BuildIdentity");data=visit.Own(new DataJournal(Path.Combine(config.Directory("evidence"),"data"),new DataIdentity(config.SessionId,config.ExportCodedId,config.VisitId,config.StationId,config.ProtocolVersion,PcmWave.Hash(Encoding.UTF8.GetBytes(build.text))),Guid.NewGuid().ToString("N"),()=>clock.NowMs));
                     if(simulation!=null)simulationClosure=new SimulationRunClosure(Path.Combine(evidenceRoot,"native-result.local.json"),nonce,config.ConfigSha256,simulation.RawSha256,sourceCommit,System.Diagnostics.Process.GetCurrentProcess().Id,
                         ()=>ExportBundle.Create(Path.Combine(config.Directory("evidence"),"data"),Path.Combine(config.Directory("evidence"),"export-"+nonce),data.Identity,ExportHeaders.Provisional()),()=>clock.NowMs);
                     audit=visit.Own(new JoinedAudit(Path.Combine(evidenceRoot,"joined.local.jsonl"),()=>clock.NowMs));
@@ -144,7 +144,7 @@ namespace AcousticVocab.SessionIntegration
                     if(!frames.Ready)return;
                     if(assets.Package.Study=="B")
                     {
-                        var binding=JoinedSelections.CreateStoreBinding(config.RequireFile("menu_bridge_config").ReadVerified(),config.RequireFile("menu_bridge_config").Sha256,config.RequireFile("package_manifest").ReadVerified(),assets.Package,config.UnitId,config.Pin("bank_sha256"));
+                        var binding=JoinedSelections.CreateStoreBinding(config.RequireFile("menu_bridge_config").ReadVerified(),config.RequireFile("menu_bridge_config").Sha256,config.RequireFile("package_manifest").ReadVerified(),assets.Package,config.UnitId,config.Pin("bank_sha256"),config.TryFile("bank_manifest",out var bankManifest)?bankManifest.ReadVerified():null);
                         var wave=assets.Menus==null?JoinedVisitArtifacts.Json(assets.Permutation)["wave_atom_order"]["3"].Select(x=>(string)x).ToArray():assets.Menus.MenuKeys.Where(k=>k!="profile").ToArray();
                         audit.Write("configuration",new JObject{["producer_unit_id"]=config.UnitId,["bridge_unit_id"]=binding.UnitId,["bridge_config_sha256"]=binding.ConfigSha256});
                         store=visit.Own(new FileMenuStore(config.Directory("menu_mailbox"),binding,assets.Package,config.RequireFile("menu_snapshot").ReadVerified(),config.Pin("menu_manifest_sha256"),config.Pin("menu_head_sha256"),config.Pin("menu_snapshot_sha256"),wave,x=>audit.Write("store",x),()=>clock.NowMs,assets.Menus==null||assets.Menus.Role=="yoked"));
@@ -558,7 +558,7 @@ namespace AcousticVocab.SessionIntegration
                 else
                 {
                     var view=go.AddComponent<MenuSessionHost>();view.foundation=host.foundation;view.source=host.source;view.panel=host.panel;view.player=host.player;view.presentationParent=host.foundation.presentationRoot.transform;view.font=host.font;view.Faulted+=host.Fail;scope.RegisterCleanup(view.Uninstall);
-                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,host.menuLedger.Append,shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay??host.yokedAuthority?.Prepared,engineeringPreview:true,bindAudio:shared.BindAudio,cueRefused:host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
+                    result=view.Install(host.assets.Menus,host.store,control,host.assets.Route,host.assets.Gain,e=>{host.menuLedger.Append(e);shared.RecordMenu(e,host.assets.Menus.Role);},shared.DurableAudioSink,host.Fail,replay:host.yokedAuthority?.Replay??host.yokedAuthority?.Prepared,engineeringPreview:true,bindAudio:shared.BindAudio,cueRefused:host.RecordContentGateRefusal);view.BindEngine(host.owner.Engine);
                 }
                 host.audit.Write("module",new JObject{["kind"]="prepared_view",["block"]=block,["module"]=kind.ToString()});return result;
             }

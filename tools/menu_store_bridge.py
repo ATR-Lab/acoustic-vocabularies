@@ -20,7 +20,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'sound/src'))
 from av_sound._schemas import strict_loads
-from av_sound.dyad_bank import load_dyad_bank
+from av_sound.dyad_bank import BANK_FORMAT, QUALIFIED_BANK_FORMAT, load_dyad_bank
 from av_sound.grammar import ATOM_IDS
 from av_sound.package import load_package
 from av_sound.store import VocabularyStore, CommitRejected, canonical_json, snapshot_digest
@@ -126,17 +126,91 @@ class MenuStoreBridge:
         self.directory = self.store.book_dir(self.book_id)
         self.journal = self.directory / 'menu-bridge.jsonl'
         self.pending = self.directory / 'menu-bridge.pending.json'
+        self._qualified_source = None
+
+    def _bank_inventory(self, root):
+        """Complete immutable source proof; timestamps never replace byte hashes."""
+        root = _local_path(root, directory=True)
+        result = []; count = total = 0
+        for parent, dirs, files in os.walk(root, followlinks=False):
+            for name in sorted(dirs + files):
+                path = _local_path(Path(parent)/name, directory=name in dirs)
+                relative = path.relative_to(root).as_posix()
+                if name in dirs:
+                    result.append((relative, 'directory'))
+                    require(len(result) <= 20000, 'BANK_SOURCE_SIZE_OR_KIND')
+                    continue
+                with path.open('rb') as stream:
+                    info = os.fstat(stream.fileno())
+                    require(stat.S_ISREG(info.st_mode) and 0 <= info.st_size <= 64*1024**2,
+                            'BANK_SOURCE_SIZE_OR_KIND')
+                    raw = stream.read(info.st_size + 1)
+                    require(len(raw) == info.st_size, 'BANK_SOURCE_CHANGED')
+                count += 1; total += len(raw)
+                require(count <= 20000 and len(result) < 20000 and total <= 2*1024**3, 'BANK_SOURCE_SIZE_OR_KIND')
+                result.append((relative, len(raw), hashlib.sha256(raw).hexdigest()))
+        return tuple(sorted(result))
+
+    def _recheck_qualified_source(self):
+        if self._qualified_source is not None:
+            root, inventory = self._qualified_source
+            require(self._bank_inventory(root) == inventory, 'BANK_SOURCE_CHANGED')
 
     def _inputs(self):
         c = self.config
         require(digest(c) == self.config_sha256, 'CONFIG_CHANGED')
-        require(hashlib.sha256(Path(c['bank_path']).read_bytes()).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
-        bank = load_dyad_bank(c['bank_path'])
-        require(bank.demo and bank.bank_sha256() == c['bank_sha256'], 'BANK_PIN')
+        source = Path(c['bank_path'])
+        raw = source.read_bytes()
+        require(hashlib.sha256(raw).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
+        document = strict_loads(raw)
+        require(isinstance(document, dict) and document.get('format') in (BANK_FORMAT, QUALIFIED_BANK_FORMAT), 'BANK_FORMAT')
+        qualified = document['format'] == QUALIFIED_BANK_FORMAT
+        if qualified:
+            require(document.get('demo') is True and document.get('set') == 'demo'
+                    and isinstance(document.get('bank_id'), str) and ID.fullmatch(document['bank_id']),
+                    'QUALIFIED_BANK_UNAVAILABLE')
+            require(source.name == 'manifest.json', 'BANK_MANIFEST_PATH')
+            try:
+                from av_banks.handoff import HandoffError, qualified_dyad_bank
+                from av_banks.manifest import BankManifest, to_dyad_bank
+            except ImportError as error:
+                raise BridgeError('QUALIFIED_RUNTIME_UNAVAILABLE') from error
+            if self._qualified_source is None:
+                before_inventory = self._bank_inventory(source.parent)
+                try:
+                    bank = qualified_dyad_bank(source.parent, expected_bank_sha256=c['bank_sha256'])
+                except HandoffError as error:
+                    raise BridgeError('BANK_QUALIFICATION') from error
+                require(self._bank_inventory(source.parent) == before_inventory, 'BANK_SOURCE_CHANGED')
+                self._qualified_source = (_local_path(source.parent, directory=True), before_inventory)
+            else:
+                self._recheck_qualified_source()
+                # Recreate detached values from the independently pinned bytes.
+                # A successful prior verification alone is never sufficient.
+                bank = to_dyad_bank(BankManifest.from_dict(document))
+        else:
+            bank = load_dyad_bank(source)
+        # A qualified DyadBank's own provisional serialization has a different
+        # digest. Its handoff preserves the authoritative #26 manifest bank hash.
+        require(bank.demo and bank.package_bank()['bank_sha256'] == c['bank_sha256'], 'BANK_PIN')
         package = load_package(c['package_path'], expected_package_sha256=c['package_sha256'])
         require(package.demo and package.study == 'B' and package.package_id == bank.bank_id
                 and package.combinations_checked == 1536, 'PACKAGE_BINDING')
-        require(package.manifest['bank']['bank_sha256'] == c['bank_sha256'], 'PACKAGE_BANK_PIN')
+        require(package.manifest['bank'] == bank.package_bank(), 'PACKAGE_BANK_PIN')
+        if qualified:
+            permutation, allocation = package.permutation, package.allocation
+            require(permutation is not None and allocation is not None
+                    and permutation.get('demo') is True and permutation.get('study') == 'B'
+                    and allocation.get('structured_family') in ('K', 'Q'), 'QUALIFIED_PACKAGE_UNSEALED')
+            permutation_bytes = package.read_file('permutation.json')
+            require(document.get('demo') is True and document.get('set') == 'demo'
+                    and c['unit_id'] == 'DEMO-' + document['dyad_slot']
+                    and permutation['unit_id'] == document['dyad_slot'], 'BANK_UNIT_BINDING')
+            require(permutation_bytes == (source.parent/'permutation.json').read_bytes()
+                    and hashlib.sha256(permutation_bytes).hexdigest() == document['permutation_sha256']
+                    and permutation['atom_order'] == document['atom_order']
+                    and {row['atom_id']:row['semantic_label'] for row in permutation['atoms']} == document['labels'],
+                    'BANK_PERMUTATION_BINDING')
         require({x['atom_id']: x['semantic_label'] for x in package.answers['atoms']} == dict(bank.labels), 'BANK_LABELS')
         options = {}
         for row in package.audio['options']:
@@ -146,6 +220,8 @@ class MenuStoreBridge:
             require(hashlib.sha256(package.pcm(row['path'])).hexdigest() == option.pcm_sha256, 'OPTION_PCM')
             options[key] = row
         require(len(options) == 192, 'OPTION_INVENTORY')
+        require(hashlib.sha256(source.read_bytes()).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
+        self._recheck_qualified_source()
         return bank, package, options
 
     def _request(self, value, *, allow_verify=False):
@@ -261,7 +337,9 @@ class MenuStoreBridge:
     def select(self, value):
         request = self._request(value)
         with store_lock(self.store.root):
-            return self._select_locked(request)
+            receipt = self._select_locked(request)
+            self._recheck_qualified_source()
+            return receipt
 
     def _select_locked(self, request):
         bank, package, options = self._inputs()
@@ -347,7 +425,9 @@ class MenuStoreBridge:
     def verified_snapshot(self, *, expected_head, expected_snapshot_sha256):
         """Strict latest-head handoff for teaching, with no recipe or answer label."""
         with store_lock(self.store.root):
-            return self._verified_snapshot_locked(expected_head, expected_snapshot_sha256)
+            snapshot = self._verified_snapshot_locked(expected_head, expected_snapshot_sha256)
+            self._recheck_qualified_source()
+            return snapshot
 
     def _verified_snapshot_locked(self, expected_head, expected_snapshot_sha256):
         bank, package, options = self._inputs()
@@ -448,6 +528,12 @@ evidence; a request with an existing valid response is never executed again.
     processed = 0
     started = time.monotonic()
     with store_lock(bridge.store.root), store_lock(root):
+        # Qualify immutable source assets at service startup, before enabling a
+        # client. Later requests still re-read every source byte and package.
+        if bridge._qualified_source is None:
+            source = read_json(bridge.config['bank_path'])
+            if isinstance(source, dict) and source.get('format') == QUALIFIED_BANK_FORMAT:
+                bridge._inputs()
         while processed < max_requests and time.monotonic()-started < seconds:
             pending = []
             request_ids = set()
@@ -507,6 +593,7 @@ evidence; a request with an existing valid response is never executed again.
             # Detect a changed request before publishing, even if the commit is now
             # uncertain. The durable intent/journal handles an identical retry.
             require(_mailbox_request(path)[1] == request_hash, 'MAILBOX_REQUEST_CHANGED')
+            bridge._recheck_qualified_source()
             response['response_sha256'] = digest(response)
             _atomic_new(responses/path.name, response)
             processed += 1
