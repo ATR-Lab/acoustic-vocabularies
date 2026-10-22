@@ -47,7 +47,10 @@ namespace AcousticVocab.SelectionMenus.Tests
             Assert.That(PcmWave.Hash(bankBytes),Is.EqualTo((string)fixture["bank_manifest_file_sha256"]));bankHash=(string)fixture["bank_sha256"];
             manifestBytes=File.ReadAllBytes(Path.Combine(packageRoot,"manifest.json"));permutationBytes=File.ReadAllBytes(Path.Combine(packageRoot,"permutation.json"));
             package=PackageLoader.Load(packageRoot,(string)fixture["package_sha256"],true);
-            allocationBytes=File.ReadAllBytes(Path.Combine(repo,"schedules","examples","demo-allocation","B","confirmatory-dyads.json"));allocationHash=PcmWave.Hash(allocationBytes);
+            var allocation=JObject.Parse(File.ReadAllText(Path.Combine(repo,"schedules","examples","demo-allocation","B","confirmatory-dyads.json")));
+            // Provision this synthetic bank in place of the generator's placeholder.
+            allocation["dyads"].Single(x=>x["members"].Any(m=>(string)m["slot_id"]=="B-C01-M1"))["bank_id"]=(string)fixture["bank_id"];
+            allocationBytes=Bytes(allocation);allocationHash=PcmWave.Hash(allocationBytes);
             registryBytes=File.ReadAllBytes(Path.Combine(repo,"sound","reserved","registry.json"));registryHash=PcmWave.Hash(registryBytes);
         }
         [TearDown]public void Cleanup(){if(temp!=null&&Directory.Exists(temp))Directory.Delete(temp,true);}
@@ -150,6 +153,17 @@ namespace AcousticVocab.SelectionMenus.Tests
                 Assert.That(Assert.Throws<SessionFault>(()=>Catalog(slot,null)).Code,Is.EqualTo(QualifiedBank.Fault));
                 Assert.That(Assert.Throws<SessionFault>(()=>Catalog(slot,Bytes(bank))).Code,Is.EqualTo(QualifiedBank.Fault));
             }
+        }
+        [TestCase("bank-C002")]
+        [TestCase(null)]
+        public void RehashedAllocationWithForeignOrMissingBankBlocksBothRoles(string assignedBank)
+        {
+            var allocation=JObject.Parse(Encoding.UTF8.GetString(allocationBytes));
+            var dyad=(JObject)allocation["dyads"].Single(x=>x["members"].Any(m=>(string)m["slot_id"]=="B-C01-M1"));
+            if(assignedBank==null)dyad.Remove("bank_id");else dyad["bank_id"]=assignedBank;
+            allocationBytes=Bytes(allocation);allocationHash=PcmWave.Hash(allocationBytes);
+            foreach(string slot in new[]{"B-C01-M2","B-C01-M1"})
+                Assert.That(Assert.Throws<SessionFault>(()=>Catalog(slot,bankBytes)).Code,Is.EqualTo(QualifiedBank.Fault));
         }
         [Test]public void DemoQualifiedBankRemainsEngineeringOnly()
             =>Assert.That(Assert.Throws<SessionFault>(()=>Catalog("B-C01-M2",bankBytes,false)).Code,Is.EqualTo("MENU_DEMO_BANK_ENGINEERING_ONLY"));

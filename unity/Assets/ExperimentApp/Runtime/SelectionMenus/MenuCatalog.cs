@@ -68,6 +68,9 @@ namespace AcousticVocab.SelectionMenus
                 Check((string)manifest["bank"]?["format"]==package.BankFormat&&(string)manifest["bank"]?["bank_sha256"]==bankSha256&&permutationBytes!=null&&PcmWave.Hash(permutationBytes)==(string)manifest["files"]?["permutation.json"]?["sha256"]);
                 var permutation=Json(permutationBytes);Check(allocationBytes!=null&&PcmWave.Hash(allocationBytes)==allocationSha256);var allocation=Json(allocationBytes);Check(allocation["demo"]?.Type==JTokenType.Boolean&&(bool)allocation["demo"]==package.Demo&&allocation["dyads"] is JArray);
                 var dyads=allocation["dyads"].Where(x=>x["members"] is JArray&&x["members"].Any(m=>(string)m["slot_id"]==schedule.PersonSlot)).ToArray();Check(dyads.Length==1);
+                // A valid allocation hash does not establish that this member
+                // was assigned the verified bank recorded by the package.
+                if(qualified!=null)MenuRules.Require(dyads[0]["bank_id"]?.Type==JTokenType.String&&(string)dyads[0]["bank_id"]==qualified.BankId,QualifiedBank.Fault);
                 var members=dyads[0]["members"].Where(x=>(string)x["slot_id"]==schedule.PersonSlot).ToArray();Check(members.Length==1);string role=Text(members[0]["role"]);Check(role=="active"||role=="yoked");
                 Check(dyads[0]["profile_menu_order"] is JArray);string[] order=dyads[0]["profile_menu_order"].Select(x=>Text(x)).ToArray();Check(order.Length==3&&order.OrderBy(x=>x).SequenceEqual(new[]{"P1","P2","P3"}));
                 var items=schedule.Blocks.SelectMany(x=>x.Items).Where(x=>x.Phase=="selection").ToArray();string[] keys=items.Select(x=>x.TrialType=="profile_menu"?"profile":x.ContentId).ToArray();
