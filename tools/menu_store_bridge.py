@@ -214,11 +214,19 @@ class MenuStoreBridge:
         # exact current head as well, rejecting unaccounted writes and truncation.
         if expected_head is not None:
             require(report.chain_head == expected_head, 'STORE_HEAD_CHANGED')
-        snapshot = self.store.snapshot(self.book_id)
-        for atom in snapshot:
-            entry = self.store.get(self.book_id, atom)  # Re-read the actual stored blob.
-            snapshot[atom].update(file_sha256=entry.file_sha256, n_samples=entry.n_samples)
+        # Each public store reader checks the entire chain and all stored blobs.
+        # Read all entries once rather than rescanning the growing book per atom.
+        # This is a fresh disk read after the full rerender/admissibility check;
+        # no cached snapshot or unchecked waveform is used for the handoff.
+        entries = self.store.list(self.book_id, expected_head=report.chain_head)
+        snapshot = {}
+        for entry in entries:
+            snapshot[entry.atom_id] = dict(recipe_sha256=entry.recipe.sha256(),
+                pcm_sha256=entry.pcm_sha256, profile=entry.profile.value,
+                semantic_label=entry.semantic_label, file_sha256=entry.file_sha256,
+                n_samples=entry.n_samples)
             require(hashlib.sha256(entry.pcm).hexdigest() == entry.pcm_sha256, 'STORED_PCM_CHANGED')
+        require(self.store.head(self.book_id) == report.chain_head, 'STORE_HEAD_CHANGED')
         return snapshot, report.chain_head
 
     def _current(self, rows):
@@ -346,18 +354,22 @@ class MenuStoreBridge:
         require(not self.pending.exists(), 'UNRESOLVED_INTENT')
         rows = self._records(); snapshot, head = self._current(rows)
         require(head == expected_head and snapshot_digest(snapshot) == expected_snapshot_sha256, 'READ_SNAPSHOT_PIN')
+        actual_entries = ({entry.atom_id:entry for entry in self.store.list(self.book_id, expected_head=head)}
+                          if rows else {})
         for x in rows:
             receipt = x['receipt']
             if receipt['status'] != 'committed':
                 continue
             atom = receipt['menu_key']
-            actual = self.store.get(self.book_id, atom)
+            actual = actual_entries[atom]
             option = bank.option(receipt['profile'], atom, receipt['rank'])
             packaged = options[(receipt['profile'], atom, receipt['rank'])]
             require(actual.recipe.sha256() == option.recipe.sha256()
                     and actual.pcm_sha256 == receipt['pcm_sha256'] == option.pcm_sha256
                     and actual.file_sha256 == receipt['file_sha256'] == packaged['file_sha256']
                     and actual.profile.value == receipt['profile'] and actual.semantic_label == bank.labels[atom], 'READ_SELECTION_BINDING')
+        if rows:
+            require(self.store.head(self.book_id) == head, 'STORE_HEAD_CHANGED')
         result = {k:self.config[k] for k in ('schema_version','unit_id','book_id','bank_sha256','package_sha256')}
         result.update(config_sha256=self.config_sha256, profile=rows[0]['receipt']['profile'] if rows else None,
                       profile_selection_receipt_sha256=rows[0]['receipt']['receipt_sha256'] if rows else None,
