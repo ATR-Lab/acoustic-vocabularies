@@ -142,6 +142,25 @@ def strict_loads(raw):
     return json.loads(raw, object_pairs_hook=pairs, parse_constant=reject_constant)
 
 
+STAMP_TEXT = re.compile(r"(?:0|[1-9][0-9]{0,19})\Z")
+# The envelope is the only wire object with this key (validate_frame enforces
+# closed key sets), and a JSON key is the only string followed by ':'.
+_PROVISIONAL_STAMP = '"host_monotonic_ns":"0"'
+
+
+class PreparedFrame:
+    """A validated frame whose host stamp is applied at publication time.
+
+    The payload is held as the exact bytes before and after the stamp value, so
+    committing costs a string join rather than a second projection/encode.
+    """
+    __slots__ = ("frame", "head", "tail", "seq", "session_id", "committed")
+
+    def __init__(self, frame, head, tail, seq, session_id):
+        self.frame, self.head, self.tail = frame, head, tail
+        self.seq, self.session_id, self.committed = seq, session_id, False
+
+
 class StateEncoder:
     def __init__(self, registry, source_kind="live", clock_ns=time.monotonic_ns):
         if source_kind not in ("live", "synthetic"):
@@ -149,7 +168,42 @@ class StateEncoder:
         self.registry, self.source_kind, self.clock_ns = registry, source_kind, clock_ns
         self.session_id, self.sequence = uuid.uuid4().hex, 0
 
+    def prepare(self, positions, object_state, sim_time, sim_step):
+        """Project, validate and encode now; the stamp is supplied by commit().
+
+        The returned frame is fully validated with a provisional stamp. It does
+        not consume a sequence number until it is committed.
+        """
+        frame = self._frame(positions, object_state, sim_time, sim_step, lambda: "0")
+        validate_frame(frame, self.registry)
+        payload = encode(frame)
+        if payload.count(_PROVISIONAL_STAMP) != 1:
+            raise ValueError("Envelope stamp position is not unique")
+        head, tail = payload.split(_PROVISIONAL_STAMP)
+        return PreparedFrame(frame, head, tail, self.sequence, self.session_id)
+
+    def commit(self, prepared, stamp_ns):
+        """Apply the publication stamp; output equals encode(frame) byte for byte."""
+        if (not isinstance(prepared, PreparedFrame) or prepared.committed
+                or prepared.seq != self.sequence or prepared.session_id != self.session_id):
+            raise ValueError("Stale or already committed prepared frame")
+        if type(stamp_ns) is not int or stamp_ns < 0:
+            raise ValueError("Monotonic nanoseconds must be a non-negative integer")
+        text = str(stamp_ns)
+        if not STAMP_TEXT.fullmatch(text):
+            raise ValueError("Monotonic nanoseconds must be a decimal string")
+        prepared.frame["host_monotonic_ns"] = text
+        prepared.committed = True
+        self.sequence += 1
+        return prepared.frame, prepared.head + '"host_monotonic_ns":"' + text + '"' + prepared.tail
+
     def build(self, positions, object_state, sim_time, sim_step):
+        frame = self._frame(positions, object_state, sim_time, sim_step, lambda: str(self.clock_ns()))
+        validate_frame(frame, self.registry)
+        self.sequence += 1
+        return frame
+
+    def _frame(self, positions, object_state, sim_time, sim_step, stamp):
         # Explicit projection: never serialize the complete simulation/command object.
         if set(object_state) != {obj_id for obj_id, _ in self.registry.object_states}:
             raise ValueError("Scene inventory changed")
@@ -172,8 +226,6 @@ class StateEncoder:
                      station_id=self.registry.station_id, scene_sha256=self.registry.scene_sha256,
                      reset_snapshot_sha256=self.registry.reset_snapshot_sha256,
                      session_id=self.session_id, seq=self.sequence,
-                     host_monotonic_ns=str(self.clock_ns()), sim_time=sim_time, sim_step=sim_step,
+                     host_monotonic_ns=stamp(), sim_time=sim_time, sim_step=sim_step,
                      joint_names=list(self.registry.joint_names), joint_positions=list(positions), objects=objects)
-        validate_frame(frame, self.registry)
-        self.sequence += 1
         return frame

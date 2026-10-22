@@ -1,0 +1,355 @@
+{
+  "evidence_version": 1,
+  "purpose": "Native hour with the opt-in guarded handle cache for publisher readback, Refs #54",
+  "source_kind": "actual_isaac_sim_5.1",
+  "protected_mode": false,
+  "qualification": false,
+  "result": "PASS: unchanged strict timing/rate screen for this unprotected engineering hour",
+  "source": {
+    "commit": "d8c7849d72bea24683d34eb8e57bf3cc29c49230",
+    "archive_sha256": "2f0d05b350745579d0a471500066bfdbdc25f1e974c632ba0a86af1dd47571d6",
+    "archive_commit_id_verified": true,
+    "runtime_source_sha256": {
+      "isaac/publisher/pacing.py": "175cb8c8708d49148bb7bc66b2053d387995119c57d2ab7952a791950aac324f",
+      "isaac/publisher/runtime.py": "fae8f699eeed1ea91f6c1054c7dd51b0784f68e3edc3820619aec5b11a86e8de",
+      "isaac/publisher/protocol.py": "895ffc8380f7668583d9b252ccb7941ae3b3044a573739ea16142cf6fc058dde",
+      "isaac/publisher/benchmark.py": "4f5b6f3073f0f0f1a860b9a6bd008a103095a4aa8f42db16be22f48700818fe3",
+      "isaac/publisher/analyze.py": "f3c9c520ea56cc14aa776c21a804713673dc325d1801fdf9c6dfa341ed26c836",
+      "isaac/publisher/replay.py": "5b0333160532e2abc85f9154cc9bf29908b0baf6a6f5ce7a5289afebcd7e3ea1",
+      "isaac/workcell/run_scene.py": "a3ee5b48f3a6d702286bd6f86b10a3134fcc47c7c0915fb566ac2a0cdbe9b2b2",
+      "isaac/workcell/state.py": "6f6ec66b38d169fa288201d07a5d84620330f25e0c5a3df68c3a7872d73f5b2a",
+      "isaac/workcell/cache_guard.py": "574bac2e162b764aba9bef824c28613b29addd9f67da8a01a9b6ada86d9cf88b",
+      "isaac/workcell/build_usd.py": "c8c036e1699e3bd5a2842f1c5c56812aa0d43edd3abe6c81dea4ba80647a69ac",
+      "tests/isaac/usd_cache_tamper_check.py": "4d2c7cc927fad6b175c71c4991b39c1115d9a5ee06ff8f948d6bce502b19a484"
+    },
+    "cache_sources_match_qualified": true,
+    "tamper_recheck": "Not re-run: image ID and USD build unchanged since the 2026-10-05 qualification (sha256:38495e05...0c80, USD 0.24.5) and cache sources byte-identical"
+  },
+  "runtime": {
+    "image": "acoustic-vocab-spike:isaac5.1-rendered-cache-20261004",
+    "image_id": "sha256:38495e057950909c75e69340ad507a6206e2e4211f166872e5ebdd75ec940c80",
+    "isaac_build": "5.1.0-rc.19+release.26219.9c81211b.gl",
+    "container": "--network none, --gpus device=0, read-only exact-commit source and asset cache, no integration overlay",
+    "run_scene_flags": "--capture --reset-check --headless --command-check --publisher-seconds 3600 --publisher-collector process --publisher-handle-cache (defaults: presample, freeze; reach included; 1000 reset cycles)",
+    "deviation": "Same as the 2026-10-09 uncached hour plus --publisher-handle-cache; --disconnect-check omitted as before"
+  },
+  "binding": {
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reset_cycles": 1000,
+    "all_reset_cycles_passed": true,
+    "publisher_handle_cache_enabled": true,
+    "matches_recorded_hours": true
+  },
+  "unchanged_screen": {
+    "completed_live_hour_ge_3600_s": {
+      "value": 3600.000249,
+      "pass": true
+    },
+    "p99_abs_period_error_le_3_333333_ms": {
+      "value": 0.103785,
+      "pass": true
+    },
+    "zero_missed_deadlines": {
+      "value": 0,
+      "pass": true
+    },
+    "zero_queue_overwrites": {
+      "value": 0,
+      "pass": true
+    },
+    "no_gap_over_250_ms": {
+      "value": {
+        "max_gap_ms": 40.443503,
+        "gaps_over_250_ms": 0
+      },
+      "pass": true
+    },
+    "contiguous_validated_frames": {
+      "value": {
+        "frames": 108001,
+        "received": 108001,
+        "sequence_gaps": 0,
+        "runtime_validated": 108001
+      },
+      "pass": true
+    },
+    "no_publisher_or_guard_fault": {
+      "value": null,
+      "pass": true
+    },
+    "timing_screen": {
+      "value": true,
+      "pass": true
+    },
+    "rate_screen": {
+      "value": true,
+      "pass": true
+    }
+  },
+  "diagnostics": {
+    "deadline_lag_p99_ms_below_1": {
+      "value": 0.184104,
+      "met": true
+    },
+    "handle_cache_enabled_with_qualified_sources": {
+      "value": {
+        "isaac/workcell/state.py": "6f6ec66b38d169fa288201d07a5d84620330f25e0c5a3df68c3a7872d73f5b2a",
+        "isaac/workcell/cache_guard.py": "574bac2e162b764aba9bef824c28613b29addd9f67da8a01a9b6ada86d9cf88b"
+      },
+      "met": true
+    },
+    "objects_ms_median_near_6_5": {
+      "value": 6.594018,
+      "met": true
+    },
+    "overrun_ticks_well_below_1173": {
+      "value": 44,
+      "met": true
+    }
+  },
+  "publisher": {
+    "rate_hz": 30,
+    "duration_s": 3600.00024915,
+    "required_duration_s": 3600,
+    "frames": 108001,
+    "source_kind": "live",
+    "complete": true,
+    "contiguous": true,
+    "simulation_progressing": true,
+    "interval_median_ms": 33.333357,
+    "interval_p99_ms": 33.43301702,
+    "absolute_period_error_p99_ms": 0.10378548666666773,
+    "nominal_period_ms": 33.333333333333336,
+    "max_gap_ms": 40.443503,
+    "gaps_over_250_ms": 0,
+    "queue_overwrites": 0,
+    "missed_deadlines": 0,
+    "timing_screen": true,
+    "rate_screen": true,
+    "deadline_lag_median_ms": 0.144813,
+    "deadline_lag_p99_ms": 0.184104,
+    "deadline_lag_max_ms": 14.686203,
+    "raw_csv_sha256": "1cea060dc311ffdfe24b5a4ba3549730197831012ede3f0e1ed21df5bb4142a0",
+    "local_receive_complete": true
+  },
+  "run_metadata": {
+    "pacing_mode": "presample",
+    "collector_mode": "process",
+    "physics_steps": 216002,
+    "processing_ms_max": 40.490513,
+    "overrun_ticks": 44,
+    "wake_late_ms_max": 2.302955,
+    "handle_cache_requested": true,
+    "handle_cache_enabled": true,
+    "start_host_ns": "1560367588688798",
+    "end_host_ns": "1563967588937948",
+    "completed": true,
+    "fault": null
+  },
+  "stage_ms": {
+    "joints_ms": {
+      "count": 108001,
+      "p50": 0.090582,
+      "p90": 0.121303,
+      "p99": 0.457725,
+      "p999": 0.636648,
+      "max": 1.212031,
+      "mean": 0.10862281125174698
+    },
+    "objects_ms": {
+      "count": 108001,
+      "p50": 6.594018,
+      "p90": 7.551304,
+      "p99": 8.846138,
+      "p999": 11.782915,
+      "max": 15.48663,
+      "mean": 6.762092286571417
+    },
+    "encode_ms": {
+      "count": 108001,
+      "p50": 1.397362,
+      "p90": 1.455823,
+      "p99": 1.629481,
+      "p999": 2.647327,
+      "max": 6.761387,
+      "mean": 1.4035962772659405
+    }
+  },
+  "gc": {
+    "policy": "freeze",
+    "frozen_objects": 640893,
+    "warmup_collect_ms": 351.995,
+    "by_generation": {
+      "0": {
+        "events": 8,
+        "total_ms": 0.550272,
+        "max_ms": 0.078972,
+        "collected": 0
+      },
+      "1": {
+        "events": 0,
+        "total_ms": 0.0,
+        "max_ms": 0.0,
+        "collected": 0
+      },
+      "2": {
+        "events": 0,
+        "total_ms": 0.0,
+        "max_ms": 0.0,
+        "collected": 0
+      }
+    }
+  },
+  "lag_attribution": {
+    "frames": 108001,
+    "lag_over_0_5_ms": 126,
+    "lag_over_3_333_ms": 14,
+    "lag_p50": 0.144813,
+    "lag_p90": 0.168263,
+    "lag_p99": 0.184104,
+    "lag_p999": 0.91962,
+    "lag_max": 14.686203,
+    "serialize_p50": 8.104352,
+    "serialize_p99": 10.415812,
+    "serialize_max": 18.859034,
+    "handoff_p50": 0.114868,
+    "handoff_max": 2.048115,
+    "intervals_over_limit": 13,
+    "over_limit_with_late_endpoint": 13,
+    "missed_rows": 0,
+    "err_p99": 0.1037853333333345,
+    "err_p999": 1.6930646666666647,
+    "err_max": 7.110169666666664
+  },
+  "comparison_with_uncached_2026_10_09": {
+    "sample_encode_median_ms": {
+      "uncached": 12.926134,
+      "cached": 8.104352
+    },
+    "sample_encode_p99_ms": {
+      "uncached": 15.337106,
+      "cached": 10.415812
+    },
+    "sample_encode_max_ms": {
+      "uncached": 25.287467,
+      "cached": 18.859034
+    },
+    "overrun_ticks": {
+      "uncached": 1173,
+      "cached": 44
+    },
+    "missed_deadlines": {
+      "uncached": 2,
+      "cached": 0
+    },
+    "p99_ms": {
+      "uncached": 0.6260087233333348,
+      "cached": 0.10378548666666773
+    },
+    "intervals_over_limit": {
+      "uncached": 54,
+      "cached": 13
+    },
+    "note": "Sequential runs on a shared host; workload variation is not isolated"
+  },
+  "host_monitor": {
+    "window_utc": [
+      "2026-10-09T21:58:00Z",
+      "2026-10-09T22:58:00Z"
+    ],
+    "samples": 706,
+    "interval_s": 5,
+    "gpu_util_pct": {
+      "min": 28,
+      "median": 30,
+      "p99": 31,
+      "max": 32
+    },
+    "gpu_mem_mib": {
+      "min": 6360,
+      "max": 6360
+    },
+    "load1": {
+      "min": 1.66,
+      "median": 2.71,
+      "max": 6.26
+    },
+    "compute_pids_seen": [
+      "3168699"
+    ],
+    "foreign_compute_pids": [],
+    "other_containers": [
+      "rosenv-1005-jazzy-dev-e0b8396d2961"
+    ],
+    "contended": false,
+    "note": "No foreign GPU compute process; another user's rosenv container present and idle; host 1-minute load 1.66-6.26 on 64 logical CPUs"
+  },
+  "diagnostic_20s": {
+    "duration_s": 20.000297418,
+    "frames": 601,
+    "absolute_period_error_p99_ms": 0.3532886733333196,
+    "max_gap_ms": 35.075554,
+    "missed_deadlines": 0,
+    "queue_overwrites": 0,
+    "deadline_lag_p99_ms": 0.197296,
+    "timing_screen": true,
+    "rate_screen": false,
+    "raw_csv_sha256": "2ed9cadf2a9b13afea59ddd92068f8d6ba437c9b511390a7f3feb977fbf1b1dd",
+    "overrun_ticks": 0,
+    "handle_cache_enabled": true,
+    "stage_ms_p50": {
+      "joints_ms": 0.0913,
+      "objects_ms": 6.5741,
+      "encode_ms": 1.3771
+    },
+    "serialize_ms_p50": 8.068389
+  },
+  "independent_checks": {
+    "csv_summary_recomputed": true,
+    "retained_samples_json_schema_validated": 2,
+    "reported_file_hashes_match": true,
+    "receiver_count_equals_published": true
+  },
+  "raw_evidence_sha256": {
+    "cache-hour/publisher-check/health.json": "550a153a3a58c8120582ded21325264cdae705f3eeff4077cdb3cdf5b5faa04c",
+    "cache-hour/publisher-check/metadata.json": "28f156b3293921d6852d2cef9359fde8f263e848b46f9bebd52f4e72273ca3ee",
+    "cache-hour/publisher-check/publish.csv": "1cea060dc311ffdfe24b5a4ba3549730197831012ede3f0e1ed21df5bb4142a0",
+    "cache-hour/publisher-check/sample-first.json": "78c19fbdbcb1d36c49f1892e39f9bb80df4bdbf1a6db61a593b524db32cb2ac5",
+    "cache-hour/publisher-check/sample-last.json": "b296e68745aef389e7e7390e4e6ee8d490f98bcb278157ef32f7cb44cbcdc327",
+    "cache-hour/publisher-check/stages.csv": "637a73ecf2f092186ac1b1b9a25ac7edbd10f436c88cc218740ce13f16b30857",
+    "cache-hour/publisher-check/summary.json": "5d9b505fd41262539bba647880604a7a0a82a5bc88f7c7e2f8818ac21ef34c1e",
+    "cache-hour/summary.json": "93ff4d765adf0fcef3b78e3fdf270f43ce27d8f2fce62987abaaea7e9a8f2e9a",
+    "cache-hour/command-check/summary.json": "23f2380b86e8deb759de331363f77e3b69be654cd4ade7ffcb34020dc2441f84",
+    "cache-diag20/publisher-check/health.json": "548a415476780f3cda46b72aa052e87e9089988024e1a1f1516eab7959ebf9d0",
+    "cache-diag20/publisher-check/metadata.json": "aaa21a69fbb8ac30bca5be0646836fcb8d6712e745a89bd6f53875c029157d01",
+    "cache-diag20/publisher-check/publish.csv": "2ed9cadf2a9b13afea59ddd92068f8d6ba437c9b511390a7f3feb977fbf1b1dd",
+    "cache-diag20/publisher-check/sample-first.json": "7eae86d1e66ff268a89120ab5b0b37ff9b4c7fba0e35bdb2ab5949a5e2e510f6",
+    "cache-diag20/publisher-check/sample-last.json": "32d59c0fda755335a5f7cbb2721f1660645c74b0b7d0c05cf53d426154c75666",
+    "cache-diag20/publisher-check/stages.csv": "c8240697ea3b535910e2784e135c1686e872fcb7230d18d2087f1779d23ec871",
+    "cache-diag20/publisher-check/summary.json": "8b68ab3d23895281726e1d75303448dc537651dc6cdaf92a28068eeaf37e2edb",
+    "cache-hour.log": "df1d513b3fa3b907369ed3f9c6a6d2c5d3aa9f8cd6f1bbc7b6bfe1af29c62483",
+    "cache-diag20.log": "3a7a5700d4084d201a5acfa5b7e3d1b03d127113f0a60790012e44ca565eee5f",
+    "monitor-cache.csv": "bc0a356639bf5638db06187ae54dbfba61fbbe941ea9ad8f2b13c4bc82f0554b",
+    "cache-hour-monitor-summary.json": "f8d44a3392809d75767afd72d0e0032e813ed697f91ea642eed4b02fe37b9303"
+  },
+  "cleanup": {
+    "containers_started": [
+      "av-cache-diag20",
+      "av-cache-hour"
+    ],
+    "all_removed": true,
+    "monitor_stopped": true,
+    "gpu_after": "1 %, 742 MiB",
+    "untouched": [
+      "rosenv-1005-jazzy-dev-e0b8396d2961 (another user)",
+      "av-i56-a30e950-preflight-001 (exited 2026-10-07)"
+    ]
+  },
+  "limitations": [
+    "Unprotected engineering workload; no neutral-hold, protected throughput, network, headset, audio or G2 claim",
+    "One hour on one shared host; comparison with the uncached hour is sequential",
+    "Handle cache remains an explicit experimental opt-in; default off",
+    "Ubuntu 24.04 container deviation from requested Ubuntu 22.04 remains open"
+  ]
+}

@@ -1,0 +1,330 @@
+{
+  "evidence_version": 1,
+  "purpose": "Publisher readback cost reduction analysis, Refs #54",
+  "qualification": false,
+  "label": "ANALYSIS AND ESTIMATES ONLY; NO NEW NATIVE RUN. A further native hour is required.",
+  "native_hour_source": {
+    "record": "native-jitter-hour-results.json",
+    "publish_csv_sha256": "8c03324592510a9e15ab6e9ad3eb149060f7e9497a193d8fa431ea3214870917"
+  },
+  "serialize_structure": {
+    "frames": 107999,
+    "median_ms": 12.926134,
+    "p90_ms": 14.189312,
+    "p99_ms": 15.337106,
+    "p999_ms": 17.536045,
+    "max_ms": 25.287467,
+    "cumulative_counts": {
+      "<12.5": 99,
+      "<13": 70050,
+      "<13.5": 91665,
+      "<14": 95569,
+      "<15": 105497,
+      "<16": 107539,
+      "<18": 107920
+    },
+    "autocorrelation": {
+      "1": 0.6456,
+      "10": 0.5174,
+      "60": 0.4015,
+      "300": 0.2168,
+      "1800": 0.095
+    },
+    "per_minute_median_ms_range": [
+      12.865,
+      14.633
+    ],
+    "interpretation": "Bimodal (12.5-13 ms main mode, 14-15 ms secondary on ~9% of frames) with strong autocorrelation: slowdowns persist for seconds to minutes, consistent with host-level CPU contention on the Python/USD readback rather than isolated per-frame events"
+  },
+  "non_usd_stage_probe": {
+    "host": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.12.14",
+      "implementation": "CPython",
+      "cpu_count": 12,
+      "wall_clock": "perf_counter",
+      "switch_interval_s": 0.005,
+      "gc_threshold": [
+        700,
+        10,
+        10
+      ]
+    },
+    "repeats": 2000,
+    "objects": 60,
+    "joints": 43,
+    "stages_ms": {
+      "fresh_containers_deepcopy": {
+        "p50": 0.291,
+        "p99": 0.5067280000000001
+      },
+      "accessor_public_validation": {
+        "p50": 0.1483,
+        "p99": 0.272028
+      },
+      "encoder_projection": {
+        "p50": 0.0256,
+        "p99": 0.057401
+      },
+      "validate_frame": {
+        "p50": 0.15865,
+        "p99": 0.3055
+      },
+      "json_encode": {
+        "p50": 0.1008,
+        "p99": 0.19870899999999997
+      },
+      "prepare_total": {
+        "p50": 0.31855,
+        "p99": 0.5935959999999999
+      },
+      "stamp_join": {
+        "p50": 0.0003,
+        "p99": 0.0007
+      }
+    },
+    "note": "Non-USD sample+encode work is ~0.5 ms on this laptop (accessor validation + prepare); ~1 ms measured natively. USD object reads and the articulation copy dominate the 12.9 ms native median"
+  },
+  "cache": {
+    "source": "#170 guarded handle cache (isaac/workcell/state.py, cache_guard.py), merged on main",
+    "qualified_tracked_source_lf_sha256": {
+      "isaac/workcell/state.py": "6f6ec66b38d169fa288201d07a5d84620330f25e0c5a3df68c3a7872d73f5b2a",
+      "isaac/workcell/cache_guard.py": "574bac2e162b764aba9bef824c28613b29addd9f67da8a01a9b6ada86d9cf88b",
+      "isaac/workcell/build_usd.py": "c8c036e1699e3bd5a2842f1c5c56812aa0d43edd3abe6c81dea4ba80647a69ac",
+      "tests/isaac/usd_cache_tamper_check.py": "4d2c7cc927fad6b175c71c4991b39c1115d9a5ee06ff8f948d6bce502b19a484"
+    },
+    "current_source_lf_sha256": {
+      "isaac/workcell/state.py": "6f6ec66b38d169fa288201d07a5d84620330f25e0c5a3df68c3a7872d73f5b2a",
+      "isaac/workcell/cache_guard.py": "574bac2e162b764aba9bef824c28613b29addd9f67da8a01a9b6ada86d9cf88b",
+      "isaac/workcell/build_usd.py": "c8c036e1699e3bd5a2842f1c5c56812aa0d43edd3abe6c81dea4ba80647a69ac",
+      "tests/isaac/usd_cache_tamper_check.py": "4d2c7cc927fad6b175c71c4991b39c1115d9a5ee06ff8f948d6bce502b19a484"
+    },
+    "unchanged_since_qualification": true,
+    "structural_qualification": "USD 0.24.5 pinned runtime, 2026-10-05: cached matrix rejected 20/20 mutations and verified 2/2 no-ops; live round trip passed",
+    "measured_public_read_median_ms": {
+      "uncached": 9.629585,
+      "cached": 6.483209,
+      "per_phase": [
+        {
+          "phase": "unprotected-none",
+          "before": 9.629585,
+          "after": 6.483209
+        },
+        {
+          "phase": "unprotected-thread",
+          "before": 9.682878,
+          "after": 6.515901
+        },
+        {
+          "phase": "unprotected-process",
+          "before": 9.67576,
+          "after": 6.50424
+        },
+        {
+          "phase": "profile-thread",
+          "before": 11.237838499999999,
+          "after": 6.868535
+        },
+        {
+          "phase": "profile-process",
+          "before": 11.180366,
+          "after": 6.875587
+        }
+      ]
+    },
+    "expected_saving_ms_per_tick": {
+      "median": 3.146,
+      "relative_to_sample_encode_median": 0.2434
+    }
+  },
+  "replay": {
+    "method": "isaac/publisher/replay.py: recover physics on overrun ticks from deadline lag, replay the publisher deadline rule with counterfactual sample+encode",
+    "recovered_physics_ticks": 875,
+    "recovered_physics_median_ms": 18.416105333333334,
+    "identity": {
+      "missed_deadlines": 2,
+      "interval_error_p99_ms": 0.6260083899584921,
+      "interval_error_max_ms": 11.724106999967866,
+      "intervals_over_limit": 54,
+      "lag_p99_ms": 0.2651749600000058,
+      "lag_max_ms": 33.05146299999995,
+      "overrun_ticks": 875
+    },
+    "additive": {
+      "saving_ms": 3.146,
+      "missed_deadlines": 0,
+      "interval_error_p99_ms": 0.12211299952197435,
+      "interval_error_max_ms": 8.578106999785327,
+      "intervals_over_limit": 6,
+      "lag_p99_ms": 0.19066616000000003,
+      "lag_max_ms": 15.983044,
+      "overrun_ticks": 32
+    },
+    "proportional": {
+      "object_share": 0.745,
+      "object_factor": 0.673,
+      "missed_deadlines": 0,
+      "interval_error_p99_ms": 0.1218989995975646,
+      "interval_error_max_ms": 7.583951747355364,
+      "intervals_over_limit": 2,
+      "lag_p99_ms": 0.19043706000000002,
+      "lag_max_ms": 8.946161542305013,
+      "overrun_ticks": 15
+    },
+    "saving_sweep": [
+      {
+        "saving_ms": 0,
+        "missed": 2,
+        "p99_ms": 0.626,
+        "over_limit": 54,
+        "overrun_ticks": 875,
+        "lag_max_ms": 33.051
+      },
+      {
+        "saving_ms": 0.25,
+        "missed": 1,
+        "p99_ms": 0.3999,
+        "over_limit": 43,
+        "overrun_ticks": 750,
+        "lag_max_ms": 32.776
+      },
+      {
+        "saving_ms": 0.5,
+        "missed": 1,
+        "p99_ms": 0.2682,
+        "over_limit": 34,
+        "overrun_ticks": 530,
+        "lag_max_ms": 33.002
+      },
+      {
+        "saving_ms": 0.75,
+        "missed": 0,
+        "p99_ms": 0.1881,
+        "over_limit": 27,
+        "overrun_ticks": 389,
+        "lag_max_ms": 26.63
+      },
+      {
+        "saving_ms": 1.0,
+        "missed": 0,
+        "p99_ms": 0.1398,
+        "over_limit": 21,
+        "overrun_ticks": 286,
+        "lag_max_ms": 22.421
+      },
+      {
+        "saving_ms": 1.5,
+        "missed": 0,
+        "p99_ms": 0.1252,
+        "over_limit": 19,
+        "overrun_ticks": 168,
+        "lag_max_ms": 20.921
+      },
+      {
+        "saving_ms": 2.0,
+        "missed": 0,
+        "p99_ms": 0.1235,
+        "over_limit": 18,
+        "overrun_ticks": 102,
+        "lag_max_ms": 19.421
+      },
+      {
+        "saving_ms": 2.5,
+        "missed": 0,
+        "p99_ms": 0.1225,
+        "over_limit": 9,
+        "overrun_ticks": 63,
+        "lag_max_ms": 17.921
+      },
+      {
+        "saving_ms": 3.146,
+        "missed": 0,
+        "p99_ms": 0.1221,
+        "over_limit": 6,
+        "overrun_ticks": 32,
+        "lag_max_ms": 15.983
+      }
+    ],
+    "cached_with_extra_physics": [
+      {
+        "physics_extra_ms": 1.0,
+        "missed": 0,
+        "p99_ms": 0.1232,
+        "over_limit": 15,
+        "overrun_ticks": 88
+      },
+      {
+        "physics_extra_ms": 2.0,
+        "missed": 0,
+        "p99_ms": 0.1313,
+        "over_limit": 24,
+        "overrun_ticks": 233
+      },
+      {
+        "physics_extra_ms": 3.0,
+        "missed": 1,
+        "p99_ms": 0.485,
+        "over_limit": 46,
+        "overrun_ticks": 866
+      }
+    ]
+  },
+  "synthetic_virtual_hour_native_calibrated": {
+    "note": "Seeded synthetic cost model (physics 9.2 ms/step, i.i.d. Exp jitter + 1% tails) is harsher than the native hour (its uncached p99 3.85 ms vs native 0.63 ms); use for direction only",
+    "uncached": {
+      "cost_model": {
+        "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+        "physics_ms_per_step": 9.2,
+        "physics_jitter_ms": 0.3,
+        "read_ms": 11.9,
+        "read_jitter_ms": 0.6,
+        "tail_probability": 0.01,
+        "tail_ms": [
+          2.0,
+          6.0
+        ],
+        "virtual_encode_ms": 1.0
+      },
+      "p99_ms": 3.8514,
+      "max_ms": 10.782,
+      "over_limit": 1520,
+      "intervals": 108000,
+      "missed": 0,
+      "overrun_ticks": 31812,
+      "summary_sha256": "9014595e982f67924f05fa3a523b09a23e4c3c823e745372f5e1d54df184e7d0"
+    },
+    "cached_read_minus_3_15_ms": {
+      "cost_model": {
+        "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+        "physics_ms_per_step": 9.2,
+        "physics_jitter_ms": 0.3,
+        "read_ms": 8.75,
+        "read_jitter_ms": 0.6,
+        "tail_probability": 0.01,
+        "tail_ms": [
+          2.0,
+          6.0
+        ],
+        "virtual_encode_ms": 1.0
+      },
+      "p99_ms": 1.448,
+      "max_ms": 7.632,
+      "over_limit": 122,
+      "intervals": 108000,
+      "missed": 0,
+      "overrun_ticks": 1813,
+      "summary_sha256": "518f335d790c9958789344ccb16c336dbc1c6e38773a87f5d50e27092e6099ee"
+    }
+  },
+  "next_native_hour_must_show": [
+    "metadata.handle_cache_enabled true with handle_cache_source_sha256 equal to the qualified state.py/cache_guard.py hashes",
+    "stage_ms.objects_ms median near 6.5 ms (vs ~9.6 ms uncached), from stages.csv",
+    "unchanged screen: >= 3600 s live, p99 <= 3.333333 ms, 0 missed deadlines, 0 queue overwrites, no gap > 250 ms, contiguous validated frames, no publisher fault",
+    "diagnostics: deadline_lag_p99_ms < 1 ms; overrun_ticks well below the 1,173 of the 2026-10-09 hour; no guard fault"
+  ],
+  "limitations": [
+    "No native run with the cache in the paced publisher loop yet",
+    "Replay assumes recovered/bounded physics times and that a cached read saves a fixed or proportional amount; it is an estimate",
+    "Cached-read saving is taken from the 2026-10-05 unpaced profile on the same host and image"
+  ]
+}

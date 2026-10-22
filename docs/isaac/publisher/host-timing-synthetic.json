@@ -1,0 +1,713 @@
+{
+  "evidence_version": 1,
+  "purpose": "Publisher interval-jitter reduction, Refs #54",
+  "label": "SYNTHETIC HOST-ONLY TIMING; NOT ISAAC, NOT THE REMOTE HOST, NOT QUALIFICATION",
+  "synthetic_host_only": true,
+  "qualification": false,
+  "source_kind": "synthetic",
+  "normalized_source_sha256_lf": {
+    "isaac/publisher/host_timing.py": "b67954982dc99f910127bba746ef2d2dd68f213cf8d1641b9559bce56c389de3",
+    "isaac/publisher/pacing.py": "175cb8c8708d49148bb7bc66b2053d387995119c57d2ab7952a791950aac324f",
+    "isaac/publisher/runtime.py": "fae8f699eeed1ea91f6c1054c7dd51b0784f68e3edc3820619aec5b11a86e8de",
+    "isaac/publisher/protocol.py": "895ffc8380f7668583d9b252ccb7941ae3b3044a573739ea16142cf6fc058dde",
+    "isaac/publisher/analyze.py": "f3c9c520ea56cc14aa776c21a804713673dc325d1801fdf9c6dfa341ed26c836",
+    "isaac/publisher/benchmark.py": "cb09207d16f800856833ca707e909ae1256912a7110d9663dccbbf31889f2832"
+  },
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14",
+    "implementation": "CPython",
+    "cpu_count": 12,
+    "wall_clock": "perf_counter",
+    "switch_interval_s": 0.005,
+    "gc_threshold": [
+      700,
+      10,
+      10
+    ]
+  },
+  "host_condition": "Shared Windows laptop under concurrent load (CPU load 62-100% sampled); wall-clock results are dominated by host scheduling",
+  "cost_model": {
+    "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+    "physics_ms_per_step": 7.3,
+    "physics_jitter_ms": 0.3,
+    "read_ms": 11.0,
+    "read_jitter_ms": 0.6,
+    "tail_probability": 0.01,
+    "tail_ms": [
+      2.0,
+      6.0
+    ],
+    "virtual_encode_ms": 1.0
+  },
+  "virtual_clock": {
+    "wake_model": "wake_us + Exp(wake_jitter_us) + Bernoulli(p)*U(wake_tail_us)",
+    "wake_us": 60.0,
+    "wake_jitter_us": 20.0,
+    "wake_tail_probability": 0.001,
+    "wake_tail_us": [
+      200.0,
+      1000.0
+    ]
+  },
+  "virtual_hour": {
+    "seconds": 3600.0,
+    "same_seed_both_configs": true,
+    "runs": [
+      {
+        "config": "legacy",
+        "pacing": "at_deadline",
+        "gc_policy": "default",
+        "frames": 108001,
+        "intervals": 108000,
+        "interval_error_ms": {
+          "p50": 0.4249,
+          "p90": 1.4911,
+          "p99": 4.15,
+          "p99_9": 6.0757,
+          "max": 8.799
+        },
+        "intervals_over_3_333_ms": 1783,
+        "missed_deadlines": 0,
+        "max_gap_ms": 42.1324,
+        "deadline_lag_ms": {
+          "median": 12.5021,
+          "p99": 15.6759,
+          "max": 21.9583
+        },
+        "overrun_ticks": 498,
+        "wake_late_ms_max": 1.057,
+        "queue_overwrites": 0,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "c997c452288699fa26e98d4af373cd2712d1ecbeb215198e509d241c0603be6f"
+      },
+      {
+        "config": "presample",
+        "pacing": "presample",
+        "gc_policy": "default",
+        "frames": 108001,
+        "intervals": 108000,
+        "interval_error_ms": {
+          "p50": 0.0141,
+          "p90": 0.0484,
+          "p99": 0.1503,
+          "p99_9": 1.9169,
+          "max": 6.082
+        },
+        "intervals_over_3_333_ms": 34,
+        "missed_deadlines": 0,
+        "max_gap_ms": 39.4153,
+        "deadline_lag_ms": {
+          "median": 0.0741,
+          "p99": 0.1664,
+          "max": 6.1665
+        },
+        "overrun_ticks": 533,
+        "wake_late_ms_max": 1.057,
+        "queue_overwrites": 0,
+        "timing_screen": true,
+        "rate_screen": false,
+        "raw_csv_sha256": "087f697d29b4ce36ae6e261e0f37bfcf25e0ffa06c8820e8c55d61d4688b8397"
+      }
+    ]
+  },
+  "virtual_sensitivity_600s": {
+    "read-jitter-1.2": {
+      "cost_model": {
+        "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+        "physics_ms_per_step": 7.3,
+        "physics_jitter_ms": 0.3,
+        "read_ms": 11.0,
+        "read_jitter_ms": 1.2,
+        "tail_probability": 0.01,
+        "tail_ms": [
+          2.0,
+          6.0
+        ],
+        "virtual_encode_ms": 1.0
+      },
+      "runs": [
+        {
+          "config": "legacy",
+          "interval_error_ms": {
+            "p50": 0.8663,
+            "p90": 2.9321,
+            "p99": 5.6652,
+            "p99_9": 8.3944,
+            "max": 12.8437
+          },
+          "intervals_over_3_333_ms": 1358,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 12.9316,
+            "p99": 18.2367,
+            "max": 25.8641
+          },
+          "overrun_ticks": 299,
+          "timing_screen": false
+        },
+        {
+          "config": "presample",
+          "interval_error_ms": {
+            "p50": 0.0147,
+            "p90": 0.0541,
+            "p99": 1.4769,
+            "p99_9": 4.7154,
+            "max": 8.1022
+          },
+          "intervals_over_3_333_ms": 53,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 0.0744,
+            "p99": 0.7557,
+            "max": 8.1702
+          },
+          "overrun_ticks": 303,
+          "timing_screen": true
+        }
+      ]
+    },
+    "tail-0.03": {
+      "cost_model": {
+        "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+        "physics_ms_per_step": 7.3,
+        "physics_jitter_ms": 0.3,
+        "read_ms": 11.0,
+        "read_jitter_ms": 0.6,
+        "tail_probability": 0.03,
+        "tail_ms": [
+          2.0,
+          6.0
+        ],
+        "virtual_encode_ms": 1.0
+      },
+      "runs": [
+        {
+          "config": "legacy",
+          "interval_error_ms": {
+            "p50": 0.464,
+            "p90": 1.807,
+            "p99": 5.3768,
+            "p99_9": 6.5648,
+            "max": 9.2248
+          },
+          "intervals_over_3_333_ms": 754,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 12.5197,
+            "p99": 17.4494,
+            "max": 22.2356
+          },
+          "overrun_ticks": 286,
+          "timing_screen": false
+        },
+        {
+          "config": "presample",
+          "interval_error_ms": {
+            "p50": 0.0147,
+            "p90": 0.0536,
+            "p99": 0.9951,
+            "p99_9": 3.7816,
+            "max": 6.7939
+          },
+          "intervals_over_3_333_ms": 43,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 0.0744,
+            "p99": 0.4933,
+            "max": 6.8787
+          },
+          "overrun_ticks": 287,
+          "timing_screen": true
+        }
+      ]
+    },
+    "physics-8.3": {
+      "cost_model": {
+        "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+        "physics_ms_per_step": 8.3,
+        "physics_jitter_ms": 0.3,
+        "read_ms": 11.0,
+        "read_jitter_ms": 0.6,
+        "tail_probability": 0.01,
+        "tail_ms": [
+          2.0,
+          6.0
+        ],
+        "virtual_encode_ms": 1.0
+      },
+      "runs": [
+        {
+          "config": "legacy",
+          "interval_error_ms": {
+            "p50": 0.4457,
+            "p90": 1.5752,
+            "p99": 4.0068,
+            "p99_9": 6.0309,
+            "max": 8.082
+          },
+          "intervals_over_3_333_ms": 338,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 12.5134,
+            "p99": 16.1015,
+            "max": 20.3643
+          },
+          "overrun_ticks": 400,
+          "timing_screen": false
+        },
+        {
+          "config": "presample",
+          "interval_error_ms": {
+            "p50": 0.015,
+            "p90": 0.0565,
+            "p99": 1.9494,
+            "p99_9": 3.6744,
+            "max": 8.082
+          },
+          "intervals_over_3_333_ms": 33,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 0.0745,
+            "p99": 1.4612,
+            "max": 8.2081
+          },
+          "overrun_ticks": 399,
+          "timing_screen": true
+        }
+      ]
+    },
+    "physics-9.0": {
+      "cost_model": {
+        "cost_model": "base + Exp(jitter) + Bernoulli(tail_probability)*U(tail_ms)",
+        "physics_ms_per_step": 9.0,
+        "physics_jitter_ms": 0.3,
+        "read_ms": 11.0,
+        "read_jitter_ms": 0.6,
+        "tail_probability": 0.01,
+        "tail_ms": [
+          2.0,
+          6.0
+        ],
+        "virtual_encode_ms": 1.0
+      },
+      "runs": [
+        {
+          "config": "legacy",
+          "interval_error_ms": {
+            "p50": 0.4663,
+            "p90": 1.6941,
+            "p99": 3.5762,
+            "p99_9": 6.1939,
+            "max": 9.482
+          },
+          "intervals_over_3_333_ms": 216,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 12.5366,
+            "p99": 16.9067,
+            "max": 23.1684
+          },
+          "overrun_ticks": 1090,
+          "timing_screen": false
+        },
+        {
+          "config": "presample",
+          "interval_error_ms": {
+            "p50": 0.0165,
+            "p90": 0.0955,
+            "p99": 2.8887,
+            "p99_9": 4.7226,
+            "max": 9.482
+          },
+          "intervals_over_3_333_ms": 90,
+          "missed_deadlines": 0,
+          "deadline_lag_ms": {
+            "median": 0.0752,
+            "p99": 3.0916,
+            "max": 10.9804
+          },
+          "overrun_ticks": 1114,
+          "timing_screen": true
+        }
+      ]
+    }
+  },
+  "wall_clock": {
+    "parameters": {
+      "seconds": 60.0,
+      "configs": [
+        "legacy",
+        "presample",
+        "presample_freeze",
+        "presample_freeze_manual"
+      ],
+      "repeats": 2,
+      "ballast_objects": 1500000,
+      "churn_per_tick": 300,
+      "receiver_validates": true,
+      "spin_us": 0,
+      "manual_interval": 1800
+    },
+    "ballast_full_collection_ms": 92.4007,
+    "runs": [
+      {
+        "config": "legacy",
+        "pacing": "at_deadline",
+        "gc_policy": "default",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.516,
+          "p90": 1.6235,
+          "p99": 4.8381,
+          "p99_9": 6.6501,
+          "max": 15.5873
+        },
+        "intervals_over_3_333_ms": 42,
+        "missed_deadlines": 0,
+        "max_gap_ms": 48.9206,
+        "deadline_lag_ms": {
+          "median": 12.0174,
+          "p99": 15.8456,
+          "max": 27.3458
+        },
+        "overrun_ticks": 15,
+        "wake_late_ms_max": 15.9365,
+        "queue_overwrites": 0,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "8f6c6d3aad61f797ae00895fdfddacbe0ef00c19f99e3540cd31de46ac512511",
+        "order": 0,
+        "gc": {
+          "gen2_events": 0,
+          "gen2_max_ms": 0.0,
+          "gen1_max_ms": 1.5925,
+          "frozen_objects": 0,
+          "manual_collections": 0,
+          "manual_collection_max_ms": null
+        }
+      },
+      {
+        "config": "presample",
+        "pacing": "presample",
+        "gc_policy": "default",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.2222,
+          "p90": 0.3833,
+          "p99": 1.2695,
+          "p99_9": 2.0371,
+          "max": 2.6321
+        },
+        "intervals_over_3_333_ms": 0,
+        "missed_deadlines": 0,
+        "max_gap_ms": 35.8238,
+        "deadline_lag_ms": {
+          "median": 0.3189,
+          "p99": 1.1786,
+          "max": 2.9893
+        },
+        "overrun_ticks": 22,
+        "wake_late_ms_max": 2.4405,
+        "queue_overwrites": 1,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "2654f008d5a9b1f26b3d19cafe8ff1a79abbb980871155b6813c84488f4345cf",
+        "order": 1,
+        "gc": {
+          "gen2_events": 0,
+          "gen2_max_ms": 0.0,
+          "gen1_max_ms": 0.7424,
+          "frozen_objects": 0,
+          "manual_collections": 0,
+          "manual_collection_max_ms": null
+        }
+      },
+      {
+        "config": "presample_freeze",
+        "pacing": "presample",
+        "gc_policy": "freeze",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.2245,
+          "p90": 0.357,
+          "p99": 0.9909,
+          "p99_9": 5.4969,
+          "max": 19.0789
+        },
+        "intervals_over_3_333_ms": 5,
+        "missed_deadlines": 0,
+        "max_gap_ms": 52.4122,
+        "deadline_lag_ms": {
+          "median": 0.3122,
+          "p99": 0.9737,
+          "max": 22.7026
+        },
+        "overrun_ticks": 21,
+        "wake_late_ms_max": 3.4098,
+        "queue_overwrites": 0,
+        "timing_screen": true,
+        "rate_screen": false,
+        "raw_csv_sha256": "b898407c57477b3aef5daada7f18cc96947b297908b271e090bba1daa682587f",
+        "order": 2,
+        "gc": {
+          "gen2_events": 0,
+          "gen2_max_ms": 0.0,
+          "gen1_max_ms": 1.1907,
+          "frozen_objects": 1520502,
+          "manual_collections": 0,
+          "manual_collection_max_ms": null
+        }
+      },
+      {
+        "config": "presample_freeze_manual",
+        "pacing": "presample",
+        "gc_policy": "freeze_manual",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.2181,
+          "p90": 0.4046,
+          "p99": 1.4146,
+          "p99_9": 4.6624,
+          "max": 8.5757
+        },
+        "intervals_over_3_333_ms": 6,
+        "missed_deadlines": 0,
+        "max_gap_ms": 41.909,
+        "deadline_lag_ms": {
+          "median": 0.3286,
+          "p99": 1.2939,
+          "max": 8.8654
+        },
+        "overrun_ticks": 32,
+        "wake_late_ms_max": 3.0053,
+        "queue_overwrites": 2,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "3f48491e72e565795420a0057b8ccbe59d72544ee9de3e22e1420096bf56b277",
+        "order": 3,
+        "gc": {
+          "gen2_events": 1,
+          "gen2_max_ms": 4.5154,
+          "gen1_max_ms": 0.4992,
+          "frozen_objects": 1520508,
+          "manual_collections": 1,
+          "manual_collection_max_ms": 4.5404
+        }
+      },
+      {
+        "config": "presample_freeze_manual",
+        "pacing": "presample",
+        "gc_policy": "freeze_manual",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.2022,
+          "p90": 0.4252,
+          "p99": 1.7458,
+          "p99_9": 5.0106,
+          "max": 5.4633
+        },
+        "intervals_over_3_333_ms": 5,
+        "missed_deadlines": 0,
+        "max_gap_ms": 38.6699,
+        "deadline_lag_ms": {
+          "median": 0.3277,
+          "p99": 1.4871,
+          "max": 7.4868
+        },
+        "overrun_ticks": 28,
+        "wake_late_ms_max": 5.2684,
+        "queue_overwrites": 3,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "a9a28772e67a5bf9e437133b25685272176fb21d528d14cad7f718af5c4be93f",
+        "order": 4,
+        "gc": {
+          "gen2_events": 1,
+          "gen2_max_ms": 3.9195,
+          "gen1_max_ms": 0.9546,
+          "frozen_objects": 1520514,
+          "manual_collections": 1,
+          "manual_collection_max_ms": 3.9414
+        }
+      },
+      {
+        "config": "presample_freeze",
+        "pacing": "presample",
+        "gc_policy": "freeze",
+        "frames": 1800,
+        "intervals": 1799,
+        "interval_error_ms": {
+          "p50": 0.183,
+          "p90": 0.4184,
+          "p99": 2.5005,
+          "p99_9": 8.0986,
+          "max": 17.9818
+        },
+        "intervals_over_3_333_ms": 11,
+        "missed_deadlines": 1,
+        "max_gap_ms": 51.3151,
+        "deadline_lag_ms": {
+          "median": 0.335,
+          "p99": 1.9304,
+          "max": 18.2479
+        },
+        "overrun_ticks": 25,
+        "wake_late_ms_max": 6.0372,
+        "queue_overwrites": 2,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "ef39c235a6a591ffc5f5f9a308547fe5427cbae1d6ddc7dec88a51e0b6d8e0e9",
+        "order": 5,
+        "gc": {
+          "gen2_events": 0,
+          "gen2_max_ms": 0.0,
+          "gen1_max_ms": 0.6893,
+          "frozen_objects": 1520520,
+          "manual_collections": 0,
+          "manual_collection_max_ms": null
+        }
+      },
+      {
+        "config": "presample",
+        "pacing": "presample",
+        "gc_policy": "default",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.1505,
+          "p90": 0.4484,
+          "p99": 2.4559,
+          "p99_9": 11.8051,
+          "max": 21.2077
+        },
+        "intervals_over_3_333_ms": 16,
+        "missed_deadlines": 0,
+        "max_gap_ms": 54.541,
+        "deadline_lag_ms": {
+          "median": 0.3319,
+          "p99": 2.6143,
+          "max": 25.8766
+        },
+        "overrun_ticks": 31,
+        "wake_late_ms_max": 16.4683,
+        "queue_overwrites": 1,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "49caebaceac05f6affc7f4f12e63b40e56bb10750944f3b6744bed0375b7d797",
+        "order": 6,
+        "gc": {
+          "gen2_events": 0,
+          "gen2_max_ms": 0.0,
+          "gen1_max_ms": 1.6789,
+          "frozen_objects": 0,
+          "manual_collections": 0,
+          "manual_collection_max_ms": null
+        }
+      },
+      {
+        "config": "legacy",
+        "pacing": "at_deadline",
+        "gc_policy": "default",
+        "frames": 1801,
+        "intervals": 1800,
+        "interval_error_ms": {
+          "p50": 0.5518,
+          "p90": 1.8583,
+          "p99": 5.1269,
+          "p99_9": 10.0414,
+          "max": 21.2312
+        },
+        "intervals_over_3_333_ms": 58,
+        "missed_deadlines": 0,
+        "max_gap_ms": 54.5645,
+        "deadline_lag_ms": {
+          "median": 12.1002,
+          "p99": 16.7091,
+          "max": 33.9435
+        },
+        "overrun_ticks": 30,
+        "wake_late_ms_max": 9.0833,
+        "queue_overwrites": 2,
+        "timing_screen": false,
+        "rate_screen": false,
+        "raw_csv_sha256": "8609c53c62edb5835955ed007348ce278210e317534cf74fe282d6e19e6fd6b1",
+        "order": 7,
+        "gc": {
+          "gen2_events": 0,
+          "gen2_max_ms": 0.0,
+          "gen1_max_ms": 1.0451,
+          "frozen_objects": 0,
+          "manual_collections": 0,
+          "manual_collection_max_ms": null
+        }
+      }
+    ]
+  },
+  "gc_pause_probe": {
+    "ballast_objects": 1500000,
+    "results": {
+      "default": {
+        "surviving_objects_allocated": 600000,
+        "automatic_gen2_events": 1,
+        "gen2_max_ms": 98.6353,
+        "gen2_total_ms": 98.6353,
+        "manual_collection_ms": null,
+        "warmup_collect_ms": null
+      },
+      "freeze": {
+        "surviving_objects_allocated": 600000,
+        "automatic_gen2_events": 2,
+        "gen2_max_ms": 19.2908,
+        "gen2_total_ms": 37.9356,
+        "manual_collection_ms": null,
+        "warmup_collect_ms": 82.6015
+      },
+      "freeze_manual": {
+        "surviving_objects_allocated": 600000,
+        "automatic_gen2_events": 0,
+        "gen2_max_ms": 27.7315,
+        "gen2_total_ms": 27.7315,
+        "manual_collection_ms": 27.7666,
+        "warmup_collect_ms": 83.6548
+      }
+    }
+  },
+  "allocation_probe": {
+    "at_deadline": {
+      "frames": 300,
+      "net_tracked_containers_per_frame": 0.0,
+      "net_traced_bytes_per_frame": 37.03666666666667,
+      "transient_peak_bytes_median": 75199.0
+    },
+    "presample": {
+      "frames": 300,
+      "net_tracked_containers_per_frame": -0.0033333333333333335,
+      "net_traced_bytes_per_frame": 37.31,
+      "transient_peak_bytes_median": 80634.0
+    }
+  },
+  "raw_summary_sha256": {
+    "full": "66af64acfced5e3af10f25daafd20379103d0396628bb49ecf1cb0302f8c45ca",
+    "sensitivity": {
+      "read-jitter-1.2": "123ecf861a7f854166065464d833675e8385025da58b945cc000c60c4074b59b",
+      "tail-0.03": "06355a8ffdba087924434e72dba8c1a7973901f0d23bd18a578e8e72b2edaf03",
+      "physics-8.3": "d97b86c8e8c6700dacb63275d9b682c37c093380b304a9ce6a4f9f401a028496",
+      "physics-9.0": "abc98b688c62d666813a43785511d1b476548d6d1bfaa8177ca2a37287bd9648"
+    }
+  },
+  "limitations": [
+    "Synthetic costs are assumptions calibrated to retained Isaac medians; Isaac, PhysX, USD, GPU and the remote scheduler were not run",
+    "Virtual-clock results isolate pacing arithmetic and exclude real GC, GIL and scheduler effects",
+    "Wall-clock runs on a loaded shared laptop are dominated by host contention (sleep wake-ups up to 16.5 ms late) and do not isolate the GC policy; automatic generation-2 passes in default-policy wall runs: 0",
+    "GC probe pauses are this host's cost for a synthetic 1.5M-object heap, not Isaac's heap",
+    "Analyzer rate_screen is false for every run by construction (source_kind synthetic)",
+    "Raw CSVs remain in ignored local storage; only hashes are retained"
+  ]
+}

@@ -48,12 +48,20 @@ def analyze(csv_path, metadata, required_seconds=3600):
     passed = (complete and sufficient and duration >= 3600 and contiguous and progressing and metadata.get("source_kind") == "live"
               and metadata.get("schema_validated_frames") == len(rows) and not metadata.get("fault")
               and timing_ok)
+    # Diagnostic attribution only (newer logs): stamp minus its scheduled tick.
+    # It never enters the screen, which is computed from stamps alone.
+    lags = [float(row["deadline_lag_ms"]) for row in rows if row.get("deadline_lag_ms") not in (None, "")]
+    attribution = {}
+    if lags and len(lags) == len(rows):
+        attribution = dict(deadline_lag_median_ms=percentile(lags, .5), deadline_lag_p99_ms=percentile(lags, .99),
+                           deadline_lag_max_ms=max(lags))
     return dict(rate_hz=rate, duration_s=duration, required_duration_s=required_seconds, frames=len(rows), source_kind=metadata.get("source_kind"),
                 complete=complete, contiguous=contiguous, simulation_progressing=progressing,
                 interval_median_ms=percentile(intervals,.5), interval_p99_ms=percentile(intervals,.99),
                 absolute_period_error_p99_ms=p99, nominal_period_ms=nominal, max_gap_ms=max_gap,
                 gaps_over_250_ms=sum(x > 250 for x in gaps), queue_overwrites=drops, missed_deadlines=missed,
-                timing_screen=bool(timing_ok), rate_screen=bool(passed), raw_csv_sha256=hashlib.sha256(Path(csv_path).read_bytes()).hexdigest(),
+                timing_screen=bool(timing_ok), rate_screen=bool(passed), **attribution,
+                raw_csv_sha256=hashlib.sha256(Path(csv_path).read_bytes()).hexdigest(),
                 limitations=["Publisher timing only; does not qualify network, clocks or headset rendering",
                              "Disconnect/reconnect simulation-cost comparison is a separate check"])
 
