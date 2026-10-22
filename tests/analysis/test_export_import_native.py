@@ -450,6 +450,7 @@ def lesson_event(kind, sequence, **payload):
         "kind": "lesson",
         "sequence": sequence,
         "source_event_sha256": f"{sequence:064x}",
+        "clock_epoch": "d" * 32,
         "payload": {
             "kind": kind,
             "observed_mono_ms": sequence * 100,
@@ -475,7 +476,6 @@ def test_lesson_mapping_uses_observed_spans_and_one_actual_retrieval():
             8,
             audio_request_id="play-3",
             presentation_index=3,
-            feedback_content_id="corrective-content",
         ),
         lesson_event("display_end", 9, feedback_content_id="corrective-content"),
     ]
@@ -488,6 +488,13 @@ def test_lesson_mapping_uses_observed_spans_and_one_actual_retrieval():
     assert not retrieval.get("display_start_mono_ms") and not retrieval.get("display_end_mono_ms")
     assert feedback["feedback_content_id"] == "corrective-content"
     assert feedback["display_start_mono_ms"] == "700" and feedback["display_end_mono_ms"] == "900"
+    _, sources = np._lesson_play(events, "play-3")
+    assert sources[0]["clock_epoch"] == "d" * 32
+    assert sources[0]["session_clock_epoch"] == "e" * 32
+    crossed = copy.deepcopy(events)
+    crossed[-1]["clock_epoch"] = "f" * 32
+    with pytest.raises(ei.ExportRefused, match="EXPORT_NATIVE_TIME"):
+        np._lesson_play(crossed, "play-3")
     with pytest.raises(ei.ExportRefused, match="EXPORT_NATIVE_LESSON"):
         np._lesson_play(
             [e for e in events if e["payload"]["kind"] != "retrieval_opportunity"], "play-2"
@@ -512,19 +519,58 @@ def test_menu_mapping_uses_final_observed_decision_and_display_boundaries(defaul
         }
 
     events = [
-        event("display_changed", 1, phase="Audition"),
-        event("play_request", 2, audio="request-1", presentation_index=1, candidate_id="K-a1-1"),
-        event("play_request", 3, audio="request-3", presentation_index=3, candidate_id="K-a1-2"),
-        event("choice_revised", 4, selected_index=1),
-        event("choice_final", 5, selected_index=2, defaulted=defaulted),
-        event("display_changed", 6, phase="Selected"),
+        event("display_changed", 1, phase="Instructions", observed_mono_ms=0),
+        event(
+            "play_request",
+            2,
+            audio="request-1",
+            presentation_index=1,
+            candidate_id="P1",
+            observed_mono_ms=5750,
+            expected_mono_ms=6500,
+        ),
+        event("display_changed", 3, phase="Audition", observed_mono_ms=6000),
+        event(
+            "onset_authority", 4, audio="request-1", observed_mono_ms=6500, expected_mono_ms=6500
+        ),
+        event(
+            "play_request",
+            5,
+            audio="request-3",
+            presentation_index=3,
+            candidate_id="P2",
+            observed_mono_ms=13750,
+            expected_mono_ms=14500,
+        ),
+        event(
+            "onset_authority", 6, audio="request-3", observed_mono_ms=14500, expected_mono_ms=14500
+        ),
+        event("display_changed", 7, phase="Choice", observed_mono_ms=30000),
+        event("choice_revised", 8, selected_index=1, observed_mono_ms=35000),
+        event("choice_final", 9, selected_index=2, defaulted=defaulted, observed_mono_ms=45000),
+        event("display_changed", 10, phase="Selected", observed_mono_ms=45000),
+        event(
+            "selection_verified",
+            11,
+            selected_index=2,
+            defaulted=defaulted,
+            receipt_sha256="c" * 64,
+            observed_mono_ms=45000,
+        ),
     ]
     rejected, sources = np._menu_play(events, "request-1")
     accepted, _ = np._menu_play(events, "request-3")
     assert rejected["accepted_or_rejected"] == "rejected"
     assert accepted["accepted_or_rejected"] == "accepted"
     assert accepted["active_choice_or_default"] == expected
-    assert accepted["display_start_mono_ms"] == "100" and accepted["display_end_mono_ms"] == "600"
-    assert sources[0]["source"] == f"{5:064x}"
+    assert accepted["display_start_mono_ms"] == "6000"
+    assert accepted["display_end_mono_ms"] == "30000"
+    assert sources[0]["source"] == f"{9:064x}"
+    assert rejected["display_start_mono_ms"] == "6000"  # Request was before this transition.
+    assert sources[0]["onset_authority_source"] == f"{4:064x}"
+    unknown, _ = np._menu_play(
+        [e for e in events if e["payload"]["kind"] != "onset_authority"], "request-1"
+    )
+    assert unknown["display_start_mono_ms"] == unknown["display_end_mono_ms"] == ""
     with pytest.raises(ei.ExportRefused, match="EXPORT_NATIVE_MENU"):
         np._menu_play(events[:4], "request-1")

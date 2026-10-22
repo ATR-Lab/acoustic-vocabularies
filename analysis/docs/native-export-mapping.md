@@ -2,6 +2,10 @@
 
 The adapter names existing public headers and code contracts. Private methodology files remain outside the public repository.
 
+Module `native_protocol` verifies native journal projections and maps pinned offline
+references plus observed runtime facts to protocol logs. Its `native_events()` and
+`map_native_protocol()` functions are called by `export_import` for native version 1.
+
 Observed values are preserved. Offline joins use hash-pinned allocation/schedule/package inputs. Empty is allowed only for known inapplicability or explicitly reported optional unknown; required observations remain a blocking error. Producer headers_qualified=false is never promoted by the adapter.
 
 Supplement: av-native-observations v1 JSON projects exact verified journal events and source hashes. It provides software event evidence, not physical acoustic or headset qualification.

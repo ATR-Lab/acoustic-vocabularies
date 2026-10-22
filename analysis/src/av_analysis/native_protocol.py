@@ -660,6 +660,11 @@ def _lesson_play(
             and _payload(e).get("feedback_content_id") == dp.get("feedback_content_id")
         ]
         _require(len(ends) <= 1, "EXPORT_NATIVE_LESSON", "ambiguous lesson display end")
+        _require(
+            not ends or ends[0]["clock_epoch"] == display["clock_epoch"],
+            "EXPORT_NATIVE_TIME",
+            "lesson display interval crosses observation clock epochs",
+        )
         span = {
             "display_start_mono_ms": _event_time(display),
             "display_end_mono_ms": _event_time(ends[0]) if ends else "",
@@ -669,12 +674,15 @@ def _lesson_play(
                 "kind": "meaning_display",
                 "start": display["source_event_sha256"],
                 "end": ends[0]["source_event_sha256"] if ends else None,
-                "clock_epoch": _payload(display).get("session_clock_epoch"),
+                "clock_epoch": display["clock_epoch"],
+                "session_clock_epoch": _payload(display).get("session_clock_epoch"),
             }
         )
     result = {
         "meaning_display_id": display_id if displays else "",
-        "feedback_content_id": _text(p.get("feedback_content_id")) if displays else "",
+        "feedback_content_id": _text(_payload(displays[0]).get("feedback_content_id"))
+        if displays
+        else "",
         "retrieval_opportunity": "true" if retrieval else "false",
         **span,
     }
@@ -691,13 +699,22 @@ def _menu_play(
         if _payload(e).get("kind") == "play_request" and e["audio_request_id"] == request
     ]
     final = [e for e in mine if _payload(e).get("kind") == "choice_final"]
+    receipts = [e for e in mine if _payload(e).get("kind") == "selection_verified"]
     _require(
-        len(plays) == 1 and len(final) == 1,
+        len(plays) == 1 and len(final) == 1 and len(receipts) == 1,
         "EXPORT_NATIVE_MENU",
         "menu requires one actual play and a terminal choice/default decision",
     )
     play, choice = plays[0], final[0]
     p, c = _payload(play), _payload(choice)
+    receipt = _payload(receipts[0])
+    _require(
+        receipt.get("selected_index") == c.get("selected_index")
+        and receipt.get("defaulted") == c.get("defaulted")
+        and isinstance(receipt.get("receipt_sha256"), str),
+        "EXPORT_NATIVE_MENU",
+        "menu choice has no matching observed commit receipt",
+    )
     index, selected = p["presentation_index"], c["selected_index"]
     _require(
         type(index) is int
@@ -710,9 +727,24 @@ def _menu_play(
     )
     candidate_index = (index + 1) // 2 if index <= 6 else selected
     displays = [e for e in mine if _payload(e).get("kind") == "display_changed"]
-    before = [e for e in displays if e["sequence"] < play["sequence"]]
-    # play_request occurs before the desired onset; associate the displayed phase at
-    # that observed request, never a nominal display duration.
+    onsets = [
+        e
+        for e in mine
+        if _payload(e).get("kind") == "onset_authority" and e["audio_request_id"] == request
+    ]
+    _require(len(onsets) <= 1, "EXPORT_NATIVE_MENU", "ambiguous observed menu onset")
+    # Requests precede onset by up to 750 ms and can precede a real display boundary.
+    # Associate the observed display with the actual onset-authority event, never the
+    # request time or a nominal phase duration. No onset means association is unknown.
+    before: list[Event] = []
+    if onsets:
+        onset = _payload(onsets[0])
+        at = _number(
+            onset.get("expected_mono_ms")
+            if onset.get("expected_mono_ms") is not None
+            else onset["observed_mono_ms"]
+        )
+        before = [e for e in displays if _number(_payload(e)["observed_mono_ms"]) <= at]
     display = before[-1] if before else None
     ends = [e for e in displays if display is not None and e["sequence"] > display["sequence"]]
     result = {
@@ -730,7 +762,9 @@ def _menu_play(
         {
             "kind": "menu_decision",
             "source": choice["source_event_sha256"],
+            "selection_receipt_source": receipts[0]["source_event_sha256"],
             "play": play["source_event_sha256"],
+            "onset_authority_source": onsets[0]["source_event_sha256"] if onsets else None,
             "software_display_start": display["source_event_sha256"] if display else None,
             "software_display_end": ends[0]["source_event_sha256"] if ends else None,
         }
@@ -852,7 +886,8 @@ def map_native_protocol(
                 )
                 if event["kind"] == "lesson":
                     _require(
-                        p["session_clock_epoch"] == sp["session_clock_epoch"],
+                        p["session_clock_epoch"] == sp["session_clock_epoch"]
+                        and event["clock_epoch"] == sp["observation_clock_epoch"],
                         "EXPORT_NATIVE_TIME",
                         "lesson session-clock binding differs",
                     )
