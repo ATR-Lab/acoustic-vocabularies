@@ -6,6 +6,7 @@ import json
 import secrets
 import sys
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -14,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT/"schedules/src"))
 
 from av_schedules.reveal import RevealLog
-from .core import Audit, Console, ConsoleFault, Visit, code, encoded, load_bundle, masked, require, strict_json, utc_now
+from .core import (ORIENTATION_ENTRY, Audit, Console, ConsoleFault, Visit, code, encoded, load_bundle, masked,
+                   require, strict_json, utc_now)
 from .transport import DemoEngine, Mailbox
 
 
@@ -31,6 +33,32 @@ def demo_catalog():
         return Visit("demo-01", study, visit, "bk-demo", role, True, "a"*64, "b"*64, "c"*64, rows, anchors)
     return {"demo-a": lambda: fixture("A", "D7"), "demo-b-active": lambda: fixture("B", "W4", "active"),
             "demo-b-yoked": lambda: fixture("B", "W4", "yoked")}
+
+
+def config_catalog(config):
+    """Private --config: every visit names its participant's orientation receipt.
+
+    `screenings` maps a coded alias to {screening_id, receipt_path,
+    receipt_file_sha256, journal_path}. A visit without a configured screening
+    cannot load; the receipt is re-verified at load and before start/resume.
+    """
+    require(isinstance(config, dict) and set(config) in ({"mailbox", "visits"}, {"mailbox", "visits", "screenings"})
+            and isinstance(config["visits"], dict) and isinstance(config.get("screenings", {}), dict), "config_invalid")
+    screenings = {}
+    for alias, entry in config.get("screenings", {}).items():
+        code(alias)
+        require(isinstance(entry, dict) and set(entry) == ORIENTATION_ENTRY, "orientation_config_invalid")
+        code(entry["screening_id"])
+        screenings[alias] = dict(entry)
+    catalog = {}
+    for alias, entry in config["visits"].items():
+        code(alias)
+        require(isinstance(entry, dict) and entry.get("screening") in screenings, "orientation_binding_missing")
+        def load(entry=entry):
+            reveals = RevealLog(Path(entry["allocation_list"]), Path(entry["reveal_log"]))
+            return replace(load_bundle(entry, reveals), screening=entry["screening"])
+        catalog[alias] = load
+    return catalog, screenings
 
 
 @contextmanager
@@ -153,6 +181,7 @@ def main():
     parser.add_argument("--protocol", default="engineering-pending-review")
     parser.add_argument("--port", type=int, default=8769)
     args = parser.parse_args()
+    screenings = {}
     if args.demo:
         catalog, engine = demo_catalog(), DemoEngine()
         mailbox = None
@@ -163,20 +192,14 @@ def main():
         engine = Mailbox(mailbox)
     else:
         config = strict_json(args.config.read_bytes())
-        require(set(config) == {"mailbox", "visits"} and isinstance(config["visits"], dict), "config_invalid")
-        catalog = {}
-        for alias, entry in config["visits"].items():
-            code(alias)
-            def load(entry=entry):
-                reveals = RevealLog(Path(entry["allocation_list"]), Path(entry["reveal_log"]))
-                return load_bundle(entry, reveals)
-            catalog[alias] = load
+        catalog, screenings = config_catalog(config)
         engine = Mailbox(config["mailbox"])
         mailbox = config["mailbox"]
     # Read/replay only after both writer locks are held.
     with writer_locks(args.audit, mailbox):
         audit = Audit(args.audit, args.protocol)
-        server = make_server(Console(catalog, engine, audit), args.port, args.demo, bool(args.simulation_config))
+        server = make_server(Console(catalog, engine, audit, screenings=screenings), args.port, args.demo,
+                             bool(args.simulation_config))
         print(f"Operator console: http://127.0.0.1:{server.server_port}", flush=True)
         server.serve_forever()
 

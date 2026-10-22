@@ -12,6 +12,7 @@ function render(data) {
   if (data.choices.includes(selected)) byId('visit').value = selected;
   byId('fresh').textContent = 'Updated now';
   for (const id of ['start','pause','resume','stop','checks','deviation','signoff','inject']) byId(id).disabled = !data.loaded;
+  renderOrientation(data.orientation || []);
   if (!data.loaded) return;
   byId('title').textContent = `${data.participant} · ${data.visit}`;
   byId('subtitle').textContent = `Study ${data.study} · Book ${data.book}`;
@@ -41,6 +42,36 @@ function render(data) {
   byId('resume').disabled = !data.can_start || data.state !== 'paused';
   byId('pause').disabled = data.state !== 'running';
   byId('signoff').disabled = !['complete','stopped'].includes(data.state);
+}
+const OUTCOMES = {pass_first:'Pass · first check', pass_second:'Pass · second check', fail:'Fail · not eligible'};
+const VERIFICATION = {
+  not_verified: () => 'Not yet verified',
+  incomplete: () => 'Incomplete · no receipt recorded',
+  rejected: row => `Rejected · ${pretty(row.reason)}`,
+  verified: row => row.engineering_draft ? 'Verified · engineering draft, cannot qualify' : 'Verified'
+};
+// Closed fields only; the server never sends screening IDs, paths or item responses.
+function renderOrientation(rows) {
+  const selected = byId('screening').value;
+  byId('screening').replaceChildren(...rows.map(row => new Option(pretty(row.screening), row.screening)));
+  if (rows.some(row => row.screening === selected)) byId('screening').value = selected;
+  byId('verify').disabled = !rows.length;
+  const ready = rows.filter(row => row.allocation === 'eligible_for_handoff').length;
+  byId('orientationGate').textContent = rows.length ? `${ready} of ${rows.length} eligible for allocation handoff` : 'No receipts configured';
+  byId('orientation').replaceChildren(...rows.map(row => {
+    const tr = document.createElement('tr'), open = row.allocation === 'eligible_for_handoff';
+    const cells = [pretty(row.screening), row.outcome ? OUTCOMES[row.outcome] || pretty(row.outcome) : 'None recorded',
+      (VERIFICATION[row.status] || (() => pretty(row.status)))(row), row.receipt_sha256 || '—',
+      open ? 'Eligible for handoff' : `Blocked · ${pretty(row.reason || 'orientation unverified')}`];
+    cells.forEach((value, index) => {
+      const td = document.createElement('td'); td.textContent = value;
+      if (index === 3) td.className = 'hash';
+      if (index === 4) td.className = open ? 'ready' : 'blocked';
+      if (index === 2 && row.verified_utc) td.title = `Checked ${row.verified_utc}`;
+      tr.append(td);
+    });
+    return tr;
+  }));
 }
 function failure(error) {
   byId('error').hidden = false; byId('error').textContent = pretty(error.message || 'connection unavailable');
@@ -73,6 +104,7 @@ async function command(action, payload={}) {
   finally { busy = false; }
 }
 byId('load').onclick = () => command('load', {visit:byId('visit').value});
+byId('verify').onclick = () => command('orientation', {screening:byId('screening').value});
 byId('checks').onclick = () => command('checks', {comfort:byId('comfort').checked, phone:byId('phone').checked});
 byId('deviation').onclick = () => command('deviation', {reason:byId('reason').value,note:byId('note').value});
 byId('inject').onclick = () => command('demo_fault', {fault:byId('fault').value || null});

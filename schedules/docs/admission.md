@@ -45,6 +45,14 @@ the terminal outcome, eight first-check responses and, when required, eight
 second-check responses after exactly one re-explanation. These are software
 integrity checks; operator checks and approved plan/demo custody remain external.
 
+`inspect_orientation(receipt_path, receipt_file_sha256, journal_path)` is a
+display-only reader for the operator console (#66/#73). It runs the same checks
+but also accepts a consistently recorded `fail` (8 second-check responses, not
+all correct) or engineering-draft receipt. It requires `eligible` to equal a
+non-draft pass, and the journal's terminal draft flag to match the receipt. Its
+result is never admission evidence; `read_orientation` and `log_eligibility`
+still refuse those receipts with `ORIENTATION_NOT_ELIGIBLE`.
+
 Returned eligibility receipt keys: `schema_version=1`,
 `receipt_type="allocation-eligibility"`, `study`, `set`, `list_sha256`,
 `eligibility_id`, ordered `screening_ids`, ordered

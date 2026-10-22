@@ -12,8 +12,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from av_schedules.admission import inspect_orientation, read_orientation
 from av_schedules.masking import find_method_strings
 from av_schedules.planning import RUN_SHEET_COLUMNS, TEMPLATE_SHA256, RUN_SHEET_TEMPLATE
+from av_schedules.reveal import RevealError
 from av_schedules.run_sheets import read_run_sheet, run_sheet_findings, parse_package_hashes
 
 
@@ -118,6 +120,49 @@ class Visit:
     package_hash: str
     rows: tuple
     anchors: dict
+    # Configured orientation receipt alias. None is accepted only for DEMO/simulation visits.
+    screening: str | None = None
+
+
+ORIENTATION_ENTRY = frozenset(("screening_id", "receipt_path", "receipt_file_sha256", "journal_path"))
+ELIGIBLE_FOR_HANDOFF = "eligible_for_handoff"
+
+
+def orientation_check(entry):
+    """Verify one native orientation receipt with the #31 admission reader.
+
+    Returns closed display fields only: never the screening/orientation ID, paths,
+    item responses or check scores. Allocation stays blocked unless the unmodified
+    admission reader (`read_orientation`) accepts the exact pinned files.
+    """
+    require(isinstance(entry, dict) and set(entry) == ORIENTATION_ENTRY, "orientation_config_invalid")
+    screening = code(entry["screening_id"])
+    pin = hash_value(entry["receipt_file_sha256"])
+    receipt_path, journal_path = Path(entry["receipt_path"]), Path(entry["journal_path"])
+    blocked = dict(outcome=None, engineering_draft=None, receipt_sha256=None, allocation="blocked")
+    try:
+        receipt = inspect_orientation(receipt_path, pin, journal_path)
+        if receipt["screening_id"] != screening:
+            raise RevealError("SCREENING_RECEIPT_MISMATCH")
+        view = dict(blocked, status="verified", outcome=receipt["outcome"], reason=None,
+                    engineering_draft=receipt["engineering_draft"], receipt_sha256=receipt["receipt_sha256"])
+        if receipt["eligible"]:
+            # The gate is the admission reader itself, not the display-only inspection.
+            read_orientation(receipt_path, pin, journal_path)
+            view["allocation"] = ELIGIBLE_FOR_HANDOFF
+        else:
+            view["reason"] = "orientation_engineering_draft" if receipt["engineering_draft"] else "orientation_failed"
+    except RevealError as error:
+        reason = str(error).lower()
+        missing = reason == "file_missing" and not receipt_path.exists()
+        if missing:
+            reason = "orientation_receipt_missing"
+        elif not re.fullmatch(r"[a-z0-9_]{1,64}", reason):
+            reason = "orientation_unverified"  # Only closed codes; never echo free text.
+        view = dict(blocked, status="incomplete" if missing else "rejected", reason=reason)
+    except (OSError, ValueError, TypeError, KeyError):
+        view = dict(blocked, status="rejected", reason="orientation_unreadable")
+    return masked(view)
 
 
 def load_bundle(config, reveals):
@@ -242,8 +287,14 @@ def health_view(raw):
 
 
 class Console:
-    def __init__(self, catalog, engine, audit, clock=utc_now):
+    def __init__(self, catalog, engine, audit, clock=utc_now, screenings=None):
         self.catalog, self.engine, self.audit, self.clock = catalog, engine, audit, clock
+        # alias -> private receipt entry (see ORIENTATION_ENTRY); never serialized.
+        self.screenings = dict(screenings or {})
+        for alias, entry in self.screenings.items():
+            code(alias)
+            require(isinstance(entry, dict) and set(entry) == ORIENTATION_ENTRY, "orientation_config_invalid")
+        self.orientation = {}
         self.visit = None
         self.overrides = {}
         self.comfort = False
@@ -264,6 +315,13 @@ class Console:
                     raise
         require(alias in self.catalog, "visit_unknown")
         visit = self.catalog[alias]()
+        if visit.screening is not None:
+            # A revealed allocation is not bound while its orientation receipt is unverified.
+            require(visit.screening in self.screenings, "orientation_binding_missing")
+            require(self.screenings[visit.screening]["screening_id"] == visit.participant, "orientation_participant_mismatch")
+            require(self.verify_orientation(visit.screening, staff)["allocation"] == ELIGIBLE_FOR_HANDOFF, "orientation_blocked")
+        else:
+            require(visit.demo, "orientation_binding_missing")
         self.audit.append("load_requested", staff, dict(schedule=visit.schedule_hash))
         self.engine.bind(visit)
         self.visit = visit
@@ -273,8 +331,24 @@ class Console:
         self.deviations = []
         return self.snapshot()
 
+    def verify_orientation(self, alias, staff):
+        """Fresh verification of the pinned files; the result is appended before display."""
+        code(staff)
+        require(alias in self.screenings, "screening_unknown")
+        view = orientation_check(self.screenings[alias])
+        self.orientation.pop(alias, None)  # A failed audit never leaves a stale pass on screen.
+        self.audit.append("orientation_verified", staff, dict(view, screening=alias))
+        self.orientation[alias] = dict(view, screening=alias, verified_utc=self.clock().isoformat())
+        return self.orientation[alias]
+
+    def orientation_view(self):
+        pending = dict(status="not_verified", outcome=None, engineering_draft=None, receipt_sha256=None,
+                       reason="orientation_not_verified", allocation="blocked", verified_utc=None)
+        return [self.orientation.get(alias, dict(pending, screening=alias)) for alias in sorted(self.screenings)]
+
     def snapshot(self):
-        base = dict(loaded=self.visit is not None, choices=sorted(self.catalog), audit_ok=not self.audit.failed)
+        base = dict(loaded=self.visit is not None, choices=sorted(self.catalog), audit_ok=not self.audit.failed,
+                    orientation=self.orientation_view())
         if self.visit is None:
             return masked(base)
         v = self.visit
@@ -304,6 +378,11 @@ class Console:
             faults.append("phone_pending")
         if self.audit.failed:
             faults.append("audit_failed")
+        if v.screening is None:
+            if not v.demo:
+                faults.append("orientation_unverified")
+        elif self.orientation.get(v.screening, {}).get("allocation") != ELIGIBLE_FOR_HANDOFF:
+            faults.append("orientation_unverified")
         rows = [dict(block=row["block"], expected=int(row["expected_count"]), actual=n)
                 for row, n in zip(v.rows, counts)]
         base.update(study=v.study, participant=v.participant, visit=v.visit, book=v.book, demo=v.demo,
@@ -315,8 +394,13 @@ class Console:
 
     def command(self, action, staff, payload):
         code(staff)
-        require(self.visit is not None, "visit_not_loaded")
         require(isinstance(payload, dict), "request_invalid")
+        if action == "orientation":
+            # Pre-allocation: available before any visit (allocation) is loaded.
+            require(set(payload) == {"screening"} and isinstance(payload["screening"], str), "request_invalid")
+            self.verify_orientation(payload["screening"], staff)
+            return self.snapshot()
+        require(self.visit is not None, "visit_not_loaded")
         if action == "checks":
             require(set(payload) == {"comfort", "phone"} and all(type(x) is bool for x in payload.values()), "request_invalid")
             self.audit.append("checks", staff, payload)
@@ -340,6 +424,9 @@ class Console:
         else:
             require(action in ("start", "pause", "resume", "stop") and not payload, "request_invalid")
             if action in ("start", "resume"):
+                if self.visit.screening is not None:
+                    # Re-read the pinned files: a receipt changed after load blocks start.
+                    self.verify_orientation(self.visit.screening, staff)
                 view = self.snapshot()
                 require(view["can_start"], "start_blocked")
             self.audit.append(action+"_requested", staff, dict(schedule=self.visit.schedule_hash))

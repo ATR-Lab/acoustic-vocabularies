@@ -8,7 +8,7 @@ policy and frame-ancestor denial. No CORS, arbitrary file route or remote assets
 
 The private catalog supplies `allocation_list`, `reveal_log`, `participant`,
 `allocation_list_sha256`, `manifest`, `manifest_sha256`, `schedules`, `schedule`,
-`sheet`, `packages`, `anchors`.
+`sheet`, `packages`, `anchors`, plus the `screening` alias described below.
 It uses #31 `RevealLog.revealed()`; the restricted key is rejected. A typed ID
 cannot allocate someone or bypass consent/screening/orientation. Load binds the
 revealed person/slot and checks independently pinned #32 manifest, #30 schedule
@@ -26,6 +26,52 @@ Yoked must follow active within 24 elapsed UTC hours. Missing anchors block.
 A logged timing exception lasts only that visit/calendar day. Hash, old-hash,
 lock, audio, reset, input, headset and stale failures are not overrideable.
 This tightens #73's broad override wording to preserve #64/#67 mandatory gates.
+Orientation receipt failures are likewise not overrideable.
+
+## Pre-allocation orientation outcome
+
+Issue #66 (AC5) shows the native orientation eligibility outcome before any
+allocation is revealed or bound. The private `--config` may contain a
+`screenings` map of coded aliases to exactly `screening_id`, `receipt_path`,
+`receipt_file_sha256` (independent raw file pin) and `journal_path`: the expected
+screening ID plus the triple the #31 admission CLI accepts in `orientation_files`.
+The receipt's screening ID must match the configured one. Every `visits` entry
+must name one of those aliases in `screening`; a visit without one does not load.
+
+The console never re-implements receipt checks. `av_schedules.admission.read_orientation`
+(the unchanged admission gate) decides whether allocation may proceed. The
+display-only `inspect_orientation` runs the same file pin, closed-shape, canonical
+hash, journal byte/hash, header, terminal-outcome and per-item evidence checks,
+but also accepts a consistently recorded `fail` or engineering-draft receipt so
+the operator can see it. It is never admission evidence.
+
+The operator selects a screening and presses **Verify receipt** (`orientation`
+command, CSRF bound, available with no visit loaded). Each verification appends an
+`orientation_verified` audit row before the result is displayed. If that append
+fails, the screening returns to `not_verified`. Rows show closed fields only:
+
+| Field | Values |
+|---|---|
+| `status` | `not_verified`, `incomplete` (no receipt file), `verified`, `rejected` |
+| `outcome` | `pass_first`, `pass_second`, `fail`, or null unless verified |
+| `engineering_draft` | boolean, or null unless verified |
+| `receipt_sha256` | canonical receipt hash, or null unless verified |
+| `reason` | closed lowercase code, such as `orientation_failed`, `orientation_engineering_draft`, `orientation_receipt_missing`, `orientation_file_hash`, `orientation_journal_hash`, `screening_receipt_mismatch` |
+| `allocation` | `eligible_for_handoff` only when `read_orientation` accepts the pinned files; otherwise `blocked` |
+
+The screening ID, orientation ID, station, paths, item responses and check scores
+never serialize. Item-level evidence remains in the private orientation journal.
+Visit load verifies the bound receipt again and refuses `orientation_blocked`.
+It also requires the configured screening ID to equal the visit participant.
+Start/resume reads the pinned files again. A receipt or journal changed after load
+raises the `orientation_unverified` fault and blocks start; pause/stop remain
+available. DEMO and simulation visits carry no receipt and stay labelled synthetic.
+A non-DEMO visit without a binding is refused.
+
+This view does not perform allocation. The eligibility and reveal receipts still
+come only from `DurableRevealLog` / `admission_cli`, which re-reads the same files.
+An `eligible_for_handoff` row is a software integrity result. It is not consent,
+screening, human-subjects approval or protocol-owner acceptance of the wording.
 
 ## Local mailbox v1
 
