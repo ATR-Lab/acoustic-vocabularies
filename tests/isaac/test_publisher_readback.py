@@ -121,7 +121,10 @@ def test_guard_fault_mid_run_latches_and_fails_the_check(tmp_path, monkeypatch):
     summary = run("invalidated", handle_cache=True)
     metadata = json.loads((tmp_path/"invalidated/metadata.json").read_text())
     assert metadata["fault"] == "PUBLISHER_FAILURE" and metadata["completed"] is False
-    assert len(delivered) == 5 and summary["timing_screen"] is False
+    # The fault fails the rate screen. timing_screen is computed from the five
+    # wall-clock stamps alone, so it can pass or fail on a fast host; it is not
+    # asserted here.
+    assert len(delivered) == 5 and summary["rate_screen"] is False and summary["complete"] is False
     assert accessors.reads == 6  # no retry or uncached re-read after the fault
 
 
