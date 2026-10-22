@@ -101,8 +101,55 @@ python -m isaac.soak.normalize --plan station-plan.json --plan-sha256 PLAN_SHA25
 
 Repeat `--command-log` for each service restart. Unknown native kinds, malformed payloads, duplicate receipts, unmatched hashes, tampered chains and protected receipts outside a protected context are refused. Refusal also covers a driver exchange that differs from the durable command record, an accepted test-mode demo anywhere in a command log, a failing probe or failed reset with no Unity receipt, and a driver fault absent from the Unity journal. A rejected probe or successful reset that Unity never received is counted as unplaced and is not invented. The summary always says `NO_GO` and `analysis_required`; only the analyzer applies the criteria.
 
+## Unity input-feed consumption
+
+`AcousticVocab.Soak.SoakInputFeed` and `SoakFeedConsumer` consume `unity-inputs.jsonl` in the joined host. This mode exists only in the explicitly compiled `SIMULATION_TEST` player (`AV_SIMULATION_TEST`, simulation-test scene, loaded and pinned simulation capability). Launch that player with the usual soak capture arguments plus two absolute paths:
+
+```text
+-soakPlan PLAN -soakPlanSha256 PLAN_SHA256 -soakOutput FRESH_CAPTURE -soakSchedule PRIVATE/station-01/schedule.json -soakInputs PRIVATE/station-01/driver/unity-inputs.jsonl
+```
+
+Either feed argument without the complete pair, the compiled capability, the simulation scene and a loaded capability refuses startup (`SOAK_FEED_ARGUMENTS`, `SOAK_FEED_REQUIRES_SIMULATION`, `JOIN_SOAK_FEED_REQUIRES_SIMULATION`). In feed mode the joined engine, its staged modules and its private control client never start (`JOIN_SOAK_FEED_ONLY`). The driver is then the only sender of mode, reset, demo and probe commands, so no Unity-originated reset reaches the command log. The schedule bytes must hash to the plan's `schedule_sha256`, and that hash, not the Unity visit schedule, is the capture's schedule binding.
+
+Each feed line is verified before use:
+
+- exact compact bytes, with no reformatting;
+- the row hash and the chain from seq 0;
+- the plan's schedule and station;
+- the exact payload fields for its kind;
+- a non-decreasing `step_index` that agrees with the pinned schedule step (op, block, block ID, trial ID, response code, fault type);
+- for an acknowledgement, the hash of `reply_utf8` and the reply's request ID.
+
+A partial final line waits for its newline. A missing file means the driver has not started. Truncation, a broken chain, a binding mismatch or a schedule disagreement latches a capture fault. The host then closes the capture as incomplete.
+
+| Feed row | Unity action and native rows |
+|---|---|
+| `block_begin` | `context` with the block and block ID, unless paused |
+| `command_ack` for `reset`, a recovery reset, or `set_mode` to test | `reset_receipt` always, including while paused |
+| `command_ack` for `lock_probe` | `lock_probe_receipt` only in an unpaused protected context; otherwise not receipted, and the normalizer counts a rejected probe as unplaced |
+| `command_ack` for `demo` or `set_mode` to teaching | nothing |
+| `trial` | if unpaused and its reset was receipted with `reset_ok:true` and not used before: durable `state_before`, then `durable_record` with that `reset_request_id`, then `context` with the trial ID; otherwise skipped |
+| `dummy_response` | if that trial is active: durable `response` with the scheduled code, then `durable_record` with `reset_request_id:null`; this becomes the last committed record |
+| `fault_marker` | `fault_injection` with the last committed record hash, then a paused `context`, then a durable `session_paused` (`technical_fault_code` `SOAK_<FAULT_TYPE>`) and its `durable_record`. With no committed record yet, the fault latches `SOAK_FEED_FAULT_WITHOUT_COMMITTED_RECORD` instead |
+
+Durable records go to the real hash-chained `DataJournal` at `<capture>/soak-data/events-NNNN.local.jsonl`. They use identity `SOAK-SYNTHETIC`/`soak-feed`, and their session payloads are bound to the driver schedule hash. They are soak-feed facts, not `FixedSlotEngine` trials. The engine owns its own slot timing and cannot follow the driver's externally paced trials. The consumer plays no cue. Every record states `NoCue` with no consumed exposure, so `cue_observation` is never logged and normalization produces no `exposure` or `cue_playback` facts.
+
+Paused means no trial begins, no response is committed and no probe is receipted. Resets are still receipted. Resume is never automatic. After the driver's recovery reset arrives with `reset_ok:true`, the operator writes `<capture>/operator-resume-<fault_id>.json`:
+
+```json
+{"version":1,"fault_id":"<fault_id>","recovery_reset_request_id":"<fault_recovered reset_request_id from the driver journal>","operator_initiated":true}
+```
+
+Unity then appends a durable `operator_resume` and logs `operator_resume`. That row is bound to the latest successful reset receipted during the fault, which the analyzer requires, and to the unchanged last committed record. A malformed, premature or mismatched file is refused and reported in the player log (`SOAK_FEED_OPERATOR ...`). It is never repaired. If the latest reset during the fault failed, the host waits for a later successful one.
+
 ## Remaining full-soak integration
 
-The joined Unity host still has to consume `unity-inputs.jsonl`: set its block context, run trials and dummy responses through the real engine, and log the receipts and data references above through `Observe`. That binding and its native validation are not implemented here. Until then, an actual run produces receiver-only facts and normalization or analysis returns `NO_GO`. The analyzer manifest is still assembled by hand from the normalized events, resources and hashed native sources.
+The Unity side of the feed is implemented and tested:
+
+- EditMode parsing, refusal, gating and data-journal tests.
+- PlayMode replays of the committed synthetic driver output through the real capture host, timer and journals.
+- `tests/isaac/test_soak_unity_feed.py`, which normalizes the Unity-produced fixture into the analyzer. The analyzer refuses it (`NO_GO`).
+
+That fixture replays the feed in under a second in a headless editor with local test frames and no render callbacks, so it is not a station run. No feed-mode run of the SimulationTest player against a live publisher and driver has happened. Real cue playback, headset rendering and motion content are not bound to the feed. The analyzer manifest is still assembled by hand from the normalized events, resources and hashed native sources.
 
 Physical crash/Wi-Fi/uplink injections, explicit operator recovery resume, headset battery/thermal capture, eight-hour multi-station overlap, native-log review, and signed G2 remain unperformed. Qualifying motion content and passing publisher timing remain separate blockers. The newest actual backend reset/lock verification is recorded in the #53/#55 derivatives dated 2026-10-05; the contemporaneous twenty-second publisher screen still fails timing. No longer run is implied by these tools or their synthetic tests.

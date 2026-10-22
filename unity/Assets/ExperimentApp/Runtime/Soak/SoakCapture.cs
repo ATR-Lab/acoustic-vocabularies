@@ -204,6 +204,13 @@ namespace AcousticVocab.Soak
         {
             lock(sync){SoakPlan.Need(installed&&!closed&&new[]{"reset_receipt","lock_probe_receipt","fault_injection","operator_resume","durable_record","cue_observation"}.Contains(kind),"SOAK_OBSERVATION");journal.Write(kind,Now,exactNativeObservation);}
         }
+        // Synchronous context row for an input-feed transition, so a following
+        // receipt in the same frame is ordered after the context it depends on.
+        public void ObserveContext(SoakContext value)
+        {
+            lock(sync){SoakPlan.Need(installed&&!closed&&value!=null,"SOAK_CONTEXT");string key=value.Json().ToString(Formatting.None);if(key==lastContext)return;monitor.Context(value,Now);lastContext=key;}
+        }
+        public string OutputDirectory=>installed?outputDirectory:null;
         public void Finish()
         {
             lock(sync)
