@@ -776,6 +776,7 @@ def run_dry_run(
                 llm_url=url,
                 resume=reopen,
                 purpose="dry_run",
+                log_startup=False,  # the dry run times and logs its own startup
             )
             if batch.llm is not None and plan.token_count_cap_ms is not None:
                 batch.llm.count_timeout_ms = plan.token_count_cap_ms

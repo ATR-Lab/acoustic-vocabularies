@@ -268,7 +268,10 @@ Problems found, and suggested follow-ups:
    events, so the #24 audit's `startup_ms` stays 0 for a lab batch. The model load is only
    in `llm_server`'s own timing file on the LLM host. Follow-up: time the LLM probe and
    warm-up, the renderer self-test and the A1 and panel servers in `open_batch` /
-   `run_session` for every sitting.
+   `run_session` for every sitting. Partly done: `open_batch` now logs the LLM probe and
+   a renderer self-test for every sitting (the dry run keeps its own startup log with
+   `log_startup=False`); the A1 and panel servers and the LLM host's model-load events
+   are still to add.
 3. **No handle to the served A1 page.** `run_session` exposes the panel
    (`StudyBatch.served_panel`) but not the A1 page, and it takes no designer factory. The
    dry run reads the operator line `A1 designer page: <url>`. Follow-up: add

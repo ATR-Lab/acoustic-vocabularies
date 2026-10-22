@@ -54,6 +54,7 @@ import httpx
 from av_sound._paths import data_root as sound_root
 from av_sound.fallback import FallbackSet, load_fallback
 from av_sound.store import VocabularyStore
+from av_sound.validate import validate
 
 from av_generation import _batch_sim as sim
 from av_generation._paths import examples_path
@@ -61,7 +62,7 @@ from av_generation.a1 import DEFAULT_PORT as A1_PORT
 from av_generation.a1 import A1SlotService, serve_a1, study_service
 from av_generation.a2 import A2Proposer
 from av_generation.a3 import A3Proposer
-from av_generation.clock import Clock, ManualClock, ScaledClock, SystemClock
+from av_generation.clock import Clock, ManualClock, ScaledClock, SystemClock, utc_text
 from av_generation.config import BatchConfig
 from av_generation.constants import APPOINTMENTS_PER_BATCH, ATOMS_PER_APPOINTMENT
 from av_generation.freeze import FreezeError, load_freeze_manifest
@@ -92,7 +93,7 @@ from av_generation.panel import create_panel_app, seat_key, station_url
 from av_generation.panel_session import PanelSessionHost
 from av_generation.prompts import PromptSet, default_prompt_set_dir, load_prompt_set
 from av_generation.proposers import RoundProposer
-from av_generation.records import RecordWriter, RunManifest
+from av_generation.records import RecordWriter, RunManifest, TimingEvent
 from av_generation.rundir import (
     MANIFEST_NAME,
     RunLayout,
@@ -115,6 +116,7 @@ __all__ = [
     "main",
     "open_batch",
     "probe_llm_server",
+    "renderer_self_test",
     "run_session",
     "serve_panel",
     "station_urls",
@@ -143,6 +145,8 @@ E_MODE: Final = "E_MODE"
 E_LLM_SERVER: Final = "E_LLM_SERVER"
 E_RUN_DIR: Final = "E_RUN_DIR"
 E_STATIONS: Final = "E_STATIONS"
+E_RENDERER: Final = "E_RENDERER"
+"""The renderer self-test at a sitting's startup gave another waveform than the bank."""
 E_FREEZE_GUARD: Final = "E_FREEZE_GUARD"
 """A confirmatory batch without a G4 freeze manifest file that passes the freeze guard of
 #25 (`freeze.load_freeze_manifest(..., require_frozen=True)`); the message carries the
@@ -389,6 +393,61 @@ def probe_llm_server(
 
 
 # ---------------------------------------------------------------------------
+# Startup timing (every sitting)
+
+
+STARTUP_LLM_DETAIL: Final = "LLM server probe (GET /version, GET /v1/models)"
+STARTUP_RENDERER_DETAIL: Final = "renderer self-test: render and validate fallback bank recipe 0"
+
+
+def renderer_self_test(fallback: FallbackSet, profile: str) -> None:
+    """Render and validate the profile's fallback bank recipe 0 with no references; its
+    waveform hash must equal the bank's (`E_RENDERER` otherwise)."""
+    entry = fallback.bank(profile)[0]
+    result = validate(entry.recipe, profile, ())
+    if result.pcm_sha256 != entry.pcm_sha256:
+        raise RunnerError(
+            E_RENDERER, "renderer self-test: the bank recipe renders to another waveform"
+        )
+
+
+@dataclass
+class _StartupLog:
+    """Startup intervals timed before the run directory is opened, written after."""
+
+    clock: Clock
+    events: list[tuple[str, int, str, str, str, int | None]]
+
+    @contextmanager
+    def timed(self, component: str, detail: str) -> Iterator[None]:
+        start = self.clock.now_ms()
+        self.events.append(
+            ("startup_start", start, utc_text(self.clock.utc_now()), component, detail, None)
+        )
+        yield
+        end = self.clock.now_ms()
+        self.events.append(
+            ("startup_end", end, utc_text(self.clock.utc_now()), component, detail, end - start)
+        )
+
+    def write(self, layout: RunLayout, batch_id: str) -> None:
+        writer = RecordWriter(layout.log("timing"))
+        for event, t_ms, wall, component, detail, duration in self.events:
+            writer.append(
+                TimingEvent(
+                    run_id=layout.run_id,
+                    event=event,
+                    t_ms=t_ms,
+                    wall_utc=wall,
+                    batch_id=batch_id,
+                    component=component,
+                    duration_ms=duration,
+                    detail=detail,
+                )
+            )
+
+
+# ---------------------------------------------------------------------------
 # Opening a batch run
 
 
@@ -452,6 +511,7 @@ def open_batch(
     purpose: Literal["batch", "dry_run"] = "batch",
     sim_p_failure: float = 0.05,
     sim_propose: Mapping[Method, sim.ProposeFn] | None = None,
+    log_startup: bool = True,
 ) -> StudyBatch:
     """Check the start rules, create (or, with `resume=True`, reopen) the run directory
     `run_dir` (its name is the run ID) and build the batch's components.
@@ -461,18 +521,31 @@ def open_batch(
     timing to the run's logs) is shared by A1 (`a1.study_service`), A2 and A3 (the client
     logs every call to `llm-requests.jsonl`). Simulated proposers (`proposers="sim"`,
     demo/synthetic only) write the slot log directly (`_batch_sim.sim_proposers`).
-    With a `ManualClock` the panel drives time, so slot events have no lead."""
+    With a `ManualClock` the panel drives time, so slot events have no lead.
+
+    Every sitting (a new run and each `resume`) logs its startup as `startup_start` /
+    `startup_end` timing events on the run clock: component `llm` (the server probe,
+    real proposers only) and `renderer` (`renderer_self_test`). The #24 audit counts them
+    in `startup_ms`. A closed run is reopened without writing. `log_startup=False` is for
+    callers that time and log their own startup (the #22 dry run)."""
     run_kind = RunKind(kind)
     root = Path(run_dir)
     check_batch_start(inputs, kind=run_kind, run_id=root.name, proposers=proposers)
     runtime: str | None = None
+    config = inputs.config
+    startup = _StartupLog(clock, [])
     if proposers == "real":
         if llm_url is None:
             raise RunnerError(E_LLM_SERVER, "real proposers need the LLM server URL")
         assert inputs.llm_manifest is not None
-        runtime = probe_llm_server(llm_url, inputs.llm_manifest, kind=run_kind)
+        with startup.timed("llm", STARTUP_LLM_DETAIL):
+            runtime = probe_llm_server(llm_url, inputs.llm_manifest, kind=run_kind)
+    with startup.timed("renderer", STARTUP_RENDERER_DETAIL):
+        renderer_self_test(inputs.fallback, config.profile.value)
     layout = _layout(root, run_kind, resume=resume)
-    config = inputs.config
+    if log_startup and not (resume and RunManifest.read(layout.manifest).closed_utc is not None):
+        # A closed run takes no new line: its manifest holds the hash of every file.
+        startup.write(layout, config.batch_id)
     ledger: SlotLedger | None = None
     a1: A1SlotService | None = None
     client: OpenAICompatibleClient | None = None
