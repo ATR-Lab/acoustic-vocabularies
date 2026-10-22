@@ -172,6 +172,7 @@ namespace AcousticVocab.SessionIntegration
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
+                    owner.Engine.ContentFailed+=RecordContentFailure;
                     if(assets.Grammar!=null)
                     {
                         grammarStage=new JoinedGrammarStage(data,assets.Grammar,assets.GrammarReview,assets.Schedule.Sha256,()=>clock.NowMs);
@@ -292,6 +293,13 @@ namespace AcousticVocab.SessionIntegration
                 ["readiness"]=new JObject{["hash_verified"]=r.HashVerified,["audio_preloaded"]=r.AudioPreloaded,["reset_acknowledged"]=r.ResetAcknowledged,
                     ["renderer_ready"]=r.RendererReady,["panel_idle"]=r.PanelIdle,["focus_ok"]=r.FocusOk,["input_ok"]=r.InputOk,["mode_acknowledged"]=r.ModeAcknowledged},
                 ["control_health"]=activePreflight?.Diagnostic()});
+        }
+        // Each content fault is explained when it happens, including one the
+        // visit pauses on and an operator may resume from (attempt 031, #247).
+        internal void RecordContentFailure(string code,string attemptId,string exception)
+        {
+            try{audit?.Write("module",new JObject{["kind"]="content_failure",["code"]=code,["attempt_id"]=attemptId,["exception"]=exception,
+                ["observed_mono_ms"]=clock.NowMs,["control_health"]=activePreflight?.Diagnostic()});}catch{}
         }
         void Fail(string code)
         {
