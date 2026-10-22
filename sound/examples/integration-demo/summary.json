@@ -1,0 +1,144 @@
+{
+  "books": [
+    {
+      "atom_pcm_sha256": {
+        "K-a1": "909e93b54b06d45a69d70afa0a57b86344acd67556a35659a1dfa3a0c3a74db6",
+        "K-a2": "e2825152d01ba9f449181d2b3c8daf84fff98ac67f8f09407e8101a6785cbb82",
+        "K-a3": "31731dee9ce23d97a0c4801c58db8b244eb9e068f2f309b96e34b594b576875e",
+        "K-a4": "8819fcaaa21e9ff866c3a449adfbbb0db090432368b0b9d886fb974af029c54a",
+        "K-r1": "b0b05e1a4ced73f1815b9cf67cd701979ccf9f9144163e489d946e63669c9134",
+        "K-r2": "92c237bd1f109281efc9c225b7817438629e4805d7bc607103ab1a7fb143fef8",
+        "K-r3": "ba79bb204523db05b38c77e24291f3a741490b785fff187e26edb7d73a683705",
+        "K-r4": "a6ead7d973e140815086795029695d0b8819c554821316f966ea05d5fcc559e1",
+        "Q-a1": "7ea76f81c992ec2996acca59e29ea3b1cbb9638942ba1898f0823225d313eca0",
+        "Q-a2": "dd23eb3a32b7e06659844460e81c0e3c0cea00fdc03b54172ed6139a5d3b345c",
+        "Q-a3": "be267a4c80aa7c3f024b0c8e1e3cff3c7da380ec4976f610cf34340bdcbfcd06",
+        "Q-a4": "bc2bf70c8c8a8b85709951652c9ed32179131a442b653983bf3f95123efa5de6",
+        "Q-r1": "5d5fae306dc6fc400f690f7d0b6b9a05f7bd15ece42b4fd6ecb4d35427855118",
+        "Q-r2": "0b0e9399634a3cfe8455a57dcc0c5a3e0cf947725dd71c7b7195358a25d7f67f",
+        "Q-r3": "b32511b830022a02b19c5721f53991bcca5b148b5a1029d06426f9536d5136ad",
+        "Q-r4": "a8d5447b185c9b3035b8ebd3923ccf38fe9f25b60b29854c45993f183325c221"
+      },
+      "atoms_committed": 16,
+      "book_id": "DEMO-BOOK-P1",
+      "frozen_head": "73d36d99b0c2a7d4d64e92aee8fc910d3d4f0faab919d1f6f87da1b310e0e0c7",
+      "leak_scan": {
+        "files_scanned": 39,
+        "heldout_audio": 0,
+        "heldout_hashes": 14,
+        "method_strings": 0,
+        "ok": true
+      },
+      "messages": {
+        "legal": 32,
+        "max_samples": 96000,
+        "min_samples": 52800,
+        "outside_1_1_to_2_0_s": 0
+      },
+      "package": {
+        "combinations_checked": 32,
+        "heldout_message_wavs": 0,
+        "package_id": "DEMO-BOOK-P1",
+        "package_sha256": "125752ba1078b6b4d07d19f15742e9b09ff54d63606802963498a9efedafa2aa",
+        "trained_message_wavs": 18
+      },
+      "profile": "P1",
+      "store_verified": true
+    },
+    {
+      "atom_pcm_sha256": {
+        "K-a1": "03701c3b6783802bedee3e66e4fd9c3ceba11835a04f7289e88abc4f238f8d7b",
+        "K-a2": "3c20f6dbc5891e64aa771491d5f8773f30b406e123037f6bea9a7757b804557d",
+        "K-a3": "2e0a65fb660b2731cafcdb5de987838185ca6a1f35238291a6ca915435d820c8",
+        "K-a4": "65e826c08ff25a838f4744eeb9de9b2d8fd46876ee6464b01e4c701949f39b7e",
+        "K-r1": "aeb7fef379f56badbb438fc1ebf23e508fe508553a6f77b63d5d64f7f56bde75",
+        "K-r2": "5eae7f4406f9011bdc255c4c0c9a4cace1a6a7d9daa1664b63e7c957fdc58e94",
+        "K-r3": "ad5551bc9fb3d7f968edd1d384701c14158ef03e2b467bcc3cda20b8e533098b",
+        "K-r4": "d18728c95bd10394f22cbf39b6b8a5b86b1dfb2aef0a3e415b2bdd72a2bf98ac",
+        "Q-a1": "6051251aba2440f3f567b09b10da5d15c66fa09ee8eef955ff309c98a8b90809",
+        "Q-a2": "1cf133145b0c1c1106e3cf6df3ece41ee3df690e79e852e746305f7de2ef2c27",
+        "Q-a3": "303edf3af8e3af4917f4a2ffc9210cacaf7c11a98df320b2d41cc504d86a3679",
+        "Q-a4": "7d0aecb394e38463448199805ee140145af77d1edc7bfab36eea9598d1e2d93a",
+        "Q-r1": "1ea2ccdd8b16924f1ded86639dbd33a32bb0ccd46b1412ed75ebf9fd98e5ffc5",
+        "Q-r2": "be4739725cea748793e1cc69a20ec9031bd26387fbd2d3792be75f2ffc5022f2",
+        "Q-r3": "f7d297688053a8ae7bdbbb9043601499d2cb76cac735691b905798ad2ff77cc1",
+        "Q-r4": "e5569c92be9b6dfd397a93ba15b57208d6c9f371756c5585eca6f523d81700a4"
+      },
+      "atoms_committed": 16,
+      "book_id": "DEMO-BOOK-P2",
+      "frozen_head": "e1247126d390c4a91104a71e05e78b275a759a09fe84a6359656e81e0316f589",
+      "leak_scan": {
+        "files_scanned": 39,
+        "heldout_audio": 0,
+        "heldout_hashes": 14,
+        "method_strings": 0,
+        "ok": true
+      },
+      "messages": {
+        "legal": 32,
+        "max_samples": 96000,
+        "min_samples": 52800,
+        "outside_1_1_to_2_0_s": 0
+      },
+      "package": {
+        "combinations_checked": 32,
+        "heldout_message_wavs": 0,
+        "package_id": "DEMO-BOOK-P2",
+        "package_sha256": "3f6a92ae9746d13997e4acf812cc0631c9635b8316558924f9159c4797089c68",
+        "trained_message_wavs": 18
+      },
+      "profile": "P2",
+      "store_verified": true
+    },
+    {
+      "atom_pcm_sha256": {
+        "K-a1": "5fbf2cefd31fcae54a6e3686d56ffd906f4d8493de5699d3d1fc0c30874f4237",
+        "K-a2": "3ba67eabfc69f1712cac3fc8a3c707fa609117e33ebf5dc26413c088b86297eb",
+        "K-a3": "6f922f55e3cdcf9daa57341d84378de3e014b7ec86d7ea1f2859a4d495fb7606",
+        "K-a4": "5523c00b3f369264cb9c3f7d20accf7dc51023df7c5034bc342580ca4f2e8a10",
+        "K-r1": "c23170aa56e120b89bc2c51a9c253daaaf1d88805187b7023414d926bcd5a12e",
+        "K-r2": "16e5a8ed052b59a1143df3128e203dffc9bff0329807ac3cd362dbec50fd60cc",
+        "K-r3": "a2f457224a11ec0f282dba27b620674dec91b542ab5df5adf52bae468a39f4f9",
+        "K-r4": "0bc1e5cab9513dbc573c7dfcbdd1173aa3acee265295aeb28a33b778abfa4cef",
+        "Q-a1": "852c2ba52b386d81ee4c2edad961264e4c53cc34e0caeb810befce27b5545876",
+        "Q-a2": "bb305e752bbbc1b23bfc9b486a900c79cce613dc25903fae3aad618db5416963",
+        "Q-a3": "d2ca2d92835dc914a7bf8a5bd0be40db7617ccbe2275152450b6fc7b9945272c",
+        "Q-a4": "45cb1bc544d80ff396738e85a5817ab970f9f8f36da077c20dfa6bd6a86bbafa",
+        "Q-r1": "712dc64e6b354e0854e022028f11fb7c43edd94c2cdc45d172e33b03dbc6beed",
+        "Q-r2": "a66b821c41f0ae41f3cb2d3b05cf00468376af8b8a4a197a281efbbcbf28d2ca",
+        "Q-r3": "eaab0bd9670b104fb3c50a9443450daf67596003931bf4ba16684feb831750f1",
+        "Q-r4": "e2e646343b0d74d6d0f48f1ca07b3ef2fa3d3287091c5ed83e2d800ea428df30"
+      },
+      "atoms_committed": 16,
+      "book_id": "DEMO-BOOK-P3",
+      "frozen_head": "bafe8951373dbdef2678540466180b7e28447ec9edb3bcbf5a3f3db73b450685",
+      "leak_scan": {
+        "files_scanned": 39,
+        "heldout_audio": 0,
+        "heldout_hashes": 14,
+        "method_strings": 0,
+        "ok": true
+      },
+      "messages": {
+        "legal": 32,
+        "max_samples": 96000,
+        "min_samples": 52800,
+        "outside_1_1_to_2_0_s": 0
+      },
+      "package": {
+        "combinations_checked": 32,
+        "heldout_message_wavs": 0,
+        "package_id": "DEMO-BOOK-P3",
+        "package_sha256": "fb11cde7e485b6c8f90aa93dacd2d9eaac7eaf6030994e0df37abed135adc683",
+        "trained_message_wavs": 18
+      },
+      "profile": "P3",
+      "store_verified": true
+    }
+  ],
+  "demo": true,
+  "format": "av-sound/integration-demo",
+  "format_version": 1,
+  "renderer_hash": "03a99200e8546fc113d320d499a071159afa219d914b54e98c88449791fd151d",
+  "renderer_version": "0.1.0"
+}

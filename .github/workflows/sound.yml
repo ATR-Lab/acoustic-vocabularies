@@ -139,6 +139,18 @@ jobs:
           uv run --project sound python sound/tools/build_example_package.py --check
           uv run --project sound python sound/tools/build_example_package.py \
             --out "$RUNNER_TEMP/package-demo" --dyad | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: O4.1 integration demo (three synthetic books, recipes to sealed packages)
+        run: |
+          uv run --project sound python sound/tools/integration_demo.py --check | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --project sound python sound/tools/integration_demo.py --out "$RUNNER_TEMP/integration-demo"
+      - name: Upload the integration demo (DEMO stores, packages and hash table)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-demo
+          path: ${{ runner.temp }}/integration-demo/
+          retention-days: 14
+          if-no-files-found: error
       - name: Upload the synthetic example packages (DEMO, with WAVs)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
