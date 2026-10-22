@@ -28,6 +28,15 @@ namespace AcousticVocab.DataLogging
         readonly int ownerThread=System.Threading.Thread.CurrentThread.ManagedThreadId;
         string previous;long sequence;bool failed,closed;
         internal Action BeforeDurableFlush; // Fault-injection seam, inaccessible outside this assembly/tests.
+        string simulatedRefusalKind;Func<bool> simulatedRefusalWhile;Action simulatedRefusalApplied;
+        // SIMULATION_TEST fault injection (#81): the next append of this event
+        // type, while the predicate holds, fails before any byte is written. The
+        // ordinary append failure latch then applies; earlier records are kept.
+        public void SimulationRefuseNext(AcousticVocab.Foundation.SimulationTestAuthority authority,string eventType,Func<bool> whilePlanned,Action applied)
+        {
+            if(authority==null||!AcousticVocab.Foundation.SimulationTestAuthority.CompiledCapability)throw new DataFault("DATA_SIMULATION_AUTHORITY");
+            simulatedRefusalKind=eventType;simulatedRefusalWhile=eventType==null?null:whilePlanned;simulatedRefusalApplied=eventType==null?null:applied;
+        }
         public bool Failed=>failed;public bool Closed=>closed;
         public IReadOnlyList<DataRecord> Records=>records.AsReadOnly();
         public string SegmentPath {get;}
@@ -51,7 +60,10 @@ namespace AcousticVocab.DataLogging
             try
             {
                 DataJson.Require(System.Threading.Thread.CurrentThread.ManagedThreadId==ownerThread,"DATA_WRONG_THREAD");
-                DataJson.Require(draft!=null,"DATA_DRAFT");double now=clock();CheckClock(clocks,clockEpoch,now);
+                DataJson.Require(draft!=null,"DATA_DRAFT");
+                if(simulatedRefusalKind!=null&&draft.Kind==simulatedRefusalKind&&(simulatedRefusalWhile==null||simulatedRefusalWhile()))
+                {var applied=simulatedRefusalApplied;simulatedRefusalKind=null;simulatedRefusalWhile=null;simulatedRefusalApplied=null;applied?.Invoke();throw new IOException("SIMULATION_REFUSED_WRITE");}
+                double now=clock();CheckClock(clocks,clockEpoch,now);
                 var p=draft.Payload;DataEventSchema.Validate(draft.Kind,draft.Context,p);
                 if(draft.Kind=="session")CheckClock(clocks,"session:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
                 if(draft.Kind=="assessment_stage")CheckClock(clocks,"assessment:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);

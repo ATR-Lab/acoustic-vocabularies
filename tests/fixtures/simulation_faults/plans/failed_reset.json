@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "case_id": "failed-reset-01",
+  "scenario": "failed_reset",
+  "run_id": "fault-run-01",
+  "build_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "config_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "schedule_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "expected_native_codes": [
+    "SESSION_RESET_DEADLINE_MISSED"
+  ],
+  "planned_opportunity_id": "DEMO-novel-01",
+  "minimum_observation_ms": 5000
+}

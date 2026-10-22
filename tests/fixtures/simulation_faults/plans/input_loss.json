@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "case_id": "input-loss-01",
+  "scenario": "input_loss",
+  "run_id": "fault-run-01",
+  "build_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "config_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "schedule_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "expected_native_codes": [
+    "FRAME_INTERFACE_UNAVAILABLE",
+    "SESSION_FOCUS_OR_INPUT_LOST"
+  ],
+  "planned_opportunity_id": "DEMO-novel-01",
+  "minimum_observation_ms": 5000
+}

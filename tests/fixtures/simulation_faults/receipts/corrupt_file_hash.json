@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "scope": "SIMULATION_TEST",
+  "case_id": "corrupt-file-hash-01",
+  "scenario": "corrupt_file_hash",
+  "plan_sha256": "325fc5fffd072acf99cfde1d67d91ade6790bc5c54e219c1c209ea7bd51eed51",
+  "session_nonce": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "simulation_capability_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "config_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "schedule_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "planned_opportunity_id": "DEMO-novel-01",
+  "method": "software_harness",
+  "hook": "package_read_corruption",
+  "parameters": {
+    "flipped_byte_offset": 44
+  },
+  "requested_utc": "2026-10-07T00:00:01.000000Z",
+  "observed_utc": "2026-10-07T00:00:01.500000Z",
+  "outcome": "applied",
+  "refusal_code": null,
+  "requested_host_mono_ms": 1000.0,
+  "observed_host_mono_ms": 1500.0,
+  "applied_opportunity_id": "DEMO-novel-01",
+  "last_committed_data_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "participant_admission": false
+}

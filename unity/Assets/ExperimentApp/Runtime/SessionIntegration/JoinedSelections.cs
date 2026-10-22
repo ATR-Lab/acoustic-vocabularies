@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 [assembly: InternalsVisibleTo("AcousticVocab.SessionIntegration.Tests")]
+[assembly: InternalsVisibleTo("AcousticVocab.SessionIntegration.PlayModeTests")]
 
 namespace AcousticVocab.SessionIntegration
 {

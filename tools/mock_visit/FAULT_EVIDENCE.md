@@ -97,6 +97,16 @@ incomplete evidence; exit 2 means malformed/inconsistent input. All reports keep
 `issue81_accepted:false`, `participant_qualified:false`, and
 `acoustic_qualified:false`.
 
+## Producing a case with the simulation player
+
+`python -m tools.mock_visit.fault_harness plan` writes this exact plan before
+launch, and `observe` composes this exact observation from the SIMULATION_TEST
+player's `simulation-fault-injection.local.json` receipt and the closed run
+manifest. The composer only selects candidate rows; this verifier still checks
+them. See the [runbook section](../../docs/unity/native-simulation-tests.md#software-fault-injection-simulation_test-only).
+The shared fixtures in `tests/fixtures/simulation_faults` are parsed by the
+Unity EditMode suite and validated here; they are synthetic, not native evidence.
+
 ## Suite integration
 
 Existing v1 suite plans remain supported. A v2 suite plan has the same fields
