@@ -1,0 +1,185 @@
+{
+  "scope": "Native SIMULATION_TEST full B V1 visit on isaac2 with #237 and the in-repo --observer-prim-only flag (#236); engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#235",
+    "#82",
+    "#81"
+  ],
+  "host": {
+    "name": "isaac2",
+    "record": "docs/isaac/e2e/2026-10-11-isaac2-host.json (PR #236)",
+    "gpu": "NVIDIA GeForce RTX 4060 Ti 16 GB",
+    "driver": "595.99.02"
+  },
+  "player": {
+    "build_id": "simulation-native-023",
+    "source_commit": "c183821d6d453ada21e0d23871d420a0be8df704",
+    "composition": "b826e60 (05e1b67 + #234 e8df923) + #237 bd99132cb2f6100da644c0169d6e2c09a96db51c; local test merge, not pushed",
+    "build_manifest_sha256": "9f2f62493fc11f86c165f7c49658aa90abeeb9ee2ee925ed0975edafcf36289a",
+    "dirty_source": false
+  },
+  "staging": {
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "store": "fresh DEMO menu store",
+    "operator": "Resume at block boundaries"
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "composition": "22897c4 (Isaac service with #218) + #236 50c7d0fc9fb52150ac932d248feda74d4236a97c (code as cbb0cd9); local test merge, not pushed",
+    "source_archive_sha256": "c7c9c45dffb74f2b37f034d01f40e1a07bedcdaa5779070bbc1a17d96d6b41da",
+    "image_ref": "acoustic-vocab-spike:isaac5.1-rendered-cache-20261004",
+    "image_id_local": "sha256:9de700ffcd67d9510f036ee88b118adab20fb1dbb7ce634d11d9cbab1474ea9b",
+    "image_layers_sha256": "22f6bdcb98ca0ea245751c1921df49f3637e0fa160ab5e1a2d42c1235644c5c8",
+    "image_config_sha256": "4341ac1c958aa369b20ee795f1693d49e6daad62e2866d5f143466428cef0604",
+    "launch_flags": "--headless --observer-prim-only --reset-check --reset-cycles 1 --skip-reach (no --capture, no out-of-tree launcher)",
+    "observer_mode": "prim_only",
+    "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "scene_reload_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+    "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+    "reload_state_identical": true,
+    "pins_match": true,
+    "evidence_png_files": 0,
+    "forward": "tools/engineering_forward.py --host isaac2",
+    "publish_rate_hz": 29.94,
+    "publish_interval_ms": {
+      "median": 30.5,
+      "p99": 49.8,
+      "max": 76.2
+    },
+    "physics_steps": 35953,
+    "frames": 30172,
+    "missed_deadlines": 61,
+    "elapsed_s": 1007.8,
+    "end_reason": "private_stop",
+    "fault": null,
+    "startup_heap": {
+      "collected": 294,
+      "frozen_objects": 410330,
+      "duration_ms": 139.238449,
+      "enabled": true,
+      "thresholds": [
+        700,
+        10,
+        10
+      ]
+    },
+    "gpu_util_pct": {
+      "median": 10.0,
+      "max": 13.0
+    },
+    "gpu_mem_mib_max": 2318.0
+  },
+  "session_tail": {
+    "visit_complete_sequence": 1550,
+    "rows_after_visit_complete": 7,
+    "row_types_after": {
+      "assessment_stage": 7
+    },
+    "session_rows_after_visit_complete": 0,
+    "item_fault_rows": 0
+  },
+  "attempts": {
+    "simulation-test-B-V1-023-isaac2-016": {
+      "note": "in-repo --observer-prim-only; -simulationDummyResponses at launch",
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "menu": 9,
+        "panel": 30,
+        "rating": 5
+      },
+      "stall_checks": {
+        "sample_rows": 24611,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 984592.9,
+            "gap_ms": 1648.2,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 85,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 134,
+        "callback_observed_plays": 134,
+        "software_completed_plays": 134,
+        "content_hash_verified_plays": 134,
+        "completed_opportunities": 39,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "2deb3ed5a1696595fc1c949e2ecdf6bef319c2b58db68ddee6677fb2515b49bc",
+        "events-0000.local.jsonl": "3dcd945603600983ab9fb139c2c9184acee20387a8ba0ba74e0c161639c44425",
+        "native-result.local.json": "b6c59999f6d172a87588fb822d4670d4b75aea740b19b6b8acbef0988ffd1d66",
+        "export manifest.json": "a6cc471f7d681eb4a37c137683a27b29d74e9e7a7ce1aba7ab3efc6bf5fe4329",
+        "mock-run.manifest.json": "cf8289653989c36fe7372a2a30294268a8ea2d0bb9ec61d9100dcd855db97ae6",
+        "reconciliation.local.json": "e9bb8b21a08cf289aab31d4d6ad98990d692b78202d0f8edf458321f8aea9cd9",
+        "process-result.local.json": "1342f034de96fc8dbe7c65476444c9bbb6623c728735c2b3a6efdc025d4d6410",
+        "native.log": "704b2c3015d28561b37278039083750fc1a187a5b0338a93c0c03325aa02c995",
+        "launch-spec.local.json": "b8608105a7a3656c177b4a515efdc071a54c9db8a8f3b35ef0117425e3b1d040",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "b338ebec6b92cfc3aa62158f84fcf29b401c5cf47fb7cac42016b790dfa82f5e",
+        "operator-logs/foundation-2f8b62c9f69449d18d8aa0bb7c46466d.jsonl": "acc5ad00223b8c29e9db17eb9e34871cc65c7e7a7c5fe5dd0fa4fd599d6c41dc",
+        "operator-logs/foundation-95a83aeb2ef746b78fcfbf8da8ccf3f6.jsonl": "9aa4deafbd8f6952951d5ee3f39daffece977f796b9e26b8fc93d41b6b950444",
+        "operator-logs/panel-a386befdbad04291b19a07d787094f2f.jsonl": "d36ad36a54340649a84c28e4bf36d7c0a7b4b651a110c9f3bfe12a9e0c9f6423",
+        "operator-logs/sample-age-b9c3a3f099794e1d96571f156657e208.csv": "1a53cc0165db62d4c8c5880166cc2bb3259a712e894ede82b403701767745a82",
+        "operator-logs/shutdown-b4844cece89c4b4590181f8ac9935c2d.local.jsonl": "976f56d9f13a2385824c8712bc530af4b9ed805143cfdfc7f3fbfa7abeac53cc",
+        "isaac/joined-summary.json": "e2853334489664bfd8197972f1301dc40d71e25d4338cbf87032a5a891da59d5",
+        "isaac/k13-gpu.csv": "9aa0dc0c2e6a10c4eeb0e7b2159d090d63ff8944df2de50f7a7864c955fefdc4",
+        "isaac/k13-launch.json": "abb2fcd8f8fe0413b9758233a9f95fc11f4fb31573cae360c2c1282f8e347946",
+        "isaac/publish.csv": "1f567f5124efc0c80388897a0c9149702985ce30559ebc6613301d0a2b2f9db6",
+        "isaac/ready.json": "91b0bfce013da02d4ea93ee16571313a43d05bfd40bb7e34c9c6567f374b490d",
+        "isaac/scene-summary.json": "a5ffc1802798c86015208aa16cb4465bb8dd3f51b47ab5b1f42f4e0e7fff4ab7"
+      }
+    }
+  },
+  "limitations": [
+    "Meta XR Simulator on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2, so no Isaac evidence PNGs",
+    "The remaining reconciliation reasons are the simulator frame-budget and display-timing screens",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts stay private; only hashes are published"
+  ]
+}

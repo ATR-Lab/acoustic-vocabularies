@@ -1,0 +1,368 @@
+{
+  "scope": "Native SIMULATION_TEST Study A A-C01-L02 reference D0 and same-day D7 on isaac2; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#78",
+    "#81",
+    "#82"
+  ],
+  "approval": "Maintainer-approved procedure: fresh DEMO person, per-visit console configured before launch (no restart, no lock removal), one audited visit_window deviation for the same-day D7",
+  "player": {
+    "build_id": "simulation-native-024",
+    "source_commit": "c2ff3266e856459be931c43a3330b45f684b8620",
+    "build_manifest_sha256": "855d0e1167ea0077ed9cb2179ebb2c29b6ccd25b41952752bff8b90b3a559e52"
+  },
+  "tooling": {
+    "source_commit": "294f69d737d7f5e7b18267460ccfb0f7d6eb7f4d",
+    "composition": "#173 6d9ed0a + #241 be806be"
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "launch": "--observer-prim-only"
+  },
+  "xr_runtime": {
+    "change": "Meta XR Simulator updated itself from v205.0 to v207.0 at 2026-10-11 17:00 local and removed the v205 runtime; the user set the OpenXR ActiveRuntime to v207.0. Maintainer accepted v207 for engineering simulation runs.",
+    "station_headset_unit_id": "meta-xr-simulator-v207",
+    "runtime_name": "Meta XR Simulator"
+  },
+  "fixtures": {
+    "fixture_set_sha256": "3afc0c945e8c888548e8626091e91548de79af214d4bd2643c7704bd8f81dc69",
+    "speech_manifest_sha256": "a7b8cddbdb65886949fe56acf3bc8ff053a206f23bbfdbf56f98098f97af3749",
+    "speech_status": "DEMO engineering_unreviewed TTS"
+  },
+  "staging": {
+    "coded_id": "A-C01-L02",
+    "unit_id": "A-C01",
+    "role": "reference",
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "unity_processes_before_each_launch": 0
+  },
+  "attempts": {
+    "simulation-test-A-D0-024-L02-isaac2-024": {
+      "outcome": "XR_ERROR_RUNTIME_UNAVAILABLE after the simulator update (ActiveRuntime pointed to the removed v205 manifest); stuck at JOIN_WAITING_FOUNDATION, console load refused engine_unavailable 30 times; no session, no exposure, no export or run manifest",
+      "process_result_sha256": "006f05fba90ae4191809c851a0a0137b4e639958e09df1830e5aa8edb5e9e8ae",
+      "console_audit_sha256": "3513a960763491acbf5d808ba8fc6dae2a4b0cd5e4004daefd2c6e8e5d789736"
+    },
+    "simulation-test-A-D0-024-L02-isaac2-026": {
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "panel": 108,
+        "rating": 2
+      },
+      "stall_checks": {
+        "sample_rows": 50039,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 1943388.6,
+            "gap_ms": 4271.7,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 13,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 221,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 221,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 212,
+        "requested_plays": 212,
+        "callback_observed_plays": 212,
+        "software_completed_plays": 212,
+        "content_hash_verified_plays": 212,
+        "completed_opportunities": 108,
+        "scheduled_opportunities": 108,
+        "selection_count": null,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "820be2cd23823e89dffc73cc2c2d493b805b5a147feea0cd335aa46e99f3202f",
+        "events-0000.local.jsonl": "2eab07a7fc5e50340aaf152f2f44c88ef05bf98c61ecc31ce091b36c56464c25",
+        "native-result.local.json": "c0888c7a1eb7ceec6785fed4c43e6f5e2a50e0d0bdf1b5ce793eb27607d526e8",
+        "export manifest.json": "af89db48fcfe6af185be918bf388e94c4bd406d6384f4d2bb9c2877e588d651b",
+        "mock-run.manifest.json": "87f69ae60b3050875e75fb50e981dd0878a7a217fa24008900b771c858d9d4f0",
+        "reconciliation.local.json": "30e2f6744eb35065bb9ce7bbc83034e2a2732a91660e6b949897298b65cd6a33",
+        "process-result.local.json": "f97b84fdf4771861320fa457f9729fb893517fcf296d46b88ff18ac5f6896d97",
+        "native.log": "7f02f776e3d3e8e0f3dc322c1a7295cce2b9017fd92934b9068ba741e0578331",
+        "launch-spec.local.json": "981548c13cb9e1675dfd0ccdcbd106934f53fcb912bfcd5a37e4bd9c0cc9674f",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "operator-logs/foundation-ad091c94a99d4ae4b4c4c83e40268be6.jsonl": "eb7e55d585c102ffa277f38e94dbab8e3f448cf9a211fb030fbec3675b3ce5be",
+        "operator-logs/foundation-fc77fb9e6df048d0946c65a1062d87db.jsonl": "d5fde31d232620a0eaaf7cd2dd33c8becebfb91e1b81d950b9e1b8526f332b9e",
+        "operator-logs/panel-2ca2b66d8734410eb1d8049d7dc4f156.jsonl": "fd1f43eb3799610ed0e5f8a822b589f4d614bc3377027c00dd4a31c2414f21cc",
+        "operator-logs/sample-age-e95e63cba76b40b4861a2eeb31426695.csv": "d25d66d51142a03cc8fa81e969121035ea98cb6a4626bfa9632378175b263a6a",
+        "operator-logs/shutdown-245ab1c10b4d4856bf1281ea315473f0.local.jsonl": "3b2a4673e656b57752bdac1f27956ab53297ae7f0e58ba1a702bd20525fd0aee",
+        "foreground.local.log": "bd766f601090c1574a9a0ed1fbdc1b8a7eeb1cb315bee89ba5b2f6b675a1a0c7",
+        "inputs/station.local.json": "0c8826598023522bdeb62b13cf1b4f8c12aa54deb5c279bf95ce0aff77169e3d"
+      },
+      "console_audit_sha256": "7387de51eae2af39853c60183ecb860449360b60d2c13bf4a8943fdb02549b2d",
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 25.3,
+        "publish_interval_ms": {
+          "median": 34.5,
+          "p99": 78.0,
+          "max": 175.8
+        },
+        "physics_steps": 51888,
+        "elapsed_s": 1990.8,
+        "end_reason": "private_stop",
+        "fault": null,
+        "artifact_sha256": {
+          "ready.json": "d57f4e3450e4f10d23695e669c0a6ac81685b4c5669f4b39e1c5e80c6be44e62",
+          "joined-summary.json": "b2dfd784ebbca1ac89e69175c9ba512db8692e01f68f3154d17d35d610662b5b",
+          "scene-summary.json": "402c5f535852c12390b41119401fc67791937aef701e4251390ba30edcf2d86c",
+          "publish.csv": "acdd23329e8333e38c9d834bd15bc223ddadbd28e86b316a61a21725e2e9fc53"
+        }
+      },
+      "forms_transition_ms": 27.8,
+      "main_thread_stall_records": 0,
+      "control_queued": 0,
+      "session_rows_after_visit_complete": 0,
+      "note": "isaac2 had concurrent load from other processes (a GoStdTests-test process at ~83% CPU and another session); Isaac publication fell to about 25 Hz"
+    },
+    "simulation-test-A-D7-024-L02-isaac2-027": {
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "panel": 72,
+        "rating": 2
+      },
+      "stall_checks": {
+        "sample_rows": 24639,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 973295.2,
+            "gap_ms": 1327.0,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 148,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 148,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 64,
+        "requested_plays": 64,
+        "callback_observed_plays": 64,
+        "software_completed_plays": 64,
+        "content_hash_verified_plays": 64,
+        "completed_opportunities": 72,
+        "scheduled_opportunities": 72,
+        "selection_count": null,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "FRAME_BUDGET_SCREEN_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "3d523753cb25f3befbc486081bab10a1c7722e60c451bda4b87cc95ca3296c08",
+        "events-0000.local.jsonl": "71c5d645ce23dc377a02937e55b2b634e022737a83f66707f6093dbabb20d752",
+        "native-result.local.json": "7dd909713faa4a6c1bd3a568dbe366b5494fc39c7f0609b0bbf631aca714bcd5",
+        "export manifest.json": "864711a6c57ed47180db2be21ac881c2f591dafa3f61cd022f7d8425786df0fd",
+        "mock-run.manifest.json": "b47dc8fe82c80c89e27b58049dbb300530e325b52d38d995766ee294d7ef485c",
+        "reconciliation.local.json": "47c2b59455111b5bd0df728f25c1497a8a0a6fc052f17224a358d189a5d1002c",
+        "process-result.local.json": "cfb756f5c48e025cc8504c6fdc2ba04dd1fd8fa2d377ca8dbda19c2ce6b5da47",
+        "native.log": "7470e558cc96dbb71903279d236116c6d3bf12c1e73c685c934a8418e221e651",
+        "launch-spec.local.json": "fbcea5946a42511c554d3c317bca0e533e083fcb027a2f5b5190c384e48c5e8d",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "operator-logs/foundation-1b967febd0d04ba5be06eb87db860b9d.jsonl": "6c21845869387fae6af5d760d04eb7bb22a9b035c3cb06df805314fe3fd2f8c1",
+        "operator-logs/foundation-9f65c3d260de40c3a0628df4ea38721e.jsonl": "4a16d4387980eca4690c2ef5511ca22acbf90d5b79a25bdeeec98a904a35fe93",
+        "operator-logs/panel-be3e3488ea12402ab10302afd1c28e5d.jsonl": "e92ebe54a1661b625e3bbc91e59d41262cdb4f92775d24dd64a1b9977ac8a005",
+        "operator-logs/sample-age-98dd79938bb44aa7bb8d2ac4f5775e8e.csv": "edcb14306e284062188fc07489a042d68119913b335e623e3508e03db99552d4",
+        "operator-logs/shutdown-49e1a70734374479ab7875f88fbc34c9.local.jsonl": "22e972a5d971ed13923a5fb70eb057cea9fcbff1db2c086bbb4a3b8d4530bf55",
+        "foreground.local.log": "ffd2626f2abd74b7eecc4f504f25d2284c5d1c7bb3afb2061f022a988882486f",
+        "inputs/station.local.json": "0c8826598023522bdeb62b13cf1b4f8c12aa54deb5c279bf95ce0aff77169e3d"
+      },
+      "console_audit_sha256": "e69bad54baf44322fa26faa49627d5761439f4a976723250c871b45a292d94d8",
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.84,
+        "publish_interval_ms": {
+          "median": 31.1,
+          "p99": 50.9,
+          "max": 85.8
+        },
+        "physics_steps": 34899,
+        "elapsed_s": 1047.4,
+        "end_reason": "private_stop",
+        "fault": null,
+        "artifact_sha256": {
+          "ready.json": "a44432840691066a50331ead31993d92b388bd4ea1921fbd777bf212e2c9dadc",
+          "joined-summary.json": "dcedebda264020870a5cd4bcafe28b3b632e332e8d014253a859c792bd0cde65",
+          "scene-summary.json": "1c193ea9c887c7e2d9f25f216e174f2ab3d26119044264c915a6baed81e1c463",
+          "publish.csv": "c309d97c51fbde3a4bfe3179692b76837b80d2352c40825e2c0e2931cf7d3c63"
+        }
+      },
+      "console_config_sha256": "dea9b959ad1801b887052633698d9ac0bd6ce645c3c9b28bdb37d37e7d3fb2c3",
+      "console_anchors": {
+        "D0": "2026-10-11"
+      },
+      "console_audit_events": [
+        "load_requested",
+        "engine_receipt",
+        "deviation",
+        "checks",
+        "start_requested",
+        "engine_receipt",
+        "start_acknowledged",
+        "resume_requested",
+        "engine_receipt",
+        "resume_acknowledged",
+        "resume_requested",
+        "engine_receipt",
+        "resume_acknowledged",
+        "resume_requested",
+        "engine_receipt",
+        "resume_acknowledged"
+      ],
+      "visit_window_deviations": 1,
+      "main_thread_stall_records": 0,
+      "control_queued": 0,
+      "session_rows_after_visit_complete": 0,
+      "plays_by_block": {
+        "trained": 36,
+        "novel": 4,
+        "atomic": 16,
+        "validity": 8
+      }
+    }
+  },
+  "unused_stagings": [
+    "simulation-test-A-D7-024-L02-isaac2-025 (v205 identity, never launched)",
+    "console-both-visits.UNUSED-test-only.local.json (two-visit catalog test refused simulation_audit_outside_mock, never started)"
+  ],
+  "heldout_scan": {
+    "tooling": "294f69d",
+    "retained_with_manifests": {
+      "plan_sha256": "0705e8ac9d7bc1eca9280ce9cb455aeb5741a7756b3a4eba79f0a97dcdbdbaef",
+      "runs": [
+        "simulation-test-A-D0-024-L02-isaac2-026",
+        "simulation-test-A-D7-024-L02-isaac2-027"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "a44253e4b58718d94110fed69eb43a171f4bdf8bee7364e97ccaa212789b710d",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE"
+        ],
+        "visits_present": 2,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 276,
+        "audio_observations": 552,
+        "grammar_audio_events": 6,
+        "ledger_audio_references": 4208,
+        "authorized_heldout_requests": 8,
+        "heldout_callback_events": 16
+      }
+    },
+    "with_attempt_024_listed": {
+      "plan_sha256": "99be288b68e0804570878ebec712fea5acc073b5e552a156d1e56d9951ae59d2",
+      "runs": [
+        "simulation-test-A-D0-024-L02-isaac2-024",
+        "simulation-test-A-D0-024-L02-isaac2-026",
+        "simulation-test-A-D7-024-L02-isaac2-027"
+      ],
+      "exit_code": 3,
+      "printed": "HOLDOUT_HISTORY INCOMPLETE",
+      "result_sha256": "af9330288ff13bb83c9318af03a14bb9320bd8a6d89137182adb3f849ee6f930",
+      "result": {
+        "recorded_history_scan_passed": true,
+        "software_history_complete": false,
+        "incomplete_reasons": [
+          "COMPLETE_VISIT_HISTORY_MISSING",
+          "NATIVE_RUN_INCOMPLETE",
+          "PINNED_RUN_MISSING"
+        ],
+        "visits_present": 2,
+        "missing_complete_visits": [
+          "D0",
+          "D7"
+        ],
+        "audio_requests": 276,
+        "audio_observations": 552,
+        "grammar_audio_events": 6,
+        "ledger_audio_references": 4208,
+        "authorized_heldout_requests": 8,
+        "heldout_callback_events": 16
+      }
+    },
+    "attempt_024_treatment": "024 has no export or run manifest. Listed in the plan, its pinned path does not exist, so the scanner skips it without reading or hash-checking and adds PINNED_RUN_MISSING; the placeholder hash in that diagnostic plan is all zeros.",
+    "interpretation": "Both visits complete natively with no held-out replay or contamination: 276 study requests and 8 authorized held-out requests. The scan stays incomplete only because both runs are software-reconciliation incomplete on the simulator timing screens (NATIVE_RUN_INCOMPLETE, COMPLETE_VISIT_HISTORY_MISSING)."
+  },
+  "limitations": [
+    "Meta XR Simulator v207 on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2, so no Isaac evidence PNGs",
+    "D7 ran on the D0 calendar day under an audited visit_window deviation; the 7-day interval is not exercised",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts and plans stay private; only hashes are published"
+  ]
+}
