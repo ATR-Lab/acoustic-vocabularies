@@ -20,7 +20,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'sound/src'))
 from av_sound._schemas import strict_loads
-from av_sound.dyad_bank import load_dyad_bank
+from av_sound.dyad_bank import BANK_FORMAT, QUALIFIED_BANK_FORMAT, load_dyad_bank
 from av_sound.grammar import ATOM_IDS
 from av_sound.package import load_package
 from av_sound.store import VocabularyStore, CommitRejected, canonical_json, snapshot_digest
@@ -130,13 +130,48 @@ class MenuStoreBridge:
     def _inputs(self):
         c = self.config
         require(digest(c) == self.config_sha256, 'CONFIG_CHANGED')
-        require(hashlib.sha256(Path(c['bank_path']).read_bytes()).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
-        bank = load_dyad_bank(c['bank_path'])
-        require(bank.demo and bank.bank_sha256() == c['bank_sha256'], 'BANK_PIN')
+        source = Path(c['bank_path'])
+        raw = source.read_bytes()
+        require(hashlib.sha256(raw).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
+        document = strict_loads(raw)
+        require(isinstance(document, dict) and document.get('format') in (BANK_FORMAT, QUALIFIED_BANK_FORMAT), 'BANK_FORMAT')
+        qualified = document['format'] == QUALIFIED_BANK_FORMAT
+        if qualified:
+            require(document.get('demo') is True and document.get('set') == 'demo'
+                    and isinstance(document.get('bank_id'), str) and ID.fullmatch(document['bank_id']),
+                    'QUALIFIED_BANK_UNAVAILABLE')
+            require(source.name == 'manifest.json', 'BANK_MANIFEST_PATH')
+            try:
+                from av_banks.handoff import HandoffError, qualified_dyad_bank
+            except ImportError as error:
+                raise BridgeError('QUALIFIED_RUNTIME_UNAVAILABLE') from error
+            try:
+                bank = qualified_dyad_bank(source.parent, expected_bank_sha256=c['bank_sha256'])
+            except HandoffError as error:
+                raise BridgeError('BANK_QUALIFICATION') from error
+        else:
+            bank = load_dyad_bank(source)
+        # A qualified DyadBank's own provisional serialization has a different
+        # digest. Its handoff preserves the authoritative #26 manifest bank hash.
+        require(bank.demo and bank.package_bank()['bank_sha256'] == c['bank_sha256'], 'BANK_PIN')
         package = load_package(c['package_path'], expected_package_sha256=c['package_sha256'])
         require(package.demo and package.study == 'B' and package.package_id == bank.bank_id
                 and package.combinations_checked == 1536, 'PACKAGE_BINDING')
-        require(package.manifest['bank']['bank_sha256'] == c['bank_sha256'], 'PACKAGE_BANK_PIN')
+        require(package.manifest['bank'] == bank.package_bank(), 'PACKAGE_BANK_PIN')
+        if qualified:
+            permutation, allocation = package.permutation, package.allocation
+            require(permutation is not None and allocation is not None
+                    and permutation.get('demo') is True and permutation.get('study') == 'B'
+                    and allocation.get('structured_family') in ('K', 'Q'), 'QUALIFIED_PACKAGE_UNSEALED')
+            permutation_bytes = package.read_file('permutation.json')
+            require(document.get('demo') is True and document.get('set') == 'demo'
+                    and c['unit_id'] == 'DEMO-' + document['dyad_slot']
+                    and permutation['unit_id'] == document['dyad_slot'], 'BANK_UNIT_BINDING')
+            require(permutation_bytes == (source.parent/'permutation.json').read_bytes()
+                    and hashlib.sha256(permutation_bytes).hexdigest() == document['permutation_sha256']
+                    and permutation['atom_order'] == document['atom_order']
+                    and {row['atom_id']:row['semantic_label'] for row in permutation['atoms']} == document['labels'],
+                    'BANK_PERMUTATION_BINDING')
         require({x['atom_id']: x['semantic_label'] for x in package.answers['atoms']} == dict(bank.labels), 'BANK_LABELS')
         options = {}
         for row in package.audio['options']:
@@ -146,6 +181,7 @@ class MenuStoreBridge:
             require(hashlib.sha256(package.pcm(row['path'])).hexdigest() == option.pcm_sha256, 'OPTION_PCM')
             options[key] = row
         require(len(options) == 192, 'OPTION_INVENTORY')
+        require(hashlib.sha256(source.read_bytes()).hexdigest() == c['bank_file_sha256'], 'BANK_FILE_HASH')
         return bank, package, options
 
     def _request(self, value, *, allow_verify=False):

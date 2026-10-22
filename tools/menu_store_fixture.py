@@ -33,11 +33,14 @@ def prepare_fixture(config_path, config_sha256, output, *, mode):
         require(isinstance(config.get(key), str) and config[key], 'CONFIG_PATH')
         config[key] = str(Path(config[key]).absolute())
     require(isinstance(config.get('store_root'), str) and config['store_root'], 'CONFIG_PATH')
-    for protected in (Path(config['package_path']).resolve(), Path(config['store_root']).resolve()):
+    bank_path = Path(config['bank_path']).resolve()
+    bank_document = read_json(bank_path)
+    bank_root = bank_path.parent if isinstance(bank_document, dict) and bank_document.get('format') == 'av-banks/bank-manifest' else bank_path
+    for protected in (Path(config['package_path']).resolve(), Path(config['store_root']).resolve(), bank_root):
         require(output != protected and protected not in output.parents, 'FIXTURE_SOURCE_OVERLAP')
     config['store_root'] = str(output/'store')
     bridge = MenuStoreBridge(config)
-    bridge._inputs()  # Full DEMO/bank/package pins and admissibility-bound assets.
+    bank, _, _ = bridge._inputs()  # Full DEMO/bank/package pins and admissibility-bound assets.
     output.mkdir(parents=True, exist_ok=False)
     write_new(output/'config.json', config)
     initial = bridge.verified_snapshot(expected_head=None, expected_snapshot_sha256=EMPTY_SNAPSHOT)
@@ -67,6 +70,7 @@ def prepare_fixture(config_path, config_sha256, output, *, mode):
             timings.append(dict(operation=operation, seconds=time.monotonic()-started))
     summary = dict(schema_version=1, mode=mode,
                    source_kind='actual_store_with_existing_producer_DEMO_package',
+                   qualified_bank=bank.qualified,
                    participant_ready=False, timing_qualified=False, audio_played=False,
                    config_sha256=bridge.config_sha256,
                    config_file_sha256=hashlib.sha256((output/'config.json').read_bytes()).hexdigest(),

@@ -1,10 +1,10 @@
 # Private menu-to-store bridge, engineering version 1
 
 `tools/menu_store_bridge.py` connects #70 selection records to the actual #11
-`VocabularyStore`. It accepts only a pinned, provisional **DEMO** `DyadBank` and
-an independently pinned #13 Study B package. Packages that record a qualified #26
-bank manifest (`av-banks/bank-manifest`) are verified by the Unity menu catalog but
-are not served by this bridge yet;
+`VocabularyStore`. It accepts a pinned provisional **DEMO** `DyadBank` or a
+verified, complete and unamended #26 **DEMO** bank. Both paths require an
+independently pinned #13 Study B package. Qualified bank inputs retain the
+`av-banks/bank-manifest` identity through the package and store handoff;
 every receipt and verified read says `source_kind: synthetic` and
 `participant_ready: false`. The function/CLI and bounded private file mailbox
 connect to the actual store; they do not grant participant authorization or
@@ -14,7 +14,7 @@ The adapter does not generate options, substitute a reserve, change the store's
 default separation threshold/reserved signals, or skip admissibility. The test
 suite uses the existing deterministic synthetic bank/package producer and a
 fixed adversarial fixture to exercise the actual store's rejection path. No
-fixture is study material or bank qualification evidence.
+fixture is study material or participant-bank qualification evidence.
 
 ## Private configuration and request
 
@@ -56,6 +56,46 @@ checks all 192 option PCM/file bindings, semantic permutation agreement and all
 package are read only. Prior store entries are re-read and verified, including
 recipe hash, actual PCM/file hashes, fixed profile and semantic binding. The
 entire previous snapshot must remain unchanged after a commit.
+
+### Qualified DEMO bank input
+
+For a qualified bank, `bank_path` must name its existing `manifest.json` inside
+the full bank directory. `bank_file_sha256` pins that file's bytes.
+`bank_sha256` pins the canonical #26 manifest. The configuration format and
+response fields stay at version 1.
+
+The bridge calls `av_banks.handoff.qualified_dyad_bank` for every input check.
+This verifies stored provenance, the generation configuration, all option WAVs,
+rerendered hashes and all different-atom pairs. Incomplete banks and reserve-rule
+amendments are refused. The handoff's bank hash remains authoritative. The
+converted `DyadBank.bank_sha256()` covers a provisional representation and is
+not the qualified manifest pin.
+
+The package must record the exact qualified format, version and bank hash.
+It must contain `permutation.json` and `allocation.json`, including the
+structured family. The permutation bytes must equal the verified bank's copy.
+The source manifest's permutation hash, atom order, labels and dyad slot must
+agree. The bridge unit must equal `DEMO-` plus that dyad slot, as required by
+`JoinedSelections.BridgeUnitId`. The source bank, package and permutation must
+all have `demo:true`. The store book keeps its `DEMO-` namespace.
+
+The pinned package binds its allocation document. The joined owner separately
+checks the external #31 allocation list and its actual bank/member assignment
+through `MenuCatalog.CreateAssigned`. The bridge does not infer that assignment
+from its configuration or invent an allocation pin.
+
+Use the locked banks environment for qualified inputs:
+
+```sh
+uv run --project banks python tools/menu_store_fixture.py --config <private-config> --config-sha256 <raw-pin> --out <fresh-private-dir> --mode service
+uv run --project banks python tools/menu_store_bridge.py --config <private-config> --config-sha256 <raw-pin> --serve-mailbox <private-mailbox> --seconds 300 --max-requests 128
+```
+
+The sound-only environment still serves provisional inputs. Qualified inputs
+without the banks runtime fail with `QUALIFIED_RUNTIME_UNAVAILABLE`.
+Fixture preparation refuses output inside the source bank directory. Its
+`qualified_bank` summary field describes the verified input format. Every
+receipt remains synthetic and has `participant_ready:false`.
 
 ## Receipts and verified reads
 
@@ -259,6 +299,6 @@ expired after 300 seconds with zero requests and its evidence was preserved.
 fixture. Use `--mode codec` for actual profile/atom/verification test files.
 Both modes retain the existing pinned DEMO bank/package read only, create a
 separate fresh store, and refuse output reuse or output inside the source
-store/package. Neither mode generates a candidate bank. Keep all generated
+store/package or qualified bank directory. Neither mode generates a candidate bank. Keep all generated
 files private. The qualified participant bank, headset transport, audio flow,
 power-loss behavior and study timing remain outside this verification.
