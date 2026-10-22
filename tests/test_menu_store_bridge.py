@@ -344,6 +344,67 @@ def test_mailbox_real_profile_atom_verify_and_restart(bridge,tmp_path):
     assert serve_mailbox(bridge,mailbox,seconds=.02,max_requests=1)['processed']==0
 
 
+def test_mailbox_preserves_all_old_selections_through_three_waves(bridge,tmp_path):
+    import time
+    from av_sound.grammar import ATOM_IDS
+    from av_sound.package import ATOM_WAVES
+    mailbox=tmp_path/'mailbox'
+    profile=request(bridge);enqueue(mailbox,profile)
+    serve_mailbox(bridge,mailbox,seconds=30,max_requests=1)
+    previous=response(mailbox,profile)['receipt']
+    old_entries={};counts=[];latencies=[]
+    for wave in (1,2,3):
+        for atom in (a for a in ATOM_IDS if ATOM_WAVES[a]==wave):
+            r=request(bridge,previous,atom=atom);enqueue(mailbox,r)
+            started=time.monotonic()
+            serve_mailbox(bridge,mailbox,seconds=30,max_requests=1)
+            result=response(mailbox,r)
+            latencies.append(round((time.monotonic()-started)*1000,3))
+            assert result['error'] is None and result['receipt']['status']=='committed'
+            manifest=result['snapshot'];entries={row['atom_id']:row for row in manifest['entries']}
+            assert all(entries[a]==row for a,row in old_entries.items())
+            assert set(entries)==set(old_entries)|{atom}
+            assert entries[atom]['selection_receipt_sha256']==result['receipt']['receipt_sha256']
+            assert manifest['book_head']==result['receipt']['after_head']
+            assert manifest['snapshot_sha256']==result['receipt']['after_snapshot_sha256']
+            old_entries=entries;previous=result['receipt']
+        counts.append(len(old_entries))
+    assert counts==[8,12,16] and len(bridge.store.records(bridge.book_id))==17
+    assert len(verified(bridge,previous)['entries'])==16
+    print({'synthetic_mailbox_counts':counts,'commit_latency_ms':latencies})
+
+
+def test_mailbox_lost_response_replays_durable_receipt_without_recommit(bridge,tmp_path,monkeypatch):
+    import tools.menu_store_bridge as bridge_module
+    first=bridge.select(request(bridge));r=request(bridge,first,atom='K-a1')
+    mailbox=tmp_path/'mailbox';enqueue(mailbox,r)
+    publish=bridge_module._atomic_new
+    def lost_response(*args):raise OSError('injected after durable commit and receipt')
+    monkeypatch.setattr(bridge_module,'_atomic_new',lost_response)
+    with pytest.raises(OSError,match='injected'):
+        serve_mailbox(bridge,mailbox,seconds=30,max_requests=1)
+    log=bridge.store.log_path(bridge.book_id).read_bytes();journal=bridge.journal.read_bytes()
+    receipt=json.loads(journal.splitlines()[-1])['receipt']
+    assert receipt['status']=='committed' and not bridge.pending.exists()
+    assert not (mailbox/'responses'/(r['request_id']+'.json')).exists()
+    monkeypatch.setattr(bridge_module,'_atomic_new',publish)
+    serve_mailbox(MenuStoreBridge(bridge.config),mailbox,seconds=30,max_requests=1)
+    assert response(mailbox,r)['receipt']==receipt
+    assert bridge.store.log_path(bridge.book_id).read_bytes()==log
+    assert bridge.journal.read_bytes()==journal and len(bridge.store.records(bridge.book_id))==2
+
+
+def test_snapshot_refuses_an_untracked_write_during_the_entry_read(bridge,monkeypatch):
+    first=bridge.select(request(bridge));latest=bridge.select(request(bridge,first,atom='K-a1'))
+    read_entries=bridge.store.list
+    def interrupted_read(*args,**kwargs):
+        entries=read_entries(*args,**kwargs)
+        bridge.store.freeze(bridge.book_id)
+        return entries
+    monkeypatch.setattr(bridge.store,'list',interrupted_read)
+    with pytest.raises(BridgeError,match='STORE_HEAD_CHANGED'):verified(bridge,latest)
+
+
 def test_empty_verify_profile_pin_and_no_selection_receipt(bridge,tmp_path):
     mailbox=tmp_path/'mailbox';r=dict(request(bridge),operation='verify',menu_key='verify',profile=None)
     enqueue(mailbox,r);serve_mailbox(bridge,mailbox,seconds=10,max_requests=1)

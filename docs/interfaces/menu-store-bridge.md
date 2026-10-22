@@ -192,6 +192,50 @@ on Linux, macOS and Windows, including the actual package, store and CLI mailbox
 process. Dependency-light root checks skip that module when NumPy is absent;
 they still validate the public closed schema. No dependency version was changed.
 
+## Full-book checks and timeout behavior
+
+Every public store reader checks the whole log and all stored blobs. The bridge
+previously called `get()` separately for each atom in a snapshot and verified
+handoff. Those calls repeated the same full-book scan as the book grew.
+
+The bridge now reads all entries with one `list()` call at each of these points.
+It still performs the full rerender and admissibility check with
+`verify(rerender=True)`. It reads actual PCM bytes again and checks the exact
+head after the read. A changed head raises `STORE_HEAD_CHANGED`. The bridge
+retains all before/after snapshot checks, package checks, durable intents and
+fsync operations. It does not cache verified entries between requests.
+
+Unity keeps its 2,000 ms deadline. A timeout leaves the client failed even if a
+valid atom receipt arrives later. The late receipt does not authorize the
+selected repeat or complete the interrupted slot. Preserve the request, response,
+intent, journal and store evidence for inspection. A lost response after a
+durable commit permits only identical-request recovery. Recovery returns the
+original receipt without another commit. It does not resume a failed Unity slot
+or admit a partial wave.
+
+The focused tests cover mailbox growth through 8, 12 and 16 committed atoms.
+They compare all old selections after every response. Separate regressions cover
+an untracked write during a snapshot read and response loss after the durable
+receipt. Existing tamper and crash-recovery checks remain in the same suite.
+
+Use the paired benchmark on an otherwise quiet machine:
+
+```sh
+uv run --project sound python tools/menu_store_benchmark.py \
+  --baseline-bridge <baseline/tools/menu_store_bridge.py> \
+  --candidate-bridge <candidate/tools/menu_store_bridge.py> \
+  --out <empty-local-directory>
+```
+
+The benchmark creates one synthetic bank/package and fresh stores for both
+implementations. It uses the same configuration paths, fixed clock and request
+IDs. It compares complete receipts, snapshots, store logs and bridge journals.
+Its report records each profile/atom duration against the unchanged deadline.
+It retains synthetic assets and reports `participant_ready:false` and
+`timing_qualified:false`. Concurrent workloads invalidate a performance comparison.
+These measurements do not qualify participant timing or storage power-loss
+behavior.
+
 ## Recorded engineering verification
 
 The [sanitized result](menu-store-bridge.validation.json) records the actual
