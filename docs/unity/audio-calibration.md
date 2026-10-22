@@ -68,6 +68,14 @@ uncertainty and route offset. Callback coverage and software completion do not
 prove speaker or earphone delivery. The ordinary scheduler rejects this route for
 trial scheduling; independent calibration evidence is still required by #80.
 
+That evidence is produced offline from a physical capture by
+`tools/onset_calibration.py`. Its record format is
+[audio-onset-calibration.schema.json](../../apparatus/schemas/audio-onset-calibration.schema.json),
+and the procedure is in the [O6.1.3 runbook](../spikes/O6.1.3-runbook.md). No
+physical measurement has been made yet, and no record exists. Only synthetic
+fixtures exist, and the schema keeps them provisional. This host does not read
+the records.
+
 Private `operator-logs/audio-calibration-*.jsonl` records the configuration hash,
 route, preview status, stored order, example hashes, preload memory estimate,
 relative gain, requests, scheduled DSP/monotonic times, callback coverage,

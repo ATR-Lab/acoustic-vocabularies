@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "synthetic_fixture",
+  "station_id": "EXAMPLE_STATION",
+  "route": "EXAMPLE_ROUTE",
+  "connection_mode": "wired_3_5mm_earphones",
+  "play_mode": "scheduled",
+  "app_build_id": "SYNTHETIC_NO_BUILD",
+  "output_device": "Synthetic fixture: no headset or earphones measured",
+  "capture_interface": "Synthetic fixture: generated WAV, no interface",
+  "capture_kind": "acoustic_coupler",
+  "app_sample_rate_hz": 48000,
+  "capture_sample_rate_hz": 48000,
+  "buffer_frames": 1024,
+  "buffer_count": 4,
+  "volume": {
+    "step": 7,
+    "max_step": 15
+  },
+  "full_scene_loaded": false,
+  "reference_field": "scheduled_onset_mono_ms",
+  "measured_at": "2026-10-07T00:00:00Z",
+  "sync": {
+    "external_bound_ms": 1.0,
+    "evidence": "Synthetic fixture: anchors generated on the ideal affine line; no instrument"
+  },
+  "detector": {
+    "measure_channel": 0,
+    "reference_channel": 1,
+    "threshold_fs": 0.05,
+    "consecutive_samples": 3,
+    "quiet_pre_ms": 50.0,
+    "search_start_ms": 0.0,
+    "search_end_ms": 150.0,
+    "threshold_source": "Synthetic fixture: example value, not derived from a noise capture"
+  }
+}
