@@ -100,7 +100,7 @@ namespace AcousticVocab.SessionIntegration
                 // MenuCatalog verifies every bank option. Independently bind the
                 // service's raw manifest pin to the exact bytes that loader saw.
                 Need(verifiedBankManifest!=null&&verifiedBankManifest.Length>0&&verifiedBankManifest.Length<=4*1024*1024&&PcmWave.Hash(verifiedBankManifest)==Text(config["bank_file_sha256"]),"JOIN_STORE_BANK_FILE_PIN");
-                var bank=Json(verifiedBankManifest);
+                var bank=PackageLoader.ParseStrictDocument(verifiedBankManifest,4*1024*1024);
                 Need(Text(bank["format"])==QualifiedBank.Format&&Text(bank["bank_id"])==package.PackageId&&Text(bank["dyad_slot"])==expectedUnitId&&QualifiedBank.CanonicalSha256(bank)==expectedBankSha256,"JOIN_STORE_BANK_BINDING");
             }
             else Need(verifiedBankManifest==null,"JOIN_STORE_BANK_FORMAT");
