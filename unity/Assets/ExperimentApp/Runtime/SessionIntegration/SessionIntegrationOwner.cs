@@ -8,6 +8,7 @@ using AcousticVocab.ResponsePanel;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StudyAudio;
 using AcousticVocab.Teaching;
+using AcousticVocab.SelectionMenus;
 namespace AcousticVocab.SessionIntegration
 {
     // Concrete trusted joining boundary. No schedule loading, allocation, audio
@@ -16,6 +17,7 @@ namespace AcousticVocab.SessionIntegration
     {
         readonly LessonDataJournal lessons;readonly DataJournal data;readonly AudioPlayer player;readonly FrameCaptureHost frames;readonly ExclusiveContentMultiplexer mux;
         readonly AudioDataAdapter audioData;readonly FrameAudioAdapter audioFrames;readonly PanelDataAdapter panelData;
+        readonly VisitSchedule schedule;
         readonly Dictionary<string,AudioRequestContext> audio=new Dictionary<string,AudioRequestContext>();readonly Dictionary<string,FrameCueBinding> cues=new Dictionary<string,FrameCueBinding>();readonly Dictionary<string,EventContext> attempts=new Dictionary<string,EventContext>();
         bool closed,disposing;
         public ExclusiveContentMultiplexer Modules=>mux;public Resources Shared{get;}
@@ -26,6 +28,7 @@ namespace AcousticVocab.SessionIntegration
             public AudioPlayer Player=>owner.player;public IAssessmentJournal StageJournal=>owner.StageJournal;
             public Action<AudioPlaybackEvent> DurableAudioSink=>owner.PersistAudio;
             public Action<LessonEvent> DurableLessonSink=>owner.lessons.Append;
+            public void RecordMenu(MenuEvent value,string role)=>NativeMenuDataAdapter.Record(owner.data,owner.schedule,value,role);
             // Called from module Prepare/Request immediately before Schedule,
             // after novel/speech composition has produced its verified wave.
             public void BindAudio(SlotContext c,int index,PcmWave verifiedWave)
@@ -39,11 +42,11 @@ namespace AcousticVocab.SessionIntegration
         public SessionIntegrationOwner(VisitSchedule schedule,ISessionClock clock,DataJournal journal,AudioPlayer sharedPlayer,ResponsePanelController panel,FrameCaptureHost capture,
             IReadOnlyDictionary<string,Func<Resources,ModuleConstructionScope,ISlotContentFactory>> factories,Action<SlotGateRefusal> gateRefused=null)
         {
-            data=journal??throw new ArgumentNullException(nameof(journal));player=sharedPlayer??throw new ArgumentNullException(nameof(sharedPlayer));frames=capture??throw new ArgumentNullException(nameof(capture));
+            this.schedule=schedule??throw new ArgumentNullException(nameof(schedule));data=journal??throw new ArgumentNullException(nameof(journal));player=sharedPlayer??throw new ArgumentNullException(nameof(sharedPlayer));frames=capture??throw new ArgumentNullException(nameof(capture));
             if(!capture.Ready||player.Playing||panel==null||factories==null)throw new SessionFault("SESSION_JOIN_NOT_READY");
             lessons=new LessonDataJournal(data,schedule);StageJournal=new AssessmentDataJournal(data,schedule.Sha256);SessionJournal=new SessionDataJournal(data);var resources=new Resources(this);Shared=resources;
             var routes=new Dictionary<string,Func<ModuleConstructionScope,ISlotContentFactory>>();foreach(var entry in factories){var creator=entry.Value;routes.Add(entry.Key,scope=>{if(player.Playing)throw new SessionFault("SESSION_AUDIO_LEASE_BUSY");return creator(resources,scope);});}
-            mux=new ExclusiveContentMultiplexer(schedule,clock,routes,c=>{attempts[c.Item.TrialId]=new EventContext(c.OpportunityId,c.Item.TrialId);if(c.Item.Phase=="teaching")lessons.Bind(c);});
+            mux=new ExclusiveContentMultiplexer(schedule,clock,routes,c=>{NativeObservationCodec.BindSlot(data,schedule,c);attempts[c.Item.TrialId]=new EventContext(c.OpportunityId,c.Item.TrialId);if(c.Item.Phase=="teaching")lessons.Bind(c);});
             Engine=new FixedSlotEngine(schedule,clock,SessionJournal,new FrameContentFactory(mux,capture),gateRefused);
             audioData=new AudioDataAdapter(data,player,e=>audio.TryGetValue(e.AudioId,out var value)?value:null,subscribeToPlayer:false);
             audioFrames=new FrameAudioAdapter(capture,e=>cues.TryGetValue(e.AudioId,out var value)?value:null);

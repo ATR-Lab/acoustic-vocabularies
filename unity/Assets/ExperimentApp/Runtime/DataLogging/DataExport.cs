@@ -70,10 +70,12 @@ namespace AcousticVocab.DataLogging
             if(hasLesson){Save(LessonExport.Table,Csv(LessonExport.Headers,LessonExport.Derive(snapshot,identity,tables)));Save(LessonExport.Contract,DataJson.Bytes(LessonExport.HeaderContract()));}
             bool hasAssessment=snapshot.Records.Any(r=>r.Kind=="assessment_stage");
             if(hasAssessment){Save(AssessmentExport.Table,AssessmentExport.Csv(snapshot,identity));Save(AssessmentExport.Contract,DataJson.Bytes(AssessmentExport.HeaderContract()));}
+            bool native=snapshot.Records.Any(r=>r.Kind=="slot_context");
+            if(native)Save(NativeObservationExport.FileName,DataJson.Bytes(NativeObservationExport.Create(snapshot,identity)));
             // Stage templates have no reviewed contract yet. Their presence keeps
             // the whole bundle provisional even if trial headers were reviewed.
-            bool qualified=headers.Qualified&&!snapshot.HasUnacknowledgedTail&&!hasAssessment&&!hasLesson&&!snapshot.Records.Any(r=>r.Kind=="grammar_stage");
-            var manifest=new JObject{["schema_version"]="data-export-provisional-1",["export_id"]=Guid.NewGuid().ToString("N"),["identity"]=identity.ToJson(),["headers_qualified"]=qualified,["unacknowledged_torn_tail"]=snapshot.HasUnacknowledgedTail,["record_count"]=snapshot.Records.Count,["last_record_sha256"]=snapshot.Previous,["trial_rows"]=tables.Trials.Count,["exposure_rows"]=tables.Exposures.Count,["files"]=new JArray(entries.Select(x=>x.ToJson()))};
+            bool qualified=headers.Qualified&&!native&&!snapshot.HasUnacknowledgedTail&&!hasAssessment&&!hasLesson&&!snapshot.Records.Any(r=>r.Kind=="grammar_stage");
+            var manifest=new JObject{["schema_version"]=native?NativeObservationExport.ManifestVersion:"data-export-provisional-1",["export_id"]=Guid.NewGuid().ToString("N"),["identity"]=identity.ToJson(),["headers_qualified"]=qualified,["unacknowledged_torn_tail"]=snapshot.HasUnacknowledgedTail,["record_count"]=snapshot.Records.Count,["last_record_sha256"]=snapshot.Previous,["trial_rows"]=tables.Trials.Count,["exposure_rows"]=tables.Exposures.Count,["files"]=new JArray(entries.Select(x=>x.ToJson()))};
             byte[] manifestBytes=DataJson.Bytes(manifest);DataJson.Require(manifestBytes.Length<=MaximumManifestBytes,"DATA_MANIFEST_LIMIT");string hash=DataJson.HashBytes(manifestBytes);Save("manifest.json",manifestBytes);
             var bundle=new ExportBundle(freshOutputDirectory,entries,hash,qualified);bundle.VerifyAll();return bundle;
         }
@@ -81,14 +83,18 @@ namespace AcousticVocab.DataLogging
         {
             DataJson.Require(DataJson.Hash(expectedManifestSha256),"DATA_MANIFEST_HASH_REQUIRED");string path=Path.Combine(directory,"manifest.json");DataJson.NoLinks(path);DataJson.Require(new FileInfo(path).Length<=MaximumManifestBytes,"DATA_MANIFEST_LIMIT");byte[] bytes=File.ReadAllBytes(path);DataJson.Require(DataJson.HashBytes(bytes)==expectedManifestSha256,"DATA_MANIFEST_HASH");
             var m=DataJson.ParseCanonical(bytes,MaximumManifestBytes);DataJson.Keys(m,"schema_version","export_id","identity","headers_qualified","unacknowledged_torn_tail","record_count","last_record_sha256","trial_rows","exposure_rows","files");
-            DataJson.Require((string)m["schema_version"]=="data-export-provisional-1"&&DataJson.Guid((string)m["export_id"])&&DataJson.Hash((string)m["last_record_sha256"]));DataIdentity.Parse(m["identity"] as JObject);
+            bool native=(string)m["schema_version"]==NativeObservationExport.ManifestVersion;
+            DataJson.Require((native||(string)m["schema_version"]=="data-export-provisional-1")&&DataJson.Guid((string)m["export_id"])&&DataJson.Hash((string)m["last_record_sha256"]));var identity=DataIdentity.Parse(m["identity"] as JObject);
             bool qualified=DataJson.Boolean(m["headers_qualified"]),tail=DataJson.Boolean(m["unacknowledged_torn_tail"]);DataJson.Require(!qualified||!tail);foreach(string k in new[]{"record_count","trial_rows","exposure_rows"})DataJson.Integer(m[k]);
             DataJson.Require(m["files"] is JArray list&&list.Count>=4&&list.Count<=1007,"DATA_MANIFEST_FILES");var files=new List<ExportFile>();var seen=new HashSet<string>(StringComparer.Ordinal);
-            foreach(JToken v in (JArray)m["files"]){DataJson.Keys(v,"path","bytes","sha256");string name=DataJson.Text(v["path"]);long size=DataJson.Integer(v["bytes"]);string hash=DataJson.Text(v["sha256"]);DataJson.Require((new[]{"trial-log.csv","exposure-ledger.csv","header-contract.json",AssessmentExport.Table,AssessmentExport.Contract,LessonExport.Table,LessonExport.Contract}.Contains(name)||Regex.IsMatch(name,@"\Araw/events-[0-9]{4}\.local\.jsonl\z"))&&seen.Add(name)&&size<=DataJournal.MaximumSegmentBytes&&DataJson.Hash(hash),"DATA_MANIFEST_FILES");files.Add(new ExportFile(name,size,hash));}
+            foreach(JToken v in (JArray)m["files"]){DataJson.Keys(v,"path","bytes","sha256");string name=DataJson.Text(v["path"]);long size=DataJson.Integer(v["bytes"]);string hash=DataJson.Text(v["sha256"]);DataJson.Require((new[]{"trial-log.csv","exposure-ledger.csv","header-contract.json",AssessmentExport.Table,AssessmentExport.Contract,LessonExport.Table,LessonExport.Contract,NativeObservationExport.FileName}.Contains(name)||Regex.IsMatch(name,@"\Araw/events-[0-9]{4}\.local\.jsonl\z"))&&seen.Add(name)&&size<=DataJournal.MaximumSegmentBytes&&DataJson.Hash(hash),"DATA_MANIFEST_FILES");files.Add(new ExportFile(name,size,hash));}
+            DataJson.Require(native==seen.Contains(NativeObservationExport.FileName)&&(!native||!qualified),"DATA_NATIVE_FORMAT");
             DataJson.Require(seen.Contains(LessonExport.Table)==seen.Contains(LessonExport.Contract)&&(!seen.Contains(LessonExport.Table)||!qualified),"DATA_LESSON_HEADERS_UNREVIEWED");
             DataJson.Require(seen.Contains(AssessmentExport.Table)==seen.Contains(AssessmentExport.Contract)&&(!seen.Contains(AssessmentExport.Table)||!qualified),"DATA_ASSESSMENT_HEADERS_UNREVIEWED");
             DataJson.Require(new[]{"trial-log.csv","exposure-ledger.csv","header-contract.json"}.All(seen.Contains));files.Add(new ExportFile("manifest.json",bytes.LongLength,expectedManifestSha256));
-            var bundle=new ExportBundle(directory,files,expectedManifestSha256,qualified);bundle.VerifyAll();return bundle;
+            var bundle=new ExportBundle(directory,files,expectedManifestSha256,qualified);bundle.VerifyAll();
+            if(native)NativeObservationExport.Verify(File.ReadAllBytes(Path.Combine(directory,NativeObservationExport.FileName)),DataJournal.Verify(Path.Combine(directory,"raw"),identity),identity);
+            return bundle;
         }
         static byte[] Csv(IReadOnlyList<string> headers,IReadOnlyList<IReadOnlyDictionary<string,string>> rows)
         {

@@ -41,10 +41,46 @@ def _example_module():
     return module
 
 
+def _synthetic_speech(output, selection_bytes):
+    """SpeechBank wire fixture only: impulse buffers, no speech or intelligibility."""
+    from tools import validity_speech as speech
+
+    output.mkdir()
+    selection = json.loads(selection_bytes)
+    chosen = speech.selection_from(selection)
+    # Reuse the speech-bank byte/manifest contracts without claiming synthesis.
+    samples = [0] * 4800
+    samples[100] = 23170
+    wav = speech.wav_bytes(samples)
+    items = []
+    for row in speech.records(chosen):
+        write_new(output / (row["speech_id"] + ".wav"), wav)
+        items.append(dict(row, duration_ms=100.0, samples=4800, sha256=digest(wav),
+                          pcm_sha256=digest(wav[44:]), raw_sha256=digest(wav),
+                          trim=dict(first_kept_sample=0, end_exclusive_sample=4800,
+                                    raw_samples=4800, raw_peak_pcm=23170)))
+    provenance = json_bytes(dict(scope="SYNTHETIC_IMPULSE_BUFFERS", recorded_speech=False,
+                                 intelligibility=False, acoustic_evidence=False))
+    manifest = dict(version=1, status="engineering_unreviewed", voice=speech.VOICE, rule=speech.RULE,
+                    demo=True, study=selection["study"], set=selection["set"],
+                    source=dict(requests_sha256=digest(provenance), synthesis_evidence_sha256=digest(provenance),
+                                speech_list_sha256=digest(selection_bytes)),
+                    items=items, balanced_list=[r["speech_id"] for r in items if r["chosen"]], listening_review_sha256=None)
+    write_new(output / "selection.local.json", selection_bytes)
+    raw = speech.canonical(manifest)
+    write_new(output / "manifest.local.json", raw)
+    write_new(output / "manifest.sha256", (digest(raw) + "\n").encode())
+    write_new(output / "manifest.local.csv", b"")
+    write_new(output / "listening-review.template.local.json", speech.canonical(dict(scope="SYNTHETIC_UNREVIEWED")))
+    speech.validate_manifest(manifest, output)
+    return dict(directory=output.name, manifest_sha256=digest(raw), speech_list_sha256=digest(selection_bytes),
+                scope="SYNTHETIC_IMPULSE_BUFFERS", recorded_speech=False, intelligibility=False, acoustic_evidence=False)
+
+
 def prepare(output):
     from av_schedules.curriculum import permutation_json
     from av_schedules.design import build_units
-    from av_schedules.orders import unit_schedules, visit_schedule_json
+    from av_schedules.orders import speech_list_json, unit_schedules, visit_schedule_json
     from av_schedules.seeds import demo_seed
     from av_sound.dyad_bank import synthetic_dyad_bank
     from av_sound.nonlexical import calibration_example
@@ -90,13 +126,17 @@ def prepare(output):
         asset = calibration_example(profile)
         write_wav(asset, examples / f"{asset.id}.wav")
     roles = {m["slot_id"]: m["role"] for m in dyad[0]["members"]}
+    speech = {study: _synthetic_speech(output / ("speech-" + study.lower()), speech_list_json(master, study, "confirmatory"))
+              for study in ("A", "B")}
     raw = json_bytes({
-        "version": 1, "scope": "DEMO_ENGINE_HISTORY", "synthetic": True, "seed_label": SEED,
+        "version": 2, "scope": "DEMO_ENGINE_HISTORY", "synthetic": True, "seed_label": SEED,
         "packages": packages, "examples": examples.name,
         "allocation": {"path": ALLOCATION.relative_to(ROOT).as_posix(), "sha256": digest(ALLOCATION.read_bytes())},
         "registry": {"path": REGISTRY.relative_to(ROOT).as_posix(), "sha256": digest(REGISTRY.read_bytes())},
         "study_a_person": packages["A"]["persons"][0],
         "study_b_roles": roles,
+        "coded_aliases": {person: "DEMO-" + person for p in packages.values() for person in p["persons"]},
+        "speech": speech,
     })
     write_new(output / "fixtures.local.json", raw)
     write_new(output / "fixtures.local.json.sha256", (digest(raw) + "\n").encode())

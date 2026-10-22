@@ -41,6 +41,7 @@ namespace AcousticVocab.DataLogging
         public IReadOnlyList<DataRecord> Records=>records.AsReadOnly();
         public string SegmentPath {get;}
         public DataIdentity Identity=>identity;
+        public string ClockEpoch=>clockEpoch;
         public DataJournalHealth Health=>new DataJournalHealth(this);
         public DataJournal(string privateDirectory,DataIdentity identity,string clockEpoch,Func<double> monotonicMilliseconds)
         {
@@ -65,10 +66,13 @@ namespace AcousticVocab.DataLogging
                 {var applied=simulatedRefusalApplied;simulatedRefusalKind=null;simulatedRefusalWhile=null;simulatedRefusalApplied=null;applied?.Invoke();throw new IOException("SIMULATION_REFUSED_WRITE");}
                 double now=clock();CheckClock(clocks,clockEpoch,now);
                 var p=draft.Payload;DataEventSchema.Validate(draft.Kind,draft.Context,p);
+                NativeObservationCodec.Match(draft.Kind,p,draft.Context,records);
+                if(draft.Kind=="slot_context")DataJson.Require((string)p["observation_clock_epoch"]==clockEpoch,"DATA_NATIVE_CLOCK_BINDING");
                 if(draft.Kind=="session")CheckClock(clocks,"session:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
                 if(draft.Kind=="assessment_stage")CheckClock(clocks,"assessment:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
                 if(draft.Kind=="lesson"){DataJson.Require((double)p["observed_mono_ms"]<=now,"DATA_LESSON_FUTURE_EVENT");CheckClock(clocks,"lesson:"+clockEpoch,(double)p["observed_mono_ms"]);}
                 if(draft.Kind=="grammar_stage")CheckClock(clocks,"grammar:"+(string)p["clock_epoch"],(double)p["host_mono_ms"]);
+                if(draft.Kind=="menu_observation"){DataJson.Require((double)p["observed_mono_ms"]<=now,"DATA_NATIVE_MENU_FUTURE_EVENT");CheckClock(clocks,"menu:"+clockEpoch,(double)p["observed_mono_ms"]);}
                 var row=new JObject{["schema_version"]=DataEventSchema.Version,["sequence"]=sequence,["event_id"]=Guid.NewGuid().ToString("N"),["clock_epoch"]=clockEpoch,["host_mono_ms"]=now,["identity"]=identity.ToJson(),
                     ["event_type"]=draft.Kind,["opportunity_id"]=draft.Context.OpportunityId,["attempt_id"]=draft.Context.AttemptId,["audio_request_id"]=draft.Context.AudioRequestId,["previous_sha256"]=previous,["payload"]=p};
                 string hash=DataJson.HashBytes(DataJson.Bytes(row));row["sha256"]=hash;byte[] bytes=DataJson.Bytes(row);
@@ -104,6 +108,8 @@ namespace AcousticVocab.DataLogging
                     var hashInput=(JObject)row.DeepClone();hashInput.Remove("sha256");DataJson.Require(DataJson.HashBytes(DataJson.Bytes(hashInput))==hash,"DATA_HASH");
                     var context=new EventContext(DataJson.OptionalText(row["opportunity_id"]),DataJson.OptionalText(row["attempt_id"]),DataJson.OptionalText(row["audio_request_id"]));
                     string kind=DataJson.Text(row["event_type"]);var payload=row["payload"] as JObject;DataEventSchema.Validate(kind,context,payload);
+                    NativeObservationCodec.Match(kind,payload,context,records);
+                    if(kind=="slot_context")DataJson.Require((string)payload["observation_clock_epoch"]==epoch,"DATA_NATIVE_CLOCK_BINDING");
                     if(pending.Count>0){DataJson.Require(kind=="recovery"&&JToken.DeepEquals(payload["preserved_tails"],pending),"DATA_TAIL_CHAIN");pending.Clear();}
                     else DataJson.Require(kind!="recovery","DATA_TAIL_CHAIN");
                     CheckClock(clocks,epoch,DataJson.Number(row["host_mono_ms"]));
@@ -111,6 +117,7 @@ namespace AcousticVocab.DataLogging
                     if(kind=="assessment_stage")CheckClock(clocks,"assessment:"+(string)payload["clock_epoch"],(double)payload["host_mono_ms"]);
                     if(kind=="lesson"){DataJson.Require((double)payload["observed_mono_ms"]<=DataJson.Number(row["host_mono_ms"]),"DATA_LESSON_FUTURE_EVENT");CheckClock(clocks,"lesson:"+epoch,(double)payload["observed_mono_ms"]);}
                     if(kind=="grammar_stage")CheckClock(clocks,"grammar:"+(string)payload["clock_epoch"],(double)payload["host_mono_ms"]);
+                    if(kind=="menu_observation"){DataJson.Require((double)payload["observed_mono_ms"]<=DataJson.Number(row["host_mono_ms"]),"DATA_NATIVE_MENU_FUTURE_EVENT");CheckClock(clocks,"menu:"+epoch,(double)payload["observed_mono_ms"]);}
                     records.Add(new DataRecord(row));previous=hash;sequence++;
                 }
                 if(from<bytes.Length)

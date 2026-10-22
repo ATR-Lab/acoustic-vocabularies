@@ -90,6 +90,8 @@ namespace AcousticVocab.DataLogging
         {
             switch(kind)
             {
+                case "slot_context":NativeObservationCodec.ValidateSlot(p,c);break;
+                case "menu_observation":NativeObservationCodec.ValidateMenu(p,c);break;
                 case "lesson":
                     LessonRecordCodec.Validate(p,c);break;
                 case "grammar_stage":

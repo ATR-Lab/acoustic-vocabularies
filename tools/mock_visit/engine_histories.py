@@ -36,12 +36,12 @@ from .reconcile import export_bundle, read, reconcile_records, relative, schedul
 VISITS = {"A": ("D0", "D7"), "B": ("V1", "V2", "V3", "W1", "W4")}
 EXPECTED_PLAYS = {"A": {"atomic_lessons": 48, "message_lessons": 108}, "B": {"profile_menu": 8, "atom_menus": 128}}
 # Reasons that are expected for these histories and stated as limitations: no audio
-# callback is ever recorded, and the validity block (speech bank) is not run.
+# callback is ever recorded. Validity traverses synthetic impulse buffers.
 EXPECTED_INCOMPLETE = {"AUDIO_CALLBACK_OR_COMPLETION_MISSING"}
 OMITTED_INCOMPLETE = {"SCHEDULED_OPPORTUNITIES_INCOMPLETE"}
 INDEX_FIELDS = "scope synthetic acoustic_evidence callbacks_recorded participant_ready fixtures_sha256 package_directory package_sha256 visits"
 VISIT_FIELDS = ("study person_id role visit schedule schedule_sha256 omitted_blocks export_manifest export_manifest_sha256 "
-                "menu_ledger menu_ledger_sha256 exposure_rows trial_rows")
+                "menu_ledger menu_ledger_sha256 exposure_rows trial_rows scheduled_opportunities executed_opportunities scheduled_plays requested_plays")
 
 
 def heldout_index(study, messages):
@@ -145,6 +145,16 @@ def verify(index_path, index_sha, fixtures_path, fixtures_sha):
     known = {a["pcm_sha256"] for a in atoms.values()} | {
         c["composite_sha256"] for m in messages.values() for c in ([m] if study == "A" else m["combinations"])} | {
         e["pcm_sha256"] for e in registry["entries"] if e.get("kind") == "calibration"}
+    speech_spec = fixtures["speech"][study]
+    require(speech_spec["scope"] == "SYNTHETIC_IMPULSE_BUFFERS" and speech_spec["recorded_speech"] is False
+            and speech_spec["intelligibility"] is False and speech_spec["acoustic_evidence"] is False, "ENGINE_SPEECH_SCOPE")
+    speech_root = fixture_root / relative(speech_spec["directory"])
+    speech_manifest = strict(read(speech_root / "manifest.local.json", speech_spec["manifest_sha256"]))
+    for item in speech_manifest["items"]:
+        raw = read(speech_root / relative(item["speech_id"] + ".wav"), item["sha256"])
+        samples = content.pcm(raw)
+        require(sha(samples) == item["pcm_sha256"] and len(samples) // 2 == item["samples"], "ENGINE_SPEECH_PCM")
+        known.add(item["pcm_sha256"])
     require(isinstance(index["visits"], list) and index["visits"], "ENGINE_VISITS")
     persons, reports, ledgers = defaultdict(list), [], {}
     for entry in index["visits"]:
@@ -156,15 +166,18 @@ def verify(index_path, index_sha, fixtures_path, fixtures_sha):
         require(schedule["person_id"] == entry["person_id"], "ENGINE_SCHEDULE_PERSON")
         items = schedule_items(schedule, study, entry["visit"])
         omitted = set(entry["omitted_blocks"])
-        require(omitted <= {"validity"} and omitted == ({"validity"} if entry["visit"] in {"D7", "W4"} else set()), "ENGINE_OMITTED_BLOCKS")
+        require(not omitted, "ENGINE_OMITTED_BLOCKS")
         m, records, trials, exposures = export_bundle(root / relative(entry["export_manifest"]), entry["export_manifest_sha256"])
-        require(m["identity"]["coded_id"] == entry["person_id"] and m["identity"]["visit_id"] == entry["visit"], "ENGINE_EXPORT_IDENTITY")
+        alias = fixtures.get("coded_aliases", {}).get(entry["person_id"])
+        require(alias == "DEMO-" + entry["person_id"] and m["identity"]["coded_id"] == alias and m["identity"]["visit_id"] == entry["visit"], "ENGINE_EXPORT_IDENTITY")
         result = reconcile_records(records, trials, exposures, items, entry["schedule_sha256"])
         allowed = EXPECTED_INCOMPLETE | (OMITTED_INCOMPLETE if omitted else set())
         unexpected = sorted(set(result["incomplete"]) - allowed)
         require(not unexpected and not result["faults"], "ENGINE_RECONCILE:" + ",".join(unexpected or result["faults"]))
         expected_done = {k for k, i in items.items() if i["block"] not in omitted}
         require(set(result["done"]) == expected_done, "ENGINE_DONE_SET")
+        require(entry["scheduled_opportunities"] == entry["executed_opportunities"] == len(expected_done)
+                and entry["scheduled_plays"] == entry["requested_plays"] == len(exposures) == sum(i["plays"] for i in items.values()), "ENGINE_EXECUTION_COUNTS")
         ledger = []
         if entry["menu_ledger"] is not None:
             rows = verify_chain([(entry["menu_ledger"], read(root / relative(entry["menu_ledger"]), entry["menu_ledger_sha256"]))], "menu")

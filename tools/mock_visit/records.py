@@ -200,7 +200,10 @@ def validate_audio(p):
 def validate_data_payload(row, schedule_hash):
     kind, p = row["event_type"], row["payload"]
     require(isinstance(p, dict), "MOCK_PAYLOAD")
-    if kind in {"audio_request", "audio_observation"}:
+    if kind in {"slot_context", "menu_observation"}:
+        from .observations import validate
+        validate(row, schedule_hash)
+    elif kind in {"audio_request", "audio_observation"}:
         validate_audio(p)
         require(guid(row["audio_request_id"]) and row["attempt_id"] and row["opportunity_id"], "MOCK_AUDIO_CONTEXT")
         require(hash_value(p["pcm_sha256"]), "MOCK_PCM_HASH")
