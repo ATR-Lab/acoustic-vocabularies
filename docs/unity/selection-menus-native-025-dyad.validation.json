@@ -1,0 +1,325 @@
+{
+  "scope": "Native SIMULATION_TEST Study B V1 dyad (active then yoked) on isaac2 for #238 and #81's yoked path; engineering simulator evidence only",
+  "participant": false,
+  "qualification": false,
+  "date": "2026-10-11",
+  "refs": [
+    "#238",
+    "#220",
+    "#70",
+    "#81",
+    "#82"
+  ],
+  "host_load_before_runs": "isaac2 load average 0.00/0.13/1.30; a GoStdTests-test process (another session, ~43% CPU) and an idle swift-test were present and left untouched",
+  "player": {
+    "build_id": "simulation-native-025",
+    "source_commit": "c5c2e7ab153b7a427d4dbb0f3258343abab7ade6",
+    "composition": "c2ff326 (player 024 set) + #238 dd1ca2e2be1d1b1e07fdbe1a43bb57fd360b14c6; local test merge, no conflicts, not pushed",
+    "build_manifest_sha256": "686adead1d3d3d21dcd5483a3c507027d15bcb452eb35a796c40a669d939bb65",
+    "dirty_source": false
+  },
+  "tooling": {
+    "source_commit": "82c948c0262f4d16fd0609b66f20ee30f4072ed3",
+    "composition": "294f69d (#173 + #241) + #238 dd1ca2e; tests/test_mock_visit*.py 95 passed, 1 skipped"
+  },
+  "isaac_service": {
+    "source_commit": "d5aa596832758a13c6490eb5b04366f3a224f556",
+    "launch": "--observer-prim-only"
+  },
+  "unit_choice": {
+    "requested": "fresh DEMO dyad unit (e.g. B-C02)",
+    "used": "B-C01 (active B-C01-M1, yoked B-C01-M2) with a fresh DEMO menu store",
+    "reason": "Every DEMO B run sheet in the producer chain pins package 987afaf6 (built and sealed for B-C01 only). A B-C02 package was built (e40fe303..., structured_family K) but staging refused RUN_SHEET_ROWS; it was not used.",
+    "note": "B-C01-M2 had never run; B-C01-M1 had earlier retained V1 attempts"
+  },
+  "staging": {
+    "station_headset_unit_id": "meta-xr-simulator-v207",
+    "response_panel": {
+      "text_angle_deg": 1.0,
+      "button_width_m": 0.18,
+      "vertical_offset_m": -0.18
+    },
+    "dummy_responses": "-simulationDummyResponses at launch",
+    "menu_store_initial_manifest_sha256": "40e53fe6f438bcd356ea6dd3f2c11cb4c9f3a647750521f68ded7e5315e85b18",
+    "yoked": {
+      "yoked_start": {
+        "policy": "operator_start_plus_lead",
+        "lead_ms": 5000
+      },
+      "replay_ledger": "active 029 sealed menus.local.jsonl",
+      "store_snapshot": "bridge --read-verified after active 029 (head c8299138..., snapshot f2bf9b51...)",
+      "snapshot_file_sha256": "b6ef55bccdc6ef3c7c3360aba25c76db0cfbcd2ffed471d8166d67a0cf389ab6",
+      "console_anchor": {
+        "active": "2026-10-11T22:33:28.996391+00:00"
+      }
+    }
+  },
+  "active": {
+    "simulation-test-B-V1-025-C01A-isaac2-029": {
+      "native_status": "JOIN_COMPLETE_FORMS_RECORDED",
+      "native_result": {
+        "status": "JOIN_COMPLETE_FORMS_RECORDED",
+        "complete": true,
+        "cleanup_succeeded": true,
+        "export_succeeded": true
+      },
+      "preflight_failures": [],
+      "simulation_inputs": {
+        "driver_armed": 1,
+        "menu": 9,
+        "panel": 30,
+        "rating": 5
+      },
+      "stall_checks": {
+        "sample_rows": 24907,
+        "sample_gaps_over_250ms": [
+          {
+            "start_ms": 989808.0,
+            "gap_ms": 1622.5,
+            "stall_records": []
+          }
+        ],
+        "main_thread_stall_records": [],
+        "state_source_codes": {
+          "STATE_SOURCE_INITIALIZED": 1,
+          "STATE_TRANSPORT_RESTART": 1,
+          "STATE_TRANSPORT_CONNECTED": 1,
+          "STATE_QUEUED_TOO_LONG": 14,
+          "STATE_RECEIVE_QUEUE_OVERFLOW": 2,
+          "STATE_STALE": 2,
+          "STATE_RECOVERED": 1,
+          "SIMULATION_LOCAL_RESET_CONFIRMED": 85,
+          "STATE_HOST_DISABLED": 1
+        },
+        "reset_confirmed_events": 85,
+        "reset_confirmed_during_idle": 0,
+        "stale_health_probe_dropped": 0
+      },
+      "reconciliation": {
+        "integrity_verified": true,
+        "software_reconciliation_complete": false,
+        "native_claimed_complete": false,
+        "scheduled_plays": 134,
+        "requested_plays": 134,
+        "callback_observed_plays": 134,
+        "software_completed_plays": 134,
+        "content_hash_verified_plays": 134,
+        "completed_opportunities": 39,
+        "scheduled_opportunities": 39,
+        "selection_count": 8,
+        "fault_codes": [],
+        "incomplete_reasons": [
+          "FRAME_BUDGET_SCREEN_FAILED",
+          "LESSON_SOFTWARE_DISPLAY_TIMING_FAILED",
+          "MENU_DISPLAY_TIMING_SCREEN_FAILED"
+        ],
+        "process_exit": 0,
+        "native_post_cleanup_complete": true
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "19de0f2fd16b9b0507e0330f68b8968211a4f8eb3b813e03beafee6cbf293965",
+        "events-0000.local.jsonl": "9fa68a44eaedf7f6fa1b0d475ab9326142bcf56d0704070ed5f828283ff8321f",
+        "native-result.local.json": "f204035bc98f3d21c637fecd05d620d0e1edfe517a36507476890d9af527fc51",
+        "export manifest.json": "07231e187a893b29c66ef25d729b1f6049fabf890946572197891bd6a51a96d4",
+        "mock-run.manifest.json": "40d757350a86f29c68a384cc482df58e16d8cf2ee26f6d0a45be4a39e67d1c61",
+        "reconciliation.local.json": "969cd59ee8b384885558493a0e7cfdadeba3eaec15f052f462293a3db8d60e36",
+        "process-result.local.json": "b54bb2d129b0e971912c3ae0ec68fe5c8097eb843453dbf0d981b2e0fa64cb53",
+        "native.log": "15d5b01a4f9c816767cbe9e243d2f43ca3991da6b4c2b62dc77ddcd2c07eca1b",
+        "launch-spec.local.json": "a2796e464f2ba5dcdd00ed67c0b444d20c39f37f20c3a0449c858542e5d3e6b7",
+        "response-panel.local.json": "3679fed3b30f25d04e48be04e45e04b4fd53bdc48e1a91f842208da0c0c6b3b7",
+        "menus.local.jsonl": "900753cc027563d2ef1ebb9c96d8b9838ad8fe589447f58a5659f423161bf75c",
+        "operator-logs/foundation-c996abee7ceb44c68191f91238dc46e4.jsonl": "6d80052c7023aee70b6b750323b705053ddbfc164f77bf5358547515193e5380",
+        "operator-logs/foundation-cc810a77a5364b02b6dccddca5ed8f9e.jsonl": "2065598fdf698b15ee8706eb72d69964007a1731b9dca5228cb6a6345b776815",
+        "operator-logs/panel-3d446304d0cd4e9089a668c9d43fec92.jsonl": "fd98210037574c116d2287795a0ca84354a6a6805f9d391ef3f7fc7b1ef8dbdb",
+        "operator-logs/sample-age-bcbb2a1093154c1bacd7777bc98737f4.csv": "c9553884bacfa4df99a2a7c51fd765a63dd1a4e6f3b4a1b534b6c579e1d962f5",
+        "operator-logs/shutdown-671687dff9fa462c938eac82b756721e.local.jsonl": "11a5344fdec007d2d26affb8ce0eb7226cc08530dcba3e523e4e458a9a66e362"
+      },
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.96,
+        "publish_interval_ms": {
+          "median": 31.2,
+          "max": 78.3
+        },
+        "physics_steps": 44445,
+        "elapsed_s": 1306.6,
+        "end_reason": "private_stop",
+        "fault": null
+      },
+      "menu_ledger_record_counts": {
+        "header": 1,
+        "menu_start": 9,
+        "display_request": 54,
+        "display_changed": 54,
+        "play_request": 72,
+        "onset_authority": 72,
+        "play_complete": 72,
+        "choice_revised": 9,
+        "choice_final": 9,
+        "selection_verified": 9,
+        "sealed": 1
+      },
+      "sealed_ledger_sha256": "900753cc027563d2ef1ebb9c96d8b9838ad8fe589447f58a5659f423161bf75c",
+      "console_start_acknowledged_utc": "2026-10-11T22:33:28.996391+00:00",
+      "foreground_focus_changes_during_visit": 0
+    }
+  },
+  "yoked": {
+    "simulation-test-B-V1-025-C01Y-isaac2-030": {
+      "outcome": "Profile menu replayed (6 displays, 8 plays, all 39 replay rows reference active source events). At the profile-to-atom boundary the operator Resume came 4.09 s after the pause (driver poll 5 s); the active pause had lasted 2.95 s, so the first atom menu's replay anchor (about 3.7 s after the yoked pause) was already past: MENU_REPLAY_ANCHOR_MISSED. Every later Resume re-faulted with the same code; closed by the operator.",
+      "native_status": "MENU_REPLAY_ANCHOR_MISSED",
+      "native_complete": false,
+      "item_fault_counts": {
+        "MENU_REPLAY_ANCHOR_MISSED": 17,
+        "JOIN_HOST_DISABLED": 1,
+        "SESSION_JOIN_DISPOSED": 1
+      },
+      "yoked_ledger_record_counts": {
+        "header": 1,
+        "menu_start": 1,
+        "display_request": 6,
+        "display_changed": 6,
+        "play_request": 8,
+        "onset_authority": 8,
+        "play_complete": 8,
+        "choice_final": 1,
+        "selection_verified": 1
+      },
+      "rows_with_yoked_source_event_id": 39,
+      "reconciliation": {
+        "completed": false,
+        "error": "MOCK_MENU_BINDING"
+      },
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.89,
+        "publish_interval_ms": {
+          "median": 31.1,
+          "max": 80.5
+        },
+        "physics_steps": 8834,
+        "elapsed_s": 264.8,
+        "end_reason": "private_stop",
+        "fault": null
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "6a497a7d1fa575322c2bceaf2d709fe743b944fd0d10aefa2fcb2dea0c319449",
+        "menus.local.jsonl": "246a6e66fe1818566458fd1604aaabd68b5205c5ed6e357ff956699019071ee2",
+        "events-0000.local.jsonl": "80f3537f57a72eaaa2ef5f50f759923d85dc43eb25cf483f22014dbb02d84290",
+        "native-result.local.json": "f7ec18c90856b6a56b13bd17ef0f4dfae8d880ffbf498dacaf832d361ee3de0c",
+        "mock-run.manifest.json": "92e516d66e698c6d431d0ee8a53ae643bb3ff659af69570ccc8e4488f9d3ac47",
+        "process-result.local.json": "053ce67ea6f55788cc5ac9699d52e33180c5a62754f932c193c0686afc75980c",
+        "native.log": "abcc5be625953608a9fc7cb1bebf96d0288e261812570ead9deb5dd03d9b5716",
+        "console audit": "aa0d91fef49aa03a985291b30a3631ec014065867ffded721e29a3e7e50c82d0",
+        "console-yoked-anchor.local.json": "207731bf8e50885c022fa1494405698b61cba230d6b373a6a94efd5ac789d0e8",
+        "foreground.local.log": "d8aabffc55b506d9daf710c43c06b8e79624f2638fd81ce58d4682fc402551b8",
+        "manual-close.local.txt": "f0dbd68dd6ed17d5b3f46af482a4da4e9f1cfff52f0e41bc2b3e287d3e0ab382",
+        "join.local.json": "260ac950922e41e7c9d417407debd6d0267326c10431f6069a77f3e8389aa9c9",
+        "operator-logs/foundation-66a9d43c7ef64664a1481f5054e39020.jsonl": "fbb92146cf9cd79ac305eea9c1eb91401d3e381fcc8ae880420b76be24e2735d",
+        "operator-logs/foundation-d3eb7571b4584115a80d64cd4fa1c869.jsonl": "2d795884b9ef26b4a47388e5275eaaef9ba5d88d31da655f9bbd6be585ed20a5",
+        "operator-logs/panel-40e12a5f5e56426da902a8913019bcaf.jsonl": "ce523547bee15a5937bbe9d3bb0e82483a976ce895ae2a92739d31ceb8f1e45d",
+        "operator-logs/sample-age-b9ceb63f8e6d48bbae2ae29928098e6e.csv": "185fd371ea9da8e2ac6d92080a9e83e69b679c7db1c2db9a6e759b805f2d95e5",
+        "operator-logs/shutdown-6458a58bc01e4f558766d892873fa837.local.jsonl": "1e90659683336629bc36d71366b2b5a935d017a9bc381f6bec6f961624798995"
+      },
+      "boundary": {
+        "active_pause_ms": 2952,
+        "yoked_pause_to_resume_ms": 4093,
+        "yoked_resume_after_anchor_ms_approx": 380
+      }
+    },
+    "simulation-test-B-V1-025-C01Y-isaac2-031": {
+      "outcome": "Start came about 3 s after the player was ready (fast operator loop). Right after the profile menu commit a 367 ms main-thread stall was followed by a second profile prepare and item_fault SESSION_CONTENT_PREPARE_FAILED before any menu display; the engine paused, the next Resume was rejected and the run stopped (JOIN_STOPPED). No further diagnostic was recorded.",
+      "native_status": "SESSION_CONTENT_PREPARE_FAILED",
+      "native_complete": false,
+      "item_fault_counts": {
+        "SESSION_CONTENT_PREPARE_FAILED": 1
+      },
+      "yoked_ledger_record_counts": {
+        "header": 1
+      },
+      "rows_with_yoked_source_event_id": 0,
+      "reconciliation": {
+        "completed": false,
+        "error": "MOCK_MENU_BINDING"
+      },
+      "isaac": {
+        "observer_mode": "prim_only",
+        "scene_sha256": "3b6e8f9a3572c6c1b67e9bb406697745d6304fb97ec1138ef955f177e5ee119e",
+        "reset_snapshot_sha256": "e2628102a9a85dfc7566052297e0b038cdf4aa4025319d0e868425cecbb1a80e",
+        "publish_rate_hz": 29.99,
+        "publish_interval_ms": {
+          "median": 31.1,
+          "max": 69.3
+        },
+        "physics_steps": 10989,
+        "elapsed_s": 329.8,
+        "end_reason": "private_stop",
+        "fault": null
+      },
+      "raw_artifact_sha256": {
+        "joined.local.jsonl": "4969786d246bca912fdb57d095e8c8d48890dc499840b9a1dda14cfd88bba30f",
+        "menus.local.jsonl": "29252138dda58169dc14d7ed47f4d0dbc37bbc7940c6320baf520dab6263bc82",
+        "events-0000.local.jsonl": "137dd00b1e9ddb7bcc689124861af85438e539d1a57ceccf2cb090e7bee089dc",
+        "native-result.local.json": "0ee3c0f28b316b74f00a8c5ed020209559382d4af60cd89655634532d90b01ef",
+        "mock-run.manifest.json": "93b8127027ae4a35391c747c728ec076a1fe53345cfd275c110210bc18686e09",
+        "process-result.local.json": "88b85f0217f070fe6e10e6f43972450c567f49031bc961eb8f0ba9b0a5b0d8e0",
+        "native.log": "2d0d40df6087bd03647d1914d856978ad86e41cc9d088c388f661d9bd8bf4d2f",
+        "console audit": "dbf1fe71a1d0fa8aca50c026e25acadd83995339970181ed925c79bc09daea88",
+        "console-yoked-anchor.local.json": "29c17521c1d90daa70ba089f965837d5bda92ef17388b5c68de091916adf6548",
+        "foreground.local.log": "c6974c397447a81120352e181a400d15416c8bfcc8d28380156aca7e00439150",
+        "manual-close.local.txt": "9e01f1ae8ac8e1e8f3b168a248d6487c15b9f1ec1c1de8f80e3d035fe0b5dded",
+        "join.local.json": "6284ed8061cf9c92dba6e940fb49b17610dc1046431395c00434fba7a11b8e03",
+        "operator-logs/foundation-265e856a6d084677a51ab2127896e74d.jsonl": "5460df56f5fceaf1222896870534ac85d24545d732fd27c0d6ae3157e6d7b9d7",
+        "operator-logs/foundation-4fa37e12a0834a6cb84c7846cbcf020e.jsonl": "812285c75adc451e2e8cd31c113f96c415a27448e3dc347fe141ae483305eed7",
+        "operator-logs/panel-aa428c0b390845b0a4bc452973db994f.jsonl": "f8e14a041edffe498fc853de1f9c54a44869e187111e6167c9293edea87fedac",
+        "operator-logs/sample-age-6b022ad11657466093a0f2eb629d3868.csv": "6c4ba56f23aad68e0f28a8e8913bbc8b063e240d9ebcab93de586a31539928ca",
+        "operator-logs/shutdown-d4aafaf9863e4983b165083c098c6346.local.jsonl": "7da7be120b0ead1e02d193430bedf83eb0f2be1a936fac4697b6216f8a90b5e3"
+      }
+    }
+  },
+  "heldout_scan": {
+    "tooling": "82c948c",
+    "active_B_C01_M1": {
+      "plan_sha256": "840c1e41f49b94144bde9c9abf92eb63e615bd1b504b56dc9a33c849fa256a29",
+      "runs": 14,
+      "exit_code": 2,
+      "printed": "HOLDOUT_CONSUMED_PHRASE_REPLAY",
+      "note": "All 14 retained B-C01-M1 V1 attempts with run manifests (002, 005-016, 029); earlier attempts already consumed the novel phrases"
+    },
+    "yoked_B_C01_M2": {
+      "plan_sha256": "ca9ae6d187d720ca335b80d09b1948438ca808b03487ed90a757fa2a1dbf2a69",
+      "runs": 2,
+      "exit_code": 2,
+      "printed": "MOCK_MENU_BINDING",
+      "note": "030, 031; the scanner's per-run reconcile hits the manifest defect below"
+    }
+  },
+  "new_defects": [
+    {
+      "code": "MENU_REPLAY_ANCHOR_MISSED",
+      "component": "player yoked replay",
+      "description": "Yoked menus are anchored to the active run's recorded offsets from a single operator-start anchor, so the active run's operator boundary pause becomes part of the yoked schedule. A yoked boundary Resume later than the active pause (here 4.09 s vs 2.95 s) puts the next menu's anchor in the past; the item faults MENU_REPLAY_ANCHOR_MISSED and every later Resume re-faults with the same code, so the visit cannot recover."
+    },
+    {
+      "code": "MOCK_MENU_BINDING",
+      "component": "tools/write_mock_run_manifest.py",
+      "description": "Line 73 classifies every file named menus.local.jsonl as menu_journal, including the yoked run's staged input copy of the active ledger (staged/files/menu_replay_ledger/menus.local.jsonl). tools/mock_visit/native.py menu() then checks that active chain against the yoked role and schedule and raises MOCK_MENU_BINDING, so no yoked run can be reconciled or scanned."
+    },
+    {
+      "code": "SESSION_CONTENT_PREPARE_FAILED",
+      "component": "player yoked start",
+      "description": "Attempt 031: with Start issued about 3 s after JOIN_READY_EXPLICIT_RESUME, the profile menu was re-prepared right after its commit and failed with SESSION_CONTENT_PREPARE_FAILED (no detail recorded). Attempt 030 started about 16 s after ready and did not fail. Cause undetermined; one observation."
+    }
+  ],
+  "limitations": [
+    "Meta XR Simulator v207 on Windows; dummy responses are synthetic DEMO inputs",
+    "No RTX renderer on isaac2",
+    "No yoked atom menus, seal or CompareYoked ran natively, so #238's yoked display bound was not exercised beyond the profile menu",
+    "No participant, acoustic, display, headset or physical timing qualification",
+    "Raw artifacts and plans stay private; only hashes are published"
+  ]
+}

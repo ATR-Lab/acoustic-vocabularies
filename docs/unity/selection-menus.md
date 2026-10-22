@@ -122,13 +122,25 @@ uses the event's reported uncertainty, capped at 20 ms. Display transitions and
 the final choice are observed on the first rendered frame at or after their
 boundary, so their stamps lag by up to a frame plus in-frame work. `MenuTimeline`
 refuses such an observation more than 250 ms after its boundary
-(`MENU_DISPLAY_LATE`/`MENU_DECISION_LATE`) and the active seal applies the same
-bound, the limit already used for onset observation and the frame-gap fault. A
-check first discovered at the seal, after every menu's exposure, would end the
-visit without protecting any exposure. The 20 ms display residual remains a
-separate engineering screen (`MENU_DISPLAY_TIMING_SCREEN_FAILED` in mock-visit
-reconciliation); yoked rows keep the 20 ms comparison against the recorded active
-offsets. None of these is evidence of acoustic or physical display timing or a new
+(`MENU_DISPLAY_LATE`/`MENU_DECISION_LATE`). The active and yoked seals and the
+yoked comparison apply the same bound, the limit already used for onset
+observation and the frame-gap fault. A check first discovered at the seal, after
+every menu's exposure, would end the visit without protecting any exposure.
+
+Each run is measured against its own scheduled boundaries (`MenuRules.DisplayOffsets`).
+The comparison is never between the active run's observed frame time and the
+yoked run's. Two late-frame observations of the same deterministic boundary can
+differ by up to the bound, so the former 20 ms active-to-yoked display
+comparison failed on frame jitter alone. That comparison was removed after the
+#220 follow-up. The yoked comparison (`MENU_YOKED_DISPLAY`) and the mock-visit
+reconciler (`MOCK_YOKED_DISPLAY_TIMING`) now require 0–250 ms after the yoked
+run's own boundary. Audio stays tight: a yoked play request must equal the
+recorded active onset exactly, and its onset must be within its own reported
+uncertainty (≤20 ms).
+
+The 20 ms display residual remains a separate engineering screen for active runs
+(`MENU_DISPLAY_TIMING_SCREEN_FAILED` in mock-visit reconciliation). None of
+these is evidence of acoustic or physical display timing or a new
 approved protocol tolerance. Incomplete, interrupted,
 late or malformed segments remain on disk but cannot authorize yoked replay.
 An interruption's event ID is also its `matching_deviation_id`; recovery never
@@ -157,7 +169,9 @@ missed anchor. A missed anchored start faults before content creation or any
 exposure consumption; previous completed trial history remains intact.
 
 Yoked audio uses recorded onset offsets and stored final selection. Yoked display
-transitions use recorded observed offsets. Every yoked event references its
+transitions follow the same scheduled boundaries as the active run. The active
+run's observed display offsets are retained in the replay record but are not used
+as a yoked schedule. Every yoked event references its
 corresponding active source event. No active cursor or intermediate choice is
 copied. `CompareYoked`/`SealYoked` check independent hashes, meanings, role/unit
 bindings, all eight audio events, selected/defaulted outcome, relative gaps and

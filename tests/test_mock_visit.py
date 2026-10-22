@@ -342,6 +342,26 @@ class Supplemental(unittest.TestCase):
         y[1]["record"]["expected_mono_ms"]+=19
         with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_OUTPUT_TIMING"):native.compare_yoked(a,y,H)
 
+    def yoke_display(self, active_late, yoked_late, phase="Neutral"):
+        a,y=self.yoke_rows();at=dict(Neutral=40000,Selected=32000)[phase]
+        source=dict(event_id="c"*32,menu_key="K-a1",meaning_display_id="m",slot_start_mono_ms=1000.,kind="display_changed",phase=phase,mono_ms=1000.+at+active_late)
+        a.insert(-1,dict(record=source))
+        y.insert(-1,dict(record=dict(source,yoked_source_event_id="c"*32,slot_start_mono_ms=10000.,mono_ms=10000.+at+yoked_late)))
+        return a,y
+
+    def test_yoked_display_is_bounded_against_its_own_schedule(self):
+        # #220: both runs observe the same deterministic boundary on a late frame.
+        for active_late,yoked_late in ((0,20.6),(0,249),(249,0),(249,249),(20.6,249)):
+            a,y=self.yoke_display(active_late,yoked_late)
+            self.assertTrue(native.compare_yoked(a,y,H)["software_trace_timing_matched"],(active_late,yoked_late))
+        for yoked_late in (251,-0.001):
+            a,y=self.yoke_display(0,yoked_late)
+            with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_DISPLAY_TIMING"):native.compare_yoked(a,y,H)
+
+    def test_yoked_audio_onset_stays_tight_when_displays_relax(self):
+        a,y=self.yoke_display(0,249);y[1]["record"]["expected_mono_ms"]+=2.001
+        with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_OUTPUT_TIMING"):native.compare_yoked(a,y,H)
+
     def test_yoked_intermediate_choice_forbidden(self):
         a,y=self.yoke_rows();y[1]["record"]["kind"]="choice_revised"
         with self.assertRaisesRegex(EvidenceError,"MOCK_YOKED_SOURCE_EVENT"):native.compare_yoked(a,y,H)

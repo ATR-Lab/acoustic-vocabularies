@@ -82,8 +82,20 @@ namespace AcousticVocab.SelectionMenus.Tests
          using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in rows)ledger.Append(row);Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));}
         [Test]public void WrongYokedMeaningBindingOrSourceEventCannotMatch()
         {var replay=Load(Write(Events()));var rows=Events(replay).Select(MenuJson.Event).ToList();rows[0]["yoked_source_event_id"]=Guid.NewGuid().ToString("N");Assert.Throws<SessionFault>(()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification()));}
-        [Test]public void RecordedDisplayOffsetsRemainAuthoritativeInYokedRun()
-        {var active=Events(observedDelay:10);var replay=Load(Write(active));var yoked=Events(replay);var compared=replay.CompareYoked(yoked,Binding("yoked"),Verification());Assert.That(compared.AudioPlays,Is.EqualTo(32));Assert.That(yoked.First(x=>x.Kind=="display_changed").MonoMs-yoked.First().SlotStartMonoMs,Is.EqualTo(10));}
+        // #220 follow-up: display transitions follow each run's own schedule. The
+        // active run's frame-late observations are evidence, never the yoked
+        // schedule, so two late observations of one boundary are not compounded.
+        [TestCase(20.6)][TestCase(249)]
+        public void YokedDisplaysFollowTheirOwnScheduleThroughTimelineCompareAndSeal(double late)
+        {
+            var replay=Load(Write(Events(observedDelay:late)));var yoked=Events(replay,observedDelay:late);
+            Assert.That(yoked.First(x=>x.Kind=="display_changed").MonoMs-yoked.First().SlotStartMonoMs,Is.EqualTo(late).Within(1e-6),"Scheduled at the nominal boundary, observed one late frame after it");
+            Assert.That(replay.CompareYoked(yoked,Binding("yoked"),Verification()).AudioPlays,Is.EqualTo(32));
+            using var ledger=new MenuLedger(Path.Combine(directory,"yoked.jsonl"),Binding("yoked"),created.AddHours(1));foreach(var row in yoked)ledger.Append(row);
+            Assert.That(ledger.SealYoked(replay,Verification()).AudioPlays,Is.EqualTo(32));
+        }
+        [Test]public void YokedDisplayBeyondTheObservationBoundFaultsLive()
+        {var replay=Load(Write(Events()));Assert.That(Assert.Throws<SessionFault>(()=>Events(replay,observedDelay:251)).Code,Is.EqualTo("MENU_DISPLAY_LATE"));}
         [TestCase(false,2,true)][TestCase(false,19,false)][TestCase(true,2,true)][TestCase(true,19,false)]
         public void ActiveAndYokedOnsetsAreBoundedByTheirOwnUncertainty(bool yoked,double residual,bool accepted)
         {
@@ -256,13 +268,26 @@ namespace AcousticVocab.SelectionMenus.Tests
             TestDelegate validate=()=>MenuReplaySequence.ValidateRecords(records,Binding(),Verification());
             if(refusal==null)Assert.DoesNotThrow(validate);else Assert.That(Assert.Throws<SessionFault>(validate).Code,Is.EqualTo(refusal));
         }
-        [TestCase(20,true)][TestCase(21,false)]
-        public void YokedDisplayStillMatchesRecordedActiveOffsetsWithinTwentyMs(double residual,bool accepted)
+        [TestCase("Neutral",20.6,null)][TestCase("Neutral",249,null)][TestCase("Neutral",251,"MENU_YOKED_DISPLAY")]
+        [TestCase("Selected",20.6,null)][TestCase("Selected",249,null)][TestCase("Selected",251,"MENU_YOKED_DISPLAY")]
+        public void YokedDisplayIsBoundedAgainstItsOwnScheduleNotActiveObservations(string phase,double residual,string refusal)
         {
-            var replay=Load(Write(Events()));var rows=Events(replay).Select(MenuJson.Event).ToList();
-            var first=rows.First(x=>(string)x["kind"]=="display_request"&&(string)x["phase"]=="Neutral");string key=(string)first["menu_key"];double at=MenuJson.Number(first["mono_ms"]);
-            foreach(var row in rows.Where(x=>(string)x["menu_key"]==key&&MenuJson.Number(x["mono_ms"])==at))row["mono_ms"]=at+residual;
-            TestDelegate compare=()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification());if(accepted)Assert.DoesNotThrow(compare);else Assert.Throws<SessionFault>(compare);
+            // Every active boundary was itself observed 249 ms late; the yoked
+            // observation is compared with its own schedule, not with that frame.
+            string key=Keys[1];var replay=Load(Write(Events(observedDelay:249)));var rows=Events(replay).Select(MenuJson.Event).ToList();
+            double boundary=MenuJson.Number(rows.First(x=>(string)x["menu_key"]==key)["slot_start_mono_ms"])+(phase=="Neutral"?40000:32000);
+            var moved=rows.Where(x=>(string)x["menu_key"]==key&&MenuJson.Number(x["mono_ms"])==boundary).ToArray();Assert.That(moved.Length,Is.EqualTo(phase=="Neutral"?2:4));
+            foreach(var row in moved)row["mono_ms"]=boundary+residual;
+            TestDelegate compare=()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification());
+            if(refusal==null)Assert.DoesNotThrow(compare);else Assert.That(Assert.Throws<SessionFault>(compare).Code,Is.EqualTo(refusal));
+        }
+        [TestCase(2,true)][TestCase(2.001,false)]
+        public void YokedAudioOnsetStaysTightWhileDisplaysUseTheObservationBound(double drift,bool accepted)
+        {
+            var replay=Load(Write(Events()));var rows=Events(replay,observedDelay:249).Select(MenuJson.Event).ToList();
+            var onset=rows.First(x=>(string)x["kind"]=="onset_authority");onset["expected_mono_ms"]=(double)onset["expected_mono_ms"]+drift;onset["onset_uncertainty_ms"]=2;
+            TestDelegate compare=()=>replay.CompareYokedRecords(rows,Binding("yoked"),Verification());
+            if(accepted)Assert.DoesNotThrow(compare);else Assert.That(Assert.Throws<SessionFault>(compare).Code,Is.EqualTo("MENU_YOKED_TIMING"));
         }
         sealed class FrameLease:ISlotContentFactory,ISessionContentPump,IDisposable
         {
