@@ -12,8 +12,8 @@ namespace AcousticVocab.Tests.Teaching
     {
         static T New<T>(params object[] args)=>(T)Activator.CreateInstance(typeof(T),BindingFlags.Instance|BindingFlags.NonPublic,null,args,null);
 
-        // Reproduces the native ordering: request persisted, then Schedule's
-        // second validation refuses before any AudioSource play is submitted.
+        // Reproduces the native ordering: the explanation request is persisted,
+        // then Schedule's second validation refuses before any AudioSource play.
         // Stored silence and an unmeasured route never confer audio authority.
         [TestCase(false,"AUDIO_EXPOSURE_BLOCKED")]
         [TestCase(true,"AUDIO_PATH_CHANGED")]
@@ -26,7 +26,8 @@ namespace AcousticVocab.Tests.Teaching
                 var player=node.AddComponent<AudioPlayer>();
                 Assert.That(AudioSettings.outputSampleRate,Is.EqualTo(48000));
                 var wave=New<PcmWave>(new byte[30720],new string('a',64),null,null);
-                var assets=New<GrammarAssets>(wave,wave,new string('b',64));
+                var explanation=New<PcmWave>(new byte[192002],new string('c',64),null,null);
+                var assets=New<GrammarAssets>(null,explanation,wave,wave,new string('b',64));
                 var flow=new List<string>();var audio=new List<AudioPlaybackEvent>();var faults=new List<string>();bool ready=true;
                 grammar=new GrammarFamiliarization(assets,player,AudioRouteCalibration.Unmeasured("ENGINEERING_UNMEASURED"),.05f,
                     ()=>ready,_=>{},row=>flow.Add((string)row["kind"]),value=>

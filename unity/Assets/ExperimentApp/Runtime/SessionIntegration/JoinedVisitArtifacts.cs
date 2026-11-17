@@ -75,8 +75,9 @@ namespace AcousticVocab.SessionIntegration
             {
                 if(!Have("grammar_review","reserved_registry"))return;
                 if(config.Directory("grammar")==null){MissingAuthority="JOIN_GRAMMAR_DIRECTORY_MISSING";return;}
-                Grammar=GrammarAssets.Load(config.Directory("grammar"),Read("reserved_registry"),config.RequireFile("reserved_registry").Sha256);
-                GrammarReview=JoinedGrammarReview.Load(Read("grammar_review"),config.RequireFile("grammar_review").Sha256,Grammar.RegistrySha256,Teaching.MethodologySha256,simulation);
+                var reserved=GrammarAssets.Load(config.Directory("grammar"),Read("reserved_registry"),config.RequireFile("reserved_registry").Sha256);
+                GrammarReview=JoinedGrammarReview.Load(Read("grammar_review"),config.RequireFile("grammar_review").Sha256,reserved.RegistrySha256,Teaching.MethodologySha256,simulation);
+                Grammar=reserved.WithExplanation(GrammarReview.ExplanationSha256);
             }
             if(Blocks.Values.Contains(JoinedModuleKind.Menus))
             {

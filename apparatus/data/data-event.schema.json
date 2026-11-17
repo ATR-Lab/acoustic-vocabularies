@@ -2074,6 +2074,7 @@
               "phase": {
                 "enum": [
                   null,
+                  "explanation",
                   "ready",
                   "clicks"
                 ]
@@ -2151,6 +2152,7 @@
                   "properties": {
                     "phase": {
                       "enum": [
+                        "explanation",
                         "ready",
                         "clicks"
                       ]

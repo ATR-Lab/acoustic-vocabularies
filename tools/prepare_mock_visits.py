@@ -22,6 +22,7 @@ from tools.prepare_joined_engineering import (
 
 SCOPE = "SIMULATION_TEST"
 SCRIPT_KEYS = ("pre_old", "trained", "novel", "atomic", "validity", "break", "forms", "post_w4_optional")
+EXPLANATION_SAMPLES = 144000  # 3 s at 48 kHz: longer than any study message (96,000 samples).
 
 
 def attestation(role, fixture_hash, bindings):
@@ -55,6 +56,13 @@ def mock_png():
     pixels = b"".join(b"\0" + b"".join(bytes((240, 160, 32, 255) if (x//8+y//8)%2 else (32, 32, 32, 255))
                                       for x in range(64)) for y in range(64))
     return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 64, 64, 8, 6, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(pixels)) + chunk(b"IEND", b"")
+
+
+def mock_explanation_wav():
+    """Silent stand-in for the spoken grammar explanation: no speech and no study sound."""
+    data = bytes(2 * EXPLANATION_SAMPLES)
+    return (b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 48000, 96000, 2, 16)
+            + b"data" + struct.pack("<I", len(data)) + data)
 
 
 def prepare(package_directory, package_hash, output, *, speech_directory=None, speech_manifest_hash=None):
@@ -128,7 +136,8 @@ def prepare(package_directory, package_hash, output, *, speech_directory=None, s
     put("menu/review.local.json", attestation("menu", fixture_hash, dict(script_sha256=menu_hash, teaching_review_sha256=teaching_review)))
     script_hash = put("assessment/scripts.local.json", dict(version=1, scripts={key: "SIMULATION TEST: " + key.replace("_", " ") for key in SCRIPT_KEYS}))
     put("assessment/review.local.json", attestation("assessment", fixture_hash, dict(scripts_sha256=script_hash)))
-    put("grammar-review.local.json", attestation("grammar", fixture_hash, dict(registry_sha256=digest(registry_raw),
+    explanation_hash = put("grammar/grammar-explanation.wav", mock_explanation_wav())
+    put("grammar-review.local.json", attestation("grammar", fixture_hash, dict(registry_sha256=digest(registry_raw), explanation_sha256=explanation_hash,
         boundary="before_first_teaching_block", repeat_policy="once_per_visit_no_partial_replay", scheduling_lead_ms=750,
         completion_authority="software_delivery_only", labels=dict(ready="READY", action="Action", target="Target"))))
     visits = ("D0", "D7") if package.study == "A" else ("V1", "V2", "V3", "W1", "W4")

@@ -114,6 +114,15 @@ def grammar(config, config_root, rows, read, relative):
         wave=read(config_root/relative(directory)/(id+".wav"),option["file_sha256"])
         require(len(pcm(wave)) == count*2 and sha(pcm(wave)) == option["pcm_sha256"],"MOCK_GRAMMAR_PCM")
         options[phase]=option
+    review_pin=config["files"].get("grammar_review")
+    if review_pin is None:return {"GRAMMAR_REVIEW_BINDING_MISSING"},0
+    exact(review_pin,"path sha256");review=strict(read(config_root/relative(review_pin["path"]),review_pin["sha256"]))
+    bindings=review.get("bindings",review)  # simulation attestations nest the reviewed fields
+    explanation=bindings.get("explanation_sha256") if isinstance(bindings,dict) else None
+    require(hash_value(explanation),"MOCK_GRAMMAR_EXPLANATION_PIN")
+    wave=pcm(read(config_root/relative(directory)/"grammar-explanation.wav",explanation))
+    require(96000 < len(wave)//2 <= 60*48000,"MOCK_GRAMMAR_EXPLANATION_LENGTH")
+    options["explanation"]=dict(file_sha256=explanation,pcm_sha256=sha(wave),n_samples=len(wave)//2)
     checked=set()
     for row in rows:
         p=row["payload"]

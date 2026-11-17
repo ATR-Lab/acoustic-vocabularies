@@ -49,6 +49,21 @@ def test_actual_producer_package_generates_closed_simulation_materials(demo_pack
     assert all(row["image_id"] == "mock" for row in catalog["content"])
 
 
+def test_grammar_attestation_pins_one_silent_explanation_stand_in(demo_package, tmp_path):
+    """REQ-GRAM-02: the simulation grammar record pins the one explanation file by SHA-256."""
+    directory, package_hash = demo_package
+    destination = tmp_path / ".local" / "mock"
+    index = prepare(directory, package_hash, destination)
+    raw = (destination / "grammar/grammar-explanation.wav").read_bytes()
+    assert index["files"]["grammar/grammar-explanation.wav"] == digest(raw)
+    review = json.loads((destination / "grammar-review.local.json").read_bytes())
+    assert review["role"] == "grammar" and review["bindings"]["explanation_sha256"] == digest(raw)
+    assert raw[:4] == b"RIFF" and raw[8:16] == b"WAVEfmt " and raw[36:40] == b"data"
+    assert raw[20:36] == bytes.fromhex("0100010080bb0000007701000200" "1000")
+    samples = (len(raw) - 44) // 2
+    assert 96000 < samples <= 60 * 48000 and set(raw[44:]) == {0}
+
+
 def test_wrong_pin_and_public_output_refused_before_creation(demo_package, tmp_path):
     directory, package_hash = demo_package
     for output, pin in [(tmp_path / "public", package_hash), (tmp_path / ".local/mock", "0" * 64)]:

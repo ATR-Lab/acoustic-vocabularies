@@ -109,13 +109,43 @@ claiming that an arbitrary callback already writes the final ledger schema.
 
 The #14 `GrammarAssets` loader admits only the pinned `ready-cue` and
 `click-grammar-demo` canonical WAVs and validates file/PCM hashes and sample
-counts from the reserved registry. `BeginGrammar` is an explicit admission action
-with an independently verified neutral/control gate. It shows READY, then static
-Action/Target labels with the compound click. Each plays once; the second waits
-for software completion of the first. Its 750 ms scheduling lead between plays
-is a proposed engineering sequence pending review against the missing script.
+counts from the reserved registry. `WithExplanation` then adds the spoken grammar
+explanation (see below) by its pinned file SHA-256. `BeginGrammar` is an explicit
+admission action with an independently verified neutral/control gate. It plays
+the spoken explanation with no READY or role label shown, then shows READY, then
+static Action/Target labels with the compound click. Each plays once; each waits
+for software completion of the previous one. Its 750 ms scheduling lead between
+plays is the engineering sequence pinned by the joined grammar review.
 An unmeasured route can use the nonsemantic calibration path, with null onset
 qualification logged. Semantic lessons still require a qualified route.
+Familiarization refuses to start without the explanation
+(`GRAMMAR_EXPLANATION_MISSING`). Once `BeginGrammar` has run, `Install` refuses
+until all three plays have completed.
+
+### Spoken grammar explanation asset
+
+Every participant hears the same recording before the first lesson, whatever the
+study, role or lesson format. The study team fixes its content. In neutral terms,
+it describes the message structure: an action part, a short pause, then a target
+part. It contains no study motif and no complete study message, and it is spoken
+only: no other sound is mixed in.
+
+- File: `grammar-explanation.wav` in the configured `grammar` directory, beside
+  the reserved WAVs. Mono, 48 kHz, 16-bit PCM, canonical 44-byte header.
+- Length: more than 96,000 samples (2 s) and at most 60 s. Every study motif is
+  at most 43,200 samples and every complete message or calibration example at
+  most 96,000, so the recording can never be one of them
+  (`GRAMMAR_EXPLANATION_LENGTH`).
+- Pin: the SHA-256 of the whole file goes in the grammar review as
+  `explanation_sha256` (see [joined engineering](joined-engineering.md)). A
+  missing file is `GRAMMAR_EXPLANATION_MISSING`; any other bytes are
+  `GRAMMAR_EXPLANATION_HASH`; a non-canonical WAV is `GRAMMAR_EXPLANATION_FORMAT`.
+- The recording is private and is not committed. Record it once, compute the
+  file SHA-256 as 64 lowercase hexadecimal characters, and put that value in the
+  review. A new recording needs a new review.
+- Simulation materials from `tools/prepare_mock_visits.py` contain a silent 3 s
+  stand-in at `grammar/grammar-explanation.wav` and pin it in the grammar
+  attestation. Copy it into the simulation `grammar` directory.
 
 `ReadPostStudyDictionaryAtom` has no audio path. It accepts one
 `IPostStudyDictionaryAuthorization` consultation bound to package hash, schedule
