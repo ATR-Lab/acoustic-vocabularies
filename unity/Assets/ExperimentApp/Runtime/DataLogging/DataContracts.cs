@@ -101,7 +101,9 @@ namespace AcousticVocab.DataLogging
                 case "session":
                     var r=SessionRecordCodec.FromJson(p);DataJson.Require(c.OpportunityId==r.OpportunityId&&c.AttemptId==r.TrialId&&c.AudioRequestId==null,"DATA_SESSION_CONTEXT");break;
                 case "opportunity":
-                    DataJson.Keys(p,"role","method_masked","schedule_sha256");DataJson.Require(c.OpportunityId!=null&&c.AttemptId==null&&c.AudioRequestId==null&&DataJson.Id(DataJson.Text(p["role"]))&&DataJson.Id(DataJson.Text(p["method_masked"]))&&DataJson.Hash(DataJson.Text(p["schedule_sha256"])));break;
+                    bool slot=p!=null&&(p.Property("block")!=null||p.Property("pass")!=null||p.Property("item_kind")!=null);
+                    DataJson.Keys(p,slot?new[]{"role","method_masked","schedule_sha256","block","pass","item_kind"}:new[]{"role","method_masked","schedule_sha256"});DataJson.Require(c.OpportunityId!=null&&c.AttemptId==null&&c.AudioRequestId==null&&DataJson.Id(DataJson.Text(p["role"]))&&DataJson.Id(DataJson.Text(p["method_masked"]))&&DataJson.Hash(DataJson.Text(p["schedule_sha256"])));
+                    if(slot)DataJson.Require(DataJson.Id(DataJson.Text(p["block"]))&&DataJson.Integer(p["pass"])>0&&DataJson.Id(DataJson.Text(p["item_kind"])),"DATA_OPPORTUNITY_SLOT");break;
                 case "audio_request": case "audio_observation":
                     Audio(p);DataJson.Require(c.AudioRequestId!=null,"DATA_AUDIO_CONTEXT");DataJson.Require(kind!="audio_request"||(string)p["code"]=="AUDIO_REQUESTED");break;
                 case "audio_evidence":

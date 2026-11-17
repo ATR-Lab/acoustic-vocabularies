@@ -128,6 +128,8 @@ PAYLOADS = {
     "recovery": "preserved_tails",
     "assessment_stage": "event_kind schedule_sha256 host_mono_ms clock_epoch stage item_id value outcome_code",
 }
+# A scheduled-slot opportunity row (journaled at visit start) adds these together.
+OPPORTUNITY_SLOT_FIELDS = PAYLOADS["opportunity"] + " block pass item_kind"
 
 
 def verify_chain(files, kind, *, expected_identity=None):
@@ -213,7 +215,12 @@ def validate_data_payload(row, schedule_hash):
     elif kind == "audio_evidence":
         raise EvidenceError("MOCK_ACOUSTIC_AUTHORITY_FORBIDDEN")
     elif kind in PAYLOADS:
-        exact(p, PAYLOADS[kind])
+        if kind == "opportunity" and any(k in p for k in ("block", "pass", "item_kind")):
+            exact(p, OPPORTUNITY_SLOT_FIELDS)
+            require(all(isinstance(p[k], str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", p[k]) for k in ("block", "item_kind"))
+                    and type(p["pass"]) is int and p["pass"] > 0, "MOCK_OPPORTUNITY_SLOT")
+        else:
+            exact(p, PAYLOADS[kind])
         if kind in {"session", "opportunity", "assessment_stage"}:
             require(p["schedule_sha256"] == schedule_hash, "MOCK_SCHEDULE_BINDING")
         if kind == "session":
