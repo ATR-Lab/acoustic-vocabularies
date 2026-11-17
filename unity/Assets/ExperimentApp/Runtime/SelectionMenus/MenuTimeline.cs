@@ -59,7 +59,7 @@ namespace AcousticVocab.SelectionMenus
         }
         public void Tick(double now)
         {
-            Clock(now);if(!started||failed||Phase==MenuPhase.Ended)return;double elapsed=now-context.OnsetMonoMs;
+            Clock(now);ticked=now;if(!started||failed||Phase==MenuPhase.Ended)return;double elapsed=now-context.OnsetMonoMs;
             if(elapsed>=ChoiceDeadline&&!finalized)
             {
                 MenuRules.Require(elapsed<offsets[6]-150,"MENU_DECISION_LATE");
@@ -106,6 +106,22 @@ namespace AcousticVocab.SelectionMenus
             // has been attempted, preserve the partial-menu failure permanently.
             try{if(started)Emit("menu_interrupted",now);}
             finally{DisplayChanged?.Invoke(MenuPhase.Hidden,null);}
+        }
+        // Optional visible countdown (station flag menu_countdown_visible, off by
+        // default): whole seconds left in the fixed display phase at this
+        // timeline's last Tick. It reads only the slot onset, the trial type and
+        // the protocol phase starts, never role, replay, choice or audio state,
+        // so active and assigned views get the same value at the same slot times.
+        // Neutral and later phases show nothing. It cannot move the deadline.
+        static readonly double[] ProfilePhaseStartsMs={0d,6000,30000,45000,58000},AtomPhaseStartsMs={0d,4000,22000,32000,40000};
+        double ticked=double.NaN;
+        public int? CountdownSeconds=>started&&!failed?Countdown(profile,ticked-context.OnsetMonoMs):(int?)null;
+        internal static int? Countdown(bool profile,double elapsedMs)
+        {
+            var starts=profile?ProfilePhaseStartsMs:AtomPhaseStartsMs;
+            if(!MenuRules.Finite(elapsedMs)||elapsedMs<starts[0]||elapsedMs>=starts[starts.Length-1])return null;
+            int next=1;while(elapsedMs>=starts[next])next++;
+            return (int)Math.Ceiling((starts[next]-elapsedMs)/1000);
         }
     }
 }

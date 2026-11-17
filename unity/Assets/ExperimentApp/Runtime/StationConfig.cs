@@ -15,11 +15,12 @@ namespace AcousticVocab.Foundation
 
     // Deliberately bounded JSON Schema vocabulary. Unsupported validation keywords fail closed.
     // The canonical schema and embedded copy are compared before every build and in tests.
+    // "default" is an annotation only: validation never inserts it; each reader applies it explicitly.
     public static class StationConfig
     {
         static readonly string[] Keywords = { "$schema", "$id", "title", "description", "type", "properties",
             "required", "additionalProperties", "enum", "minLength", "maxLength", "pattern", "minimum",
-            "maximum", "items", "minItems", "maxItems" };
+            "maximum", "items", "minItems", "maxItems", "default" };
 
         public static JObject ParseStrict(string json)
         {
@@ -70,7 +71,8 @@ namespace AcousticVocab.Foundation
 
         static string Kind(JToken value) => value.Type switch {
             JTokenType.Object => "object", JTokenType.Array => "array", JTokenType.String => "string",
-            JTokenType.Integer => "integer", JTokenType.Float => "number", JTokenType.Null => "null", _ => "unsupported" };
+            JTokenType.Integer => "integer", JTokenType.Float => "number", JTokenType.Null => "null",
+            JTokenType.Boolean => "boolean", _ => "unsupported" };
 
         static void ValidateNode(JToken value, JObject schema)
         {
@@ -117,6 +119,16 @@ namespace AcousticVocab.Foundation
             var reference = config["observer_reference"];
             var p = reference["position_m"]; var q = reference["rotation_xyzw"];
             return new Pose(new Vector3((float)p[0], (float)p[1], (float)p[2]), new Quaternion((float)q[0], (float)q[1], (float)q[2], (float)q[3]));
+        }
+
+        // Optional visible selection-menu countdown. Absent means off (schema default false).
+        // A validated configuration can only hold a boolean here; anything else fails closed.
+        public static bool MenuCountdownVisible(JObject config)
+        {
+            var flag = config?["menu_countdown_visible"];
+            if (flag == null) return false;
+            if (flag.Type != JTokenType.Boolean) throw new ConfigurationFault("schema_type");
+            return (bool)flag;
         }
     }
 }

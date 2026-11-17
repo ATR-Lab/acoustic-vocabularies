@@ -55,7 +55,7 @@ namespace AcousticVocab.Foundation
                 reason == null ? (string)configuration["robot_state_source"] : "unresolved"); }
             catch (Exception) { configuration = null; Faulted?.Invoke("operator_log_unavailable"); return; }
             if (reason != null) { configuration = null; Fault(reason); }
-            else Record("configuration_validated", new JObject { ["qualification"] = "development_only", ["topology"] = configuration["topology"], ["reference_calibration_id"] = configuration["observer_reference"]["calibration_id"] });
+            else Record("configuration_validated", new JObject { ["qualification"] = "development_only", ["topology"] = configuration["topology"], ["reference_calibration_id"] = configuration["observer_reference"]["calibration_id"], ["menu_countdown_visible"] = StationConfig.MenuCountdownVisible(configuration) });
         }
 
         void Update()
