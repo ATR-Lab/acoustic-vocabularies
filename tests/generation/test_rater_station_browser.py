@@ -184,6 +184,8 @@ def test_one_round_on_three_stations_plays_once_and_locks_controls(panel):
     for page in pages:
         assert page.is_visible("#screen-slot")
         assert page.text_content("#meaning") == s1.meaning
+        # the candidate's position in the round's anonymous order (text, not a control)
+        assert page.text_content("#slot-position") == "Candidate 1 of 9"
         assert controls_disabled(page) and page.is_disabled("#submit-rating")
         assert page.text_content("#reference-meaning") != s1.reference_meaning
         # no replay, seek or volume control anywhere on the page
@@ -218,6 +220,7 @@ def test_one_round_on_three_stations_plays_once_and_locks_controls(panel):
     sleep_until(p.host, s5.start_ms + 2_500)
     for page in pages:
         assert page.is_visible("#screen-placeholder") and not page.is_visible("#rating-form")
+        assert page.text_content("#placeholder-position") == "Candidate 5 of 9"  # it counts
     assert p.host.wait_ended(40)
     # Each station started exactly two sounds (candidate, reference) at the scheduled
     # times: nothing was replayed, the placeholder played nothing.
@@ -343,6 +346,7 @@ def test_a_sound_that_did_not_play_cannot_be_rated(panel):
     # rated, so the slot turns neutral before the unlock and stays locked.
     sleep_until(p.host, s2.start_ms + s2.unlock_offset_ms + 300)
     assert lost.is_visible("#screen-missed") and controls_disabled(lost)
+    assert lost.text_content("#missed-position") == "Candidate 2 of 9"
     assert len(audio_starts(lost)) == 1
     assert p.host.wait_ended(40)
     records = {(r.station, r.position): r for r in p.host.ratings}
