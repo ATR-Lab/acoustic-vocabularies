@@ -100,6 +100,11 @@
       "minimum": 0,
       "type": "integer"
     },
+    "fault_interface_loss_n": {
+      "description": "Opportunities with at least one fault of type interface_loss (vocab.FAULT_TYPES).",
+      "minimum": 0,
+      "type": "integer"
+    },
     "fault_missing_playback_n": {
       "description": "Opportunities with at least one fault of type missing_playback (vocab.FAULT_TYPES).",
       "minimum": 0,
@@ -332,6 +337,7 @@
     "fault_failed_reset_n",
     "fault_missing_response_log_n",
     "fault_presentation_freeze_n",
+    "fault_interface_loss_n",
     "fault_other_n",
     "comfort_flag",
     "deviations_n",

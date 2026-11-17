@@ -50,7 +50,7 @@ from .windows import classify, window
 DEMO_STATIONS: Final[tuple[str, ...]] = ("ST01", "ST02", "ST03")
 # Fault probability per accounted opportunity: ST03 is the demo's faulty station.
 STATION_FAULT_P: Final[dict[str, float]] = {"ST01": 0.01, "ST02": 0.015, "ST03": 0.065}
-FAULT_TYPE_P: Final[tuple[float, ...]] = (0.3, 0.15, 0.05, 0.1, 0.1, 0.2, 0.1)
+FAULT_TYPE_P: Final[tuple[float, ...]] = (0.3, 0.15, 0.05, 0.1, 0.1, 0.2, 0.05, 0.05)
 # Injected suspension events: name -> discrepancy code (the first two as in #33's suite).
 INJECTIONS: Final[dict[str, str]] = {
     "wrong_hash": FAULT_INJECTIONS["wrong_hash"],

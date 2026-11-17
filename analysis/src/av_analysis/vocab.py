@@ -78,7 +78,7 @@ RESPONSE_CODES: Final[tuple[ResponseCode, ...]] = ("commit", "dont_know", "timeo
 # ``technical_fault_code`` (trial log; also the provisional exposure export): empty, or one
 # or more producer codes ``^[A-Z][A-Z0-9_]{0,79}$`` joined by ``;`` (the provisional
 # deriver appends one code per fault). Codes form an open set; :func:`fault_type` maps
-# each to one of the six apparatus fault types of Common procedures section 2 (item 6),
+# each to one of the seven apparatus fault types of Common procedures section 2 (item 6),
 # which the dashboard (#35) counts, or to ``other``. #33 also counts
 # ``presentation_freeze`` when ``frame_freeze_ms`` > :data:`FREEZE_FAULT_MS` and
 # ``failed_reset`` when ``reset_ok`` is ``false``, so a fault is counted once per type and
@@ -92,6 +92,7 @@ FaultType = Literal[
     "failed_reset",
     "missing_response_log",
     "presentation_freeze",
+    "interface_loss",
     "other",
 ]
 FAULT_TYPES: Final[tuple[FaultType, ...]] = (
@@ -101,6 +102,7 @@ FAULT_TYPES: Final[tuple[FaultType, ...]] = (
     "failed_reset",
     "missing_response_log",
     "presentation_freeze",
+    "interface_loss",
     "other",
 )
 FAULT_TITLES: Final[dict[FaultType, str]] = {
@@ -110,6 +112,7 @@ FAULT_TITLES: Final[dict[FaultType, str]] = {
     "failed_reset": "Failed neutral reset",
     "missing_response_log": "Missing response log",
     "presentation_freeze": "Presentation freeze over 250 ms",
+    "interface_loss": "Loss of the response interface",
     "other": "Other apparatus or data fault",
 }
 # The code the synthetic generator writes for each type (and that a producer may use).
@@ -120,18 +123,77 @@ CANONICAL_FAULT_CODES: Final[dict[FaultType, str]] = {
     "failed_reset": "FAILED_RESET",
     "missing_response_log": "MISSING_RESPONSE_LOG",
     "presentation_freeze": "PRESENTATION_FREEZE",
+    "interface_loss": "INTERFACE_LOSS",
 }
 # Code assigned by #33 to a scheduled opportunity lost to an apparatus or logger failure
 # that a deviation record verifies (derived ``trials`` rows with ``row_source`` deviation).
 LOST_OPPORTUNITY_CODE: Final = "OPPORTUNITY_LOST"
-# Producer code -> fault type. Canonical codes plus the codes the provisional producer on
-# main is known to emit for these faults (Unity runtime, package-format.md section 4);
-# every other code is ``other``. The producer mapping is **Pending** (#64, #67, #72).
+# Unity app code -> fault type (#284): the codes in ``unity/Assets/ExperimentApp/Runtime``
+# that state one of the seven faults. A code is mapped when its name and raising check
+# state the fault; a possible cause of one (application focus loss or pause, state-source
+# staleness, a binding, pin or chain check) is not. Every other app code is listed in
+# ``app_fault_codes.APP_CODES_NOT_APPLICABLE`` and classifies as ``other``;
+# ``tests/analysis/test_app_fault_codes.py`` fails on an app code in neither.
+APP_FAULT_CODE_TYPES: Final[dict[str, FaultType]] = {
+    # Frame interval over 250 ms in an attempt (frame monitor, soak capture).
+    "FRAME_FREEZE": "presentation_freeze",
+    "SOAK_PROTECTED_FREEZE": "presentation_freeze",
+    # Participant input, tracking or response panel unavailable while the item runs.
+    "FRAME_INTERFACE_UNAVAILABLE": "interface_loss",
+    "SESSION_FOCUS_OR_INPUT_LOST": "interface_loss",
+    "ASSESSMENT_INTERFACE_UNAVAILABLE": "interface_loss",
+    "LESSON_INPUT_LOST": "interface_loss",
+    "MENU_INPUT_LOST": "interface_loss",
+    "ORIENTATION_INPUT_OR_TRACKING_LOST": "interface_loss",
+    "CALIBRATION_FOCUS_OR_TRACKING_LOST": "interface_loss",
+    # Output callbacks started but did not cover the samples by the deadline.
+    "AUDIO_UNDERRUN": "audio_underrun",
+    # A requested play with no output callback or no observed onset by its deadline.
+    "AUDIO_MISSING_PLAYBACK": "missing_playback",
+    "ASSESSMENT_ONSET_UNCONFIRMED": "missing_playback",
+    "GRAMMAR_DELIVERY_MISSING": "missing_playback",
+    "LESSON_ONSET_EVIDENCE_MISSING": "missing_playback",
+    "MENU_ONSET_MISSING": "missing_playback",
+    # A file, record or audio hash that differs from the expected one, or a damaged file.
+    "HASH_MISMATCH": "hash_mismatch",
+    "ASSESSMENT_JOURNAL_DAMAGED": "hash_mismatch",
+    "DATA_HASH": "hash_mismatch",
+    "DATA_LESSON_AUDIO_HASH": "hash_mismatch",
+    "DATA_MANIFEST_HASH": "hash_mismatch",
+    "DATA_TEMPLATE_HASH": "hash_mismatch",
+    "DATA_UPLOAD_HASH_MISMATCH": "hash_mismatch",
+    "GRAMMAR_HASH": "hash_mismatch",
+    "JOIN_GRAMMAR_REVIEW_HASH": "hash_mismatch",
+    "JOIN_PROVISIONED_HASH": "hash_mismatch",
+    "LAYOUT_HASH_MISMATCH": "hash_mismatch",
+    "MENU_LEDGER_HASH": "hash_mismatch",
+    "MENU_STORE_HASH": "hash_mismatch",
+    "ORIENTATION_DEMO_INDEX_HASH": "hash_mismatch",
+    "ORIENTATION_PLAN_HASH": "hash_mismatch",
+    "RUN_SHEET_FILE_HASH": "hash_mismatch",
+    "RUN_SHEET_MANIFEST_HASH": "hash_mismatch",
+    "RUN_SHEET_SCHEDULE_HASH": "hash_mismatch",
+    "SESSION_JOIN_FILE_HASH": "hash_mismatch",
+    "SESSION_JOURNAL_HASH": "hash_mismatch",
+    "SESSION_PACKAGE_HASH": "hash_mismatch",
+    "SESSION_SCHEMA_HASH": "hash_mismatch",
+    "STATE_HASH_IDENTITY": "hash_mismatch",
+    # A requested neutral reset that was refused, failed its check or missed its deadline.
+    "SESSION_RESET_DEADLINE_MISSED": "failed_reset",
+    "STATE_RESET_CHECK_FAILED": "failed_reset",
+    "STATE_RESET_REFUSED": "failed_reset",
+    "SIMULATION_LOCAL_RESET_REFUSED": "failed_reset",
+    "ORIENTATION_DEMO_RESET_REFUSED": "failed_reset",
+    "CONTROL_RESET": "failed_reset",
+    # A response that could not be persisted, or a response window closed without one.
+    "ASSESSMENT_RESPONSE_LOG_MISSING": "missing_response_log",
+    "ASSESSMENT_RESPONSE_LOG_FAILED": "missing_response_log",
+}
+# Producer code -> fault type: canonical codes, the app codes above and the lost-opportunity
+# code; every other code is ``other``. The producer mapping is **Pending** (#64, #67, #72).
 FAULT_CODE_TYPES: Final[dict[str, FaultType]] = {
     **{code: kind for kind, code in CANONICAL_FAULT_CODES.items()},
-    "FRAME_FREEZE": "presentation_freeze",
-    "STATE_RESET_CHECK_FAILED": "failed_reset",
-    "SESSION_RESET_DEADLINE_MISSED": "failed_reset",
+    **APP_FAULT_CODE_TYPES,
     LOST_OPPORTUNITY_CODE: "other",
 }
 _FAULT_CODE: Final = re.compile(FAULT_CODE_RE)

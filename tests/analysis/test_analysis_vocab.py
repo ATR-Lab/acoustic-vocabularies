@@ -44,14 +44,15 @@ def test_values_follow_the_provisional_producer():
     assert RESPONSE_CODES == ("commit", "dont_know", "timeout")
 
 
-def test_fault_codes_map_to_the_six_protocol_types_or_other():
-    assert FAULT_TYPES[:6] == (
+def test_fault_codes_map_to_the_seven_protocol_types_or_other():
+    assert FAULT_TYPES[:7] == (
         "audio_underrun",
         "missing_playback",
         "hash_mismatch",
         "failed_reset",
         "missing_response_log",
         "presentation_freeze",
+        "interface_loss",
     )
     assert FAULT_TYPES[-1] == "other"
     for kind, code in CANONICAL_FAULT_CODES.items():
