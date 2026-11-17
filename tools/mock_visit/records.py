@@ -125,6 +125,7 @@ PAYLOADS = {
     "choice": "candidate_id accepted_or_rejected yoked_source_event_id pause_ms matching_deviation_id",
     "deviation_reference": "deviation_id signed_log_sha256 observed_mono_ms",
     "visit_exit": "code",
+    "visit_start": "session_id local_date",
     "recovery": "preserved_tails",
     "assessment_stage": "event_kind schedule_sha256 host_mono_ms clock_epoch stage item_id value outcome_code",
 }

@@ -66,3 +66,32 @@ they must not replace uncertainty with guessed acoustic onset or absence.
 
 This development event contract is not a claim to match missing methodology CSV
 templates. #72 must retain explicit pending header review for those exports.
+
+## Resuming an interrupted battery (#278)
+
+`ResumeGuard` decides whether a battery may continue. The host evaluates it
+before every `ConfirmResume` (start or resume command); `FixedSlotEngine` is
+unchanged. Recovery still offers only unplayed trials: a trial whose cue intent
+or committed response is durable is never prepared again.
+
+| Visit | A started battery may continue only | Refusal code |
+| --- | --- | --- |
+| Study A D0 (immediate test) | in the same visit session identifier and on the same station calendar day as its first accepted start | `RESUME_OUTSIDE_SESSION` |
+| Study B V1 | on its own first-start day (its window) | `RESUME_OUTSIDE_WINDOW` |
+| Study A D7; Study B V2, V3, W1, W4 | through the supplied window end, or on its own first-start day | `RESUME_OUTSIDE_WINDOW` |
+
+Days are local calendar days of the station clock. A started battery without its
+recorded start facts refuses. An unknown visit, a missing session identifier or
+a window on a day-0 visit is rejected when the guard is constructed.
+
+The first accepted start appends a `visit_start` data event (`session_id`,
+`local_date`) before any other journal row of that start. A refusal appends one
+`visit_exit` event with the refusal code and stops the engine at its operator
+boundary, so the battery is closed as interrupted: its unplayed trials stay
+unplayed, the endpoint is missing, and every committed or played record is kept
+unchanged. A later restart over a closed battery refuses with the same code and
+writes no second `visit_exit`. The mailbox receipt carries the lowercase code
+(`resume_outside_session`, `resume_outside_window`); the adapter is not failed.
+
+The joined engineering host passes its configuration `session_id` and no window
+end yet, so a delayed visit there continues only on its first-start day.
