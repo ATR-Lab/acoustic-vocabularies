@@ -97,7 +97,8 @@ namespace AcousticVocab.SelectionMenus
         {
             MenuRules.Require(Installed&&owner!=null&&material!=null&&phase is MenuPhase.Instructions or MenuPhase.Audition or MenuPhase.Choice or MenuPhase.Selected,"MENU_VIEW_REFUSED");
             MenuRules.Require(!(readOnly&&phase==MenuPhase.Choice&&selected.HasValue),"MENU_YOKED_DISCLOSURE");
-            visibleOwner=owner;this.readOnly=readOnly;choosing=phase==MenuPhase.Choice;instructions.text=phase==MenuPhase.Choice?material.ChoiceInstructions:material.Instructions;meaning.text=material.Meaning?.Definition??"";
+            // The assigned (read-only) role's reviewed wording leads the text in every visible phase; the active role's text is unchanged.
+            visibleOwner=owner;this.readOnly=readOnly;choosing=phase==MenuPhase.Choice;instructions.text=phase==MenuPhase.Choice?material.ChoiceInstructions:readOnly?material.ChoiceInstructions+"\n"+material.Instructions:material.Instructions;meaning.text=material.Meaning?.Definition??"";
             picture.gameObject.SetActive(material.Meaning!=null);if(material.Meaning!=null){MenuRules.Require(textures.TryGetValue(material.Meaning.ImageSha256,out var texture),"MENU_IMAGE_MISSING");picture.texture=texture;visibleImage=material.Meaning.ImageSha256;}
             for(int i=0;i<3;i++){labels[i].text=material.Labels[i];cards[i].color=selected==i+1?new Color(.5f,.4f,.1f):new Color(.15f,.18f,.23f);}canvas.gameObject.SetActive(true);
         }
