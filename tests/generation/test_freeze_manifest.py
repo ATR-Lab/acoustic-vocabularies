@@ -127,6 +127,7 @@ _SYNTHETIC_RECORDED = {
     "runtime.precision": "bfloat16",
     "runtime.max_model_len": 16_896,
     "runtime.chat_template_sha256": "3" * 64,
+    "runtime.vllm_lock_sha256": "5" * 64,
     "decoding.implementation": "test: response_format json_schema",
     "pilot.timing_review": {"max_atom_minutes": 19.5, "reference": ISSUE, "within_budget": True},
     "pilot.audit_sha256": {"A-pilot": "4" * 64},

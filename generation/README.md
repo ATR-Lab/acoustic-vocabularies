@@ -34,7 +34,7 @@ runtime; the tests refuse any non-loopback connection.
 | Path | Contents |
 | --- | --- |
 | `src/av_generation/` | The package (module map in `docs/architecture.md`) |
-| `schema/` | JSON Schemas of every log record and run document, the generation config, meaning sets, the rater protocol, the dry-run plan, audit summary, freeze manifest, bank manifest and bank amendments |
+| `schema/` | JSON Schemas of every log record and run document, the generation config, meaning sets, the rater protocol, the dry-run plan, audit summary, freeze manifest, G4 freeze inputs, bank manifest and bank amendments |
 | `examples/demo-batch-config.json` | Synthetic batch configuration (`DEMO-A-P01`) |
 | `examples/demo-meanings/` | Synthetic meaning set (`DEMO-meanings-01`; placeholder texts, not study texts) |
 | `examples/demo-slot-ledger/` | Synthetic slot ledger and refusals (`DEMO-slot-ledger-01`; every outcome code) |
@@ -65,5 +65,5 @@ Stable shared contracts (implemented):
 
 Interfaces filled by their issues: `llm` (#16), `ledger`, `prompts`, `parser`, `a3` (#17),
 `a2` (#18), `a1` (#19), `orchestrator`, `selector`, `batch_runner` (#20), `panel`, `rater` (#21),
-`dryrun` (#22), `threshold` (#23), `audit` (#24), `freeze` (#25); the bank builder (#26)
+`dryrun` (#22), `threshold` (#23), `audit` (#24), `freeze` and `freeze_assembly` (#25); the bank builder (#26)
 goes in `banks/`.

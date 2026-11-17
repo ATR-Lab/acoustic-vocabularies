@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/generation/schema/g4-inputs.schema.json",
+  "title": "G4 freeze inputs (restricted)",
+  "description": "The human and restricted-storage values of the G4 freeze (#25, #308), one file kept in restricted storage and read by `python -m av_generation.freeze_assembly fill --inputs` (generation/docs/freeze-assembly.md). Every value carries its source, which is copied into the freeze manifest and so must be public text: no names, host names, addresses or local paths. Items that are left out stay pending. meanings.sha256 is a config item: the assembler checks it, and `freeze build` copies it from the frozen generation config.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "items"
+  ],
+  "properties": {
+    "format": {
+      "const": "av-generation/g4-inputs"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "separation.evidence_sha256": {
+          "description": "SHA-256 of the separation-threshold check summary of the listening tool (#23).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "value"
+          ],
+          "properties": {
+            "value": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          }
+        },
+        "pilot.timing_review": {
+          "description": "The pilot panel timing review: sessions and pilot books reviewed, the longest atom in minutes, whether every atom stayed within the 20-minute atom budget (else the bookings were extended), and the link to the review comment.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "value"
+          ],
+          "properties": {
+            "value": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "max_atom_minutes",
+                "panel_sessions",
+                "pilot_books",
+                "reference",
+                "within_budget"
+              ],
+              "properties": {
+                "panel_sessions": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "pilot_books": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max_atom_minutes": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "within_budget": {
+                  "type": "boolean"
+                },
+                "bookings_extended": {
+                  "type": "boolean"
+                },
+                "reference": {
+                  "$ref": "#/$defs/link"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "within_budget": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "bookings_extended"
+                    ],
+                    "properties": {
+                      "bookings_extended": {
+                        "const": true
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          }
+        },
+        "pilot.audit_sha256": {
+          "description": "{set: SHA-256} of the audit tables (#24) of the pilot books.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "value"
+          ],
+          "properties": {
+            "value": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[!-~]{1,64}$"
+              },
+              "additionalProperties": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              }
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          }
+        },
+        "meanings.sha256": {
+          "description": "MeaningSet.sha256() of the frozen meaning set: the hash itself (value) or the restricted meaning-set directory or file to compute it from (meaning_set, relative to this file).",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source",
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "$ref": "common.schema.json#/$defs/sha256"
+                },
+                "source": {
+                  "$ref": "#/$defs/source"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "meaning_set",
+                "source"
+              ],
+              "properties": {
+                "meaning_set": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "source": {
+                  "$ref": "#/$defs/source"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "description": "Where the value comes from; copied into the freeze manifest (printable ASCII, as its source field).",
+      "type": "string",
+      "pattern": "^[ -~]{1,400}$"
+    },
+    "link": {
+      "description": "Link to the review or decision comment (roles and links only, never names).",
+      "type": "string",
+      "pattern": "^https://[!-~]{1,300}$"
+    }
+  }
+}

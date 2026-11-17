@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from av_generation import bank_manifest, rater_protocol
+from av_generation import bank_manifest, freeze_assembly, rater_protocol
 from av_generation._schemas import (
     SCHEMA_ID_PREFIX,
     _registry,
@@ -35,6 +35,7 @@ EXPECTED = {
     "dry-run-plan.schema.json",
     "fallback-scan-record.schema.json",
     "freeze-manifest.schema.json",
+    "g4-inputs.schema.json",
     "generation-config.schema.json",
     "llm-request.schema.json",
     "meanings.schema.json",
@@ -56,6 +57,7 @@ def test_schema_set():
     documents = (*RECORD_TYPES.values(), *DOCUMENT_TYPES.values(), BatchConfig)
     used = {c.SCHEMA for c in (*documents, GenerationConfig, MeaningSet, DryRunPlan)}
     used |= {rater_protocol.SCHEMA, bank_manifest.SCHEMA, bank_manifest.AMENDMENT_SCHEMA}
+    used |= {freeze_assembly.SCHEMA}
     used |= {"common.schema.json", "audit-summary.schema.json", "freeze-manifest.schema.json"}
     assert used == EXPECTED
 
