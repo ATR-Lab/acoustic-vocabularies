@@ -9,7 +9,8 @@ Study A (protocol section 4)
 * Recruitment waves: confirmatory 6 waves of 3 batches, each wave one batch per profile.
   Waves 1-3 and 4-6 each hold every profile x designer pair once; within every wave the
   three A1 designers differ and 1 or 2 batches are swapped (H-W1/H-W4); within each half
-  every profile takes each wave position once. Pilot: 1 wave of 3 batches.
+  every profile takes each wave position once. Pilot: 1 wave of 3 batches. Other
+  confirmatory sizes (sample-size presets, #266): N/3 waves from ``waves.balanced_waves``.
 * Learner slots ``<unit>-L01``.. ``-L12`` (pilot ``-L06``) in reveal order: waves in order,
   batches in wave order, slots in number order. Each batch has a concealed seeded
   permutation of 4 A1 / 4 A2 / 4 A3 (pilot 2/2/2) over its slots.
@@ -26,7 +27,8 @@ Study B (protocol section 2)
   block and the other two in the second, so M1/M2 are active 50/50 in every cell, every
   block holds 2/2, and every two blocks are balanced per cell.
 * Bank IDs are placeholders ``bank-<set code><nnn>`` by dyad-slot sequence (confirmatory
-  ``bank-C001``..``bank-C072`` including spares, pilot ``bank-P001``..``bank-P008``).
+  ``bank-C001``..``bank-C072`` including spares under the default preset, pilot
+  ``bank-P001``..``bank-P008``).
 * Profile-menu presentation order (V1, section 5.1): consecutive groups of 6 dyad slots
   hold all 6 orders of P1, P2, P3, as two 3 x 3 Latin squares, so every group of 3 has
   each profile once at each position.
@@ -60,6 +62,7 @@ from .design import (
 )
 from .output import table_csv
 from .seeds import MasterSeed, SeedStream, derive_seed, stream
+from .waves import balanced_waves
 
 GENERATOR: Final = "av-schedules"
 
@@ -181,6 +184,8 @@ def _a_waves(
         if sorted(b.profile for b in batches) != sorted(PROFILES):
             raise ValueError("the pilot needs one batch per profile")
         return (s.permutation(batches),)
+    if len(batches) != 18:  # other sample-size presets (#266)
+        return balanced_waves(master, set_name, batches)
     by_cell = {(b.profile, b.designer, b.swap_w1_w4): b for b in batches}
     if len(batches) != 18 or len(by_cell) != 18:
         raise ValueError("confirmatory batches must be the profile x designer x swap factorial")
@@ -214,10 +219,16 @@ def _design_sha256(units: Sequence[ABatch] | Sequence[BDyadSlot]) -> str:
     return hashlib.sha256(table_csv(units)).hexdigest()
 
 
-def build_a_allocation(master: MasterSeed, set_name: SetName) -> AAllocation:
-    """Study A waves, learner slots, book IDs and the restricted book key for one set."""
+def build_a_allocation(
+    master: MasterSeed, set_name: SetName, *, n_batches: int | None = None
+) -> AAllocation:
+    """Study A waves, learner slots, book IDs and the restricted book key for one set.
+
+    ``n_batches``: batches of the set (default: the default sample-size preset).
+    """
     code = SET_CODE[set_name]
-    batches = build_a_batch_table(master, set_name)
+    sized = {} if n_batches is None else {"batches": n_batches}  # None: the plain call
+    batches = build_a_batch_table(master, set_name, **sized)
     waves = _a_waves(master, set_name, batches)
     per_book = A_LEARNERS_PER_BOOK[set_name]
 
@@ -368,10 +379,18 @@ def _m1_active(master: MasterSeed, slots: Sequence[BDyadSlot]) -> dict[str, bool
 
 
 def build_b_allocation(
-    master: MasterSeed, set_name: SetName, *, spares: int = B_DEFAULT_SPARES
+    master: MasterSeed,
+    set_name: SetName,
+    *,
+    spares: int = B_DEFAULT_SPARES,
+    n_dyads: int | None = None,
 ) -> BAllocation:
-    """Study B roles by member slot, bank IDs and profile-menu orders for one set."""
-    slots = build_b_design_table(master, set_name, spares=spares)
+    """Study B roles by member slot, bank IDs and profile-menu orders for one set.
+
+    ``n_dyads``: main dyad slots of the set (default: the default sample-size preset).
+    """
+    sized = {} if n_dyads is None else {"dyads": n_dyads}  # None: the plain call
+    slots = build_b_design_table(master, set_name, spares=spares, **sized)
     m1_active = _m1_active(master, slots)
     menus = _menu_orders(master, set_name, len(slots))
     dyads = []
@@ -423,8 +442,9 @@ def check_a_allocation(alloc: AAllocation) -> list[str]:
     per_profile = {p: sum(1 for b in alloc.batches if b.profile == p) for p in PROFILES}
     if len(set(per_profile.values())) != 1:
         problems.append(f"batches per profile {per_profile}")
-    if len(alloc.waves) != A_WAVES[set_name]:
-        problems.append(f"{len(alloc.waves)} waves, expected {A_WAVES[set_name]}")
+    n_waves = n_batches // len(PROFILES)  # A_WAVES under the default preset
+    if len(alloc.waves) != n_waves:
+        problems.append(f"{len(alloc.waves)} waves, expected {n_waves}")
     profile_of = {b.unit_id: b.profile for b in alloc.batches}
     designer_of = {b.unit_id: b.designer for b in alloc.batches}
     for w, wave in enumerate(alloc.waves, start=1):

@@ -41,6 +41,27 @@ designers and 1 or 2 swapped batches; waves 1-3 and 4-6 each contain every profi
 designer pair once; each profile is first, second and third in a wave twice. The pilot
 has one wave of its 3 batches in a seeded order.
 
+**Waves for other sample sizes** (sample-size presets, #266; `waves.balanced_waves`). A
+confirmatory set of N = 6m batches other than 18 forms N/3 waves of 3:
+
+1. The batch table gives every profile x designer cell q or q + 1 batches
+   (q = (N/3) div 3), so the cells split into the three patterns of one 3 x 3 Latin
+   square, each used q or q + 1 times (30 batches: 4, 3 and 3 waves). Each wave uses one
+   pattern: one batch per profile and three different A1 designers.
+2. Within a pattern, a seeded fill sends the swapped and unswapped batches of each cell
+   to the pattern's waves so that every wave holds 1 or 2 swapped batches (from 18
+   batches up; with 6 or 12 batches some patterns have a single wave, whose swap levels
+   the batch table fixes).
+3. Waves are taken in rounds: round `i` holds the `i`-th wave of every pattern used more
+   than `i` times, in seeded order, so every round of 3 waves holds every profile x
+   designer pair once. The batch order inside each wave follows a seeded cyclic Latin
+   square per round, so each profile takes each wave position once per complete round.
+
+For 30 batches: 10 waves, rounds of waves 1-3, 4-6 and 7-9 plus wave 10 (the pattern of
+the profiles' leading designers); 5 waves with 2 and 5 with 1 swapped batch; each
+profile 3 or 4 times at each wave position. Draws use the purpose `alloc:waves:n<N>`, so
+the 18-batch waves are unchanged.
+
 **Slots and books.** Each batch gets a seeded permutation of 4 A1, 4 A2 and 4 A3 over
 `L01`..`L12` (pilot 2/2/2 over `L01`..`L06`), unconstrained as the protocol asks. Each
 batch x method book gets an anonymous book ID `BK-<P|C>-XXXXXX`: 6 characters drawn
@@ -50,7 +71,7 @@ confirmatory IDs apart. These learner-facing IDs are not the anonymous panel IDs
 round orchestrator (#20).
 
 **Reveal order.** Waves in order, batches in wave order, slots in number order:
-`order` 1..216 (pilot 1..18). A revealed slot is used; vacancies after withdrawal are
+`order` 1..216 (30 batches: 1..360; pilot 1..18). A revealed slot is used; vacancies after withdrawal are
 not refilled (protocol section 4), so the reveal API never re-issues a slot.
 
 **Split outputs.** `<set>-slots.json` is learner-facing: slot, batch, wave, profile and
@@ -89,6 +110,11 @@ each arm (spares: 4/4 and 2/2). The allocation adds:
   the default when no choice is made.
 - **Spares.** A main slot whose bank is unavailable is replaced, at its position, by the
   first unused spare with the same SQ arm and swap flag (Proposed in #28 and #29).
+- **Other sample sizes** (sample-size presets, #266). Nothing above depends on the
+  count: 84 or 88 main slots (21 or 22 blocks) plus 12 spares (3 blocks) give
+  `bank-C001`..`bank-C096` or `bank-C100`. With an odd number of blocks the last block
+  has no partner block: it still holds 2/2 roles, and member 1 is active in 10 or 11 of
+  the 21 dyads of each cell (spares: 1 or 2 of 3).
 
 `<set>-dyads.json` holds all of this. Roles and arms are not masked from staff, but the
 list is concealed: entries are revealed one at a time after both partners' eligibility

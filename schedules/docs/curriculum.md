@@ -40,6 +40,12 @@ folder; otherwise those two tests are skipped.
 | B | pilot | 8 dyad slots | `B-P01`..`B-P08` |
 | B | confirmatory | 64 dyad slots + 8 spare slots (at most 96) | `B-C01`..`B-C64`, `B-S01`..`B-S08` |
 
+The confirmatory counts above are the default sample-size preset `provisional-18-64`.
+The presets `revised-30-84` and `revised-30-88` give 30 batches (`A-C01`..`A-C30`) and
+84 or 88 dyad slots plus 12 spare slots (`B-S01`..`B-S12`); see
+[Sample-size presets](../README.md#sample-size-presets). Pilot sets are the same in
+every preset.
+
 A Study A unit is shared by the three method books of the batch; a Study B unit is shared
 by both members of the dyad. The API has no method, book or person argument, so there is
 no way to produce different tables inside a unit. The abstract matrix is the same for
@@ -67,6 +73,23 @@ the cycle, column).
   dealt in a seeded order. So each profile has 6 batches, 3 swapped, and each designer
   makes 2 books per profile (one swapped, one not). The pilot has one batch per profile,
   distinct designers and both swap levels.
+- **Study A, other sizes** (sample-size presets, N = 6m batches, N != 18; any multiple of
+  6 up to 96): the same blocks, cycles, permutations and atom orders, with the 18-batch
+  deal generalised. Every profile gets m diagonal column pairs (0, 3) or (1, 2), each one
+  swapped and one unswapped batch with different `family_first` values: whole blocks go
+  to profiles in seeded rounds of 3 (one block per profile per round); for odd m the
+  next block is split along its diagonal pairs between two profiles and the last block
+  (a diagonal pair) goes to the third. So each profile has 2m batches, m swapped, K/Q
+  lead m/m and floor(m/2) complete Latin rows. Designers: a seeded designer order is
+  rotated by one per profile, and each profile deals its batches round robin from its
+  rotation, all batches of one swap level first (the same seeded level in every
+  profile). Designer counts then differ by at most 1 within every profile and every
+  profile x swap cell, every designer makes 2m books, m of them swapped, and the extra
+  batches of a profile go to its leading designer(s). For 30 batches (m = 5): 10 per
+  profile, 5 swapped, two complete Latin rows plus a diagonal pair each; designers 4/3/3
+  per profile with each designer leading one profile (10 books each), 2/2/1 within every
+  profile x swap cell. A full 3 x 3 x 2 factorial needs a multiple of 18 batches; with 30
+  it is not possible, and this is the closest balance.
 - **Study B**: columns are SQ-1 or SQ-2 crossed with the swap flag. Every block of 4 dyad
   slots holds all four, so SQ arms stay 2/2 and swap levels 1/1 per arm in every block
   during rolling recruitment. 64 slots give 32/32 SQ and 16/16 swap within each arm.
@@ -160,7 +183,8 @@ roles every two atoms.
   is a seed whose label already appears in the other set's manifest in the output folder.
 - Derived seeds: `derive_seed(master, *parts) = sha256("{master}|{part1}|...")`, lowercase
   hex. This generator uses `(study, unit, purpose)`: `unit` (the per-unit identifier
-  written to `curriculum.csv`), `batch-table` (Study A deal, token `A-C` or `A-P`), `cells`
+  written to `curriculum.csv`), `batch-table` (Study A deal, token `A-C` or `A-P`;
+  `batch-layout:n<N>` for confirmatory sizes other than 18), `cells`
   (per block, token = block ID), `squares`, `perm:<family>:<role>` and
   `order:<family>:<role>` (per cycle, token `<study>-<set code>-cycNN`).
 - The per-unit `seed` value is a public identifier: nothing here is drawn from it, and it

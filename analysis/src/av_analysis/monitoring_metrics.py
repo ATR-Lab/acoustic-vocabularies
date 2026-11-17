@@ -25,7 +25,9 @@ reconciliation totals (#33) exactly. Rules (analysis plan section 8; ``docs/moni
   undo the event).
 * Enrollment targets: :data:`TARGETS`, from the planning budgets in ``av_schedules``
   (Study A batches x books x learners; Study B dyads x 2) until the sample-size
-  decisions (O6.4.1, O6.4.3) freeze them.
+  decisions (O6.4.1, O6.4.3) freeze them. :func:`targets` gives the targets of any
+  sample-size preset (``av_schedules.presets``); ``build_document(..., preset=...)``
+  uses them.
 """
 
 from __future__ import annotations
@@ -36,7 +38,8 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from av_schedules.assign import A_LEARNERS_PER_BOOK, A_METHODS, B_MEMBERS
-from av_schedules.design import A_BATCHES, B_DYADS
+from av_schedules.design import main_units
+from av_schedules.presets import DEFAULT_PRESET
 
 from .codes import CHECKS, CODES, SUSPENSION_TITLES, code, suspension_event
 from .derived import (
@@ -109,20 +112,19 @@ class Target:
         return self.units_n * self.persons_per_unit
 
 
-TARGETS: Final[dict[tuple[str, str], Target]] = {
-    **{
-        ("A", s): Target(
-            "A",
-            s,
-            "batch",
-            A_BATCHES[s],
-            BOOKS_PER_BATCH * A_LEARNERS_PER_BOOK[s],
-            A_BATCHES[s] * BOOKS_PER_BATCH,
-        )
-        for s in SETS
-    },
-    **{("B", s): Target("B", s, "dyad", B_DYADS[s], len(B_MEMBERS), None) for s in SETS},
-}
+def targets(preset: str = DEFAULT_PRESET) -> dict[tuple[str, str], Target]:
+    """Enrollment targets of every study and set under a sample-size preset."""
+    out: dict[tuple[str, str], Target] = {}
+    for s in SETS:
+        batches = main_units("A", s, preset)
+        per_batch = BOOKS_PER_BATCH * A_LEARNERS_PER_BOOK[s]
+        out[("A", s)] = Target("A", s, "batch", batches, per_batch, batches * BOOKS_PER_BATCH)
+    for s in SETS:
+        out[("B", s)] = Target("B", s, "dyad", main_units("B", s, preset), len(B_MEMBERS), None)
+    return out
+
+
+TARGETS: Final[dict[tuple[str, str], Target]] = targets()
 
 
 # ---------------------------------------------------------------------------------------
@@ -258,11 +260,15 @@ def _state_counts(rows: Sequence[Row]) -> dict[str, int]:
     return out
 
 
-def _enrollment(enrollment: Sequence[Row], visits: Sequence[Row]) -> list[dict[str, Any]]:
+def _enrollment(
+    enrollment: Sequence[Row],
+    visits: Sequence[Row],
+    goals: Mapping[tuple[str, str], Target],
+) -> list[dict[str, Any]]:
     out = []
     for r in sorted(enrollment, key=lambda r: _group_key(_str(r, "study"), _str(r, "set"))):
         study, set_name = _str(r, "study"), _str(r, "set")
-        target = TARGETS[(study, set_name)]
+        target = goals[(study, set_name)]
         revealed = _int(r, "revealed_persons_n")
         tracked = {_str(v, "person_id") for v in _in_group(visits, study, set_name)}
         out.append(
@@ -298,11 +304,15 @@ def unit_kind(unit_id: str) -> str:
     return "spare" if unit_id.startswith("B-S") else "dyad"
 
 
-def _allocation(visits: Sequence[Row], groups: Sequence[tuple[str, str]]) -> list[dict[str, Any]]:
+def _allocation(
+    visits: Sequence[Row],
+    groups: Sequence[tuple[str, str]],
+    goals: Mapping[tuple[str, str], Target],
+) -> list[dict[str, Any]]:
     out = []
     for study, set_name in groups:
         rows = _in_group(visits, study, set_name)
-        target = TARGETS[(study, set_name)]
+        target = goals[(study, set_name)]
         units = []
         for unit_id in sorted({_str(r, "unit_id") for r in rows}):
             unit_rows = [r for r in rows if r["unit_id"] == unit_id]
@@ -702,12 +712,15 @@ def build_document(
     inputs: Mapping[str, str],
     *,
     version: str,
+    preset: str = DEFAULT_PRESET,
 ) -> dict[str, Any]:
     """The dashboard-data document of allow-listed source rows (``dashboard-data`` schema).
 
     ``tables`` maps ``visit-status``, ``discrepancies`` and ``enrollment`` to their rows;
-    ``inputs`` maps each source file (``reconciled/<table>.csv``) to its SHA-256.
+    ``inputs`` maps each source file (``reconciled/<table>.csv``) to its SHA-256;
+    ``preset`` (``av_schedules.presets``) sets the enrollment targets.
     """
+    goals = targets(preset)
     visits = list(tables["visit-status"])
     discrepancies = list(tables["discrepancies"])
     enrollment = list(tables["enrollment"])
@@ -727,8 +740,8 @@ def build_document(
             "yoked_max_hours": YOKED_MAX_HOURS,
         },
         "groups": [{"study": s, "set": n} for s, n in groups],
-        "enrollment": _enrollment(enrollment, visits),
-        "allocation": _allocation(visits, groups),
+        "enrollment": _enrollment(enrollment, visits, goals),
+        "allocation": _allocation(visits, groups, goals),
         "attrition": _attrition(visits, groups),
         "windows": _windows(visits, groups),
         "faults": _faults(visits, groups),

@@ -129,7 +129,7 @@ from the generator's plan):
 | `training-coverage` | at every teaching visit, the trained messages taught so far use every introduced action and referent index of each family |
 | `matrix-partition` | at the end, the taught atoms give 32 legal messages, split into the 18 trained (taught) and 14 held-out messages of the matrix; Study B tests all 14 held-out messages |
 | `train-novel-overlap` | no taught message in a novel block and no novel test of a taught message |
-| `design-checks` | per person: every design-checks.json field one person's schedules determine (families, atoms, legal, trained, held-out, B novel exposures, growth by wave, primary trials, teaching plays, menu plays, booked minutes); per set: 216 A learners and 128 B participants (pilot 18 and 16), equal to the allocation lists |
+| `design-checks` | per person: every design-checks.json field one person's schedules determine (families, atoms, legal, trained, held-out, B novel exposures, growth by wave, primary trials, teaching plays, menu plays, booked minutes); per set: 216 A learners and 128 B participants (pilot 18 and 16; other sample-size presets: `planning.allocation_counts`), equal to the allocation lists |
 | `booking` | each visit's fixed slots fit its booked minutes |
 | `allocation` | the #31 count and balance checks (`check_a_allocation`, `check_b_allocation`) |
 | `allocation-coverage` | allocation slots equal the scheduled persons, each under its unit; the list's swap flag equals the schedules' |

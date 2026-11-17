@@ -20,7 +20,7 @@ from typing import Any, Final
 from . import __version__
 from .checks import SetRun, build_set, check_set
 from .curriculum import dumps_json
-from .design import B_DEFAULT_SPARES, SetName, build_units
+from .design import SetName, build_units
 from .findings import Finding, format_findings
 from .matrix import Study
 from .orders import study_visits, visit_plan
@@ -31,6 +31,7 @@ from .planning import (
     TEMPLATE_SHA256,
     booked_minutes,
 )
+from .presets import DEFAULT_PRESET
 from .run_sheets import (
     PREFILLED_COLUMNS,
     PackageHashes,
@@ -128,26 +129,29 @@ def generate_run_sheets(
     study: Study,
     set_name: SetName,
     *,
-    spares: int = B_DEFAULT_SPARES,
+    spares: int | None = None,
     package_hashes: PackageHashes | None = None,
     demo_placeholder_hashes: bool = False,
+    preset: str = DEFAULT_PRESET,
 ) -> dict[str, bytes]:
     """Generate, check and render the run sheets of one study and set.
 
     ``demo_placeholder_hashes`` (DEMO seeds only, instead of ``package_hashes``) pre-fills
     ``hash_check`` with placeholder values and adds ``<set>-package-hashes.json``.
-    Raises :class:`RunSheetCheckError` when any check fails.
+    ``preset`` sets the confirmatory counts; ``spares`` (default: the preset's) the Study
+    B spare slots. Raises :class:`RunSheetCheckError` when any check fails.
     """
     extra: dict[str, bytes] = {}
     if demo_placeholder_hashes:
         if package_hashes is not None:
             raise ValueError("give package hashes or DEMO placeholders, not both")
-        data = placeholder_package_hashes(
-            master, build_units(master, study, set_name, spares=spares)
-        )
+        units = build_units(master, study, set_name, spares=spares, preset=preset)
+        data = placeholder_package_hashes(master, units)
         package_hashes = parse_package_hashes(data)
         extra[package_hashes_name(set_name)] = data
-    run = build_set(master, study, set_name, spares=spares, package_hashes=package_hashes)
+    run = build_set(
+        master, study, set_name, spares=spares, package_hashes=package_hashes, preset=preset
+    )
     findings = check_set(run)
     if findings:
         raise RunSheetCheckError(findings)

@@ -24,6 +24,7 @@ from .balance import balance_csv, balance_rows, max_abs_deviation
 from .curriculum import curriculum_csv, dumps_json, permutation_json
 from .design import SET_NAMES, ABatch, BDyadSlot, SetName, Unit, build_units
 from .matrix import FAMILIES, ROLES, Study
+from .presets import DEFAULT_PRESET
 from .schedule_output import schedule_example_files
 from .seeds import MasterSeed, demo_seed
 
@@ -146,10 +147,19 @@ def render_set(units: Sequence[Unit]) -> dict[str, bytes]:
 
 
 def generate(
-    master: MasterSeed, study: Study, set_name: SetName, *, spares: int = 8
+    master: MasterSeed,
+    study: Study,
+    set_name: SetName,
+    *,
+    spares: int | None = None,
+    preset: str = DEFAULT_PRESET,
 ) -> dict[str, bytes]:
-    """Build the units of one study/set and render all of its files."""
-    return render_set(build_units(master, study, set_name, spares=spares))
+    """Build the units of one study/set and render all of its files.
+
+    ``preset`` sets the confirmatory counts; ``spares`` (default: the preset's) the Study
+    B spare slots.
+    """
+    return render_set(build_units(master, study, set_name, spares=spares, preset=preset))
 
 
 def _stale_files(root: Path, files: Mapping[str, bytes]) -> list[Path]:

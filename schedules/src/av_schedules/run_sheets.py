@@ -163,14 +163,17 @@ def package_keys(master: MasterSeed, units: Sequence[Unit]) -> dict[str, str]:
     """Package key of every person slot of ``units``.
 
     Study A: the book ID of the slot from the learner-facing slot list (#31; never the
-    restricted key). Study B: the dyad slot ID (both members share the dyad package).
+    restricted key). The list is built for the set size of ``units`` when they are a
+    complete set (sequence 1..N, any sample-size preset), else for the default preset.
+    Study B: the dyad slot ID (both members share the dyad package).
     """
     if not units:
         return {}
     first = units[0]
     if first.study == "B":
         return {p: u.unit_id for u in units for p in person_ids(u)}
-    alloc = build_a_allocation(master, first.set_name)
+    complete = [u.sequence for u in units] == list(range(1, len(units) + 1))
+    alloc = build_a_allocation(master, first.set_name, n_batches=len(units) if complete else None)
     book_of = {s.slot_id: s.book_id for s in alloc.slots}
     return {p: book_of[p] for u in units for p in person_ids(u)}
 

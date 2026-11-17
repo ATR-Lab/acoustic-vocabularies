@@ -1,0 +1,28 @@
+{
+  "format": "av-schedules/sample-size-presets",
+  "format_version": 1,
+  "default": "provisional-18-64",
+  "presets": [
+    {
+      "name": "provisional-18-64",
+      "description": "Provisional values: Study A 18 confirmatory batches (the full profile x designer x swap factorial); Study B 64 confirmatory pairs and 8 spare slots.",
+      "a_batches": 18,
+      "b_pairs": 64,
+      "b_spares": 8
+    },
+    {
+      "name": "revised-30-84",
+      "description": "Revised option: Study A 30 confirmatory batches; Study B 84 confirmatory pairs and 12 spare slots (proposed: the smallest multiple of 4 at or above the 12.5% spare share of 64 + 8).",
+      "a_batches": 30,
+      "b_pairs": 84,
+      "b_spares": 12
+    },
+    {
+      "name": "revised-30-88",
+      "description": "Revised option: Study A 30 confirmatory batches; Study B 88 confirmatory pairs and 12 spare slots (proposed: the smallest multiple of 4 at or above the 12.5% spare share of 64 + 8).",
+      "a_batches": 30,
+      "b_pairs": 88,
+      "b_spares": 12
+    }
+  ]
+}
