@@ -14,6 +14,8 @@
  *   start (asset failed, too late, audio not running) is shown as a neutral screen with
  *   no controls: a rater who did not hear the sound cannot rate it;
  * - controls unlock at unlock_offset_ms and lock at 20 s; ratings go to the server only;
+ * - each slot screen shows "Candidate k of 9": the slot message's `position` in the
+ *   round's anonymous play order (placeholders count); it is text, not a control;
  * - a withdrawal is kept until the server answers it (the page reconnects for it); an
  *   `end` broadcast to every station never shows the withdrawal screen;
  * - a socket closed with REPLACED_CLOSE_CODE (another page took this seat) is not
@@ -31,6 +33,8 @@
   const KEY_RE = /^[0-9a-f]{32}$/;
   const REPLACED_CLOSE_CODE = 4001;
   const SLOT_MS = 20000;
+  const SLOTS_PER_ROUND = 9;
+  const POSITION_IDS = ["slot-position", "placeholder-position", "missed-position"];
   const REFERENCE_OFFSET_MS = 2000;
   const ONSET_TOLERANCE_MS = 50;
   const MAX_LATE_START_MS = 1000;
@@ -575,10 +579,21 @@
     at(slot, slot.lockPerf, () => lock(slot));
   }
 
+  // "Candidate k of 9" from the slot message's position (1..9 in the round's anonymous
+  // play order, placeholders included); it names no book, alias or method.
+  function showPosition(message) {
+    const k = message.position;
+    const text = Number.isInteger(k) && k >= 1 && k <= SLOTS_PER_ROUND
+      ? `Candidate ${k} of ${SLOTS_PER_ROUND}`
+      : "";
+    for (const id of POSITION_IDS) $(id).textContent = text;
+  }
+
   function activate(slot) {
     if (st.finished) return;
     st.active = slot;
     lockForm();
+    showPosition(slot.message);
     if (slot.mode === "placeholder") {
       show("placeholder");
       progress($("placeholder-progress"), slot);

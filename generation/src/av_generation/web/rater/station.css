@@ -64,6 +64,10 @@ h2 { font-size: 24px; margin: 0 0 8px; }
 
 .status { min-height: 1.5em; color: var(--muted); text-align: center; }
 
+/* "Candidate k of 9": position in the round's anonymous order (text only, not a control) */
+.position { margin: 0 0 12px; color: var(--muted); font-size: 16px; font-weight: 600; }
+.position + .big { margin-top: 64px; }
+
 .setup { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0; }
 .setup input { font: inherit; padding: 6px 8px; width: 9em; display: block; margin-top: 4px; }
 
