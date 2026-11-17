@@ -35,9 +35,18 @@ from .assign import (
 )
 from .balance import BalanceRow, balance_csv, max_abs_deviation
 from .curriculum import dumps_json
-from .design import B_CELLS, B_DEFAULT_SPARES, DESIGNERS, PROFILES, SET_NAMES, SetName
+from .design import (
+    B_CELLS,
+    DESIGNERS,
+    PROFILES,
+    SET_NAMES,
+    SetName,
+    main_units,
+    spare_units,
+)
 from .masking import assert_masked
 from .matrix import Study
+from .presets import DEFAULT_PRESET
 from .seeds import MasterSeed, demo_seed
 
 FORMAT_VERSION: Final = 1
@@ -312,12 +321,23 @@ def _manifest(
 
 
 def assign_files(
-    master: MasterSeed, study: Study, set_name: SetName, *, spares: int = B_DEFAULT_SPARES
+    master: MasterSeed,
+    study: Study,
+    set_name: SetName,
+    *,
+    spares: int | None = None,
+    preset: str = DEFAULT_PRESET,
 ) -> dict[str, bytes]:
-    """Build the allocation of one study and set and render all of its files."""
+    """Build the allocation of one study and set and render all of its files.
+
+    ``preset`` sets the confirmatory counts; ``spares`` (default: the preset's) the Study
+    B spare slots.
+    """
+    n_main = main_units(study, set_name, preset)
     if study == "A":
-        return a_files(build_a_allocation(master, set_name))
-    return b_files(build_b_allocation(master, set_name, spares=spares))
+        return a_files(build_a_allocation(master, set_name, n_batches=n_main))
+    alloc = build_b_allocation(master, set_name, spares=spare_units(spares, preset), n_dyads=n_main)
+    return b_files(alloc)
 
 
 def manifest_name(set_name: SetName) -> str:

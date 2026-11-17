@@ -37,6 +37,7 @@ from .matrix import (
     atom_id,
     wave_indices,
 )
+from .presets import DEFAULT_PRESET, get_preset
 from .seeds import MasterSeed, derive_seed, stream
 
 SetName = Literal["pilot", "confirmatory"]
@@ -48,8 +49,13 @@ BLOCK_SIZE: Final = ORDER
 CYCLE_BLOCKS: Final = ORDER
 CYCLE_SIZE: Final = BLOCK_SIZE * CYCLE_BLOCKS
 
+# Confirmatory unit counts of the default sample-size preset (#266); the builders take
+# other counts (``batches``, ``dyads``, ``spares``, or a ``preset`` name in build_units).
+_DEFAULT_SIZES: Final = get_preset(DEFAULT_PRESET)
+
 # Study A (Protocol constants, Study A planning defaults).
-A_BATCHES: Final[dict[SetName, int]] = {"pilot": 3, "confirmatory": 18}
+A_BATCHES: Final[dict[SetName, int]] = {"pilot": 3, "confirmatory": _DEFAULT_SIZES.a_batches}
+A_MAX_BATCHES: Final = 96  # unit IDs A-C01..A-C96 (two digits, a multiple of 6)
 PROFILES: Final[tuple[str, ...]] = ("P1", "P2", "P3")
 DESIGNERS: Final[tuple[str, ...]] = ("D1", "D2", "D3")
 # Swapped grid columns {1, 3} form a coset of {0, 3} in GF(4) terms (CycleSquares.draw), as
@@ -58,8 +64,9 @@ DESIGNERS: Final[tuple[str, ...]] = ("D1", "D2", "D3")
 A_CELL_SWAP: Final[tuple[bool, ...]] = (False, True, False, True)
 
 # Study B (Study B protocol section 2).
-B_DYADS: Final[dict[SetName, int]] = {"pilot": 8, "confirmatory": 64}
-B_DEFAULT_SPARES: Final = 8
+B_DYADS: Final[dict[SetName, int]] = {"pilot": 8, "confirmatory": _DEFAULT_SIZES.b_pairs}
+B_DEFAULT_SPARES: Final = _DEFAULT_SIZES.b_spares
+B_MAX_DYADS: Final = 99  # dyad slot IDs B-C01..B-C99 (two digits)
 B_MAX_SPARES: Final = 96  # spare IDs B-S01..B-S96 (two digits)
 SQ_ARMS: Final[tuple[str, ...]] = ("SQ-1", "SQ-2")
 STRUCTURED_FAMILY: Final[dict[str, Family]] = {"SQ-1": "K", "SQ-2": "Q"}
@@ -312,10 +319,79 @@ def _b_wave_orders(cyc: _Cycle, row: int, col: int) -> tuple[Family, tuple[tuple
 # Study A
 
 
-def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, ...]:
+def _a_batch_count(set_name: SetName, batches: int | None) -> int:
+    """Batches of a Study A set; ``ValueError`` for a count the layouts cannot hold."""
+    n = A_BATCHES[set_name] if batches is None else batches
+    if set_name == "pilot" and n != A_BATCHES["pilot"]:
+        raise ValueError(f"the Study A pilot has {A_BATCHES['pilot']} batches, not {n}")
+    step = len(PROFILES) * 2  # profiles x swap levels
+    if set_name == "confirmatory" and (n % step or not step <= n <= A_MAX_BATCHES):
+        raise ValueError(
+            f"Study A confirmatory batches must be a multiple of {step} from {step} to "
+            f"{A_MAX_BATCHES} (3 profiles x 2 swap levels), not {n}"
+        )
+    return n
+
+
+def _deal_a_layout(
+    master: MasterSeed, prefix: str, slots: list[_Slot], swaps: list[bool]
+) -> tuple[list[str], list[str]]:
+    """Profiles and designers of a confirmatory Study A table of N = 6m batches, N != 18.
+
+    The 18-batch layout generalised: each profile gets m diagonal cell pairs (0, 3) or
+    (1, 2) of a block, each one swapped and one unswapped batch with different
+    ``family_first`` values. Whole blocks go to profiles in rounds of 3 (one block per
+    profile, seeded); for odd m the next block is split along its diagonal pairs between
+    two profiles and the last (partial, a diagonal pair) block goes to the third. So every
+    profile has 2m batches, m swapped, K/Q lead m/m, and floor(m/2) complete Latin rows.
+
+    Designers: a seeded order ``D`` of D1..D3; profile ``j`` (in ``PROFILES`` order) deals
+    its batches round robin from ``D`` rotated by ``j``, all batches of one swap level first
+    (seeded, the same level for every profile), each level in seeded order. So designer
+    counts differ by at most 1 within every profile and within every profile x swap cell,
+    the extra batches of a profile go to its leading designers (each designer leads one
+    profile when 2m = 1 mod 3, e.g. 4/3/3 for 30 batches), every designer makes 2m books,
+    m of them swapped. Draws use the purpose ``batch-layout:n<N>`` (the 18-batch layout
+    keeps ``batch-table``).
+    """
+    n = len(slots)
+    s = stream(master, "A", prefix, f"batch-layout:n{n}")
+    pairs = n // (2 * len(PROFILES))  # diagonal pairs per profile (m)
+    rounds = [s.permutation(PROFILES) for _ in range(pairs // 2)]
+    split = s.permutation(PROFILES)  # odd m: [0] last block; [1] cells 0, 3; [2] cells 1, 2
+    whole = len(rounds) * len(PROFILES)  # blocks dealt whole
+    profiles: list[str] = []
+    for slot in slots:
+        block0 = (slot.sequence - 1) // BLOCK_SIZE
+        if block0 < whole:
+            profiles.append(rounds[block0 // len(PROFILES)][block0 % len(PROFILES)])
+        elif block0 == whole:
+            profiles.append(split[1] if slot.col in (0, ORDER - 1) else split[2])
+        else:
+            profiles.append(split[0])
+    base = s.permutation(DESIGNERS)
+    levels = s.permutation((False, True))  # swap level dealt first in every profile
+    designers = [""] * n
+    for j, p in enumerate(PROFILES):
+        order = base[j:] + base[:j]
+        k = 0
+        for swap in levels:
+            idx = [i for i in range(n) if profiles[i] == p and swaps[i] == swap]
+            for i in s.permutation(idx):
+                designers[i] = order[k % len(order)]
+                k += 1
+    return profiles, designers
+
+
+def build_a_batch_table(
+    master: MasterSeed, set_name: SetName, *, batches: int | None = None
+) -> tuple[ABatch, ...]:
     """Study A batches with profile, anonymous A1 designer, swap flag and curriculum design.
 
-    Confirmatory: 18 batches, the full factorial profile (3) x designer (3) x swap (2), in a
+    ``batches`` (default: the default sample-size preset) is the number of batches of the
+    set: 3 for the pilot; for the confirmatory set a multiple of 6 up to 96.
+
+    Confirmatory, 18 batches: the full factorial profile (3) x designer (3) x swap (2), in a
     cycle of 16 (blocks 1-4) plus block 5 (2 batches). Columns 1 and 3 are swapped, so each
     block of 4 has 2 swapped batches and the partial block 5 (a diagonal cell pair) one.
     Profiles are dealt by block: each of blocks 1-3 goes to one profile (seeded), block 4 is
@@ -325,10 +401,13 @@ def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, 
     profile; K/Q lead 3/3). Within each profile and swap level the designers D1..D3 are
     dealt in a seeded order, so each designer makes 2 books per profile (one swapped, one
     not). Pilot: 3 batches, one per profile, distinct designers, both swap levels.
+
+    Other confirmatory sizes (sample-size presets, #266) use the same blocks, cycles and
+    atom orders with the generalised profile and designer deal of :func:`_deal_a_layout`.
     """
     code = SET_CODE[set_name]
     prefix = f"A-{code}"
-    n = A_BATCHES[set_name]
+    n = _a_batch_count(set_name, batches)
     slots = _slots(master, "A", prefix, n)
     s = stream(master, "A", prefix, "batch-table")
     order_indices: dict[Role, tuple[int, ...]] = {"action": INDICES, "referent": INDICES}
@@ -341,9 +420,7 @@ def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, 
         return cycles[number]
 
     swaps = [A_CELL_SWAP[slot.col] for slot in slots]
-    if set_name == "confirmatory":
-        if n != CYCLE_SIZE + 2:
-            raise RuntimeError("the Study A layout assumes 16 + 2 confirmatory batches")
+    if set_name == "confirmatory" and n == CYCLE_SIZE + 2:  # the 16 + 2 layout
         whole = s.permutation(PROFILES)  # blocks 1-3
         split = s.permutation(PROFILES)  # [0]: block 5; [1]: block 4 cells 0, 3; [2]: 1, 2
         profiles: list[str] = []
@@ -361,6 +438,8 @@ def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, 
                 idx = [i for i in range(n) if profiles[i] == p and swaps[i] == swap]
                 for i, d in zip(idx, s.permutation(DESIGNERS), strict=True):
                     designers[i] = d
+    elif set_name == "confirmatory":
+        profiles, designers = _deal_a_layout(master, prefix, slots, swaps)
     else:
         profiles = list(s.permutation(PROFILES))
         designers = list(s.permutation(DESIGNERS))
@@ -402,14 +481,19 @@ def build_a_batch_table(master: MasterSeed, set_name: SetName) -> tuple[ABatch, 
 
 
 def build_b_design_table(
-    master: MasterSeed, set_name: SetName, *, spares: int = B_DEFAULT_SPARES
+    master: MasterSeed,
+    set_name: SetName,
+    *,
+    spares: int = B_DEFAULT_SPARES,
+    dyads: int | None = None,
 ) -> tuple[BDyadSlot, ...]:
     """Study B dyad slots: block, SQ arm, swap flag, permutation and wave atom orders.
 
     Slots form permuted blocks of 4 that contain each SQ arm x swap cell once (seeded order
-    within the block). Confirmatory sets have 64 main slots plus ``spares`` spare slots
-    (a multiple of 4, at most 96; spare blocks follow the main blocks); the pilot has 8
-    slots and no spares. Pilot and confirmatory slots never share IDs or seeds.
+    within the block). Confirmatory sets have ``dyads`` main slots (default: the default
+    sample-size preset, 1 to 99) plus ``spares`` spare slots (a multiple of 4, at most 96;
+    spare blocks follow the main blocks, so spares need a multiple of 4 main slots); the
+    pilot has 8 slots and no spares. Pilot and confirmatory slots never share IDs or seeds.
     """
     if spares < 0 or spares % BLOCK_SIZE or spares > B_MAX_SPARES:
         raise ValueError(f"spares must be a multiple of 4 between 0 and {B_MAX_SPARES}")
@@ -417,7 +501,13 @@ def build_b_design_table(
         spares = 0  # spare slots exist only for the confirmatory set
     code = SET_CODE[set_name]
     prefix = f"B-{code}"
-    n_main = B_DYADS[set_name]
+    n_main = B_DYADS[set_name] if dyads is None else dyads
+    if set_name == "pilot" and n_main != B_DYADS["pilot"]:
+        raise ValueError(f"the Study B pilot has {B_DYADS['pilot']} dyad slots, not {n_main}")
+    if not 1 <= n_main <= B_MAX_DYADS:
+        raise ValueError(f"Study B dyad slots must be from 1 to {B_MAX_DYADS}, not {n_main}")
+    if spares and n_main % BLOCK_SIZE:
+        raise ValueError("spare blocks follow complete main blocks: dyads must be a multiple of 4")
     order_indices: dict[Role, tuple[int, ...]] = {r: wave_indices(1, r) for r in ROLES}
     cycles: dict[int, _Cycle] = {}
     out: list[BDyadSlot] = []
@@ -460,10 +550,35 @@ def build_b_design_table(
     return tuple(out)
 
 
+def main_units(study: Study, set_name: SetName, preset: str = DEFAULT_PRESET) -> int:
+    """Main units of one set under a sample-size preset: Study A batches or Study B dyad
+    slots. The preset sets the confirmatory counts; pilot sizes are fixed."""
+    sizes = get_preset(preset)
+    if set_name == "pilot":
+        return (A_BATCHES if study == "A" else B_DYADS)["pilot"]
+    return sizes.a_batches if study == "A" else sizes.b_pairs
+
+
+def spare_units(spares: int | None, preset: str = DEFAULT_PRESET) -> int:
+    """Study B spare slots: ``spares`` when given, else the preset's spare slots."""
+    sizes = get_preset(preset)
+    return sizes.b_spares if spares is None else spares
+
+
 def build_units(
-    master: MasterSeed, study: Study, set_name: SetName, *, spares: int = B_DEFAULT_SPARES
+    master: MasterSeed,
+    study: Study,
+    set_name: SetName,
+    *,
+    spares: int | None = None,
+    preset: str = DEFAULT_PRESET,
 ) -> tuple[Unit, ...]:
-    """All units of one study and set (Study A batches or Study B dyad slots)."""
+    """All units of one study and set (Study A batches or Study B dyad slots).
+
+    ``preset`` (``av_schedules.presets``) sets the confirmatory counts; ``spares``
+    (default: the preset's) the Study B spare slots of the confirmatory set.
+    """
+    n = main_units(study, set_name, preset)
     if study == "A":
-        return build_a_batch_table(master, set_name)
-    return build_b_design_table(master, set_name, spares=spares)
+        return build_a_batch_table(master, set_name, batches=n)
+    return build_b_design_table(master, set_name, spares=spare_units(spares, preset), dyads=n)

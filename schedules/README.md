@@ -39,15 +39,51 @@ uv run --project schedules python -m av_schedules run-sheets --demo-seed DEMO-lo
 uv run --project schedules python -m av_schedules check --demo-seed DEMO-local
 # Regenerate the committed DEMO run sheets
 uv run --project schedules python -m av_schedules run-sheet-examples
+# Sample-size presets and their derived counts
+uv run --project schedules python -m av_schedules presets
 ```
 
 Options of `curriculum`: `--study A|B|both`, `--set pilot|confirmatory|both` (`both` only
-with `--demo-seed`), `--spares N` (Study B spare slots, multiple of 4 up to 96, default 8),
+with `--demo-seed`), `--preset NAME` (sample-size preset, default `provisional-18-64`; see
+below), `--spares N` (Study B spare slots, multiple of 4 up to 96, default: the preset's),
 `--out DIR` (default `schedules/out`), `--force` (overwrite a set written from another
 seed). Of the outputs, only `<unit>/permutation.json` is package-safe; `curriculum.csv`,
 the batch/design tables, balance reports and manifests of real sets are restricted.
 `schedules` takes the same options; all of its outputs for real sets are restricted
-(visit schedules are hidden-answer material).
+(visit schedules are hidden-answer material). `allocate`, `run-sheets` and `check` also
+take `--preset` and `--spares`; use the same values for every command of one set.
+
+## Sample-size presets
+
+The confirmatory unit counts are a configuration choice (#266). The single source is
+[`presets/sample-size-presets.json`](presets/sample-size-presets.json) (schema
+[`schema/sample-size-presets.schema.json`](schema/sample-size-presets.schema.json)); every
+generator takes a preset name, so the chosen counts need no code change. Which preset is
+used is the study owner's decision (due 20 Nov); the default keeps today's values and
+reproduces the committed DEMO examples byte for byte.
+
+| Preset | Study A batches | Study B pairs | Study B spare slots | Learners | People (B) | Banks |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `provisional-18-64` (default) | 18 | 64 | 8 | 216 | 128 | 72 |
+| `revised-30-84` | 30 | 84 | 12 | 360 | 168 | 96 |
+| `revised-30-88` | 30 | 88 | 12 | 360 | 176 | 100 |
+
+The same in every preset: the pilot sets (Study A 3 batches; Study B 8 pairs, no
+spares), 3 profiles, 3 hand designers `D1`..`D3`, 3 methods, 4 learners per book (pilot
+2), 3 raters and 4 panel sessions per batch, Study B blocks of 4 (SQ arm x swap) and one
+bank per pair or spare slot. `python -m av_schedules presets` prints every preset with
+its derived counts (batches, books, learners, raters, panel sessions, pairs, people,
+spare slots, banks).
+
+With 30 batches each profile has 10 batches (5 swapped), and the three hand designers
+cannot be balanced within a profile: 4/3/3, with each designer leading one profile, so
+every designer still makes 10 books (5 swapped). Within each profile x swap cell the
+counts are 2/2/1. Recruitment runs in 10 waves of 3 (one batch per profile, three
+different designers, 1 or 2 swapped batches). The layout is in
+[`docs/curriculum.md`](docs/curriculum.md#3-blocks-cycles-and-grid-columns), the waves in
+[`docs/allocation.md`](docs/allocation.md#2-study-a). The 12 spare slots of the revised
+presets are a proposal: the smallest multiple of 4 at or above the 12.5% spare share of
+64 + 8.
 
 ## API
 
@@ -55,7 +91,8 @@ the batch/design tables, balance reports and manifests of real sets are restrict
 | --- | --- | --- | --- |
 | `matrix` | `MATRIX`, `LABELS`, `cells()`, `trained_cells(wave)`, `heldout_cells(set)`, `index_waves()`, `wave_atoms(wave)`, `novel_visit(study, set, swap)` | the abstract matrix and everything derived from it | #29 |
 | `seeds` | `demo_seed()`, `load_master_seed()`, `derive_seed(master, *parts)`, `SeedStream` | master seeds, SHA-256 derivation, portable integer stream | #29 |
-| `design` | `build_a_batch_table(master, set_name)`, `build_b_design_table(master, set_name, *, spares=8)`, `build_units(...)`, `Unit`, `ABatch`, `BDyadSlot`, `Permutation` | Study A batch table and Study B design table with permutations, swap flags and atom orders | #29 |
+| `design` | `build_a_batch_table(master, set_name, *, batches=None)`, `build_b_design_table(master, set_name, *, spares=8, dyads=None)`, `build_units(..., spares=None, preset=...)`, `main_units(study, set, preset)`, `Unit`, `ABatch`, `BDyadSlot`, `Permutation` | Study A batch table and Study B design table with permutations, swap flags and atom orders | #29 |
+| `presets` | `get_preset(name)`, `DEFAULT_PRESET`, `PRESET_NAMES`, `SampleSizePreset.counts()`, `parse_presets(data)` | sample-size presets: confirmatory counts and derived totals | #266 |
 | `curriculum` | `curriculum_rows(unit)`, `curriculum_csv(unit)`, `permutation_document(unit)`, `permutation_json(unit)`, `novel_by_visit(unit)` | per-unit restricted `curriculum.csv` and package-safe `permutation.json` | #29 |
 | `balance` | `balance_rows(units)`, `balance_csv(rows)`, `max_abs_deviation(rows)` | balance report | #29 |
 | `output` | `generate(master, study, set_name)`, `render_set(units)`, `write_files(root, files)`, `demo_example_files()` | all files of a set, manifest | #29 |
@@ -66,7 +103,8 @@ the batch/design tables, balance reports and manifests of real sets are restrict
 | `orders` | `seed_tokens(...)` (for `derive_seed`), `pass_orders`, `alternating_passes`, `sample_with_replacement` | seed tokens and order primitives | #30 |
 | `orders` | `speech_commands(master, study, set)`, `speech_list_document(...)`, `SpeechCommand` | frozen speech list for the validity block | #30 |
 | `schedule_output` | `generate_schedules(master, study, set)`, `render_schedules(units, master)`, `schedule_example_files(seed)` | schedule files of a set, summary, manifest | #30 |
-| `assign` | `build_a_allocation(master, set)`, `build_b_allocation(master, set, *, spares=8)`, `check_a_allocation`, `check_b_allocation`, `allocation_seed(master)`, `a_slot_ids`, `b_slot_ids`, `bank_id` | Study A waves, learner slots and book key; Study B roles, banks and menu orders; balance checks | #31 |
+| `assign` | `build_a_allocation(master, set, *, n_batches=None)`, `build_b_allocation(master, set, *, spares=8, n_dyads=None)`, `check_a_allocation`, `check_b_allocation`, `allocation_seed(master)`, `a_slot_ids`, `b_slot_ids`, `bank_id` | Study A waves, learner slots and book key; Study B roles, banks and menu orders; balance checks | #31 |
+| `waves` | `balanced_waves(master, set, batches)` | Study A recruitment waves of confirmatory sets other than 18 batches | #266 |
 | `assign_output` | `assign_files(master, study, set)`, `load_list(path)`, `demo_allocation_files()` | list documents, balance report, manifest | #31 |
 | `reveal` | `RevealLog(list, log)`: `log_eligibility`, `reveal_next`, `log_bank_unavailable`, `RevealError` | reveal-next stub for the console | #31 |
 | `masking` | `find_method_strings(text)`, `assert_masked(text)` | method-string scan for learner-facing files | #31 |
@@ -82,7 +120,7 @@ Schemas: [`schema/permutation.schema.json`](schema/permutation.schema.json),
 material), [`schema/speech-list.schema.json`](schema/speech-list.schema.json);
 allocation: `schema/a-slots`, `a-book-key`, `b-dyads`, `assign-manifest`, `reveal-log`
 (`.schema.json`); run sheets: `schema/run-sheet-row`, `run-sheets-manifest`,
-`package-hashes` (`.schema.json`).
+`package-hashes` (`.schema.json`); presets: `schema/sample-size-presets.schema.json`.
 
 ## Development
 

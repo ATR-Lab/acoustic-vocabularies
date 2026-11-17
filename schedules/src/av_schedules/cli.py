@@ -1,7 +1,7 @@
 """Command line: ``python -m av_schedules <command>``.
 
 Commands: ``curriculum``, ``schedules``, ``allocate``, ``run-sheets``, ``check``,
-``check-planning``, ``demo-examples``, ``run-sheet-examples``.
+``check-planning``, ``demo-examples``, ``run-sheet-examples``, ``presets``.
 """
 
 from __future__ import annotations
@@ -18,10 +18,21 @@ from ._paths import default_out_dir, examples_dir, run_sheet_examples_dir
 from .assign import allocation_seed, require_distinct_seeds
 from .assign_output import assign_files, existing_allocation_seed_label, manifest_name
 from .checks import build_set, check_set, report
-from .design import B_DEFAULT_SPARES, SET_NAMES, SetName, build_units
+from .design import A_BATCHES, B_DYADS, DESIGNERS, PROFILES, SET_NAMES, SetName, build_units
 from .matrix import Study
 from .output import demo_example_files, existing_seed_label, generate, write_files
 from .planning import check_planning
+from .presets import (
+    BOOKS_PER_BATCH,
+    DEFAULT_PRESET,
+    LEARNERS_PER_BOOK,
+    PANEL_SESSIONS_PER_BATCH,
+    PEOPLE_PER_PAIR,
+    PRESET_NAMES,
+    RATERS_PER_BATCH,
+    get_preset,
+    presets_path,
+)
 from .run_sheet_output import (
     RunSheetCheckError,
     existing_run_sheets_seed_label,
@@ -182,9 +193,9 @@ def _package_hashes(
 
 
 def _placeholders(
-    master: MasterSeed, study: Study, set_name: SetName, spares: int
+    master: MasterSeed, study: Study, set_name: SetName, spares: int | None, preset: str
 ) -> PackageHashes:
-    units = build_units(master, study, set_name, spares=spares)
+    units = build_units(master, study, set_name, spares=spares, preset=preset)
     return parse_package_hashes(placeholder_package_hashes(master, units))
 
 
@@ -214,6 +225,7 @@ def _cmd_run_sheets(args: argparse.Namespace) -> int:
                     spares=args.spares,
                     package_hashes=mappings.get((study, set_name)),
                     demo_placeholder_hashes=args.demo_placeholder_hashes,
+                    preset=args.preset,
                 )
             except RunSheetCheckError as exc:
                 print(f"{study} {set_name}: checks failed, nothing written", file=sys.stderr)
@@ -244,8 +256,11 @@ def _cmd_check(args: argparse.Namespace) -> int:
         for study in studies:
             ph = mappings.get((study, set_name))
             if args.demo_placeholder_hashes:
-                ph = _placeholders(master, study, set_name, args.spares)
-            runs.append(build_set(master, study, set_name, spares=args.spares, package_hashes=ph))
+                ph = _placeholders(master, study, set_name, args.spares, args.preset)
+            run = build_set(
+                master, study, set_name, spares=args.spares, package_hashes=ph, preset=args.preset
+            )
+            runs.append(run)
     findings = [f for run in runs for f in check_set(run)]
     print(report(runs, findings))
     return 1 if findings else 0
@@ -286,7 +301,7 @@ def _cmd_curriculum(args: argparse.Namespace) -> int:
     for study in studies:
         study_dir = out / study
         for set_name in sets:
-            files = generate(master, study, set_name, spares=args.spares)
+            files = generate(master, study, set_name, spares=args.spares, preset=args.preset)
             write_files(study_dir, files)
             manifest = files[f"{set_name}-manifest.json"]
             units = sum(1 for p in files if p.endswith("/curriculum.csv"))
@@ -328,7 +343,9 @@ def _cmd_schedules(args: argparse.Namespace) -> int:
     for study in studies:
         study_dir = out / study
         for set_name in sets:
-            files = generate_schedules(master, study, set_name, spares=args.spares)
+            files = generate_schedules(
+                master, study, set_name, spares=args.spares, preset=args.preset
+            )
             write_files(study_dir, files)
             manifest = files[schedules_manifest_name(set_name)]
             n = sum(1 for p in files if "/schedules/" in p)
@@ -377,7 +394,7 @@ def _cmd_allocate(args: argparse.Namespace) -> int:
     for study in studies:
         study_dir = out / study
         for set_name, master in masters.items():
-            files = assign_files(master, study, set_name, spares=args.spares)
+            files = assign_files(master, study, set_name, spares=args.spares, preset=args.preset)
             write_files(study_dir, files)
             digest = hashlib.sha256(files[manifest_name(set_name)]).hexdigest()
             print(
@@ -418,6 +435,59 @@ def _cmd_run_sheet_examples(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_presets(args: argparse.Namespace) -> int:
+    """Print every sample-size preset with its derived confirmatory counts."""
+    columns = (
+        "batches",
+        "books",
+        "learners",
+        "raters",
+        "panel_sessions",
+        "pairs",
+        "people",
+        "spare_slots",
+        "banks",
+    )
+    print(f"## Sample-size presets ({'/'.join(presets_path().parts[-3:])})")
+    print()
+    print("| preset | default | " + " | ".join(c.replace("_", " ") for c in columns) + " |")
+    print("| --- | --- | " + " | ".join("---:" for _ in columns) + " |")
+    for name in PRESET_NAMES:
+        counts = get_preset(name).counts()
+        default = "yes" if name == DEFAULT_PRESET else ""
+        print(f"| `{name}` | {default} | " + " | ".join(str(counts[c]) for c in columns) + " |")
+    print()
+    for name in PRESET_NAMES:
+        print(f"- `{name}`: {get_preset(name).description}")
+    print()
+    print(
+        f"Counts of the confirmatory sets. Fixed in every preset: pilot {A_BATCHES['pilot']} "
+        f"Study A batches and {B_DYADS['pilot']} Study B pairs (no spares); "
+        f"{len(PROFILES)} profiles, {len(DESIGNERS)} hand designers, {BOOKS_PER_BATCH} "
+        f"methods (books per batch), {LEARNERS_PER_BOOK} learners per book, "
+        f"{RATERS_PER_BATCH} raters and {PANEL_SESSIONS_PER_BATCH} panel sessions per "
+        f"batch; {PEOPLE_PER_PAIR} people per pair, Study B blocks of 4 (SQ arm x swap), "
+        "one bank per pair or spare slot."
+    )
+    return 0
+
+
+def _add_size_options(cmd: argparse.ArgumentParser) -> None:
+    cmd.add_argument(
+        "--preset",
+        choices=PRESET_NAMES,
+        default=DEFAULT_PRESET,
+        help=f"sample-size preset of the confirmatory sets (default {DEFAULT_PRESET}; "
+        "see the presets command)",
+    )
+    cmd.add_argument(
+        "--spares",
+        type=int,
+        default=None,
+        help="Study B spare slots (multiple of 4, at most 96; default: the preset's)",
+    )
+
+
 def _add_seed_options(cmd: argparse.ArgumentParser, *, out: bool) -> None:
     seed = cmd.add_mutually_exclusive_group(required=True)
     seed.add_argument("--master-seed-file", help="private master seed file (never commit it)")
@@ -429,12 +499,7 @@ def _add_seed_options(cmd: argparse.ArgumentParser, *, out: bool) -> None:
         default="both",
         help="'both' only with --demo-seed: each private master seed serves one set",
     )
-    cmd.add_argument(
-        "--spares",
-        type=int,
-        default=B_DEFAULT_SPARES,
-        help="Study B spare slots (multiple of 4, at most 96)",
-    )
+    _add_size_options(cmd)
     cmd.add_argument(
         "--package-hashes",
         action="append",
@@ -470,12 +535,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="both",
         help="'both' only with --demo-seed: each private master seed serves one set",
     )
-    cur.add_argument(
-        "--spares",
-        type=int,
-        default=B_DEFAULT_SPARES,
-        help="Study B spare slots (multiple of 4, at most 96)",
-    )
+    _add_size_options(cur)
     cur.add_argument("--out", help="output root (default: schedules/out)")
     cur.add_argument("--force", action="store_true", help="overwrite a set from another seed")
     cur.set_defaults(func=_cmd_curriculum)
@@ -491,12 +551,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="both",
         help="'both' only with --demo-seed: each private master seed serves one set",
     )
-    sch.add_argument(
-        "--spares",
-        type=int,
-        default=B_DEFAULT_SPARES,
-        help="Study B spare slots (multiple of 4, at most 96)",
-    )
+    _add_size_options(sch)
     sch.add_argument("--out", help="output root (default: schedules/out)")
     sch.add_argument("--force", action="store_true", help="overwrite schedules from another seed")
     sch.set_defaults(func=_cmd_schedules)
@@ -507,12 +562,7 @@ def build_parser() -> argparse.ArgumentParser:
         group.add_argument(f"--{set_name}-seed-file", help=f"private {set_name} master seed file")
         group.add_argument(f"--{set_name}-demo-seed", help=f"public {set_name} DEMO- seed")
     alloc.add_argument("--study", choices=("A", "B", "both"), default="both")
-    alloc.add_argument(
-        "--spares",
-        type=int,
-        default=B_DEFAULT_SPARES,
-        help="Study B spare slots (multiple of 4, at most 96)",
-    )
+    _add_size_options(alloc)
     alloc.add_argument("--out", help="output root (default: schedules/out)")
     alloc.add_argument("--force", action="store_true", help="overwrite lists from another seed")
     alloc.set_defaults(func=_cmd_allocate)
@@ -540,6 +590,9 @@ def build_parser() -> argparse.ArgumentParser:
     rse = sub.add_parser("run-sheet-examples", help="regenerate schedules/examples/demo-run-sheets")
     rse.add_argument("--out", help="output folder (default: schedules/examples/demo-run-sheets)")
     rse.set_defaults(func=_cmd_run_sheet_examples)
+
+    pre = sub.add_parser("presets", help="list the sample-size presets and derived counts")
+    pre.set_defaults(func=_cmd_presets)
     return parser
 
 

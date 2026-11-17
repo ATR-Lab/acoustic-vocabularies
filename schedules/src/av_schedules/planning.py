@@ -31,6 +31,7 @@ from .matrix import (
     trained_cells,
     wave_atoms,
 )
+from .presets import DEFAULT_PRESET, get_preset
 
 # SHA-256 of the planning files reviewed when this generator was written.
 PLANNING_SHA256: Final[dict[str, str]] = {
@@ -137,6 +138,22 @@ PILOT_ALLOCATION_COUNTS: Final[dict[str, int]] = {
 # planning defaults) plus the booked minutes of assessment-schedule.csv.
 B_SCREENING_MINUTES: Final = 20
 BOOKING_CHECKS: Final[dict[str, int]] = {"B_total_main_booked_minutes_per_person": 260}
+
+
+def allocation_counts(set_name: str, preset: str = DEFAULT_PRESET) -> dict[str, int]:
+    """Assigned learners (A) and participants (B) of one set under a sample-size preset.
+
+    Pilot: ``PILOT_ALLOCATION_COUNTS``. Confirmatory: the preset's learners (batches x 3
+    books x 4) and people (pairs x 2); for the default preset these equal
+    ``ALLOCATION_CHECKS`` (planning ``design-checks.json``).
+    """
+    counts = get_preset(preset).counts()
+    if set_name == "pilot":
+        return dict(PILOT_ALLOCATION_COUNTS)
+    return {
+        "A_assigned_learners": counts["learners"],
+        "B_assigned_participants": counts["people"],
+    }
 
 
 def booked_minutes(study: str, visit: str) -> int:

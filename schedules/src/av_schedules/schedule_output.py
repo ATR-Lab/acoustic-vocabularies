@@ -31,6 +31,7 @@ from .orders import (
     unit_schedules,
     visit_schedule_json,
 )
+from .presets import DEFAULT_PRESET
 from .seeds import MasterSeed, demo_seed
 
 SCHEDULES_MANIFEST_FORMAT: Final = "av-schedules/schedules-manifest"
@@ -141,10 +142,20 @@ def render_schedules(units: Sequence[Unit], master: MasterSeed) -> dict[str, byt
 
 
 def generate_schedules(
-    master: MasterSeed, study: Study, set_name: SetName, *, spares: int = 8
+    master: MasterSeed,
+    study: Study,
+    set_name: SetName,
+    *,
+    spares: int | None = None,
+    preset: str = DEFAULT_PRESET,
 ) -> dict[str, bytes]:
-    """Build the units of one study/set and render all of its schedule files."""
-    return render_schedules(build_units(master, study, set_name, spares=spares), master)
+    """Build the units of one study/set and render all of its schedule files.
+
+    ``preset`` sets the confirmatory counts; ``spares`` (default: the preset's) the Study
+    B spare slots.
+    """
+    units = build_units(master, study, set_name, spares=spares, preset=preset)
+    return render_schedules(units, master)
 
 
 def existing_schedules_seed_label(study_dir: Path, set_name: SetName) -> str | None:

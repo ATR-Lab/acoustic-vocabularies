@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/schedules/schema/sample-size-presets.schema.json",
+  "title": "Sample-size presets (confirmatory unit counts)",
+  "description": "The single source of the confirmatory unit counts (#266): schedules/presets/sample-size-presets.json. Each preset names the Study A batch count, the Study B pair count and the Study B spare slots; every schedules generator takes a preset name (default: 'default'). Pilot sizes (3 batches; 8 pairs, no spares) and the per-unit structure (3 profiles, 3 hand designers, 3 methods, 4 learners per book, 3 raters per panel, Study B blocks of 4) are fixed in every preset. Preset names are unique (checked by av_schedules.presets). See schedules/docs/curriculum.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "format_version", "default", "presets"],
+  "properties": {
+    "format": {"const": "av-schedules/sample-size-presets"},
+    "format_version": {"const": 1},
+    "default": {"$ref": "#/$defs/name", "description": "Preset used when none is given; one of the preset names."},
+    "presets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/preset"}}
+  },
+  "$defs": {
+    "name": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+    "preset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "a_batches", "b_pairs", "b_spares"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "description": {"type": "string", "minLength": 1},
+        "a_batches": {"type": "integer", "minimum": 6, "maximum": 96, "multipleOf": 6, "description": "Study A confirmatory batches: 3 profiles x 2 swap levels per 6; IDs A-C01..A-C96."},
+        "b_pairs": {"type": "integer", "minimum": 4, "maximum": 96, "multipleOf": 4, "description": "Study B confirmatory pairs (dyad slots) in complete blocks of 4 (SQ arm x swap); IDs B-C01..B-C96."},
+        "b_spares": {"type": "integer", "minimum": 0, "maximum": 96, "multipleOf": 4, "description": "Study B spare slots, complete blocks of 4 after the main blocks (one spare bank each); IDs B-S01..B-S96."}
+      }
+    }
+  }
+}

@@ -28,21 +28,21 @@ from .assign import (
     check_a_allocation,
     check_b_allocation,
 )
-from .design import B_DEFAULT_SPARES, SET_CODE, SetName, Unit, build_units
+from .design import SET_CODE, SetName, Unit, build_units, main_units, spare_units
 from .findings import NA, Finding, format_findings
 from .matrix import Study, cells, novel_visit
 from .orders import person_ids, study_visits, unit_schedules, visit_schedule_findings
 from .planning import (
-    ALLOCATION_CHECKS,
     ASSESSMENT_COLUMNS,
     ASSESSMENT_SCHEDULE,
     ATOMIC_SLOT_S,
     B_SCREENING_MINUTES,
     FULL_MESSAGE_SLOT_S,
-    PILOT_ALLOCATION_COUNTS,
+    allocation_counts,
     booked_minutes,
     design_checks_oracle,
 )
+from .presets import DEFAULT_PRESET
 from .run_sheets import PackageHashes, hash_cells, run_sheet_csv, run_sheet_findings
 from .seeds import MasterSeed
 
@@ -124,6 +124,7 @@ class SetRun:
     hash_cells: Mapping[str, str]  # person -> expected hash_check cell
     run_sheets: Mapping[str, Mapping[str, bytes]]  # person -> visit -> CSV bytes
     package_hashes: PackageHashes | None = None
+    preset: str = DEFAULT_PRESET  # sample-size preset (av_schedules.presets)
 
     @property
     def prefix(self) -> str:
@@ -141,11 +142,18 @@ def build_set(
     study: Study,
     set_name: SetName,
     *,
-    spares: int = B_DEFAULT_SPARES,
+    spares: int | None = None,
     package_hashes: PackageHashes | None = None,
+    preset: str = DEFAULT_PRESET,
 ) -> SetRun:
-    """Generate units, schedules, allocation and run sheets of one study and set."""
-    units = build_units(master, study, set_name, spares=spares)
+    """Generate units, schedules, allocation and run sheets of one study and set.
+
+    ``preset`` sets the confirmatory counts; ``spares`` (default: the preset's) the Study
+    B spare slots.
+    """
+    spares = spare_units(spares, preset)
+    n_main = main_units(study, set_name, preset)
+    units = build_units(master, study, set_name, spares=spares, preset=preset)
     docs: dict[str, dict[str, Any]] = {}
     unit_of: dict[str, str] = {}
     for u in units:
@@ -155,9 +163,9 @@ def build_set(
             docs[person] = {v: built[f"{person}/{v}.json"] for v in study_visits(study)}
     alloc: AAllocation | BAllocation
     if study == "A":
-        alloc = build_a_allocation(master, set_name)
+        alloc = build_a_allocation(master, set_name, n_batches=n_main)
     else:
-        alloc = build_b_allocation(master, set_name, spares=spares)
+        alloc = build_b_allocation(master, set_name, spares=spares, n_dyads=n_main)
     cells_by_person = hash_cells(master, units, package_hashes)
     sheets = {
         person: {v: run_sheet_csv(doc, cells_by_person[person]) for v, doc in by_visit.items()}
@@ -174,6 +182,7 @@ def build_set(
         hash_cells=cells_by_person,
         run_sheets=sheets,
         package_hashes=package_hashes,
+        preset=preset,
     )
 
 
@@ -182,12 +191,20 @@ def run_all(
     study: Study,
     set_name: SetName,
     *,
-    spares: int = B_DEFAULT_SPARES,
+    spares: int | None = None,
     package_hashes: PackageHashes | None = None,
+    preset: str = DEFAULT_PRESET,
 ) -> list[Finding]:
     """Generate one study and set and run every check (empty list = pass)."""
     return check_set(
-        build_set(master, study, set_name, spares=spares, package_hashes=package_hashes)
+        build_set(
+            master,
+            study,
+            set_name,
+            spares=spares,
+            package_hashes=package_hashes,
+            preset=preset,
+        )
     )
 
 
@@ -526,7 +543,7 @@ def set_findings(run: SetRun) -> list[Finding]:
                         unit, person, visit, "allocation-coverage", "swap flag differs from list"
                     )
                 )
-    want = (ALLOCATION_CHECKS if run.set_name == "confirmatory" else PILOT_ALLOCATION_COUNTS)[key]
+    want = allocation_counts(run.set_name, run.preset)[key]
     if len(run.main_persons) != want or allocated != want:
         bad(
             "design-checks",
@@ -581,6 +598,8 @@ def _fmt(values: Sequence[int] | None) -> str:
 def report(runs: Sequence[SetRun], findings: Sequence[Finding]) -> str:
     """Markdown report: sets checked, reproduced design checks and assessment, findings."""
     lines = ["## Schedule checks (#32)", ""]
+    presets = ", ".join(f"`{name}`" for name in sorted({run.preset for run in runs}))
+    lines += [f"Sample-size preset: {presets}", ""]
     lines += ["| study | set | seed | units | persons | schedules | run sheets |"]
     lines += ["| --- | --- | --- | ---: | ---: | ---: | ---: |"]
     for run in runs:
@@ -597,8 +616,7 @@ def report(runs: Sequence[SetRun], findings: Sequence[Finding]) -> str:
     for set_name, group in by_set.items():
         values = design_check_values(group)
         want = dict(oracle)
-        if set_name == "pilot":
-            want.update(PILOT_ALLOCATION_COUNTS)
+        want.update(allocation_counts(set_name, group[0].preset))
         studies = {r.study for r in group}
         lines += ["", f"### design-checks.json reproduced ({set_name})", ""]
         lines += ["| field | expected | generated | ok |", "| --- | ---: | ---: | --- |"]
