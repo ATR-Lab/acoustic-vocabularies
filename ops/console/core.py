@@ -86,6 +86,16 @@ def visit_window(study, visit, anchors, day, role=None, now=None):
             (study == "B" and visit in ("V1", "V2", "V3", "W1", "W4")), "visit_invalid")
     faults = []
     lower = upper = None
+    if (study, visit) == ("B", "V3"):
+        # Fixed order, not a window: V3 needs the person's held V2 on an earlier local
+        # calendar day. No deviation reason names this fault, so none can override it.
+        require("V2" in anchors, "anchor_missing")
+        try:
+            held = date.fromisoformat(anchors["V2"])
+        except (ValueError, TypeError):
+            raise ConsoleFault("anchor_invalid") from None
+        if day <= held:
+            faults.append("visit_order")
     if (study, visit) in windows:
         anchor, offset, tolerance = windows[study, visit]
         require(anchor in anchors, "anchor_missing")

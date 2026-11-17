@@ -6,7 +6,7 @@ import threading
 import urllib.error
 import urllib.request
 from dataclasses import replace
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -32,10 +32,28 @@ def console(tmp_path):
     ('B','W1','V3',7,1), ('B','W4','V3',28,2)])
 def test_calendar_window_edges_and_outside(study,visit,anchor,offset,tolerance):
     base = date(2030, 1, 1)
+    anchors = {anchor:base.isoformat(), 'V2':(base+timedelta(days=1)).isoformat()}  # V2 precedes every V3 day here.
     for delta in (-tolerance, tolerance):
-        assert not visit_window(study,visit,{anchor:base.isoformat()},base+timedelta(days=offset+delta))['faults']
+        assert not visit_window(study,visit,anchors,base+timedelta(days=offset+delta))['faults']
     for delta in (-tolerance-1,tolerance+1):
-        assert visit_window(study,visit,{anchor:base.isoformat()},base+timedelta(days=offset+delta))['faults']==['visit_window']
+        assert visit_window(study,visit,anchors,base+timedelta(days=offset+delta))['faults']==['visit_window']
+
+
+@pytest.mark.parametrize('v2,v3,faults', [
+    (3,3,['visit_order']), (3,4,[]), (4,3,['visit_order']), (4,5,[]), (2,2,['visit_order','visit_window'])])
+def test_v3_needs_a_later_calendar_day_than_the_held_v2(v2,v3,faults):
+    """REQ-VIS-01: V3 falls on a later calendar day than the person's own V2, even when both are in their windows."""
+    v1 = date(2030, 1, 1)
+    anchors = {'V1':v1.isoformat(), 'V2':(v1+timedelta(days=v2)).isoformat()}
+    assert visit_window('B','V3',anchors,v1+timedelta(days=v3))['faults']==faults
+
+
+@pytest.mark.parametrize('v2,fault', [(None,'anchor_missing'), ('2030-01-03T09:00','anchor_invalid'), (20300103,'anchor_invalid')])
+def test_v3_without_a_recorded_v2_day_is_refused(v2,fault):
+    """REQ-VIS-01: V3 cannot be admitted before the person's V2 has been held and dated."""
+    anchors = {'V1':'2030-01-01'} if v2 is None else {'V1':'2030-01-01', 'V2':v2}
+    with pytest.raises(ConsoleFault,match=fault):
+        visit_window('B','V3',anchors,date(2030,1,5))
 
 
 @pytest.mark.parametrize('seconds,passes',[(0,True),(86400,True),(-1,False),(86401,False)])
@@ -75,6 +93,35 @@ def test_override_expires_next_calendar_day(console):
     assert 'visit_window' not in console.snapshot()['faults']
     console.clock=lambda:NOW+timedelta(days=1)
     assert 'visit_window' in console.snapshot()['faults']
+
+
+def test_v3_on_the_v2_day_blocks_start_and_no_deviation_clears_it(console):
+    """REQ-VIS-01: the console refuses to start V3 on the local day of V2; no logged deviation overrides the order."""
+    today=NOW.astimezone().date()
+    console.clock=lambda:NOW
+    console.visit=replace(console.visit,study='B',visit='V3',
+                          anchors={'V1':(today-timedelta(days=4)).isoformat(),'V2':today.isoformat()})
+    console.command('checks','ops-01',dict(comfort=True,phone=True))
+    for reason in ('visit_window','pair_window','procedure','technical'):
+        console.command('deviation','ops-01',dict(reason=reason,note='Same-day return'))
+    view=console.snapshot()
+    assert view['faults']==['visit_order'] and not view['can_start']
+    with pytest.raises(ConsoleFault,match='start_blocked'):
+        console.command('start','ops-01',{})
+    with pytest.raises(ConsoleFault,match='reason_invalid'):
+        console.command('deviation','ops-01',dict(reason='visit_order',note='Same-day return'))
+
+
+def test_v3_order_follows_the_station_local_calendar_day(console):
+    """REQ-VIS-01: V3 is admitted from local midnight after the V2 day, not 24 h after V2."""
+    held=date(2030,1,4)
+    console.visit=replace(console.visit,study='B',visit='V3',anchors={'V1':'2030-01-01','V2':held.isoformat()})
+    console.command('checks','ops-01',dict(comfort=True,phone=True))
+    midnight=datetime.combine(held+timedelta(days=1),time()).astimezone()
+    console.clock=lambda:midnight-timedelta(minutes=1)
+    assert 'visit_order' in console.snapshot()['faults']
+    console.clock=lambda:midnight
+    assert console.snapshot()['can_start']
 
 
 def test_demo_pause_holds_next_slot_and_exports_exact_header(console):
