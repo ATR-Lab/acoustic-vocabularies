@@ -15,6 +15,20 @@ namespace AcousticVocab.Orientation.Tests
         static JObject Example=>JObject.Parse(File.ReadAllText(Path.Combine(FoundationBuild.RepositoryRoot,"apparatus/orientation/orientation-plan.example.json")));
         static OrientationPlan Plan(bool draft=false)
         { var v=Example;if(!draft){v["content_status"]="protocol_reviewed";v["review_evidence_sha256"]=new string('a',64);}return OrientationPlan.Parse(v.ToString(),"engineering-pending-review"); }
+        [Test] public void PracticeFeedbackNamesTheExpectedAnswerWithCardTitles()
+        {
+            var v=Example;v["content_status"]="protocol_reviewed";v["review_evidence_sha256"]=new string('a',64);
+            foreach(var card in ((JArray)v["actions"]).Concat((JArray)v["targets"]))card["title"]="Title for "+(string)card["id"];
+            var plan=OrientationPlan.Parse(v.ToString(),"engineering-pending-review");
+            foreach(var item in plan.FirstCheck.Concat(plan.SecondCheck))
+            {
+                string text=plan.ExpectedText(item);
+                Assert.That(text,Is.EqualTo("Title for "+item.Target+" / Title for "+item.Action));
+            }
+            var foreign=Plan().FirstCheck[0];
+            Assert.That(()=>plan.ExpectedText(foreign),Throws.TypeOf<OrientationFault>(),"An item from another plan is refused");
+            Assert.That(()=>plan.ExpectedText(null),Throws.TypeOf<OrientationFault>());
+        }
         void Setup(bool draft=false,Action<JObject> sink=null)
         { now=0;rows=new List<JObject>();flow=new OrientationFlow(Plan(draft),()=>now,sink??rows.Add); }
         void Introduction(bool start)

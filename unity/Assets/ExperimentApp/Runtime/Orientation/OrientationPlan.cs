@@ -63,6 +63,13 @@ namespace AcousticVocab.Orientation
             return new OrientationPlan { ProtocolVersion=version,EngineeringDraft=draft,ReviewEvidence=evidence,SourceNote=Text(v["source_note"],400),PracticeWindowMs=window,
                 Actions=Array.AsReadOnly(actions),Targets=Array.AsReadOnly(targets),FirstCheck=Array.AsReadOnly(items.ToArray()),SecondCheck=Array.AsReadOnly(ids.Select(id=>items.Single(x=>x.Id==id)).ToArray()) };
         }
+        // Written practice feedback names the expected answer with the same
+        // reviewed card titles the participant saw, never raw command IDs.
+        public string ExpectedText(PracticeItem item)
+        {
+            Require(item!=null && FirstCheck.Contains(item),"ORIENTATION_PRACTICE_ITEM");
+            return Targets.Single(x=>x.Id==item.Target).Title+" / "+Actions.Single(x=>x.Id==item.Action).Title;
+        }
         static MeaningCard[] Cards(JToken token,IReadOnlyList<string> required)
         {
             Require(token is JArray a && a.Count==8,"ORIENTATION_CARD_COVERAGE");var cards=new List<MeaningCard>();
