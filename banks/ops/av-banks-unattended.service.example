@@ -1,6 +1,10 @@
 # systemd unit for the unattended bank supervisor (av_banks.unattended, #267) on the
 # Linux GPU host. Copy it to /etc/systemd/system/av-banks-unattended.service and replace
-# every <placeholder>; the runbook is banks/docs/unattended-run.md (section 3).
+# every <placeholder>; the runbook is banks/docs/unattended-run.md (section 2).
+#
+# Several job files run in order, each to its end: over the closure (decision D1a) give
+# the pilot job, then the full-size rehearsal job (section 3):
+#   ... run <restricted>/pilot-job/job.json <restricted>/rehearsal/DEMO-rehearsal-01/job.json
 #
 #   <checkout>    the repository checkout at the commit being used (no local changes),
 #                 with `uv sync --project banks --locked` done

@@ -21,7 +21,11 @@ summary and closed every run manifest; then `finish` gives its exit code again.
 with `rebuild --reason` after the model server answers again, at most
 `max_rebuilds_per_bank` times (counted in `rebuilds.jsonl`); pending banks are built by
 `run`. Then `verify-all` and `register`. `rebuild` is never called for a `complete` or
-`unavailable` bank (`assert_rebuildable`; the runner refuses it as well).
+`unavailable` bank (`assert_rebuildable`; the runner refuses it as well). An existing
+`plan.json` must suit the job (`rehearsal.campaign_problems`: the job's campaign, no DEMO
+campaign in a job that is not DEMO, a rehearsal plan of the rehearsal's size); otherwise
+the stage stops for a person. In a rehearsal job a register that needs an advisor
+escalation ends the stage (the decision is in its summary): DEMO banks have no advisor.
 """
 
 from __future__ import annotations
@@ -46,6 +50,8 @@ from av_banks.layout import BankLayout
 from av_banks.pilot import REGISTER_NAME, RUNS_DIR, SUMMARY_JSON_NAME, bank_dirs
 
 from .job import ConfirmatoryStage, PilotStage
+from .rehearsal import PURPOSE as REHEARSAL
+from .rehearsal import campaign_problems
 from .session import Session, StopForPerson
 from .state import StageState
 
@@ -361,6 +367,13 @@ def drive_confirmatory(s: Session, stage: ConfirmatoryStage, st: StageState) -> 
     if not layout.plan.is_file():
         st.step = "plan"
         _plan(s, stage, st, layout)
+    problems = campaign_problems(s.job, stage)
+    if problems:
+        raise StopForPerson(
+            f"the campaign {s.rel(root)} does not suit job {s.job.job_id}: " + "; ".join(problems),
+            "point the stage at its own campaign root (rehearsal banks stay in their own "
+            "location) or correct the job file, then run --retry --allow-job-change",
+        )
     if st.step in ("start", "plan", "build"):
         st.step = "build"
         s.save()
@@ -381,14 +394,18 @@ def drive_confirmatory(s: Session, stage: ConfirmatoryStage, st: StageState) -> 
     if st.step == "register":
         if stage.register:
             result = s.run_child(st, "register", CONFIRMATORY, ["register", str(root)])
-            if result.exit_code == 3:
+            if result.exit_code == 3 and s.job.purpose == REHEARSAL:
+                s.log("rehearsal_escalation_required", stage=st.name,
+                      note="fewer complete DEMO banks than main slots; a confirmatory "
+                      "campaign stops here for an advisor escalation")  # fmt: skip
+            elif result.exit_code == 3:
                 raise StopForPerson(
                     "the register needs an advisor escalation (fewer complete banks than "
                     "the minimum)",
                     "escalate to the advisor, record it with `python -m av_banks.confirmatory "
                     f"escalate {root} --reference URL --date YYYY-MM-DD`, then run --retry",
                 )
-            if result.exit_code != 0:
+            elif result.exit_code != 0:
                 raise StopForPerson(
                     f"register refused or blocked (exit {result.exit_code}): "
                     f"{result.stderr_tail(300)}",

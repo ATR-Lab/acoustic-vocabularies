@@ -1,0 +1,43 @@
+{
+  "format": "av-banks/unattended-job",
+  "format_version": 1,
+  "job_id": "confirmatory-banks-01",
+  "root": "<restricted>/confirmatory-job/job",
+  "heartbeat_s": 60,
+  "lock_wait_s": 86400,
+  "model": {
+    "url": "http://<llm-host>:8000",
+    "runtime": "vllm",
+    "max_wait_s": 43200,
+    "poll_initial_s": 5,
+    "poll_max_s": 120,
+    "probe_timeout_s": 10
+  },
+  "stages": [
+    {
+      "name": "confirmatory",
+      "kind": "confirmatory",
+      "plan": {
+        "campaign_id": "C-banks-v1",
+        "generation_config": "<restricted>/confirmatory/generation-config.json",
+        "freeze_manifest": "<checkout>/generation/FREEZE-v1.0.json",
+        "repo": "<checkout>",
+        "units": "<restricted>/schedules-out/B",
+        "pilot": [
+          "<restricted>/pilot-job/job/pilot/P-banks-01"
+        ],
+        "parallel_banks": 6
+      },
+      "meanings": "<restricted>/meanings",
+      "prompts": "<restricted>/prompts",
+      "decoding_schema": "<restricted>/decoding-schema.json",
+      "parallel_banks": 6,
+      "workers": 3,
+      "breaker": 3,
+      "monitor_interval_s": 60,
+      "verify_jobs": 8,
+      "max_rebuilds_per_bank": 2,
+      "register": true
+    }
+  ]
+}

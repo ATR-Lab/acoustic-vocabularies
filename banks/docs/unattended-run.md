@@ -15,7 +15,9 @@ or the host reboots, at any point, the same command resumes: finished stages are
 skipped, and the current step re-reads the stage's own files.
 
 Confirmatory mode still refuses to run without the signed G4 freeze manifest and tag
-(#25). Before G4, a DEMO rehearsal campaign exercises the confirmatory path (section 2).
+(#25). Before G4, a DEMO rehearsal campaign exercises the confirmatory path: a small one
+on the first day (section 2) and, if decision D1 chooses it, a full-size one over the
+closure, right after the pilot banks (section 3).
 
 ## 1. What the supervisor does on its own
 
@@ -57,17 +59,17 @@ git status --porcelain                     # empty: no local changes
 curl -s http://<llm-host>:8000/v1/models   # lists the served model
 ```
 
-**1. DEMO rehearsal against the real server** (DEMO IDs only, nothing restricted):
+**1. DEMO check against the real server** (DEMO IDs only, nothing restricted):
 
 ```bash
-$U demo-job <restricted>/rehearsal --llm-url http://<llm-host>:8000 --dyads 2 --banks 3
-$U check <restricted>/rehearsal/job.json   # OK, "model server: answers"
-$U run <restricted>/rehearsal/job.json     # exit 0; prints the summary
+$U demo-job <restricted>/demo-check --llm-url http://<llm-host>:8000 --dyads 2 --banks 3
+$U check <restricted>/demo-check/job.json   # OK, "model server: answers"
+$U run <restricted>/demo-check/job.json     # exit 0; prints the summary
 ```
 
 While it runs, stop and start the model server once (`systemctl restart av-llm`): the
 supervisor logs `model_wait_start`, waits, rebuilds the halted DEMO banks and finishes.
-`$U status <restricted>/rehearsal/job.json` from another shell shows the same.
+`$U status <restricted>/demo-check/job.json` from another shell shows the same.
 
 **2. The job file.** Copy [`../examples/unattended/job.example.json`](../examples/unattended/job.example.json)
 to `<restricted>/job.json` and replace every placeholder. Before G4, leave out the
@@ -104,7 +106,107 @@ After a reboot, the service starts again, waits for the model server and resumes
 `archive-sha256.txt`, the confirmatory campaign has `register.json` and
 `archive/<campaign>-banks.tar`, and `summary.json` lists them.
 
-## 3. The first hour
+## 3. The closure: pilot banks, then a full-size rehearsal (decision D1)
+
+The generation settings are frozen at G4 and registered before any confirmatory bank is
+built, so the confirmatory campaign (#28) cannot run over the closure. Decision D1 is
+open, and both options run with this package:
+
+- **(a)** Over the closure, the real pilot banks (#27) and then a **full-size rehearsal**
+  of the confirmatory campaign: DEMO inputs, the real model server, every bank of the
+  chosen size. It measures what the February run needs at the real scale: throughput,
+  model-server outages, rebuilds and days of unattended operation.
+- **(b)** The real confirmatory banks shortly after the registration, with the
+  confirmatory job file below. It is the existing confirmatory stage; nothing in it
+  depends on (a).
+
+**The rehearsal job.** `rehearsal-job` writes its DEMO inputs, its marker and its job
+file in a folder of its own:
+
+```bash
+$U rehearsal-job <restricted>/rehearsal/DEMO-rehearsal-01 --llm-url http://<llm-host>:8000
+#   default size --dyads 64 --spares 8 (72 banks); --parallel-banks 6 --workers 3
+$U check <restricted>/rehearsal/DEMO-rehearsal-01/job.json   # OK; "REHEARSAL job: ..."
+```
+
+```
+<restricted>/rehearsal/DEMO-rehearsal-01/
+  REHEARSAL                    the watermark (also in job/)
+  inputs/                      DEMO meanings, DEMO prompt set, recipe schema, DEMO config,
+                               DEMO draft freeze manifest, DEMO units B-C01.., B-S01..
+  job.json                     purpose: rehearsal, size, one stage `demo-campaign`
+  job/                         the job root (section 7); job/demo-campaign/ is the campaign
+```
+
+The stage is the confirmatory stage at full size: the plan of every main and spare
+bank, every attempt the builder allows, automatic rebuilds, `verify-all` and the register
+(a DEMO register). Its settings mirror the confirmatory stage of the example job (6 banks
+in parallel, 3 workers, breaker 3, 2 automatic rebuilds per bank, `verify-all` with 8
+jobs); edit `job.json` before the first `run` to try others. The prompt set is the
+committed templates under a DEMO name (`DEMO-rehearsal-prompts`), so prompt lengths, and
+with them the model's time per slot, are close to those of the real run. Once the plan takes its
+size from the unit set (#299), `--dyads 84 --spares 12` (96 banks) and `--dyads 88
+--spares 12` (100 banks) work as well; until then any size but 64 + 8 is refused.
+
+**How it is kept apart from confirmatory banks.**
+
+| What | Rule |
+| --- | --- |
+| IDs | Job `DEMO-rehearsal-01`, campaign `DEMO-rehearsal-01-C`, banks `DEMO-C001`.., run IDs `DEMO-rehearsal-01-C-DEMO-C001`.., seed namespaces `DEMO-C001`..: no `bank-C` or `bank-P` ID. The units keep the dyad-slot names the plan binds banks to (`B-C01`..), and each says `"demo": true`. |
+| Watermark | `REHEARSAL` in the rehearsal folder and the job root; `purpose: rehearsal` in the job file, `state.json`, `summary.json` and `rehearsal-summary.json`; `status` prints `REHEARSAL, DEMO banks only`; `plan.json` and `register.json` say `demo: true`. A job root keeps its purpose: a changed job file cannot turn it into a bank job. |
+| Inputs | Refused unless the meaning set, the prompt set, the generation config and every unit are DEMO, the units are exactly those of the size, and the freeze manifest is a draft without a tag. The job file may name no repository, no pilot root and no pilot stage. |
+| Location | The job root may not lie inside, or hold, another job root (`state.json`), a confirmatory campaign (`plan.json`), a pilot root or a bank run, and its campaign lies inside it. Every other job refuses a root that lies inside or around a `REHEARSAL`. The data-policy check (outside git or ignored; 0700) applies as before. |
+| Confirmatory tools | Already refusing, unchanged: `confirmatory plan` refuses a folder that is not empty, a freeze manifest that is not frozen and tagged, and a DEMO config or DEMO units for a real campaign; loading a bank in confirmatory mode (`av_banks.register.open_bank`) refuses `DEMO-` banks. New in the supervisor: a campaign whose `plan.json` names another campaign than the job, or a DEMO campaign in a job whose ID does not start with `DEMO-`, stops for a person. |
+
+Nothing from a rehearsal is published, committed or archived as a confirmatory output,
+and no confirmatory job points at it. When a rehearsal register needs an advisor
+escalation (fewer complete DEMO banks than main slots), the stage records it
+(`rehearsal_escalation_required` in `supervisor.log`, the decision in the summary)
+instead of stopping: DEMO banks have no advisor.
+
+**The numbers.** When the job is done, `rehearsal-summary.json` and
+`rehearsal-summary.md` in the job root give the banks (complete, unavailable, crashed
+versions), attempts, slots, slots per hour (over the campaign's wall time, over the bank
+runs and per bank builder), the wall time, the model-server waits, the rebuilds, the
+supervisor sessions, the DEMO register decision and the bank metrics of
+`av_banks.metrics` with a projection for the planned bank count. They size the February
+run in #28 (the expected hours at `parallel_banks`, the disk, the waits to expect).
+
+**Two job files, two roots, one service.**
+
+```
+<restricted>/
+  pilot-job/job.json, pilot-job/job/          the real pilot (#27):
+                                              ../examples/unattended/pilot-job.example.json
+  rehearsal/DEMO-rehearsal-01/                the rehearsal (rehearsal-job, above)
+  confirmatory-job/job.json, .../job/         February (b):
+                                              ../examples/unattended/confirmatory-job.example.json
+```
+
+`run` takes several job files and runs them in order; it starts the next only when one
+is done. For (a), check both job files, then give the service both, the pilot first:
+
+```bash
+$U check <restricted>/pilot-job/job.json
+$U check <restricted>/rehearsal/DEMO-rehearsal-01/job.json
+# in the unit: ExecStart=<checkout>/banks/.venv/bin/python -m av_banks.unattended run \
+#   <restricted>/pilot-job/job.json <restricted>/rehearsal/DEMO-rehearsal-01/job.json
+```
+
+After a reboot the service starts the same command: the finished pilot job exits at once
+and the rehearsal resumes. If the pilot stops for a person, the rehearsal does not start
+until that person has handled it (`retry`, then `systemctl restart`); the two jobs never
+share the model server, so the pilot is not slowed and the rehearsal's rate is that of
+the campaign alone. `$U status` takes either job file.
+
+**February: the confirmatory job.** For (b), and in February after (a), the
+confirmatory job file has one confirmatory stage: the signed freeze manifest and its tag,
+the real units, and `plan.pilot` naming every root of the pilot job (the final root and
+every crashed one: `stages[0].root` and `crashed_roots` in the pilot job's
+`summary.json`). It is section 2 with this job file; the supervisor refuses it if one of
+its roots lies inside or around a rehearsal.
+
+## 4. The first hour
 
 - `status` shows `running`, the stage and step, and a heartbeat less than a minute old.
   The heartbeat line counts the pilot banks and slots, or gives the campaign's
@@ -120,7 +222,7 @@ After a reboot, the service starts again, waits for the model server and resumes
 - `ls -l <restricted>/job` shows `drwx------` and `-rw-------` (the supervisor sets the
   umask to 077 for itself and every child).
 
-## 4. When it stopped
+## 5. When it stopped
 
 `$U status <restricted>/job.json` prints `STOPPED for a person`, the reason and `next:`,
 the action. Do that action with the existing command lines, then:
@@ -145,7 +247,7 @@ confirmatory step looks at the campaign again. A changed job file is refused unl
   or raise `max_rebuilds_per_bank`, then `--retry`.
 - **Model server down for 12 h:** repair it, check `curl .../v1/models`, then `--retry`.
 
-## 5. After the run: human steps
+## 6. After the run: human steps
 
 The supervisor never publishes or commits anything.
 
@@ -160,7 +262,7 @@ The supervisor never publishes or commits anything.
   banks with the reveal API before the first reveal. G5B is a human gate.
 - Stop and disable the service: `sudo systemctl disable --now av-banks-unattended`.
 
-## 6. Files in the job root
+## 7. Files in the job root
 
 ```
 <job root>/                     restricted storage, 0700
@@ -173,26 +275,32 @@ The supervisor never publishes or commits anything.
   confirmatory/                 the campaign (confirmatory-banks.md section 5)
 ```
 
+A rehearsal job root (section 3) also holds `REHEARSAL` (the watermark),
+`rehearsal-summary.json` and `rehearsal-summary.md` (the numbers, written when the job is
+done), and its campaign is `demo-campaign/` (not `rehearsal/`: on a case-insensitive file
+system that name is the marker's).
+
 `state.json` is written through a temporary file that is fsynced, renamed over the old
 file, and the directory is fsynced. It records the stage and step, the child in flight
 (command without credentials, process ID, exit code), the counters and the stop reason.
 The banks themselves are always read from the stage files, never from the state.
 
-## 7. Command line
+## 8. Command line
 
 | Command | Exit codes |
 | --- | --- |
-| `run JOB [--retry] [--allow-job-change] [--lock-wait S] [--quiet]` | 0 done; 2 refused; 3 stopped for a person; 4 interrupted (run again); 1 unexpected error |
+| `run JOB [JOB ...] [--retry] [--allow-job-change] [--lock-wait S] [--quiet]` | 0 done; 2 refused; 3 stopped for a person; 4 interrupted (run again); 1 unexpected error. Several jobs run in order; the next starts only when one is done, else that job's code |
 | `retry JOB [--allow-job-change]` | 0 (the next `run` goes on); 2 refused (a supervisor runs the job, or the job file changed) |
 | `status JOB\|JOB_ROOT [--json]` | 0 |
 | `check JOB [--no-probe]` | 0 OK; 2 problems (a model server that does not answer is a note) |
 | `demo-job OUT --llm-url URL [--job-id DEMO-..] [--dyads 2] [--spares 1] [--banks 3]` | 0 |
+| `rehearsal-job OUT --llm-url URL [--job-id DEMO-rehearsal-01] [--dyads 64] [--spares 8] [--parallel-banks 6] [--workers 3]` | 0; 1 refused (a size this checkout cannot plan, a location that is not empty or lies inside another job or rehearsal, an ID that is not DEMO) |
 
 The supervisor needs POSIX (`flock` with inherited descriptors, signals); the GPU host
 runs Linux. On Windows it runs, but it cannot prove that a child of an earlier session
 has exited, so where a resume depends on that it stops for a person.
 
-## 8. Decisions
+## 9. Decisions
 
 | Decision | Rationale |
 | --- | --- |
@@ -205,15 +313,28 @@ has exited, so where a resume depends on that it stops for a person.
 | A restarted supervisor waits up to 24 h for a child a killed supervisor left running | killing that runner would crash its banks; under systemd (`KillMode=mixed`) no child outlives the supervisor |
 | Stop for a person on a shortfall (default) or escalation; `on_shortfall: archive` is opt-in | the pilot and confirmatory rules make these human decisions |
 | No register for a stage limited by `only` | `register` needs all 72 banks; DEMO stages build a few |
+| Rehearsal (D1a) as a job file (`rehearsal-job` writes it, `purpose: rehearsal`), not a `run --rehearsal` flag | one command line and one service for every job; the purpose is hashed with the job file and kept in `state.json`, so a restart after a reboot cannot drop it and a changed job file cannot change it |
+| Rehearsal size from its arguments, default 64 + 8; DEMO units `B-C01`.., `B-S01`.. of that size | the plan sized from the unit set (#299) reads the size from the units; before it, sizes other than 64 + 8 are refused and the plan is checked against the size after it is made |
+| Rehearsal prompts: the committed templates under a DEMO prompt-set name | realistic prompt lengths and model time per slot; the DEMO meanings fill them; the set is DEMO by name and refused otherwise |
+| A rehearsal register that needs an escalation ends the stage, recorded | a DEMO register has no advisor; the decision is a number for February, not a gate |
+| `run PILOT_JOB REHEARSAL_JOB`: the rehearsal starts only when the pilot job is done | the pilot is the deliverable; the two jobs never share the model server, so the rehearsal measures the campaign alone |
+| Markers are found by file name (`state.json`, `plan.json`, `pilot-plan.json`, `pilot-register.csv`, `run-manifest.json`, `REHEARSAL`) above and below a root | refusing a root that only looks like another job's is safe; a person moves it |
 
-## 9. Tests
+## 10. Tests
 
 `tests/banks/test_unattended.py` runs DEMO jobs on CPU against the mock model server
 (`av_generation.mock_llm`, loopback), with the real command lines as children: a clean
 pilot-then-confirmatory job (the reference), an outage during the campaign, SIGKILL of
 the supervisor alone and of the whole process group (a reboot), a pilot outage that
 restarts the pilot with `--major 2`, a pilot shortfall with `--retry`, the git work tree
-refusal, the job rules and the register outcomes. The kept banks are compared with the
+refusal, the job rules and the register outcomes. The rehearsal (section 3): the
+`rehearsal-job` command and its job file; a full-size 64 + 8 plan (72 DEMO banks) made
+without building a bank (and 84 + 12 and 88 + 12, 96 and 100 banks, once the plan is
+sized from the unit set); a partial rehearsal of two banks against the mock that
+survives SIGKILL of its process group and writes its summary; every refusal (real
+inputs, a frozen or tagged freeze manifest, the job rules, roots inside or around other
+roots, a changed purpose, a campaign that does not suit the job); the register outcome;
+and `run` with two job files. The kept banks are compared with the
 reference: the same `complete` and `unavailable` sets and the same bank content for
 every bank that never crashed. Bank content is the manifest without the attempts'
 `wall_ms` and `slots_sha256`, which carry real latencies, so two real-time runs never

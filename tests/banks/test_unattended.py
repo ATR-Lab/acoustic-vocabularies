@@ -11,7 +11,11 @@ confirmatory command lines as child processes.
 - a pilot outage: the pilot run halts (`--breaker`), the crashed root is archived as the
   record and the run starts again with `--major 2`;
 - a pilot shortfall stops for a person, and `--retry` goes on once the job allows it;
-- the job root is refused inside a git work tree unless git ignores it.
+- the job root is refused inside a git work tree unless git ignores it;
+- the full-size rehearsal (`purpose: rehearsal`, last section): a 64 + 8 rehearsal is
+  planned (72 DEMO banks) without building them, and once the plan is sized from the unit
+  set (#299) so are 84 + 12 and 88 + 12 (96 and 100 banks); a partial rehearsal builds two
+  banks, survives SIGKILL of its process group and writes its summary; every refusal.
 
 The kept banks are compared with the reference: the same `complete` and `unavailable`
 sets, and the same bank content for every bank that never crashed. Bank content is the
@@ -43,6 +47,7 @@ from av_banks.confirmatory.common import CampaignLayout
 from av_banks.confirmatory.plan import read_rebuilds
 from av_banks.unattended import cli, runtime, stages
 from av_banks.unattended import job as jobmod
+from av_banks.unattended import rehearsal as rehearsalmod
 from av_banks.unattended import state as statemod
 from av_banks.unattended.demo import write_demo_job
 from av_banks.unattended.supervisor import (
@@ -500,13 +505,17 @@ def test_job_file_rules(tmp_path):
     assert cli.main(["check", str(path)]) == EXIT_REFUSED
 
 
-def test_the_committed_example_job_is_valid_and_holds_placeholders_only():
-    example = ROOT / "banks" / "examples" / "unattended" / "job.example.json"
-    doc = read_json(example)
-    assert jobmod.job_errors(doc) == []
-    text = example.read_text(encoding="utf-8")
-    assert "<restricted>" in text and "<llm-host>" in text
-    assert "/Users/" not in text and "/home/" not in text
+def test_the_committed_example_jobs_are_valid_and_hold_placeholders_only():
+    examples = sorted((ROOT / "banks" / "examples" / "unattended").glob("*.example.json"))
+    names = [p.name for p in examples]
+    assert names == ["confirmatory-job.example.json", "job.example.json", "pilot-job.example.json"]
+    for example in examples:
+        doc = read_json(example)
+        assert jobmod.job_errors(doc) == [], example.name
+        text = example.read_text(encoding="utf-8")
+        assert "<restricted>" in text and "<llm-host>" in text
+        assert "/Users/" not in text and "/home/" not in text
+        assert doc.get("purpose", "banks") == "banks"
 
 
 def test_model_probe_and_url_redaction(model):
@@ -675,3 +684,406 @@ def test_an_unexpected_error_keeps_the_state_and_exits_1(tmp_path, model, monkey
     assert state.status == "interrupted" and state.stages[0].status == "pending"
     assert events(path, "error")[0]["error"] == "RuntimeError: disk vanished"
     assert "start it again to resume" not in status_text(path)  # not running, not waiting
+
+
+# -- full-size rehearsal (purpose: rehearsal) -------------------------------------
+
+FULL = jobmod.RehearsalSize(64, 8)
+PAIR = ("DEMO-C001", UNAVAILABLE)
+DOWN = "http://127.0.0.1:9"
+
+
+def _supported(size):
+    """Whether this checkout plans `size` (64 + 8 only, until the plan is sized from the
+    unit set: #299)."""
+    return rehearsalmod.size_problem(size) is None
+
+
+def make_rehearsal(out, url, *, size=FULL, only=None, **model):
+    """A rehearsal job (`rehearsal.write_rehearsal_job`) tuned for tests: fast polls and
+    heartbeats, workers=1 (deterministic banks); `only` builds part of the campaign."""
+    path = rehearsalmod.write_rehearsal_job(out, llm_url=url, size=size, only=only)
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["heartbeat_s"] = 0.5
+    doc["lock_wait_s"] = 120
+    fast = {"max_wait_s": 120, "poll_initial_s": 0.2, "poll_max_s": 1.0, "probe_timeout_s": 2}
+    doc["model"].update({**fast, **model})
+    doc["stages"][0].update(workers=1, parallel_banks=2, monitor_interval_s=1, verify_jobs=2)
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    return path
+
+
+def campaign_of(path):
+    return job_root(path) / rehearsalmod.STAGE_NAME
+
+
+def plan_only(out, size=FULL):
+    """A rehearsal with no model server: the plan child runs, then the supervisor stops
+    for a person because the server stays down. Nothing is built."""
+    down = {"max_wait_s": 0.2, "poll_initial_s": 0.05, "poll_max_s": 0.1, "probe_timeout_s": 0.5}
+    path = make_rehearsal(out, DOWN, size=size, **down)
+    assert run_job(path, echo=False) == EXIT_STOPPED
+    return path
+
+
+def test_rehearsal_job_command_writes_a_watermarked_full_size_job(tmp_path, capsys):
+    out = tmp_path / "rehearsal" / "DEMO-rehearsal-01"
+    assert cli.main(["rehearsal-job", str(out), "--llm-url", DOWN]) == 0
+    path = Path(capsys.readouterr().out.strip())
+    assert path == out.resolve() / "job.json"
+    job = jobmod.load_job(path)
+    assert job.purpose == "rehearsal" and job.rehearsal == FULL
+    (stage,) = job.stages
+    assert stage.name == "demo-campaign" and stage.only is None and stage.register
+    assert stage.plan.campaign_id == "DEMO-rehearsal-01-C" and stage.plan.repo is None
+    assert stage.parallel_banks == 6 and stage.workers == 3
+    assert rehearsalmod.marker_job(out / rehearsalmod.MARKER_NAME) == job.job_id
+    units = [p.name for p in sorted((out / "inputs" / "units").iterdir())]
+    assert units == list(rehearsalmod.unit_ids(FULL)) and len(units) == 72
+    assert read_json(out / "inputs" / "prompts" / "prompt-set.json")["demo"] is True
+    assert rehearsalmod.input_problems(job) == []
+    assert cli.main(["check", str(path), "--no-probe"]) == 0
+    text = capsys.readouterr().out
+    assert "REHEARSAL job" in text and text.strip().endswith("OK")
+    with pytest.raises(ValueError, match="not empty"):
+        rehearsalmod.write_rehearsal_job(out, llm_url=DOWN)
+    with pytest.raises(ValueError, match="DEMO-"):
+        rehearsalmod.write_rehearsal_job(tmp_path / "a", llm_url=DOWN, job_id="rehearsal-01")
+    with pytest.raises(ValueError, match="too long"):
+        rehearsalmod.write_rehearsal_job(tmp_path / "b", llm_url=DOWN, job_id="DEMO-" + "x" * 40)
+    with pytest.raises(ValueError, match="lies inside"):  # inside another rehearsal
+        rehearsalmod.write_rehearsal_job(out / "x", llm_url=DOWN, job_id="DEMO-rehearsal-02")
+    big = jobmod.RehearsalSize(84, 12)
+    if not _supported(big):
+        with pytest.raises(ValueError, match="sized from the unit set"):
+            rehearsalmod.write_rehearsal_job(tmp_path / "c", llm_url=DOWN, size=big)
+        assert cli.main(["rehearsal-job", str(tmp_path / "c"), "--llm-url", DOWN,
+                         "--dyads", "84", "--spares", "12"]) == 1  # fmt: skip
+
+
+@pytest.mark.parametrize(("dyads", "spares", "banks"), [(64, 8, 72), (84, 12, 96), (88, 12, 100)])
+def test_a_full_size_rehearsal_is_planned_without_building_it(tmp_path, dyads, spares, banks):
+    size = jobmod.RehearsalSize(dyads, spares)
+    if not _supported(size):
+        pytest.skip("this checkout plans 64 + 8 banks (sizes from the unit set: #299)")
+    path = plan_only(tmp_path, size)
+    state = state_of(path)
+    assert state.purpose == "rehearsal" and "did not answer" in state.stop.reason
+    plan = read_json(campaign_of(path) / "plan.json")
+    ids = [b["bank_id"] for b in plan["banks"]]
+    assert len(ids) == banks and ids[0] == "DEMO-C001" and ids[-1] == f"DEMO-C{banks:03d}"
+    assert sum(b["role"] == "main" for b in plan["banks"]) == dyads
+    assert plan["demo"] is True and plan["kind"] == "demo" and plan["freeze"]["status"] == "draft"
+    assert all(
+        value.startswith("DEMO-")
+        for b in plan["banks"]
+        for value in (b["bank_id"], b["run_id"], b["seed_namespace"])
+    )
+    job = jobmod.load_job(path)
+    assert rehearsalmod.campaign_problems(job, job.stages[0]) == []  # the plan checks
+    assert not list(campaign_of(path).glob("runs/*/banks/*"))  # nothing built
+    root = job_root(path)
+    assert rehearsalmod.marker_job(root / rehearsalmod.MARKER_NAME) == job.job_id
+    assert read_json(root / statemod.SUMMARY_NAME)["purpose"] == "rehearsal"
+    assert "REHEARSAL, DEMO banks only" in status_text(path)
+    assert check_job(path, probe=False)[0] == []  # its own state and campaign are its own
+
+
+def test_a_partial_rehearsal_builds_survives_a_reboot_and_reports(tmp_path, model):
+    path = make_rehearsal(tmp_path, model.url, only=PAIR)
+    if sys.platform == "win32":
+        assert run_job(path, echo=False) == EXIT_DONE
+    else:  # SIGKILL of the supervisor's process group (a reboot), then the same command
+        _kill_mid_build(model, path, _start(path), group=True)
+        again = _start(path)
+        _, err = again.communicate(timeout=300)
+        assert again.returncode == EXIT_DONE, err.decode()
+    root = job_root(path)
+    doc = read_json(root / rehearsalmod.SUMMARY_JSON)
+    assert doc["purpose"] == "rehearsal" and doc["kind"] == "demo"
+    assert doc["watermark"] == rehearsalmod.WATERMARK
+    assert doc["full_size"] is False and doc["scope"] == list(PAIR)
+    assert doc["planned_banks"] == 72 and doc["size"]["banks"] == 72
+    assert doc["banks"]["complete"] == 1 and doc["banks"]["unavailable"] == 1
+    assert doc["attempts"] >= 5 and doc["slots"] > 0 and doc["slots_per_hour"] > 0
+    assert doc["campaign_wall_s"] > 0 and doc["slots_per_hour_wall"] > 0
+    assert doc["register"] is None and doc["model_waits"]["count"] == 0
+    rebuilt = sorted({r.bank_id for r in read_rebuilds(campaign_of(path))})
+    assert doc["rebuilds"]["banks"] == rebuilt
+    if sys.platform != "win32":
+        assert doc["sessions"] == 2 and rebuilt and doc["rebuilds"]["automatic"] >= 1
+    text = (root / rehearsalmod.SUMMARY_MD).read_text(encoding="utf-8")
+    assert text.startswith("# REHEARSAL (DEMO)") and rehearsalmod.WATERMARK in text
+    assert "PARTIAL" in text and "## Throughput" in text
+    assert read_json(root / statemod.SUMMARY_NAME)["purpose"] == "rehearsal"
+    assert events(path, "register_skipped")
+    # the summary is a function of the files and the state: made again here, it is the same
+    from av_generation.jsonio import document_text
+
+    from av_banks.unattended.session import Session
+
+    journal = statemod.Journal(tmp_path / "again.jsonl", echo=False)
+    session = Session(jobmod.load_job(path), state_of(path), journal, lock_fd=None)
+    assert json.loads(document_text(rehearsalmod.write_rehearsal_summary(session))) == doc
+    assert read_json(root / rehearsalmod.SUMMARY_JSON) == doc
+    assert (root / rehearsalmod.SUMMARY_MD).read_text(encoding="utf-8") == text
+
+
+def test_a_rehearsal_refuses_inputs_that_are_not_demo(tmp_path):
+    import dataclasses
+    import shutil
+
+    from av_generation.genconfig import GenerationConfig
+    from av_generation.jsonio import write_document
+    from av_generation.prompts import prompt_set_manifest
+
+    path = make_rehearsal(tmp_path, DOWN)
+    inputs = tmp_path / "inputs"
+
+    def refused(match):
+        with pytest.raises(jobmod.SupervisorError, match="E_REHEARSAL") as err:
+            run_job(path, echo=False)
+        assert match in str(err.value)
+        assert not job_root(path).exists()
+        assert any(match in p for p in check_job(path, probe=False)[0])
+
+    def edited(rel, change):
+        target = inputs / rel
+        before = target.read_bytes()
+        doc = json.loads(before)
+        change(doc)
+        target.write_text(json.dumps(doc), encoding="utf-8")
+        return lambda: target.write_bytes(before)
+
+    for rel, change, match in (
+        ("freeze-manifest.json", lambda d: d.update(status="frozen"), "frozen or tagged"),
+        ("freeze-manifest.json", lambda d: d.update(tag="FREEZE-v1.0"), "frozen or tagged"),
+        ("meanings/meanings.json", lambda d: d.update(name="meanings-v1", demo=False),
+         "meaning set 'meanings-v1' is not a DEMO set"),
+        ("units/B-C07/permutation.json", lambda d: d.update(demo=False), "['B-C07']"),
+    ):  # fmt: skip
+        restore = edited(rel, change)
+        refused(match)
+        restore()
+    prompts = inputs / "prompts" / "prompt-set.json"
+    before = prompts.read_bytes()
+    write_document(prompts, prompt_set_manifest(prompts.parent, name="prompts-v1"))
+    refused("prompt set 'prompts-v1' is not a DEMO set")
+    prompts.write_bytes(before)
+    config_path = inputs / "generation-config.json"
+    before = config_path.read_bytes()
+    config = GenerationConfig.read(config_path)
+    real = dataclasses.replace(config, name="real-config", demo=False, llm_manifest_sha256="0" * 64)
+    real.write(config_path, exclusive=False)
+    refused("generation config 'real-config' is not a DEMO config")
+    config_path.write_bytes(before)
+    shutil.copytree(inputs / "units" / "B-C64", inputs / "units" / "B-C65")
+    refused("not exactly B-C01..B-C64 and B-S01..B-S08")
+    shutil.rmtree(inputs / "units" / "B-C65")
+    assert check_job(path, probe=False)[0] == []
+
+
+def test_rehearsal_job_rules(tmp_path):
+    path = make_rehearsal(tmp_path, DOWN)
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    stage = doc["stages"][0]
+    plan = stage["plan"]
+    pilot = {
+        "name": "pilot", "kind": "pilot", "run_id": "DEMO-P", "demo": True,
+        "units": "inputs/units", "generation_config": "inputs/generation-config.json",
+        "meanings": "inputs/meanings", "prompts": "inputs/prompts",
+        "decoding_schema": "inputs/decoding-schema.json",
+    }  # fmt: skip
+    no_plan = {k: v for k, v in stage.items() if k != "plan"}
+    no_size = {k: v for k, v in doc.items() if k != "rehearsal"}
+    for bad, match in (
+        (dict(doc, job_id="rehearsal-01"), "job ID starts with 'DEMO-'"),
+        (dict(doc, stages=[pilot, stage]), "exactly one stage"),
+        (dict(doc, stages=[dict(stage, campaign_root="elsewhere")]), "inside the job root"),
+        (dict(doc, stages=[dict(stage, plan=dict(plan, campaign_id="C-banks-v1"))]),
+         "campaign ID starts"),
+        (dict(doc, stages=[dict(stage, plan=dict(plan, repo="."))]), "no repo"),
+        (dict(doc, stages=[dict(stage, plan=dict(plan, pilot=["p"]))]), "no pilot root"),
+        (dict(doc, stages=[dict(stage, plan=dict(plan, pilot_namespaces=["bank-P001"]))]),
+         "namespaces start"),
+        (dict(doc, stages=[no_plan]), "give 'plan'"),
+        (no_size, "not valid"),  # a rehearsal gives its size
+        (dict(doc, purpose="banks"), "not valid"),  # and only a rehearsal does
+    ):  # fmt: skip
+        path.write_text(json.dumps(bad), encoding="utf-8")
+        with pytest.raises(jobmod.SupervisorError, match=match):
+            jobmod.load_job(path)
+
+
+def test_rehearsal_roots_stay_apart_from_every_other_root(tmp_path):
+    path = make_rehearsal(tmp_path / "r", DOWN)
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    other = tmp_path / "pilot-job" / "job"
+    other.mkdir(parents=True)
+    (other / statemod.STATE_NAME).write_text("{}", encoding="utf-8")
+    path.write_text(json.dumps(dict(doc, root=str(other / "rehearsal"))), encoding="utf-8")
+    with pytest.raises(jobmod.SupervisorError, match="an unattended job root"):
+        run_job(path, echo=False)
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    stray = job_root(path) / "old" / "pilot-register.csv"
+    stray.parent.mkdir(parents=True)
+    stray.write_text("", encoding="utf-8")
+    with pytest.raises(jobmod.SupervisorError, match="a pilot root"):
+        run_job(path, echo=False)
+    stray.unlink()
+    stray.parent.rmdir()
+    assert rehearsalmod.separation_problems(jobmod.load_job(path)) == []
+    # any other job: refused inside or around a rehearsal
+    inside = write_demo_job(tmp_path / "r" / "demo", llm_url=DOWN)
+    with pytest.raises(jobmod.SupervisorError, match="inside or around a rehearsal"):
+        run_job(inside, echo=False)
+    assert any("rehearsal" in p for p in check_job(inside, probe=False)[0])
+    around = write_demo_job(tmp_path / "d", llm_url=DOWN)
+    d = json.loads(around.read_text(encoding="utf-8"))
+    around.write_text(json.dumps(dict(d, root=str(tmp_path))), encoding="utf-8")
+    with pytest.raises(jobmod.SupervisorError, match="inside or around a rehearsal"):
+        run_job(around, echo=False)
+    # a job root keeps its purpose
+    job = jobmod.load_job(path)
+    state = statemod.JobState.new(job.job_id, job.sha256, [(s.name, s.kind) for s in job.stages])
+    statemod.write_state(job_root(path) / statemod.STATE_NAME, state)
+    with pytest.raises(jobmod.SupervisorError, match="a purpose never changes"):
+        run_job(path, echo=False)
+
+
+def test_campaign_checks_and_the_rehearsal_register(tmp_path):
+    import dataclasses
+
+    from av_banks.unattended.session import StopForPerson
+
+    path = plan_only(tmp_path / "planned")
+    job = jobmod.load_job(path)
+    stage = job.stages[0]
+    assert rehearsalmod.campaign_problems(job, stage) == []
+    real = dataclasses.replace(job, job_id="closure-banks-01", purpose="banks", rehearsal=None)
+    assert "never builds DEMO banks" in rehearsalmod.campaign_problems(real, stage)[0]
+    other = dataclasses.replace(stage, plan=dataclasses.replace(stage.plan, campaign_id="C-x1"))
+    assert "belongs to campaign" in rehearsalmod.campaign_problems(job, other)[0]
+    bigger = dataclasses.replace(job, rehearsal=jobmod.RehearsalSize(84, 12))
+    assert "64 main and 8 spare" in rehearsalmod.campaign_problems(bigger, stage)[0]
+    missing = dataclasses.replace(stage, campaign_root=tmp_path / "nowhere")
+    assert "cannot be read" in rehearsalmod.campaign_problems(job, missing)[0]
+    from av_banks.confirmatory.plan import read_plan
+
+    plan = read_plan(campaign_of(path))
+    frozen = dataclasses.replace(plan.freeze, status="frozen", tag="FREEZE-v1.0")
+    real_plan = dataclasses.replace(plan, demo=False, campaign_id="C-x1", freeze=frozen)
+    problems = rehearsalmod._rehearsal_plan_problems(real_plan, FULL)
+    assert len(problems) == 3 and "not a DEMO plan" in problems[0] and "C-x1" in problems[1]
+    (tmp_path / "s").mkdir()
+    session, calls = _session(tmp_path / "s", bigger, {})
+    with pytest.raises(StopForPerson, match="does not suit"):
+        stages.drive_confirmatory(session, stage, session.state.stages[0])
+    assert calls == []
+    # an escalation ends a rehearsal's register step: DEMO banks have no advisor
+    (tmp_path / "t").mkdir()
+    session, calls = _session(tmp_path / "t", job, {"register": [3]})
+    st = session.state.stages[0]
+    st.step = "register"
+    stages.drive_confirmatory(session, stage, st)
+    assert st.step == "done" and calls == [("register", "register")]
+    log = (tmp_path / "t" / "log.jsonl").read_text(encoding="utf-8")
+    assert "rehearsal_escalation_required" in log
+
+
+def test_run_takes_several_jobs_in_order(tmp_path):
+    first = make_job(tmp_path / "a", DOWN, pilot=False)
+    second = make_job(tmp_path / "b", DOWN, pilot=False)
+    for path in (first, second):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["stages"][0].pop("plan")  # each stops for a person at once
+        path.write_text(json.dumps(doc), encoding="utf-8")
+    assert cli.main(["run", str(first), str(second), "--quiet"]) == EXIT_STOPPED
+    assert state_of(first).status == "stopped" and not job_root(second).exists()
+    state = state_of(first)
+    state.status, state.stop = "done", None
+    statemod.write_state(job_root(first) / statemod.STATE_NAME, state)
+    assert cli.main(["run", str(first), str(second), "--quiet"]) == EXIT_STOPPED
+    assert "no plan.json" in state_of(second).stop.reason
+
+
+def test_the_summary_text_of_a_full_size_rehearsal():
+    from av_banks.metrics import summarize_banks
+
+    doc = {
+        "job_id": "DEMO-rehearsal-01",
+        "campaign_id": "DEMO-rehearsal-01-C",
+        "size": {"dyads": 64, "spares": 8, "banks": 72},
+        "planned_banks": 72,
+        "full_size": True,
+        "scope": "all",
+        "banks": {"complete": 69, "unavailable": 3, "crashed_versions": 2},
+        "attempts": 80,
+        "slots": 12_345,
+        "slots_per_hour": None,
+        "slots_per_hour_run": 1234.5,
+        "slots_per_hour_wall": 1000.0,
+        "campaign_wall_s": 36_000.0,
+        "wall_s": None,
+        "model_waits": {"count": 1, "seconds": 300.0, "longest_s": 300.0},
+        "rebuilds": {"total": 2, "automatic": 2, "banks": ["DEMO-C004", "DEMO-C010"]},
+        "sessions": 3,
+        "runs": 4,
+        "register": {"decision": "escalation_required", "register_csv_sha256": "ab" * 32},
+    }
+    text = rehearsalmod.summary_text(doc, summarize_banks([], project_banks=72))
+    assert "(72 planned; full size)" in text and "decision `escalation_required`" in text
+    assert "1,000.0 over the campaign's wall time; 1,234.5 over the bank runs; n/a" in text
+    assert "campaign 10.00 h (36,000 s); job n/a" in text
+    assert "## Projection for 72 banks" in text
+    assert "none" in rehearsalmod.summary_text(dict(doc, register=None), summarize_banks([]))
+
+
+def test_a_failing_rehearsal_summary_never_fails_a_finished_job(tmp_path, monkeypatch):
+    from av_banks.unattended import supervisor
+
+    path = make_rehearsal(tmp_path, DOWN)
+    monkeypatch.setattr(supervisor, "drive_confirmatory", lambda s, stage, st: None)
+
+    def broken(session):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(supervisor, "write_rehearsal_summary", broken)
+    assert run_job(path, echo=False) == EXIT_DONE
+    assert state_of(path).status == "done"
+    assert events(path, "rehearsal_summary_error")[0]["error"] == "OSError: disk full"
+
+
+def test_rehearsal_guards_name_unreadable_inputs_and_nested_rehearsals(tmp_path):
+    import shutil
+
+    path = make_rehearsal(tmp_path, DOWN)
+    job = jobmod.load_job(path)
+    inputs = tmp_path / "inputs"
+    (inputs / "meanings" / "meanings.json").unlink()
+    (inputs / "generation-config.json").write_text("{", encoding="utf-8")
+    (inputs / "freeze-manifest.json").unlink()
+    (inputs / "units" / "B-S08" / "permutation.json").unlink()
+    problems = rehearsalmod.input_problems(job)
+    assert [p.split(":")[0] for p in problems] == [
+        "meanings",
+        "generation config",
+        "freeze manifest",
+        "units that are not DEMO stand-ins",
+    ]
+    assert "B-S08" in problems[-1]
+    shutil.copytree(
+        ROOT / "generation" / "examples" / "demo-meanings", inputs / "meanings", dirs_exist_ok=True
+    )
+    (inputs / "prompts" / "prompt-set.json").write_text("{", encoding="utf-8")
+    assert rehearsalmod.input_problems(job)[0].startswith("prompts:")
+    demo = jobmod.load_job(write_demo_job(tmp_path / "demo", llm_url=DOWN))
+    with pytest.raises(jobmod.SupervisorError, match="not a rehearsal job"):
+        rehearsalmod.input_problems(demo)
+    # a rehearsal marker of another job inside the job root
+    nested = job_root(path) / "old"
+    nested.mkdir(parents=True)
+    rehearsalmod.write_marker(nested, "DEMO-rehearsal-02")
+    rehearsalmod.write_marker(nested, "DEMO-rehearsal-03")  # an existing marker is kept
+    assert rehearsalmod.marker_job(nested / rehearsalmod.MARKER_NAME) == "DEMO-rehearsal-02"
+    assert "another rehearsal" in rehearsalmod.separation_problems(job)[0]

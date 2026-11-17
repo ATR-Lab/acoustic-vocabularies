@@ -7,6 +7,12 @@ stage's files (`stages`). Exit codes (`EXIT_*`): 0 the job is done; 2 refused (j
 data policy, lock); 3 stopped for a person (`state.json` keeps the reason and the next
 action; `run --retry` after it is handled); 4 interrupted by a signal (run again); 1 an
 unexpected error (the service restarts it).
+
+A rehearsal job (`purpose: rehearsal`, `rehearsal` module) runs the same way; before it
+starts, its roots and inputs are checked (`rehearsal.separation_problems`,
+`rehearsal.input_problems`; every job gets the separation check), the `REHEARSAL` marker
+is written into its job root, and at the end `rehearsal-summary.json` and `.md` are
+written next to `summary.json`.
 """
 
 from __future__ import annotations
@@ -24,12 +30,20 @@ from av_generation.jsonio import document_text
 from .job import (
     E_JOB,
     E_LOCKED,
+    E_REHEARSAL,
     E_STATE,
     Job,
     PilotStage,
     SupervisorError,
     check_location,
     load_job,
+)
+from .rehearsal import PURPOSE as REHEARSAL
+from .rehearsal import (
+    input_problems,
+    separation_problems,
+    write_marker,
+    write_rehearsal_summary,
 )
 from .runtime import INHERITED_LOCK, JobLock, lock_free, pid_alive, probe_model
 from .session import Interrupted, Session, StopForPerson, wall_seconds
@@ -56,26 +70,47 @@ EXIT_INTERRUPTED: Final = 4
 
 
 def prepare_root(job: Job) -> list[str]:
-    """Apply the data policy (module docstring of `job`) and create the job root 0700.
-    Returns the notes to log."""
+    """Apply the data policy (module docstring of `job`) and the rehearsal checks
+    (`SupervisorError(E_REHEARSAL)`), create the job root 0700 and, for a rehearsal,
+    write its marker. Returns the notes to log."""
     notes = [n for n in (check_location(job.root),) if n]
     for stage in job.stages:
         note = check_location(stage_root(stage))
         if note:
             notes.append(note)
+    problems = rehearsal_problems(job)
+    if problems:
+        raise SupervisorError(E_REHEARSAL, "; ".join(problems))
     job.root.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(job.root, 0o700)
     (job.root / CHILD_LOGS).mkdir(exist_ok=True, mode=0o700)
+    if job.purpose == REHEARSAL:
+        write_marker(job.root, job.job_id)
     return notes
+
+
+def rehearsal_problems(job: Job) -> list[str]:
+    """Separation of rehearsal roots from everything else (every job) and, for a
+    rehearsal job, its inputs (`rehearsal` module docstring)."""
+    problems = separation_problems(job)
+    if job.purpose == REHEARSAL:
+        problems += input_problems(job)
+    return problems
 
 
 def _load_state(job: Job, *, allow_job_change: bool, journal: Journal) -> JobState:
     state = read_state(job.root / STATE_NAME)
     stages = [(s.name, s.kind) for s in job.stages]
     if state is None:
-        return JobState.new(job.job_id, job.sha256, stages)
+        return JobState.new(job.job_id, job.sha256, stages, purpose=job.purpose)
     if state.job_id != job.job_id:
         raise SupervisorError(E_STATE, f"the job root belongs to job {state.job_id!r}")
+    if state.purpose != job.purpose:
+        raise SupervisorError(
+            E_STATE,
+            f"the job root belongs to a {state.purpose} job; the job file says {job.purpose} "
+            "(a purpose never changes)",
+        )
     if [(s.name, s.kind) for s in state.stages] != stages:
         raise SupervisorError(E_JOB, "the job file's stages differ from the job root's state")
     if state.job_sha256 != job.sha256:
@@ -94,6 +129,7 @@ def write_summary(s: Session) -> dict[str, Any]:
     state = s.state
     summary: dict[str, Any] = {
         "job_id": state.job_id,
+        "purpose": state.purpose,
         "status": state.status,
         "created_utc": state.created_utc,
         "ended_utc": state.ended_utc,
@@ -259,6 +295,11 @@ def _run(s: Session, *, retry: bool) -> int:
         state.ended_utc = now_utc()
         state.heartbeat = None
         write_summary(s)
+        if s.job.purpose == REHEARSAL:
+            try:
+                write_rehearsal_summary(s)
+            except Exception as err:  # noqa: BLE001 - a summary never fails a finished job
+                s.log("rehearsal_summary_error", error=f"{type(err).__name__}: {err}"[:400])
         s.save()
         s.log("job_done", job_id=state.job_id)
         print(status_text(s.job), end="")
@@ -335,8 +376,9 @@ def status_text(target: Job | str | os.PathLike[str]) -> str:
         return f"job root {root}: not started\n"
     alive = pid_alive(state.supervisor_pid)
     free = lock_free(root / LOCK_NAME)
+    watermark = "REHEARSAL, DEMO banks only; " if state.purpose == REHEARSAL else ""
     lines = [
-        f"job {state.job_id}: {state.status} (session {state.sessions}; supervisor pid "
+        f"job {state.job_id}: {state.status} ({watermark}session {state.sessions}; supervisor pid "
         f"{state.supervisor_pid} {'alive' if alive else 'not running'}; job lock "
         f"{'free' if free else 'held'})",
     ]
@@ -383,8 +425,13 @@ def check_job(
     from av_generation.genconfig import GenerationConfig
 
     job = load_job(job_path)
-    problems: list[str] = []
+    problems: list[str] = rehearsal_problems(job)
     notes: list[str] = []
+    if job.rehearsal is not None:
+        notes.append(
+            f"REHEARSAL job: DEMO inputs, {job.rehearsal.dyads} + {job.rehearsal.spares} "
+            "banks; the banks are DEMO banks, never confirmatory banks"
+        )
     for path in (job.root, *(stage_root(s) for s in job.stages)):
         try:
             note = check_location(path)

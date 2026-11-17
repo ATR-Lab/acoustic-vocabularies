@@ -132,9 +132,18 @@ class JobState:
     stop: StopRecord | None = None
     ended_utc: str | None = None
     summary: dict[str, Any] | None = None
+    purpose: str = "banks"
+    """The job's purpose (`banks` or `rehearsal`), fixed when the job starts."""
 
     @classmethod
-    def new(cls, job_id: str, job_sha256: str, stages: Sequence[tuple[str, str]]) -> JobState:
+    def new(
+        cls,
+        job_id: str,
+        job_sha256: str,
+        stages: Sequence[tuple[str, str]],
+        *,
+        purpose: str = "banks",
+    ) -> JobState:
         at = now_utc()
         return cls(
             format=STATE_FORMAT,
@@ -148,6 +157,7 @@ class JobState:
             supervisor_pid=None,
             stage_index=0,
             stages=tuple(StageState(name, kind) for name, kind in stages),
+            purpose=purpose,
         )
 
     def to_dict(self) -> dict[str, Any]:
