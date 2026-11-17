@@ -263,7 +263,10 @@ Problems found, and suggested follow-ups:
    250 ms of real time at 20x and 25 ms at 200x. In #20's CI it failed every A3 count on
    Windows at 200x. The dry run uses the slot cap in accelerated runs
    (`token_count_cap_ms`). Follow-up: let `batch_runner.open_batch` set the client's
-   count cap, or scale it with `ScaledClock.speed`.
+   count cap, or scale it with `ScaledClock.speed`. Done (#305): `open_batch` gives the
+   client `default_token_count_cap_ms(clock)` (5 s of real time, at most the 40-s slot
+   cap; 5 s in real time) or the caller's `token_count_cap_ms`, and records it; the dry
+   run passes its plan's cap there.
 2. **The study-mode runner logs no startup.** `batch_runner` writes no `startup_*`
    events, so the #24 audit's `startup_ms` stays 0 for a lab batch. The model load is only
    in `llm_server`'s own timing file on the LLM host. Follow-up: time the LLM probe and
@@ -275,7 +278,9 @@ Problems found, and suggested follow-ups:
 3. **No handle to the served A1 page.** `run_session` exposes the panel
    (`StudyBatch.served_panel`) but not the A1 page, and it takes no designer factory. The
    dry run reads the operator line `A1 designer page: <url>`. Follow-up: add
-   `StudyBatch.served_a1` and a designer factory.
+   `StudyBatch.served_a1` and a designer factory. Done (#306): the dry run now builds its
+   designer with `run_session(designer="bot", designer_factory=...)`; the operator line
+   is unchanged.
 4. **The preload lead goes over the round budget when the window is full** (see above).
    This is a note for O6.2.1: book 90 minutes per appointment, not 80, if designers may
    use the whole 120-s window. Follow-up (optional): publish the round's preload while
@@ -344,11 +349,11 @@ transitions run long enough that the panel bookings must be extended.
 | Mock model latency | 3 s of clock time per call | A 7B model's JSON recipe on one GPU, until the GPU run measures the real latency |
 | Injected cases | Per appointment 2 invalid and 2 skipped A1 slots (seeded; skipped slots in different rounds). One zero-eligible atom: the A2 book, third atom of the second appointment, `bank`. Whole-book run: A3 atoms 1 and 2 | Each case occurs in every appointment. The zero-eligible atom has committed references, so its scan checks the bank against the book. In the whole-book run, atom 1 still exercises the bank path |
 | Forcing the whole-book fallback | A bank whose 64 entries are all the profile's recipe 0 (`single_recipe_fallback`), held in memory and pinned by its bank hash | The scan code and the protocol rule (no bank recipe passes the book's checks) are unchanged. The committed DEMO bank never runs out within 16 atoms |
-| Token-count cap on accelerated clocks | The 40-s slot cap instead of #16's 5 s (`token_count_cap_ms`, recorded in the plan); real time keeps 5 s | A fixed real overhead is multiplied by the speed: at 200x the Windows runner of #20 lost all 192 A3 token counts |
+| Token-count cap on accelerated clocks | The 40-s slot cap instead of #16's 5 s (`token_count_cap_ms`, recorded in the plan, passed to `open_batch(token_count_cap_ms=...)`); real time keeps 5 s | A fixed real overhead is multiplied by the speed: at 200x the Windows runner of #20 lost all 192 A3 token counts. The runner's own default (#305) is the same cap from 8x on |
 | Startup | The driver times the model (mock start or external health check, plus one warm-up call) and the renderer (one render and validation) and logs `startup_*` events; with the GPU server the model load is in `llm_server`'s own timing log | Study A §3.3 asks for preload with startup logged apart. The runner of #20 logs no startup |
 | Plan schema (owned) | Adds `appointments`, `fallback_bank`, `designer_think_ms`, `mock_llm_latency_ms`, `p_comfort_acceptable`, `token_count_cap_ms`, all required; format version stays 1 | Every key is always present (architecture section 4). No plan document existed before |
 | Reduced runs | Counts scale with `appointments`; a substituted book always has 16 commits in its final store book | The CI test and the real-time run cover one appointment |
 | Timing | Run-clock milliseconds. An interval split across processes is measured on `wall_utc`, downtime included | A conservative upper bound for the 20-min check. Accelerated runs do not test the limits |
 | Hand tally (#24) | Filled by the independent standard-library recount (`hand-tally.csv`); the three counts must agree | #24 asked for a hand count of the dry-run logs. A person can still fill the column from the bundle |
 | Committed evidence | Text files only, under `generation/runs/DEMO-dry-run-*/`. The unmasked #24 tables are included because the run is DEMO, as in `DEMO-AUDIT-01`. The bundle stays outside git; its SHA-256 is in `manifest.json` | Architecture section 8; no binaries in git |
-| A1 page URL | Read from the runner's operator line `A1 designer page: <url>`; the designer starts in `on_panel` | `run_session` gives no other handle to the served A1 page. The alternative was changing #20's `batch_runner`, which is frozen code |
+| A1 page URL | The runner builds the thinking bot designer from the served A1 page with the dry run's `designer_factory` (#306); before that, the dry run read the operator line `A1 designer page: <url>` and started the designer in `on_panel` | `run_session` gave no other handle to the served A1 page. `batch_runner` is frozen code (`generation.code`), which may change until G4 |
