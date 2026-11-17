@@ -217,9 +217,14 @@ the module docstring.
 - **Slots per complete cell.**
 - **Slot outcomes** and **model calls by status.**
 - **Latency and slot time:** p50 and p95, and the number of slots over the 40-s cap.
-- **Projection for the confirmatory run:** 72 banks by default (64 slots and 8 spares).
-  It gives attempts, slots, hours at both rates and the expected number of unavailable
-  banks.
+- **Projection for the confirmatory run:** by default the banks of the default
+  sample-size preset (`schedules/presets/sample-size-presets.json`, #266: 64 slots and 8
+  spares, 72 banks, until the owner picks another preset). `run` and `finish` take
+  `--project-banks N`, `--project-preset NAME` (the preset's pairs plus spares) or
+  `--project-plan R` (the banks of a confirmatory campaign plan, its directory or
+  `plan.json`). It gives attempts, slots, hours at both rates and the expected number of
+  unavailable banks. The note `throughput.md` also lists the same projection for every
+  preset of the file.
 
 The JSON also holds the shortfall, the usable slots, the spares used, the config hash and
 the register hash. With 8-10 banks the projection is a rough planning figure.

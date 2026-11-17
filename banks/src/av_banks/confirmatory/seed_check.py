@@ -1,13 +1,15 @@
-"""Seed checks of the confirmatory banks: unique across the 72 banks, disjoint from the pilot.
+"""Seed checks of the confirmatory banks: unique across the banks, disjoint from the pilot.
 
 A bank's model seeds are `seeds.derive_seed` of its B seed keys
 `B|<seed_namespace>|<attempt>|<profile>|<atom>|<slot>` (#26). Its *key space* is every
 key it may use under the budget: 4 attempts x 3 profiles x 16 atoms x 12 slots = 2,304
-keys, so the 72 banks span 165,888 keys. Before the run (`check_seeds`):
+keys, so a campaign of N banks spans N x 2,304 keys (72 banks: 165,888; 96: 221,184;
+100: 230,400). The checks take the banks they are given, so they hold for any campaign
+size. Before the run (`check_seeds`):
 
 - every namespace names its own bank and version (`builder.seed_namespace_error`) and its
   bank belongs to the expected set (`confirmatory`, or `demo` for a rehearsal);
-- namespaces are unique, and the 165,888 keys give 165,888 distinct 64-bit seeds;
+- namespaces are unique, and the N x 2,304 keys give N x 2,304 distinct 64-bit seeds;
 - no namespace and no seed is shared with the pilot: the pilot's namespaces come from
   its bank directories, run directories or campaign directory (manifests, attempt
   summaries and every slot record's seed key) or from a CSV with a `seed_namespace`

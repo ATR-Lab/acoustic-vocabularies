@@ -513,6 +513,7 @@ def run_campaign(
         raise CampaignError(E_INPUT, "parallel_banks must be at least 1")
     history = bank_history(plan, read_rebuilds(root))
     current = [history[b.bank_id][-1] for b in plan.banks]
+    main_slots = plan.size.n_main
     if only is not None:
         unknown = sorted(set(only) - {b.bank_id for b in current})
         if unknown:
@@ -563,6 +564,7 @@ def run_campaign(
                 permutation,
                 bank_version=bank.bank_version,
                 seed_namespace=bank.seed_namespace,
+                main_slots=main_slots,
             )
             event("bank_start", bank_id=bank.bank_id, run_id=bank.run_id)
             try:

@@ -3,9 +3,11 @@
 `rehearse(out)` runs every step of the real procedure on synthetic inputs, so the
 tooling, the files and the counts can be checked without the G4 freeze or the LLM host:
 
-- 72 DEMO unit permutations (`demo_units`: stand-ins with the fields the builder reads,
-  `"demo": true`, labels and atom order drawn from a DEMO seed label; not schedules
-  output);
+- DEMO unit permutations for the campaign size (`demo_units`: `B-C01`..`B-C<n>` and
+  `B-S01`..`B-S<m>`, default `common.DEFAULT_SIZE`, the default sample-size preset;
+  stand-ins with the fields the builder reads, `"demo": true`, labels and atom order
+  drawn from a DEMO seed label; not schedules output). The plan takes its size from
+  them, as a real plan does from the schedules units;
 - a DEMO generation config from the repository's DEMO inputs (`demo_config`: DEMO
   meaning set, the recipe schema as decoding schema, the DEMO fallback set, synthetic
   prompt-set hashes) and a DEMO draft freeze manifest holding its hash
@@ -13,8 +15,8 @@ tooling, the files and the counts can be checked without the G4 freeze or the LL
 - DEMO pilot namespaces `DEMO-P001`..`DEMO-P008`;
 - the plan, the parallel run with `DemoSlotProposer` (random recipes drawn from each
   slot's seed key, simulated model latency on a per-bank `ManualClock`; banks listed in
-  `unavailable` get unusable output and end unavailable after 4 x 12 slots),
-  `verify_all` and `compile_register`.
+  `unavailable` get unusable output and end unavailable after 4 x 12 slots; default
+  `default_unavailable(size)`), `verify_all` and `compile_register`.
 
 With `workers=1` every bank, and so `register.csv`, is the same on every machine. The
 runner's events, the timing log's `ALL` row and the archive carry the real run time.
@@ -58,7 +60,7 @@ from av_banks import builder
 from av_banks.builder import LedgerFactory
 from av_banks.proposer import Proposal, ProposerConfigError
 
-from .common import CampaignLayout, campaign_bank_ids, dyad_slot
+from .common import DEFAULT_SIZE, E_INPUT, CampaignError, CampaignLayout, CampaignSize
 from .plan import CampaignPlan, PlannedBank, create_plan
 from .register import RegisterResult, VerifyAll, compile_register, verify_all
 from .runner import CampaignRun, CampaignStatus, run_campaign
@@ -66,8 +68,10 @@ from .seed_check import read_pilot
 
 DEMO_THRESHOLD: Final = "0.10"
 DEMO_SEED_LABEL: Final = "DEMO-o8-1-1-units"
-DEFAULT_UNAVAILABLE: Final[tuple[str, ...]] = ("DEMO-C007", "DEMO-C030", "DEMO-C070")
-"""Two main banks and one spare end unavailable: 69 complete, decision `ready`."""
+UNAVAILABLE_MAIN: Final[tuple[int, ...]] = (7, 30)
+"""Sequence numbers of the main banks a default rehearsal makes unavailable."""
+UNAVAILABLE_SPARE: Final = 6
+"""The spare (`B-S06`) a default rehearsal makes unavailable."""
 DEMO_PILOT: Final[tuple[str, ...]] = tuple(f"DEMO-P{n:03d}" for n in range(1, 9))
 _A3_TEXT: Final = "DEMO A3 instruction (synthetic rehearsal text, not a study prompt)"
 _B_TEXT: Final = "DEMO B instruction (synthetic rehearsal text, not a study prompt)"
@@ -119,11 +123,30 @@ def demo_unit(unit_id: str, *, seed_label: str = DEMO_SEED_LABEL) -> dict[str, A
     }
 
 
-def demo_units(out: str | os.PathLike[str], *, seed_label: str = DEMO_SEED_LABEL) -> Path:
-    """Write the 72 DEMO units (`<out>/<unit_id>/permutation.json`); returns `out`."""
+def default_unavailable(size: CampaignSize = DEFAULT_SIZE) -> tuple[str, ...]:
+    """The banks a rehearsal makes unavailable by default: main banks 7 and 30 and the
+    sixth spare, those the size has. With enough spares, decision `ready`."""
+    seqs = [n for n in UNAVAILABLE_MAIN if n <= size.n_main]
+    if size.n_spares >= UNAVAILABLE_SPARE:
+        seqs.append(size.n_main + UNAVAILABLE_SPARE)
+    return tuple(f"DEMO-C{n:03d}" for n in seqs)
+
+
+DEFAULT_UNAVAILABLE: Final = default_unavailable()
+"""Two main banks and one spare end unavailable (default size: all but 3 complete,
+decision `ready`)."""
+
+
+def demo_units(
+    out: str | os.PathLike[str],
+    *,
+    seed_label: str = DEMO_SEED_LABEL,
+    size: CampaignSize = DEFAULT_SIZE,
+) -> Path:
+    """Write the DEMO units of `size` (`<out>/<unit_id>/permutation.json`, `B-C01`..,
+    `B-S01`..); returns `out`."""
     root = Path(out)
-    for bank_id in campaign_bank_ids(demo=True):
-        unit_id = dyad_slot(bank_id)
+    for unit_id in size.unit_ids():
         path = root / unit_id / "permutation.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         write_document(path, demo_unit(unit_id, seed_label=seed_label))
@@ -335,7 +358,8 @@ def rehearse(
     out: str | os.PathLike[str],
     *,
     campaign_id: str = "DEMO-cbanks-01",
-    unavailable: Sequence[str] = DEFAULT_UNAVAILABLE,
+    size: CampaignSize = DEFAULT_SIZE,
+    unavailable: Sequence[str] | None = None,
     outage: Sequence[str] = (),
     parallel_banks: int = 4,
     workers: int = 1,
@@ -347,13 +371,21 @@ def rehearse(
     clock: Clock | None = None,
     fsync: bool = False,
 ) -> Rehearsal:
-    """Run the whole procedure on DEMO IDs under `out` (`inputs/`, `campaign/`). Banks in
-    `only` (default: all) are built; the register is compiled when all 72 are done.
+    """Run the whole procedure on DEMO IDs under `out` (`inputs/`, `campaign/`) for a
+    campaign of `size` (DEMO units `B-C01`..`B-C<n>` and `B-S01`..`B-S<m>`). Banks in
+    `unavailable` (default `default_unavailable(size)`) end unavailable, banks in
+    `outage` see a model-server outage; an ID outside the size is refused. Banks in
+    `only` (default: all) are built; the register is compiled when all are done.
     `ledger_factory` defaults to #17's ledger (`builder.slot_ledger`). The runner runs on
     `clock` (default: the system clock); each bank's model time is simulated on its own
     `ManualClock`, so its slot records, manifest and bank hash are the same in every run."""
+    failing = set(default_unavailable(size) if unavailable is None else unavailable)
+    down = set(outage)
+    unknown = sorted((failing | down) - set(size.bank_ids(demo=True)))
+    if unknown:
+        raise CampaignError(E_INPUT, f"not banks of a campaign of {size.text()}: {unknown}")
     base = Path(out)
-    units = demo_units(base / "inputs" / "units")
+    units = demo_units(base / "inputs" / "units", size=size)
     config = demo_config()
     freeze_path = base / "inputs" / "freeze-manifest.json"
     write_document(freeze_path, demo_freeze_manifest(config))
@@ -368,10 +400,10 @@ def rehearse(
         pilot=read_pilot(namespaces=DEMO_PILOT),
         clock=runner,
         parallel_banks=parallel_banks,
+        dyads=size.n_main,
+        spares=size.n_spares,
     )
     clocks: dict[str, ManualClock] = {}
-    failing = set(unavailable)
-    down = set(outage)
 
     def bank_clock(bank: PlannedBank) -> ManualClock:
         # simulated model time from 0 ms, starting at the runner's time

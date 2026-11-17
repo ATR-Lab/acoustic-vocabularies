@@ -59,8 +59,9 @@ the tests refuse any non-loopback connection.
 | `manifest.BankManifest`, `manifest.manifest_from_files`, `manifest.to_dyad_bank` | Typed manifest, manifest from stored files, package-builder input (#13) |
 | `verify.verify_bank` | Verification report |
 | `amend.amend_bank` | Reserve-rule amendment |
-| `permutation.load_permutation`, `permutation.expected_unit_id` | Unit permutation and the bank-ID to dyad-slot rule |
+| `permutation.load_permutation`, `permutation.expected_unit_id` | Unit permutation and the bank-ID to dyad-slot rule (`main_slots`: the campaign's main dyad slots) |
+| `presets.get_preset`, `presets.default_preset`, `presets.all_presets` | Study B pairs and spare slots of the sample-size presets (`schedules/presets/sample-size-presets.json`, #266; read as a file contract) |
 | `pilot.pilot_plan`, `pilot.run_pilot`, `pilot.finish_pilot`, `pilot.check_pilot`, `pilot.archive_pilot` | Pilot banks (#27) |
 | `register.write_register`, `register.register_problems`, `register.open_bank` | Bank register, register check (recomputed hashes), set-bound loading |
 | `archive.archive_tree`, `archive.archive_problems` | Hash every file, make it read-only (append-only logs excepted), check |
-| `metrics.summarize_banks`, `metrics.summary_markdown` | Throughput and failure metrics, projection for #28 |
+| `metrics.summarize_banks`, `metrics.summary_markdown`, `metrics.project` | Throughput and failure metrics, projection for #28 (default: the default preset's banks; the note lists every preset) |

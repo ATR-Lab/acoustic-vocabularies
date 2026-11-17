@@ -6,12 +6,14 @@ from av_generation.records import RecordWriter, TimingEvent
 
 from av_banks.metrics import (
     Spread,
+    project,
     ratio,
     run_wall_ms,
     spread,
     summarize_banks,
     summary_markdown,
 )
+from av_banks.presets import all_presets
 from av_banks.run import build_banks
 
 
@@ -59,6 +61,24 @@ def test_summary_of_a_retried_bank(retried_bank):
     assert "| Slots per hour (bank builder) | n/a" in note
     assert "| Attempts per bank | 2 (min 2, max 2, n 1); banks by attempts: 1: 0, 2: 1" in note
     assert "## Projection for 10 banks" in note and "| Slots | 2,120 |" in note
+    assert "sample-size preset" not in note
+
+
+def test_projection_for_each_sample_size_preset(retried_bank):
+    """`project` gives the projection `summarize_banks` makes for any bank count, and the
+    note lists it for every preset of the schedules preset file (#266)."""
+    for banks in (10, 72, 96, 100):
+        s = summarize_banks([retried_bank.bank_dir], project_banks=banks)
+        assert project(s, banks) == s.projection
+    note = summary_markdown(s, title="Test", presets=all_presets())
+    assert "## Projection by sample-size preset" in note
+    for preset in all_presets():
+        p = project(s, preset.banks)
+        row = (
+            f"| `{preset.name}` | {preset.banks} ({preset.pairs} + {preset.spares}) | "
+            f"{p.attempts:,.1f}".rstrip("0").rstrip(".")
+        )
+        assert row in note
 
 
 def test_rates_from_attempt_and_run_time(kit, tmp_path):
