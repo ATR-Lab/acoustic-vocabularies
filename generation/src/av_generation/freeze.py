@@ -419,6 +419,7 @@ GENERATION_CODE_EXCLUDED: Final[Mapping[str, str]] = {
     "panel_demo.py": "scripted panel sessions (#21)",
     "panel_skew.py": "station onset timing evidence (#21)",
     "rater.py": "bot rater for synthetic panels (#21, #22)",
+    "set_dry_run.py": "synthetic whole-set dry run, every batch of a set in process (#22, #266)",
     "threshold.py": "O6.2.2 listening tool (#23); its outcome is the separation.* items",
     "threshold_cli.py": "O6.2.2 listening tool (#23); its outcome is the separation.* items",
     "threshold_runner.py": "O6.2.2 listening tool (#23); its outcome is the separation.* items",

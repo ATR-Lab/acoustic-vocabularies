@@ -202,20 +202,99 @@ _ORDER_PERMUTATIONS: Final[tuple[tuple[int, ...], ...]] = tuple(
 )
 """The 720 permutations of the order indices 1..6, in lexicographic order."""
 
+_ORDER_CELLS: Final[Mapping[tuple[int, ...], int]] = {
+    p: sum(1 << (len(PANEL_ORDERS) * i + order - 1) for i, order in enumerate(p))
+    for p in _ORDER_PERMUTATIONS
+}
+"""One bit per (position, order) cell of each permutation: two permutations differ at
+every position exactly when their masks share no bit."""
+
+
+def _need_after(need: tuple[int, ...], perm: tuple[int, ...], length: int) -> tuple[int, ...]:
+    """`need` (uses still owed to each order by the partial rows) after a row that uses the
+    first `length` entries of `perm` (a full row owes nothing)."""
+    used = perm[:length] if length < len(need) else ()
+    return tuple(n - (order in used) for order, n in enumerate(need, start=1))
+
+
+def _balanced_completion(
+    chunk: int, taken: int, need: tuple[int, ...], partial: Sequence[tuple[int, int]]
+) -> bool:
+    """Whether the partial rows still to draw can use order o exactly `need[o - 1]` times.
+
+    `partial` holds `(chunk, length)` of each such row in draw order: a permutation of
+    1..6 of which the first `length` entries are used, differing at every position from
+    the other rows of its chunk (`taken`: the cells of the rows of chunk `chunk` drawn so
+    far). Full rows are left out: a Latin rectangle of fewer than six rows always extends
+    by one row, so they can be drawn around the partial ones. A depth-first search; the
+    last partial row of a chunk is tried once per set of used orders."""
+    if not partial:
+        return not any(need)
+    if max(need) > len(partial):  # a row uses an order at most once
+        return False
+    (row_chunk, length), rest = partial[0], partial[1:]
+    base = taken if row_chunk == chunk else 0
+    last_in_chunk = not rest or rest[0][0] != row_chunk
+    tried: set[frozenset[int]] = set()
+    for perm, cells in _ORDER_CELLS.items():
+        used = perm[:length]
+        if cells & base or any(need[order - 1] == 0 for order in used):
+            continue
+        if last_in_chunk:
+            if frozenset(used) in tried:
+                continue
+            tried.add(frozenset(used))
+        if _balanced_completion(row_chunk, base | cells, _need_after(need, perm, length), rest):
+            return True
+    return False
+
+
+def _keeps_balance(
+    pick: tuple[int, ...],
+    chunk: int,
+    taken: int,
+    length: int,
+    need: tuple[int, ...],
+    rest: Sequence[tuple[int, int]],
+) -> bool:
+    """Whether a row `pick` of `length` used entries in `chunk` leaves a balanced
+    completion of the partial rows `rest` (`_balanced_completion`)."""
+    left = _need_after(need, pick, length)
+    return min(left) >= 0 and _balanced_completion(chunk, taken | _ORDER_CELLS[pick], left, rest)
+
 
 def _group_orders(set_ns: str, sizes: Mapping[str, int]) -> dict[str, list[int]]:
     """Order indices for groups of `sizes[g]` panels from one seeded stream.
 
     Each group's panels take whole permutations of 1..6 (chunk c covers its panels
-    6c..6c+5). Within a chunk the groups draw in sorted order, each uniformly among the
-    permutations that differ at every position from the groups drawn before it (a Latin
-    rectangle; at most 3 profile groups, so one always exists)."""
+    6c..6c+5; in a group's last, partial chunk only the first entries are used). Within a
+    chunk the groups draw in sorted order, each uniformly among the permutations that
+    differ at every position from the groups drawn before it (a Latin rectangle; at most 3
+    profile groups, so one always exists).
+
+    When the panels number a multiple of six and some group ends in a partial chunk, the
+    partial chunks together must also use every order equally often, so each order is
+    used N/6 times. Each pick is then checked for a balanced completion with look-ahead
+    (`_balanced_completion`; a greedy pick can dead-end): a pick that keeps one is taken
+    as drawn, and a pick that does not is replaced by a second draw from the same stream,
+    uniform among the allowed permutations that keep one. So every pick is uniform among
+    the permutations that keep a balanced completion, and a schedule that was already
+    balanced without this rule is unchanged."""
     rng = rng_for(panel_seed_key(set_ns, "orders"))
     n_orders = len(PANEL_ORDERS)
     out: dict[str, list[int]] = {g: [] for g in sizes}
     chunks = max((-(-n // n_orders) for n in sizes.values()), default=0)
+    partial = [
+        (chunk, length)
+        for chunk, _, length in sorted(
+            (n // n_orders, g, n % n_orders) for g, n in sizes.items() if n % n_orders
+        )
+    ]  # in draw order: by chunk, then group
+    balance = bool(partial) and sum(sizes.values()) % n_orders == 0
+    need = (sum(length for _, length in partial) // n_orders,) * n_orders
     for chunk in range(chunks):
         rows: list[tuple[int, ...]] = []
+        taken = 0
         for group in sorted(sizes):
             if sizes[group] <= chunk * n_orders:
                 continue
@@ -227,7 +306,19 @@ def _group_orders(set_ns: str, sizes: Mapping[str, int]) -> dict[str, list[int]]
             if not allowed:  # pragma: no cover - impossible for fewer than 6 groups
                 raise OrchestratorError(E_SCHEDULE, "too many profile groups")
             pick = allowed[int(rng.integers(len(allowed)))]
+            if balance:
+                length = min(n_orders, sizes[group] - chunk * n_orders)
+                rest = partial[1:] if length < n_orders else partial
+                if not _keeps_balance(pick, chunk, taken, length, need, rest):
+                    feasible = [
+                        p for p in allowed if _keeps_balance(p, chunk, taken, length, need, rest)
+                    ]
+                    if not feasible:  # pragma: no cover - the tests try every size to 17
+                        raise OrchestratorError(E_SCHEDULE, "no balanced order schedule")
+                    pick = feasible[int(rng.integers(len(feasible)))]
+                need, partial = _need_after(need, pick, length), rest
             rows.append(pick)
+            taken |= _ORDER_CELLS[pick]
             out[group].extend(pick)
     return {g: orders[: sizes[g]] for g, orders in out.items()}
 
@@ -245,9 +336,13 @@ def panel_order_schedule(
     of the six orders per six panels, so a profile with six batches uses every order
     exactly once and 18 panels (3 profiles x 6) use each order exactly 3 times; panels at
     the same position within their profiles get different orders, so the three pilot
-    panels (one per profile) use distinct orders. Without `profiles` every panel is in
-    one group: each six consecutive panels use every order once (any 6k panels use each
-    order k times), with no balance within a profile.
+    panels (one per profile) use distinct orders. A profile's last chunk may hold fewer
+    than six panels (10 per profile: 6 + 4); whenever the panels number a multiple of
+    six, these partial chunks are drawn so that every order is still used N/6 times (30
+    panels: 5 times each), and within a profile the order counts differ by at most 1
+    (`_group_orders`). Without `profiles` every panel is in one group: each six
+    consecutive panels use every order once (any 6k panels use each order k times), with
+    no balance within a profile.
     `set_ns` must be a restricted namespace for pilot and confirmatory sets (the
     schedule would otherwise be computable from public code; `docs/orchestrator.md`).
     """

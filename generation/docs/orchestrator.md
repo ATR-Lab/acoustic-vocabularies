@@ -70,6 +70,18 @@ profiles get different orders: the three pilot panels (one per profile) use thre
 different orders. The CSV has a `profile` column. Without `profiles` the panels form one
 group (each six consecutive panels use every order once, no balance within a profile).
 
+Any number of panels (#266). A profile's last chunk can hold fewer than six panels (30
+batches: 10 per profile, 6 + 4). When the panels number a multiple of six, the partial
+chunks together must also use every order equally often, so each order is used N/6
+times (30 panels: 5 times each); within a profile the counts then differ by at most 1,
+and the rule across profiles is kept. Each pick is then checked with look-ahead for a
+balanced completion, because a greedy pick can dead-end. A pick that keeps one is taken
+as drawn; otherwise a second draw from the same stream picks uniformly among the allowed
+permutations that keep one. So every schedule that was already balanced (18 panels, the
+pilot, sizes that are not a multiple of six, one group) is unchanged byte for byte;
+`tests/generation/test_panel_order_balance.py` compares against the earlier selection
+and tries every profile size up to 17.
+
 Aliases (book-ID rotation). Per panel, `rng_for(panel_seed_key(set_ns, "aliases",
 panel_id))` draws one alias per book in sorted book-ID order (`PB-` + 4 characters of
 `ids.PANEL_ALIAS_ALPHABET`, redrawn on a repeat). The operator console shows aliases
@@ -233,6 +245,7 @@ leaves runs with a `batch_incomplete` event out.
 | Missing ratings (Decision/Proposed) | A missing comfort counts as not acceptable; the score uses raters with both judgments and is flagged (`flagged_missing`); a candidate with no score is not eligible | Issue proposal; keeps the 2-of-3 rule strict and the score exact |
 | Batch definitions (Proposed: generated here) | Read from the schedules batch table and checked against `permutation.json` | One source of truth: #29 already generates them with a stored seed; generating them twice could disagree |
 | Order schedule over 18 panels | One seeded permutation of the 6 orders per profile (from the batch table's `profile` column), the profiles' permutations differing at every position | Each order exactly 3 times over 18 panels (§3.1), every profile's 6 batches get each order once although the batch table interleaves profiles, and the 3 pilot panels get 3 different orders |
+| Order schedule over N panels (#266) | Partial chunks drawn with a look-ahead check so that every order is used N/6 times when N is a multiple of 6; a pick that keeps a balanced completion is taken as drawn | Each order 5 times over 30 panels as well as 3 times over 18; schedules that were already balanced do not change |
 | Rebuilt batches | Same order index and books, new panel, aliases and seed namespace | Counterbalancing is per batch; §3.3 asks for a new independent panel |
 | Substitute store book | `<book>-FB`, commits in the fallback book's stored order | Anonymous, valid store ID; the store snapshot equals the frozen `book_sha256` |
 | First atom | `first_atom` = the book's state has no committed atom | Equals "atom 1" in every normal run; after a substitution with nothing archived it keeps distinguishability fixed at 4 when no reference exists (§3.3) |
