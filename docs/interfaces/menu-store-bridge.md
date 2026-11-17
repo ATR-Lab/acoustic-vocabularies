@@ -10,7 +10,7 @@ every receipt and verified read says `source_kind: synthetic` and
 connect to the actual store; they do not grant participant authorization or
 qualify a vocabulary.
 
-The adapter does not generate options, substitute a reserve, change the store's
+The adapter does not generate options, decide a reserve substitution, change the store's
 default separation threshold/reserved signals, or skip admissibility. The test
 suite uses the existing deterministic synthetic bank/package producer and a
 fixed adversarial fixture to exercise the actual store's rejection path. No
@@ -40,9 +40,12 @@ bindings, the caller's retained `expected_head` and
 - Initial profile selection uses `menu_key:profile`, `rank:null`,
   `expected_head:null` and the SHA-256 of compact canonical `{}` as its empty
   snapshot pin. It creates one actual fixed-profile synthetic book.
-- An atom selection uses its exact atom ID as `menu_key`, rank 1–3 and the latest
-  returned head/snapshot pins. Rank 4 is refused. A different profile or a new
-  request attempting to replace an already committed atom is refused.
+- An atom selection uses its exact atom ID as `menu_key`, rank 1–4 and the latest
+  returned head/snapshot pins. Rank 4 is the cell's reserve: the app requests it
+  only for the slot a journaled menu-ledger amendment gave the reserve
+  (REQ-BANK-05; see the selection-menus document), and the actual store still
+  validates it. A different profile or a new request attempting to replace an
+  already committed atom is refused.
 - An exact repeated request ID/bytes returns its original durable receipt after
   rechecking current store integrity. Reusing the ID with different bytes fails.
 - `verify` uses `menu_key:verify`, `rank:null`, the retained latest head/snapshot

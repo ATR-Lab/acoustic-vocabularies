@@ -165,7 +165,7 @@
             {
               "type": "integer",
               "minimum": 1,
-              "maximum": 3
+              "maximum": 4
             },
             {
               "type": "null"
@@ -222,7 +222,7 @@
             "rank": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 3
+              "maximum": 4
             },
             "profile": {
               "enum": [
@@ -346,7 +346,7 @@
             {
               "type": "integer",
               "minimum": 1,
-              "maximum": 3
+              "maximum": 4
             },
             {
               "type": "null"
@@ -493,7 +493,7 @@
             "rank": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 3
+              "maximum": 4
             },
             "accepted": {
               "const": true
@@ -542,7 +542,7 @@
             "rank": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 3
+              "maximum": 4
             },
             "accepted": {
               "const": false
@@ -695,7 +695,7 @@
               "rank": {
                 "type": "integer",
                 "minimum": 1,
-                "maximum": 3
+                "maximum": 4
               },
               "pcm_sha256": {
                 "type": "string",

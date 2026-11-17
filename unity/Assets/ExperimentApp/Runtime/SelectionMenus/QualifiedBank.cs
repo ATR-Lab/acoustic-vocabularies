@@ -23,10 +23,10 @@ namespace AcousticVocab.SelectionMenus
         static readonly string[] Profiles={"P1","P2","P3"};
         static readonly string[] TopKeys={"atom_order","attempt_used","attempts","bank_id","bank_version","cells","demo","dyad_slot","format","format_version","generation_config_sha256","labels","permutation_sha256","seed_namespace","set","status"};
         static readonly string[] OptionKeys={"file_sha256","menu","option_id","pcm_sha256","rank","recipe","recipe_sha256","slot_id","wav"};
-        readonly Dictionary<string,(string Pcm,string File)> options;
+        readonly Dictionary<string,(string Pcm,string File,string Id,string Recipe,long TotalMs)> options;
         public string BankId{get;}public string BankSha256{get;}public string Set{get;}public bool Demo{get;}public string DyadSlot{get;}
         public int OptionsVerified=>options.Count;
-        QualifiedBank(string id,string hash,string set,bool demo,string slot,Dictionary<string,(string,string)> verified)
+        QualifiedBank(string id,string hash,string set,bool demo,string slot,Dictionary<string,(string,string,string,string,long)> verified)
         {BankId=id;BankSha256=hash;Set=set;Demo=demo;DyadSlot=slot;options=verified;}
         static void Need(bool okay){if(!okay)throw new SessionFault(Fault);}
         static string Text(JToken value){Need(value?.Type==JTokenType.String);return (string)value;}
@@ -114,7 +114,7 @@ namespace AcousticVocab.SelectionMenus
             var labels=permutation["atoms"].ToDictionary(x=>Text(x["atom_id"]),x=>Text(x["semantic_label"]),StringComparer.Ordinal);
             Keys(bank["labels"],labels.Keys);foreach(var p in ((JObject)bank["labels"]).Properties())Need(Text(p.Value)==labels[p.Name]);
             // Every displayed and reserve option equals the package's verified audio.
-            Need(bank["cells"] is JArray cells&&cells.Count==48);var verified=new Dictionary<string,(string,string)>(StringComparer.Ordinal);int c=0;
+            Need(bank["cells"] is JArray cells&&cells.Count==48);var verified=new Dictionary<string,(string,string,string,string,long)>(StringComparer.Ordinal);int c=0;
             foreach(string profile in Profiles)
             {
                 var seen=new HashSet<string>(StringComparer.Ordinal);
@@ -129,7 +129,7 @@ namespace AcousticVocab.SelectionMenus
                         Recipe(option["recipe"]);Need(Text(option["recipe_sha256"])==CanonicalSha256(option["recipe"]));
                         string pcm=Text(option["pcm_sha256"]),file=Text(option["file_sha256"]);Need(IsHash(pcm)&&IsHash(file)&&seen.Add(pcm));
                         var wave=package.ReadAtom(atom,profile,rank);Need(wave.PcmSha256==pcm&&wave.FileSha256==file);
-                        verified.Add(Key(profile,atom,rank),(pcm,file));
+                        verified.Add(Key(profile,atom,rank),(pcm,file,Text(option["option_id"]),Text(option["recipe_sha256"]),(long)option["recipe"]["total_ms"]));
                     }
                 }
             }
@@ -137,7 +137,14 @@ namespace AcousticVocab.SelectionMenus
         }
         // Rechecked before each atom menu: the candidate about to be shown must
         // still be the frozen bank's option, not only the package's.
-        public void CheckOption(string profile,string atom,int rank,PcmWave wave)
-        {Need(wave!=null&&rank>=1&&rank<=3&&options.TryGetValue(Key(profile,atom,rank),out var row)&&row.Pcm==wave.PcmSha256&&row.File==wave.FileSha256);}
+        public void CheckOption(string profile,string atom,int rank,PcmWave wave)=>Need(Matches(profile,atom,rank,wave));
+        internal bool Matches(string profile,string atom,int rank,PcmWave wave)
+            =>wave!=null&&rank>=1&&rank<=3&&options.TryGetValue(Key(profile,atom,rank),out var row)&&row.Pcm==wave.PcmSha256&&row.File==wave.FileSha256;
+        // REQ-BANK-05 reserve recheck against the verified bank: the cell's rank-4
+        // option with its recorded PCM/file hash and recipe duration. Returns the
+        // bank option ID and recipe hash, or null. The builder's separation check
+        // covered all four ranks of this complete, verified bank.
+        internal (string OptionId,string RecipeSha256)? Reserve(string profile,string atom,PcmWave wave)
+            =>wave!=null&&options.TryGetValue(Key(profile,atom,4),out var row)&&row.Pcm==wave.PcmSha256&&row.File==wave.FileSha256&&wave.SampleCount==row.TotalMs*48?(row.Id,row.Recipe):((string,string)?)null;
     }
 }

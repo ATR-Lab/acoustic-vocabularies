@@ -9,7 +9,7 @@ namespace AcousticVocab.SelectionMenus
     public sealed class MenuTimeline
     {
         readonly SlotContext context;readonly MenuOption[] options;readonly MenuReplay replay;readonly Action<MenuEvent> persist;readonly Func<double> observed;
-        readonly double[] offsets,displayOffsets;readonly bool profile;readonly string meaningDisplayId;
+        readonly double[] offsets,displayOffsets;readonly bool profile;readonly string meaningDisplayId;readonly MenuAmendment amendment;
         readonly bool[] requested=new bool[8],completed=new bool[8],onset=new bool[8];
         double last=-1;int choice,final;bool started,failed,finalized,committed,defaulted;
         public MenuPhase Phase {get;private set;}=MenuPhase.Hidden;
@@ -20,7 +20,7 @@ namespace AcousticVocab.SelectionMenus
         public event Action<int,string,MenuOption,double> PlayRequested;
         public event Action<MenuPhase,int?> DisplayChanged;
         public event Action<int,bool> SelectionRequested;
-        public MenuTimeline(SlotContext context,MenuOption[] options,string meaningDisplayId,Action<MenuEvent> durableSink,MenuReplay replay=null,Func<double> observedClock=null)
+        public MenuTimeline(SlotContext context,MenuOption[] options,string meaningDisplayId,Action<MenuEvent> durableSink,MenuReplay replay=null,Func<double> observedClock=null,MenuAmendment amendment=null)
         {
             MenuRules.Require(context.Item!=null&&context.Item.Phase=="selection"&&!context.Item.Heldout&&context.Item.Plays==8&&context.RetryOf==null&&
                 (context.Item.TrialType=="profile_menu"&&context.Item.SlotSeconds==60||context.Item.TrialType=="atom_menu"&&context.Item.SlotSeconds==45),"MENU_SLOT");
@@ -30,6 +30,11 @@ namespace AcousticVocab.SelectionMenus
             offsets=replay==null?(profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000}):(double[])replay.OffsetsMs.Clone();
             displayOffsets=replay?.DisplayOffsetsMs??(profile?new[]{0d,6000,30000,45000,58000,60000}:new[]{0d,4000,22000,32000,40000,45000});
             MenuRules.Require(options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_DURATION");
+            // REQ-BANK-05: a reserve amendment names the slot's option exactly; an
+            // assigned replay carries exactly the active ledger's amendment.
+            if(amendment!=null){var reserve=options[amendment.ReplacedRank-1];MenuRules.Require(!profile&&amendment.MenuKey==context.Item.ContentId&&reserve.CandidateId==amendment.ReserveCandidateId&&reserve.Wave.PcmSha256==amendment.ReservePcmSha256&&reserve.Wave.FileSha256==amendment.ReserveFileSha256,"MENU_RESERVE_OPTIONS");}
+            if(replay!=null)MenuRules.Require(amendment==null?replay.Amendment==null:amendment.SameAs(replay.Amendment),"MENU_YOKED_AMENDMENT");
+            this.amendment=amendment;
             if(replay!=null)
             {
                 double[] nominal=profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000};
@@ -40,12 +45,13 @@ namespace AcousticVocab.SelectionMenus
         double ChoiceDeadline=>profile?45000:32000;
         double NeutralStart=>profile?58000:40000;
         void Clock(double now){MenuRules.Require(MenuRules.Finite(now)&&now>=0&&now>=last,"MENU_CLOCK");last=now;}
-        void Emit(string kind,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? isDefault=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null)
+        void Emit(string kind,double now,double? expected=null,int? play=null,MenuOption option=null,string source=null,int? selected=null,bool? isDefault=null,MenuPhase? phase=null,string receipt=null,double? uncertainty=null,MenuAmendment amended=null)
         {
             double stamp=observed==null?now:observed();MenuRules.Require(MenuRules.Finite(stamp)&&stamp>=now,"MENU_CLOCK");
-            persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt,uncertainty,meaningDisplayId));
+            persist(new MenuEvent(kind,context,stamp,expected,play,option,source,selected,isDefault,phase,receipt,uncertainty,meaningDisplayId,amended));
         }
-        public void Start(double now){Clock(now);MenuRules.Require(!started&&!failed&&now<=context.OnsetMonoMs,"MENU_START");started=true;Emit("menu_start",now,context.OnsetMonoMs,source:replay?.StartEventId);Tick(now);}
+        // The amendment is durable directly after the start, before any display or audio.
+        public void Start(double now){Clock(now);MenuRules.Require(!started&&!failed&&now<=context.OnsetMonoMs,"MENU_START");started=true;Emit("menu_start",now,context.OnsetMonoMs,source:replay?.StartEventId);if(amendment!=null)Emit(MenuAmendment.Kind,now,source:replay?.AmendmentEventId,amended:amendment);Tick(now);}
         public void Choose(int index,double now)
         {
             Clock(now);double elapsed=now-context.OnsetMonoMs;

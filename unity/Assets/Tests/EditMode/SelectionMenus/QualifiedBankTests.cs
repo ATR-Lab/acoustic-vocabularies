@@ -167,5 +167,37 @@ namespace AcousticVocab.SelectionMenus.Tests
         }
         [Test]public void DemoQualifiedBankRemainsEngineeringOnly()
             =>Assert.That(Assert.Throws<SessionFault>(()=>Catalog("B-C01-M2",bankBytes,false)).Code,Is.EqualTo("MENU_DEMO_BANK_ENGINEERING_ONLY"));
+
+        sealed class History:IMenuPresentationHistory{internal readonly System.Collections.Generic.HashSet<string> Heard=new System.Collections.Generic.HashSet<string>();public bool Presented(string key)=>Heard.Contains(key);}
+        [Test, Category("REQ_BANK_05"), NUnit.Framework.Property("Requirement","REQ-BANK-05")]
+        public void ActiveCatalogUsesTheReserveForADamagedCachedOptionAndAssignedReproducesIt()
+        {
+            // Both catalogs verify the complete bank and package before any damage.
+            var active=Catalog("B-C01-M2",bankBytes);var yoked=Catalog("B-C01-M1",bankBytes);var clean=new History();var heard=new History();
+            var atoms=JObject.Parse(Encoding.UTF8.GetString(permutationBytes))["wave_atom_order"]["1"].Select(x=>(string)x).ToArray();heard.Heard.Add(atoms[0]);
+            SlotItem Item(int i)=>new SlotItem("DEMO-atom-"+i,"atom_menu",atoms[i],null,"selection","selection",false,45,8,1);
+            string Option(string atom,int rank)=>Path.Combine(packageRoot,"options","P2",atom+"-"+rank+".wav");
+            string Code(TestDelegate action)=>Assert.Throws<SessionFault>(action).Code;
+            byte[] reserve=File.ReadAllBytes(Option(atoms[0],4));File.Delete(Option(atoms[0],2));
+            Assert.That(Code(()=>active.Prepare(Item(0),"P2")),Is.EqualTo("MENU_RESERVE_HISTORY_UNAVAILABLE"));
+            Assert.That(Code(()=>active.Prepare(Item(0),"P2",heard)),Is.EqualTo("MENU_RESERVE_AFTER_PRESENTATION"));
+            Assert.That(Code(()=>yoked.Prepare(Item(0),"P2",clean)),Is.EqualTo("MENU_RESERVE_ASSIGNED_REFUSED"));
+            Assert.That(Code(()=>yoked.PrepareRecorded(Item(0),"P2",null)),Is.EqualTo("MENU_RESERVE_ASSIGNED_REFUSED"));
+            var material=active.Prepare(Item(0),"P2",clean);
+            Assert.That(material.Ranks,Is.EqualTo(new[]{1,4,3}));Assert.That(material.Amendment.Reason,Is.EqualTo(LoadedAudioPackage.OptionFileMissing));
+            Assert.That(material.Options[1].CandidateId,Is.EqualTo("P2-"+atoms[0]+"-4"));Assert.That(material.Options[1].Wave.FileSha256,Is.EqualTo(PcmWave.Hash(reserve)));
+            Assert.That(material.Amendment.ReserveOptionId,Is.EqualTo((string)fixture["bank_id"]+".P2."+atoms[0]+".4"));
+            // The replaced option is never read again; every other read stays strict.
+            Assert.Throws<AudioIntegrityException>(()=>package.ReadAtom(atoms[0],"P2",2));Assert.DoesNotThrow(()=>package.ReadAtom(atoms[1],"P2",1));
+            var replayed=yoked.PrepareRecorded(Item(0),"P2",material.Amendment);
+            Assert.That(replayed.Ranks,Is.EqualTo(material.Ranks));Assert.That(replayed.Options.Select(x=>x.Wave.FileSha256),Is.EqualTo(material.Options.Select(x=>x.Wave.FileSha256)));
+            // A changed cached file is unusable too; two damaged options fail closed;
+            // damage outside the prepared cell still fails the strict package read.
+            string changed=Option(atoms[1],1);byte[] bytes=File.ReadAllBytes(changed);bytes[bytes.Length-1]^=1;File.WriteAllBytes(changed,bytes);
+            var second=active.Prepare(Item(1),"P2",clean);Assert.That(second.Ranks,Is.EqualTo(new[]{4,2,3}));Assert.That(second.Amendment.Reason,Is.EqualTo(LoadedAudioPackage.OptionHashMismatch));
+            File.Delete(Option(atoms[2],1));File.Delete(Option(atoms[2],3));
+            Assert.That(Code(()=>active.Prepare(Item(2),"P2",clean)),Is.EqualTo("MENU_RESERVE_MULTIPLE_UNUSABLE"));
+            Assert.Throws<AudioIntegrityException>(()=>active.Prepare(Item(3),"P2",clean));
+        }
     }
 }

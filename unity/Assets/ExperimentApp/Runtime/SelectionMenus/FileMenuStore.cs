@@ -43,7 +43,7 @@ namespace AcousticVocab.SelectionMenus
             result.Profile=row["profile"].Type==JTokenType.Null?null:String(row["profile"]);MenuRules.Require(result.Profile==null?result.Head==null&&result.JournalHead==null&&result.ProfileReceipt==null&&row["entries"].Count()==0&&result.SnapshotHash==PcmWave.Hash(Encoding.ASCII.GetBytes("{}")):new[]{"P1","P2","P3"}.Contains(result.Profile)&&result.Head!=null&&result.JournalHead!=null&&result.ProfileReceipt!=null,"MENU_STORE_PROFILE");
             foreach(var item in row["entries"])
             {
-                MenuRules.Require(item is JObject,"MENU_STORE_SCHEMA");var entry=(JObject)item;MenuJson.Keys(entry,"atom_id","profile","rank","pcm_sha256","file_sha256","selection_receipt_sha256");string atom=String(entry["atom_id"]);int rank=MenuJson.Integer(entry["rank"],1,3);
+                MenuRules.Require(item is JObject,"MENU_STORE_SCHEMA");var entry=(JObject)item;MenuJson.Keys(entry,"atom_id","profile","rank","pcm_sha256","file_sha256","selection_receipt_sha256");string atom=String(entry["atom_id"]);int rank=MenuJson.Integer(entry["rank"],1,4);
                 MenuRules.Require(package.AtomIds.Contains(atom)&&!result.Entries.ContainsKey(atom)&&String(entry["profile"])==result.Profile,"MENU_STORE_ENTRY");var wave=package.ReadAtom(atom,result.Profile,rank);MenuRules.Require(Hash(entry["pcm_sha256"])==wave.PcmSha256&&Hash(entry["file_sha256"])==wave.FileSha256&&MenuRules.Hash(Hash(entry["selection_receipt_sha256"])),"MENU_STORE_ENTRY");result.Entries.Add(atom,(JObject)entry.DeepClone());
             }
             return result;
@@ -91,7 +91,7 @@ namespace AcousticVocab.SelectionMenus
         public string RequestSelection(string menuKey,string profile,int? rank)
         {
             MenuRules.Require(Ready&&!readOnly&&new[]{"P1","P2","P3"}.Contains(profile),"MENU_STORE_NOT_READY");bool isProfile=menuKey=="profile";
-            MenuRules.Require(isProfile?snapshot.Profile==null&&!rank.HasValue:snapshot.Profile==profile&&allowed.Contains(menuKey)&&!snapshot.Entries.ContainsKey(menuKey)&&rank>=1&&rank<=3,"MENU_STORE_SELECTION_REFUSED");
+            MenuRules.Require(isProfile?snapshot.Profile==null&&!rank.HasValue:snapshot.Profile==profile&&allowed.Contains(menuKey)&&!snapshot.Entries.ContainsKey(menuKey)&&rank>=1&&rank<=4,"MENU_STORE_SELECTION_REFUSED");
             string id=Guid.NewGuid().ToString("N");var request=new JObject{["schema_version"]=1,["request_id"]=id,["operation"]=isProfile?"profile":"atom",["unit_id"]=binding.UnitId,["book_id"]=binding.BookId,["bank_sha256"]=binding.BankSha256,["package_sha256"]=binding.PackageSha256,["expected_head"]=snapshot.Head==null?JValue.CreateNull():new JValue(snapshot.Head),["expected_snapshot_sha256"]=snapshot.SnapshotHash,["profile"]=profile,["menu_key"]=menuKey,["rank"]=rank.HasValue?new JValue(rank.Value):JValue.CreateNull()};
             return Publish(request);
         }

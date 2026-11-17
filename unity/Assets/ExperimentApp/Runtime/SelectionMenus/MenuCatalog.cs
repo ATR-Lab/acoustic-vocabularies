@@ -17,8 +17,11 @@ namespace AcousticVocab.SelectionMenus
         public string Key{get;}public string MeaningDisplayId{get;}public TeachingDisplay Meaning{get;}
         public string Instructions{get;}public string ChoiceInstructions{get;}public IReadOnlyList<string> Labels{get;}
         public IReadOnlyList<MenuOption> Options{get;}
-        internal MenuMaterial(string key,string meaningId,TeachingDisplay meaning,string instructions,string choice,string[] labels,MenuOption[] options)
-        {Key=key;MeaningDisplayId=meaningId;Meaning=meaning;Instructions=instructions;ChoiceInstructions=choice;Labels=Array.AsReadOnly((string[])labels.Clone());Options=Array.AsReadOnly((MenuOption[])options.Clone());}
+        // Bank rank behind each slot (4 where the reserve replaced an option) and
+        // the reserve amendment the ledger records before any audio (REQ-BANK-05).
+        public IReadOnlyList<int> Ranks{get;}public MenuAmendment Amendment{get;}
+        internal MenuMaterial(string key,string meaningId,TeachingDisplay meaning,string instructions,string choice,string[] labels,MenuOption[] options,int[] ranks=null,MenuAmendment amendment=null)
+        {Key=key;MeaningDisplayId=meaningId;Meaning=meaning;Instructions=instructions;ChoiceInstructions=choice;Labels=Array.AsReadOnly((string[])labels.Clone());Options=Array.AsReadOnly((MenuOption[])options.Clone());Ranks=Array.AsReadOnly((int[])(ranks??new[]{1,2,3}).Clone());Amendment=amendment;}
     }
     public sealed class MenuCatalog
     {
@@ -95,14 +98,33 @@ namespace AcousticVocab.SelectionMenus
             catch(SessionFault){throw;}catch{throw new SessionFault("MENU_CATALOG_INVALID");}
         }
         public string ProfileAt(int storedIndex){Check(storedIndex>=1&&storedIndex<=3);return profileOrder[storedIndex-1];}
-        public MenuMaterial Prepare(SlotItem item,string committedProfile)
+        public MenuMaterial Prepare(SlotItem item,string committedProfile)=>Prepare(item,committedProfile,null);
+        // Active session: decides the REQ-BANK-05 reserve rule against `history`
+        // (every ledger segment of this visit) when one shown option is unusable.
+        public MenuMaterial Prepare(SlotItem item,string committedProfile,IMenuPresentationHistory history)=>Build(item,committedProfile,history,false,null);
+        // Assigned replay and ledger verification: reproduces a recorded menu exactly
+        // (`recorded` is the active ledger's amendment, or null) and never decides.
+        public MenuMaterial PrepareRecorded(SlotItem item,string committedProfile,MenuAmendment recorded)=>Build(item,committedProfile,null,true,recorded);
+        MenuMaterial Build(SlotItem item,string committedProfile,IMenuPresentationHistory history,bool replaying,MenuAmendment recorded)
         {
             Check(item!=null&&item.Phase=="selection"&&!item.Heldout&&item.Plays==8);bool profile=item.TrialType=="profile_menu";string key=profile?"profile":item.ContentId;
-            Check(MenuKeys.Contains(key)&&(!profile||Visit=="V1")&&(profile||menuAtoms.Contains(key)&&new[]{"P1","P2","P3"}.Contains(committedProfile)));
-            var options=profile?profileOrder.Select(x=>new MenuOption("calibration-"+x,examples[x])).ToArray():Enumerable.Range(1,3).Select(x=>new MenuOption(committedProfile+"-"+key+"-"+x,package.ReadAtom(key,committedProfile,x))).ToArray();
-            if(!profile&&qualified!=null)for(int rank=1;rank<=3;rank++)qualified.CheckOption(committedProfile,key,rank,options[rank-1].Wave);
+            Check(MenuKeys.Contains(key)&&(!profile||Visit=="V1")&&(profile||menuAtoms.Contains(key)&&new[]{"P1","P2","P3"}.Contains(committedProfile))&&(recorded==null||!profile));
+            MenuOption[] options;MenuReserveRule.Result resolved=null;
+            if(profile)options=profileOrder.Select(x=>new MenuOption("calibration-"+x,examples[x])).ToArray();
+            else
+            {
+                var cell=package.ReadMenuCell(key,committedProfile,out var unusable);
+                var bank=qualified==null?null:new MenuReserveRule.Bank(qualified.BankSha256,(rank,wave)=>qualified.Matches(committedProfile,key,rank,wave),wave=>qualified.Reserve(committedProfile,key,wave));
+                resolved=MenuReserveRule.Resolve(Role,committedProfile,key,cell,unusable,bank,history,replaying,recorded);
+                if(resolved.Amendment!=null)package.WithdrawMenuOption(key,committedProfile,resolved.Amendment.ReplacedRank,resolved.Amendment.Reason);
+                // The used options are re-read through the strict #64 path; with no
+                // amendment this is exactly the previous candidate read.
+                var waves=resolved.Ranks.Select(rank=>package.ReadAtom(key,committedProfile,rank)).ToArray();
+                Check(waves.Select(x=>x.FileSha256).SequenceEqual(resolved.Waves.Select(x=>x.FileSha256)));
+                options=Enumerable.Range(0,3).Select(i=>new MenuOption(MenuAmendment.Candidate(committedProfile,key,resolved.Ranks[i]),waves[i])).ToArray();
+            }
             string[] labels=profile?profileOrder.Select(x=>(string)script["profile_names"][x]).ToArray():script["candidate_labels"].Select(x=>(string)x).ToArray();var meaning=profile?null:meanings[key];
-            return new MenuMaterial(key,profile?(string)script["profile_display_id"]:meaning.MeaningDisplayId,meaning,(string)script[profile?"profile_instructions":"atom_instructions"],(string)script[Role=="active"?"active_choice_instructions":"yoked_choice_instructions"],labels,options);
+            return new MenuMaterial(key,profile?(string)script["profile_display_id"]:meaning.MeaningDisplayId,meaning,(string)script[profile?"profile_instructions":"atom_instructions"],(string)script[Role=="active"?"active_choice_instructions":"yoked_choice_instructions"],labels,options,resolved?.Ranks,resolved?.Amendment);
         }
         public MenuLedgerBinding Binding(string unitBinding)=>new MenuLedgerBinding(PackageSha256,BankSha256,AllocationSha256,ScheduleSha256,unitBinding,ReviewSha256,Visit,Role,MenuKeys);
         sealed class MeaningPermit:ISelectionMeaningAuthorization
