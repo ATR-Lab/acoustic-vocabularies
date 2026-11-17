@@ -20,11 +20,20 @@ is available and otherwise logs the models as not fitted (the GLMM log says why)
 The primary endpoint is the trained battery of the anchor-relative planned visit (Study
 A D0, Study B W1), complete and in window (``endpoints.planned_endpoint``). Everything
 written is listed in ``analysis/docs/pipeline.md`` ("Report").
+
+``--estimation-contrast C`` (repeatable; ``A3-A2`` for Study A, ``C`` or ``S`` for Study B)
+names a primary contrast that could not get its units before the freeze: it becomes an
+estimation contrast, reported with its estimate and interval only (no t test, no Holm),
+and a Study B contrast left alone is tested at alpha .05 without Holm. The decision tables
+(``a-decision``, ``b-decision``) give each primary contrast's test decision and its
+reading against the 10-point practical criterion (Study A: 95% interval; Study B: 97.5%
+intervals). The rule-to-test map is ``analysis/docs/analysis-conformance.md``.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import math
 import statistics
 import sys
@@ -41,6 +50,7 @@ from .estimators import (
     MEANINGFUL_DIFFERENCE,
     BookMean,
     DyadValues,
+    HolmResult,
     TResult,
     a_batch_differences,
     a_book_means,
@@ -50,6 +60,7 @@ from .estimators import (
     holm,
     km_median,
     one_sample_t,
+    practical_reading,
     stratified_bootstrap,
 )
 from .fileio import parse_csv, read_bytes, sha256_file
@@ -89,6 +100,15 @@ B_STRATA: Final[tuple[str, ...]] = (
 )
 PROFILES: Final[tuple[str, ...]] = ("P1", "P2", "P3")
 IN_WINDOW: Final[tuple[str, ...]] = ("in_window", "not_applicable")
+ALPHA: Final = 0.05
+# Primary contrasts that may be declared estimation contrasts (``--estimation-contrast``).
+ESTIMATION_CONTRASTS: Final[dict[str, tuple[str, ...]]] = {"A": ("A3-A2",), "B": ("C", "S")}
+ESTIMATION_NOTE: Final = "estimation contrast: estimate and interval only, no test"
+COMPLETE_UNIT_NOTE: Final = (
+    "Complete-unit estimates assume that missing endpoints are unrelated to the outcomes; "
+    "the all-assigned bounds and tipping points in section 7 drop that assumption."
+)
+HOLM_INCLUDES_ZERO: Final = "Holm-significant, but the 97.5% interval includes 0"
 
 
 class PipelineError(ValueError):
@@ -122,6 +142,214 @@ def describe_t(label: str, t: TResult, units: str, wide: TResult | None = None) 
         text += f"; 97.5% CI {wide.low * 100:.2f} to {wide.high * 100:.2f}"
     ptext = "p < 0.0001" if t.p < 0.0001 else f"p = {t.p:.4f}"
     return text + f"; t({t.df}) = {tval}, {ptext}; {t.n} {units})."
+
+
+def describe_estimate(label: str, t: TResult, units: str, wide: TResult | None = None) -> str:
+    """Key-results sentence of an estimation contrast: estimate, interval(s) and their
+    half-width (the stated precision), no test."""
+    if t.mean is None or t.low is None or t.high is None:
+        return f"{label} (estimation contrast, no test): unavailable ({t.reason}; {t.n} {units})."
+    text = (
+        f"{label} (estimation contrast, no test): {t.mean * 100:.2f} pp (95% CI "
+        f"{t.low * 100:.2f} to {t.high * 100:.2f}, half-width {(t.high - t.low) * 50:.2f} pp"
+    )
+    if wide is not None and wide.low is not None and wide.high is not None:
+        text += (
+            f"; 97.5% CI {wide.low * 100:.2f} to {wide.high * 100:.2f}, half-width "
+            f"{(wide.high - wide.low) * 50:.2f} pp"
+        )
+    return text + f"; {t.n} {units})."
+
+
+def untested(t: TResult) -> TResult:
+    """``t`` without its test statistic and p value (an estimation contrast)."""
+    return dataclasses.replace(t, t=None, p=None)
+
+
+DECISION_COLUMNS: Final = (
+    "contrast",
+    "analysis",
+    "units_planned",
+    "units",
+    "estimate_pp",
+    "p",
+    "threshold",
+    "reject",
+    "interval",
+    "low_pp",
+    "high_pp",
+    "half_width_pp",
+    "criterion_pp",
+    "practical_reading",
+    "note",
+)
+DECISION_FORMATS: Final = (
+    "text",
+    "text",
+    "int",
+    "int",
+    "f2",
+    "p",
+    "f4",
+    "bool",
+    "text",
+    "f2",
+    "f2",
+    "f2",
+    "f1",
+    "text",
+    "text",
+)
+DECISION_TABLE_NOTE: Final = (
+    "Practical reading of the judgement interval against the 10-point working criterion: "
+    "'against benefit' (upper limit below it), 'unresolved' (the interval spans it), "
+    "'meets criterion' (lower limit at or above it). "
+)
+
+
+@dataclass(frozen=True)
+class Decision:
+    """One primary contrast's test decision and practical reading (decision tables)."""
+
+    contrast: str
+    analysis: str  # how the contrast is tested, or "estimation only (no test)"
+    units_planned: int
+    tested: TResult  # the 95% t result (estimate, p)
+    judged: TResult  # the judgement interval (A: 95%; B: 97.5%)
+    threshold: float | None  # alpha the p value is compared with (None: not tested)
+    reject: bool | None
+    interval: str  # label of the judgement interval
+    flag: str = ""  # e.g. HOLM_INCLUDES_ZERO
+
+    @property
+    def reading(self) -> str:
+        return practical_reading(self.judged.low, self.judged.high)
+
+    def row(self) -> tuple[Cell, ...]:
+        low, high = self.judged.low, self.judged.high
+        half = None if low is None or high is None else (high - low) / 2.0
+        return (
+            self.contrast,
+            self.analysis,
+            self.units_planned,
+            self.tested.n,
+            pp(self.tested.mean),
+            self.tested.p if self.threshold is not None else None,
+            self.threshold,
+            self.reject,
+            self.interval,
+            pp(low),
+            pp(high),
+            pp(half),
+            MEANINGFUL_DIFFERENCE * 100,
+            self.reading,
+            self.flag or self.tested.reason,
+        )
+
+    def sentence(self, study: str) -> str:
+        """Key-results sentence of the practical reading (and the explicit flag)."""
+        text = (
+            f"Study {study} {self.contrast}: practical reading against "
+            f"{MEANINGFUL_DIFFERENCE * 100:.0f} pp ({self.interval} interval): {self.reading}."
+        )
+        return text + (f" {self.flag}." if self.flag else "")
+
+
+def decision_table(
+    table_id: str, study: str, decisions: Sequence[Decision], meta: TableMeta
+) -> ReportTable:
+    """The decision table of a study's primary contrasts (``a-decision``, ``b-decision``);
+    ``meta``: the primary table's denominators (its note is not repeated)."""
+    interval = "95% t interval" if study == "A" else "simultaneous 97.5% t intervals (Bonferroni)"
+    return ReportTable(
+        table_id,
+        f"Primary decisions: tests at alpha .05 and the {MEANINGFUL_DIFFERENCE * 100:.0f}-point "
+        f"practical criterion, judged with the {interval}",
+        DECISION_COLUMNS,
+        DECISION_FORMATS,
+        tuple(d.row() for d in decisions),
+        dataclasses.replace(meta, note=""),
+        DECISION_TABLE_NOTE + COMPLETE_UNIT_NOTE,
+    )
+
+
+def b_family(
+    tests: Mapping[str, TResult], estimation: Sequence[str]
+) -> tuple[list[str], dict[str, HolmResult]]:
+    """The tested Study B contrasts (those not declared estimation contrasts) and their
+    Holm decisions at .05 over exactly that family (one test: alpha .05, no Holm)."""
+    tested = [k for k in tests if k not in estimation]
+    pvals = {k: p for k in tested if (p := tests[k].p) is not None}
+    decided = holm(pvals, alpha=ALPHA, family_size=len(tested)) if pvals else {}
+    return tested, decided
+
+
+def b_decisions(
+    tests: Mapping[str, tuple[TResult, TResult]], estimation: Sequence[str], units_planned: int
+) -> list[Decision]:
+    """Study B decisions: C and S from their (95%, 97.5%) t results. The tested contrasts
+    form one Holm family at .05 (two tests: smaller p <= .025, then larger <= .05); a
+    contrast left alone is tested at .05 without Holm; an estimation contrast is not
+    tested. Every contrast is judged with its 97.5% interval; a Holm-significant contrast
+    whose 97.5% interval includes 0 is flagged."""
+    tested, decided = b_family({k: v[0] for k, v in tests.items()}, estimation)
+    if len(tested) == 2:
+        how = "Holm family of 2 at alpha .05"
+    else:
+        how = "tested alone at alpha .05 (no Holm)"
+    out = []
+    for k, (t95, t975) in tests.items():
+        if k in estimation:
+            out.append(
+                Decision(
+                    k, "estimation only (no test)", units_planned, t95, t975, None, None, "97.5% t"
+                )
+            )
+            continue
+        h = decided.get(k)
+        flag = ""
+        if (
+            h is not None
+            and h.reject
+            and t975.low is not None
+            and t975.high is not None
+            and t975.low <= 0.0 <= t975.high
+        ):
+            flag = HOLM_INCLUDES_ZERO
+        out.append(
+            Decision(
+                k,
+                how,
+                units_planned,
+                t95,
+                t975,
+                None if h is None else h.threshold,
+                None if h is None else h.reject,
+                "97.5% t",
+                flag,
+            )
+        )
+    return out
+
+
+def a_decision(t: TResult, estimation: Sequence[str], units_planned: int) -> Decision:
+    """Study A decision: A3-A2, two-sided t test at .05 judged with its 95% interval (no
+    test when it is an estimation contrast)."""
+    if "A3-A2" in estimation:
+        return Decision(
+            "A3-A2", "estimation only (no test)", units_planned, t, t, None, None, "95% t"
+        )
+    reject = None if t.p is None else t.p <= ALPHA
+    return Decision(
+        "A3-A2",
+        "two-sided t test at alpha .05",
+        units_planned,
+        t,
+        t,
+        None if t.p is None else ALPHA,
+        reject,
+        "95% t",
+    )
 
 
 # ---------------------------------------------------------------------------------------
@@ -804,16 +1032,28 @@ def fidelity_section(data: StudyData) -> SectionContent:
 
 
 def a_primary_section(
-    data: StudyData, seed: str, resamples: int
+    data: StudyData, seed: str, resamples: int, estimation: Sequence[str] = ()
 ) -> tuple[SectionContent, list[str]]:
-    """Section 3 (Study A): primary t test, bootstrap, distributions, Holm secondaries."""
+    """Section 3 (Study A): primary t test, decision, bootstrap, distributions, Holm
+    secondaries. ``estimation``: ``("A3-A2",)`` reports the primary contrast without a
+    test (estimation contrast)."""
     primary = endpoint_scores(data, "D0", PRIMARY_BATTERY)
     books = a_book_means(primary, data.conditions)
     diffs = a_batch_differences(books, A_PRIMARY)
     values, strata = complete_values(diffs)
     t = one_sample_t(values)
     trials = _trials_n(data, "D0", PRIMARY_BATTERY)
-    rows = [_t_row("A3-A2 one-sample t (primary)", len(diffs), t)]
+    estimated = "A3-A2" in estimation
+    rows = [
+        _t_row(
+            "A3-A2 estimate, 95% t interval (estimation contrast)",
+            len(diffs),
+            untested(t),
+            ESTIMATION_NOTE,
+        )
+        if estimated
+        else _t_row("A3-A2 one-sample t (primary)", len(diffs), t)
+    ]
     summary = []
     if values:
         boot = stratified_bootstrap(
@@ -843,16 +1083,28 @@ def a_primary_section(
                 note,
             )
         )
-    summary.append(describe_t("Study A primary A3-A2", t, f"of {len(diffs)} batches"))
+    units = f"of {len(diffs)} batches"
+    describe = describe_estimate if estimated else describe_t
+    summary.append(describe("Study A primary A3-A2", t, units))
+    decision = a_decision(t, estimation, len(diffs))
+    summary.append(decision.sentence("A"))
+    primary_meta = TableMeta("batch", t.n, len(diffs), trials, len(diffs) - t.n)
     primary_table = ReportTable(
         "a-primary",
-        "Primary A3-A2 batch difference: one-sample t test (df = B_eff - 1) and stratified "
-        "bootstrap",
+        "Primary A3-A2 batch difference: "
+        + (
+            "estimate and 95% t interval (estimation contrast, no test; df = B_eff - 1)"
+            if estimated
+            else "one-sample t test (df = B_eff - 1)"
+        )
+        + " and stratified bootstrap",
         T_COLUMNS,
         T_FORMATS,
         tuple(rows),
-        TableMeta("batch", t.n, len(diffs), trials, len(diffs) - t.n),
+        primary_meta,
+        COMPLETE_UNIT_NOTE,
     )
+    decision_tab = decision_table("a-decision", "A", [decision], primary_meta)
     by_unit: dict[str, dict[str, BookMean]] = {}
     for b in books:
         by_unit.setdefault(b.unit_id, {})[b.method] = b
@@ -939,7 +1191,8 @@ def a_primary_section(
         sd = a_batch_differences(books, contrast)
         sec[f"{contrast[0]}-{contrast[1]}"] = (sd, one_sample_t(complete_values(sd)[0]))
     pvals = {k: v[1].p for k, v in sec.items() if v[1].p is not None}
-    decided = holm(pvals) if pvals else {}
+    # The family is both secondaries even when one test is unavailable.
+    decided = holm(pvals, alpha=ALPHA, family_size=len(A_SECONDARY)) if pvals else {}
     sec_rows = []
     for k, (sd, st) in sec.items():
         h = decided.get(k)
@@ -989,7 +1242,8 @@ def a_primary_section(
             trials,
             len(diffs) - min(v[1].n for v in sec.values()),
         ),
-        "A1 is a secondary human-design reference; three designers limit generalization.",
+        "A1 is a secondary human-design reference; three designers limit generalization. "
+        "Holm counts both contrasts even when one test is unavailable. " + COMPLETE_UNIT_NOTE,
     )
     des_rows = []
     des_units: dict[str, set[str]] = {}
@@ -1017,14 +1271,23 @@ def a_primary_section(
             "available secondary difference.",
         ),
     )
-    paragraphs = (
+    paragraphs = [
         "Every book gets equal weight: learner scores (36 trials each) are averaged within "
         "the book, books are differenced within the matched batch, and the batch "
         "differences are the independent units.",
         "The bootstrap is a sensitivity interval, never a replacement chosen by significance.",
-    )
+        COMPLETE_UNIT_NOTE,
+    ]
+    if estimated:
+        paragraphs.append(
+            "A3-A2 is an estimation contrast (declared with --estimation-contrast): its "
+            "estimate and 95% interval are reported with their half-width, and no test is "
+            "made."
+        )
     return SectionContent(
-        "a_primary", paragraphs, (primary_table, batch_table, book_table, sec_table, des_table)
+        "a_primary",
+        tuple(paragraphs),
+        (primary_table, decision_tab, batch_table, book_table, sec_table, des_table),
     ), summary
 
 
@@ -1040,9 +1303,11 @@ def _b_primary(
 
 
 def b_primary_section(
-    data: StudyData, seed: str, resamples: int
+    data: StudyData, seed: str, resamples: int, estimation: Sequence[str] = ()
 ) -> tuple[SectionContent, list[str]]:
-    """Section 4 (Study B): C and S with Holm, 95% and 97.5% intervals, bootstraps."""
+    """Section 4 (Study B): C and S with Holm, 95% and 97.5% intervals, decisions,
+    bootstraps. ``estimation``: contrasts reported without a test (``C``, ``S``); a
+    contrast left alone is tested at .05 without Holm."""
     primary = endpoint_scores(data, "W1", PRIMARY_BATTERY)
     dyads = b_dyad_differences(primary, data.conditions)
     cs, ss, strata = _b_primary(dyads)
@@ -1051,13 +1316,14 @@ def b_primary_section(
         "C": (one_sample_t(cs), one_sample_t(cs, conf_level=0.975), cs),
         "S": (one_sample_t(ss), one_sample_t(ss, conf_level=0.975), ss),
     }
-    pvals = {k: v[0].p for k, v in tests.items() if v[0].p is not None}
-    decided = holm(pvals) if pvals else {}
+    tested, decided = b_family({k: v[0] for k, v in tests.items()}, estimation)
     rows = []
     summary = []
     names = {"C": "C active - yoked", "S": "S structured - dictionary"}
+    units = f"of {len(dyads)} dyads"
     for k, (t95, t975, _) in tests.items():
         h = decided.get(k)
+        shown = untested(t95) if k in estimation else t95
         rows.append(
             (
                 names[k],
@@ -1067,8 +1333,8 @@ def b_primary_section(
                 pp(t95.sd),
                 pp(t95.se),
                 t95.df,
-                t95.t,
-                t95.p,
+                shown.t,
+                shown.p,
                 pp(t95.low),
                 pp(t95.high),
                 pp(t975.low),
@@ -1077,18 +1343,47 @@ def b_primary_section(
                 None if h is None else h.threshold,
                 None if h is None else h.adjusted_p,
                 None if h is None else h.reject,
-                t95.reason,
+                ESTIMATION_NOTE if k in estimation else t95.reason,
             )
         )
-        holm_text = "Holm rejects" if h is not None and h.reject else "Holm does not reject"
-        summary.append(
-            describe_t(f"Study B {names[k]}", t95, f"of {len(dyads)} dyads", t975)
-            + f" {holm_text}."
+        if k in estimation:
+            summary.append(describe_estimate(f"Study B {names[k]}", t95, units, t975))
+            continue
+        rejects = h is not None and h.reject
+        if len(tested) == 2:
+            holm_text = "Holm rejects" if rejects else "Holm does not reject"
+        else:
+            holm_text = (
+                "Rejects at alpha .05 (tested alone, no Holm)"
+                if rejects
+                else "Does not reject at alpha .05 (tested alone, no Holm)"
+            )
+        summary.append(describe_t(f"Study B {names[k]}", t95, units, t975) + f" {holm_text}.")
+    decisions = b_decisions({k: v[:2] for k, v in tests.items()}, estimation, len(dyads))
+    summary += [d.sentence("B") for d in decisions]
+    if len(tested) == 2:
+        title = "one-sample t tests, Holm at .05 (smaller p <= .025, larger <= .05)"
+    elif len(tested) == 1:
+        title = (
+            f"{tested[0]} tested alone at .05 (no Holm); "
+            + ", ".join(k for k in tests if k not in tested)
+            + " an estimation contrast (no test)"
         )
+    else:
+        title = "estimation contrasts (no tests)"
+    primary_meta = TableMeta(
+        "dyad",
+        len(cs),
+        len(dyads),
+        trials,
+        len(dyads) - len(cs),
+        "Unadjusted 95% intervals and conservative 97.5% intervals for the two-effect family "
+        "are labelled; the Holm-adjusted p goes with neither.",
+    )
+    decision_tab = decision_table("b-decision", "B", decisions, primary_meta)
     primary_table = ReportTable(
         "b-primary",
-        "Primary dyad contrasts at W1: one-sample t tests, Holm at .05 (smaller p <= .025, larger "
-        "<= .05)",
+        f"Primary dyad contrasts at W1: {title}",
         (
             "contrast",
             "dyads_planned",
@@ -1130,15 +1425,8 @@ def b_primary_section(
             "text",
         ),
         tuple(rows),
-        TableMeta(
-            "dyad",
-            len(cs),
-            len(dyads),
-            trials,
-            len(dyads) - len(cs),
-            "Unadjusted 95% intervals and conservative 97.5% intervals for the two-effect family "
-            "are labelled; the Holm-adjusted p goes with neither.",
-        ),
+        primary_meta,
+        COMPLETE_UNIT_NOTE,
     )
     boot_rows = []
     for k, (_, _, vals) in tests.items():
@@ -1210,13 +1498,23 @@ def b_primary_section(
         (_t_row("S[active] - S[yoked] (exploratory)", len(dyads), tx),),
         TableMeta("dyad", tx.n, len(dyads), trials, len(dyads) - tx.n),
     )
-    paragraphs = (
+    paragraphs = [
         "Complete-dyad estimators: both members need a complete, in-window W1 endpoint. "
         "They identify the randomized-cohort effects only under assumptions about the "
         "missing endpoints; see the missingness analyses in section 7.",
-    )
+        COMPLETE_UNIT_NOTE,
+    ]
+    if estimation:
+        paragraphs.append(
+            "Estimation contrast(s) (declared with --estimation-contrast): "
+            + ", ".join(k for k in tests if k in estimation)
+            + ": estimate and intervals with their half-width, no test."
+            + (f" {tested[0]} is tested alone at alpha .05 (no Holm)." if len(tested) == 1 else "")
+        )
     return SectionContent(
-        "b_primary", paragraphs, (primary_table, boot_table, dyad_table, expl)
+        "b_primary",
+        tuple(paragraphs),
+        (primary_table, decision_tab, boot_table, dyad_table, expl),
     ), summary
 
 
@@ -1927,17 +2225,25 @@ def deviations_section(data: StudyData, conclusions: Sequence[str]) -> SectionCo
     return SectionContent("deviations", tuple(conclusions), tuple(tables))
 
 
-def _conclusions(study: str, summary: Sequence[str]) -> list[str]:
+def _conclusions(study: str, summary: Sequence[str], estimation: Sequence[str] = ()) -> list[str]:
     unit = "batch" if study == "A" else "dyad"
-    return [
+    out = [
         "Bounded conclusions (generated): " + " ".join(summary),
-        f"The primary estimates are complete-{unit} estimators. Practically meaningful "
-        f"difference: {MEANINGFUL_DIFFERENCE * 100:.0f} percentage points (a project decision). "
+        f"The primary estimates are complete-{unit} estimators: they assume that missing "
+        "endpoints are unrelated to the outcomes. Practically meaningful difference: "
+        f"{MEANINGFUL_DIFFERENCE * 100:.0f} percentage points (a project decision). "
         "The all-assigned bounds and the tipping-point display show how far the conclusion "
         "depends on the missing endpoints; they are not confidence intervals.",
         "A supporting-model result never changes which outcome is primary; a favourable "
         "secondary or ownership result does not rescue an unsuccessful primary hypothesis.",
     ]
+    if estimation:
+        out.append(
+            "Estimation contrasts (no test, declared before the analysis): "
+            + ", ".join(estimation)
+            + "."
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------------------
@@ -1953,8 +2259,13 @@ def analyze(
     runner: Runner | None = None,
     resamples: int = 10_000,
     step: float = 0.05,
+    estimation: Sequence[str] = (),
 ) -> StudyReport:
-    """Compute every section of a study's report (no file is written)."""
+    """Compute every section of a study's report (no file is written).
+
+    ``estimation``: primary contrasts declared estimation contrasts (``A3-A2`` for Study
+    A; ``C``, ``S`` for Study B); another name is refused."""
+    estimated = check_estimation(study, estimation)
     data = load_study(root, study, set_name)
     prefix = "DEMO-" if root.synthetic else ""
     seed = prefix + BOOTSTRAP_SEEDS[study]
@@ -1963,10 +2274,10 @@ def analyze(
         "fidelity": fidelity_section(data),
     }
     if study == "A":
-        sections["a_primary"], summary = a_primary_section(data, seed, resamples)
+        sections["a_primary"], summary = a_primary_section(data, seed, resamples, estimated)
         seeds = [seed]
     else:
-        sections["b_primary"], summary = b_primary_section(data, seed, resamples)
+        sections["b_primary"], summary = b_primary_section(data, seed, resamples, estimated)
         seeds = [f"{seed}-C", f"{seed}-S"]
     fits, datas = run_glmms(data, glmm, runner)
     sections["secondary"] = secondary_section(data)
@@ -1981,7 +2292,7 @@ def analyze(
     )
     sections["sensitivities"], more = sensitivities_section(data, fits, step, datas)
     summary += more
-    sections["deviations"] = deviations_section(data, _conclusions(study, summary))
+    sections["deviations"] = deviations_section(data, _conclusions(study, summary, estimated))
     return StudyReport(
         study=study,
         set_name=data.set_name,
@@ -1993,7 +2304,21 @@ def analyze(
         seeds=tuple(seeds),
         inputs=data.inputs,
         summary=tuple(summary),
+        estimation_contrasts=estimated,
     )
+
+
+def check_estimation(study: str, estimation: Sequence[str]) -> tuple[str, ...]:
+    """The declared estimation contrasts of a study, once each and in the study's order;
+    refuses a name that is not one of the study's primary contrasts."""
+    allowed = ESTIMATION_CONTRASTS.get(study, ())
+    unknown = sorted(set(estimation) - set(allowed))
+    if unknown:
+        raise PipelineError(
+            f"Study {study} has no primary contrast {unknown[0]!r} "
+            f"(estimation contrasts: {', '.join(allowed) or 'none'})"
+        )
+    return tuple(c for c in allowed if c in estimation)
 
 
 def run_analysis(
@@ -2004,9 +2329,18 @@ def run_analysis(
     glmm: GlmmMode = "auto",
     runner: Runner | None = None,
     resamples: int = 10_000,
+    estimation: Sequence[str] = (),
 ) -> list[Path]:
     """All section 9 outputs of one study; returns the files written."""
-    report = analyze(root, study, set_name=set_name, glmm=glmm, runner=runner, resamples=resamples)
+    report = analyze(
+        root,
+        study,
+        set_name=set_name,
+        glmm=glmm,
+        runner=runner,
+        resamples=resamples,
+        estimation=estimation,
+    )
     return write_report(root, report)
 
 
@@ -2023,13 +2357,28 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         default="auto",
         help="supporting GLMMs through R: auto (REAL: require; SYNTHETIC: when Rscript exists)",
     )
+    parser.add_argument(
+        "--estimation-contrast",
+        action="append",
+        choices=("A3-A2", "C", "S"),
+        metavar="CONTRAST",
+        help="a primary contrast that could not get its units before the freeze: estimate "
+        "and interval only, no test (A3-A2 for Study A; C or S for Study B, the other one "
+        "then tested alone at .05); repeatable",
+    )
 
 
 def main(args: argparse.Namespace) -> int:
     """Run ``av-analysis run``."""
     try:
         root = DataRoot.open(Path(args.data))
-        written = run_analysis(root, args.study, set_name=args.set, glmm=args.glmm)
+        written = run_analysis(
+            root,
+            args.study,
+            set_name=args.set,
+            glmm=args.glmm,
+            estimation=tuple(getattr(args, "estimation_contrast", None) or ()),
+        )
     except (PipelineError, UnmaskError, TableFormatError, WatermarkError, FileNotFoundError) as exc:
         print(f"refusing: {exc}", file=sys.stderr)
         return 2

@@ -14,6 +14,8 @@ hand-computed fixtures match within 1e-10 (``tests/analysis/test_pipeline_estima
   dyads (stratified by scaffold allocation and heldout-set order); strata with fewer than
   2 complete units are flagged as inadequately supported, never padded. Seeds from
   ``seeds.rng`` and stored in the output.
+* Practical criterion (:func:`practical_reading`): a judgement interval against the
+  10-point working criterion (below it: against a benefit; spanning it: unresolved).
 
 All estimates are proportions (0-1); the report prints differences in percentage points.
 """
@@ -143,7 +145,9 @@ def one_sample_t(values: Sequence[float], *, conf_level: float = 0.95) -> TResul
     return TResult(True, "", n, mean, sd, se, df, t, p, conf_level, mean - q * se, mean + q * se)
 
 
-def holm(pvalues: Mapping[str, float], *, alpha: float = 0.05) -> dict[str, HolmResult]:
+def holm(
+    pvalues: Mapping[str, float], *, alpha: float = 0.05, family_size: int | None = None
+) -> dict[str, HolmResult]:
     """Holm step-down over a family of p values.
 
     Hypotheses are ranked by p (ties by name); rank ``i`` of ``m`` is tested at
@@ -151,14 +155,21 @@ def holm(pvalues: Mapping[str, float], *, alpha: float = 0.05) -> dict[str, Holm
     the running maximum of ``min(1, (m - i + 1) p)``. For the two-test families of the
     plan: the smaller p must be <= alpha/2, then the larger <= alpha. The result keeps the
     input order.
+
+    ``family_size`` is the prespecified number of hypotheses (default: those given). A
+    hypothesis of the family without a p value (an unavailable test) still counts in
+    ``m``, as if its p were 1, so a lone available test of a two-test family is tested at
+    ``alpha / 2``, never at ``alpha``.
     """
     if not 0.0 < alpha < 1.0:
         raise ValueError("alpha must lie in (0, 1)")
     for name, p in pvalues.items():
         if not (isinstance(p, int | float) and 0.0 <= p <= 1.0):
             raise ValueError(f"p value of {name!r} must lie in [0, 1], got {p!r}")
+    if family_size is not None and family_size < len(pvalues):
+        raise ValueError("family_size is smaller than the number of p values")
     ranked = sorted(pvalues.items(), key=lambda kv: (kv[1], kv[0]))
-    m = len(ranked)
+    m = len(ranked) if family_size is None else family_size
     out: dict[str, HolmResult] = {}
     rejecting = True
     running = 0.0
@@ -169,6 +180,32 @@ def holm(pvalues: Mapping[str, float], *, alpha: float = 0.05) -> dict[str, Holm
         rejecting = rejecting and p <= threshold
         out[name] = HolmResult(float(p), rank, threshold, running, rejecting)
     return {name: out[name] for name in pvalues}
+
+
+PRACTICAL_MEETS: Final = "meets criterion"
+PRACTICAL_AGAINST: Final = "against benefit"
+PRACTICAL_UNRESOLVED: Final = "unresolved"
+PRACTICAL_UNAVAILABLE: Final = "unavailable"
+
+
+def practical_reading(
+    low: float | None, high: float | None, criterion: float = MEANINGFUL_DIFFERENCE
+) -> str:
+    """Reading of a judgement interval against the practical criterion (10 points).
+
+    ``against benefit``: the upper limit lies below the criterion; ``unresolved``: the
+    interval spans it (lower limit below, upper limit at or above); ``meets criterion``:
+    the lower limit is at or above it; ``unavailable``: no interval. Study A judges with
+    the 95% interval, Study B with the 97.5% intervals (``pipeline``)."""
+    if low is None or high is None:
+        return PRACTICAL_UNAVAILABLE
+    if low > high:
+        raise ValueError("interval with low > high")
+    if high < criterion:
+        return PRACTICAL_AGAINST
+    if low >= criterion:
+        return PRACTICAL_MEETS
+    return PRACTICAL_UNRESOLVED
 
 
 def stratified_bootstrap(

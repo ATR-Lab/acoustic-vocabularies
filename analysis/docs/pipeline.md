@@ -18,12 +18,18 @@ uv run --project analysis av-analysis simulate --scenario null-A --datasets 2000
 # A full-size synthetic dataset (derived tables, key, lists) and its section 9 report
 uv run --project analysis av-analysis simulate --scenario central-A --datasets 1 \
     --seed DEMO-local --out <root> --write-dataset
-uv run --project analysis av-analysis run --study A --data <root> [--set S] [--glmm auto|require|skip]
+uv run --project analysis av-analysis run --study A --data <root> [--set S] [--glmm auto|require|skip] \
+    [--estimation-contrast A3-A2|C|S ...]
 ```
 
 `run` exit codes: 0 written, 2 refused input (see "Refusals"), 3 not implemented. Both
 commands write only into the root they are given; `simulate` refuses REAL roots and
-non-`DEMO-` seeds.
+non-`DEMO-` seeds. `--estimation-contrast` (#310) names a primary contrast that could not
+get its units before the freeze: it is reported with its estimate, intervals and their
+half-width and no test; a Study B contrast left alone is tested at .05 without Holm; a
+contrast of the other study is refused (exit 2). The run record keeps the list
+(`estimation_contrasts`). Every rule pinned by a conformance test is mapped in
+[`analysis-conformance.md`](analysis-conformance.md).
 
 ## 1. Modules
 
@@ -93,7 +99,8 @@ only the timing sensitivity.
 of each book (planned and contributing learners are reported per book); `D[b] =
 A[b,A3] - A[b,A2]`; two-sided one-sample t test of the `B_eff` available differences
 (df `B_eff - 1`), 95% t interval in percentage points, "unavailable" with fewer than 2.
-Secondary A3-A1 and A2-A1 the same way, with Holm over their two p values, and by A1
+Secondary A3-A1 and A2-A1 the same way, with Holm over their two p values (the family
+stays two tests when one is unavailable: the other is then tested at .025), and by A1
 designer (descriptive intervals). Bootstrap: 10,000 resamples of whole batches within
 profile family, percentile interval; strata with fewer than 2 complete batches are listed
 as inadequately supported.
@@ -104,6 +111,16 @@ need a complete in-window W1 endpoint. Two one-sample t tests, Holm at .05 (the 
 at .025, then the larger at .05), with labelled 95% and 97.5% intervals; whole-dyad
 bootstraps within scaffold allocation x heldout-set order; `S[active] - S[yoked]` as an
 exploratory row outside the family.
+
+**Decisions** (`a-decision`, `b-decision`, #310): each primary contrast's test decision
+(A3-A2 at .05; C and S as above, or the one tested alone at .05 when the other is an
+estimation contrast) and its reading against the 10-point working criterion
+(`estimators.practical_reading`): Study A with its 95% interval, Study B with the two
+97.5% intervals; `against benefit` when the upper limit is below 10 points, `unresolved`
+when the interval spans it, `meets criterion` when the lower limit is at or above it. A
+Holm-significant B contrast whose 97.5% interval includes 0 is flagged in the table and
+the key results. Primary tables carry the label that complete-unit estimates assume
+missing endpoints unrelated to the outcomes.
 
 `one_sample_t` uses compensated sums and scipy's t distribution; tests check t, df, p and
 both intervals against closed forms of the t distribution (df 1, 2 and 4) within 1e-10.
@@ -203,8 +220,8 @@ the generation audit tables (#24); 2
 `fidelity-delivery` (faults by type, lost opportunities, valid delivery, uncertain
 onsets, by condition), `fidelity-novelty`, plus the scoring check (logged exact score
 versus recomputed Y), reconciliation states, discrepancies and the golden manifest; 3
-`a-primary`, `a-batches`, `a-books`, `a-secondary`, `a-designer`; 4 `b-primary`,
-`b-bootstrap`, `b-dyads`, `b-exploratory`; 5 `secondary-endpoints`,
+`a-primary`, `a-decision`, `a-batches`, `a-books`, `a-secondary`, `a-designer`; 4
+`b-primary`, `b-decision`, `b-bootstrap`, `b-dyads`, `b-exploratory`; 5 `secondary-endpoints`,
 `secondary-contrasts`, `secondary-rt`; 6 ratings and consultation: **Pending** (no
 export format); 7 `sens-valid-delivery`, `sens-valid-denominators`, `sens-timing`,
 `sens-glmm`, `sens-bounds`, `sens-tipping-summary`, `sens-tipping-grid` (CSV only); 8
@@ -278,6 +295,7 @@ writes dataset 0 into the root (`derived/` tables merged with other studies' row
 | null scenario: 2,000 synthetic A datasets reject between .040 and .060 | `test_pipeline_simulate.py` |
 | full-size A (216 learners) and B (128 people) end to end under 30 min: `analysis/ci/34.sh` on every CI runner (fails at 30 min), the `needs_r` test with lme4, `AV_FULL_E2E=1` locally; report order, denominators, manifest, determinism, refusals (pilot size by default) | `test_pipeline_run.py`, `analysis/ci/34.sh` |
 | CI evidence: synthetic reports, operating characteristics, timings | `analysis/ci/34.sh` (artifact `analysis-evidence-<os>`) |
+| one conformance test (or group) per prespecified analysis rule R1-R17, by hand on edited pilot roots and unit-level values (#310) | `test_analysis_conformance.py`, map in [`analysis-conformance.md`](analysis-conformance.md) |
 
 ## 10. Decisions and open items
 
