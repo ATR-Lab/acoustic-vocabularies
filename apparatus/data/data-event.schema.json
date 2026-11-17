@@ -90,6 +90,7 @@
         "choice",
         "deviation_reference",
         "visit_exit",
+        "visit_start",
         "recovery",
         "assessment_stage",
         "grammar_stage",
@@ -1444,6 +1445,37 @@
               "code": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]{0,79}$(?![\\s\\S])"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "visit_start"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "session_id",
+              "local_date"
+            ],
+            "properties": {
+              "session_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+              },
+              "local_date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])"
               }
             }
           }

@@ -50,6 +50,7 @@ namespace AcousticVocab.SessionIntegration
         JoinedGrammarStage grammarStage;bool grammarInterrupted;
         JoinedEngineeringConfig config;JoinedVisitArtifacts assets;DataJournal data;JoinedAudit audit;FileMenuStore store;JoinedSelections selections;MenuLedger menuLedger;bool menuSealed;
         SessionIntegrationOwner owner;StagedModuleCoordinator staged;OperatorMailbox mailbox;FileOperatorCommandJournal commands;CompletedFormsRecovery formsRecovery;YokedReplayAuthority yokedAuthority;OperatorRequest resumeRequest;
+        ResumeGuard resumeGuard;
         Preflight activePreflight;
         readonly ModuleConstructionScope visit=new ModuleConstructionScope();bool attempted,installedFrames,closed,failed,formsShown;string evidenceRoot,nonce;
         double? diagnosticQuitAt;
@@ -146,6 +147,9 @@ namespace AcousticVocab.SessionIntegration
                                 ledger.ReadVerified();return MenuReplaySequence.Load(ledger.Path,ledger.Sha256,assets.YokedActiveBinding,MenuVerification(),DateTimeOffset.UtcNow,anchor,()=>clock.NowMs);
                             });
                     }
+                    // The joined configuration carries the visit session but no window
+                    // end yet, so a delayed visit continues only on its first-start day.
+                    resumeGuard=new ResumeGuard(new ResumePolicy(assets.Schedule.Study,assets.Schedule.Visit,config.SessionId,null),new ResumeDataRecord(data),()=>DateTimeOffset.Now);
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
                     if(assets.Grammar!=null)
@@ -171,8 +175,13 @@ namespace AcousticVocab.SessionIntegration
         bool CommitOperatorResume(FixedSlotEngine engine,OperatorRequest request)
         {
             if(resumeRequest!=null||request==null)throw new SessionFault("JOIN_OPERATOR_REENTRANCY");resumeRequest=request;
-            try{if(!staged.PrepareExplicitResume(engine,request))return false;staged.CommitForResume(engine);return true;}finally{resumeRequest=null;}
+            try{AdmitResume(resumeGuard,engine,owner.SessionJournal.Records);if(!staged.PrepareExplicitResume(engine,request))return false;staged.CommitForResume(engine);return true;}finally{resumeRequest=null;}
         }
+        // Every start/resume passes the session/window guard first. A refusal
+        // is a bounded operator refusal: the guard has already closed the
+        // battery and stopped the engine, so the adapter is not failed.
+        internal static void AdmitResume(ResumeGuard guard,FixedSlotEngine engine,IReadOnlyList<SessionRecord> history)
+        {string refusal=(guard??throw new SessionFault("JOIN_RESUME_GUARD_MISSING")).Admit(engine,history);if(refusal!=null)throw new OperatorFault(refusal.ToLowerInvariant());}
         MenuLedgerVerification MenuVerification()
         {
             var items=assets.Schedule.Blocks.SelectMany(b=>b.Items).Where(i=>i.Phase=="selection").ToDictionary(i=>i.TrialType=="profile_menu"?"profile":i.ContentId);

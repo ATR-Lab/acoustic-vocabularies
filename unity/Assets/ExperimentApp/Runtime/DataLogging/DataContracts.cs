@@ -124,6 +124,10 @@ namespace AcousticVocab.DataLogging
                 case "deviation_reference":
                     DataJson.Keys(p,"deviation_id","signed_log_sha256","observed_mono_ms");DataJson.Require(c.AttemptId!=null&&DataJson.Id(DataJson.Text(p["deviation_id"]))&&DataJson.Hash(DataJson.Text(p["signed_log_sha256"])));DataJson.Number(p["observed_mono_ms"]);break;
                 case "visit_exit":DataJson.Keys(p,"code");DataJson.Require(c.OpportunityId==null&&DataJson.Code(DataJson.Text(p["code"])));break;
+                case "visit_start":
+                    DataJson.Keys(p,"session_id","local_date");string day=DataJson.Text(p["local_date"]);
+                    DataJson.Require(c.OpportunityId==null&&DataJson.Guid(DataJson.Text(p["session_id"]))&&Regex.IsMatch(day,@"\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z")&&
+                        DateTime.TryParseExact(day,"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out _),"DATA_VISIT_START");break;
                 case "recovery":
                     DataJson.Keys(p,"preserved_tails");DataJson.Require(c.OpportunityId==null&&p["preserved_tails"] is JArray tails&&tails.Count>0&&tails.Count<=32);foreach(JObject t in (JArray)p["preserved_tails"]){DataJson.Keys(t,"segment","tail_offset","tail_sha256","segment_sha256");DataJson.Require(Regex.IsMatch(DataJson.Text(t["segment"]),@"\Aevents-[0-9]{4}\.local\.jsonl\z")&&DataJson.Hash(DataJson.Text(t["tail_sha256"]))&&DataJson.Hash(DataJson.Text(t["segment_sha256"])));DataJson.Integer(t["tail_offset"]);}break;
                 default:throw new DataFault("DATA_EVENT_KIND");
