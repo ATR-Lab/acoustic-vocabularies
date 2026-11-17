@@ -60,10 +60,24 @@ namespace AcousticVocab.SessionIntegration
             if(consumed)throw new SessionFault("JOIN_YOKED_ANCHOR_CONSUMED");
             if(Fresh())return;
             preparedInputs=null;string before=inputs();
-            var fresh=preverify()??throw new SessionFault("JOIN_YOKED_REPLAY_MISSING");
-            if(fresh.LedgerSha256!=ledger||fresh.Anchored)throw new SessionFault("JOIN_YOKED_REPLAY_BINDING");
-            Verifications++;if(Prepared==null)Prepared=fresh;else Prepared.AdoptVerified(fresh);preparedInputs=before;
+            Accept(preverify(),before);
         }
+        // The current input fingerprint, captured when a staged verification
+        // starts so a change during it leaves the result stale.
+        public string CurrentInputs()=>inputs();
+        // Completes a verification run elsewhere (YokedReplayPreverifier stages it
+        // across frames and a worker thread); same checks as Preverify.
+        public void Accept(MenuReplaySequence fresh,string inputsAtStart)
+        {
+            if(consumed)throw new SessionFault("JOIN_YOKED_ANCHOR_CONSUMED");
+            preparedInputs=null;if(fresh==null)throw new SessionFault("JOIN_YOKED_REPLAY_MISSING");
+            if(fresh.LedgerSha256!=ledger||fresh.Anchored||inputsAtStart==null)throw new SessionFault("JOIN_YOKED_REPLAY_BINDING");
+            Verifications++;if(Prepared==null){Prepared=fresh;if(diagnostic!=null)Prepared.AnchorRefused+=diagnostic;}else Prepared.AdoptVerified(fresh);preparedInputs=inputsAtStart;
+        }
+        Action<Newtonsoft.Json.Linq.JObject> diagnostic;
+        // Bounded refusal evidence from the replay (clause and compared values).
+        public void ReportRefusalsTo(Action<Newtonsoft.Json.Linq.JObject> sink)
+        {if(sink==null||diagnostic!=null)throw new SessionFault("JOIN_YOKED_AUTHORITY");diagnostic=sink;if(Prepared!=null)Prepared.AnchorRefused+=sink;}
         // Start/Commit does no ledger or audio work: it checks the pre-verified
         // inputs are unchanged, records the durable anchor, then anchors.
         public MenuReplaySequence BindForExplicitStart(string requestId,long sequence,string command)
