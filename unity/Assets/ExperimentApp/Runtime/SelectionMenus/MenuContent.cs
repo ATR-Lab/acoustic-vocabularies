@@ -27,6 +27,13 @@ namespace AcousticVocab.SelectionMenus
         void Show(string owner,MenuMaterial material,MenuPhase phase,int? selected,bool readOnly);
         void Hide(string owner);
     }
+    // Optional surface for the station flag menu_countdown_visible (off by
+    // default). It receives only the timeline's whole seconds for one owner;
+    // nothing role- or choice-specific is passed.
+    public interface IMenuCountdownView
+    {
+        void ShowCountdown(string owner,int? seconds);
+    }
     // Sole module owner while menus are active. A multiplexer must dispose this
     // before subscribing a lesson/assessment module to the same AudioPlayer.
     public sealed class MenuContentFactory:ISlotContentFactory,ISessionContentPump,ISlotStartPlan,IDisposable
@@ -95,6 +102,7 @@ namespace AcousticVocab.SelectionMenus
                 var replay=owner.replay?.For(context.Item);Timeline=new MenuTimeline(context,material.Options.ToArray(),material.MeaningDisplayId,owner.persist,replay,()=>AudioPlayer.Now*1000);
                 Timeline.PlayRequested+=(index,id,option,at)=>{MenuRules.Require(ExposureReady,"MENU_EXPOSURE_GATE");owner.bindAudio?.Invoke(Context,index-1,option.Wave);owner.audio.Schedule(id,at/1000);};
                 Timeline.DisplayChanged+=(phase,choice)=>{if(phase is MenuPhase.Hidden or MenuPhase.Neutral or MenuPhase.Ended)owner.view.Hide(Context.Item.TrialId);else owner.view.Show(Context.Item.TrialId,material,phase,choice,owner.catalog.Role=="yoked");};
+                Timeline.DisplayChanged+=(phase,choice)=>Countdown();
                 Timeline.SelectionRequested+=(index,unused)=>
                 {MenuRules.Require(commitRequest==null&&owner.catalog.Role=="active","MENU_COMMIT_DUPLICATE");selected=index;commitRequest=owner.store.RequestSelection(material.Key,material.Key=="profile"?owner.catalog.ProfileAt(index):owner.store.Profile,material.Key=="profile"?(int?)null:index);};
                 if(replay!=null){selected=replay.SelectedIndex;MenuRules.Require(owner.store.VerifyRecordedSelection(material.Key,replay.SelectedIndex,replay.SelectionReceiptSha256,owner.catalog),"MENU_REPLAY_RECEIPT");Preload(replay.SelectedIndex);}
@@ -113,11 +121,13 @@ namespace AcousticVocab.SelectionMenus
                 if(!initialRenderer&&initialReset!=null&&owner.backend.ResetAcknowledged(initialReset))initialRenderer=owner.source.ConfirmReset();
                 if(commitRequest!=null&&owner.store.TryGetReceipt(commitRequest,out string receipt))
                 {MenuRules.Require(selected.HasValue&&owner.store.Ready&&owner.store.OldHashesVerified,"MENU_COMMIT_UNVERIFIED");Preload(selected.Value);Timeline.ConfirmSelection(selected.Value,receipt,now);commitRequest=null;}
-                Timeline?.Tick(now);
+                Timeline?.Tick(now);Countdown();
                 if(resetWanted&&!storeFinalRequested&&material.Key==owner.catalog.MenuKeys.Last()){owner.store.RequestVerification(true);storeFinalRequested=true;}
                 if(resetWanted&&finalReset==null&&(Timeline?.Phase is MenuPhase.Neutral or MenuPhase.Ended)&&!owner.audio.Playing)finalReset=owner.backend.RequestReset();
                 if(!finalRenderer&&finalReset!=null&&owner.backend.ResetAcknowledged(finalReset))finalRenderer=owner.source.ConfirmReset();
             }
+            // Same call for both roles; a view without the station flag has no element to update.
+            void Countdown(){if(Timeline!=null&&owner.view is IMenuCountdownView clock)clock.ShowCountdown(Context.Item.TrialId,Timeline.CountdownSeconds);}
             public void Interrupt(string code)
             {if(interrupted)return;interrupted=true;Throw(Attempt(()=>Timeline?.Interrupt(AudioPlayer.Now*1000),()=>owner.view.Hide(Context.Item?.TrialId),()=>owner.audio.Abort(code),owner.backend.Interrupt));}
         }

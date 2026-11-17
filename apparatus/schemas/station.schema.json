@@ -166,6 +166,11 @@
           "description": "Runtime also requires unit quaternion (norm squared tolerance 0.0001) and yaw-only world-up rotation (absolute X/Z component tolerance 0.0001)."
         }
       }
+    },
+    "menu_countdown_visible": {
+      "description": "Optional. Shows the whole seconds left in the current selection-menu display phase, computed only from the menu timeline and identical for both roles. Absent or false: the menu view has no countdown element.",
+      "type": "boolean",
+      "default": false
     }
   }
 }

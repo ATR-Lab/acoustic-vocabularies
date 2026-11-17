@@ -15,7 +15,7 @@ using UnityEngine.XR.Hands;
 namespace AcousticVocab.SelectionMenus
 {
     [DisallowMultipleComponent]
-    public sealed class MenuSessionHost:MonoBehaviour,IMenuView
+    public sealed class MenuSessionHost:MonoBehaviour,IMenuView,IMenuCountdownView
     {
         public FoundationBootstrap foundation;public AudioPlayer player;public ResponsePanelController panel;public StateSourceHost source;
         public Transform presentationParent;public Font font;
@@ -73,11 +73,17 @@ namespace AcousticVocab.SelectionMenus
             int index=-1;float nearest=distance;for(int i=0;i<3;i++)if(colliders[i].Raycast(ray,out var hit,distance)&&hit.distance<nearest){nearest=hit.distance;index=i;}
             if(index>=0)Chosen?.Invoke(index+1);
         }
+        // Station flag menu_countdown_visible (off by default): when off this element
+        // is never created. The text is only the timeline's whole seconds for the
+        // visible owner, so it is the same for both roles; no audio, no input.
+        Text countdown;
+        public void ShowCountdown(string owner,int? seconds){if(countdown==null||owner==null||owner!=visibleOwner)return;countdown.text=seconds?.ToString(System.Globalization.CultureInfo.InvariantCulture)??"";}
         void CreateView()
         {
             MenuRules.Require(canvas==null&&presentationParent!=null&&font!=null&&foundation!=null&&foundation.Configuration!=null,"MENU_VIEW_UNAVAILABLE");var reference=StationConfig.ReferencePose(foundation.Configuration);
             var root=new GameObject("Selection menu",typeof(RectTransform),typeof(Canvas));root.transform.SetParent(presentationParent,false);root.transform.SetPositionAndRotation(reference.position+reference.rotation*new Vector3(0,.02f,1.05f),reference.rotation);root.transform.localScale=Vector3.one*.001f;
             canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.WorldSpace;((RectTransform)root.transform).sizeDelta=new Vector2(840,570);
+            if(StationConfig.MenuCountdownVisible(foundation.Configuration)){PresentationTextBacking.Add(root.transform,"Menu countdown",new Vector2(0,-257),new Vector2(160,44));countdown=TextAt(root.transform,"Menu countdown",new Vector2(0,-257),new Vector2(160,44),26);}
             PresentationTextBacking.Add(root.transform,"Instructions",new Vector2(0,225),new Vector2(820,95));
             PresentationTextBacking.Add(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75));
             instructions=TextAt(root.transform,"Instructions",new Vector2(0,225),new Vector2(820,95),28);meaning=TextAt(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75),26);
