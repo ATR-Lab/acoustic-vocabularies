@@ -2,6 +2,8 @@
 
 An independently pinned process-observer receipt is required. A denied launch
 with no process is not a native run and must not receive this manifest.
+The closed operator-console audit and the player's operator logs are retained
+and hashed with the run; neither may carry an answer field.
 """
 from __future__ import annotations
 
@@ -17,14 +19,23 @@ if __package__ in (None, ""):
 from tools.mock_visit.records import EvidenceError, exact, hash_value, require, sha, strict
 from tools.mock_visit.reconcile import capture_pin, no_links, read, relative, MAX_RUN_BYTES
 from tools.mock_visit.provenance import process_duration
+from tools.mock_visit.operator_logs import LOG_DIRECTORY, LOG_NAME, MAX_LOGS, answer_free, console_audit as verify_console_audit, retained_kind
 
 
 def emit(root, *, run_id, role, config, config_sha256, capability, capability_sha256,
          build_manifest, build_manifest_sha256, process_result, process_result_sha256,
          fixture_provenance, fixture_provenance_sha256,
-         output="mock-run.manifest.json", selection_snapshot=None):
+         output="mock-run.manifest.json", selection_snapshot=None, console_audit=None, operator_logs=()):
     root = Path(root).absolute(); no_links(root)
     require(root.is_dir() and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", run_id), "MOCK_EMIT_ROOT")
+    # The console audit is already inside the root; player operator logs are copied in (#293).
+    audit_name=relative(console_audit) if console_audit else None
+    log_copies={}
+    require(len(operator_logs) <= MAX_LOGS, "MOCK_OPERATOR_LOG_LIMIT")
+    for source in map(Path,operator_logs):
+        require(LOG_NAME.fullmatch(source.name) and source.name not in log_copies, "MOCK_OPERATOR_LOG_NAME")
+        log_copies[source.name]=answer_free(source.name,read(source))
+    retained={}
     def pin(name, expected):
         name = relative(name); return {"path":name,"sha256":sha(read(root/name,expected))}
     config_pin = pin(config,config_sha256); cap_pin=pin(capability,capability_sha256)
@@ -72,6 +83,7 @@ def emit(root, *, run_id, role, config, config_sha256, capability, capability_sh
         elif f.name=="joined.local.jsonl":kind="joined_journal"
         elif f.name=="menus.local.jsonl":kind="menu_journal"
         elif re.fullmatch(r"operator-[0-9a-f]{32}\.local\.jsonl",f.name):kind="operator_journal"
+        elif (retained_as:=retained_kind(name,audit_name)):kind=retained_as;retained[name]=raw
         elif f.suffix.lower() in {".png",".mp4",".webm"}:kind="capture"
         elif f.name=="manifest.json":
             value=strict(raw)
@@ -79,6 +91,18 @@ def emit(root, *, run_id, role, config, config_sha256, capability, capability_sh
             elif value.get("capture_kind")=="application_render_callbacks_not_photon_timestamps":kind="frame_manifest"
         artifacts.append({"kind":kind,"path":name,"sha256":sha(raw),"bytes":len(raw)})
     require(exports==1,"MOCK_CLOSED_EXPORT_REQUIRED")
+    for name,raw in retained.items():
+        if retained_kind(name,audit_name)=="operator_log":answer_free(name,raw)
+    if audit_name is not None:
+        no_links(root/f"{audit_name}.lock");require(not (root/f"{audit_name}.lock").exists(),"MOCK_CONSOLE_AUDIT_OPEN")
+        require(audit_name in retained and f"{audit_name}.tip" in retained,"MOCK_CONSOLE_AUDIT_REQUIRED")
+        verify_console_audit(retained[audit_name],retained[f"{audit_name}.tip"],cap["protocol_version"])
+    log_writes=[]
+    for basename,raw in sorted(log_copies.items()):
+        name=f"{LOG_DIRECTORY}/{basename}"
+        if name in retained:require(retained[name]==raw,"MOCK_OPERATOR_LOG_CONFLICT")
+        else:log_writes.append((name,raw))
+    total+=sum(len(raw) for _,raw in log_writes);require(total<=MAX_RUN_BYTES,"MOCK_INVENTORY_LIMIT")
     destination_provenance=root/"fixture-provenance.local.json";no_links(destination_provenance)
     if destination_provenance.exists():
         require(read(destination_provenance,fixture_provenance_sha256) == provenance_bytes,"MOCK_FIXTURE_PROVENANCE_BINDING")
@@ -87,6 +111,11 @@ def emit(root, *, run_id, role, config, config_sha256, capability, capability_sh
             stream.write(provenance_bytes);stream.flush();os.fsync(stream.fileno())
         total+=len(provenance_bytes);require(total <= MAX_RUN_BYTES,"MOCK_INVENTORY_LIMIT")
         artifacts.append(dict(kind="fixture_provenance",path=destination_provenance.name,sha256=fixture_provenance_sha256,bytes=len(provenance_bytes)))
+    for name,raw in log_writes:
+        destination=root/name;no_links(destination);destination.parent.mkdir(exist_ok=True)
+        with destination.open("xb") as stream:
+            stream.write(raw);stream.flush();os.fsync(stream.fileno())
+        artifacts.append(dict(kind="operator_log",path=name,sha256=sha(raw),bytes=len(raw)))
     manifest={"version":1,"scope":"SIMULATION_TEST","run_id":run_id,"study":schedule["study"],"visit":schedule["visit"],"role":role,
               "source_commit":result["source_commit"],"build_manifest":build_pin,"config":config_pin,"simulation_capability":cap_pin,
               "schedule":schedule_pin,"package_sha256":cap["package_sha256"],"fixture_set_sha256":cap["fixture_set_sha256"],"artifacts":artifacts,
@@ -104,6 +133,9 @@ def main():
     for key in ("config","capability","build-manifest","process-result"):
         p.add_argument("--"+key,required=True);p.add_argument("--"+key+"-sha256",required=True)
     p.add_argument("--selection-snapshot");p.add_argument("--output",default="mock-run.manifest.json")
+    p.add_argument("--console-audit",help="run-root-relative operator-console audit journal; its .tip must sit beside it")
+    p.add_argument("--operator-log",dest="operator_logs",action="append",default=[],type=Path,
+                   help="a player operator-logs file created by this process; copied to operator-logs/ (repeatable)")
     p.add_argument("--fixture-provenance",type=Path,required=True);p.add_argument("--fixture-provenance-sha256",required=True)
     a=p.parse_args();args=vars(a);root=args.pop("run_root")
     try:print(emit(root,**args));return 0
