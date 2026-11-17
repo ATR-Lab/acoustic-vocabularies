@@ -37,5 +37,18 @@ namespace AcousticVocab.Tests.StudyAudio
         { var delivery=new AudioDelivery(1,96000);delivery.Observe(dsp,frames,rate);Assert.That(delivery.Status,Is.EqualTo(AudioDelivery.InvalidCallback)); }
         [Test] public void CallbackAfterEndCannotConcealMissingAudio()
         { var delivery=new AudioDelivery(1,96000);delivery.Observe(3,512,48000);Assert.That(delivery.Status,Is.EqualTo(AudioDelivery.Underrun)); }
+        // Only a window that no callback reached or passed reports missing
+        // playback, the sole software evidence that can confirm no onset.
+        [Test, Category("REQ_INT_06"), NUnit.Framework.Property("Requirement","REQ-INT-06")]
+        public void OnlyAnUntouchedWindowReportsMissingPlayback()
+        {
+            var silent=new AudioDelivery(1,96000);silent.Observe(.5,512,48000);
+            Assert.That(silent.Status,Is.EqualTo(AudioDelivery.Pending));Assert.That(silent.DeadlineFault(),Is.EqualTo("AUDIO_MISSING_PLAYBACK"));
+            var late=new AudioDelivery(1,96000);late.Observe(3,512,48000);
+            Assert.That(late.CallbackCount,Is.Zero);Assert.That(late.CoveredSamples,Is.Zero);
+            Assert.That(late.DeadlineFault(),Is.EqualTo("AUDIO_UNDERRUN"),"a callback after the window may carry a late start");
+            var partial=new AudioDelivery(1,96000);partial.Observe(1,512,48000);
+            Assert.That(partial.DeadlineFault(),Is.EqualTo("AUDIO_UNDERRUN"));
+        }
     }
 }

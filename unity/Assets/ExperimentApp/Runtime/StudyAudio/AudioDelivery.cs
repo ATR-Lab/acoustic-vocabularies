@@ -51,7 +51,10 @@ namespace AcousticVocab.StudyAudio
         {
             if(Status==Complete) return null;
             if(Status==InvalidCallback) return "AUDIO_CALLBACK_INVALID";
-            return CallbackCount==0 ? "AUDIO_MISSING_PLAYBACK" : "AUDIO_UNDERRUN";
+            // Missing playback means no output callback reached or passed the
+            // scheduled window. A callback only after the window may carry a
+            // late start, so it stays an underrun and never proves no onset.
+            return Status==Pending && CallbackCount==0 ? "AUDIO_MISSING_PLAYBACK" : "AUDIO_UNDERRUN";
         }
     }
 }

@@ -18,6 +18,7 @@ namespace AcousticVocab.SessionIntegration
         readonly AudioDataAdapter audioData;readonly FrameAudioAdapter audioFrames;readonly PanelDataAdapter panelData;
         readonly Dictionary<string,AudioRequestContext> audio=new Dictionary<string,AudioRequestContext>();readonly Dictionary<string,FrameCueBinding> cues=new Dictionary<string,FrameCueBinding>();readonly Dictionary<string,EventContext> attempts=new Dictionary<string,EventContext>();
         bool closed,disposing;
+        readonly NoOnsetReporter noOnset;
         public ExclusiveContentMultiplexer Modules=>mux;public Resources Shared{get;}
         public FixedSlotEngine Engine{get;}public IAssessmentJournal StageJournal{get;}public ISessionJournal SessionJournal{get;}
         public sealed class Resources
@@ -34,6 +35,7 @@ namespace AcousticVocab.SessionIntegration
                 string id=c.AudioRequestIds[index];if(owner.audio.Count>=10000||owner.audio.ContainsKey(id))throw new SessionFault("SESSION_AUDIO_BINDING");
                 owner.audio.Add(id,new AudioRequestContext(new EventContext(c.OpportunityId,c.Item.TrialId,id),id,verifiedWave.FileSha256));
                 owner.cues.Add(id,new FrameCueBinding(c.Item.TrialId,verifiedWave.PcmSha256,verifiedWave.SampleCount,PcmWave.SampleRate));
+                owner.noOnset.Bind(c,index);
             }
         }
         public SessionIntegrationOwner(VisitSchedule schedule,ISessionClock clock,DataJournal journal,AudioPlayer sharedPlayer,ResponsePanelController panel,FrameCaptureHost capture,
@@ -48,8 +50,10 @@ namespace AcousticVocab.SessionIntegration
             audioData=new AudioDataAdapter(data,player,e=>audio.TryGetValue(e.AudioId,out var value)?value:null,subscribeToPlayer:false);
             audioFrames=new FrameAudioAdapter(capture,e=>cues.TryGetValue(e.AudioId,out var value)?value:null);
             panelData=new PanelDataAdapter(data,panel,id=>attempts.TryGetValue(id,out var value)?value:null);
+            noOnset=new NoOnsetReporter(Engine,data);
         }
-        void PersistAudio(AudioPlaybackEvent value){if(closed)throw new SessionFault("SESSION_JOIN_CLOSED");audioData.Record(value);audioFrames.Record(value);}
+        // A confirmed no-onset reaches the engine only after its audio row is durable.
+        void PersistAudio(AudioPlaybackEvent value){if(closed)throw new SessionFault("SESSION_JOIN_CLOSED");audioData.Record(value);audioFrames.Record(value);noOnset.Observe(value);}
         public void PumpRetainedAtBoundary(){if(closed||Engine.Status==SessionState.Running)throw new SessionFault("SESSION_MODULE_BOUNDARY");mux.Pump();}
         public void PrepareResume(FixedSlotEngine engine){if(closed||!ReferenceEquals(engine,Engine))throw new SessionFault("SESSION_JOIN_BINDING");mux.PrepareBlockAtBoundary(engine);}
         // Install as OperatorMailbox's prepareResume hook. Mailbox remains the
