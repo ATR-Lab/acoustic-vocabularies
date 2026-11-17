@@ -29,6 +29,7 @@ namespace AcousticVocab.Orientation
         OrientationSetup setup;OrientationDemos demos;OrientationJournal journal;PanelSettings input;
         OrientationDemo activeDemo;Transform display;TextMesh title,body,buttonText;BoxCollider button;MeshRenderer buttonSurface;LineRenderer pointer;
         Material surfaceMaterial,textBackingMaterial;readonly List<XRHandSubsystem> hands=new List<XRHandSubsystem>();
+        OrientationTargetMarker marker;
         bool initialized,failed,released,focused=true,paused,held,armed,haveTip,pokeArmed,buttonEnabled;
         public string JournalPath=>journal?.JournalPath;
         string screeningId;
@@ -157,6 +158,7 @@ namespace AcousticVocab.Orientation
         void Refresh()
         {
             if(display==null)return;
+            marker?.Present(failed?null:Flow);
             if(failed) { title.text="Orientation unavailable";body.text=Wrap(faultCode+". Ask the operator.");buttonText.text="Blocked";buttonEnabled=false; }
             else
             {
@@ -196,6 +198,7 @@ namespace AcousticVocab.Orientation
             button=key.GetComponent<BoxCollider>();buttonSurface=key.GetComponent<MeshRenderer>();surfaceMaterial=new Material(shader);buttonSurface.sharedMaterial=surfaceMaterial;
             buttonText=Label(display,new Vector3(0,-.102f,-.016f),.009f);
             pointer=new GameObject("Orientation pointer").AddComponent<LineRenderer>();pointer.transform.SetParent(display,false);pointer.positionCount=2;pointer.startWidth=pointer.endWidth=.0015f;pointer.sharedMaterial=surfaceMaterial;pointer.enabled=false;
+            marker=new OrientationTargetMarker(workcell,display,shader);
             Refresh();
         }
         TextMesh Label(Transform parent,Vector3 position,float height)
@@ -237,6 +240,7 @@ namespace AcousticVocab.Orientation
             if(foundation!=null)foundation.Faulted-=FoundationFault;if(stateSource!=null)stateSource.Event-=SourceEvent;
             if(panel!=null){panel.Responded-=Response;panel.Faulted-=PanelFault;}
             journal?.Dispose();if(surfaceMaterial!=null)DisposeObject(surfaceMaterial);if(textBackingMaterial!=null)DisposeObject(textBackingMaterial);
+            marker?.Dispose();
         }
         static void DisposeObject(UnityEngine.Object value) { if(Application.isPlaying)Destroy(value);else DestroyImmediate(value); }
     }

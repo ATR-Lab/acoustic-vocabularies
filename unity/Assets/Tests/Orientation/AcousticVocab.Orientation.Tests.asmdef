@@ -1,6 +1,6 @@
 {
   "name": "AcousticVocab.Orientation.Tests",
-  "references": ["AcousticVocab.Orientation", "AcousticVocab.Orientation.Editor", "AcousticVocab.ResponsePanel", "AcousticVocab.StateSources", "AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor"],
+  "references": ["AcousticVocab.Orientation", "AcousticVocab.Orientation.Editor", "AcousticVocab.ResponsePanel", "AcousticVocab.StateSources", "AcousticVocab.Workcell", "AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor"],
   "includePlatforms": ["Editor"],
   "optionalUnityReferences": ["TestAssemblies"],
   "overrideReferences": true,
