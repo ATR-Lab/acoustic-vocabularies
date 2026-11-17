@@ -1,0 +1,44 @@
+# systemd unit for the pinned LLM server (av_generation.llm_server, #16) on the GPU host.
+# Copy it to /etc/systemd/system/av-llm.service and replace every <placeholder>; the
+# runbook is generation/docs/llm.md section 7. Run generation/llm/host/bringup.sh first:
+# `serve` runs the same checks again and refuses to start on any difference.
+#
+#   <checkout>        the repository checkout, with `uv sync --project generation --locked`
+#   <vllm-env>        the vLLM environment bringup.sh created (pinned vLLM only)
+#   <model-dir>       the verified download of the pinned revision
+#   <station-net address>  the address the stations reach (the isolated station network)
+#   <restricted>      storage for the server's timing log, outside any git work tree
+#   <run id>          a run ID for the startup timing events
+#   <llm-user>        an unprivileged account that may use the GPU (video/render groups)
+#
+# The port is the one in generation/llm/server-config.json unless --port is added.
+
+[Unit]
+Description=Pinned LLM server for generation (av_generation.llm_server)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=3600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=<llm-user>
+WorkingDirectory=<checkout>
+# No package, model-hub or telemetry traffic (the launcher also sets these for vLLM).
+Environment=UV_OFFLINE=1 HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+Environment=HF_HUB_DISABLE_TELEMETRY=1 VLLM_NO_USAGE_STATS=1 VLLM_DO_NOT_TRACK=1 DO_NOT_TRACK=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=<checkout>/generation/.venv/bin/python -m av_generation.llm_server serve \
+    --model-dir <model-dir> --vllm <vllm-env>/bin/vllm --host <station-net address> \
+    --timing-log <restricted>/llm-server/timing.jsonl --run-id <run id>
+# A refused start (exit 2) or a server that never became ready (exit 3) needs a person.
+Restart=on-failure
+RestartSec=30
+RestartPreventExitStatus=2 3
+KillMode=control-group
+TimeoutStopSec=60
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
