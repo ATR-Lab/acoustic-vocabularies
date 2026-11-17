@@ -1,13 +1,14 @@
 # ADR-001 — Headset topology
 
-Status: Proposed — decision pending measurements
+Status: Accepted at G1 (#51) — wired USB Link (`pcvr_link`); device measurements
+are acceptance conditions before the engineering pilot
 
 ## Context
 
 WBS O5.1.8 / #50. One application must present the same seated public workcell on
 Quest Pro with live state from a Linux Isaac host. Timing uses a host monotonic
-clock and physical audio onset. The private protocol sources have not yet been
-located; issue constants are provisional until reconciled.
+clock and physical audio onset. Participants are seated and stationary for the
+whole visit, so a tethered headset does not restrict the task.
 
 ## Options
 
@@ -32,16 +33,57 @@ and actual compositor timing remain unmeasured.
 
 ## Decision
 
-Keep both standalone and wired Link candidates through the measurements. No
-winning topology is selected. Use the same geometry/assets and fixed observer
-reference, comparing offered versus selected refresh and all frames over budget.
-Treat presentation freezes over 250 ms as faults and measure their occurrence.
+Use option 2, **wired USB Link** (station `topology: pcvr_link`). The Windows
+player renders on one Windows PC per station and the Quest Pro shows it over a
+USB-C Link cable. Study audio plays from that PC (ADR-005). Standalone Android
+and Air Link are not used for any session with people. The Android target stays
+buildable for engineering checks only; using it for sessions needs a superseding
+ADR and a new apparatus version.
+
+No headset measurement exists yet, so the choice rests on the evidence below,
+not on frame timing:
+
+1. The application is built and exercised on Windows. The operator mailbox
+   publishes state with same-directory `MoveFileExW` replacement and fails closed
+   on other platforms (`mailbox_platform_unqualified`, see
+   [operator console interface](../interfaces/operator-console.md)). Native
+   simulated visits ran a Windows player against the Isaac backend
+   ([native simulation tests](../unity/native-simulation-tests.md)). Standalone
+   would need a new console transport and a second qualification.
+2. Live state stays on the wired station network between the Isaac host and the
+   render PC. Standalone would put the 250 ms stale-state rule (ADR-002) on Wi-Fi
+   to every headset; the unqualified diagnostic path in the
+   [G1 readiness packet](../gates/G1-readiness.md) already showed gaps over 250 ms.
+3. The imported 43-joint G1/Dex3 scene has only been compiled for Android (#46);
+   its mobile frame cost is unmeasured. A desktop GPU leaves headroom for the
+   frame budget in #74.
+4. A PC audio route lets the request, the Commit and electrical loopback share
+   one host monotonic clock, the simplest path to the ADR-005 onset target.
+
+Accepted costs: one Windows render PC with a discrete GPU per station (ADR-003);
+Link compositor latency and dropped frames, measured below; Link software and
+headset OS updates must be deferred and recorded per station; a Link disconnect
+is a fault that pauses before the next exposure.
+
+## Acceptance conditions
+
+These are measured at station install, before the engineering pilot. They do
+not reopen the choice unless a revisit trigger fires.
+
+- #45 runbook on Link with the real joined scene: offered rates, the chosen rate,
+  a 900-second frame capture, no presentation freeze over 250 ms in cue or
+  response windows, and removal, sleep and Link-disconnect callbacks.
+- #47 bridge at the chosen rate over the station's wired network.
+- The same checks on every installed station, recorded in its station file.
 
 ## Consequences
 
-#59, #62, #64 and procurement remain constrained by pending topology. Do not
-infer Air Link results from wired Link or extrapolate the uncalibrated placeholder
-robot's triangle load to the imported robot. Recheck the exact robot asset scene.
+Station files use `topology: pcvr_link`. ADR-003 adds one render PC per station.
+ADR-005 uses a PC-side route. #59 and #60 provision the Quest as a Link display
+(developer mode, Link, update deferral); APK deployment steps are engineering
+only. #74 measures frame timing on Link. Do not infer Air Link results from wired
+Link or extrapolate the uncalibrated placeholder robot's triangle load to the
+imported robot. Recheck the exact robot asset scene.
 
 ## Manifest fields
 

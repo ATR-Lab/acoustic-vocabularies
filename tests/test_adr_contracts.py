@@ -66,12 +66,13 @@ ADR_FILES = sorted(ADR.glob("ADR-*.md"))
 LINK = re.compile(r"\]\(([^)\s]+)\)")
 
 
-def test_adrs_remain_proposed():
+def test_adr_statuses_are_known():
+    """Status rules live in test_adr_status.py; keep the seven-file inventory here."""
     assert len(ADR_FILES) == 7
     for path in ADR_FILES:
         status = [line for line in path.read_text(encoding="utf-8").splitlines()
                   if line.startswith("Status:")]
-        assert status and status[0].startswith("Status: Proposed"), path.name
+        assert status and status[0].split()[1] in {"Proposed", "Accepted"}, path.name
 
 
 @pytest.mark.parametrize("path", ADR_FILES, ids=lambda p: p.name)
