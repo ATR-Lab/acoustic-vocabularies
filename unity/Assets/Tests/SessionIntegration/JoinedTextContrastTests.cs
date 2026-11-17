@@ -4,6 +4,7 @@ using System.Reflection;
 using AcousticVocab.Foundation;
 using AcousticVocab.SelectionMenus;
 using AcousticVocab.Teaching;
+using AcousticVocab.Theme;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -41,7 +42,11 @@ namespace AcousticVocab.SessionIntegration.Tests
                     Assert.That(backing.GetComponentsInChildren<Collider>(true),Is.Empty);
                     Assert.That(text.color,Is.EqualTo(Color.white));
                     Assert.That(Contrast(text.color,backing.color),Is.GreaterThanOrEqualTo(7),"Software palette screen only; native readability still requires capture");
-                    Assert.That(Contrast(Color.yellow,backing.color),Is.GreaterThanOrEqualTo(7));
+                    Assert.That(Contrast(text.color,StudyTheme.HighlightFill),Is.GreaterThanOrEqualTo(7),"A lit label keeps AAA contrast");
+                    Assert.That(backing.color,Is.EqualTo(StudyTheme.PanelFill));
+                    var edge=backing.GetComponent<Outline>();
+                    Assert.That(edge,Is.Not.Null,"Theme edge is a mesh effect, not another graphic");
+                    Assert.That(edge.effectColor,Is.EqualTo(StudyTheme.EdgeIdle));
                     Assert.That(text.fontSize,Is.EqualTo(type==typeof(TeachingSessionHost)?27:name=="Instructions"?28:26));
                 }
                 Assert.That(canvas.transform.localScale,Is.EqualTo(Vector3.one*.001f));
@@ -57,7 +62,7 @@ namespace AcousticVocab.SessionIntegration.Tests
         }
 
         [Test]
-        public void RealTeachingRoleHighlightRetainsReadableWhiteAndYellowUntilHidden()
+        public void RealTeachingRoleHighlightLightsOnlyTheBackingAndKeepsGeometryUntilHidden()
         {
             using(var view=new View(typeof(TeachingSessionHost)))
             {
@@ -66,10 +71,24 @@ namespace AcousticVocab.SessionIntegration.Tests
                 var action=view.Canvas.transform.Find("Action words").GetComponent<Text>();
                 var target=view.Canvas.transform.Find("Target words").GetComponent<Text>();
                 Assert.That(action.text,Is.EqualTo("Action"));Assert.That(target.text,Is.EqualTo("Target"));
-                host.Highlight("grammar",LessonHighlight.Action);Assert.That(action.color,Is.EqualTo(Color.yellow));Assert.That(target.color,Is.EqualTo(Color.white));
-                host.Highlight("grammar",LessonHighlight.Target);Assert.That(action.color,Is.EqualTo(Color.white));Assert.That(target.color,Is.EqualTo(Color.yellow));
-                foreach(var text in new[]{action,target})
-                    Assert.That(Contrast(text.color,view.Canvas.transform.Find(text.name+" backing").GetComponent<Image>().color),Is.GreaterThanOrEqualTo(7));
+                var actionBacking=view.Canvas.transform.Find("Action words backing").GetComponent<Image>();
+                var targetBacking=view.Canvas.transform.Find("Target words backing").GetComponent<Image>();
+                var geometry=Geometry(view.Canvas);
+                void Expect(Image lit,Image unlit)
+                {
+                    if(lit!=null){Assert.That(lit.color,Is.EqualTo(StudyTheme.HighlightFill));Assert.That(lit.GetComponent<Outline>().effectColor,Is.EqualTo(StudyTheme.EdgeLit));}
+                    foreach(var other in new[]{actionBacking,targetBacking}.Where(x=>x!=lit))
+                    {Assert.That(other.color,Is.EqualTo(StudyTheme.PanelFill));Assert.That(other.GetComponent<Outline>().effectColor,Is.EqualTo(StudyTheme.EdgeIdle));}
+                    Assert.That(action.color,Is.EqualTo(Color.white));Assert.That(target.color,Is.EqualTo(Color.white));
+                    foreach(var text in new[]{action,target})
+                        Assert.That(Contrast(text.color,view.Canvas.transform.Find(text.name+" backing").GetComponent<Image>().color),Is.GreaterThanOrEqualTo(7));
+                    Assert.That(Geometry(view.Canvas),Is.EqualTo(geometry),"Highlighting must not move or resize anything");
+                }
+                Expect(null,null);
+                host.Highlight("grammar",LessonHighlight.Action);Expect(actionBacking,null);
+                host.Highlight("grammar",LessonHighlight.Target);Expect(targetBacking,null);
+                host.Highlight("another-owner",LessonHighlight.Action);Expect(targetBacking,null);
+                host.Highlight("grammar",LessonHighlight.None);Expect(null,null);
                 typeof(TeachingSessionHost).GetMethod("ShowGrammar",Private).Invoke(host,new object[]{"hidden"});
                 Assert.That(view.Canvas.gameObject.activeSelf,Is.False);
             }
@@ -90,9 +109,14 @@ namespace AcousticVocab.SessionIntegration.Tests
                     var text=card.GetComponentInChildren<Text>(true);Assert.That(text.fontSize,Is.EqualTo(27));
                     Assert.That(Contrast(text.color,card.GetComponent<Image>().color),Is.GreaterThanOrEqualTo(7));
                     Assert.That(card.GetComponentsInChildren<Image>(true).Length,Is.EqualTo(1),"Already-backed candidate cards must not gain an overlay");
+                    Assert.That(card.GetComponent<Image>().color,Is.EqualTo(StudyTheme.SurfaceEnabled));
+                    Assert.That(Contrast(text.color,StudyTheme.SurfaceSelected),Is.GreaterThanOrEqualTo(7),"A selected card keeps AAA contrast");
                 }
             }
         }
+
+        static string Geometry(Canvas canvas)=>string.Join(";",canvas.GetComponentsInChildren<RectTransform>(true)
+            .Select(x=>x.name+":"+x.anchoredPosition+":"+x.sizeDelta+":"+x.anchorMin+":"+x.anchorMax+":"+x.pivot+":"+x.localScale));
 
         static double Contrast(Color foreground,Color background)
         {

@@ -1,4 +1,5 @@
 using System;
+using AcousticVocab.Theme;
 using UnityEngine;
 
 namespace AcousticVocab.Assessment
@@ -14,7 +15,7 @@ namespace AcousticVocab.Assessment
             if(root==null||font==null)throw new AssessmentFault("ASSESSMENT_VIEW_CONFIG");
             this.root=root;Text=new GameObject("Assessment text").AddComponent<TextMesh>();Text.transform.SetParent(root,false);
             Text.font=font;Text.GetComponent<MeshRenderer>().sharedMaterial=font.material;Text.fontSize=100;Text.characterSize=.01f;
-            Text.anchor=TextAnchor.MiddleCenter;Text.alignment=TextAlignment.Center;Text.color=Color.white;Neutral();
+            Text.anchor=TextAnchor.MiddleCenter;Text.alignment=TextAlignment.Center;Text.color=StudyTheme.TextPrimary;Neutral();
         }
         public static void Fit(TextMesh label,float width,float height)
         {

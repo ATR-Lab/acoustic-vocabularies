@@ -7,6 +7,7 @@ using AcousticVocab.SessionEngine;
 using AcousticVocab.StateIntegration;
 using AcousticVocab.StudyAudio;
 using AcousticVocab.Teaching;
+using AcousticVocab.Theme;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR;
@@ -82,11 +83,11 @@ namespace AcousticVocab.SelectionMenus
             PresentationTextBacking.Add(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75));
             instructions=TextAt(root.transform,"Instructions",new Vector2(0,225),new Vector2(820,95),28);meaning=TextAt(root.transform,"Meaning",new Vector2(0,145),new Vector2(810,75),26);
             var img=new GameObject("Meaning image",typeof(RectTransform),typeof(CanvasRenderer),typeof(RawImage));img.transform.SetParent(root.transform,false);var rect=(RectTransform)img.transform;rect.anchoredPosition=new Vector2(0,20);rect.sizeDelta=new Vector2(240,170);picture=img.GetComponent<RawImage>();picture.raycastTarget=false;
-            for(int i=0;i<3;i++){var node=new GameObject("Candidate "+(i+1),typeof(RectTransform),typeof(CanvasRenderer),typeof(Image),typeof(BoxCollider));node.transform.SetParent(root.transform,false);var box=(RectTransform)node.transform;box.anchoredPosition=new Vector2((i-1)*270,-165);box.sizeDelta=new Vector2(245,130);cards[i]=node.GetComponent<Image>();cards[i].color=new Color(.15f,.18f,.23f);cards[i].raycastTarget=false;colliders[i]=node.GetComponent<BoxCollider>();colliders[i].size=new Vector3(245,130,15);labels[i]=TextAt(node.transform,"Stored label",Vector2.zero,new Vector2(235,120),27);}
+            for(int i=0;i<3;i++){var node=new GameObject("Candidate "+(i+1),typeof(RectTransform),typeof(CanvasRenderer),typeof(Image),typeof(BoxCollider));node.transform.SetParent(root.transform,false);var box=(RectTransform)node.transform;box.anchoredPosition=new Vector2((i-1)*270,-165);box.sizeDelta=new Vector2(245,130);cards[i]=node.GetComponent<Image>();PresentationTextBacking.Style(cards[i],StudyTheme.SurfaceEnabled,false);cards[i].raycastTarget=false;colliders[i]=node.GetComponent<BoxCollider>();colliders[i].size=new Vector3(245,130,15);labels[i]=TextAt(node.transform,"Stored label",Vector2.zero,new Vector2(235,120),27);}
             root.SetActive(false);
         }
         Text TextAt(Transform parent,string name,Vector2 at,Vector2 size,int fontSize)
-        {var node=new GameObject(name,typeof(RectTransform),typeof(CanvasRenderer),typeof(Text));node.transform.SetParent(parent,false);var rect=(RectTransform)node.transform;rect.anchoredPosition=at;rect.sizeDelta=size;var text=node.GetComponent<Text>();text.font=font;text.fontSize=fontSize;text.alignment=TextAnchor.MiddleCenter;text.color=Color.white;text.raycastTarget=false;text.supportRichText=false;return text;}
+        {var node=new GameObject(name,typeof(RectTransform),typeof(CanvasRenderer),typeof(Text));node.transform.SetParent(parent,false);var rect=(RectTransform)node.transform;rect.anchoredPosition=at;rect.sizeDelta=size;var text=node.GetComponent<Text>();text.font=font;text.fontSize=fontSize;text.alignment=TextAnchor.MiddleCenter;text.color=StudyTheme.TextPrimary;text.fontStyle=StudyTheme.TextStyle;text.raycastTarget=false;text.supportRichText=false;return text;}
         public void Prepare(MenuMaterial material)
         {
             MenuRules.Require(Installed&&material!=null,"MENU_VIEW_REFUSED");if(material.Meaning==null||textures.ContainsKey(material.Meaning.ImageSha256))return;
@@ -99,7 +100,7 @@ namespace AcousticVocab.SelectionMenus
             MenuRules.Require(!(readOnly&&phase==MenuPhase.Choice&&selected.HasValue),"MENU_YOKED_DISCLOSURE");
             visibleOwner=owner;this.readOnly=readOnly;choosing=phase==MenuPhase.Choice;instructions.text=phase==MenuPhase.Choice?material.ChoiceInstructions:material.Instructions;meaning.text=material.Meaning?.Definition??"";
             picture.gameObject.SetActive(material.Meaning!=null);if(material.Meaning!=null){MenuRules.Require(textures.TryGetValue(material.Meaning.ImageSha256,out var texture),"MENU_IMAGE_MISSING");picture.texture=texture;visibleImage=material.Meaning.ImageSha256;}
-            for(int i=0;i<3;i++){labels[i].text=material.Labels[i];cards[i].color=selected==i+1?new Color(.5f,.4f,.1f):new Color(.15f,.18f,.23f);}canvas.gameObject.SetActive(true);
+            for(int i=0;i<3;i++){labels[i].text=material.Labels[i];PresentationTextBacking.Style(cards[i],StudyTheme.SurfaceFor(true,selected==i+1),selected==i+1);}canvas.gameObject.SetActive(true);
         }
         public void Hide(string owner){if(visibleOwner!=owner)return;canvas.gameObject.SetActive(false);visibleOwner=visibleImage=null;choosing=false;}
         public void Uninstall()

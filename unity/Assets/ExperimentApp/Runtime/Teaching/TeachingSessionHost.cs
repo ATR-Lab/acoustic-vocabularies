@@ -6,6 +6,7 @@ using AcousticVocab.ResponsePanel;
 using AcousticVocab.SessionEngine;
 using AcousticVocab.StateIntegration;
 using AcousticVocab.StudyAudio;
+using AcousticVocab.Theme;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -27,6 +28,7 @@ namespace AcousticVocab.Teaching
         FixedSlotEngine engine;
         Canvas canvas;
         Text definition,actionWords,targetWords,feedback;
+        Image actionBacking,targetBacking;
         RawImage image;
         readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>(StringComparer.Ordinal);
         string visibleOwner,visibleImageHash,scheduleHash,packageHash;
@@ -87,7 +89,7 @@ namespace AcousticVocab.Teaching
         void ShowGrammar(string phase)
         {
             visibleOwner="grammar";image.gameObject.SetActive(false);feedback.text="";definition.text=phase=="ready"?"READY":"";
-            actionWords.text=phase=="roles"?"Action":"";targetWords.text=phase=="roles"?"Target":"";actionWords.color=targetWords.color=Color.white;
+            actionWords.text=phase=="roles"?"Action":"";targetWords.text=phase=="roles"?"Target":"";Light(LessonHighlight.None);
             canvas.gameObject.SetActive(phase!="hidden");
         }
         void CreateView()
@@ -98,18 +100,19 @@ namespace AcousticVocab.Teaching
             root.transform.SetPositionAndRotation(reference.position+reference.rotation*new Vector3(0,.05f,1.05f),reference.rotation);root.transform.localScale=Vector3.one*.001f;
             canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.WorldSpace;((RectTransform)root.transform).sizeDelta=new Vector2(800,540);
             definition=TextAt("Definition",new Vector2(0,220),new Vector2(780,100));
-            actionWords=TextAt("Action words",new Vector2(-190,140),new Vector2(370,70));targetWords=TextAt("Target words",new Vector2(190,140),new Vector2(370,70));
+            actionWords=TextAt("Action words",new Vector2(-190,140),new Vector2(370,70),out actionBacking);targetWords=TextAt("Target words",new Vector2(190,140),new Vector2(370,70),out targetBacking);
             feedback=TextAt("Feedback",new Vector2(0,-220),new Vector2(780,80));
             var picture=new GameObject("Task image",typeof(RectTransform),typeof(CanvasRenderer),typeof(RawImage));picture.transform.SetParent(root.transform,false);
             var rect=(RectTransform)picture.transform;rect.sizeDelta=new Vector2(460,270);rect.anchoredPosition=new Vector2(0,-25);image=picture.GetComponent<RawImage>();image.raycastTarget=false;
             root.SetActive(false);
         }
-        Text TextAt(string name,Vector2 position,Vector2 size)
+        Text TextAt(string name,Vector2 position,Vector2 size)=>TextAt(name,position,size,out _);
+        Text TextAt(string name,Vector2 position,Vector2 size,out Image backing)
         {
-            PresentationTextBacking.Add(canvas.transform,name,position,size);
+            backing=PresentationTextBacking.Add(canvas.transform,name,position,size);
             var node=new GameObject(name,typeof(RectTransform),typeof(CanvasRenderer),typeof(Text));node.transform.SetParent(canvas.transform,false);
             var rect=(RectTransform)node.transform;rect.anchoredPosition=position;rect.sizeDelta=size;
-            var text=node.GetComponent<Text>();text.font=font;text.fontSize=27;text.alignment=TextAnchor.MiddleCenter;text.color=Color.white;text.supportRichText=false;text.raycastTarget=false;return text;
+            var text=node.GetComponent<Text>();text.font=font;text.fontSize=27;text.alignment=TextAnchor.MiddleCenter;text.color=StudyTheme.TextPrimary;text.fontStyle=StudyTheme.TextStyle;text.supportRichText=false;text.raycastTarget=false;return text;
         }
         public void Prepare(TeachingDisplay display)
         {
@@ -125,12 +128,20 @@ namespace AcousticVocab.Teaching
             LessonTimeline.Require(Installed&&display!=null&&owner!=null,"LESSON_DISPLAY_REFUSED");
             LessonTimeline.Require(textures.TryGetValue(display.ImageSha256,out var texture),"LESSON_DISPLAY_REFUSED");
             visibleImageHash=display.ImageSha256;image.gameObject.SetActive(true);image.texture=texture;definition.text=display.Definition;actionWords.text=display.ActionWords;targetWords.text=display.TargetWords;feedback.text=feedbackText??"";
-            actionWords.color=targetWords.color=Color.white;visibleOwner=owner;canvas.gameObject.SetActive(true);
+            Light(LessonHighlight.None);visibleOwner=owner;canvas.gameObject.SetActive(true);
         }
         public void Hide(string owner)
         {if(visibleOwner!=owner)return;canvas.gameObject.SetActive(false);visibleOwner=null;visibleImageHash=null;}
         public void Highlight(string owner,LessonHighlight value)
-        {if(visibleOwner!=owner)return;actionWords.color=value==LessonHighlight.Action?Color.yellow:Color.white;targetWords.color=value==LessonHighlight.Target?Color.yellow:Color.white;}
+        {if(visibleOwner!=owner)return;Light(value);}
+        // A lit label gets the teal fill and bright edge; text stays white so its
+        // contrast never depends on the highlight. Static lessons never light.
+        void Light(LessonHighlight value)
+        {
+            actionWords.color=targetWords.color=StudyTheme.TextPrimary;
+            PresentationTextBacking.Style(actionBacking,value==LessonHighlight.Action?StudyTheme.HighlightFill:StudyTheme.PanelFill,value==LessonHighlight.Action);
+            PresentationTextBacking.Style(targetBacking,value==LessonHighlight.Target?StudyTheme.HighlightFill:StudyTheme.PanelFill,value==LessonHighlight.Target);
+        }
         internal void Fail(string code)
         {
             if(uninstalled||failed||handlingFault)return;handlingFault=true;failed=true;
