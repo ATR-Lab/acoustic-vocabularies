@@ -33,7 +33,9 @@ uv run --project generation python -m av_generation.llm_bench --mock --calls 300
 
 ## Pending (hardware): the LLM GPU run
 
-On the LLM host, start the pinned server with `python -m av_generation.llm_server serve`.
+`generation/llm/host/evidence.sh` runs this benchmark, the same-seed repeat test and the
+other #16 checks on the GPU host and judges them (`../docs/llm.md` section 7). By hand: on
+the LLM host, start the pinned server with `python -m av_generation.llm_server serve`.
 Then run the benchmark from a station on the isolated network:
 
 ```bash

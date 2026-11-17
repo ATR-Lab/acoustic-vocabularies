@@ -70,8 +70,8 @@ updated on purpose.
 
 ### Hardware (Pending)
 
-The `hardware` section stays `pending` until it is recorded on the LLM host (runbook in
-section 2):
+The `hardware` section stays `pending` until it is recorded on the LLM host (section 7;
+`bringup.sh` runs this command):
 
 ```bash
 uv run --project generation python -m av_generation.llm_manifest record-hardware \
@@ -168,8 +168,8 @@ Revision evidence comes from one of two sources:
 
 ### LLM-host runbook (Pending hardware)
 
-There are two environments on the LLM host, and each command below says which one it
-uses:
+The bring-up on the GPU host is one ordered checklist in section 7, with two scripts in
+`generation/llm/host/`. There are two environments on the host:
 
 - **The vLLM environment** holds only the pinned runtime. Nothing from this repository
   is installed in it. Its executable, `<vllm-env>/bin/vllm`, is the one the server
@@ -178,24 +178,8 @@ uses:
   manifest tools. It never imports vLLM. It runs the vLLM executable named by
   `--vllm`, and it asks that same executable for its version.
 
-```bash
-# 1. vLLM environment: install the pinned runtime (not in this uv project).
-python3 -m venv <vllm-env> && <vllm-env>/bin/pip install vllm==0.30.0
-# 2. Download the pinned revision (once, before the station network is isolated).
-hf download Qwen/Qwen2.5-7B-Instruct --revision a09a35458c702b33eeacc393d103063234e8bc28 --local-dir <dir>
-# 3. uv project: verify the download and record the hardware.
-uv run --project generation python -m av_generation.llm_manifest verify --model-dir <dir>
-uv run --project generation python -m av_generation.llm_manifest record-hardware --vllm <vllm-env>/bin/vllm
-# 4. uv project: check, then serve on the station-network address.
-uv run --project generation python -m av_generation.llm_server check --model-dir <dir> \
-    --vllm <vllm-env>/bin/vllm
-uv run --project generation python -m av_generation.llm_server serve --model-dir <dir> \
-    --vllm <vllm-env>/bin/vllm --host <station-net address> \
-    --timing-log <run>/logs/timing.jsonl --run-id <run id>
-```
-
-`record-hardware` changes the manifest file, so after step 3 put the new
-`llm_manifest_sha256` into `server-config.json` (`manifest_sha256`). The `--vllm`
+`record-hardware` changes the manifest file, so the server config must then name the
+manifest's new file hash (`manifest_sha256`); `bringup.sh` does both. The `--vllm`
 default is the `vllm` found on `PATH`, and the same check applies to it.
 
 Startup is logged separately from slot time. The `startup_start` and `startup_end`
@@ -354,3 +338,135 @@ run is Pending (hardware).
 | The runtime version comes from the vLLM executable that is started | The launcher runs from this uv project, and the pinned vLLM lives in its own environment. Reading the launcher's own interpreter could miss an unpinned runtime |
 | Every file in the model directory must be in the manifest | A stray `chat_template.jinja` or tokenizer file would replace the pinned template or tokenizer at load time, and the hash check of `tokenizer_config.json` would still pass |
 | The real-time 40.5-s test runs in CI on all three OSes | Acceptance evidence on Linux, macOS and Windows. It is selectable with `-k slow`, because `tests/generation/conftest.py` (shared) registers no `slow` marker |
+
+## 7. GPU-host bring-up checklist (Pending hardware)
+
+Everything that #16 still needs is hardware work. This checklist makes the first day on
+the GPU host mechanical: from a fresh host to a pinned server, the acceptance evidence
+and the G4 freeze items. Run it from a clean checkout of the commit being used.
+
+### 7.1 Memory: why the GPU needs 24 GB
+
+- The pinned bf16 weights are 4 safetensors shards of 15,231,271,888 bytes in all:
+  about 15.2 GB (14.2 GiB), from `manifest.json` (`llm_host pins` prints
+  `WEIGHTS_BYTES`).
+- The KV cache of one full-length sequence (16,896 tokens: 28 layers, 4 KV heads of
+  128 dimensions, keys and values in bf16, 57,344 bytes per token) is about 0.97 GB.
+  vLLM also needs memory for the CUDA context, activations and CUDA graphs.
+- So the frozen configuration needs a GPU with at least 24 GB:
+  `llm_manifest.MIN_VRAM_MIB` = 22,889 MiB, the nominal 24 GB rounded up. The manifest
+  schema refuses a recorded GPU below it, and `bringup.sh` refuses such a GPU before the
+  download.
+- **A 16 GB card cannot hold the frozen bf16 configuration with any KV cache**: it has at
+  most 16,384 MiB (about 17.2 GB), and the weights alone take 15.2 GB of it before the
+  CUDA context, the activations and the cache. Quantization (int8, fp8, AWQ, GPTQ, GGUF)
+  is a model change: the protocol does not allow it without a new protocol version (#16,
+  out of scope), and `freeze build` compares `runtime.precision` with the manifest.
+
+### 7.2 The checklist
+
+Placeholders: `<vllm-env>` and `<model-dir>` on local disk (about 40 GB free for the
+download and the vLLM environment), `<station-net address>` and `<station-net CIDR>` of
+the isolated station network, `<restricted>` outside any git work tree.
+
+1. **Host prerequisites.** The NVIDIA driver works (`nvidia-smi` lists a GPU of at least
+   22,889 MiB), `python3` (3.10 or later, for the vLLM environment), `uv`, `git`, `ss`
+   (iproute2) and `truncate`. The host still reaches the package index and the model hub
+   (needed for steps 0, 2 and 3 of `bringup.sh` only).
+2. **Bring-up:**
+
+   ```bash
+   generation/llm/host/bringup.sh --vllm-env <vllm-env> --model-dir <model-dir> \
+       --host <station-net address>
+   ```
+
+   It prints every command before it runs it (`--dry-run` prints them only):
+   - `uv sync --project generation --locked`;
+   - refuses a GPU below `MIN_VRAM_MIB`;
+   - creates the vLLM environment and installs `vllm==<runtime.version of manifest.json>`;
+   - `hf download <model.id> --revision <model.revision> --local-dir <model-dir>`, the
+     last step that uses the network: after it the script exports `UV_OFFLINE`,
+     `HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE`, `HF_DATASETS_OFFLINE`,
+     `HF_HUB_DISABLE_TELEMETRY`, `VLLM_NO_USAGE_STATS`, `VLLM_DO_NOT_TRACK` and
+     `DO_NOT_TRACK`;
+   - `llm_manifest verify --model-dir <model-dir>`;
+   - `llm_manifest record-hardware --vllm <vllm-env>/bin/vllm` and `llm_host
+     update-config` while the manifest's hardware is pending (`--record-hardware` to
+     record again);
+   - `llm_server check` (every refusal check of a server start);
+   - prints the `serve` command and the next steps.
+
+   The model ID, revision, vLLM version, port and minimum memory come from
+   `generation/llm/manifest.json` and `server-config.json` (`python -m
+   av_generation.llm_host pins`); the scripts hold none of them
+   (`tests/generation/test_llm_host_scripts.py`).
+3. **Isolate the host.** From here on the host reaches the station network only.
+4. **Commit the hardware record.** `git diff generation/llm/` shows the manifest's
+   `hardware` section and the new `manifest_sha256` of `server-config.json`. Commit both
+   in a pull request that says "Part of #16".
+5. **Serve.** Fill in `generation/llm/host/av-llm.service.example` (placeholders only),
+   install it as `/etc/systemd/system/av-llm.service` and run `sudo systemctl enable
+   --now av-llm`. `serve` runs the same checks again and refuses to start on any
+   difference. Check: `curl -s http://<station-net address>:8000/v1/models` lists the
+   pinned model (the port is the one in `server-config.json`).
+6. **Evidence:**
+
+   ```bash
+   generation/llm/host/evidence.sh --out <restricted>/llm-evidence \
+       --allow <station-net CIDR> --model-dir <model-dir> --vllm-env <vllm-env>
+   ```
+
+   It refuses an output directory inside a git work tree, and writes:
+   - `refusal-revision.*`, `refusal-weights.*`: `llm_server check` on two throw-away
+     copies of the download (symbolic links), one whose download metadata names another
+     revision and one with a weight shard replaced by a sparse file of the same size;
+     both must be refused (`E_REVISION`, `E_WEIGHTS_SHA256`);
+   - `bench/`: `llm_bench` with 300 calls per prompt profile (realistic, about 3,000
+     tokens, and worst case, 16,384 tokens) and 50 same-seed pairs (`--repeat`); pass
+     #17's built prompts with `--messages realistic=<file> --messages worst_case=<file>`
+     when they exist;
+   - `ss-listening.txt`, `ss-established.txt` (a sample every 5 s during the benchmark)
+     and `allowed.txt`: a connection the host opened to a peer outside loopback and the
+     station network is an outbound connection;
+   - `slow-cap.*`, `seed.*`: the 40.5-s slowed-server test and the seed tests;
+   - `acceptance.md`: #16's acceptance criteria with PASS, FAIL or PENDING (`python -m
+     av_generation.llm_host report --out-dir <dir>`, exit 0 only when all pass).
+7. **Where the evidence goes.**
+   - `bench/llm_latency.csv`, `bench/llm_latency_summary.json` and
+     `bench/llm_repeatability.csv` replace the MOCK files in `generation/bench/`, in a
+     pull request ("Part of #16"; [`../bench/README.md`](../bench/README.md)). They hold
+     prompt hashes only. `test_committed_latency_csv_is_mock_or_gpu_evidence` accepts the
+     GPU run.
+   - `acceptance.md` goes into a comment on #16, with the same-seed result (how many of
+     the 50 pairs were byte-identical) and the measured worst-case p95. The other files
+     stay in `<restricted>`: the `ss` samples and the logs name host addresses.
+   - The runtime decision itself is ADR-006 (#50), a human step.
+8. **G4 freeze items.** The draft `generation/FREEZE-v1.0.draft.json` (#25) has 8 items
+   that wait for the GPU host. G4 step 2 (`generation/docs/freeze.md` section 6) records
+   them in the restricted copy of the draft:
+
+   ```bash
+   uv run --project generation python -m av_generation.llm_host freeze-commands \
+       --draft <restricted>/freeze-draft.json      # prints the 8 commands; run them
+   ```
+
+   | Item | Value (from the committed manifest after step 4) | Command |
+   | --- | --- | --- |
+   | `runtime.vllm_version` | `runtime.version` (the executable's `--version` must equal it) | `freeze record runtime.vllm_version --text ...` |
+   | `runtime.cuda_version` | `hardware.cuda_version` (the CUDA version `nvidia-smi` reports) | `freeze record runtime.cuda_version --text ...` |
+   | `runtime.driver_version` | `hardware.driver_version` | `freeze record runtime.driver_version --text ...` |
+   | `runtime.gpu` | `<hardware.gpu> (<hardware.vram_mib> MiB)` | `freeze record runtime.gpu --text ...` |
+   | `runtime.precision` | `runtime.precision` (`bfloat16`) | `freeze record runtime.precision --text ...` |
+   | `runtime.max_model_len` | `runtime.max_model_len` (16,896) | `freeze record runtime.max_model_len --value ...` |
+   | `runtime.chat_template_sha256` | `chat_template.sha256` | `freeze record runtime.chat_template_sha256 --text ...` |
+   | `decoding.implementation` | `llm_manifest.decoding_implementation` (vLLM version, `response_format.json_schema`, backend, `--generation-config vllm`) | `freeze record decoding.implementation --text ...` |
+
+   The values are `llm_manifest.freeze_values`, which `python -m
+   av_generation.llm_manifest show` also prints. `freeze build` compares
+   `runtime.vllm_version`, `runtime.cuda_version`, `runtime.driver_version`,
+   `runtime.precision`, `runtime.max_model_len` and `runtime.chat_template_sha256` with
+   the committed manifest, so record exactly these values. Note: the draft's fill-in text
+   for `runtime.cuda_version` names `torch.version.cuda`, but `freeze build` compares it
+   with the manifest's `hardware.cuda_version`, which `record-hardware` reads from
+   `nvidia-smi`; the two can differ.
+9. **Then** the Study B bank runs can start against the server (unattended runs: #267).
