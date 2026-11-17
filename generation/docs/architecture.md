@@ -66,6 +66,7 @@ contract update, section 14); **I** = interface, filled by the owner issue.
 | `panel` | `create_panel_app(host, clock=)`, station page (`web/rater/`) | I | #21 |
 | `rater` | `BotRater`, `BotRatingPolicy` | I | #21 |
 | `dryrun` | `DryRunPlan`, dry-run driver, `check_log_completeness` | I | #22 |
+| `set_dry_run` | Synthetic whole-set dry run: every batch of an N-batch set in process on the manual clock, set summary and projected panel time | I | #22, #266 |
 | `threshold` | Listening tool: stimuli, session plan, runner, CSV, summary | I | #23 |
 | `audit` | `build_audit`, `build_set_audit`; `books.csv` columns (contract with #34) | I | #24 |
 | `freeze` | Freeze manifest builder and CI freeze guard | I | #25 |
