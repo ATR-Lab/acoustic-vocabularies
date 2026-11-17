@@ -378,7 +378,33 @@
               "schedule_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+              },
+              "block": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
+              },
+              "pass": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "item_kind": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$(?![\\s\\S])"
               }
+            },
+            "dependentRequired": {
+              "block": [
+                "pass",
+                "item_kind"
+              ],
+              "pass": [
+                "block",
+                "item_kind"
+              ],
+              "item_kind": [
+                "block",
+                "pass"
+              ]
             }
           }
         }

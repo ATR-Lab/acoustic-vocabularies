@@ -68,7 +68,13 @@ namespace AcousticVocab.DataLogging
     }
     public static class DataObservations
     {
-        public static EventDraft Opportunity(string id,string role,string methodMasked,string scheduleHash)=>new EventDraft("opportunity",new EventContext(id),new JObject{["role"]=role,["method_masked"]=methodMasked,["schedule_sha256"]=scheduleHash});
+        // Block, pass and item kind are given together (a scheduled slot) or not at all.
+        public static EventDraft Opportunity(string id,string role,string methodMasked,string scheduleHash,string block=null,int? pass=null,string itemKind=null)
+        {
+            var p=new JObject{["role"]=role,["method_masked"]=methodMasked,["schedule_sha256"]=scheduleHash};
+            if(block!=null||pass!=null||itemKind!=null){p["block"]=block;p["pass"]=pass;p["item_kind"]=itemKind;}
+            return new EventDraft("opportunity",new EventContext(id),p);
+        }
         public static EventDraft Device(EventContext c,string kind,double observedMs,bool? value=null,double? durationMs=null,string code=null)=>new EventDraft("device",c,new JObject{["kind"]=kind,["observed_mono_ms"]=observedMs,["value"]=value,["duration_ms"]=durationMs,["code"]=code});
         public static EventDraft DeviationReference(EventContext c,string deviationId,string signedLogHash,double observedMs)=>new EventDraft("deviation_reference",c,new JObject{["deviation_id"]=deviationId,["signed_log_sha256"]=signedLogHash,["observed_mono_ms"]=observedMs});
         public static EventDraft Gain(GainChange g)=>new EventDraft("gain",null,new JObject{["old_gain"]=g.Previous,["new_gain"]=g.Current,["observed_mono_ms"]=g.MonoSeconds*1000,["reason"]="comfort"});

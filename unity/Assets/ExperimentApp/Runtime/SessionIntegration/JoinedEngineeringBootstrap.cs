@@ -147,6 +147,8 @@ namespace AcousticVocab.SessionIntegration
                             });
                     }
                     var placeholders=assets.Blocks.ToDictionary(p=>p.Key,p=>(Func<SessionIntegrationOwner.Resources,ModuleConstructionScope,ISlotContentFactory>)((r,s)=>throw new SessionFault("JOIN_STAGED_CREATOR_REQUIRED")));
+                    // Every scheduled slot is journaled before the engine, grammar stage or any module exists to request audio.
+                    try{ScheduledOpportunities.Journal(data,assets.Schedule,assets.Package.PackageId);}catch(DataFault error){throw new SessionFault("JOIN_"+error.Code);}
                     owner=new SessionIntegrationOwner(assets.Schedule,clock,data,player,panel,frames,placeholders,RecordGateRefusal);
                     if(assets.Grammar!=null)
                     {
