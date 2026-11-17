@@ -1,4 +1,10 @@
-"""Shared pieces of the confirmatory campaign: errors, IDs, the campaign layout, schemas.
+"""Shared pieces of the confirmatory campaign: errors, size and IDs, the layout, schemas.
+
+**Size.** `CampaignSize(n_main, n_spares)`: one bank per main dyad slot (`B-C01`..) and
+per spare slot (`B-S01`..). `plan` takes it from the unit set (`size.units_size`) and
+records it in `plan.json` through the bank list (`plan.CampaignPlan.size`); every later
+step reads it from there. `DEFAULT_SIZE` is the default sample-size preset (`presets`,
+#266), used only where no unit set or plan is given.
 
 Campaign directory (restricted storage; `CampaignLayout`):
 
@@ -7,7 +13,7 @@ Campaign directory (restricted storage; `CampaignLayout`):
   plan.json                     bank IDs, dyad slots, seed namespaces, hashes (plan.py)
   freeze-manifest.json          byte copy of the G4 freeze manifest
   generation-config.json        the config every bank is built under
-  units/<unit_id>/permutation.json   byte copies of the 72 unit permutations
+  units/<unit_id>/permutation.json   byte copies of the unit permutations (one per bank)
   seed-check.json               seeds unique and disjoint from the pilot (seed_check.py)
   rebuilds.jsonl                crashed banks rebuilt under a new bank version (runner.py)
   events.jsonl, progress.jsonl  runner events and progress snapshots
@@ -38,15 +44,10 @@ from jsonschema import Draft202012Validator
 
 from av_banks._paths import schema_path
 from av_banks.builder import FIRST_VERSION
+from av_banks.presets import MAX_SLOTS, BankPreset, default_preset
 
-N_MAIN: Final = 64
-"""Main confirmatory dyad slots (Study B protocol §2)."""
-N_SPARES: Final = 8
-N_BANKS: Final = N_MAIN + N_SPARES
-MIN_COMPLETE: Final = N_MAIN
-"""Fewer complete banks than this: stop and escalate to the advisor before G5B."""
 DEMO_BANK_RE: Final = re.compile(r"DEMO-C[0-9]{3}")
-"""Rehearsal bank IDs: `DEMO-C001`..`DEMO-C072`, numbered like the confirmatory IDs."""
+"""Rehearsal bank IDs: `DEMO-C001`.., numbered like the confirmatory IDs."""
 CAMPAIGN_ID_RE: Final = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{1,38}[A-Za-z0-9]")
 """Campaign IDs prefix the per-bank run IDs, so they are at most 40 characters."""
 
@@ -71,38 +72,110 @@ class CampaignError(RuntimeError):
         self.code = code
 
 
-def campaign_bank_ids(*, demo: bool = False) -> tuple[str, ...]:
-    """The 72 bank IDs in dyad-slot sequence: `bank-C001`..`bank-C072` (rehearsal:
-    `DEMO-C001`..`DEMO-C072`). 1-64 are the main slots, 65-72 the spares."""
-    prefix = "DEMO-C" if demo else "bank-C"
-    return tuple(f"{prefix}{n:03d}" for n in range(1, N_BANKS + 1))
+@dataclass(frozen=True, slots=True)
+class CampaignSize:
+    """The main dyad slots and spare slots of a campaign, one bank each.
+
+    Banks are numbered in dyad-slot sequence: `bank-C001`..`bank-C<n_main>` are the main
+    slots `B-C01`..`B-C<n_main>`, the next `n_spares` are the spares `B-S01`.. (the #26
+    rule, `permutation.expected_unit_id` with `main_slots=n_main`; rehearsal IDs
+    `DEMO-C001`.. use the same). Spares never change the count: fewer than `n_main`
+    complete banks (`min_complete`) means stop and escalate."""
+
+    n_main: int
+    n_spares: int
+
+    def __post_init__(self) -> None:
+        for name, value, low in (("main", self.n_main, 1), ("spare", self.n_spares, 0)):
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise CampaignError(E_INPUT, f"{name} slots must be an integer, got {value!r}")
+            if not low <= value <= MAX_SLOTS:
+                raise CampaignError(
+                    E_INPUT, f"{name} slots must be {low}..{MAX_SLOTS}, got {value}"
+                )
+
+    @classmethod
+    def of(cls, preset: BankPreset) -> CampaignSize:
+        """The size of a sample-size preset (its Study B pairs and spare slots)."""
+        return cls(preset.pairs, preset.spares)
+
+    @property
+    def n_banks(self) -> int:
+        return self.n_main + self.n_spares
+
+    @property
+    def min_complete(self) -> int:
+        """Fewer complete banks than this: stop and escalate to the advisor before G5B."""
+        return self.n_main
+
+    def text(self) -> str:
+        """`64 main and 8 spare slots`."""
+        return f"{self.n_main} main and {self.n_spares} spare slots"
+
+    def unit_ids(self) -> tuple[str, ...]:
+        """The dyad slots in sequence: `B-C01`..`B-C<n_main>`, then `B-S01`..`B-S<n_spares>`."""
+        return (
+            *(f"B-C{n:02d}" for n in range(1, self.n_main + 1)),
+            *(f"B-S{n:02d}" for n in range(1, self.n_spares + 1)),
+        )
+
+    def bank_ids(self, *, demo: bool = False) -> tuple[str, ...]:
+        """The bank IDs in dyad-slot sequence: `bank-C001`..`bank-C<n_banks>` (rehearsal:
+        `DEMO-C001`..)."""
+        prefix = "DEMO-C" if demo else "bank-C"
+        return tuple(f"{prefix}{n:03d}" for n in range(1, self.n_banks + 1))
+
+    def sequence(self, bank_id: str) -> int:
+        """The dyad-slot sequence number 1..`n_banks` of a campaign bank ID."""
+        if not (CONFIRMATORY_BANK_RE.fullmatch(bank_id) or DEMO_BANK_RE.fullmatch(bank_id)):
+            raise CampaignError(E_INPUT, f"{bank_id!r} is not a campaign bank ID (bank-C001..)")
+        seq = int(bank_id[6:])
+        if not 1 <= seq <= self.n_banks:
+            raise CampaignError(
+                E_INPUT,
+                f"{bank_id}: the banks of {self.text()} are numbered 001..{self.n_banks:03d}",
+            )
+        return seq
+
+    def role(self, bank_id: str) -> Role:
+        """`main` for sequence 1..`n_main`, `spare` after."""
+        return "main" if self.sequence(bank_id) <= self.n_main else "spare"
+
+    def dyad_slot(self, bank_id: str) -> str:
+        """The unit (dyad slot) of a campaign bank: `B-C<nn>` for a main bank, `B-S<nn>`
+        for a spare."""
+        seq = self.sequence(bank_id)
+        return f"B-C{seq:02d}" if seq <= self.n_main else f"B-S{seq - self.n_main:02d}"
 
 
-def bank_sequence(bank_id: str) -> int:
-    """The dyad-slot sequence number 1..72 of a campaign bank ID."""
-    if not (CONFIRMATORY_BANK_RE.fullmatch(bank_id) or DEMO_BANK_RE.fullmatch(bank_id)):
-        raise CampaignError(E_INPUT, f"{bank_id!r} is not a campaign bank ID (bank-C001..)")
-    seq = int(bank_id[6:])
-    if not 1 <= seq <= N_BANKS:
-        raise CampaignError(E_INPUT, f"{bank_id}: campaign banks are numbered 001..{N_BANKS:03d}")
-    return seq
+DEFAULT_SIZE: Final = CampaignSize.of(default_preset())
+"""The size of the preset file's default preset (`presets.default_preset`), used only
+where no unit set or plan gives the size (`rehearse`, the helpers below)."""
 
 
-def bank_role(bank_id: str) -> Role:
-    """`main` for sequence 1..64, `spare` for 65..72."""
-    return "main" if bank_sequence(bank_id) <= N_MAIN else "spare"
+def campaign_bank_ids(*, demo: bool = False, size: CampaignSize = DEFAULT_SIZE) -> tuple[str, ...]:
+    """`size.bank_ids(demo=demo)`."""
+    return size.bank_ids(demo=demo)
 
 
-def dyad_slot(bank_id: str) -> str:
-    """The unit (dyad slot) of a campaign bank: `B-C01`..`B-C64`, spares `B-S01`..`B-S08`
-    (the #26 sequence rule, `permutation.expected_unit_id`; rehearsal IDs use the same)."""
-    seq = bank_sequence(bank_id)
-    return f"B-C{seq:02d}" if seq <= N_MAIN else f"B-S{seq - N_MAIN:02d}"
+def bank_sequence(bank_id: str, *, size: CampaignSize = DEFAULT_SIZE) -> int:
+    """`size.sequence(bank_id)`."""
+    return size.sequence(bank_id)
 
 
-def campaign_set(bank_id: str) -> str:
+def bank_role(bank_id: str, *, size: CampaignSize = DEFAULT_SIZE) -> Role:
+    """`size.role(bank_id)`."""
+    return size.role(bank_id)
+
+
+def dyad_slot(bank_id: str, *, size: CampaignSize = DEFAULT_SIZE) -> str:
+    """`size.dyad_slot(bank_id)`."""
+    return size.dyad_slot(bank_id)
+
+
+def campaign_set(bank_id: str, *, size: CampaignSize = DEFAULT_SIZE) -> str:
     """`confirmatory` for `bank-C...`, `demo` for `DEMO-C...` (anything else raises)."""
-    bank_sequence(bank_id)
+    size.sequence(bank_id)
     return bank_set(bank_id)
 
 

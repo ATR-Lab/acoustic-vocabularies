@@ -15,10 +15,13 @@ Everything is read back from the stored files of each bank directory (`manifest.
 - **attempt failure rate**: failed attempts / attempts;
 - model latency and open-to-close slot time: nearest-rank p50, p95 and max over every
   slot; `slots_over_cap` counts slots longer than the 40-s slot cap;
-- **projection** for `project_banks` banks (default 72, the #28 run: 64 dyad slots and 8
-  spares): mean attempts and slots per bank times the bank count, the hours at both
-  rates and the expected number of unavailable banks. With 8-10 pilot banks these are
-  rough planning figures, not estimates with known precision.
+- **projection** for `project_banks` banks (default `CONFIRMATORY_BANKS`, the #28 run of
+  the default sample-size preset: one bank per main dyad slot and per spare; `pilot`
+  also takes the count from a preset or a campaign plan): mean attempts and slots per
+  bank times the bank count, the hours at both rates and the expected number of
+  unavailable banks (`project` gives the same for any count; the note lists it for every
+  preset of `schedules/presets/sample-size-presets.json`, #266). With 8-10 pilot banks
+  these are rough planning figures, not estimates with known precision.
 """
 
 from __future__ import annotations
@@ -43,10 +46,12 @@ from av_generation.records import SlotRecord, TimingEvent, read_records
 
 from av_banks.layout import BankLayout
 from av_banks.manifest import AttemptSummary, Stats, read_manifest
+from av_banks.presets import BankPreset, default_preset
 from av_banks.throughput import stats
 
-CONFIRMATORY_BANKS: Final = 72
-"""Banks of the confirmatory run (#28): 64 main dyad slots and 8 spares."""
+CONFIRMATORY_BANKS: Final = default_preset().banks
+"""Banks of the confirmatory run (#28) under the default sample-size preset (`presets`):
+its main dyad slots plus its spares."""
 MS_PER_HOUR: Final = 3_600_000
 RUN_TIMING: Final = "logs/timing.jsonl"
 
@@ -128,6 +133,47 @@ class ThroughputSummary:
         return data
 
 
+def _projection(
+    banks: int,
+    *,
+    mean_attempts: float | None,
+    mean_slots: float | None,
+    per_hour: float | None,
+    per_hour_run: float | None,
+    unavailable: int,
+    measured: int,
+) -> Projection:
+    slots = round(mean_slots * banks, 1) if mean_slots is not None else None
+    return Projection(
+        banks=banks,
+        attempts=round(mean_attempts * banks, 1) if mean_attempts is not None else None,
+        slots=slots,
+        hours_one_bank_at_a_time=(
+            ratio(slots, per_hour, 1) if slots is not None and per_hour is not None else None
+        ),
+        hours_at_run_rate=(
+            ratio(slots, per_hour_run, 1)
+            if slots is not None and per_hour_run is not None
+            else None
+        ),
+        unavailable=round(unavailable / measured * banks, 1) if measured else None,
+    )
+
+
+def project(summary: ThroughputSummary, banks: int) -> Projection:
+    """The projection of `summary`'s rates for `banks` banks (as `summarize_banks` makes
+    it for `project_banks`)."""
+    return _projection(
+        banks,
+        mean_attempts=summary.attempts_per_bank.mean,
+        mean_slots=summary.slots_per_bank.mean,
+        per_hour=summary.slots_per_hour,
+        per_hour_run=summary.slots_per_hour_run,
+        unavailable=summary.banks_unavailable,
+        measured=summary.banks,
+    )
+
+
 def run_wall_ms(run_dir: str | os.PathLike[str]) -> int | None:
     """`duration_ms` of the `run_end` event of a bank run, or `None` if it has none."""
     path = Path(run_dir) / RUN_TIMING
@@ -200,9 +246,6 @@ def summarize_banks(
     per_hour = ratio(total_slots * MS_PER_HOUR, attempt_ms, 1)
     per_hour_run = ratio(total_slots * MS_PER_HOUR, run_total, 1) if run_total else None
     n_banks = len(statuses)
-    mean_attempts = ratio(n_attempts, n_banks)
-    mean_slots = ratio(total_slots, n_banks)
-    projected_slots = round(mean_slots * project_banks, 1) if mean_slots is not None else None
     return ThroughputSummary(
         banks=n_banks,
         banks_complete=statuses.count("complete"),
@@ -235,25 +278,14 @@ def summarize_banks(
         slots_per_complete_cell=spread(complete_cell_slots),
         outcomes={code: outcomes[code] for code in OUTCOME_CODES},
         llm_status={s.value: llm[s.value] for s in LlmStatus},
-        projection=Projection(
-            banks=project_banks,
-            attempts=round(mean_attempts * project_banks, 1) if mean_attempts is not None else None,
-            slots=projected_slots,
-            hours_one_bank_at_a_time=(
-                ratio(projected_slots, per_hour, 1)
-                if projected_slots is not None and per_hour is not None
-                else None
-            ),
-            hours_at_run_rate=(
-                ratio(projected_slots, per_hour_run, 1)
-                if projected_slots is not None and per_hour_run is not None
-                else None
-            ),
-            unavailable=(
-                round(statuses.count("unavailable") / n_banks * project_banks, 1)
-                if n_banks
-                else None
-            ),
+        projection=_projection(
+            project_banks,
+            mean_attempts=ratio(n_attempts, n_banks),
+            mean_slots=ratio(total_slots, n_banks),
+            per_hour=per_hour,
+            per_hour_run=per_hour_run,
+            unavailable=statuses.count("unavailable"),
+            measured=n_banks,
         ),
     )
 
@@ -275,10 +307,36 @@ def _pct(value: float | None) -> str:
     return "n/a" if value is None else f"{value * 100:.1f}%"
 
 
+def preset_lines(summary: ThroughputSummary, presets: Sequence[BankPreset]) -> list[str]:
+    """A table of the projection for each sample-size preset (banks = pairs + spares)."""
+    if not presets:
+        return []
+    lines = [
+        "## Projection by sample-size preset",
+        "",
+        "| Preset | Banks | Attempts | Slots | Hours, one bank at a time | Hours at the "
+        "measured run rate | Unavailable banks |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for preset in presets:
+        p = project(summary, preset.banks)
+        lines.append(
+            f"| `{preset.name}` | {preset.banks} ({preset.pairs} + {preset.spares}) | "
+            f"{_num(p.attempts)} | {_num(p.slots)} | {_num(p.hours_one_bank_at_a_time)} | "
+            f"{_num(p.hours_at_run_rate)} | {_num(p.unavailable)} |"
+        )
+    return [*lines, ""]
+
+
 def summary_markdown(
-    summary: ThroughputSummary, *, title: str, preamble: Sequence[str] = ()
+    summary: ThroughputSummary,
+    *,
+    title: str,
+    preamble: Sequence[str] = (),
+    presets: Sequence[BankPreset] = (),
 ) -> str:
-    """A short note (Markdown) of the summary, for the run notes and #28 planning."""
+    """A short note (Markdown) of the summary, for the run notes and #28 planning; with
+    `presets`, also the projection for each sample-size preset (`preset_lines`)."""
     s = summary
     hist = ", ".join(f"{k}: {v}" for k, v in s.attempts_histogram.items())
     by_profile = ", ".join(f"{p} {_pct(v)}" for p, v in s.cell_failure_rate_by_profile.items())
@@ -337,6 +395,7 @@ def summary_markdown(
         f"| Hours at the measured run rate | {_num(p.hours_at_run_rate)} |",
         f"| Unavailable banks | {_num(p.unavailable)} |",
         "",
+        *preset_lines(summary, presets),
         "Rough planning figures from a small number of banks; definitions in `av_banks.metrics`.",
         "",
     ]

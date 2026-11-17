@@ -107,6 +107,7 @@ from av_banks.metrics import (
     summary_markdown,
 )
 from av_banks.permutation import load_permutation
+from av_banks.presets import all_presets, get_preset
 from av_banks.proposer import SlotProposer
 from av_banks.register import (
     RegisterError,
@@ -765,7 +766,7 @@ def write_summary(
         ),
     ]
     title = "Pilot bank throughput" + (" (DEMO)" if demo else "")
-    text = summary_markdown(summary, title=title, preamble=preamble)
+    text = summary_markdown(summary, title=title, preamble=preamble, presets=all_presets())
     with open(root / SUMMARY_MD_NAME, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(text)
 
@@ -957,11 +958,11 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--llm-runtime", default="vllm")
     run.add_argument("--workers", type=int, default=3)
     run.add_argument("--parallel-banks", type=int, default=1)
-    run.add_argument("--project-banks", type=int, default=CONFIRMATORY_BANKS)
+    projection_args(run)
 
     finish = sub.add_parser("finish", help="re-verify, rewrite the register and the summary")
     finish.add_argument("--root", required=True, type=Path)
-    finish.add_argument("--project-banks", type=int, default=CONFIRMATORY_BANKS)
+    projection_args(finish)
 
     check = sub.add_parser("check", help="register hashes against the banks, and the archive")
     check.add_argument("--root", required=True, type=Path)
@@ -974,6 +975,50 @@ def _parser() -> argparse.ArgumentParser:
     load.add_argument("bank_dir", type=Path)
     load.add_argument("--mode", required=True, choices=("pilot", "confirmatory", "demo"))
     return parser
+
+
+def projection_args(parser: argparse.ArgumentParser) -> None:
+    """The bank count of the throughput projection: a count, a sample-size preset or a
+    confirmatory campaign plan (default `CONFIRMATORY_BANKS`, the default preset's)."""
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--project-banks", type=int, default=None, help="a bank count")
+    group.add_argument(
+        "--project-preset",
+        default=None,
+        help="the banks of a sample-size preset (schedules/presets/sample-size-presets.json)",
+    )
+    group.add_argument(
+        "--project-plan",
+        type=Path,
+        default=None,
+        help="the banks of a confirmatory campaign (its directory or plan.json)",
+    )
+
+
+def projection_banks(
+    *,
+    banks: int | None = None,
+    preset: str | None = None,
+    plan: str | os.PathLike[str] | None = None,
+) -> int:
+    """The projection's bank count: `banks`, the banks (pairs + spares) of sample-size
+    preset `preset`, or the banks of the confirmatory campaign plan `plan` (a campaign
+    directory or its `plan.json`); default `CONFIRMATORY_BANKS`."""
+    if preset is not None:
+        return get_preset(preset).banks
+    if plan is not None:
+        from av_banks.confirmatory.plan import CampaignPlan, read_plan
+
+        path = Path(plan)
+        found = CampaignPlan.from_dict(read_json(path)) if path.is_file() else read_plan(path)
+        return found.size.n_banks
+    return CONFIRMATORY_BANKS if banks is None else banks
+
+
+def _projection(args: argparse.Namespace) -> int:
+    return projection_banks(
+        banks=args.project_banks, preset=args.project_preset, plan=args.project_plan
+    )
 
 
 def _plan(args: argparse.Namespace) -> PilotPlan:
@@ -1048,14 +1093,14 @@ def _run(args: argparse.Namespace) -> int:
         workers=args.workers,
         parallel_banks=args.parallel_banks,
         llm_runtime=args.llm_runtime,
-        project_banks=args.project_banks,
+        project_banks=_projection(args),
     )
     _finish_report(result.finish, result.root)
     return result.finish.exit_code
 
 
 def _finish(args: argparse.Namespace) -> int:
-    finish = finish_pilot(args.root, project_banks=args.project_banks)
+    finish = finish_pilot(args.root, project_banks=_projection(args))
     _finish_report(finish, args.root)
     return finish.exit_code
 

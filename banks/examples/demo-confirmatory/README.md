@@ -3,7 +3,8 @@
 These are the public outputs of one rehearsal of the confirmatory bank campaign (#28).
 They come from the synthetic `DEMO-` set, not from study banks:
 
-- banks `DEMO-C001`..`DEMO-C072`;
+- banks `DEMO-C001`..`DEMO-C072`: the default sample-size preset (64 main dyad slots and
+  8 spares, #266; the files are unchanged by it);
 - DEMO unit stand-ins;
 - a DEMO generation config with a DEMO draft freeze manifest (no tag: a DEMO config is
   never frozen, so `register.json` shows `tag_checked` and `guard_checked` false);

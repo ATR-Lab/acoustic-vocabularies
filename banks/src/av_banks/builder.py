@@ -216,12 +216,15 @@ def bank_spec(
     *,
     bank_version: str = FIRST_VERSION,
     seed_namespace: str | None = None,
+    main_slots: int | None = None,
 ) -> BankSpec:
-    """Check and bind a bank ID to its unit permutation (`permutation.check_bank_unit`)
-    and to a seed namespace of the bank and version (`seed_namespace_error`)."""
+    """Check and bind a bank ID to its unit permutation (`permutation.check_bank_unit`;
+    `main_slots`: the confirmatory campaign's main dyad slots, default the default
+    sample-size preset's) and to a seed namespace of the bank and version
+    (`seed_namespace_error`)."""
     check_id(bank_id, "bank ID")
     bank_set(bank_id)
-    check_bank_unit(bank_id, permutation)
+    check_bank_unit(bank_id, permutation, main_slots=main_slots)
     if not VERSION_RE.fullmatch(bank_version):
         raise BankBuildError(E_SPEC, f"bank_version {bank_version!r} must look like 1.0.0")
     namespace = (

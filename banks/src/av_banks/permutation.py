@@ -7,9 +7,11 @@ also the bank traversal order (Study B protocol §4). It never reads the allocat
 (`<set>-dyads.json`): roles, arms, swaps and menu orders stay concealed from generation.
 
 Bank IDs are placeholders by dyad-slot sequence (schedules allocation, #31): pilot
-`bank-P<nnn>` <-> unit `B-P<nn>`; confirmatory `bank-C001`..`bank-C064` <-> `B-C01`..`B-C64`
-(main slots) and `bank-C065`..`bank-C072` <-> `B-S01`..`B-S08` (spares). The mapping uses
-no random draw and carries no allocation information. DEMO banks take any DEMO unit.
+`bank-P<nnn>` <-> unit `B-P<nn>`; confirmatory `bank-C001`..`bank-C<n>` <-> `B-C01`..`B-C<n>`
+for the n main dyad slots, then the spares `bank-C<n+1>`.. <-> `B-S01`.. (with the default
+sample-size preset, #266: `bank-C001`..`bank-C064` main, `bank-C065`..`bank-C072` spares).
+The mapping uses no random draw and carries no allocation information. DEMO banks take any
+DEMO unit.
 
 This module checks only the fields the builder uses (it does not import the schedules
 package: cross-stack inputs are file contracts). `permutation_sha256` is the SHA-256 of
@@ -31,11 +33,14 @@ from av_sound.grammar import ATOM_IDS, parse_atom_id
 from av_sound.recipe import StrictJsonError, strict_json_loads
 from av_sound.store import SEMANTIC_LABELS
 
+from av_banks.presets import default_preset
+
 PERMUTATION_FORMAT: Final = "av-schedules/permutation"
 PERMUTATION_VERSION: Final = 2
 B_UNIT_RE: Final = re.compile(r"B-[PCS][0-9]{2}")
-CONFIRMATORY_MAIN_SLOTS: Final = 64
-"""Main confirmatory dyad slots (Study B: 64 dyads); spares continue the numbering."""
+CONFIRMATORY_MAIN_SLOTS: Final = default_preset().pairs
+"""Main confirmatory dyad slots of the default sample-size preset (`presets`, #266); spares
+continue the numbering. A campaign passes its own count (`main_slots`)."""
 
 
 class PermutationError(ValueError):
@@ -60,16 +65,20 @@ class UnitPermutation:
     """The file bytes (copied beside the manifest)."""
 
 
-def expected_unit_id(bank_id: str) -> str | None:
-    """The dyad slot (unit ID) of a pilot or confirmatory bank ID; `None` for DEMO banks."""
+def expected_unit_id(bank_id: str, *, main_slots: int | None = None) -> str | None:
+    """The dyad slot (unit ID) of a pilot or confirmatory bank ID; `None` for DEMO banks.
+    `main_slots`: the confirmatory main dyad slots (default `CONFIRMATORY_MAIN_SLOTS`)."""
+    main = CONFIRMATORY_MAIN_SLOTS if main_slots is None else main_slots
+    if main < 1:
+        raise PermutationError(f"main_slots must be at least 1, got {main}")
     if PILOT_BANK_RE.fullmatch(bank_id):
         return f"B-P{int(bank_id[6:]):02d}"
     if CONFIRMATORY_BANK_RE.fullmatch(bank_id):
         seq = int(bank_id[6:])
-        if 1 <= seq <= CONFIRMATORY_MAIN_SLOTS:
+        if 1 <= seq <= main:
             return f"B-C{seq:02d}"
-        if seq > CONFIRMATORY_MAIN_SLOTS:
-            return f"B-S{seq - CONFIRMATORY_MAIN_SLOTS:02d}"
+        if seq > main:
+            return f"B-S{seq - main:02d}"
         raise PermutationError(f"{bank_id}: bank sequence numbers start at 001")
     bank_set(bank_id)  # raises IdError for anything that is not a bank ID
     return None
@@ -148,11 +157,14 @@ def load_permutation(path: str | os.PathLike[str]) -> UnitPermutation:
     return parse_permutation(source.read_bytes())
 
 
-def check_bank_unit(bank_id: str, permutation: UnitPermutation) -> None:
+def check_bank_unit(
+    bank_id: str, permutation: UnitPermutation, *, main_slots: int | None = None
+) -> None:
     """Refuse a permutation that does not belong to `bank_id`.
 
     DEMO banks need a DEMO unit; pilot and confirmatory banks need a non-DEMO unit of the
-    same set whose unit ID matches the bank's dyad-slot sequence (`expected_unit_id`).
+    same set whose unit ID matches the bank's dyad-slot sequence (`expected_unit_id`, with
+    the campaign's `main_slots`).
     """
     found_set = bank_set(bank_id)
     if found_set == "demo":
@@ -163,7 +175,7 @@ def check_bank_unit(bank_id: str, permutation: UnitPermutation) -> None:
         raise PermutationError(f"{bank_id}: a {found_set} bank cannot use a DEMO unit")
     if permutation.set != found_set:
         raise PermutationError(f"{bank_id}: a {found_set} bank cannot use a {permutation.set} unit")
-    expected = expected_unit_id(bank_id)
+    expected = expected_unit_id(bank_id, main_slots=main_slots)
     if permutation.unit_id != expected:
         raise PermutationError(
             f"{bank_id} belongs to dyad slot {expected}, not {permutation.unit_id} "

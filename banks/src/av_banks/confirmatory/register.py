@@ -28,8 +28,9 @@ After the run:
      whether the freeze tag and #25's freeze guard were checked), and the hashes of the
      plan, seed check, register CSV, verification and timing logs and the archive;
    - `g5b-report.md`: the counts and decision for the G5B owner.
-3. **Counts and escalation.** Spares do not change the count: at least 64 of the 72
-   banks must be complete. If fewer are, the decision is `escalation_required`: stop and
+3. **Counts and escalation.** The size comes from the plan (`CampaignPlan.size`). Spares
+   do not change the count: at least `n_main` banks (one per main dyad slot) must be
+   complete. If fewer are, the decision is `escalation_required`: stop and
    escalate to the advisor before G5B, then record it (`record_escalation`: role, link,
    date; never a name) and compile again (`escalated`). Unavailable banks are never
    assignable; the coordinator logs each with the allocation reveal API
@@ -75,10 +76,9 @@ from .common import (
     E_INPUT,
     E_STATE,
     E_VERIFY,
-    MIN_COMPLETE,
-    N_BANKS,
     CampaignError,
     CampaignLayout,
+    CampaignSize,
     require_schema,
 )
 from .plan import CampaignPlan, PlannedBank, append_event, bank_history, read_plan, read_rebuilds
@@ -141,14 +141,6 @@ SLOT_TIMING_COLUMNS: Final[tuple[str, ...]] = (
     "latency_ms",
     "slot_ms",
 )
-SPARE_RULE: Final = (
-    "Spares do not change the count: at least 64 of the 72 banks must be complete, else "
-    "stop and escalate to the advisor before G5B. An unavailable bank is never assigned; "
-    "log each with the allocation reveal API before the first reveal, which replaces an "
-    "unavailable main slot, at its position, by the first unused spare with the same SQ "
-    "arm and swap flag (schedules #31)."
-)
-ESCALATION_RULE: Final = "complete banks < 64: stop and escalate to the advisor before G5B"
 RUNNER_ACTIVITY: Final = frozenset(
     {
         "runner_start",
@@ -172,6 +164,23 @@ REPO_URL: Final = "https://github.com/ATR-Lab/acoustic-vocabularies"
 ARCHIVE_EXCLUDE: Final = frozenset({"register.json", "g5b-report.md", "runner.lock"})
 
 Decision = Literal["ready", "escalation_required", "escalated", "blocked"]
+
+
+def spare_rule(size: CampaignSize) -> str:
+    """The spare rule of `register.json` for a campaign of this size."""
+    return (
+        f"Spares do not change the count: at least {size.min_complete} of the "
+        f"{size.n_banks} banks must be complete, else stop and escalate to the advisor "
+        "before G5B. An unavailable bank is never assigned; log each with the allocation "
+        "reveal API before the first reveal, which replaces an unavailable main slot, at "
+        "its position, by the first unused spare with the same SQ arm and swap flag "
+        "(schedules #31)."
+    )
+
+
+def escalation_rule(size: CampaignSize) -> str:
+    """The escalation rule of `register.json` for a campaign of this size."""
+    return f"complete banks < {size.min_complete}: stop and escalate to the advisor before G5B"
 
 
 def _write_csv(path: Path, columns: Sequence[str], rows: Iterable[Mapping[str, Any]]) -> str:
@@ -561,17 +570,23 @@ def tally(rows: Sequence[Mapping[str, Any]]) -> Counts:
     )
 
 
-def escalation_required(counts: Counts) -> bool:
-    """Fewer than 64 of the 72 banks are complete (spares do not change the count)."""
-    return counts.complete < MIN_COMPLETE
+def escalation_required(counts: Counts, *, needed: int | None = None) -> bool:
+    """Fewer banks are complete than `needed`, the main dyad slots (spares do not change
+    the count). `needed` defaults to the main banks counted (`main_complete +
+    main_unavailable`), which is `CampaignSize.min_complete` once every bank is done."""
+    main = counts.main_complete + counts.main_unavailable if needed is None else needed
+    return counts.complete < main
 
 
-def decide(counts: Counts, *, checks_ok: bool, escalated: bool) -> Decision:
-    """`blocked` when a check fails; else `ready` with at least 64 complete banks;
-    else `escalated` once the escalation is recorded, `escalation_required` before."""
+def decide(
+    counts: Counts, *, checks_ok: bool, escalated: bool, needed: int | None = None
+) -> Decision:
+    """`blocked` when a check fails; else `ready` with at least `needed` complete banks
+    (`escalation_required`); else `escalated` once the escalation is recorded,
+    `escalation_required` before."""
     if not checks_ok:
         return "blocked"
-    if not escalation_required(counts):
+    if not escalation_required(counts, needed=needed):
         return "ready"
     return "escalated" if escalated else "escalation_required"
 
@@ -714,6 +729,7 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
     if layout.lock.exists():
         raise CampaignError(E_STATE, "a runner holds runner.lock; wait for it to finish")
     plan, history = _versions(root)
+    size = plan.size
     states = {
         b.bank_id: bank_progress(layout, history[b.bank_id][-1], active=False).state
         for b in plan.banks
@@ -745,13 +761,18 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
         problems.append(
             f"used-seed check failed ({len(used.problems)} problems, see used-seeds.json)"
         )
-    if len(rows) != N_BANKS:
-        problems.append(f"{len(rows)} bank records, not {N_BANKS}")
+    if len(rows) != size.n_banks:
+        problems.append(f"{len(rows)} bank records, not {size.n_banks}")
     timing = timing_log(root)
     csv_sha = _write_csv(layout.register_csv, REGISTER_COLUMNS, rows)
     counts = tally(rows)
     escalation = read_escalation(root)
-    decision = decide(counts, checks_ok=not problems, escalated=escalation is not None)
+    decision = decide(
+        counts,
+        checks_ok=not problems,
+        escalated=escalation is not None,
+        needed=size.min_complete,
+    )
     archive = write_archive(layout.root, layout.archive(plan.campaign_id))
     verification = read_json(layout.verification) if layout.verification.is_file() else {}
     doc: dict[str, Any] = {
@@ -775,7 +796,7 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
         },
         "counts": to_json_value(counts),
         "checks": {
-            "bank_records": len(rows) == N_BANKS,
+            "bank_records": len(rows) == size.n_banks,
             "attempts_within_cap": all(int(r["attempts"]) <= B_MAX_ATTEMPTS for r in rows),
             "slots_within_cap": all(
                 int(r["max_slots_per_attempt"]) <= B_SLOTS_PER_ATTEMPT for r in rows
@@ -790,15 +811,15 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
         "problems": problems[:50],
         "decision": decision,
         "escalation": {
-            "required": escalation_required(counts),
-            "rule": ESCALATION_RULE,
+            "required": escalation_required(counts, needed=size.min_complete),
+            "rule": escalation_rule(size),
             "complete": counts.complete,
-            "needed": MIN_COMPLETE,
+            "needed": size.min_complete,
             "reference": None if escalation is None else escalation.get("reference"),
             "date": None if escalation is None else escalation.get("date"),
         },
         "unavailable_bank_ids": [r["bank_id"] for r in rows if r["status"] == "unavailable"],
-        "spare_rule": SPARE_RULE,
+        "spare_rule": spare_rule(size),
         "crashed_versions": sum(int(r["crashed_versions"]) for r in rows),
         "slots_total": int(timing.totals["slots"]),
         "hashes": {
@@ -818,7 +839,7 @@ def compile_register(root: str | os.PathLike[str], *, clock: Clock) -> RegisterR
     }
     require_schema(REGISTER_SCHEMA, doc)
     json_sha = write_document(layout.register_json, doc)
-    _write_report(layout, doc)
+    _write_report(layout, doc, size)
     return RegisterResult(decision, counts, csv_sha, json_sha, archive, tuple(problems))
 
 
@@ -826,7 +847,7 @@ def _yes(flag: object) -> str:
     return "yes" if flag else "no"
 
 
-def _write_report(layout: CampaignLayout, doc: Mapping[str, Any]) -> None:
+def _write_report(layout: CampaignLayout, doc: Mapping[str, Any], size: CampaignSize) -> None:
     c = doc["counts"]
     e = doc["escalation"]
     f = doc["freeze"]
@@ -839,8 +860,8 @@ def _write_report(layout: CampaignLayout, doc: Mapping[str, Any]) -> None:
         "",
         "| Banks | Complete | Unavailable |",
         "| --- | ---: | ---: |",
-        f"| Main (64) | {c['main_complete']} | {c['main_unavailable']} |",
-        f"| Spares (8) | {c['spares_complete']} | {c['spares_unavailable']} |",
+        f"| Main ({size.n_main}) | {c['main_complete']} | {c['main_unavailable']} |",
+        f"| Spares ({size.n_spares}) | {c['spares_complete']} | {c['spares_unavailable']} |",
         f"| All ({c['banks']}) | {c['complete']} | {c['unavailable']} |",
         "",
         f"- Escalation rule: {e['rule']}. Complete: {e['complete']} of {e['needed']} needed; "
@@ -875,13 +896,15 @@ def record_escalation(
     root: str | os.PathLike[str], *, reference: str, date: str, clock: Clock
 ) -> Path:
     """Record the advisor escalation (role, link, date; never a name). Refused when at
-    least 64 banks are complete or the register has not been compiled."""
+    least `n_main` banks (the plan's main dyad slots) are complete or the register has
+    not been compiled."""
     layout = CampaignLayout.at(root)
     if not layout.register_json.is_file():
         raise CampaignError(E_STATE, "compile the register first")
+    needed = read_plan(root).size.min_complete
     register = read_json(layout.register_json)
     if not register["escalation"]["required"]:
-        raise CampaignError(E_STATE, "at least 64 banks are complete: no escalation needed")
+        raise CampaignError(E_STATE, f"at least {needed} banks are complete: no escalation needed")
     if not REFERENCE_RE.fullmatch(reference):
         raise CampaignError(
             E_INPUT, "the reference is a link to an issue or PR comment in this repository"
@@ -895,7 +918,7 @@ def record_escalation(
         "reference": reference,
         "date": date,
         "complete": register["escalation"]["complete"],
-        "needed": MIN_COMPLETE,
+        "needed": needed,
         "recorded_utc": utc_text(clock.utc_now()),
     }
     write_document(layout.escalation, doc, exclusive=True)

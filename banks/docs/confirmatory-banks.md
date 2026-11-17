@@ -1,10 +1,24 @@
 # Confirmatory Study B banks
 
 Subpackage `av_banks.confirmatory` of `av-banks`, issue #28 (WBS O8.1.1). After the G4
-freeze it builds the confirmatory candidate banks for 64 dyads plus 8 spares with the
-#26 builder ([`bank-builder.md`](bank-builder.md)), verifies them, and compiles the
-register that is committed before the allocation list is unsealed (gate G5B). It never
-reads the allocation list, roles or participant data (Study B protocol §4).
+freeze it builds the confirmatory candidate banks, one per dyad slot and one per spare
+slot, with the #26 builder ([`bank-builder.md`](bank-builder.md)), verifies them, and
+compiles the register that is committed before the allocation list is unsealed (gate
+G5B). It never reads the allocation list, roles or participant data (Study B protocol §4).
+
+The number of banks is not fixed in the code (#266). `plan` takes it from the unit set
+it is given (section 2), and every later step reads it from `plan.json`. The sample-size
+presets of `schedules/presets/sample-size-presets.json` name the candidate sizes:
+
+| Preset | Main dyad slots | Spare slots | Banks |
+| --- | ---: | ---: | ---: |
+| `provisional-18-64` (default) | 64 | 8 | 72 |
+| `revised-30-84` | 84 | 12 | 96 |
+| `revised-30-88` | 88 | 12 | 100 |
+
+The owner chooses the preset (20 Nov); the schedules output for that preset then holds
+the units, and `plan --preset NAME` checks that the units match it. The examples below
+use the default size (64 + 8 = 72 banks).
 
 The real run needs the G4 freeze (#25) and the LLM GPU host. It is **pending**. Everything
 below runs now with `DEMO-` IDs and a scripted proposer (section 9).
@@ -20,7 +34,7 @@ storage. A confirmatory campaign is refused inside a git work tree.
 | Step (issue checklist) | Command | Result |
 | --- | --- | --- |
 | Confirm the G4 freeze manifest and tag; check the builder config hash | `python -m av_banks.confirmatory plan ... --repo .` | refused unless the freeze manifest passes #25's freeze guard (valid, `frozen`, running code and committed files equal to it), the tagged commit holds this manifest byte for byte and `repo_commit` is that commit or an ancestor, and its `config.frozen_sha256` equals the config hash (section 4) |
-| Create the 72 bank IDs and seed namespaces and record them | the same `plan` | `R/plan.json`, `R/seed-check.json` |
+| Create the bank IDs and seed namespaces and record them | the same `plan` (one bank per unit of `--units`; `--preset` cross-checks the size) | `R/plan.json`, `R/seed-check.json` |
 | Run the builder in parallel on the LLM host with progress monitoring | `run R ...`; `status R` from any shell | one #26 run per bank; `R/progress.jsonl`; a progress line on stderr |
 | Run `banks verify` on every complete bank | `verify-all R --jobs N` | `R/verify/*.json`, `R/verification-log.txt` |
 | Compile the register and archive; hash the archive | `register R` | `R/register.csv`, `R/register.json`, `R/archive/<id>-banks.tar` and its SHA-256, `R/g5b-report.md` |
@@ -34,7 +48,7 @@ P="uv run --project banks python -m av_banks.confirmatory"
 $P plan --campaign-root R --campaign-id C-banks-v1 \
   --generation-config <restricted>/generation-config.json \
   --freeze-manifest generation/FREEZE-v1.0.json --repo . \
-  --units <restricted>/schedules-out/B \
+  --units <restricted>/schedules-out/B --preset provisional-18-64 \
   --pilot <restricted>/pilot-banks --parallel-banks 6
 $P run R --meanings <restricted>/meanings --prompts <restricted>/prompts \
   --decoding-schema <restricted>/decoding-schema.json --llm-url http://<llm-host>:8000 \
@@ -54,34 +68,63 @@ done
 `--freeze-manifest` is the committed G4 file and `--repo .` the checkout it is
 committed in (required for a confirmatory plan; `--freeze-repo-path` if the manifest is
 not at `generation/FREEZE-v<freeze version>.json`). `--units` is the schedules output
-directory of Study B. It holds
-`<unit_id>/permutation.json` for `B-C01`..`B-C64` and `B-S01`..`B-S08`. `--pilot` takes
-pilot bank, run or campaign directories, or a CSV with a `seed_namespace` column. Repeat
-it as needed, or give `--pilot-namespace NS`.
+directory of Study B. It holds `<unit_id>/permutation.json` for the main dyad slots
+`B-C01`..`B-C<n>` and the spares `B-S01`..`B-S<m>` (default preset: `B-C01`..`B-C64` and
+`B-S01`..`B-S08`), and these units set the campaign size (section 2). Give the chosen
+preset with `--preset NAME`, or the counts with `--dyads N --spares M`: `plan` then
+refuses units of any other size, so a missing unit cannot shrink the campaign unnoticed.
+`--pilot` takes pilot bank, run or campaign directories, or a CSV with a
+`seed_namespace` column. Repeat it as needed, or give `--pilot-namespace NS`.
 
-## 2. Bank IDs, dyad slots and spares
+## 2. Campaign size, bank IDs, dyad slots and spares
 
-| Bank IDs | Role | Dyad slot (unit) |
-| --- | --- | --- |
-| `bank-C001`..`bank-C064` | main | `B-C01`..`B-C64` |
-| `bank-C065`..`bank-C072` | spare | `B-S01`..`B-S08` |
+**Size from the unit set** (`size.units_size`). The confirmatory units in `--units` must
+be exactly `B-C01`..`B-C<n>` (n main dyad slots, 1 to 99) and `B-S01`..`B-S<m>` (m spare
+slots, 0 to 99), each a directory with a `permutation.json`. The campaign then has
+`n + m` banks: `CampaignSize(n_main=n, n_spares=m)`. Other entries are not confirmatory
+units and are skipped: the pilot units `B-P..` and the design tables and manifests that
+the schedules output keeps in the same directory. `plan` refuses (`E_UNITS`):
+
+- a gap (`B-C05` missing, or `B-S02` without `B-S01`);
+- a malformed confirmatory unit ID (`B-C1`, `B-C001`, `B-S00`);
+- a confirmatory unit without `permutation.json`, or no main dyad slot at all;
+- a size that differs from `--preset NAME` (read from
+  `schedules/presets/sample-size-presets.json` of the same checkout; a missing file or an
+  unknown preset is refused with `E_INPUT`), from `--dyads N` or from `--spares M`.
+
+| Bank IDs | Role | Dyad slot (unit) | Default preset |
+| --- | --- | --- | --- |
+| `bank-C001`..`bank-C<n>` | main | `B-C01`..`B-C<n>` | `bank-C001`..`bank-C064`, `B-C01`..`B-C64` |
+| `bank-C<n+1>`..`bank-C<n+m>` | spare | `B-S01`..`B-S<m>` | `bank-C065`..`bank-C072`, `B-S01`..`B-S08` |
+
+With 84 pairs and 12 spares, `bank-C065` is the main slot `B-C65` and the spares are
+`bank-C085`..`bank-C096`; with 88 and 12, `bank-C089`..`bank-C100`. Bank IDs keep three
+digits and unit IDs two.
 
 These are the #26 and #31 dyad-slot sequence: no random draw and no allocation
-information (`common.campaign_bank_ids`, `common.dyad_slot`, equal to
-`permutation.expected_unit_id`). The issue proposed `B-001`..`B-072`. The shared
-contract fixed `bank-C001`.. before this issue, and the reveal API (#31) already uses
-it, so the register uses those IDs.
+information (`CampaignSize.bank_ids`, `CampaignSize.dyad_slot`, equal to
+`permutation.expected_unit_id(bank_id, main_slots=n)`). The issue proposed
+`B-001`..`B-072`. The shared contract fixed `bank-C001`.. before this issue, and the
+reveal API (#31) already uses it, so the register uses those IDs.
+
+**The size in `plan.json`.** The plan records the size through its bank list: each
+bank's sequence, role and dyad slot (`CampaignPlan.size`). Reading a plan refuses a list
+that is not the dyad-slot sequence of its main and spare counts, or whose seed check did
+not cover 2,304 keys per bank. No field was added, so the plan of the default size has
+the same bytes as before #266. `run`, `rebuild`, `verify-all`, `register`, `escalate`
+and the archive take the size from the plan; a bank ID beyond it (`--only`, `rebuild
+--bank-id`) is refused.
 
 Each bank is bound to its unit's package-safe `permutation.json` (`builder.bank_spec`).
 The plan stores a byte copy of each unit, and the run checks the copy against the planned
 SHA-256 before it builds the bank.
 
-**Spares and counts.** Spares do not change the count. At least 64 of the 72 banks must
-be `complete`. If fewer are, the register decision is `escalation_required`. Stop and
-escalate to the advisor before G5B. Then record the escalation with `escalate`: a link to
-the issue or PR comment and a date, never a name. Compile again, and the decision becomes
-`escalated`. Spares cover the unavailable main banks exactly when at least 64 banks are
-complete. An `unavailable` bank is never assignable. The coordinator logs each one with
+**Spares and counts.** Spares do not change the count. At least `n` banks (the main
+dyad slots: 64 of 72 by default) must be `complete`. If fewer are, the register decision
+is `escalation_required`. Stop and escalate to the advisor before G5B. Then record the
+escalation with `escalate`: a link to the issue or PR comment and a date, never a name.
+Compile again, and the decision becomes `escalated`. Spares cover the unavailable main
+banks exactly when at least `n` banks are complete. An `unavailable` bank is never assignable. The coordinator logs each one with
 the reveal API (`RevealLog.log_bank_unavailable`, schedules #31) before the first reveal.
 The reveal API then replaces the unavailable main slot, at its position, by the first
 unused spare with the same SQ arm and swap flag. The builder never sees arms, so this
@@ -93,14 +136,15 @@ says to escalate.
 The seed namespace of each bank is the #26 default: the bank ID for version `1.0.0`. A
 rebuilt bank uses `<bank_id>-v<version>`. The model seeds are `seeds.derive_seed` of
 `B|<namespace>|<attempt>|<profile>|<atom>|<slot>`. The key space of one bank is
-4 x 3 x 16 x 12 = 2,304 keys, so the 72 banks have 165,888 keys. The checks are
-automated (`seed_check`):
+4 x 3 x 16 x 12 = 2,304 keys, so a campaign of N banks has N x 2,304 keys: 165,888 for
+72 banks, 221,184 for 96 and 230,400 for 100. The checks take the plan's banks, so they
+hold for any size. They are automated (`seed_check`):
 
 - **Before the run** (`check_seeds`, at `plan` and at every `rebuild`):
   - every namespace names its bank and version;
   - every bank is a confirmatory bank;
   - the namespaces are unique;
-  - the 165,888 keys give 165,888 distinct 64-bit seeds;
+  - the N x 2,304 keys give N x 2,304 distinct 64-bit seeds;
   - no namespace and no seed is shared with the pilot. The pilot seeds are the whole
     key space of the pilot namespaces. The namespaces are read from pilot manifests,
     attempt summaries and every pilot slot record's seed key, and each recorded pilot
@@ -199,8 +243,8 @@ pass. Only then does it build the *pending* banks.
 `plan.json`:
 
 - the pooled pilot rate of one bank in slots per minute;
-- the expected slots: 72 x the mean pilot slots per bank;
-- the worst case: 72 x 2,304 = 165,888 slots;
+- the expected slots: N (the plan's banks) x the mean pilot slots per bank;
+- the worst case: N x 2,304 slots (72 banks: 165,888);
 - the hours for each at `--parallel-banks`.
 
 Check in the first hour that the per-bank rate holds with that many banks at once, and
@@ -243,11 +287,12 @@ WAVs, and no allocation information. Everything else stays restricted.
 `register.json` follows `banks/schema/confirmatory-register.schema.json`. It holds:
 
 - the counts (all, main and spares; complete and unavailable);
-- the checks: 72 records, attempt and slot caps, config equals freeze, every complete
-  bank verified, used seeds unique and disjoint;
+- the checks: one record per planned bank, attempt and slot caps, config equals freeze,
+  every complete bank verified, used seeds unique and disjoint;
 - the problems, if any;
 - the `decision` (`ready`, `escalation_required`, `escalated` or `blocked`) and the
-  escalation;
+  escalation (`needed` is the plan's main dyad slots; the rule and the spare rule name
+  the plan's counts);
 - the unavailable bank IDs and the spare rule;
 - the freeze reference (manifest hash, status, tag, `repo_commit`, `tag_checked`,
   `tag_commit`, `guard_checked`);
@@ -298,22 +343,25 @@ same files therefore give the same SHA-256 on every platform. The hash is in
 
 | Module | API |
 | --- | --- |
-| `common` | `campaign_bank_ids(*, demo=False)`, `bank_sequence`, `bank_role`, `dyad_slot`, `run_id_for(campaign_id, bank_id, bank_version)`, `CampaignLayout`, `CampaignError` (`.code`: `E_INPUT`, `E_FREEZE`, `E_UNITS`, `E_SEEDS`, `E_EXISTS`, `E_STATE`, `E_LOCKED`, `E_VERIFY`, `E_COMMIT`), `N_MAIN`, `N_SPARES`, `MIN_COMPLETE` |
-| `plan` | `create_plan(root, *, campaign_id, config, freeze_manifest, units, pilot, clock, bank_version="1.0.0", repo=None, freeze_repo_path=None, parallel_banks=1) -> CampaignPlan`; `check_freeze(freeze_manifest_path, config, *, kind, repo=None, manifest_path=None) -> FreezeRef` (`tag_checked`, `tag_commit`, `guard_checked`); `size_run(pilot, *, parallel_banks)`; `read_plan`, `effective_banks`, `bank_history`, `read_rebuilds`, `next_version`, `append_event` |
+| `common` | `CampaignSize(n_main, n_spares)` (`n_banks`, `min_complete`, `bank_ids(*, demo=False)`, `unit_ids()`, `sequence`, `role`, `dyad_slot`, `of(preset)`), `DEFAULT_SIZE` (the default preset's); `campaign_bank_ids(*, demo=False, size=DEFAULT_SIZE)`, `bank_sequence`, `bank_role`, `dyad_slot` (same `size=`), `run_id_for(campaign_id, bank_id, bank_version)`, `CampaignLayout`, `CampaignError` (`.code`: `E_INPUT`, `E_FREEZE`, `E_UNITS`, `E_SEEDS`, `E_EXISTS`, `E_STATE`, `E_LOCKED`, `E_VERIFY`, `E_COMMIT`) |
+| `size` | `units_size(units) -> CampaignSize`, `check_size(size, *, preset=None, dyads=None, spares=None)`, `preset_size(name)`, `requested_size(*, preset=None, dyads=None, spares=None)` |
+| `plan` | `create_plan(root, *, campaign_id, config, freeze_manifest, units, pilot, clock, bank_version="1.0.0", repo=None, freeze_repo_path=None, parallel_banks=1, preset=None, dyads=None, spares=None) -> CampaignPlan` (`.size`); `plan_size(banks, *, demo, seed_keys)`; `check_freeze(freeze_manifest_path, config, *, kind, repo=None, manifest_path=None) -> FreezeRef` (`tag_checked`, `tag_commit`, `guard_checked`); `size_run(pilot, *, parallel_banks, n_banks)`; `read_plan`, `effective_banks`, `bank_history`, `read_rebuilds`, `next_version`, `append_event` |
 | `freeze_check` | `load_freeze(path, *, kind) -> LoadedFreeze` (#25's guard), `check_tag(repo, manifest, data, *, manifest_path=None) -> str` (tagged commit), `guard_available()`, `default_manifest_path(manifest)` |
 | `seed_check` | `bank_seed_keys(namespace)`, `check_seeds(entries, *, expected_set, pilot) -> SeedCheck`, `read_pilot(paths=(), *, namespaces=()) -> PilotSeeds`, `check_used_seeds(banks, *, pilot_namespaces) -> UsedSeeds`, `SeedEntry`, `KEYS_PER_BANK` |
 | `runner` | `run_campaign(root, *, proposer_factory, clock, config=None, bank_clock=None, parallel_banks=1, workers=3, only=None, ledger_factory=slot_ledger, fsync=True, breaker_threshold=3, monitor_interval_s=60.0, on_progress=None, stop_on_error=True, break_lock=False, llm_runtime=None) -> CampaignRun`; `campaign_status(root) -> CampaignStatus`; `rebuild_bank(root, bank_id, *, reason, clock) -> PlannedBank`; `check_campaign`; `InfrastructureBreaker(threshold=3)` (`record(cell, proposal, slot_id)`), `GuardedProposer`, `CampaignHalted`, `DEFAULT_BREAKER` |
-| `register` | `verify_all(root, *, jobs=1, only=None) -> VerifyAll`; `timing_log(root) -> TimingLog` (`rows`, `runner`), `attempt_times(bank_dir, records)`, `runner_time(layout, activity=())`; `compile_register(root, *, clock) -> RegisterResult`; `register_row`; `tally(rows)`, `escalation_required(counts)`, `decide(counts, *, checks_ok, escalated)`; `write_archive(root, target) -> ArchiveInfo`; `record_escalation(root, *, reference, date, clock)`; `publish_register(root, dest)`; `check_register_commit(repo, path, *, expected_sha256=None, first_screening_utc=None, ref="HEAD") -> RegisterCommit` |
-| `rehearsal` | `rehearse(out, *, campaign_id, unavailable, outage=(), parallel_banks=4, workers=1, jobs=1, only=None, ledger_factory=None, ...) -> Rehearsal`; `DemoSlotProposer`, `demo_units`, `demo_config`, `demo_freeze_manifest(config)` (a draft) |
+| `register` | `verify_all(root, *, jobs=1, only=None) -> VerifyAll`; `timing_log(root) -> TimingLog` (`rows`, `runner`), `attempt_times(bank_dir, records)`, `runner_time(layout, activity=())`; `compile_register(root, *, clock) -> RegisterResult`; `register_row`; `tally(rows)`, `escalation_required(counts, *, needed=None)`, `decide(counts, *, checks_ok, escalated, needed=None)`, `spare_rule(size)`, `escalation_rule(size)`; `write_archive(root, target) -> ArchiveInfo`; `record_escalation(root, *, reference, date, clock)`; `publish_register(root, dest)`; `check_register_commit(repo, path, *, expected_sha256=None, first_screening_utc=None, ref="HEAD") -> RegisterCommit` |
+| `rehearsal` | `rehearse(out, *, campaign_id, size=DEFAULT_SIZE, unavailable=None, outage=(), parallel_banks=4, workers=1, jobs=1, only=None, ledger_factory=None, ...) -> Rehearsal`; `DemoSlotProposer`, `demo_units(out, *, size=DEFAULT_SIZE)`, `default_unavailable(size)`, `demo_config`, `demo_freeze_manifest(config)` (a draft) |
 | `cli` | `main(argv)`; `python -m av_banks.confirmatory` |
 
 ## 8. Decisions
 
 | Decision | Rationale |
 | --- | --- |
-| Bank IDs `bank-C001`..`bank-C072` (not the proposed `B-001`..) | the shared contract (#26, #31) fixed them before this issue; the reveal API logs outages by these IDs |
+| Bank IDs `bank-C001`.. in dyad-slot sequence, three digits (not the proposed `B-001`..) | the shared contract (#26, #31) fixed them before this issue; the reveal API logs outages by these IDs |
 | Spares replace unavailable main banks in allocation order, matched by SQ arm and swap at reveal (#31) | the issue's proposal; the match needs the concealed list, which the builder never reads |
-| At least 64 of 72 complete, else `escalation_required`, recorded with a link and a date | the issue's proposal; equivalent to "spares cover every unavailable main bank" in number; arm matching is checked by the reveal API |
+| At least `n` (the main dyad slots) complete, else `escalation_required`, recorded with a link and a date | the issue's proposal (64 of 72); equivalent to "spares cover every unavailable main bank" in number; arm matching is checked by the reveal API |
+| Campaign size from the unit set; a preset or counts only cross-check it (#266) | the units are what the banks are built for, so they cannot disagree with the plan; the presets stay in one file owned by schedules; `--preset` guards against a missing or extra unit |
+| The size is recorded by the plan's bank list, not by a new field | the plan of the default size keeps its bytes (the committed DEMO register stays valid); reading a plan checks the list against its counts and the seed key count |
 | Seed namespace = bank ID (the #26 default); disjointness checked over the full key space | pilot (`bank-P`) and confirmatory (`bank-C`) namespaces differ by construction; the check also covers any rebuild namespace and the recorded pilot seeds |
 | One #26 run per bank | a crash or halt affects one bank's run only; the per-bank run manifest names the bank's seed namespace |
 | Halt on the third failed model call in a row of one profile stream, or on a failed call on a cell's 12th slot, from the failing call itself; crashed banks are rebuilt under a new version | an outage must not fail a cell, so it can never exhaust attempts and turn a bank `unavailable` (a failed call on the 12th slot would decide its cell); counting per stream finds an outage within a cell's budget whatever the other streams do; isolated failed calls still use their slots (Study B §4); #26 never resumes a build, and a new version brings new seeds; the crashed run is archived and reported |
@@ -325,10 +373,12 @@ same files therefore give the same SHA-256 on every platform. The hash is in
 ## 9. Rehearsal (DEMO)
 
 `rehearse --out DIR` (`rehearsal.rehearse`) runs sections 1 to 6 on `DEMO-C001`..
-`DEMO-C072` without a model. It uses these inputs:
+without a model. The size is `--preset NAME` or `--dyads N --spares M` (a count not given
+comes from the preset, else from the default preset; default 64 + 8, so `DEMO-C001`..
+`DEMO-C072`). It uses these inputs:
 
-- 72 DEMO unit stand-ins (`demo_units`: only the fields the builder reads, marked
-  `"demo": true`);
+- DEMO unit stand-ins `B-C01`..`B-C<n>` and `B-S01`..`B-S<m>` (`demo_units`: only the
+  fields the builder reads, marked `"demo": true`); the plan takes its size from them;
 - a DEMO config built from the repository's DEMO meaning set, the recipe schema, the
   DEMO fallback set and synthetic prompt hashes;
 - a DEMO draft freeze manifest with that config's hash, without tag or sign-off (a
@@ -337,19 +387,25 @@ same files therefore give the same SHA-256 on every platform. The hash is in
 - `DemoSlotProposer`: random recipes drawn from each slot's seed key, with simulated
   model latency on each bank's own clock.
 
-By default, `DEMO-C007`, `DEMO-C030` and `DEMO-C070` receive unusable output and become
-unavailable. With `workers=1`, every bank and `register.csv` are the same on every
+By default, main banks 7 and 30 and the sixth spare (`DEMO-C007`, `DEMO-C030` and
+`DEMO-C070` at the default size; `default_unavailable(size)`) receive unusable output and
+become unavailable. `--unavailable ID` replaces the list; an ID outside the size is
+refused. With `workers=1`, every bank and `register.csv` are the same on every
 machine. The rehearsal uses #17's slot ledger.
 
 [`banks/examples/demo-confirmatory/`](../examples/demo-confirmatory/README.md) holds the
-public outputs of one rehearsal. `tests/banks/test_confirmatory_rehearsal.py` rebuilds
-three of its banks and compares their register rows.
+public outputs of one rehearsal of the default size. `tests/banks/test_confirmatory_rehearsal.py`
+rebuilds three of its banks and compares their register rows.
+`tests/banks/test_campaign_size.py` plans every preset's size on DEMO units (IDs, dyad
+slots, roles, seed namespaces, the seed check), compiles registers from synthetic bank
+outcomes (exactly `n` complete, `n - 1` complete, spares filling gaps), and runs a
+campaign of 1 main slot and 1 spare end to end.
 
 ## 10. Pending
 
 - **Pending (G4 and hardware):** the real run. It needs the frozen G4 manifest and tag
-  (#25), the pilot banks (#27), the 72 confirmatory units from schedules, and the LLM
-  host. Run section 1 in order. Then attach to the issue: the register commit link, the
+  (#25), the pilot banks (#27), the confirmatory units of the chosen sample-size preset
+  from schedules (#266), and the LLM host. Run section 1 in order. Then attach to the issue: the register commit link, the
   archive SHA-256, `verification-log.txt` and `timing.csv` (restricted, by hash),
   `g5b-report.md` and the `commit-check` output.
 - **Pending (human):** send `g5b-report.md` to the G5B owner. Escalate to the advisor if

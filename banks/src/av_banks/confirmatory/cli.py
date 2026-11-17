@@ -4,6 +4,7 @@
 plan         --campaign-root R --campaign-id ID --generation-config G --freeze-manifest F
              --units U (--pilot PATH | --pilot-namespace NS)... [--repo DIR]
              [--freeze-repo-path REL] [--parallel-banks N] [--bank-version 1.0.0]
+             [--preset NAME] [--dyads N] [--spares M]
 run          R --meanings M --prompts P --decoding-schema D --llm-url URL
              [--parallel-banks N] [--workers 3] [--only ID]... [--breaker 3]
              [--monitor-interval 60] [--continue-on-error] [--break-lock]
@@ -14,10 +15,15 @@ register     R
 escalate     R --reference URL --date YYYY-MM-DD
 publish      R --dest DIR
 commit-check --repo DIR --path REL --campaign-root R --first-screening ISO [--ref HEAD]
-rehearse     --out DIR [--campaign-id DEMO-...] [--unavailable ID]... [--parallel-banks N]
-             [--jobs N] [--only ID]...
+rehearse     --out DIR [--campaign-id DEMO-...] [--preset NAME] [--dyads N] [--spares M]
+             [--unavailable ID]... [--parallel-banks N] [--jobs N] [--only ID]...
 ```
 
+`plan` takes the campaign size from `--units` (exactly `B-C01`..`B-C<n>` and
+`B-S01`..`B-S<m>`; `size.units_size`); `--preset` (a sample-size preset of
+`schedules/presets/sample-size-presets.json`), `--dyads` and `--spares` only cross-check
+it. Every later command reads the size from `plan.json`. `rehearse` builds DEMO units of
+the size `--preset`, `--dyads` and `--spares` name (default: the default preset).
 `plan` of a confirmatory campaign needs `--repo` (the checkout whose freeze tag is
 checked). `commit-check --path` names `register.csv` or `register.json` of the campaign.
 
@@ -51,7 +57,7 @@ from .register import (
     record_escalation,
     verify_all,
 )
-from .rehearsal import DEFAULT_UNAVAILABLE, rehearse
+from .rehearsal import rehearse
 from .runner import (
     DEFAULT_BREAKER,
     ProposerFactory,
@@ -60,6 +66,18 @@ from .runner import (
     run_campaign,
 )
 from .seed_check import read_pilot
+from .size import requested_size
+
+
+def _size_args(parser: argparse.ArgumentParser, *, check: bool) -> None:
+    verb = "cross-check the size of --units against" if check else "the size:"
+    parser.add_argument(
+        "--preset",
+        default=None,
+        help=f"{verb} a sample-size preset (schedules/presets/sample-size-presets.json)",
+    )
+    parser.add_argument("--dyads", type=int, default=None, help=f"{verb} main dyad slots")
+    parser.add_argument("--spares", type=int, default=None, help=f"{verb} spare slots")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -68,7 +86,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    plan = sub.add_parser("plan", help="check the G4 freeze, create the 72 banks and seeds")
+    plan = sub.add_parser(
+        "plan", help="check the G4 freeze, create one bank per unit of --units, check seeds"
+    )
     plan.add_argument("--campaign-root", required=True, type=Path)
     plan.add_argument("--campaign-id", required=True)
     plan.add_argument("--generation-config", required=True, type=Path)
@@ -86,6 +106,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     plan.add_argument("--parallel-banks", type=int, default=1)
     plan.add_argument("--bank-version", default="1.0.0")
+    _size_args(plan, check=True)
 
     run = sub.add_parser("run", help="build the pending banks in parallel")
     run.add_argument("root", type=Path)
@@ -138,6 +159,7 @@ def _parser() -> argparse.ArgumentParser:
     demo = sub.add_parser("rehearse", help="the whole procedure on DEMO IDs (no model)")
     demo.add_argument("--out", required=True, type=Path)
     demo.add_argument("--campaign-id", default="DEMO-cbanks-01")
+    _size_args(demo, check=False)
     demo.add_argument("--unavailable", action="append", default=None)
     demo.add_argument("--parallel-banks", type=int, default=4)
     demo.add_argument("--jobs", type=int, default=1)
@@ -181,12 +203,17 @@ def _plan(args: argparse.Namespace) -> int:
         repo=args.repo,
         freeze_repo_path=args.freeze_repo_path,
         parallel_banks=args.parallel_banks,
+        preset=args.preset,
+        dyads=args.dyads,
+        spares=args.spares,
     )
     layout = CampaignLayout.at(args.campaign_root)
     _print(
         {
             "campaign_id": plan.campaign_id,
             "banks": len(plan.banks),
+            "main": plan.size.n_main,
+            "spares": plan.size.n_spares,
             "first": plan.banks[0].bank_id,
             "last": plan.banks[-1].bank_id,
             "generation_config_sha256": plan.generation_config_sha256,
@@ -315,9 +342,8 @@ def _rehearse(args: argparse.Namespace) -> int:
     result = rehearse(
         args.out,
         campaign_id=args.campaign_id,
-        unavailable=tuple(args.unavailable)
-        if args.unavailable is not None
-        else DEFAULT_UNAVAILABLE,
+        size=requested_size(preset=args.preset, dyads=args.dyads, spares=args.spares),
+        unavailable=args.unavailable,
         parallel_banks=args.parallel_banks,
         jobs=args.jobs,
         only=args.only,
@@ -327,6 +353,9 @@ def _rehearse(args: argparse.Namespace) -> int:
     _print(
         {
             "campaign_root": result.root.as_posix(),
+            "banks": len(result.plan.banks),
+            "main": result.plan.size.n_main,
+            "spares": result.plan.size.n_spares,
             "counts": dict(result.run.status.counts),
             "decision": None if register is None else register.decision,
             "register_csv_sha256": None if register is None else register.register_csv_sha256,

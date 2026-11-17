@@ -191,9 +191,13 @@ def test_demo_plan_records_banks_namespaces_and_seeds(tmp_path, demo_config, dem
     assert events == [{"at_utc": plan.created_utc, "banks": 72, "event": "plan_created"}]
     with pytest.raises(CampaignError, match="E_INPUT"):
         plan.bank("bank-C001")
-    # a damaged plan is refused
+    # a damaged plan is refused: the bank list records the size, the seed check its keys
     data = read_json(layout.plan)
     data["banks"] = data["banks"][:71]
+    write_document(layout.plan, data)
+    with pytest.raises(CampaignError, match="E_INPUT: plan: 165888 seed keys checked, not 71"):
+        read_plan(root)
+    data["banks"] = []
     write_document(layout.plan, data)
     with pytest.raises(CampaignError, match="confirmatory-plan.schema.json"):
         read_plan(root)
@@ -211,15 +215,18 @@ def test_plan_refusals(tmp_path, demo_config, demo_units):
     with pytest.raises(CampaignError, match="E_EXISTS"):
         _plan(tmp_path, demo_config, demo_units)
     (tmp_path / "campaign" / "x").unlink()
-    # a unit is missing, or is not the bank's dyad slot
+    # a unit is missing (the size comes from the units, so the cross-check finds it), or
+    # is not the bank's dyad slot
     units = tmp_path / "units"
     for unit in sorted(p.name for p in demo_units.iterdir())[:-1]:
         (units / unit).mkdir(parents=True)
         (units / unit / "permutation.json").write_bytes(
             (demo_units / unit / "permutation.json").read_bytes()
         )
-    with pytest.raises(CampaignError, match="E_UNITS"):
-        _plan(tmp_path, demo_config, units)
+    with pytest.raises(CampaignError, match="E_UNITS: --spares 8: the units hold 7"):
+        _plan(tmp_path, demo_config, units, spares=8)
+    with pytest.raises(CampaignError, match="E_UNITS: the units hold 64 main and 7 spare"):
+        _plan(tmp_path, demo_config, units, preset="provisional-18-64")
     doc = R.demo_unit("B-C02")
     (units / "B-S08").mkdir()
     write_document(units / "B-S08" / "permutation.json", doc)

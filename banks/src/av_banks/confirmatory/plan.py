@@ -1,4 +1,4 @@
-"""The campaign plan: G4 freeze check, 72 bank IDs, dyad slots, seed namespaces (#28).
+"""The campaign plan: G4 freeze check, campaign size, bank IDs, dyad slots, seeds (#28).
 
 `create_plan` runs before any slot, in restricted storage (a confirmatory campaign is
 refused inside a git work tree, like every confirmatory run):
@@ -12,20 +12,29 @@ refused inside a git work tree, like every confirmatory run):
    hash. A confirmatory plan also checks the freeze tag in the repository (`repo=`,
    required): the tagged commit holds this manifest byte for byte and `repo_commit` is
    that commit or an ancestor of it (`freeze_check.check_tag`).
-2. **Bank IDs.** `bank-C001`..`bank-C064` (main dyad slots `B-C01`..`B-C64`) and
-   `bank-C065`..`bank-C072` (spares `B-S01`..`B-S08`): the #26 dyad-slot sequence, no
-   random draw, no allocation information. Each is bound to its unit's package-safe
-   `permutation.json` (`builder.bank_spec`).
+2. **Size and bank IDs.** The size comes from the unit set (`size.units_size`: exactly
+   `B-C01`..`B-C<n>` and `B-S01`..`B-S<m>`), cross-checked against `preset`, `dyads` and
+   `spares` when given (#266). The banks are `bank-C001`..`bank-C<n>` (main dyad slots
+   `B-C01`..`B-C<n>`) and the next `m` (spares `B-S01`..`B-S<m>`): the #26 dyad-slot
+   sequence, no random draw, no allocation information. Each is bound to its unit's
+   package-safe `permutation.json` (`builder.bank_spec` with `main_slots=n`).
 3. **Seed namespaces.** The #26 default: the bank ID for version `1.0.0` (a rebuild gets
    `<bank_id>-v<version>`). `seed_check.check_seeds` checks them (unique, distinct seeds
    over the whole budget, disjoint from the pilot); a confirmatory plan needs the pilot
    namespaces.
 4. **Sizing** (optional): expected and worst-case wall time from the pilot throughput.
 
-The plan, a byte copy of the freeze manifest, the config and the 72 unit permutations
-and the seed check are written to the campaign directory (`common.CampaignLayout`).
-The plan is immutable; rebuilds of crashed banks are appended to `rebuilds.jsonl`
+The plan, a byte copy of the freeze manifest, the config and the unit permutations and
+the seed check are written to the campaign directory (`common.CampaignLayout`). The plan
+is immutable; rebuilds of crashed banks are appended to `rebuilds.jsonl`
 (`runner.rebuild_bank`) and applied by `effective_banks`.
+
+The size is recorded in `plan.json` through its bank list: every bank's sequence, role
+and dyad slot. `CampaignPlan.size` reads it back, and `CampaignPlan.from_dict` refuses a
+bank list that is not the dyad-slot sequence of its main and spare counts, or whose seed
+key count is not 2,304 per bank. So the plan of the default size has the same bytes as
+before the size became data, and every later step (run, verify-all, register, the G5B
+report and escalation, the seed checks, the archive) takes the size from the plan.
 """
 
 from __future__ import annotations
@@ -64,25 +73,23 @@ from av_banks.permutation import PermutationError, load_permutation
 
 from .common import (
     CAMPAIGN_ID_RE,
+    DEFAULT_SIZE,
     E_EXISTS,
     E_FREEZE,
     E_INPUT,
     E_SEEDS,
     E_UNITS,
-    N_BANKS,
     CampaignError,
     CampaignLayout,
+    CampaignSize,
     Role,
-    bank_role,
-    bank_sequence,
-    campaign_bank_ids,
-    dyad_slot,
     is_demo_campaign,
     require_schema,
     run_id_for,
 )
 from .freeze_check import check_tag, load_freeze
-from .seed_check import PilotSeeds, SeedCheck, SeedEntry, SourceRef, check_seeds
+from .seed_check import KEYS_PER_BANK, PilotSeeds, SeedCheck, SeedEntry, SourceRef, check_seeds
+from .size import check_size, units_size
 
 PLAN_FORMAT: Final = "av-banks/confirmatory-plan"
 PLAN_VERSION: Final = 1
@@ -112,7 +119,7 @@ class FreezeRef:
 
 @dataclass(frozen=True, slots=True)
 class PlannedBank:
-    """One of the 72 banks (one version of it)."""
+    """One bank of the campaign (one version of it)."""
 
     sequence: int
     bank_id: str
@@ -179,20 +186,50 @@ class CampaignPlan:
         data["format_version"] = PLAN_VERSION
         return data
 
+    @property
+    def size(self) -> CampaignSize:
+        """The campaign size recorded by the bank list (`plan_size`)."""
+        return plan_size(self.banks, demo=self.demo, seed_keys=self.seeds.keys)
+
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> CampaignPlan:
         require_schema(PLAN_SCHEMA, data)
         body = {k: v for k, v in data.items() if k not in ("format", "format_version")}
         try:
-            return decode_dataclass(cls, body)
+            plan = decode_dataclass(cls, body)
         except CodecError as err:
             raise CampaignError(E_INPUT, f"plan: {err}") from err
+        plan_size(plan.banks, demo=plan.demo, seed_keys=plan.seeds.keys)  # or refuse
+        return plan
 
     def bank(self, bank_id: str) -> PlannedBank:
         for bank in self.banks:
             if bank.bank_id == bank_id:
                 return bank
         raise CampaignError(E_INPUT, f"{bank_id} is not a bank of campaign {self.campaign_id}")
+
+
+def plan_size(banks: Sequence[PlannedBank], *, demo: bool, seed_keys: int) -> CampaignSize:
+    """The size of a plan's bank list: its main and spare counts. Refused (`E_INPUT`)
+    unless the banks are exactly the dyad-slot sequence of that size (IDs, sequence
+    numbers, roles, dyad slots) and the seed check covered 2,304 keys per bank."""
+    n_main = sum(1 for b in banks if b.role == "main")
+    size = CampaignSize(n_main, len(banks) - n_main)  # E_INPUT outside 1..99 and 0..99
+    expected = size.bank_ids(demo=demo)
+    if [b.bank_id for b in banks] != list(expected) or any(
+        b.sequence != n
+        or b.role != size.role(b.bank_id)
+        or b.dyad_slot != size.dyad_slot(b.bank_id)
+        for n, b in enumerate(banks, start=1)
+    ):
+        raise CampaignError(
+            E_INPUT, f"plan: the banks are not the dyad-slot sequence of {size.text()}"
+        )
+    if seed_keys != size.n_banks * KEYS_PER_BANK:
+        raise CampaignError(
+            E_INPUT, f"plan: {seed_keys} seed keys checked, not {size.n_banks} x {KEYS_PER_BANK:,}"
+        )
+    return size
 
 
 def read_plan(root: str | os.PathLike[str]) -> CampaignPlan:
@@ -256,7 +293,9 @@ def check_freeze(
 # Sizing
 
 
-def size_run(pilot: PilotSeeds, *, parallel_banks: int, n_banks: int = N_BANKS) -> Sizing | None:
+def size_run(
+    pilot: PilotSeeds, *, parallel_banks: int, n_banks: int = DEFAULT_SIZE.n_banks
+) -> Sizing | None:
     """Expected and worst-case wall time of the campaign from the pilot throughput:
     `expected_slots = n_banks x mean pilot slots per bank`, `worst_slots = n_banks x
     2,304`, each divided by `parallel_banks x` the pooled pilot rate of one bank. Assumes
@@ -290,9 +329,15 @@ def size_run(pilot: PilotSeeds, *, parallel_banks: int, n_banks: int = N_BANKS) 
 
 
 def _planned(
-    bank_id: str, units: Path, *, demo: bool, bank_version: str, campaign_id: str
+    bank_id: str,
+    units: Path,
+    *,
+    size: CampaignSize,
+    demo: bool,
+    bank_version: str,
+    campaign_id: str,
 ) -> PlannedBank:
-    slot = dyad_slot(bank_id)
+    slot = size.dyad_slot(bank_id)
     path = units / slot / "permutation.json"
     if not path.is_file():
         raise CampaignError(E_UNITS, f"{bank_id}: unit {slot} has no permutation.json under units")
@@ -300,13 +345,13 @@ def _planned(
         permutation = load_permutation(path)
         if demo and (not permutation.demo or permutation.unit_id != slot):
             raise PermutationError(f"{bank_id}: expected the DEMO unit {slot}")
-        spec = bank_spec(bank_id, permutation, bank_version=bank_version)
+        spec = bank_spec(bank_id, permutation, bank_version=bank_version, main_slots=size.n_main)
     except (PermutationError, BankBuildError, ValueError) as err:
         raise CampaignError(E_UNITS, str(err)) from err
     return PlannedBank(
-        sequence=bank_sequence(bank_id),
+        sequence=size.sequence(bank_id),
         bank_id=bank_id,
-        role=bank_role(bank_id),
+        role=size.role(bank_id),
         dyad_slot=slot,
         bank_version=bank_version,
         seed_namespace=spec.seed_namespace,
@@ -328,11 +373,15 @@ def create_plan(
     repo: str | os.PathLike[str] | None = None,
     freeze_repo_path: str | None = None,
     parallel_banks: int = 1,
+    preset: str | None = None,
+    dyads: int | None = None,
+    spares: int | None = None,
 ) -> CampaignPlan:
-    """Check the freeze, bind the 72 banks, check the seeds and write the campaign
-    directory (module docstring). `campaign_id` starts with `DEMO-` for a rehearsal; a
-    confirmatory campaign needs `repo` (and `freeze_repo_path` when the manifest is not
-    committed at `generation/FREEZE-v<freeze version>.json`)."""
+    """Check the freeze, take the size from the units (cross-checked against `preset`,
+    `dyads` and `spares` when given), bind one bank per unit, check the seeds and write
+    the campaign directory (module docstring). `campaign_id` starts with `DEMO-` for a
+    rehearsal; a confirmatory campaign needs `repo` (and `freeze_repo_path` when the
+    manifest is not committed at `generation/FREEZE-v<freeze version>.json`)."""
     demo = is_demo_campaign(campaign_id)
     kind = RunKind.DEMO if demo else RunKind.CONFIRMATORY
     if not CAMPAIGN_ID_RE.fullmatch(campaign_id):
@@ -348,9 +397,17 @@ def create_plan(
     if hashlib.sha256(freeze_bytes).hexdigest() != freeze.manifest_sha256:
         raise CampaignError(E_FREEZE, "the freeze manifest changed while the plan was made")
     units_root = Path(units)
+    size = check_size(units_size(units_root), preset=preset, dyads=dyads, spares=spares)
     banks = tuple(
-        _planned(b, units_root, demo=demo, bank_version=bank_version, campaign_id=campaign_id)
-        for b in campaign_bank_ids(demo=demo)
+        _planned(
+            b,
+            units_root,
+            size=size,
+            demo=demo,
+            bank_version=bank_version,
+            campaign_id=campaign_id,
+        )
+        for b in size.bank_ids(demo=demo)
     )
     if not demo and not pilot.namespaces:
         raise CampaignError(
@@ -384,7 +441,7 @@ def create_plan(
         freeze=freeze,
         seeds=SeedSummary(check.keys, check.distinct_seeds, check.seeds_digest, seed_sha),
         pilot=PilotRef(tuple(sorted(pilot.namespaces)), pilot.sources, pilot.records_checked),
-        sizing=size_run(pilot, parallel_banks=parallel_banks),
+        sizing=size_run(pilot, parallel_banks=parallel_banks, n_banks=size.n_banks),
         banks=banks,
     )
     require_schema(PLAN_SCHEMA, plan.to_dict())
@@ -482,7 +539,7 @@ def bank_history(
 
 
 def effective_banks(root: str | os.PathLike[str]) -> tuple[PlannedBank, ...]:
-    """The current version of each of the 72 banks, in sequence order."""
+    """The current version of each bank of the plan, in sequence order."""
     plan = read_plan(root)
     history = bank_history(plan, read_rebuilds(root))
     return tuple(history[b.bank_id][-1] for b in plan.banks)
