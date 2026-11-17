@@ -95,6 +95,14 @@ register only while the main run's `run-manifest.json` is not closed, which is h
 crash leaves it. Then run again in a new root with a new run ID and `--major 2`. Every
 bank is then built at version `2.0.0` under new seed namespaces (`bank-P001-v2.0.0`).
 
+**Model-server outage.** `run --breaker N` (default 0, off) uses the confirmatory
+runner's breaker (`confirmatory-banks.md` section 4): a failed model call that is the
+`N`-th in a row of its profile stream, or that falls on a cell's 12th slot, halts the run
+with `CampaignHalted` before its slot is recorded. The run then crashes (exit 2) instead
+of failing cells, and is replaced under the crash rule above. Without it, failed calls
+use their slots as usual. The unattended supervisor ([`unattended-run.md`](unattended-run.md))
+passes `--breaker 3` and applies the crash rule itself.
+
 Exit codes: 0 when every slot has a usable bank, 3 for a shortfall, 1 for a verify or
 plan problem, 2 when the command is refused. `finish` repeats step 4 until the root is
 archived. `check` compares the register with hashes recomputed from the stored files
