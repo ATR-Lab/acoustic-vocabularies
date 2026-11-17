@@ -52,6 +52,8 @@ namespace AcousticVocab.Teaching
         readonly Dictionary<string,TeachingDisplay> displays=new Dictionary<string,TeachingDisplay>(StringComparer.Ordinal);
         readonly string alignedFamily,visit;
         readonly HashSet<string> selectionAtoms=new HashSet<string>(StringComparer.Ordinal);
+        // Response outcomes shared by atomic and whole-message lessons.
+        static readonly string[] FeedbackKeys={"correct","incorrect","timeout"};
         public string Sha256 { get; }
         public string ReviewSha256 { get; }
         public string MethodologySha256 { get; }
@@ -107,9 +109,9 @@ namespace AcousticVocab.Teaching
                     result.displays.Add(id,new TeachingDisplay(row,png,(string)spec["sha256"]));usedImages.Add(imageId);expectedFiles.Add(path);
                 }
                 Require(expected.Count==0&&usedImages.SetEquals(((JObject)document["images"]).Properties().Select(x=>x.Name)));
-                Keys(document["feedback"],"atomic","correct","incorrect","timeout");
+                Keys(document["feedback"],FeedbackKeys);
                 foreach(var row in ((JObject)document["feedback"]).Properties()) {Keys(row.Value,"id","text");Text(row.Value["id"]);Text(row.Value["text"]);}
-                Require(((JObject)document["feedback"]).Properties().Select(x=>(string)x.Value["id"]).Distinct().Count()==4);
+                Require(((JObject)document["feedback"]).Properties().Select(x=>(string)x.Value["id"]).Distinct().Count()==FeedbackKeys.Length);
                 var root=Path.GetFullPath(directory);var directories=new Queue<string>();directories.Enqueue(root);var actualFiles=new HashSet<string>(StringComparer.Ordinal);int entries=0;
                 while(directories.Count>0)foreach(var path in Directory.GetFileSystemEntries(directories.Dequeue()))
                 {var attributes=File.GetAttributes(path);Require(++entries<=128&&(attributes&FileAttributes.ReparsePoint)==0);if((attributes&FileAttributes.Directory)!=0)directories.Enqueue(path);else actualFiles.Add(Path.GetRelativePath(root,path).Replace('\\','/'));}
@@ -157,9 +159,17 @@ namespace AcousticVocab.Teaching
             }
             return material;
         }
+        // Feedback follows the submitted response with the same keys for atomic
+        // and whole-message lessons in either format: a commit matching the
+        // package-bound answer is correct, Don't know or any other commit is
+        // incorrect, and a timeout is no response. An atomic lesson is scored on
+        // its role's label only (action or target); the other side stays empty.
         internal string Feedback(LessonMaterial material,PanelResponse response)
         {
-            string key=material.Atomic?"atomic":response.Code==ResponseCode.Timeout?"timeout":response.Code==ResponseCode.Commit&&response.Action==material.ExpectedAction&&response.Target==material.ExpectedTarget?"correct":"incorrect";
+            var role=!material.Atomic?PanelRole.Command:material.ExpectedTarget==null?PanelRole.Action:PanelRole.Target;
+            LessonTimeline.Require(response!=null&&response.Request.Mode==(material.Atomic?PanelMode.LessonAtomic:PanelMode.LessonMessage)&&response.Request.Role==role&&
+                (material.Atomic?(material.ExpectedAction==null)!=(material.ExpectedTarget==null):material.ExpectedAction!=null&&material.ExpectedTarget!=null),"LESSON_RESPONSE_REFUSED");
+            string key=response.Code==ResponseCode.Timeout?"timeout":response.Code==ResponseCode.Commit&&response.Action==material.ExpectedAction&&response.Target==material.ExpectedTarget?"correct":"incorrect";
             return (string)content["feedback"][key]["id"];
         }
         public string FeedbackText(string id)

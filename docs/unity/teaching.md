@@ -25,6 +25,14 @@ The old presentation retains its owner token until the fixed end, even when the
 engine prepares the next item during the remaining tail. Preparation preloads
 audio but does not expose the next meaning or image.
 
+Feedback follows the submitted response and uses the same catalog keys for atomic
+and whole-message lessons in both formats: `correct` for a commit that matches the
+package-bound answer, `incorrect` for any other commit or Don't know, and `timeout`
+for no response. An atomic lesson is scored on its role's label only (the action
+for an action atom, the target for a referent atom). The feedback interval then
+shows the same meaning display as the definition interval. A response from another
+panel mode or role is refused (`LESSON_RESPONSE_REFUSED`).
+
 The factory implements `ISessionContentPump`: `FixedSlotEngine.Tick()` pumps
 private control, advances the response-panel deadline, then advances each active
 and retired lesson timeline before evaluating boundaries. The session-level
@@ -69,9 +77,10 @@ The catalog contains `format: "av-teaching/1"`, `package_sha256`, `content`,
 from the package-bound permutation. Each record contains `content_id`,
 `meaning_display_id`, `definition`, `action_words`, `target_words`, and `image_id`.
 Each image maps to a restricted `images/<opaque-id>.png` path and SHA-256. Feedback
-has exactly `atomic`, `correct`, `incorrect`, and `timeout`, each with a distinct
-`id` and reviewed `text`. Review has integer `version: 1`, `catalog_sha256`, boolean
-`approved: true`, and `methodology_sha256`. Extra files, links, changed bytes and
+has exactly `correct`, `incorrect`, and `timeout`, each with a distinct `id` and
+reviewed `text`; a catalog that still has the former fixed `atomic` key is refused.
+Review has integer `version: 1`, `catalog_sha256`, boolean `approved: true`, and
+`methodology_sha256`. Extra files, links, changed bytes and
 held-out IDs are rejected. Semantic scoring comes from the package permutation;
 the catalog cannot supply a different correct action/target.
 

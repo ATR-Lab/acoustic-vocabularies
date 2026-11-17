@@ -116,7 +116,7 @@ def prepare(package_directory, package_hash, output, *, speech_directory=None, s
     catalog_hash = put("teaching/catalog.local.json", dict(format="av-teaching/1", package_sha256=package_hash,
                         content=content, images=dict(mock=dict(file="images/mock.png", sha256=png_hash)),
                         feedback={kind: dict(id="DEMO-feedback-" + kind, text="SIMULATION TEST: " + kind)
-                                  for kind in ("atomic", "correct", "incorrect", "timeout")}))
+                                  for kind in ("correct", "incorrect", "timeout")}))
     teaching_review = put("teaching/review.local.json", attestation("teaching", fixture_hash, dict(catalog_sha256=catalog_hash)))
     menu_hash = put("menu/menu-script.local.json", dict(format="av-menu-script/1", package_sha256=package_hash,
                     profile_display_id="DEMO-profile-display", profile_names={p: "SIMULATION " + p for p in ("P1", "P2", "P3")},

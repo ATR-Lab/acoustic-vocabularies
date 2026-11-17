@@ -47,6 +47,8 @@ def test_actual_producer_package_generates_closed_simulation_materials(demo_pack
     assert len(catalog["content"]) == 34  # 16 atoms, 18 trained phrases, no novel phrases.
     assert all(row["definition"].startswith("SIMULATION TEST") for row in catalog["content"])
     assert all(row["image_id"] == "mock" for row in catalog["content"])
+    # REQ-LES-12: one response-based feedback set for both lesson kinds, no fixed atomic key.
+    assert set(catalog["feedback"]) == {"correct", "incorrect", "timeout"}
 
 
 def test_wrong_pin_and_public_output_refused_before_creation(demo_package, tmp_path):
