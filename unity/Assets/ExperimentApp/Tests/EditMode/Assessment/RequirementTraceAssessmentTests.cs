@@ -95,7 +95,7 @@ namespace AcousticVocab.Assessment.Tests
             =>new VisitSchedule(Hash,Package,"DEMO",visit,true,new[]{new ScheduleBlock("protected",items)},study,"A",Hash);
         static double End(SlotItem[] items)=>750+items.Sum(x=>x.SlotSeconds*1000.0);
 
-        [Test,Category("REQ-TEST-01")]
+        [Test,Category("REQ_TEST_01")]
         public void ParticipantPanelAndViewNeverReceiveTheRequestedCommand()
         {
             var items=new[]{Item("DEMO-TR-01","trained","K-a2-r3"),Item("DEMO-TR-02","trained","Q-a4-r1"),Item("DEMO-NV-01","novel","K-a1-r2"),Item("DEMO-AT-01","atomic","Q-a3","action")};
@@ -113,7 +113,7 @@ namespace AcousticVocab.Assessment.Tests
             Assert.That(f.Codes,Is.EqualTo(Enumerable.Repeat("timeout",items.Length)));
         }
 
-        [Test,Category("REQ-TEST-02")]
+        [Test,Category("REQ_TEST_02")]
         public void EachTestTrialRequestsItsAudioExactlyOnceAndCannotBeCuedAgain()
         {
             var items=new[]{Item("DEMO-PO-01","pre_old","K-a1-r1"),Item("DEMO-TR-01","trained","K-a2-r3"),Item("DEMO-NV-01","novel","K-a1-r2"),Item("DEMO-AT-01","atomic","Q-r2","referent")};
@@ -131,7 +131,7 @@ namespace AcousticVocab.Assessment.Tests
             Assert.Throws<AssessmentFault>(()=>f.Factory.Create(new SlotItem("DEMO-TR-09","trained","K-a1-r1",null,null,"protected",false,14,2,1)));
         }
 
-        [Test,Category("REQ-TEST-07")]
+        [Test,Category("REQ_TEST_07")]
         public void ResponseTimingIsAnchoredToTheQualifiedAudioOnsetOnTheHostMonotonicClock()
         {
             var f=new Fixture(Visit("A","D0",Item("DEMO-TR-01","trained","K-a1-r1")));f.Start();f.At(750);
@@ -149,7 +149,7 @@ namespace AcousticVocab.Assessment.Tests
                 Assert.That(assembly.GetReferencedAssemblies().Any(x=>x.Name.Contains("StateSources")),Is.False,assembly.GetName().Name);
         }
 
-        [Test,Category("REQ-RESP-01")]
+        [Test,Category("REQ_RESP_01")]
         public void EveryTestTrialOffersAllTargetsWithTheirFamilyActionsAtEveryVisit()
         {
             foreach(var (study,visit) in new[]{("A","D0"),("A","D7"),("B","V1"),("B","V2"),("B","V3"),("B","W1"),("B","W4")})
@@ -175,7 +175,7 @@ namespace AcousticVocab.Assessment.Tests
             }
         }
 
-        [Test,Category("REQ-RESP-02")]
+        [Test,Category("REQ_RESP_02")]
         public void OfferedActionsDependOnlyOnTheSelectedTargetFamilyNotOnTheRequest()
         {
             var items=new[]{"K-a1-r1","K-a4-r4","Q-a1-r1","Q-a3-r2"}.Select((c,i)=>Item("DEMO-TR-0"+(i+1),"trained",c)).ToArray();
@@ -198,7 +198,7 @@ namespace AcousticVocab.Assessment.Tests
             for(int i=1;i<maps.Count;i++)foreach(string target in PublicCommands.Targets)Assert.That(maps[i][target],Is.EqualTo(maps[0][target]));
         }
 
-        [Test,Category("REQ-NEUT-01")]
+        [Test,Category("REQ_NEUT_01")]
         public void SceneReceivesTheSameNeutralSequenceForEveryRequestAndResponse()
         {
             List<string> expected=null;
@@ -216,7 +216,7 @@ namespace AcousticVocab.Assessment.Tests
             Assert.That(typeof(IProtectedState).GetMethods().Where(m=>!m.IsSpecialName).All(m=>m.GetParameters().Length==0),Is.True);
         }
 
-        [Test,Category("REQ-ACC-01")]
+        [Test,Category("REQ_ACC_01")]
         public void NoDictionaryIsAvailableWhileATestTrialRuns()
         {
             var items=new[]{Item("DEMO-TR-01","trained","K-a1-r1"),Item("DEMO-TR-02","trained","Q-a1-r1")};
@@ -234,7 +234,7 @@ namespace AcousticVocab.Assessment.Tests
             Assert.Throws<AssessmentFault>(()=>f.Factory.Create(new SlotItem("DEMO-ML-01","message_lesson","K-a1-r1",null,"dictionary","protected",false,24,3,1)));
         }
 
-        [Test,Category("REQ-ACC-02")]
+        [Test,Category("REQ_ACC_02")]
         public void NoReplayCanBeRequestedDuringATestTrial()
         {
             var items=new[]{Item("DEMO-TR-01","trained","K-a1-r1"),Item("DEMO-AT-01","atomic","K-a2","action")};
@@ -250,7 +250,7 @@ namespace AcousticVocab.Assessment.Tests
                 .Select(m=>m.Name).OrderBy(x=>x,StringComparer.Ordinal),Is.EqualTo(new[]{"Abort","Commit","DontKnow","Open","SelectAction","SelectTarget","Tick"}));
         }
 
-        [Test,Category("REQ-ACC-03")]
+        [Test,Category("REQ_ACC_03")]
         public void NoCorrectiveFeedbackFollowsAResponse()
         {
             List<string> expected=null;
@@ -267,7 +267,7 @@ namespace AcousticVocab.Assessment.Tests
         }
 
         [TestCase("action",PanelRole.Action)][TestCase("referent",PanelRole.Target)]
-        [Category("REQ-BAT-05")]
+        [Category("REQ_BAT_05")]
         public void AtomicProbeUsesANineSecondSlotShowsTheProbedRoleAndOffersItsEightLabels(string role,PanelRole expected)
         {
             var items=new[]{Item("DEMO-AT-01","atomic",role=="action"?"K-a2":"Q-r3",role),Item("DEMO-AT-02","atomic",role=="action"?"Q-a1":"K-r1",role)};
@@ -285,7 +285,7 @@ namespace AcousticVocab.Assessment.Tests
             f.Through(End(items));Assert.That(f.Engine.Status,Is.EqualTo(SessionState.Complete));Assert.That(f.Clock.NowMs,Is.EqualTo(750+18000));
         }
 
-        [Test,Category("REQ-VOC-02")]
+        [Test,Category("REQ_VOC_02")]
         public void TestResponsesHaveNoPathToStoredVocabularyEntries()
         {
             // Stored vocabulary entries live in the selection-menu store; the test runtime cannot reference it.

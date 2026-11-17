@@ -82,7 +82,7 @@ namespace AcousticVocab.SessionEngine.Tests
         static string Observable(FixedSlotEngine e)=>string.Join("|",e.Status,e.CurrentState,e.CurrentTrialId,e.CurrentBlock,e.ExposureConsumed,
             e.CompletedOpportunities,string.Join(",",e.CompletedCounts),e.NeedsOperatorConfirmation,e.ScheduleSha256,e.PackageSha256,e.PrimaryFaultCode);
 
-        [Test,Category("REQ-TEST-01")]
+        [Test,Category("REQ_TEST_01")]
         public void HiddenQueuePresentsScheduleOrderWithoutExposingTheRequestInStatusOrJournal()
         {
             var items=new[]{Item("DEMO-T-01","trained","K-a2-r3"),Item("DEMO-T-02","trained","Q-a4-r1"),Item("DEMO-T-03","novel","K-a1-r2",heldout:true)};
@@ -104,7 +104,7 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.That(choosers,Is.Empty);
         }
 
-        [Test,Category("REQ-RSV-01")]
+        [Test,Category("REQ_RSV_01")]
         public void ReservedMessagesReceiveCompleteAudioAuthorityOnlyAtTheirOwnTestTrial()
         {
             var message=new Regex(@"\A[KQ]-a[1-4]-r[1-4]\z");
@@ -141,7 +141,7 @@ namespace AcousticVocab.SessionEngine.Tests
         }
 
         [TestCase(AudibleStatus.ConfirmedAudible)][TestCase(AudibleStatus.Uncertain)]
-        [Category("REQ-RSV-02")]
+        [Category("REQ_RSV_02")]
         public void FirstAudiblePlayOfAReservedMessageConsumesItsExposureDespiteALaterFault(AudibleStatus evidence)
         {
             var schedule=Visit("A","D0",new ScheduleBlock("novel",new[]{Item("DEMO-NV-01","novel","K-a1-r2",heldout:true),Item("DEMO-NV-02","novel","Q-a3-r2",heldout:true)}));
@@ -162,7 +162,7 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.That(resumed.Factory.Items.Select(x=>x.Context.Item.ContentId),Has.None.EqualTo("K-a1-r2"));
         }
 
-        [Test,Category("REQ-RSV-06")]
+        [Test,Category("REQ_RSV_06")]
         public void HeardReservedMessageIsNeverPresentedAgainAndAnUnheardOneRetriesOnlyAsALinkedRepeat()
         {
             var heldout=new[]{Item("DEMO-NV-01","novel","K-a1-r2",heldout:true),Item("DEMO-NV-02","novel","Q-a3-r2",heldout:true)};
@@ -188,7 +188,7 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.That(silent.Journal.Rows.Where(x=>x.TrialId==retry.Item.TrialId).All(x=>x.RetryOf=="DEMO-NV-01"&&x.OpportunityId=="DEMO-NV-01"),Is.True);
         }
 
-        [Test,Category("REQ-VAL-05")]
+        [Test,Category("REQ_VAL_05")]
         public void NoCueTrialPlaysNothingLogsItsScheduledReferenceAndHasNoAudibleOnset()
         {
             var items=new[]{Item("DEMO-VA-01","no_cue",null,phase:"validity"),Item("DEMO-VA-02","no_cue",null,phase:"validity")};
@@ -213,7 +213,7 @@ namespace AcousticVocab.SessionEngine.Tests
             }
         }
 
-        [Test,Category("REQ-INT-01")]
+        [Test,Category("REQ_INT_01")]
         public void ResumptionRunsOnlyUnplayedTrialsAndNeverRepeatsAPlayedOrCommittedOne()
         {
             var items=Enumerable.Range(1,5).Select(i=>Item("DEMO-TR-0"+i,"trained","K-a1-r1")).ToArray();
@@ -242,7 +242,7 @@ namespace AcousticVocab.SessionEngine.Tests
 
         // Neither the engine nor its host receives a session identity or visit window, so a
         // restart over a stopped battery always resumes it.
-        [Test,Category("REQ-INT-02")]
+        [Test,Category("REQ_INT_02")]
         [Ignore("Requirement gap: #278 Study A immediate test resumes in a later session (no same-session guard)")]
         public void StudyAImmediateTestCannotResumeAfterItsSessionEnded()
         {
@@ -257,7 +257,7 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.That(later.Factory.Items,Is.Empty);
         }
 
-        [Test,Category("REQ-INT-03")]
+        [Test,Category("REQ_INT_03")]
         [Ignore("Requirement gap: #278 delayed visit resumes with no visit-window check (engine has no window input)")]
         public void DelayedVisitCannotResumeOutsideItsVisitWindow()
         {

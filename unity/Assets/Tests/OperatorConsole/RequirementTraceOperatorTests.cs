@@ -53,7 +53,7 @@ namespace AcousticVocab.OperatorConsole.Tests
             public ISlotContent Create(SlotItem item) { var value = new Content(); Created.Add(value); return value; }
         }
 
-        [Test, Category("REQ-TEST-01")]
+        [Test, Category("REQ_TEST_01")]
         public void OperatorCanOnlyLoadStartPauseResumeOrStopAndNeverSeesTheRequestedCommand()
         {
             foreach (string command in new[] { "select", "play", "replay", "skip", "next", "choose" })

@@ -14,7 +14,7 @@ namespace AcousticVocab.ResponsePanel.Tests
         [SetUp] public void Setup() { now = 1000; events = new List<PanelProcessEvent>(); state = new ResponseState(() => now, events.Add); }
         void Open() => state.Open(new PanelRequest("synthetic-trial", PanelMode.FullMessage, PanelRole.Command, 1000));
 
-        [Test, Category("REQ-TEST-03")]
+        [Test, Category("REQ_TEST_03")]
         public void AResponseNeedsATargetAnActionAndACommitPress()
         {
             Open();
@@ -34,7 +34,7 @@ namespace AcousticVocab.ResponsePanel.Tests
             Assert.That(state.Result.SelectedTarget, Is.EqualTo("B")); Assert.That(state.Result.SelectedAction, Is.EqualTo("FLIP_CARD"));
         }
 
-        [Test, Category("REQ-TEST-06")]
+        [Test, Category("REQ_TEST_06")]
         public void SelectionsStayEditableUntilCommitAndOnlyOneCommitIsAccepted()
         {
             int responses = 0; state.Responded += _ => responses++;
@@ -55,7 +55,7 @@ namespace AcousticVocab.ResponsePanel.Tests
             Assert.That(events.Count(x => x.Kind == "commit"), Is.EqualTo(1)); Assert.That(events.Count(x => x.Kind == "timeout"), Is.Zero);
         }
 
-        [Test, Category("REQ-TEST-07")]
+        [Test, Category("REQ_TEST_07")]
         public void PanelClockIsTheHostMonotonicStopwatchAndWindowsFollowTheSuppliedOnset()
         {
             double before = Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
