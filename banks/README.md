@@ -8,6 +8,9 @@ them inside a git work tree), with only their hashes committed in registers.
 
 Design, files, rules and decisions: [`docs/bank-builder.md`](docs/bank-builder.md).
 Pilot banks (#27: IDs, spares, run, register, archive, throughput): [`docs/pilot-banks.md`](docs/pilot-banks.md).
+Confirmatory banks (#28): [`docs/confirmatory-banks.md`](docs/confirmatory-banks.md).
+Unattended runs on the GPU host (#267: supervisor, checkpoint and resume, service, runbook):
+[`docs/unattended-run.md`](docs/unattended-run.md).
 Cross-team contract: [`docs/interfaces/generation.md`](../docs/interfaces/generation.md),
 section "Study B bank builder (#26)".
 
@@ -35,6 +38,8 @@ the tests refuse any non-loopback connection.
 | `schema/bank-attempt.schema.json` | `attempts/<n>/attempt.json` (status, reason, timing, throughput) |
 | `docs/bank-builder.md` | Builder design and usage |
 | `docs/pilot-banks.md` | Pilot banks runbook (#27) |
+| `src/av_banks/unattended/`, `schema/unattended-job.schema.json` | Unattended supervisor (#267) and its job file |
+| `docs/unattended-run.md`, `ops/av-banks-unattended.service.example`, `examples/unattended/job.example.json` | Unattended runbook, systemd unit and job file template (placeholders only) |
 | `examples/demo-pilot/` | DEMO pilot rehearsal outputs: plan, register, verify log, throughput note, archive hash (synthetic) |
 | `../generation/schema/bank-manifest.schema.json`, `bank-amendment.schema.json` | The bank manifest and amendment formats (shared contract, owned by #26) |
 | `../tests/banks/` | Tests (scripted model, memory ledger, oracle; DEMO unit permutation fixture copied from the schedules examples) |
@@ -48,6 +53,7 @@ the tests refuse any non-loopback connection.
 | `banks amend BANK_DIR --profile P --atom A --rank R --reason TEXT --unheard-confirmed` | Reserve rule: replace an unheard shown option with the cell's reserve (logged, chained) |
 | `banks hash BANK_DIR` | Print the bank hash of a manifest |
 | `python -m av_banks.pilot plan\|run\|finish\|check\|archive\|load ...` | Pilot banks (#27): build the 8 banks and spares, verify, register, summarize, archive; `load --mode confirmatory` refuses a pilot bank |
+| `python -m av_banks.unattended run\|retry\|status\|check\|demo-job ...` | Unattended job of pilot and confirmatory stages with checkpoint and resume (#267) |
 
 ## API
 

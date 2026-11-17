@@ -1,0 +1,43 @@
+# systemd unit for the unattended bank supervisor (av_banks.unattended, #267) on the
+# Linux GPU host. Copy it to /etc/systemd/system/av-banks-unattended.service and replace
+# every <placeholder>; the runbook is banks/docs/unattended-run.md (section 3).
+#
+#   <checkout>    the repository checkout at the commit being used (no local changes),
+#                 with `uv sync --project banks --locked` done
+#   <restricted>  restricted storage outside any git work tree (job file and job root)
+#   <bank-user>   the unprivileged account that owns <restricted>
+#
+# Exit codes of `run`: 0 done (no restart); 2 refused and 3 stopped for a person (no
+# restart: a person reads `status` and decides); 4 interrupted by a signal and 1 an
+# unexpected error (restarted; the supervisor resumes from its checkpoint).
+
+[Unit]
+Description=Unattended Study B bank runs (av_banks.unattended)
+Wants=network-online.target
+After=network-online.target av-llm.service
+# Ten restarts within an hour means something is wrong: leave it to a person.
+StartLimitIntervalSec=3600
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=<bank-user>
+WorkingDirectory=<checkout>
+Environment=PYTHONUNBUFFERED=1
+# Files 0600, directories 0700 (docs/data-policy.md); the supervisor sets 077 itself too.
+UMask=0077
+ExecStart=<checkout>/banks/.venv/bin/python -m av_banks.unattended run <restricted>/job.json
+Restart=on-failure
+RestartSec=60
+RestartPreventExitStatus=2 3
+# SIGTERM to the supervisor, which passes it to its running child and saves its state;
+# whatever is left is killed when the supervisor exits. Banks a stop interrupts are
+# crashed and rebuilt (or, for the pilot, replaced) under the existing crash rules.
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=60
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

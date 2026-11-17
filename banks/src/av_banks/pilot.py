@@ -955,6 +955,13 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--decoding-schema", required=True, type=Path)
     run.add_argument("--llm-url", required=True)
     run.add_argument("--llm-runtime", default="vllm")
+    run.add_argument(
+        "--breaker",
+        type=int,
+        default=0,
+        help="halt on a model-server outage like the confirmatory runner (N failed calls "
+        "in a row of a profile stream, or one on a cell's 12th slot); 0: off",
+    )
     run.add_argument("--workers", type=int, default=3)
     run.add_argument("--parallel-banks", type=int, default=1)
     run.add_argument("--project-banks", type=int, default=CONFIRMATORY_BANKS)
@@ -1036,14 +1043,26 @@ def _finish_report(finish: PilotFinish, root: Path) -> None:
     print(json.dumps(doc, indent=2, sort_keys=True))
 
 
+def _guarded(factory: Callable[[RunLayout], SlotProposer], threshold: int) -> Any:  # noqa: ANN401
+    """`factory` behind the confirmatory runner's model-server breaker (`--breaker`): an
+    outage raises `CampaignHalted` before it can fail a cell, so the run crashes and is
+    replaced under the crash rule (section 2 of pilot-banks.md) instead of making banks
+    unavailable."""
+    from av_banks.confirmatory.runner import GuardedProposer, InfrastructureBreaker
+
+    breaker = InfrastructureBreaker(threshold)
+    return lambda layout: GuardedProposer(factory(layout), breaker)
+
+
 def _run(args: argparse.Namespace) -> int:
     plan = _plan(args)
     config = GenerationConfig.read(args.generation_config)
+    proposer = make_proposer(args, config)
     result = run_pilot(
         plan,
         root=args.root,
         config=config,
-        proposer=make_proposer(args, config),
+        proposer=_guarded(proposer, args.breaker) if args.breaker else proposer,
         clock=SystemClock(),
         workers=args.workers,
         parallel_banks=args.parallel_banks,

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/unattended-job.schema.json",
+  "title": "Unattended bank job",
+  "description": "Job file of the unattended bank supervisor (av_banks.unattended, #267): the job root, the model server and the stages in order (pilot banks #27, a confirmatory campaign #28 or its DEMO rehearsal). Relative paths are resolved against the job file's directory. The file lives in restricted storage; committed examples use placeholders only. Defaults are in banks/docs/unattended-run.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "format_version", "job_id", "root", "model", "stages"],
+  "properties": {
+    "format": {"const": "av-banks/unattended-job"},
+    "format_version": {"const": 1},
+    "job_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,62}[A-Za-z0-9]$"},
+    "root": {"type": "string", "minLength": 1, "description": "job root: state, logs and the default stage roots"},
+    "heartbeat_s": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+    "lock_wait_s": {"type": "number", "minimum": 0, "description": "how long a restarted supervisor waits for a child that its killed predecessor left running"},
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": {"type": "string", "pattern": "^https?://", "description": "the OpenAI-compatible server (the --llm-url of the stage commands)"},
+        "runtime": {"type": "string", "minLength": 1},
+        "served_model": {"type": "string", "minLength": 1},
+        "max_wait_s": {"type": "number", "exclusiveMinimum": 0},
+        "poll_initial_s": {"type": "number", "exclusiveMinimum": 0},
+        "poll_max_s": {"type": "number", "exclusiveMinimum": 0},
+        "probe_timeout_s": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"oneOf": [{"$ref": "#/$defs/pilot"}, {"$ref": "#/$defs/confirmatory"}]}
+    }
+  },
+  "$defs": {
+    "name": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"},
+    "path": {"type": "string", "minLength": 1},
+    "positive": {"type": "integer", "minimum": 1, "maximum": 64},
+    "breaker": {"type": "integer", "minimum": 1, "maximum": 11},
+    "pilot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "run_id", "units", "generation_config", "meanings", "prompts", "decoding_schema"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "kind": {"const": "pilot"},
+        "root": {"$ref": "#/$defs/path"},
+        "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,55}[A-Za-z0-9]$"},
+        "demo": {"type": "boolean"},
+        "units": {"$ref": "#/$defs/path"},
+        "generation_config": {"$ref": "#/$defs/path"},
+        "meanings": {"$ref": "#/$defs/path"},
+        "prompts": {"$ref": "#/$defs/path"},
+        "decoding_schema": {"$ref": "#/$defs/path"},
+        "dyads": {"type": "integer", "minimum": 1, "maximum": 99},
+        "spares": {"type": "integer", "minimum": 0, "maximum": 9},
+        "workers": {"$ref": "#/$defs/positive"},
+        "parallel_banks": {"$ref": "#/$defs/positive"},
+        "breaker": {"$ref": "#/$defs/breaker"},
+        "max_restarts": {"type": "integer", "minimum": 0, "maximum": 9},
+        "on_shortfall": {"enum": ["stop", "archive"]},
+        "project_banks": {"type": "integer", "minimum": 1, "maximum": 1000}
+      }
+    },
+    "confirmatory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "meanings", "prompts", "decoding_schema"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "kind": {"const": "confirmatory"},
+        "campaign_root": {"$ref": "#/$defs/path"},
+        "meanings": {"$ref": "#/$defs/path"},
+        "prompts": {"$ref": "#/$defs/path"},
+        "decoding_schema": {"$ref": "#/$defs/path"},
+        "plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["campaign_id", "generation_config", "freeze_manifest", "units"],
+          "properties": {
+            "campaign_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{1,38}[A-Za-z0-9]$"},
+            "generation_config": {"$ref": "#/$defs/path"},
+            "freeze_manifest": {"$ref": "#/$defs/path"},
+            "units": {"$ref": "#/$defs/path"},
+            "repo": {"$ref": "#/$defs/path"},
+            "freeze_repo_path": {"type": "string", "minLength": 1},
+            "pilot_stages": {"type": "array", "items": {"$ref": "#/$defs/name"}, "uniqueItems": true},
+            "pilot": {"type": "array", "items": {"$ref": "#/$defs/path"}},
+            "pilot_namespaces": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "parallel_banks": {"$ref": "#/$defs/positive"}
+          }
+        },
+        "parallel_banks": {"$ref": "#/$defs/positive"},
+        "workers": {"$ref": "#/$defs/positive"},
+        "breaker": {"$ref": "#/$defs/breaker"},
+        "monitor_interval_s": {"type": "number", "exclusiveMinimum": 0},
+        "verify_jobs": {"$ref": "#/$defs/positive"},
+        "only": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^(bank-C|DEMO-C)[0-9]{3}$"}, "uniqueItems": true},
+        "max_rebuilds_per_bank": {"type": "integer", "minimum": 0, "maximum": 9},
+        "register": {"type": "boolean"}
+      }
+    }
+  }
+}
