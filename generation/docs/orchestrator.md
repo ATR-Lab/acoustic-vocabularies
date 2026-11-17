@@ -139,7 +139,10 @@ records per rater, 192 `decision` records, 48 commits in the final store books
 Budget. The protocol's round is 120 s of proposals + 180 s of ratings. The preload lead
 adds 1 s, so a round that uses the whole proposal window takes 301 s (an atom 20 min 4 s,
 an appointment 80 min 16 s, within the 90-min booking). The proposal window usually ends
-early (A2 and A3 take seconds); the round then starts rating at once.
+early (A2 and A3 take seconds); the round then starts rating at once. The 1-s lead over
+the protocol's 5-min round is a known deviation for the owner to accept or remove
+(`tests/generation/test_procedure_conformance.py::test_rule1_round_timeline_parallel_windows_then_nine_rating_slots`
+pins it; `generation/docs/rater-panel.md` section 13).
 
 ## 4. Panel session host
 

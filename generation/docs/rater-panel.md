@@ -98,10 +98,17 @@ Per slot (`slot` message, times on the server clock):
 
 | Time after `start_server_ms` | Station |
 | --- | --- |
-| 0 | candidate starts (scheduled on the audio clock); intended meaning shown |
+| 0 | candidate starts (scheduled on the audio clock); intended meaning and "Candidate k of 9" shown |
 | 2,000 ms | reference starts, if any, and its meaning is shown; without a reference the page says there is no comparison sound and keeps the silence |
 | `unlock_offset_ms` | rating controls unlock (host: reference end, or 2,000 ms without a reference) |
 | 20,000 ms | controls lock; the station waits for the next slot |
+
+"Candidate k of 9" is the slot message's `position`: the slot's place in the round's
+anonymous play order (1..9, three blocks of three in the panel order; #20 sets it to
+`block * 3 + slot`). Placeholders and slots that turn neutral keep their number, so the
+placeholder and "could not be played" screens show it too. It is text, not a control,
+and needs no protocol field: `position` was already in every `slot` message (and in the
+rating-slot ID, `...r<round>p<position>`). It names no book, alias or method.
 
 The host publishes each `slot` event ahead of its start (`panel.SLOT_LEAD_MS` = 500 ms,
 the #20 default); stations schedule the audio on receipt, so any lead above the network
@@ -318,8 +325,10 @@ run outside git.
   page's SHA-256 against `hashlib`; one round on three stations (controls locked before
   the unlock and after 20 s, each sound started once despite keys, clicks and a
   re-sent slot, placeholder screen, logged onsets within 50 ms and skew within 100 ms,
-  private acks, stored ratings); the first-atom slot; a candidate and a reference that
-  fail to load (neutral screen, controls locked, ratings missing); a socket drop, a
+  private acks, stored ratings, "Candidate k of 9" on the slot and placeholder screens);
+  the first-atom slot; a candidate and a reference that
+  fail to load (neutral screen with its candidate number, controls locked, ratings
+  missing); a socket drop, a
   reload and a fresh browser mid-slot without replay; a withdrawal during a socket drop
   (reaches the host; the other station shows the normal end after the broadcast
   `end withdrawn`; the withdrawn seat opened again shows the withdrawn screen); two pages
@@ -336,6 +345,9 @@ run outside git.
   is in no log line and no run file, and the seat keys are in no run file; the command
   line prints URLs that open the seats and refuses a station session over several
   appointments.
+- `tests/generation/test_procedure_conformance.py`: one test per procedure rule (section
+  13) for the panel, the selector, the fallback and the listening tool (#23), on DEMO
+  inputs without people.
 
 ## 11. Decisions
 
@@ -357,6 +369,9 @@ run outside git.
 | CSP `script-src 'self'` and no inline code | enforces "no third-party JS" in the browser |
 | The batch runner draws the secret per session and prints keyed URLs; nothing is written | a key opens one seat for one sitting only; the run directory (restricted, archived) never holds a credential |
 | A station session is one appointment (`--appointment all` refused with stations) | the stations end with the appointment (`end appointment_complete`); a second appointment in the same process would run with no station and store only missing ratings |
+| Station frame vs procedure: no play icon, neither for the candidate nor for the nearest sound | the procedure plays each sound once, automatically, with no participant-controlled replay; a play icon invites clicks and reads as a replay control, and a non-interactive one adds nothing the timed slot does not already show |
+| Station frame vs procedure: the question wording is kept ("How easy is it to link this sound to its meaning?", "How easy is it to tell this sound apart from the comparison sound?", "Is this sound comfortable to hear?" Acceptable / Unacceptable) | the shorter frame labels change what is asked: "Fits the meaning" asks for fit, not ease of association; "Distinct from nearest sound" tells the rater how the reference was chosen; "Yes / No" drops the acceptable/unacceptable judgment the selector counts. The meaning card ("Meaning of this sound") stays as it is |
+| Station frame: "Candidate k of 9" shown (section 4); 20-s progress bar kept | both are in the frame and neither conflicts with the procedure; the number comes from the existing `position` field, so the protocol and its schema are unchanged |
 
 ## 12. In a batch run (#20)
 
@@ -391,3 +406,29 @@ was rated by every bot (128 of 128 per rater, 675 play records) in about 30 s of
 time. At this speed a bot's logged onset lags its schedule by a few real milliseconds
 times 100 (median about 0.6 s of clock time), so this run checks the protocol, keys and
 records, not the onset tolerance (section 9).
+
+## 13. Procedure conformance
+
+`tests/generation/test_procedure_conformance.py` pins the procedure rules that the rater
+panel, the selector, the fallback and the listening tool (#23) must follow, one test (or
+a few, for edge cases) per rule, without people: the orchestrator with simulated
+proposers and the synthetic panel on a manual clock, bot raters over the real panel
+server, and the threshold bot listener over the real listening app. Where the station
+frame and the procedure differ, the procedure wins (section 11).
+
+| Rule | Where | Tests (`test_rule<N>_...`) |
+| --- | --- | --- |
+| 1. 4 rounds per atom; 3 proposal slots of 40 s per method, methods in parallel, slots in sequence (120 s); 9 rating slots of 20 s (180 s); 4 atoms per 90-min session, 4 sessions per batch; 576 slots per rater | `constants`, `orchestrator` (`_proposal_window`, `_rating_window`, `run_appointment`) | `budget_constants_match_the_procedure`, `round_timeline_parallel_windows_then_nine_rating_slots`, `full_batch_is_four_sessions_of_four_atoms_and_576_slots_per_rater` |
+| 2. No method label for raters; rotated anonymous aliases; three blocks of three in the panel's method order; six orders counterbalanced; hand-designed candidates in the same queue | `panel_session`, `panel.slot_message`, `orchestrator.panel_aliases`, `panel_order_schedule`, `_plan_round` | `raters_never_see_method_labels_book_ids_or_aliases`, `books_carry_rotated_anonymous_aliases`, `nine_candidates_in_three_blocks_in_the_panel_method_order`, `six_orders_counterbalanced_across_panels`, `hand_designer_candidates_join_the_same_anonymous_queue` |
+| 3. Meaning shown; candidate once at 0 s; nearest committed motif of the book (ties: lowest atom index) once at 2 s with its meaning; silence without one; no replay; unrated placeholders of the same duration | `orchestrator.nearest_committed`, `_plan_round`, `panel`, station page (section 4) | `slot_timeline_candidate_at_0_reference_at_2s_in_20s_slots`, `reference_is_the_nearest_committed_motif_ties_to_the_lowest_atom_index`, `no_committed_motif_means_silence`, `invalid_candidates_get_unrated_placeholders_of_the_same_duration`, `station_page_has_no_replay_control`, `station_page_shows_candidate_k_of_9`, `bots_hear_each_sound_once_and_never_rate_placeholders` |
+| 4. Association 1-7, distinctness 1-7, comfort acceptable/unacceptable; first atom: no reference, distinctness 4 by rule, never asked | `rater-message.schema.json`, `panel.rating_refusal`, station page, `_orch_host` | `three_fixed_judgments_on_their_scales`, `first_atom_distinctness_is_4_by_rule_and_never_asked` |
+| 5. Score = mean of (association + distinctness) / 2; eligible = valid and at least two comfort approvals; best so far, ties to the earliest slot; commit after round 4 | `selector`, `orchestrator._decide`, `_finish_book_atom` | `score_is_the_mean_over_raters_of_half_sums`, `eligibility_needs_validity_and_two_comfort_approvals`, `incumbent_is_the_best_so_far_and_ties_go_to_the_earliest_slot`, `commit_after_round_4_of_the_best_eligible_candidate` |
+| 6. No eligible candidate after 12 slots: first unused passing recipe of the 64-recipe bank; none: the frozen fallback book replaces the book, which keeps its method label (failed generation) | `av_sound.fallback.scan_fallback`, `orchestrator._finish_book_atom`, `_substitute` | `bank_fallback_after_12_slots_takes_the_first_unused_passing_recipe`, `whole_book_fallback_replaces_the_book_and_keeps_its_method_label` |
+| 7. Listening tool: bins over 0.05-0.20 and identical catch pairs; seeded order, A/B counterbalanced; each pair once, no replay, no feedback; no bin, distance, pair type or answer on the page; CSV and summary (Wilson, logistic fit); tryout never mixed; a bot listener runs a session | `threshold`, `threshold_runner`, `web/threshold/` (`generation/docs/threshold-tool.md`) | `pairs_cover_bins_from_005_to_020_plus_identical_catch_pairs`, `order_is_seeded_and_ab_order_counterbalanced`, `bot_listener_runs_a_whole_session_each_pair_once_no_replay_no_feedback`, `listener_page_never_shows_bin_distance_pair_type_or_answer`, `tryout_data_never_mixes_with_listener_data` |
+
+Known deviation (rule 1): the orchestrator publishes each round's preload 1 s
+(`preload_lead_ms`) before the round's first rating slot, after the proposal window. A
+round whose proposal window runs to its 120-s cap therefore takes 301 s and an atom
+20 min 4 s (four atoms: 80 min 16 s, inside the 90-min session). The conformance test
+pins this; removing that 1 s would need the preload to start before the proposal
+window closes (`generation/docs/orchestrator.md`, section 3, "Budget").

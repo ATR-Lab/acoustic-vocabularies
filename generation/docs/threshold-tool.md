@@ -340,6 +340,7 @@ synthetic plots as artifacts.
 | A trials CSV belongs to the named set | `check_trials_csv`, `summary --stimuli` |
 | Real listener data never inside a git work tree | `check_output_dir` (`export_run`, `export_csv`, `export` and `summary` commands), `write_stimuli` for sets |
 | Summary reproduces hand-computed proportions | `tests/generation/fixtures/threshold/hand-summary.csv` (computed by hand with Decimal arithmetic from `hand-trials.csv`) |
+| Procedure rules end to end with a bot listener: bins and catch pairs, seeded and counterbalanced order, each pair once without replay or feedback, nothing on the page or in the API replies names the bin, distance, pair type or answer, CSV and summary, tryout kept apart | `tests/generation/test_procedure_conformance.py` (`test_rule7_*`; `generation/docs/rater-panel.md` section 13) |
 
 ## 7. Decisions
 
