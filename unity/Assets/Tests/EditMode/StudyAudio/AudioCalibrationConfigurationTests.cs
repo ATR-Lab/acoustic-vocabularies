@@ -25,6 +25,16 @@ namespace AcousticVocab.Tests.StudyAudio
             value=Example();value["examples"]["P2"]["file"]="../messages/heldout.wav";
             Assert.Throws<AudioIntegrityException>(()=>Load(value));
         }
+        [Test] public void OptionalGainSourceNamesTheScreeningCodeAndAllocationReceipt()
+        {
+            Assert.That(Load(Example()).GainSourceCodedId,Is.Null);
+            var value=Example();value["gain_source"]=new JObject{["coded_id"]="SCR-01",["allocation_receipt_sha256"]=new string('c',64)};
+            var loaded=Load(value);Assert.That(loaded.GainSourceCodedId,Is.EqualTo("SCR-01"));Assert.That(loaded.GainSourceReceiptSha256,Is.EqualTo(new string('c',64)));
+            value["gain_source"]["coded_id"]=value["coded_id"];Assert.Throws<AudioIntegrityException>(()=>Load(value));
+            value["gain_source"]["coded_id"]="../SCR";Assert.Throws<AudioIntegrityException>(()=>Load(value));
+            value["gain_source"]=new JObject{["coded_id"]="SCR-01",["allocation_receipt_sha256"]="abc"};Assert.Throws<AudioIntegrityException>(()=>Load(value));
+            value["gain_source"]=new JObject{["coded_id"]="SCR-01",["allocation_receipt_sha256"]=new string('c',64),["gain"]=0.5};Assert.Throws<AudioIntegrityException>(()=>Load(value));
+        }
         [Test] public void ProfileOrderMustBeACompleteStoredPermutation()
         {
             var value=Example();value["profile_order"]=new JArray("P1","P1","P3");Assert.Throws<AudioIntegrityException>(()=>Load(value));

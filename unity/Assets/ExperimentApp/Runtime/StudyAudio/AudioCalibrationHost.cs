@@ -22,6 +22,10 @@ namespace AcousticVocab.StudyAudio
         public bool DesktopPreview { get; private set; }
         public long BudgetBytes { get; private set; }
         public IReadOnlyList<string> ProfileOrder { get; private set; }
+        // Optional: after allocation, the slot's level starts from the gain
+        // recorded under this screening code, bound to the allocation receipt.
+        public string GainSourceCodedId { get; private set; }
+        public string GainSourceReceiptSha256 { get; private set; }
         readonly Dictionary<string,JObject> examples=new Dictionary<string,JObject>();
         // Public #14 reserved registry, asset spec0.1.0. These pins ensure that
         // changing a private filename/hash cannot smuggle study audio here.
@@ -38,7 +42,9 @@ namespace AcousticVocab.StudyAudio
             try
             {
                 PackageRules.Require(bytes!=null && bytes.Length<=65536); var value=PackageRules.Json(bytes);
-                PackageRules.Keys(value,"schema_version","coded_id","visit_id","profile_order","examples","preload_budget_bytes","engineering_desktop_preview");
+                bool carried=value.Property("gain_source")!=null;
+                if(carried) PackageRules.Keys(value,"schema_version","coded_id","visit_id","profile_order","examples","preload_budget_bytes","engineering_desktop_preview","gain_source");
+                else PackageRules.Keys(value,"schema_version","coded_id","visit_id","profile_order","examples","preload_budget_bytes","engineering_desktop_preview");
                 PackageRules.Require(PackageRules.Integer(value["schema_version"])==1);
                 string id=PackageRules.String(value["coded_id"]),visit=PackageRules.String(value["visit_id"]);
                 PackageRules.Require(PackageRules.Match(id,"[A-Za-z0-9][A-Za-z0-9._-]{0,79}") && PackageRules.Match(visit,"[0-9a-f]{32}"));
@@ -47,6 +53,13 @@ namespace AcousticVocab.StudyAudio
                 long budget=PackageRules.Integer(value["preload_budget_bytes"]); PackageRules.Require(budget>=2880000 && budget<=64*1024*1024);
                 var result=new AudioCalibrationConfiguration { CodedId=id,VisitId=visit,ConfigSha256=PcmWave.Hash(bytes),
                     DesktopPreview=PackageRules.Boolean(value["engineering_desktop_preview"]),BudgetBytes=budget,ProfileOrder=Array.AsReadOnly(order) };
+                if(carried)
+                {
+                    var source=value["gain_source"];PackageRules.Keys(source,"coded_id","allocation_receipt_sha256");
+                    string from=PackageRules.String(source["coded_id"]),receipt=PackageRules.String(source["allocation_receipt_sha256"]);
+                    PackageRules.Require(PackageRules.Match(from,"[A-Za-z0-9][A-Za-z0-9._-]{0,79}") && from!=id && PackageRules.Match(receipt,"[0-9a-f]{64}"));
+                    result.GainSourceCodedId=from;result.GainSourceReceiptSha256=receipt;
+                }
                 PackageRules.Keys(value["examples"],"P1","P2","P3");
                 for(int i=0;i<3;i++)
                 {
@@ -123,7 +136,7 @@ namespace AcousticVocab.StudyAudio
                 sequence=new ProfileComfortSequence(config.ProfileOrder.ToArray()); sequence.Answer+=OnAnswer;
                 player.Event+=OnAudioEvent;
                 player.Configure(AudioRouteCalibration.Unmeasured((string)foundation.Configuration["audio"]["route"]),Gate);
-                float restored=gains.Restore(config.CodedId); player.SetComfortableGain(restored); player.Preload(examples,config.BudgetBytes);
+                float restored=config.GainSourceCodedId==null?gains.Restore(config.CodedId):gains.RestoreOrCarry(config.GainSourceCodedId,config.CodedId,config.GainSourceReceiptSha256,AudioPlayer.Now); player.SetComfortableGain(restored); player.Preload(examples,config.BudgetBytes);
                 Write("calibration_preloaded",new JObject { ["gain"]=restored,["estimated_preload_bytes"]=player.EstimatedPreloadBytes,
                     ["unity_allocated_bytes"]=player.UnityAllocatedBytes,["file_sha256"]=new JArray(AudioCalibrationConfiguration.FileHashes),["pcm_sha256"]=new JArray(AudioCalibrationConfiguration.PcmHashes) });
                 listenButton.onClick.AddListener(BeginProfile); quieterButton.onClick.AddListener(()=>ChangeGain(-.05f)); louderButton.onClick.AddListener(()=>ChangeGain(.05f));

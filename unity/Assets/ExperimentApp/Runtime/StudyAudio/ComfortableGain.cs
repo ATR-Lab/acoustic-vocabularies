@@ -35,12 +35,17 @@ namespace AcousticVocab.StudyAudio
             float gain=InitialGain;
             if(text.Length==0) return gain;
             if(text.Length>1048576 || !text.EndsWith("\n",StringComparison.Ordinal)) throw new AudioFault("GAIN_HISTORY_INVALID");
+            bool first=true;
             foreach(string line in text.Split('\n'))
             {
                 if(line.Length==0) continue;
                 JObject row;
                 try { row=JObject.Parse(line,new JsonLoadSettings { DuplicatePropertyNameHandling=DuplicatePropertyNameHandling.Error }); }
                 catch { throw new AudioFault("GAIN_HISTORY_INVALID"); }
+                bool carried=(string)row["event"]=="comfort_gain_carried";
+                if(carried && !first) throw new AudioFault("GAIN_HISTORY_INVALID");
+                first=false;
+                if(carried) { gain=CarriedGain(row,line,codedId);continue; }
                 if(row.Count!=6 || (string)row["event"]!="comfort_gain_changed" || (string)row["coded_id"]!=codedId ||
                     row["old_gain"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
                     row["new_gain"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
@@ -54,6 +59,23 @@ namespace AcousticVocab.StudyAudio
             }
             return gain;
         }
+        // A carried row opens the history of an allocated slot. It copies the exact
+        // gain recorded under the screening code, bound to the allocation receipt,
+        // so the level chosen before allocation is the level used at every visit.
+        static float CarriedGain(JObject row,string line,string codedId)
+        {
+            if(row.Count!=7 || (string)row["coded_id"]!=codedId ||
+                row["source_coded_id"]?.Type!=JTokenType.String || !Regex.IsMatch((string)row["source_coded_id"],CodePattern) || (string)row["source_coded_id"]==codedId ||
+                row["source_history_sha256"]?.Type!=JTokenType.String || !Regex.IsMatch((string)row["source_history_sha256"],"\\A[0-9a-f]{64}\\z") ||
+                row["allocation_receipt_sha256"]?.Type!=JTokenType.String || !Regex.IsMatch((string)row["allocation_receipt_sha256"],"\\A[0-9a-f]{64}\\z") ||
+                row["gain"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
+                row["mono_s"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
+                row.ToString(Formatting.None)!=line) throw new AudioFault("GAIN_HISTORY_INVALID");
+            double value=(double)row["gain"],mono=(double)row["mono_s"];
+            if(!AudioRouteCalibration.Finite(value) || value<=0 || value>1 || !AudioRouteCalibration.Finite(mono) || mono<0) throw new AudioFault("GAIN_HISTORY_INVALID");
+            return (float)value;
+        }
+        const string CodePattern="\\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\z";
         public static float RestoreVerified(byte[] bytes,string expectedRawSha256,string codedId)
         {
             if(bytes==null||bytes.Length==0||bytes.Length>1048576||PcmWave.Hash(bytes)!=expectedRawSha256||codedId==null||!Regex.IsMatch(codedId,@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z"))throw new AudioFault("GAIN_HISTORY_INVALID");
@@ -65,6 +87,42 @@ namespace AcousticVocab.StudyAudio
             if(!File.Exists(path)) return InitialGain;
             if(new FileInfo(path).Length>1048576) throw new AudioFault("GAIN_HISTORY_INVALID");
             return Read(File.ReadAllText(path,Encoding.UTF8),codedId);
+        }
+        // Starts an allocated slot's history from the gain recorded under its
+        // screening code. Never invents a gain and never overwrites a history:
+        // the source must hold at least one recorded row and the slot must be new.
+        public float CarryForward(string sourceCodedId,string codedId,string allocationReceiptSha256,double monoSeconds)
+        {
+            if(sourceCodedId==codedId || allocationReceiptSha256==null || !Regex.IsMatch(allocationReceiptSha256,"\\A[0-9a-f]{64}\\z") ||
+                !AudioRouteCalibration.Finite(monoSeconds) || monoSeconds<0) throw new AudioFault("GAIN_CARRY_INVALID");
+            string source=FileFor(sourceCodedId),target=FileFor(codedId);
+            if(!File.Exists(source) || new FileInfo(source).Length==0) throw new AudioFault("GAIN_CARRY_SOURCE_MISSING");
+            if(new FileInfo(source).Length>1048576) throw new AudioFault("GAIN_HISTORY_INVALID");
+            byte[] bytes=File.ReadAllBytes(source);
+            float gain=Read(new UTF8Encoding(false,true).GetString(bytes),sourceCodedId);
+            var row=new JObject { ["event"]="comfort_gain_carried",["coded_id"]=codedId,["source_coded_id"]=sourceCodedId,
+                ["source_history_sha256"]=PcmWave.Hash(bytes),["allocation_receipt_sha256"]=allocationReceiptSha256,["gain"]=gain,["mono_s"]=monoSeconds };
+            byte[] line=new UTF8Encoding(false).GetBytes(row.ToString(Formatting.None)+"\n");
+            try
+            {
+                using var stream=new FileStream(target,FileMode.CreateNew,FileAccess.Write,FileShare.Read,4096,FileOptions.WriteThrough);
+                stream.Write(line,0,line.Length);stream.Flush(true);
+            }
+            catch(IOException) when(File.Exists(target)) { throw new AudioFault("GAIN_CARRY_TARGET_EXISTS"); }
+            return gain;
+        }
+        // Idempotent relaunch: an existing slot history must have been carried
+        // from the same screening code and allocation receipt.
+        public float RestoreOrCarry(string sourceCodedId,string codedId,string allocationReceiptSha256,double monoSeconds)
+        {
+            string target=FileFor(codedId);
+            if(!File.Exists(target)) return CarryForward(sourceCodedId,codedId,allocationReceiptSha256,monoSeconds);
+            string text=File.ReadAllText(target,Encoding.UTF8);
+            JObject head;
+            try { head=JObject.Parse(text.Substring(0,Math.Max(0,text.IndexOf('\n')))); } catch { throw new AudioFault("GAIN_HISTORY_INVALID"); }
+            if((string)head["event"]!="comfort_gain_carried" || (string)head["source_coded_id"]!=sourceCodedId ||
+                (string)head["allocation_receipt_sha256"]!=allocationReceiptSha256) throw new AudioFault("GAIN_CARRY_MISMATCH");
+            return Restore(codedId);
         }
         public GainChange ChangeForComfort(string codedId,string visitId,float value,double monoSeconds,bool audioIdle)
         {
