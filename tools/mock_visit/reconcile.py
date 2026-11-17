@@ -24,6 +24,7 @@ from .records import (
     validate_data_payload, verify_chain,
 )
 from . import native, content, provenance
+from . import operator_logs
 
 MAX_FILE = 64 * 1024**2
 MAX_CAPTURE = 1024**3
@@ -47,6 +48,8 @@ EXPECTED = {
 STATES = ["Loaded", "Ready", "CueRequested", "ResponseOpen", "Closed", "Reset", "Done"]
 TRIAL_COLUMNS = "schema_version session_id coded_id visit_id station_id opportunity_id attempt_id retry_of method_masked waveform_sha256 audio_request_mono_ms audio_onset_estimate_mono_ms onset_uncertainty_ms playback_status frame_freeze_ms reset_ok focus_ok response_code technical_fault_code exposure_consumed deviation_id interrupted audio_request_ids selected_target selected_action response_target response_action".split()
 EXPOSURE_COLUMNS = "schema_version session_id coded_id visit_id station_id opportunity_id attempt_id audio_request_id retry_of yoked_source_event_id candidate_id accepted_or_rejected audio_id waveform_sha256 audio_request_mono_ms scheduled_onset_mono_ms audio_onset_estimate_mono_ms onset_uncertainty_ms playback_status audible_status callback_observed pause_ms matching_deviation_id exposure_consumed technical_fault_code".split()
+# Retained operator-console audit and player operator logs (#293).
+KINDS = KINDS | operator_logs.KINDS
 
 
 def relative(value):
@@ -476,6 +479,7 @@ def reconcile(manifest_path, expected_hash):
         config=config,config_root=(root/m["config"]["path"]).parent,schedule=schedule,joined=joined,menu_chains=supplemental["menu_journal"],role=m["role"])
     incomplete.update(content_missing)
     if artifacts["operator_journal"]: incomplete.update(native.operator(supplemental["operator_journal"], m["schedule"]["sha256"]))
+    incomplete.update(operator_logs.verify(artifacts, capability["protocol_version"], m["schedule"]["sha256"]))
     return {"version": 1, "scope": "SIMULATION_TEST", "manifest_sha256": expected_hash,
             "source_commit": m["source_commit"], "study": m["study"], "visit": m["visit"], "role": m["role"],
             "integrity_verified": True, "software_reconciliation_complete": not incomplete,

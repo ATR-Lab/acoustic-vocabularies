@@ -97,6 +97,48 @@ the contents or meaning of video.
   material attestations are checked. Ordinary `approved:true` records cannot
   substitute for the separate `SIMULATION_TEST` attestation shape.
 
+## Retained operator logs (#293)
+
+Fault investigations need the operator-side logs, so each run keeps them with
+its evidence. Add two options to the emitter command above:
+
+```text
+--console-audit runtime/evidence/<console-audit>.jsonl --operator-log <player operator-logs>/<file> [--operator-log ...]
+```
+
+- `--console-audit` names the operator-console audit journal, relative to the
+  run root. In simulation mode `ops.console` already confines it to the run's
+  evidence directory. Stop the console first: the emitter refuses while
+  `<audit>.lock` exists. It re-verifies the hash chain, requires the
+  `<audit>.tip` beside it, and requires the capability's protocol on every row.
+  The manifest lists the files as `console_audit` and `console_audit_tip`.
+- The player writes `foundation-*`, `panel-*` and `audio-calibration-*`
+  journals and `sample-age-*.csv` under its own
+  `persistentDataPath/operator-logs`, outside the run root. That directory
+  accumulates across launches. List it before launch and after exit, and pass
+  each new file with `--operator-log`. The emitter copies the bytes, create-new,
+  to `operator-logs/<name>` in the run root and lists them as `operator_log`. An
+  identical existing copy is accepted; a different one is refused
+  (`MOCK_OPERATOR_LOG_CONFLICT`). Files the harness already placed in an
+  `operator-logs/` directory inside the root are classified the same way. Names
+  must match `<kind>-<32 hex>.jsonl|csv` (`MOCK_OPERATOR_LOG_NAME`).
+- No retained log may carry an answer field. Every JSON key (at any depth) and
+  every CSV column is checked. A key is refused
+  (`MOCK_OPERATOR_LOG_ANSWER_FIELD`) if its `_`-separated tokens include
+  `answer`, `correct`, `correctness` or `intended`, or if it contains
+  `target_action`, `target_referent`, `semantic_action` or `semantic_referent`.
+  This happens before anything is written. The build identity's `target` and
+  recorded participant responses (`response_target`, `selected_action`, ...)
+  are not answer fields. Values are not interpreted. Orientation journals
+  record practice correctness and belong to screening evidence, so they are
+  refused here.
+
+The reconciler checks the same rules again on the hashed bytes. A run without
+these logs is not refused but stays incomplete: `CONSOLE_AUDIT_MISSING`,
+`OPERATOR_LOGS_MISSING`, or `CONSOLE_AUDIT_SCHEDULE_UNBOUND` when the audit has
+no `load_requested` row for this run's schedule hash. These are private logs;
+do not publish them.
+
 ## Suite plan and executable order
 
 `python -m tools.mock_visit.suite --plan <private-plan.json> --sha256 <raw-pin>
