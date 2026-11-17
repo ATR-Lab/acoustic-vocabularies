@@ -8,6 +8,7 @@ using AcousticVocab.StateIntegration;
 using AcousticVocab.StateSources;
 using AcousticVocab.Workcell;
 using Newtonsoft.Json.Linq;
+using AcousticVocab.Theme;
 using UnityEngine;
 using UnityEngine.XR;
 using UnityEngine.XR.Hands;
@@ -172,7 +173,7 @@ namespace AcousticVocab.Orientation
                     case OrientationStage.RecordedOutcome:title.text="Outcome recorded";body.text=Wrap(prefix+(Flow.Outcome.Passed?"The check is complete. Please wait for the operator.":"The second check is complete. Please speak with the operator.")+"\nNo allocation is revealed here.");buttonText.text="Wait for operator";buttonEnabled=false;break;
                 }
             }
-            buttonSurface.sharedMaterial.color=buttonEnabled?new Color(.12f,.3f,.4f):new Color(.08f,.09f,.1f);
+            buttonSurface.sharedMaterial.color=StudyTheme.SurfaceFor(buttonEnabled,false);
         }
         static string Wrap(string text)
         {
@@ -189,7 +190,7 @@ namespace AcousticVocab.Orientation
             if(shader==null||font==null)throw new OrientationFault("ORIENTATION_RENDER_RESOURCES");
             display=new GameObject("Silent orientation screen").transform;display.SetParent(foundation.presentationRoot.transform,false);
             display.SetPositionAndRotation(reference.position+reference.rotation*new Vector3(0,.24f,.95f),reference.rotation);
-            textBackingMaterial=new Material(shader){color=new Color(.035f,.045f,.06f)};
+            textBackingMaterial=new Material(shader){color=StudyTheme.PanelFill};
             var backing=GameObject.CreatePrimitive(PrimitiveType.Cube);backing.transform.SetParent(display,false);backing.transform.localScale=new Vector3(.72f,.28f,.012f);DisposeObject(backing.GetComponent<Collider>());backing.GetComponent<Renderer>().sharedMaterial=textBackingMaterial;
             title=Label(display,new Vector3(0,.095f,-.012f),.012f);body=Label(display,new Vector3(0,.015f,-.012f),.008f);
             var key=GameObject.CreatePrimitive(PrimitiveType.Cube);key.transform.SetParent(display,false);key.transform.localPosition=new Vector3(0,-.102f,-.005f);key.transform.localScale=new Vector3(.32f,.045f,.015f);
@@ -201,7 +202,7 @@ namespace AcousticVocab.Orientation
         TextMesh Label(Transform parent,Vector3 position,float height)
         {
             var label=new GameObject("Silent text").AddComponent<TextMesh>();label.transform.SetParent(parent,false);label.transform.localPosition=position;
-            label.font=font;label.fontSize=100;label.characterSize=.01f;label.anchor=TextAnchor.MiddleCenter;label.alignment=TextAlignment.Center;label.richText=false;label.color=Color.white;label.text="A";
+            label.font=font;label.fontSize=100;label.characterSize=.01f;label.anchor=TextAnchor.MiddleCenter;label.alignment=TextAlignment.Center;label.richText=false;label.color=StudyTheme.TextPrimary;label.text="A";
             label.GetComponent<Renderer>().sharedMaterial=font.material;
             label.transform.localScale=Vector3.one*(height/PanelTypography.LocalInkHeight(label));return label;
         }

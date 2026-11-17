@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using AcousticVocab.Foundation;
 using AcousticVocab.ResponsePanel;
 using AcousticVocab.Teaching;
+using AcousticVocab.Theme;
 using UnityEngine;
 using UnityEngine.XR;
 using UnityEngine.XR.Hands;
@@ -56,7 +57,7 @@ namespace AcousticVocab.Assessment
         {
             var label=new GameObject("Assessment text").AddComponent<TextMesh>();label.transform.SetParent(parent,false);label.transform.localPosition=position;
             label.font=font;label.GetComponent<MeshRenderer>().sharedMaterial=font.material;label.fontSize=100;label.characterSize=.01f;
-            label.anchor=TextAnchor.MiddleCenter;label.alignment=TextAlignment.Center;label.color=Color.white;label.text=value;
+            label.anchor=TextAnchor.MiddleCenter;label.alignment=TextAlignment.Center;label.color=StudyTheme.TextPrimary;label.text=value;
             Fit(label,width,height);return label;
         }
         static void Fit(TextMesh label,float width,float height)
@@ -117,7 +118,7 @@ namespace AcousticVocab.Assessment
                 int i=value-item.Minimum;var button=GameObject.CreatePrimitive(PrimitiveType.Cube);button.name="Rating choice";
                 button.transform.SetParent(root,false);button.transform.localPosition=new Vector3((i%6-2.5f)*.12f,-.13f-(i/6)*.1f,0);
                 button.transform.localScale=new Vector3(.095f,.075f,.012f);
-                var material=new Material(unlitShader){color=new Color(.075f,.085f,.095f)};materials.Add(material);button.GetComponent<MeshRenderer>().sharedMaterial=material;
+                var material=new Material(unlitShader){color=StudyTheme.SurfaceEnabled};materials.Add(material);button.GetComponent<MeshRenderer>().sharedMaterial=material;
                 var label=Label(button.transform,value.ToString(),new Vector3(0,0,-.7f),.55f,.45f);
                 buttons.Add((button.GetComponent<BoxCollider>(),value));
             }
