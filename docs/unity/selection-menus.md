@@ -82,6 +82,9 @@ late or malformed segments remain on disk but cannot authorize yoked replay.
 An interruption's event ID is also its `matching_deviation_id`; recovery never
 automatically repeats a partial exposure. Explicit reconstruction/owner review is
 needed before a replacement active sequence can be admitted.
+Decided rule (#280): an interrupted active menu is never replayed; the menu stays
+fail-closed and the assigned partner gets no replay of it, since no matching
+exposure exists ([tests](../../unity/Assets/Tests/EditMode/SelectionMenus/MenuInterruptFailClosedTests.cs)).
 
 `MenuReplaySequence.Load` requires an independently pinned sealed active-file
 hash and active binding, verifies canonical bytes/hash chain/schema, independent
