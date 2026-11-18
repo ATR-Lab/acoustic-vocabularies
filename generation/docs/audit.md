@@ -253,8 +253,8 @@ uv run --project generation python -m av_generation._audit_synth generation/runs
 ```
 
 `tests/generation/test_audit.py` rebuilds it and compares bytes on Linux, macOS and
-Windows; CI uploads the full synthetic run and report as the `generation-ci-<os>`
-artifact (`generation/out/ci/audit/`).
+Windows; CI uploads the full synthetic run and report as the `generation-ci-<os>-unit`
+artifact of the unit job (`generation/out/ci/audit/`).
 
 ## Pending
 

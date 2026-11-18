@@ -27,13 +27,30 @@ concurrency:
 
 jobs:
   test:
-    name: generation (${{ matrix.os }})
+    # Two jobs per OS (#304): `unit` (lint, types, every test file except the end-to-end
+    # runs) and `e2e` (the end-to-end runs below), so each Windows job stays well under its
+    # limit as more end-to-end runs land. The `coverage` job combines both jobs' coverage
+    # per OS and keeps the 85% floor.
+    name: generation ${{ matrix.suite }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        suite: [unit, e2e]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    env:
+      COVERAGE_FILE: .coverage.${{ matrix.suite }}
+      # End-to-end runs: whole appointments or batches through the orchestrator, the batch
+      # runner and its keyed station sessions, and the dry run. A new end-to-end test file
+      # goes here; any other file runs in the unit job.
+      E2E_TESTS: >-
+        tests/generation/test_batch_runner.py
+        tests/generation/test_dry_run.py
+        tests/generation/test_orchestrator.py
+        tests/generation/test_orchestrator_resume.py
+        tests/generation/test_rater_panel_runner.py
+        tests/generation/test_round_fallback.py
     defaults:
       run:
         shell: bash
@@ -49,19 +66,38 @@ jobs:
       - name: Install (Python 3.11, locked; av-sound from ../sound)
         run: uv sync --project generation --locked
       - name: Lint and format
+        if: matrix.suite == 'unit'
         run: |
           uv run --project generation ruff check --config generation/pyproject.toml generation tests/generation
           uv run --project generation ruff format --config generation/pyproject.toml --check generation tests/generation
       - name: Type check
+        if: matrix.suite == 'unit'
         working-directory: generation
         run: uv run mypy
-      - name: Tests (no browser)
-        run: >
-          uv run --project generation pytest --import-mode=importlib -p no:cacheprovider
-          --timeout=300 -m "not browser" tests/generation
-          --cov=av_generation --cov-config=generation/pyproject.toml --cov-report=term
-          --cov-fail-under=85
+      - name: Tests (unit, no browser)
+        if: matrix.suite == 'unit'
+        run: |
+          read -ra e2e <<< "$E2E_TESTS"
+          uv run --project generation pytest --import-mode=importlib -p no:cacheprovider \
+            --timeout=300 -m "not browser" tests/generation "${e2e[@]/#/--ignore=}" \
+            --cov=av_generation --cov-config=generation/pyproject.toml --cov-report=
+      - name: Tests (end-to-end runs, no browser)
+        if: matrix.suite == 'e2e'
+        run: |
+          read -ra e2e <<< "$E2E_TESTS"
+          uv run --project generation pytest --import-mode=importlib -p no:cacheprovider \
+            --timeout=300 -m "not browser" "${e2e[@]}" \
+            --cov=av_generation --cov-config=generation/pyproject.toml --cov-report=
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-${{ matrix.suite }}
+          path: .coverage.${{ matrix.suite }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
       - name: Seed fingerprint
+        if: matrix.suite == 'unit'
         run: |
           uv run --project generation python - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
           import platform, sys
@@ -75,10 +111,49 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: generation-ci-${{ matrix.os }}
+          # e2e keeps the documented `generation-ci-<os>` name (orchestrator, batch runner,
+          # station and dry-run outputs); the unit job's outputs (audit, benchmark,
+          # threshold tool) are `generation-ci-<os>-unit`.
+          name: generation-ci-${{ matrix.os }}${{ matrix.suite == 'unit' && '-unit' || '' }}
           path: generation/out/ci/**
           if-no-files-found: ignore
           retention-days: 30
+
+  coverage:
+    # The 85% floor on the unit and e2e tests together, per OS, on the same OS (the data
+    # files hold the runner's absolute paths).
+    name: generation coverage (${{ matrix.os }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.11.10"
+          enable-cache: true
+          cache-dependency-glob: generation/uv.lock
+      - name: Install (Python 3.11, locked; av-sound from ../sound)
+        run: uv sync --project generation --locked
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-${{ matrix.os }}-*
+          merge-multiple: true
+      - name: Combined coverage (unit + e2e; floor 85%)
+        run: |
+          uv run --project generation coverage combine --rcfile=generation/pyproject.toml \
+            .coverage.unit .coverage.e2e
+          uv run --project generation coverage report --rcfile=generation/pyproject.toml \
+            --fail-under=85
 
   browser:
     name: generation browser tests (ubuntu, Chromium)
