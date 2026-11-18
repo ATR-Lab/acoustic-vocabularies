@@ -16,6 +16,8 @@ V1_DAYS_AGO = {'V1': 0, 'V2': 2, 'V3': 4}  # Centre of each calendar window.
 def anchors(visit, active_age, ended_age=timedelta(minutes=10)):
     """Yoked anchors: the active partner started `active_age` and closed `ended_age` before NOW."""
     values = {'V1': (TODAY-timedelta(days=V1_DAYS_AGO[visit])).isoformat(), 'active': (NOW-active_age).isoformat()}
+    if visit == 'V3':
+        values['V2'] = (TODAY-timedelta(days=1)).isoformat()  # Held V2 on an earlier day.
     if ended_age is not None:
         values['active_end'] = dict(session_id='S-ACTIVE-01', ended_utc=(NOW-ended_age).isoformat())
     return values
