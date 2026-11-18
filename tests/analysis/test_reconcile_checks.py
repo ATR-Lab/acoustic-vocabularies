@@ -421,6 +421,48 @@ def test_c7_early_visit_and_order(root, visits):
     assert visit_date(None) is None
 
 
+def shift_sheet(root, vid, delta):
+    def move(rows):
+        for r in rows:
+            for col in ("start_time", "end_time"):
+                r[col] = (datetime.fromisoformat(r[col]) + delta).isoformat()
+
+    edit(root, vid, "visit-run-sheet.csv", move)
+
+
+def c7_details(root, vid):
+    report = reconcile_visit(root, vid)
+    return [(d.code, d.detail) for c in report.checks if c.check == "C7" for d in c.discrepancies]
+
+
+def test_c7_study_b_v3_on_the_same_day_as_v2_is_out_of_order(root, visits):
+    """REQ-VIS-01: V3 on V2's calendar day is VISIT_ORDER even with both inside their
+    windows (V1 day 0; V2 and V3 both on day 3)."""
+    shift_sheet(root, visits["V2"], timedelta(days=1))
+    shift_sheet(root, visits["V3"], timedelta(days=-1))
+    assert c7_details(root, visits["V3"]) == [("VISIT_ORDER", "not on a later date than V2")]
+    assert codes(reconcile_visit(root, visits["V2"]), "C7") == []
+
+
+def test_c7_study_b_v3_needs_only_a_later_calendar_day_than_v2(root, visits):
+    """REQ-VIS-01: the order is by calendar day in the recorded offset, not elapsed time:
+    V2 at 23:30 and V3 an hour later, after midnight, is in order."""
+    shift_sheet(root, visits["V2"], timedelta(hours=14, minutes=20))
+    shift_sheet(root, visits["V3"], -timedelta(days=1, hours=8, minutes=40))
+    sheets = {k: read_rows(root, visits[k], "visit-run-sheet.csv")[1] for k in ("V2", "V3")}
+    v2, v3 = (datetime.fromisoformat(sheets[k][0]["start_time"]) for k in ("V2", "V3"))
+    assert (v3.date() - v2.date()).days == 1 and v3 - v2 == timedelta(hours=1)
+    assert c7_details(root, visits["V3"]) == []
+
+
+def test_c7_study_b_v3_without_a_held_v2_is_out_of_order(root, visits):
+    """REQ-VIS-01: V3 cannot be reconciled as in order when V2 has no raw logs."""
+    shutil.rmtree(root.raw_visit_dir(visits["V2"]))
+    assert c7_details(root, visits["V3"]) == [
+        ("VISIT_ORDER", "V2 must precede this visit and has no raw logs or no recorded date")
+    ]
+
+
 # ---------------------------------------------------------------------------------------
 # C8 and deviation links
 
