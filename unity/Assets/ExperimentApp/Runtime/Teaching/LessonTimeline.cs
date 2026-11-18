@@ -132,6 +132,20 @@ namespace AcousticVocab.Teaching
             if(next!=Highlight)
             {Emit("highlight_request",now,edge,highlight:next.ToString().ToLowerInvariant());Highlight=next;HighlightChanged?.Invoke(next);Emit("highlight",now,edge,highlight:next.ToString().ToLowerInvariant());}
         }
+        // Read-only view helper for the aligned playhead: how far the lit label's
+        // motif has progressed (0..1), from the same qualified onsets and sample
+        // counts that drive the highlight above. Null whenever no label is lit,
+        // so static lessons and atomic lessons never get a playhead. It never
+        // advances the clock, emits a record or changes any state.
+        public float? PlayheadAt(double now)
+        {
+            if(!aligned||interrupted||Highlight==LessonHighlight.None||double.IsNaN(now)||double.IsInfinity(now))return null;
+            int i=Phase==LessonDisplayPhase.Definition?0:Phase==LessonDisplayPhase.Feedback?2:-1;
+            if(i<0||!onsets[i].HasValue)return null;
+            double start=onsets[i].Value,aEnd=start+actionSamples/48d,rStart=aEnd+200,rEnd=rStart+referentSamples/48d;
+            double from=Highlight==LessonHighlight.Action?start:rStart,to=Highlight==LessonHighlight.Action?aEnd:rEnd;
+            return (float)Math.Min(1,Math.Max(0,(now-from)/(to-from)));
+        }
         public void Onset(string audioId,double onsetMonoMs,double uncertaintyMs,double now)
         {
             Clock(now);int i=Array.IndexOf(context.AudioRequestIds.ToArray(),audioId);

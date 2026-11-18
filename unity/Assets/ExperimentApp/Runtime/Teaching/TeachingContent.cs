@@ -129,6 +129,12 @@ namespace AcousticVocab.Teaching
                 Timeline.DisplayChanged+=(phase,feedback)=>
                 {if(phase==LessonDisplayPhase.Definition||phase==LessonDisplayPhase.Feedback)owner.view.Show(Context.Item.TrialId,Material.Display,feedback==null?null:owner.catalog.FeedbackText(feedback));else owner.view.Hide(Context.Item.TrialId);};
                 Timeline.HighlightChanged+=highlight=>owner.view.Highlight(Context.Item.TrialId,highlight);
+                // Storyboard step chips follow the same display events, after Show/Hide.
+                if(owner.view is ILessonStoryView story)
+                {
+                    var question=Material.Atomic?(context.Item.Role=="action"?LessonQuestion.Action:LessonQuestion.Target):LessonQuestion.Message;
+                    Timeline.DisplayChanged+=(phase,_)=>story.Step(Context.Item.TrialId,phase,question);
+                }
                 initialReset=owner.backend.RequestReset();prepared=true;
             }
             internal bool Retired => Timeline!=null&&Timeline.Ended&&finalRenderer;
@@ -149,6 +155,8 @@ namespace AcousticVocab.Teaching
             {
                 if(!initialRenderer&&initialReset!=null&&owner.backend.ResetAcknowledged(initialReset))initialRenderer=owner.source.ConfirmReset();
                 Timeline?.Tick(now);
+                // Read-only: the aligned playhead mirrors the highlight on this same tick.
+                if(Timeline!=null&&owner.view is ILessonStoryView story)story.Playhead(Context.Item.TrialId,Timeline.Highlight,Timeline.PlayheadAt(now));
                 if(resetWanted&&finalReset==null&&Timeline!=null&&Timeline.ResetMayBegin&&!owner.audio.Playing)finalReset=owner.backend.RequestReset();
                 if(!finalRenderer&&finalReset!=null&&owner.backend.ResetAcknowledged(finalReset))finalRenderer=owner.source.ConfirmReset();
             }

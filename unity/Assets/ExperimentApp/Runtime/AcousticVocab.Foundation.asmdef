@@ -4,6 +4,8 @@
     "Unity.InputSystem",
     "Unity.XR.CoreUtils",
     "Unity.XR.Management",
-    "Unity.XR.OpenXR"
+    "Unity.XR.OpenXR",
+    "Unity.ugui",
+    "UnityEngine.UI"
   ]
 }

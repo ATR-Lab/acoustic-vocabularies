@@ -1,0 +1,8 @@
+{
+  "name": "AcousticVocab.StoryPanels.Tests",
+  "references": ["AcousticVocab.Foundation", "AcousticVocab.Foundation.Editor", "AcousticVocab.Teaching", "AcousticVocab.Orientation", "AcousticVocab.ResponsePanel", "AcousticVocab.SessionEngine", "AcousticVocab.StateIntegration", "AcousticVocab.StudyAudio", "Unity.ugui", "UnityEngine.UI"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll", "nunit.framework.dll"]
+}

@@ -15,7 +15,7 @@ namespace AcousticVocab.Teaching
     // Admission, allocation and schedule dispatch remain with the session
     // owner. An uninstalled scene shows no meaning and cannot request audio.
     [DisallowMultipleComponent]
-    public sealed class TeachingSessionHost : MonoBehaviour,ITeachingView
+    public sealed class TeachingSessionHost : MonoBehaviour,ITeachingView,ILessonStoryView
     {
         public FoundationBootstrap foundation;
         public AudioPlayer player;
@@ -29,6 +29,18 @@ namespace AcousticVocab.Teaching
         Canvas canvas;
         Text definition,actionWords,targetWords,feedback;
         Image actionBacking,targetBacking;
+        // Storyboard layer (presentation only): glass card, decorative motif
+        // strips with the aligned playhead, the grammar timeline row, and a
+        // separate step-chip canvas that stays up during the try while the
+        // meaning canvas is hidden.
+        StoryPanel card,stepsCard;
+        StoryWaveform actionStrip,targetStrip;
+        RawImage stripSpeaker;
+        GameObject grammarRow;
+        Canvas steps;
+        StoryStepChips stepChips;
+        Text question;
+        string stepOwner;
         RawImage image;
         readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>(StringComparer.Ordinal);
         string visibleOwner,visibleImageHash,scheduleHash,packageHash;
@@ -90,6 +102,7 @@ namespace AcousticVocab.Teaching
         {
             visibleOwner="grammar";image.gameObject.SetActive(false);feedback.text="";definition.text=phase=="ready"?"READY":"";
             actionWords.text=phase=="roles"?"Action":"";targetWords.text=phase=="roles"?"Target":"";Light(LessonHighlight.None);
+            SetLessonStrips(false,false);grammarRow.SetActive(phase=="roles");HideSteps();
             canvas.gameObject.SetActive(phase!="hidden");
         }
         void CreateView()
@@ -104,7 +117,60 @@ namespace AcousticVocab.Teaching
             feedback=TextAt("Feedback",new Vector2(0,-220),new Vector2(780,80));
             var picture=new GameObject("Task image",typeof(RectTransform),typeof(CanvasRenderer),typeof(RawImage));picture.transform.SetParent(root.transform,false);
             var rect=(RectTransform)picture.transform;rect.sizeDelta=new Vector2(460,270);rect.anchoredPosition=new Vector2(0,-25);image=picture.GetComponent<RawImage>();image.raycastTarget=false;
+            CreateStoryLayer(root.transform,reference);
             root.SetActive(false);
+        }
+        // Decorative storyboard elements sit outside every existing label rect
+        // (labels span y -260..270): motif strips below the feedback line, the
+        // step chips above the definition on their own canvas, and the grammar
+        // row in the image area, which is hidden whenever that row shows.
+        internal const float StripY=-305,StepsY=305,GrammarRowY=20;
+        void CreateStoryLayer(Transform root,Pose reference)
+        {
+            card=StoryPanel.Create(root,"Story card",new Vector2(0,0),new Vector2(860,690));
+            stripSpeaker=StoryUi.Icon(root,"Motif speaker",StoryIcon.Speaker,new Vector2(-392,StripY),30,StudyTheme.EdgeLit);
+            actionStrip=StoryWaveform.Create(root,"Action motif strip",new Vector2(-190,StripY),new Vector2(330,34),11);
+            targetStrip=StoryWaveform.Create(root,"Target motif strip",new Vector2(190,StripY),new Vector2(330,34),23);
+            grammarRow=StoryUi.Rect(root,"Grammar timeline",new Vector2(0,GrammarRowY),new Vector2(780,70)).gameObject;
+            StoryUi.Icon(grammarRow.transform,"Speaker",StoryIcon.Speaker,new Vector2(-350,0),40,StudyTheme.EdgeLit);
+            StoryWaveform.Create(grammarRow.transform,"Action part",new Vector2(-200,0),new Vector2(220,50),5).SetLit(true);
+            StoryUi.Label(grammarRow.transform,"Pause",Vector2.zero,new Vector2(110,44),font,24,"pause",StudyTheme.PanelFill,false);
+            StoryWaveform.Create(grammarRow.transform,"Target part",new Vector2(200,0),new Vector2(220,50),9).SetLit(true);
+            grammarRow.SetActive(false);
+            var stepsRoot=new GameObject("Lesson steps",typeof(RectTransform),typeof(Canvas));stepsRoot.transform.SetParent(presentationParent,false);
+            // 2 mm toward the viewer so the chips never z-fight the card behind them.
+            stepsRoot.transform.SetPositionAndRotation(root.position+reference.rotation*new Vector3(0,0,-.002f),reference.rotation);stepsRoot.transform.localScale=Vector3.one*.001f;
+            steps=stepsRoot.GetComponent<Canvas>();steps.renderMode=RenderMode.WorldSpace;steps.sortingOrder=1;((RectTransform)stepsRoot.transform).sizeDelta=new Vector2(800,540);
+            stepsCard=StoryPanel.Create(stepsRoot.transform,"Steps card",new Vector2(0,StepsY-45),new Vector2(860,170));
+            stepChips=StoryStepChips.Create(stepsRoot.transform,"Step chips",new Vector2(0,StepsY),font,24,190,"Listen","Your turn","Check");
+            question=StoryUi.Label(stepsRoot.transform,"Question",new Vector2(0,StepsY-80),new Vector2(780,60),font,27,"",StudyTheme.PanelFill,false);
+            stepsRoot.SetActive(false);
+        }
+        void SetLessonStrips(bool action,bool target)
+        {
+            actionStrip.SetPlayhead(null);targetStrip.SetPlayhead(null);
+            actionStrip.gameObject.SetActive(action);targetStrip.gameObject.SetActive(target);stripSpeaker.gameObject.SetActive(action||target);
+        }
+        void HideSteps(){stepOwner=null;if(steps!=null)steps.gameObject.SetActive(false);}
+        public void Step(string owner,LessonDisplayPhase phase,LessonQuestion kind)
+        {
+            if(steps==null||owner==null)return;
+            if(phase!=LessonDisplayPhase.Definition&&stepOwner!=owner)return;
+            int current=phase==LessonDisplayPhase.Definition?0:phase==LessonDisplayPhase.Retrieval?1:phase==LessonDisplayPhase.Feedback?2:-1;
+            if(current<0){HideSteps();return;}
+            stepOwner=owner;stepChips.Set(current);
+            // The prompt never carries the answer; the meaning canvas stays hidden during the try.
+            bool trying=current==1;
+            question.text=trying?(kind==LessonQuestion.Action?"Which action was that?":kind==LessonQuestion.Target?"Which target was that?":"Which target and action was that?"):"";
+            question.gameObject.SetActive(trying);question.transform.parent.Find("Question surface").gameObject.SetActive(trying);
+            stepsCard.gameObject.SetActive(trying);
+            steps.gameObject.SetActive(true);
+        }
+        public void Playhead(string owner,LessonHighlight segment,float? fraction)
+        {
+            if(visibleOwner!=owner||actionStrip==null)return;
+            actionStrip.SetPlayhead(segment==LessonHighlight.Action?fraction:null);
+            targetStrip.SetPlayhead(segment==LessonHighlight.Target?fraction:null);
         }
         Text TextAt(string name,Vector2 position,Vector2 size)=>TextAt(name,position,size,out _);
         Text TextAt(string name,Vector2 position,Vector2 size,out Image backing)
@@ -128,7 +194,8 @@ namespace AcousticVocab.Teaching
             LessonTimeline.Require(Installed&&display!=null&&owner!=null,"LESSON_DISPLAY_REFUSED");
             LessonTimeline.Require(textures.TryGetValue(display.ImageSha256,out var texture),"LESSON_DISPLAY_REFUSED");
             visibleImageHash=display.ImageSha256;image.gameObject.SetActive(true);image.texture=texture;definition.text=display.Definition;actionWords.text=display.ActionWords;targetWords.text=display.TargetWords;feedback.text=feedbackText??"";
-            Light(LessonHighlight.None);visibleOwner=owner;canvas.gameObject.SetActive(true);
+            Light(LessonHighlight.None);grammarRow.SetActive(false);SetLessonStrips(!string.IsNullOrEmpty(display.ActionWords),!string.IsNullOrEmpty(display.TargetWords));
+            visibleOwner=owner;canvas.gameObject.SetActive(true);
         }
         public void Hide(string owner)
         {if(visibleOwner!=owner)return;canvas.gameObject.SetActive(false);visibleOwner=null;visibleImageHash=null;}
@@ -148,7 +215,7 @@ namespace AcousticVocab.Teaching
             FaultCode=new SessionFault(code).Code;
             try
             {
-                var error=TeachingCleanup.Attempt(()=>{if(canvas!=null)canvas.gameObject.SetActive(false);},
+                var error=TeachingCleanup.Attempt(()=>{if(canvas!=null)canvas.gameObject.SetActive(false);},HideSteps,
                     ()=>engine?.Fault(FaultCode),()=>grammar?.Dispose(),()=>factory?.Dispose(),
                     ()=>player?.Abort(FaultCode),()=>TeachingCleanup.Notify(Faulted,FaultCode));
                 if(error!=null)CleanupFailureCode=TeachingCleanup.Code(error);
@@ -166,13 +233,14 @@ namespace AcousticVocab.Teaching
             if(uninstalled)return;uninstalled=true;var formerFactory=factory;var formerGrammar=grammar;
             factory=null;grammar=null;engine=null;scheduleHash=null;packageHash=null;
             bool owned=formerFactory!=null||formerGrammar!=null;
-            var formerCanvas=canvas;
+            var formerCanvas=canvas;var formerSteps=steps;
             var error=TeachingCleanup.Attempt(()=>formerGrammar?.Dispose(),()=>formerFactory?.Dispose(),
                 ()=>{if(owned)player?.Abort("LESSON_HOST_UNINSTALLED");},
-                ()=>{if(formerCanvas!=null){formerCanvas.gameObject.SetActive(false);Destroy(formerCanvas.gameObject);}});
+                ()=>{if(formerCanvas!=null){formerCanvas.gameObject.SetActive(false);Destroy(formerCanvas.gameObject);}},
+                ()=>{if(formerSteps!=null){formerSteps.gameObject.SetActive(false);Destroy(formerSteps.gameObject);}});
             // Dispose may legitimately call this view's Hide, so retain its
             // canvas until those callbacks finish; ownership was already cleared.
-            canvas=null;
+            canvas=null;steps=null;
             if(error!=null){failed=true;CleanupFailureCode=TeachingCleanup.Code(error);TeachingCleanup.ThrowFirst(error);}
         }
         void OnDestroy()
