@@ -436,8 +436,9 @@ Producer: `banks/` (`av-banks`, import `av_banks`; design and usage in
 menus and yoked replay (#70: manifest, WAVs, amendments), dyad package builder (#13),
 pilot and confirmatory bank runs (#27, #28: CLI, `verify`, bank hash).
 
-**Inputs.** A bank ID from the dyad-slot sequence (#31; `bank-P001`.., `bank-C001`..`bank-C064`
-main, `bank-C065`..`bank-C072` spares, or `DEMO-`), bound to its unit by a fixed rule
+**Inputs.** A bank ID from the dyad-slot sequence (#31; `bank-P001`.., `bank-C001`..`bank-C<n>`
+main, then `bank-C<n+1>`..`bank-C<n+m>` spares, or `DEMO-`; `n` + `m` is 64 + 8, 84 + 12 or
+88 + 12 by sample-size preset, #266), bound to its unit by a fixed rule
 (`av_banks.permutation.expected_unit_id`: `bank-C012` -> `B-C12`, `bank-C066` -> `B-S02`)
 and read through the unit's package-safe `permutation.json` (`labels`, `atom_order` =
 traversal order; never `<set>-dyads.json`); the generation config (threshold, pins, budgets;
@@ -518,8 +519,8 @@ never meet (`builder.seed_namespace_error`; property test). Spare budget 2
 **Run.** `python -m av_banks.pilot plan|run|finish|check|archive|load`;
 `pilot_plan(units, *, run_id, demo=False, dyads=8, spares=2, major=1) -> PilotPlan`,
 `run_pilot(plan, *, root, config, proposer, clock, workers=3, parallel_banks=1,
-ledger_factory=slot_ledger, llm_runtime=None, project_banks=72, fsync=True) ->
-PilotResult`, `finish_pilot(root, *, project_banks=72, reports=None) -> PilotFinish`
+ledger_factory=slot_ledger, llm_runtime=None, project_banks=CONFIRMATORY_BANKS, fsync=True) ->
+PilotResult`, `finish_pilot(root, *, project_banks=CONFIRMATORY_BANKS, reports=None) -> PilotFinish`
 (`rows`, `register_sha256`, `reports`, `summary`, `shortfall`, `problems`,
 `exit_code`), `check_pilot(root, *, rerun_verify=False)` (register against the banks,
 the bank directories, the plan and the summary; amendment logs; archive),
@@ -563,13 +564,15 @@ append-only logs are the banks' `amendments.jsonl` (`pilot.AMENDMENT_LOGS`: the 
 rule may amend an archived bank), checked by their amendment chain. Directories stay
 writable; `archive_problems` reports added, missing and changed files.
 
-**Throughput** (`metrics.summarize_banks(bank_dirs, *, run_dirs=(), project_banks=72) ->
+**Throughput** (`metrics.summarize_banks(bank_dirs, *, run_dirs=(), project_banks=CONFIRMATORY_BANKS) ->
 ThroughputSummary`, `summary_markdown`): slots per hour per bank builder (attempt time)
 and per run (run time), attempts per bank (mean, histogram), attempt and cell failure
 rates (cells: failed / concluded, per profile), slots per complete and failed attempt and
 per complete cell, outcome and model-status counts, latency and slot-time p50/p95, slots
-over the 40-s cap, and the projection for #28 (72 banks: attempts, slots, hours,
-unavailable banks). `throughput.json` (`av-banks/pilot-summary` v1) adds the shortfall,
+over the 40-s cap, and the projection for #28 (attempts, slots, hours, unavailable banks)
+for `project_banks` banks. `CONFIRMATORY_BANKS` is the default preset's 72 (64 + 8); the
+pilot CLI sizes the projection for another preset or plan (`--project-preset`,
+`--project-plan`, #299). `throughput.json` (`av-banks/pilot-summary` v1) adds the shortfall,
 usable slots, spares used, config and register hashes.
 
 **Evidence.** DEMO rehearsal outputs in `banks/examples/demo-pilot/`. **Pending
@@ -585,11 +588,21 @@ line `python -m av_banks.confirmatory`. Consumers: G5B owner (register, report),
 allocation reveal (#31: unavailable bank IDs), #70 and #13 (bank directories, unchanged
 #26 format). The real run is **pending** (G4 freeze #25, LLM host).
 
-**Banks.** 72 bank IDs in dyad-slot sequence: `bank-C001`..`bank-C064` (main, units
-`B-C01`..`B-C64`), `bank-C065`..`bank-C072` (spares, `B-S01`..`B-S08`); each built by
+**Banks.** One bank per unit of the plan's unit set (#266, #299), in dyad-slot sequence:
+`bank-C001`..`bank-C<n>` (main, units `B-C01`..), then `bank-C<n+1>`..`bank-C<n+m>`
+(spares, `B-S01`..). `plan` takes `n` and `m` from `--units` and `--preset` cross-checks
+them; every later step reads them from `plan.json`:
+
+| Preset | Main (`n`) | Spares (`m`) | Banks | Seed keys of the budget |
+| --- | ---: | ---: | ---: | ---: |
+| `provisional-18-64` (default) | 64 | 8 | 72 | 165,888 |
+| `revised-30-84` | 84 | 12 | 96 | 221,184 |
+| `revised-30-88` | 88 | 12 | 100 | 230,400 |
+
+Each bank is built by
 the #26 builder as its own run `<campaign>-<bank>` under the campaign directory
 (restricted storage). Seed namespace = bank ID (`<bank>-v<version>` for a rebuild after a
-crash). `DEMO-C001`..`DEMO-C072` in rehearsals.
+crash). `DEMO-C001`.. in rehearsals.
 
 **Freeze check.** `plan` and `run` read the freeze manifest through #25's guard
 (`freeze.load_freeze_manifest(path, require_frozen=True)` for a confirmatory campaign:
@@ -609,7 +622,7 @@ and the running banks are left crashed and are rebuilt under a new version. A fa
 call never closes a cell, so an outage never makes a bank unavailable.
 
 **Seeds.** `seed_check.check_seeds`: namespaces name their bank and version, are unique,
-and the 165,888 keys of the budget (72 x 4 x 3 x 16 x 12) give distinct seeds, none in
+and the keys of the budget (banks x 4 x 3 x 16 x 12; 165,888 at 72 banks) give distinct seeds, none in
 the key space of the pilot namespaces (read from pilot bank, run or campaign directories,
 or a CSV with a `seed_namespace` column). `check_used_seeds` rechecks every slot record
 after the run.
@@ -625,7 +638,7 @@ escalation link and date, `unavailable_bank_ids`, hashes of the plan, seed check
 verification and timing logs, the register CSV and the deterministic archive). No seeds,
 recipes, WAVs or allocation information.
 
-**Rules.** At least 64 complete banks, else stop and escalate to the advisor before G5B
+**Rules.** At least `n` complete banks (the main dyad slots: 64, 84 or 88), else stop and escalate to the advisor before G5B
 (`escalate --reference <issue/PR link> --date`). Unavailable banks are never assignable;
 the coordinator logs each with `RevealLog.log_bank_unavailable` before the first reveal,
 and the reveal replaces an unavailable main slot by the first unused spare with the same

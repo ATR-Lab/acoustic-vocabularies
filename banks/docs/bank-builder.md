@@ -18,7 +18,7 @@ every candidate.
 
 | Input | Source | Used for |
 | --- | --- | --- |
-| Bank ID | dyad-slot sequence (schedules allocation, #31): `bank-P001`.., `bank-C001`..`bank-C064` (main), `bank-C065`..`bank-C072` (spares), or `DEMO-...` | names, slot IDs, cap keys, the default seed namespace |
+| Bank ID | dyad-slot sequence (schedules allocation, #31): `bank-P001`.., `bank-C001`..`bank-C<n>` (main), `bank-C<n+1>`..`bank-C<n+m>` (spares; `n` + `m` = 64 + 8, 84 + 12 or 88 + 12 by sample-size preset, #266), or `DEMO-...` | names, slot IDs, cap keys, the default seed namespace |
 | `permutation.json` of the unit | schedules (#29), package-safe (`av-schedules/permutation` v2) | `labels` (atom -> semantic label), `atom_order` (the traversal order), `unit_id` (the manifest's `dyad_slot`) |
 | `generation-config.json` | generation config (`genconfig`) | separation threshold, code pins, budgets; its hash is the bank's `generation_config_sha256` |
 | Meaning set, B prompt set, decoding schema | #17 (`generation/prompts/`), `meanings`, #16 (`sound/schema/recipe.schema.json`, unchanged) | the prompt and the model call; the meaning-set hash, the B prompt hash (`prompts.b_sha256`) and the decoding-schema hash must equal the config's |
@@ -27,7 +27,8 @@ every candidate.
 
 The builder never reads `<set>-dyads.json` or any other allocation list. The bank ID is
 bound to its unit by the fixed sequence rule (`permutation.expected_unit_id`): `bank-P007`
-is unit `B-P07`, `bank-C012` is `B-C12`, `bank-C066` is the spare `B-S02`. A pilot or
+is unit `B-P07`, `bank-C012` is `B-C12`, and with 64 main slots `bank-C066` is the spare
+`B-S02` (with 84, `bank-C086` is). A pilot or
 confirmatory bank refuses a DEMO unit, a unit of the other set or another dyad slot's
 unit; a DEMO bank refuses a non-DEMO unit.
 
