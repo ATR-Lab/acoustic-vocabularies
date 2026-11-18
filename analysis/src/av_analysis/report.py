@@ -172,6 +172,8 @@ class StudyReport:
     seeds: tuple[str, ...] = ()
     inputs: tuple[Mapping[str, Any], ...] = ()  # file entries relative to the data root
     summary: tuple[str, ...] = ()  # key results printed under the title
+    # Primary contrasts reported without a test (``run --estimation-contrast``).
+    estimation_contrasts: tuple[str, ...] = ()
 
 
 def csv_cell(value: Cell) -> str:
@@ -441,14 +443,16 @@ def write_report(root: DataRoot, report: StudyReport) -> list[Path]:
     """Render and write a study report into ``estimates/``."""
     if report.data_kind != root.data_kind:
         raise WatermarkError("report data kind differs from the data root")
+    flags = "".join(f" --estimation-contrast {c}" for c in report.estimation_contrasts)
     return write_files(
         root,
         "estimates",
         render(report),
         run_name=f"run-{report.study}-{report.set_name}",
-        command=f"av-analysis run --study {report.study} --set {report.set_name}",
+        command=f"av-analysis run --study {report.study} --set {report.set_name}{flags}",
         seeds=report.seeds,
         inputs=report.inputs,
+        extra={"estimation_contrasts": list(report.estimation_contrasts)},
     )
 
 
