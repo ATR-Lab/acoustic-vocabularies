@@ -1,0 +1,17 @@
+{
+  "name": "AcousticVocab.Theme.Editor",
+  "references": [
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.Orientation",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.Workcell",
+    "AcousticVocab.Workcell.Editor",
+    "Unity.ugui",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

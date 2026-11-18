@@ -83,3 +83,29 @@ simple line icons. They are presentation only.
 
 New tokens: `PanelGlass` `#081825` (card body, opaque), `GlowSoft` (`EdgeLit` at
 alpha 0x55, glow only), `WaveIdle` `#2F6B73`, `WaveLit` (= `EdgeLit`), `Track` `#163A4A`.
+
+### Where the storyboard layer applies (frames 2-7)
+
+| Screen | What is added | What stays as before |
+| --- | --- | --- |
+| Silent orientation (action and target cards) | Glow edge behind the existing backing; the card's action or target icon left of the title; a thin progress bar under the button (cards seen in this part; an action card counts once its demonstration has completed). | Title, body, button, their sizes and the flow. |
+| Orientation practice feedback | A "Correct" chip with a check, shown only after a correct practice answer (orientation is the only place with feedback). | The title, the expected-answer text and the response panel. |
+| Grammar explanation ("roles" step) | A decorative row in the image area (hidden in this step): speaker, waveform glyph, "pause", waveform glyph. The glyphs come from a fixed seed, never from the explanation audio. | The "Action"/"Target" labels and the audio sequence. |
+| Lessons | Glass card behind the existing labels; motif strips with a speaker below the feedback line (only under a label that has text); step chips "Listen", "Your turn", "Check" above the definition on a separate canvas 2 mm in front. During the try the meaning canvas stays hidden as before and only the chips and a fixed prompt ("Which action was that?", "Which target was that?", "Which target and action was that?") show. | Label text, positions, sizes, 27-unit type, picture, feedback text and every timeline event. |
+| Aligned lessons only | While a label is lit, a playhead moves over that label's strip. Its position comes from `LessonTimeline.PlayheadAt(now)`, a read-only function of the same onsets and sample counts that drive the highlight; it is null whenever no label is lit. | The highlight itself and every record. Static and atomic lessons never show a playhead. |
+
+The step chips and playhead reach the view through the optional `ILessonStoryView`
+interface, called by the lesson content right after the existing Show/Hide/Highlight
+calls and on the existing tick. A view that does not implement it is unaffected.
+
+### Review captures
+
+`AcousticVocab.Theme.Editor.StoryboardCapture.CaptureAll` (editor only) builds each
+screen above with the real view code in a scratch scene, renders it with one camera
+and writes `frame-02-*.png` ... `frame-07-*.png` plus `capture.json` (which backdrop
+was used) to the directory in `AV_STORYBOARD_CAPTURE_DIR`. It refuses to run without
+that variable or with a directory under `Assets/`, and never saves a scene. It needs
+a GPU display (no `-nographics`). When the workcell and robot description can be
+built (`G1_DESCRIPTION_JSON` set) the panels are drawn in front of the workcell;
+otherwise on a neutral floor. Lesson text is example text and the lesson picture is
+a procedural placeholder. Captures are for review only and are not committed.
