@@ -32,7 +32,7 @@ namespace AcousticVocab.Theme
                 if (i > 0) row.connectors.Add(StoryUi.Block(rect, "Connector " + i, new Vector2(x - chipWidth / 2 - Gap / 2, 0), new Vector2(Gap - 6, 2), StudyTheme.EdgeIdle));
                 var label = StoryUi.Label(rect, "Step " + (i + 1), new Vector2(x, 0), new Vector2(chipWidth, ChipHeight), font, fontSize, steps[i], StudyTheme.PanelFill, false);
                 row.labels.Add(label);
-                row.surfaces.Add(rect.Find("Step " + (i + 1) + " backing").GetComponent<Image>());
+                row.surfaces.Add(rect.Find("Step " + (i + 1) + " surface").GetComponent<Image>());
                 // The check sits inside the chip's left padding, clear of centred text.
                 row.checks.Add(StoryUi.Icon(rect, "Step " + (i + 1) + " done", StoryIcon.Check, new Vector2(x - chipWidth / 2 + IconSize * .5f + 8, 0), IconSize, StudyTheme.EdgeLit));
             }

@@ -64,7 +64,7 @@ namespace AcousticVocab.Theme
         // backing (same rect, rendered first), so contrast never depends on the scene.
         public static Text Label(Transform parent, string name, Vector2 position, Vector2 size, Font font, int fontSize, string value, Color surface, bool lit)
         {
-            Surface(parent, name + " backing", position, size, surface, lit);
+            Surface(parent, name + " surface", position, size, surface, lit);
             return PlainText(parent, name, position, size, font, fontSize, value);
         }
 

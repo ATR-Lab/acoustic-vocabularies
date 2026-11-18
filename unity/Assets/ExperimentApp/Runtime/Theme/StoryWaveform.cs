@@ -43,6 +43,13 @@ namespace AcousticVocab.Theme
             return strip;
         }
 
+        // Every bar lit (or idle) with no playhead, e.g. a static glyph.
+        public void SetLit(bool lit)
+        {
+            Fraction = null; Playhead.enabled = false;
+            foreach (var bar in bars) bar.color = lit ? StudyTheme.WaveLit : StudyTheme.WaveIdle;
+        }
+
         public void SetPlayhead(float? fraction)
         {
             if (fraction.HasValue && float.IsNaN(fraction.Value)) fraction = null;

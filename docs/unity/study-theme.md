@@ -77,9 +77,9 @@ simple line icons. They are presentation only.
 | `StoryStatusChip.Create(parent, name, position, size, font, fontSize, text, icon, lit)` | Pill with a leading icon, e.g. check and "Correct". `Show(bool)`, `Set(text, icon)`. |
 | `StoryBanner.Create(parent, name, position, size, font, fontSize, text, locked)` | One-line banner with an optional lock badge. `Set(text, locked)`. |
 | `StoryProgressBar.Create(parent, name, position, size)` | Track and fill. `Set(fraction)` (clamped; NaN is 0). |
-| `StoryWaveform.Create(parent, name, position, size, seed, count)` | Bars from a fixed seed (never from audio). `SetPlayhead(float?)`: `null` hides the playhead; bars left of it are lit. |
+| `StoryWaveform.Create(parent, name, position, size, seed, count)` | Bars from a fixed seed (never from audio). `SetPlayhead(float?)`: `null` hides the playhead; bars left of it are lit. `SetLit(bool)`: all bars lit or idle, no playhead. |
 | `StoryIcons.Texture(icon)`, `ForAction(id)`, `ForTarget(id)` | Cached line icons: speaker, tag, box, tray, lock, check, ring with plus or minus, card, arrow, scan. |
-| `StoryUi.Surface/Label/PlainText/Icon/Block/Round/Style` | Shared helpers (opaque rounded surface with edge, label on its own backing, icon, plain block). |
+| `StoryUi.Surface/Label/PlainText/Icon/Block/Round/Style` | Shared helpers (opaque rounded surface with edge, label on its own surface named `<name> surface`, icon, plain block). The ` surface` suffix keeps them apart from the ` backing` objects that `PresentationTextBacking` adds to existing labels. |
 
 New tokens: `PanelGlass` `#081825` (card body, opaque), `GlowSoft` (`EdgeLit` at
 alpha 0x55, glow only), `WaveIdle` `#2F6B73`, `WaveLit` (= `EdgeLit`), `Track` `#163A4A`.

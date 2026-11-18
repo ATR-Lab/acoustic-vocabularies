@@ -56,7 +56,8 @@ namespace AcousticVocab.Theme
                     pixels[y * TexturePixels + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255));
                 }
             texture.SetPixels32(pixels);
-            texture.Apply(false, true);
+            // Kept readable (96 px, about 36 KB each) so tests and captures can inspect it.
+            texture.Apply(false, false);
             cache[icon] = texture;
             return texture;
         }
