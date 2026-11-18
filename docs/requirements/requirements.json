@@ -3636,11 +3636,6 @@
      "path": "tests/banks/test_bank_verify.py",
      "name": "test_amend_refusals",
      "suite": "test_bank_verify"
-    },
-    {
-     "path": "unity/Assets/Tests/SessionIntegration/JoinedSelectionsTests.cs",
-     "name": "MissingRankReserveRankProfileMismatchAndWrongPackageAreRefused",
-     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedSelectionsTests"
     }
    ],
    "issue": 281,

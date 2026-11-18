@@ -83,7 +83,7 @@ open issue tracking the fix.
 | REQ-BANK-02 | A bank cell keeps the first 4 distinct, mutually compatible options found within 12 slots per atom and profile; options 1-3 are shown, option 4 is the reserve. | banks | tested | 7 |
 | REQ-BANK-03 | All retained options of different atoms in the same profile pass the separation check. | banks | tested | 4 |
 | REQ-BANK-04 | A pair's bank that fails 4 independently seeded attempts is not allocated, and the failures are reported. | banks | tested | 6 |
-| REQ-BANK-05 | The reserve may stand in for a shown option only when that option is unusable and neither partner has yet heard that menu; after any hearing, no substitution. | app | tested; open gap #281 | 3 |
+| REQ-BANK-05 | The reserve may stand in for a shown option only when that option is unusable and neither partner has yet heard that menu; after any hearing, no substitution. | app | tested; open gap #281 | 2 |
 
 ## BAT
 
