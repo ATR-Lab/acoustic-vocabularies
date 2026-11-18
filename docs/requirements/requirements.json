@@ -255,11 +255,6 @@
     },
     {
      "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioTimingTests.cs",
-     "name": "StationOffsetNeedsMatchingMeasuredRouteAndUncertainty",
-     "suite": "AcousticVocab.Tests.StudyAudio.AudioTimingTests"
-    },
-    {
-     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioTimingTests.cs",
      "name": "DeviceResetInvalidatesPriorMapping",
      "suite": "AcousticVocab.Tests.StudyAudio.AudioTimingTests"
     }
@@ -649,13 +644,7 @@
     "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs",
     "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedGrammarStage.cs"
    ],
-   "tests": [
-    {
-     "path": "unity/Assets/Tests/EditMode/Teaching/GrammarFlowTests.cs",
-     "name": "ExactlyReadyThenClicksWithoutReplay",
-     "suite": "AcousticVocab.Teaching.Tests.GrammarFlowTests"
-    }
-   ],
+   "tests": [],
    "issue": 275,
    "fix_pr": 327
   },
@@ -690,11 +679,6 @@
     {
      "path": "unity/Assets/Tests/SessionIntegration/JoinedGrammarTests.cs",
      "name": "PriorConsumedTeachingCannotMigrateWithoutFinishedGrammarHistory",
-     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedGrammarTests"
-    },
-    {
-     "path": "unity/Assets/Tests/SessionIntegration/JoinedGrammarTests.cs",
-     "name": "BothOrderedPlaysAndDurableFinishRecoverWithoutTrialOrExposureRows",
      "suite": "AcousticVocab.SessionIntegration.Tests.JoinedGrammarTests"
     }
    ],
@@ -3898,11 +3882,6 @@
     {
      "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
      "name": "ActiveAndYokedMatchAllFilesCountsChoicesAndSourceEvents",
-     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
-    },
-    {
-     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
-     "name": "RecordedDisplayOffsetsRemainAuthoritativeInYokedRun",
      "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
     },
     {

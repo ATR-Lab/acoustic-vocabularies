@@ -84,12 +84,30 @@ namespace AcousticVocab.Teaching.Tests
                 typeof(TeachingSessionHost).GetField("factory", Hidden).SetValue(Host, Factory);
                 Assert.That(Host.Installed, Is.True);
             }
+            string plainAction, plainTarget;
+            string Look(string field)
+            {
+                var words = (Component)Get(Host, field);
+                var parts = new List<string> { ((Color)Property(words, "color")).ToString() };
+                var backing = ((Canvas)Get(Host, "canvas")).transform.Find(words.gameObject.name + " backing");
+                if (backing != null)
+                    foreach (var part in backing.GetComponents<Component>())
+                        foreach (string name in new[] { "color", "effectColor", "enabled" })
+                        {
+                            var value = part.GetType().GetProperty(name)?.GetValue(part);
+                            if (value != null) parts.Add(name + "=" + value);
+                        }
+                return string.Join("|", parts);
+            }
             internal View Sample()
             {
                 var canvas = (Canvas)Get(Host, "canvas");
                 string Text(string field) => (string)Property(Get(Host, field), "text");
-                var action = (Color)Property(Get(Host, "actionWords"), "color"); var target = (Color)Property(Get(Host, "targetWords"), "color");
-                string highlight = action == Color.yellow ? "action" : target == Color.yellow ? "target" : "none";
+                // Style-agnostic emphasis: a label is highlighted when its look (text colour plus
+                // any backing colour/edge) differs from its plain look captured before the lesson.
+                string action = Look("actionWords"), target = Look("targetWords");
+                if (plainAction == null) { plainAction = action; plainTarget = target; }
+                string highlight = action != plainAction ? "action" : target != plainTarget ? "target" : "none";
                 bool visible = canvas.gameObject.activeSelf;
                 var image = (Component)Get(Host, "image");
                 return visible ? new View(true, image.gameObject.activeSelf, Text("definition"), Text("actionWords"), Text("targetWords"), Text("feedback"), highlight)
@@ -238,7 +256,11 @@ namespace AcousticVocab.Teaching.Tests
         public void RenderedAtomicLessonIsIdenticalForBothFamilyFormatsAndHidesTheAnswerInRetrieval()
         {
             var aligned = Lesson(true, true, "correct"); var dictionary = Lesson(true, false, "correct");
-            AssertPhases(aligned, true, "Synthetic atomic feedback"); AssertPhases(dictionary, true, "Synthetic atomic feedback");
+            // The fixture catalogue has a fixed atomic text on main; a response-based catalogue
+            // (#276) shows the correct-outcome text. Either way both formats must match.
+            string shown = aligned.At(16000).Feedback;
+            Assert.That(shown, Is.AnyOf("Synthetic atomic feedback", "Synthetic correct feedback"));
+            AssertPhases(aligned, true, shown); AssertPhases(dictionary, true, shown);
             Assert.That(aligned.Samples, Is.EqualTo(dictionary.Samples));
             Assert.That(aligned.Samples.All(x => x.view.Highlight == "none"), Is.True);
         }

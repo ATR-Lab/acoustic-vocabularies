@@ -16,7 +16,8 @@ open issue tracking the fix.
 | measurement | 12 |
 | process | 9 |
 | tested | 130 |
-| tested, open gap | 34 |
+| tested, open gap | 32 |
+| untested, open gap | 2 |
 | total | 185 |
 
 ## ACC
@@ -66,7 +67,7 @@ open issue tracking the fix.
 | --- | --- | --- | --- | ---: |
 | REQ-AUD-01 | Study audio is stored mono 48 kHz PCM; the loader refuses any other format. | app | tested | 5 |
 | REQ-AUD-02 | Study audio is nonspatial (no panning, spatialisation, reverb or target-dependent routing). | app | tested | 3 |
-| REQ-AUD-03 | Playback requires a calibration record for the configured output route; the app refuses study audio on an uncalibrated or changed route. | app | tested | 5 |
+| REQ-AUD-03 | Playback requires a calibration record for the configured output route; the app refuses study audio on an uncalibrated or changed route. | app | tested | 4 |
 | REQ-AUD-04 | The single output route is chosen and its onset timing calibrated on every station before piloting; the route is then frozen. | station | measurement (INSTALL) | 0 |
 | REQ-AUD-05 | Each participant's comfortable level is applied as a stored gain and restored unchanged at every later visit (never tuned to performance). | app | tested | 7 |
 | REQ-AUD-06 | A complete message is the action motif, 200 ms of silence, then the target motif. | app | tested | 3 |
@@ -151,9 +152,9 @@ open issue tracking the fix.
 
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
-| REQ-GRAM-01 | Every participant hears the standard spoken description of the message structure (action part, pause, target part) before the first lesson. | app | tested; open gap #275 | 2 |
+| REQ-GRAM-01 | Every participant hears the standard spoken description of the message structure (action part, pause, target part) before the first lesson. | app | tested; open gap #275 | 1 |
 | REQ-GRAM-02 | The spoken explanation is one fixed, hash-pinned asset that is identical across studies, roles and lesson formats. | app | tested; open gap #275 | 1 |
-| REQ-GRAM-03 | Delivery of the explanation is logged (asset hash, onset, completion) and a visit cannot reach lessons without it. | app | tested; open gap #275 | 3 |
+| REQ-GRAM-03 | Delivery of the explanation is logged (asset hash, onset, completion) and a visit cannot reach lessons without it. | app | tested; open gap #275 | 2 |
 | REQ-GRAM-04 | The explanation and its demonstration use no study motif and no complete study message. | app | tested | 5 |
 
 ## INT
@@ -161,8 +162,8 @@ open issue tracking the fix.
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
 | REQ-INT-01 | Resumption after an interruption covers unplayed trials only; a trial whose audio was played or whose response was committed is never re-run as new. | app | tested | 6 |
-| REQ-INT-02 | Study A's immediate test may resume only within the same session. | app | tested; open gap #278 | 1 |
-| REQ-INT-03 | A delayed visit may resume only within its visit window. | app | tested; open gap #278 | 1 |
+| REQ-INT-02 | Study A's immediate test may resume only within the same session. | app | open gap #278 | 0 |
+| REQ-INT-03 | A delayed visit may resume only within its visit window. | app | open gap #278 | 0 |
 | REQ-INT-04 | When resumption is not permitted the visit endpoint is recorded missing, and already committed trial scores are kept. | analysis | tested; open gap #310 | 5 |
 | REQ-INT-05 | A pause takes effect before the next unplayed trial; an interruption after audio onset is flagged and the exposure kept. | app | tested | 8 |
 | REQ-INT-06 | A confirmed no-onset failure may be retried once at the end of its block, linked to the original failed opportunity; uncertain onset counts as exposure. | app | tested; open gap #283 | 8 |
@@ -344,7 +345,7 @@ open issue tracking the fix.
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
 | REQ-YOKE-01 | The assigned partner's session starts after the active partner's session has ended and no more than 24 h later. | app | tested; open gap #282 | 3 |
-| REQ-YOKE-02 | Assigned sessions replay the active session's ledger: same options, chosen sounds, meaning screens and timing. | app | tested | 5 |
+| REQ-YOKE-02 | Assigned sessions replay the active session's ledger: same options, chosen sounds, meaning screens and timing. | app | tested | 4 |
 | REQ-YOKE-03 | Both roles hear 8 plays per new meaning (6 option plays and 2 confirmation plays). | app | tested | 3 |
 | REQ-YOKE-04 | The assigned partner's screen states honestly that the sound is assigned, through every menu phase, and offers no control. | app | tested; open gap #286 | 4 |
 | REQ-YOKE-05 | The console enforces the same 24-h assigned-after-active rule as the app. | console | tested; open gap #282 | 4 |

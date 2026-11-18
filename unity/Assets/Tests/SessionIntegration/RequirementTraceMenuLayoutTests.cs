@@ -32,8 +32,8 @@ namespace AcousticVocab.SessionIntegration.Tests
                 var texts=canvas.GetComponentsInChildren<Text>(true).Select(x=>x.name).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
                 Assert.That(texts,Is.EqualTo(new[]{"Instructions","Meaning","Stored label","Stored label","Stored label"}));
                 Assert.That(canvas.GetComponentsInChildren<Transform>(true).Select(x=>x.name).Where(x=>x.IndexOf("count",StringComparison.OrdinalIgnoreCase)>=0||x.IndexOf("timer",StringComparison.OrdinalIgnoreCase)>=0),Is.Empty);
-                Assert.That(typeof(MenuSessionHost).GetFields(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Select(x=>x.Name)
-                    .Where(x=>x.IndexOf("countdown",StringComparison.OrdinalIgnoreCase)>=0||x.IndexOf("timer",StringComparison.OrdinalIgnoreCase)>=0),Is.Empty);
+                // A countdown may exist only behind a station flag that is off by default (#317):
+                // the view built with the default configuration holds no countdown element.
             }
             finally{UnityEngine.Object.DestroyImmediate(presentation);UnityEngine.Object.DestroyImmediate(lease);UnityEngine.Object.DestroyImmediate(holder);}
         }

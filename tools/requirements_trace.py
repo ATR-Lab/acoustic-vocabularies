@@ -80,17 +80,30 @@ def load_catalogue(root: Path = ROOT) -> list[dict]:
     return data["requirements"]
 
 
+CS_LITERAL_RE = re.compile(r'@"(?:[^"]|"")*"|"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)\'')
+
+
 def _cs_tests(path: Path, root: Path) -> list[tuple[str, str, list[str]]]:
-    """Return (suite, method, [REQ ids]) for each test method in a C# file."""
+    """Return (suite, method, [REQ ids]) for each test method in a C# file.
+
+    The suite is the namespace plus the top-level class (the NUnit fixture); helper
+    classes nested inside a fixture do not change it.
+    """
     text = path.read_text(encoding="utf-8", errors="replace")
-    namespace = (CS_NAMESPACE_RE.search(text) or [None, ""])[1]
+    ns = CS_NAMESPACE_RE.search(text)
+    namespace = ns.group(1) if ns else ""
+    file_scoped = bool(ns and text[ns.end():].lstrip().startswith(";"))
+    fixture_depth = 0 if file_scoped or not ns else 1
     out = []
     pending: list[str] = []
     current_class = ""
+    depth = 0
     for line in text.splitlines():
-        cls = CS_CLASS_RE.search(line)
-        if cls and "(" not in line.split("class", 1)[0]:
+        code = CS_LITERAL_RE.sub('""', line.split("//", 1)[0] if '"' not in line else line)
+        cls = CS_CLASS_RE.search(code)
+        if cls and "(" not in code.split("class", 1)[0] and depth == fixture_depth:
             current_class = cls.group(1)
+        depth += code.count("{") - code.count("}")
         pending.extend(f"REQ-{a}-{n}" for a, n in CS_CATEGORY_RE.findall(line))
         pending.extend(CS_PROPERTY_RE.findall(line))
         method = CS_METHOD_RE.search(line)

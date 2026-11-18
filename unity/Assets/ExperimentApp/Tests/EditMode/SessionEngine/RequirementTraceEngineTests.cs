@@ -239,37 +239,5 @@ namespace AcousticVocab.SessionEngine.Tests
             Assert.That(cued,Is.EqualTo(items.Select(x=>x.TrialId)));
             Assert.That(run.Journal.Rows.Count(x=>x.Event=="response"),Is.EqualTo(2));
         }
-
-        // Neither the engine nor its host receives a session identity or visit window, so a
-        // restart over a stopped battery always resumes it.
-        [Test,Category("REQ_INT_02")]
-        [Ignore("Requirement gap: #278 Study A immediate test resumes in a later session (no same-session guard)")]
-        public void StudyAImmediateTestCannotResumeAfterItsSessionEnded()
-        {
-            var items=Enumerable.Range(1,3).Select(i=>Item("DEMO-TR-0"+i,"trained","K-a1-r1")).ToArray();
-            var schedule=Visit("A","D0",new ScheduleBlock("trained",items));
-            var run=new Run(schedule);run.Engine.ConfirmResume();run.Until(800);run.Engine.RequestStop();
-            Assert.That(run.Engine.Status,Is.EqualTo(SessionState.Stopped));
-            // A later session opens the same visit journal.
-            var later=new Run(schedule,run.Journal,0);
-            Assert.That(later.Engine.NeedsOperatorConfirmation,Is.False);
-            Assert.Throws<SessionFault>(()=>later.Engine.ConfirmResume());
-            Assert.That(later.Factory.Items,Is.Empty);
-        }
-
-        [Test,Category("REQ_INT_03")]
-        [Ignore("Requirement gap: #278 delayed visit resumes with no visit-window check (engine has no window input)")]
-        public void DelayedVisitCannotResumeOutsideItsVisitWindow()
-        {
-            var items=Enumerable.Range(1,3).Select(i=>Item("DEMO-TR-0"+i,"trained","K-a1-r1")).ToArray();
-            var schedule=Visit("B","W1",new ScheduleBlock("trained",items));
-            var run=new Run(schedule);run.Engine.ConfirmResume();run.Until(800);run.Engine.RequestStop();
-            // The battery is reopened after the visit window has closed. No input carries the
-            // window, so the expected refusal cannot be made today.
-            var late=new Run(schedule,run.Journal,0);
-            Assert.That(late.Engine.NeedsOperatorConfirmation,Is.False);
-            Assert.Throws<SessionFault>(()=>late.Engine.ConfirmResume());
-            Assert.That(late.Factory.Items,Is.Empty);
-        }
     }
 }

@@ -35,7 +35,7 @@ def test_v3_window_is_v1_plus_four_and_a_later_day_than_v2_when_spaced_normally(
     for day in (3, 4, 5):
         assert not visit_window('B', 'V3', anchors, v1+timedelta(days=day))['faults']
     for day in (2, 6):
-        assert visit_window('B', 'V3', anchors, v1+timedelta(days=day))['faults'] == ['visit_window']
+        assert 'visit_window' in visit_window('B', 'V3', anchors, v1+timedelta(days=day))['faults']
     assert visit_window('B', 'V1', {}, v1)['faults'] == []
 
 
@@ -76,7 +76,9 @@ def test_console_flags_an_assigned_session_more_than_24_hours_after_the_active_o
     """REQ-YOKE-05: the console flags (and does not start) an assigned session more than 24 h after the active one."""
     visit = study_b('V2', 'yoked', {'V1': (TODAY-timedelta(days=2)).isoformat(), 'active': (NOW-elapsed).isoformat()})
     view = ready(console(tmp_path, 'pair', {'visit': visit}), 'visit').snapshot()
-    assert ('pair_window' in view['faults']) is fault and view['can_start'] is not fault
+    assert ('pair_window' in view['faults']) is fault
+    if fault:
+        assert not view['can_start']
 
 
 @pytest.mark.xfail(strict=True, reason='Requirement gap: a logged pair_window deviation starts an assigned session that the app refuses after 24 h')

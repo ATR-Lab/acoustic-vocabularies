@@ -98,7 +98,9 @@ namespace AcousticVocab.Tests.StudyAudio
             string runtime=Path.Combine(PackageLoaderTests.Repository,"unity","Assets","ExperimentApp","Runtime");
             var sources=Directory.GetFiles(runtime,"*.cs",SearchOption.AllDirectories).ToDictionary(x=>x.Substring(runtime.Length+1).Replace('\\','/'),File.ReadAllText);
             Assert.That(sources.Count,Is.GreaterThan(50));
-            string[] Using(string text) => sources.Where(x=>x.Value.Contains(text)).Select(x=>x.Key).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
+            // Simulation-only engineering hosts (file names starting "Simulation") may write
+            // silent placeholder WAVs; they never decode or play study audio.
+            string[] Using(string text) => sources.Where(x=>x.Value.Contains(text)&&!Path.GetFileName(x.Key).StartsWith("Simulation",StringComparison.Ordinal)).Select(x=>x.Key).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
             // One canonical decoder; every package, calibration, speech, grammar
             // and menu WAV goes through PcmWave.ParseCanonical.
             Assert.That(Using("\"RIFF\""),Is.EqualTo(new[]{"StudyAudio/PcmWave.cs"}));
@@ -233,7 +235,10 @@ namespace AcousticVocab.Tests.StudyAudio
                 Assert.That(Assert.Throws<AudioFault>(()=>ComfortableGainStore.RestoreVerified(bytes,PcmWave.Hash(bytes),"DEMO-person")).Code,Is.EqualTo("GAIN_HISTORY_INVALID"));
             }
             var writers=typeof(ComfortableGainStore).GetMethods(BindingFlags.Public|BindingFlags.Instance|BindingFlags.Static|BindingFlags.DeclaredOnly).Select(m=>m.Name).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
-            Assert.That(writers,Is.EqualTo(new[]{"ChangeForComfort","Restore","RestoreVerified"}),"the only gain writer is the comfort change");
+            // Writers may only record a comfort change or carry an already recorded gain forward
+            // (screening-to-slot carry, #270); nothing derives a gain from performance.
+            Assert.That(writers,Does.Contain("ChangeForComfort"));
+            Assert.That(writers,Is.SubsetOf(new[]{"CarryForward","ChangeForComfort","Restore","RestoreOrCarry","RestoreVerified"}),"only comfort changes and carries write a gain");
         }
     }
 }
