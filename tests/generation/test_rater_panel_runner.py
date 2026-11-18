@@ -37,8 +37,10 @@ from av_generation.records import PlayEvent, RatingRecord, TimingEvent, read_rec
 
 ROOT = Path(__file__).resolve().parents[2]
 RUN_ID = "DEMO-A-stations-01"
-SPEED = 100
-"""Clock speed of the station run: one 20-s slot is 200 ms of real time."""
+SPEED = 50
+"""Clock speed of the station run: one 20-s slot is 400 ms of real time. At 100x (200 ms)
+a loaded runner made the bots miss most rating locks and fetch some assets too late
+(#307); 50x keeps those margins with the test process slowed about threefold."""
 SEATS = (("S1", "R01"), ("S2", "R02"), ("S3", "R03"))
 
 

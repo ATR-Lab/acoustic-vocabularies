@@ -25,7 +25,7 @@ from av_sound.composer import message_length
 from av_sound.grammar import ATOM_IDS
 from av_sound.recipe import TOTAL_MS, Recipe
 from av_sound.tables import SAMPLES_PER_MS
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from av_generation import audit
@@ -1153,6 +1153,9 @@ def test_mean_pairwise_distance(recipes, rnd):
     assert audit.mean_pairwise_distance([recipes[0], recipes[0]]) == 0.0
 
 
+# Only the time-based checks are off (#307): on a loaded runner, drawing these rows can
+# trip the `too_slow` health check or the 200-ms deadline. Strategy and assertions as before.
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(
     st.lists(
         st.fixed_dictionaries(
