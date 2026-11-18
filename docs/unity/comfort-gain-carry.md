@@ -26,8 +26,10 @@ Run the calibration scene once more under the slot code. Add the optional
   - the monotonic time.
 - **Relaunch.** The same file restores normally. A different screening code or
   receipt is refused with `GAIN_CARRY_MISMATCH`.
-- **Comfort changes.** Any comfort change made afterwards chains from the carried
-  value as an ordinary `comfort_gain_changed` row.
+- **Comfort changes.** A comfort change made in this visit-1 calibration chains
+  from the carried value as an ordinary `comfort_gain_changed` row. Once every
+  profile is comfortable the level is held and no further change is accepted
+  (see [comfort-level-held.md](comfort-level-held.md)).
 - **Pinning.** Pin the resulting slot history as the visit's `comfort_gain` file,
   as before.
 

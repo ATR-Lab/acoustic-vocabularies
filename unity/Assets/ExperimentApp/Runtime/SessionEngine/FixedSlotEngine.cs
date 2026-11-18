@@ -23,7 +23,7 @@ namespace AcousticVocab.SessionEngine
         double lastNow=-1,nextOnset,tailEnd;
         SessionState? stateAfterTail;
         int blockIndex,itemIndex,retryIndex;
-        bool pausedRequested,stopRequested,inRetry,consumed,opened,closed,transitioning,pumping,faulting;
+        bool pausedRequested,stopRequested,inRetry,consumed,opened,closed,transitioning,pumping,faulting,discomfortStopped;
         string fault,response;
         AudibleStatus audible;
         ISlotContent content;
@@ -40,6 +40,11 @@ namespace AcousticVocab.SessionEngine
         public string PrimaryFaultCode { get; private set; }
         public bool DiagnosticFailed { get; private set; }
         public IReadOnlyList<int> CompletedCounts => Array.AsReadOnly(schedule.Blocks.Select(block => block.Items.Count(item => completed.Contains(item.TrialId))).ToArray());
+        // A participant may stop at any time because of discomfort. That exit is
+        // its own durable record (never a technical fault or a withdrawal), and
+        // the visit's remaining trials are never run, even after a restart.
+        public const string ParticipantDiscomfort="participant_discomfort",DiscomfortStopCode="SESSION_PARTICIPANT_DISCOMFORT_STOP";
+        public bool DiscomfortStopped => discomfortStopped;
         public bool NeedsOperatorConfirmation => Status==SessionState.AwaitingOperator || Status==SessionState.Paused;
         public FixedSlotEngine(VisitSchedule schedule,ISessionClock clock,ISessionJournal journal,ISlotContentFactory factory,Action<SlotGateRefusal> gateRefused=null)
         {
@@ -63,6 +68,7 @@ namespace AcousticVocab.SessionEngine
                 if(record.ScheduleSha256!=schedule.Sha256) throw new SessionFault("SESSION_SCHEDULE_MISMATCH");
                 if(record.TrialId!=null) latest[record.TrialId]=record;
                 if(record.Event=="retry_queued") { retryGranted.Add(record.RetryOf);retryOf[record.TrialId]=record.RetryOf; }
+                if(record.Event=="participant_discomfort_stop") discomfortStopped=true;
                 if(record.State==ItemState.Done && record.TrialId!=null) completed.Add(record.TrialId);
             }
             foreach(var pair in latest)
@@ -77,6 +83,7 @@ namespace AcousticVocab.SessionEngine
             }
             AdvancePastCompleted();
             if(blockIndex>=schedule.Blocks.Count) Status=SessionState.Complete;
+            else if(discomfortStopped) Status=SessionState.Stopped;
         }
         void AdvancePastCompleted()
         {
@@ -247,10 +254,16 @@ namespace AcousticVocab.SessionEngine
             }
             else AtBoundary();
         }
-        public void RequestStop()
+        public void RequestStop() => RequestStop(null);
+        public void RequestStop(string reason)
         {
-            if(Status is SessionState.Complete or SessionState.Stopped) return;stopRequested=true;
-            if(content!=null && CurrentState>=ItemState.CueRequested) { fault=fault??"SESSION_OPERATOR_STOP";content.Interrupt(fault);Write("stop_requested",Now(),CurrentState); }
+            if(reason!=null && reason!=ParticipantDiscomfort) throw new SessionFault("SESSION_STOP_REASON_INVALID");
+            if(Status==SessionState.Complete) return;
+            // Written first, so the reason is durable even if a later step fails.
+            // A plain stop may still be marked as a discomfort exit afterwards.
+            if(reason!=null && !discomfortStopped) { discomfortStopped=true;Write("participant_discomfort_stop",Now(),CurrentState); }
+            if(Status==SessionState.Stopped) return;stopRequested=true;
+            if(content!=null && CurrentState>=ItemState.CueRequested) { fault=fault??(discomfortStopped?DiscomfortStopCode:"SESSION_OPERATOR_STOP");content.Interrupt(fault);Write("stop_requested",Now(),CurrentState); }
             AtBoundary();
         }
         public void Fault(string code)

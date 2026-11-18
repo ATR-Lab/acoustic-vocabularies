@@ -99,7 +99,7 @@ namespace AcousticVocab.OperatorConsole
                 {
                     if (request.Command == "load") { Wire.Require(admission()?.Allowed == true, "admission_failed"); loaded = true; }
                     else if (request.Command == "pause") { boundaryControl?.Invoke("pause");engine.RequestPause(); }
-                    else if (request.Command == "stop") { boundaryControl?.Invoke("stop");engine.RequestStop(); }
+                    else if (request.Command == "stop") { boundaryControl?.Invoke("stop");engine.RequestStop(request.StopReason); }
                     else
                     {
                         Wire.Require(Loaded, "visit_not_loaded");
@@ -120,6 +120,9 @@ namespace AcousticVocab.OperatorConsole
             }
             var result = new OperatorReceipt(request, refusal == null, refusal ?? "none");
             Append(new OperatorAuditRecord("result", request, Now(), previousConsumed, result));
+            // A discomfort stop is also a distinct visit exit row, so the run sheet
+            // and payment paperwork never read it as a fault or a withdrawal.
+            if (result.Accepted && request.StopReason != null) Append(new OperatorAuditRecord("visit_exit", request, Now(), previousConsumed, result));
             if (consumes)
             {
                 receipt = result;

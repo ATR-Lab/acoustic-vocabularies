@@ -56,19 +56,35 @@ namespace AcousticVocab.OperatorConsole
         public string Command { get; }
         public string ManifestSha256 { get; }
         public string ScheduleSha256 { get; }
+        // Optional and only on stop. The single value marks a participant's
+        // discomfort stop so it is never read as a technical fault or a withdrawal.
+        public string StopReason { get; }
+        public const string ParticipantDiscomfort = "participant_discomfort";
         internal OperatorRequest(JObject value)
         {
-            Wire.Keys(value, "version", "session_nonce", "request_id", "sequence", "command", "run_sheet_manifest_sha256", "schedule_sha256");
+            bool reasoned = value?.Property("stop_reason") != null;
+            if (reasoned) Wire.Keys(value, "version", "session_nonce", "request_id", "sequence", "command", "run_sheet_manifest_sha256", "schedule_sha256", "stop_reason");
+            else Wire.Keys(value, "version", "session_nonce", "request_id", "sequence", "command", "run_sheet_manifest_sha256", "schedule_sha256");
             Wire.Require(Wire.Integer(value["version"]) == 1, "command_invalid");
             SessionNonce = Wire.Text(value["session_nonce"]); RequestId = Wire.Text(value["request_id"]);
             Sequence = Wire.Integer(value["sequence"]); Command = Wire.Text(value["command"]);
             ManifestSha256 = Wire.Text(value["run_sheet_manifest_sha256"]); ScheduleSha256 = Wire.Text(value["schedule_sha256"]);
             Wire.Require(Wire.Guid(SessionNonce) && Wire.Guid(RequestId) && Sequence > 0 && Wire.Hash(ManifestSha256) && Wire.Hash(ScheduleSha256) &&
                 new[] { "load", "start", "pause", "resume", "stop" }.Contains(Command), "command_invalid");
+            if (reasoned)
+            {
+                StopReason = Wire.Text(value["stop_reason"]);
+                Wire.Require(Command == "stop" && StopReason == ParticipantDiscomfort, "command_invalid");
+            }
         }
         public static OperatorRequest Parse(byte[] bytes) => new OperatorRequest(Wire.Parse(bytes));
-        internal JObject Json() => new JObject { ["version"] = 1, ["session_nonce"] = SessionNonce, ["request_id"] = RequestId, ["sequence"] = Sequence,
-            ["command"] = Command, ["run_sheet_manifest_sha256"] = ManifestSha256, ["schedule_sha256"] = ScheduleSha256 };
+        internal JObject Json()
+        {
+            var value = new JObject { ["version"] = 1, ["session_nonce"] = SessionNonce, ["request_id"] = RequestId, ["sequence"] = Sequence,
+                ["command"] = Command, ["run_sheet_manifest_sha256"] = ManifestSha256, ["schedule_sha256"] = ScheduleSha256 };
+            if (StopReason != null) value["stop_reason"] = StopReason;
+            return value;
+        }
     }
 
     public sealed class OperatorReceipt

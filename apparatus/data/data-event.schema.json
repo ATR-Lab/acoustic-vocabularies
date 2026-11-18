@@ -195,7 +195,8 @@
                   "boundary_late",
                   "session_stopped",
                   "session_paused",
-                  "novel_buffer_authorized"
+                  "novel_buffer_authorized",
+                  "participant_discomfort_stop"
                 ]
               },
               "clock_epoch": {

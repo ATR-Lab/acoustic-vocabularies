@@ -51,6 +51,8 @@ Exact state fields:
 The consumer fsyncs and atomically replaces `command.json` with exactly `version`,
 `session_nonce`, `request_id` (32 lowercase hex), `sequence` (next integer), `command`
 (`load/start/pause/resume/stop`), `run_sheet_manifest_sha256`, `schedule_sha256`.
+A `stop` may add `stop_reason` with the single value `participant_discomfort`; no
+other command or value is accepted (see `docs/unity/comfort-level-held.md`).
 All requests bind the loaded visit/current process. The adapter durably records
 before invoking #67 and sends a bound receipt afterward. Load compares the
 independently loaded host visit; it never makes unknown content ready. One request

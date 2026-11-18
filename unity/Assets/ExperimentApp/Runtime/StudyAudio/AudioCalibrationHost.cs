@@ -108,7 +108,7 @@ namespace AcousticVocab.StudyAudio
         IReadOnlyDictionary<string,PcmWave> examples;
         FileStream log;
         bool failed,focused=true,paused,pairActive,firstComplete,secondScheduled,secondComplete;
-        bool anyUncomfortable;
+        bool anyUncomfortable,held;
         int answered;
         string profile;
         InputAction controllerPosition,controllerRotation,controllerTracked,controllerTrigger;
@@ -137,8 +137,9 @@ namespace AcousticVocab.StudyAudio
                 player.Event+=OnAudioEvent;
                 player.Configure(AudioRouteCalibration.Unmeasured((string)foundation.Configuration["audio"]["route"]),Gate);
                 float restored=config.GainSourceCodedId==null?gains.Restore(config.CodedId):gains.RestoreOrCarry(config.GainSourceCodedId,config.CodedId,config.GainSourceReceiptSha256,AudioPlayer.Now); player.SetComfortableGain(restored); player.Preload(examples,config.BudgetBytes);
+                held=gains.IsHeld(config.CodedId);
                 Write("calibration_preloaded",new JObject { ["gain"]=restored,["estimated_preload_bytes"]=player.EstimatedPreloadBytes,
-                    ["unity_allocated_bytes"]=player.UnityAllocatedBytes,["file_sha256"]=new JArray(AudioCalibrationConfiguration.FileHashes),["pcm_sha256"]=new JArray(AudioCalibrationConfiguration.PcmHashes) });
+                    ["gain_held"]=held,["unity_allocated_bytes"]=player.UnityAllocatedBytes,["file_sha256"]=new JArray(AudioCalibrationConfiguration.FileHashes),["pcm_sha256"]=new JArray(AudioCalibrationConfiguration.PcmHashes) });
                 listenButton.onClick.AddListener(BeginProfile); quieterButton.onClick.AddListener(()=>ChangeGain(-.05f)); louderButton.onClick.AddListener(()=>ChangeGain(.05f));
                 yesButton.onClick.AddListener(()=>Respond(true)); noButton.onClick.AddListener(()=>Respond(false)); stopButton.onClick.AddListener(()=>Fail("CALIBRATION_OPERATOR_STOP"));
                 controllerPosition=new InputAction("Calibration controller position",InputActionType.Value,"<XRController>{RightHand}/devicePosition");
@@ -176,7 +177,7 @@ namespace AcousticVocab.StudyAudio
         }
         void ChangeGain(float delta)
         {
-            if(!Gate() || pairActive || player.Playing || sequence.Finished) return;
+            if(!Gate() || pairActive || player.Playing || sequence.Finished || held) return;
             try
             {
                 float value=Mathf.Clamp(player.CurrentGain+delta,.01f,1f);
@@ -199,6 +200,14 @@ namespace AcousticVocab.StudyAudio
                 ["both_software_plays_completed"]=firstComplete && secondComplete,["physical_delivery_qualified"]=false });
             anyUncomfortable|=!comfortable; answered++;
             if(answered==3) Write("calibration_responses_complete",new JObject { ["all_comfortable"]=!anyUncomfortable,["study_playback_enabled"]=false });
+            // The allocated slot's first calibration (visit 1) ends the setting
+            // phase when every profile was comfortable: the level is then held
+            // for every later visit. Screening histories are never held.
+            if(answered==3 && !anyUncomfortable && config.GainSourceCodedId!=null && !held)
+            {
+                float level=gains.Hold(config.CodedId,config.VisitId,now);held=true;
+                Write("calibration_gain_held",new JObject { ["gain"]=level });
+            }
         }
         void OnAudioEvent(AudioPlaybackEvent value)
         {
@@ -273,7 +282,7 @@ namespace AcousticVocab.StudyAudio
         {
             bool gate=Gate(),answer=gate && pairActive && sequence.CanAnswer && !player.Playing;
             listenButton.interactable=gate && !pairActive && !sequence.Finished && player.Ready;
-            quieterButton.interactable=louderButton.interactable=gate && !pairActive && !sequence.Finished && !player.Playing;
+            quieterButton.interactable=louderButton.interactable=gate && !pairActive && !sequence.Finished && !player.Playing && !held;
             yesButton.interactable=noButton.interactable=answer; stopButton.interactable=!failed && !sequence.Finished;
             gainText.text="Level: "+Mathf.RoundToInt(player.CurrentGain*100)+"%";
             statusText.text=sequence.Finished?(anyUncomfortable?"Responses saved. Tell the operator about discomfort.":"Responses saved. Continue with the operator."):

@@ -14,13 +14,19 @@ namespace AcousticVocab.OperatorConsole
         public OperatorReceipt Receipt { get; }
         internal OperatorAuditRecord(string kind, OperatorRequest request, double now, long prior, OperatorReceipt receipt = null)
         { Kind = kind; Request = request; HostMonoMs = now; PreviousConsumedSequence = prior; Receipt = receipt; }
-        internal JObject Json() => new JObject {
-            ["kind"] = Kind, ["request"] = Request.Json(), ["host_mono_ms"] = HostMonoMs,
-            ["previous_consumed_sequence"] = PreviousConsumedSequence,
-            ["stop_supersedes_through_sequence"] = Request.Command == "stop" ? new JValue(Request.Sequence - 1) : JValue.CreateNull(),
-            ["prior_receipt_acknowledgement"] = Request.Command == "stop" ? new JValue("unknown") : JValue.CreateNull(),
-            ["receipt"] = Receipt == null ? JValue.CreateNull() : (JToken)Receipt.Json()
-        };
+        internal JObject Json()
+        {
+            var value = new JObject {
+                ["kind"] = Kind, ["request"] = Request.Json(), ["host_mono_ms"] = HostMonoMs,
+                ["previous_consumed_sequence"] = PreviousConsumedSequence,
+                ["stop_supersedes_through_sequence"] = Request.Command == "stop" ? new JValue(Request.Sequence - 1) : JValue.CreateNull(),
+                ["prior_receipt_acknowledgement"] = Request.Command == "stop" ? new JValue("unknown") : JValue.CreateNull(),
+                ["receipt"] = Receipt == null ? JValue.CreateNull() : (JToken)Receipt.Json()
+            };
+            // Only the visit exit row carries the reason; other rows keep their shape.
+            if (Kind == "visit_exit") value["exit_reason"] = Request.StopReason;
+            return value;
+        }
     }
 
     public interface IOperatorCommandJournal
