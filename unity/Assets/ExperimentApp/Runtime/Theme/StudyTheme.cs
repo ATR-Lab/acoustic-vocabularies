@@ -26,6 +26,17 @@ namespace AcousticVocab.Theme
         // Pointer ray or tip.
         public static readonly Color Pointer = EdgeLit;
 
+        // Storyboard panel layer (presentation only, see StoryPanel and friends).
+        // The glass body behind a whole card. Opaque and darker than PanelFill,
+        // so text backings read as raised; it carries no text of its own.
+        public static readonly Color PanelGlass = Srgb(0x08, 0x18, 0x25);
+        // Soft outer glow layers around a panel (decorative, never behind text).
+        public static readonly Color GlowSoft = new Color32(0x3D, 0xD9, 0xC5, 0x55);
+        // Decorative waveform bars and progress track (never behind text).
+        public static readonly Color WaveIdle = Srgb(0x2F, 0x6B, 0x73);
+        public static readonly Color WaveLit = EdgeLit;
+        public static readonly Color Track = Srgb(0x16, 0x3A, 0x4A);
+
         // Type tokens. Text colour and style only; sizes come from the reviewed
         // panel and view geometry (#49/#74), never from the theme.
         public static readonly Color TextPrimary = Color.white;

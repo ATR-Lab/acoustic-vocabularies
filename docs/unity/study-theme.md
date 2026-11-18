@@ -49,3 +49,37 @@ geometry.
 There is no countdown and no playing indicator in this theme. A visible Study B choice
 countdown is an open decision. If it is ever added, it will sit behind a station flag,
 be off by default, and look identical for both roles.
+
+## Storyboard panel layer
+
+The components below (also `AcousticVocab.Theme`, Foundation assembly, which now
+references uGUI) build the storyboard look from uGUI primitives on the existing
+world-space canvases: a navy glass card with a teal edge and soft glow, step and
+status chips, banners, a progress bar, a decorative waveform with a playhead, and
+simple line icons. They are presentation only.
+
+- **No timing, order, scoring or logging.** No component owns a clock, schedules
+  anything or reads study content. Callers pass text, state and fractions in.
+- **Existing labels keep their geometry.** Components are added next to existing
+  labels and never change their `RectTransform`, font, font size or scale. A
+  `StoryPanel` is inserted as the first sibling so it renders behind everything.
+- **Text sits on opaque surfaces with at least 7:1 contrast.** Chip, banner and
+  label text is white on `PanelFill`, `SurfaceEnabled` or `SurfaceSelected`.
+  Glow, waveform bars, tracks and playheads are decoration and never sit behind text.
+- **No image assets.** Icons and rounded/glow sprites are generated at run time
+  into small textures. There is no icon font and no file from the storyboard.
+- **No input.** Every graphic has `raycastTarget = false`.
+
+| Type | Use |
+| --- | --- |
+| `StoryPanel.Create(parent, name, position, size)` | Glass card (`PanelGlass` body, `EdgeIdle` edge, three `GlowSoft` layers outside). `SetLit(bool)` brightens edge and glow. |
+| `StoryStepChips.Create(parent, name, position, font, fontSize, chipWidth, steps...)` | Step chips joined by connectors. `Set(i)`: earlier steps show a check, step `i` is lit, later steps idle; `-1` lights none. |
+| `StoryStatusChip.Create(parent, name, position, size, font, fontSize, text, icon, lit)` | Pill with a leading icon, e.g. check and "Correct". `Show(bool)`, `Set(text, icon)`. |
+| `StoryBanner.Create(parent, name, position, size, font, fontSize, text, locked)` | One-line banner with an optional lock badge. `Set(text, locked)`. |
+| `StoryProgressBar.Create(parent, name, position, size)` | Track and fill. `Set(fraction)` (clamped; NaN is 0). |
+| `StoryWaveform.Create(parent, name, position, size, seed, count)` | Bars from a fixed seed (never from audio). `SetPlayhead(float?)`: `null` hides the playhead; bars left of it are lit. |
+| `StoryIcons.Texture(icon)`, `ForAction(id)`, `ForTarget(id)` | Cached line icons: speaker, tag, box, tray, lock, check, ring with plus or minus, card, arrow, scan. |
+| `StoryUi.Surface/Label/PlainText/Icon/Block/Round/Style` | Shared helpers (opaque rounded surface with edge, label on its own backing, icon, plain block). |
+
+New tokens: `PanelGlass` `#081825` (card body, opaque), `GlowSoft` (`EdgeLit` at
+alpha 0x55, glow only), `WaveIdle` `#2F6B73`, `WaveLit` (= `EdgeLit`), `Track` `#163A4A`.
