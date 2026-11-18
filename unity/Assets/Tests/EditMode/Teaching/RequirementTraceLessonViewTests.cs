@@ -259,7 +259,7 @@ namespace AcousticVocab.Teaching.Tests
             // The fixture catalogue has a fixed atomic text on main; a response-based catalogue
             // (#276) shows the correct-outcome text. Either way both formats must match.
             string shown = aligned.At(16000).Feedback;
-            Assert.That(shown, Is.AnyOf("Synthetic atomic feedback", "Synthetic correct feedback"));
+            Assert.That(shown, Is.EqualTo("Synthetic atomic feedback").Or.EqualTo("Synthetic correct feedback"));
             AssertPhases(aligned, true, shown); AssertPhases(dictionary, true, shown);
             Assert.That(aligned.Samples, Is.EqualTo(dictionary.Samples));
             Assert.That(aligned.Samples.All(x => x.view.Highlight == "none"), Is.True);
