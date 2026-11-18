@@ -88,6 +88,7 @@ manifest field yet.
 | | DSP buffer frames and count | app log; onset record | station `audio.buffer_samples`; manifest `audio_buffer` |
 | | headphones logical ID and model | label | private record |
 | | loopback wiring, capture interface, microphone and coupler IDs | physical | onset settings `capture_interface`; private record |
+| | level-cap measurement: dB(A) peak at the ear for a 0 dBFS peak at gain 0 dB, date, coupler ID | coupler (§5.3) | station `audio.level_calibration` (#348); private record |
 | Network | adapter, segment | network owner | manifest `station_network_settings` |
 | | fixed address, Isaac endpoint | network owner | station `isaac_endpoint` (private); private record |
 | | Isaac host allocation (logical) | ADR-003 plan | private record |
@@ -203,6 +204,10 @@ It writes `operator-logs/` there.
    ```powershell
    python tools/validate_station.py $StationConfig --protocol $ProtocolVersion --topology pcvr_link
    ```
+
+   With #348, the validator refuses a provisioned file without the
+   level-cap measurement (`LEVEL_CAP_OFFSET_MISSING`), and the app plays no
+   study sound without it. Add it in §5.3, then validate again.
 
 3. Put `state-source.local.json` and `response-panel.local.json` in the same
    directory, following the [state sources](../unity/state-sources.md) and
@@ -361,6 +366,47 @@ sound-pressure calibration unless the microphone itself is calibrated (O5.1.6).
    high.
 4. Pass (from the measurement procedures): at each gain, levels differ by at most
    1 dB across stations. Record a level table per station.
+
+#### Level cap: 80 dB(A) peak at the ear (decision I7)
+
+Each person's comfortable level stays below a hard cap of 80 dB(A) peak at the
+ear. The app computes the largest allowed gain from one number per station, the
+coupler measurement below. The app logic and its refusal codes are described in
+`docs/unity/level-cap.md` (#348). This check needs absolute
+levels, so the measurement chain must be calibrated: check the microphone with an
+acoustic calibrator before and after, and record both readings.
+
+5. **Measure.** With the OS volume step from step 3 fixed, play a signal of known
+   peak `P` dBFS at a known in-app gain `g` through the headphones on the
+   coupler. Read the A-weighted peak `L` in dB(A). The offset is
+   `L - P - 20*log10(g)`: the dB(A) peak at the ear for a 0 dBFS peak at gain
+   0 dB (linear gain 1). A full-scale signal at gain 1 gives the offset directly.
+   Tooling gap: the calibration host plays only its three examples, and no tool
+   yet plays a full-scale reference through the app's output path or reports an
+   example's peak. Record the signal used, `P` and `g` (**TBD-at-install**).
+6. **Record it in the station file.** Add `audio.level_calibration` to
+   `station.local.json`:
+   - `route`: the same value as `audio.route`;
+   - `ear_peak_dba_at_0dbfs`: the offset from step 5;
+   - `measured_on`: the measurement date, `YYYY-MM-DD`;
+   - `coupler_id`: the logical ID of the coupler and meter.
+
+   Validate the file again (§3.6). Record its new SHA-256 and keep the earlier
+   file.
+7. **Verify at the cap.** Start the calibration host under an engineering test
+   code, never a participant's. Its `calibration_preloaded`
+   log row gives `level_cap_max_gain`. Raise the level control until Louder is
+   disabled; that is the cap. Play the loudest stimulus at that gain and read
+   the coupler. Pass: at most 80 dB(A) peak. Until a tool can play any stored
+   stimulus at a chosen gain, play each calibration example at the cap and a
+   full-scale signal at `level_cap_max_gain`, and record which signals were used
+   (**TBD-at-install**). A reading above 80 dB(A) blocks the station: repeat
+   steps 5 to 7, and do not raise the cap by editing the offset.
+8. **Re-check after any audio-route change.** Any change in §10, a new route
+   value, or a change of OS volume step, interface, headphones or their cable
+   invalidates the measurement. Repeat steps 5 to 7 and write a new
+   `level_calibration` with the new date. The app refuses a measurement whose
+   `route` differs from `audio.route` (`LEVEL_CAP_ROUTE_MISMATCH`).
 
 ### 5.4 Buffer selection
 
@@ -563,6 +609,7 @@ pilot.
 | 4 | Link rate chosen; 900-second capture with no freeze over 250 ms; removal, sleep and disconnect callbacks (§4.4, §4.5) | ADR-001 acceptance | INSTALL | O5.1.3 frame CSV, `summary.local.json`, events |
 | 5 | Kiosk-equivalent restrictions and 30-minute idle observation (§4.5) | #296 | INSTALL | private record |
 | 6 | Level within 1 dB across stations at three gains (§5.3) | REQ-AUD-09 | INSTALL | level table per station |
+| 6a | Level-cap measurement in the station file; loudest stimulus at the capped gain at most 80 dB(A) peak at the coupler (§5.3, decision I7) | REQ-AUD-09 | INSTALL | station `audio.level_calibration`; calibrator readings; coupler readings at the cap |
 | 7 | Smallest underrun-free buffer (§5.4) | REQ-AUD-04 | INSTALL | candidate run logs; record `buffer_frames` |
 | 8 | 200 scheduled onsets, target met including the sync bound (§5.5) | REQ-AUD-08 | INSTALL | `apparatus/calibration/<station>/<route>/<run>/` record, `plays.csv`, `residual-histogram.csv`, inputs |
 | 9 | Record pinned and accepted; changed route or device refused (§5.6) | REQ-AUD-04 | INSTALL | private app logs with codes; station file hash; manifest `audio_onset_calibration` |
@@ -590,7 +637,9 @@ Compare against the signed station record:
   off, and the OS volume step;
 - refresh rate;
 - the build hash loop (§3.5);
-- the SHA-256 of the station file and of the onset record.
+- the SHA-256 of the station file and of the onset record;
+- the station file's `audio.level_calibration` is present and its `route`
+  equals `audio.route` (§5.3).
 
 Also run the #195 checks: casting, notifications, clock and console. Any
 difference blocks sessions on that station until it is requalified (§10).
@@ -617,7 +666,8 @@ On any such change:
 
 1. Stop sessions on that station.
 2. Rerun §5.4 to §5.6 into new record directories, and recheck §5.3 if the
-   level path changed. Keep superseded records unedited.
+   level path changed. After any audio-route change, repeat the level-cap
+   measurement and check (§5.3 steps 5 to 8). Keep superseded records unedited.
 3. Start a new apparatus version after freeze, with reason, affected records and
    validation ([versioning](../versioning.md)).
 
