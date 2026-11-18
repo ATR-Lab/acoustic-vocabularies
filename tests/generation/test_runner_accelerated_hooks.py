@@ -2,18 +2,24 @@
 
 #305: on an accelerated clock, #16's 5-s token-count cap is run-clock time (25 ms of real
 time at 200x), so `open_batch` gives the LLM client a cap that keeps the count's real-time
-budget (`default_token_count_cap_ms`) and records it. A slow fake count (#16's mock
-server with `tokenize_delay_s`) finishes within the new cap at 20x and 200x and misses
-the old one. Real-time runs keep 5 s and the same records.
+budget (`default_token_count_cap_ms`) and records it. A slow fake count finishes within
+the new cap at 20x and 200x and misses the old one. The count's time is run-clock time on
+a clock that only the fake tokenizer moves (`TokenizerClock`), so the result does not
+depend on how fast the test machine is. Real-time runs keep 5 s and the same records.
 
 #306: `StudyBatch.served_a1` is the A1 page while a session serves it, and
 `run_session(designer_factory=...)` builds the session's bot designer from that page
 (the dry run's thinking designer uses it). The operator lines stay the same.
 """
 
+import asyncio
+import threading
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import pytest
+from fastapi import Request
 
 from av_generation import _batch_sim as sim
 from av_generation import batch_runner as br
@@ -87,23 +93,102 @@ def test_default_cap_keeps_five_real_seconds_within_the_slot_cap(clock, cap_ms):
         assert real_ms == pytest.approx(min(TOKEN_COUNT_TIMEOUT_MS, SLOT_CAP_MS / speed))
 
 
-@pytest.mark.parametrize(("speed", "delay_s"), [(20, 0.4), (200, 0.04)])
-def test_an_accelerated_runner_keeps_the_count_within_its_real_time_budget(
-    tmp_path, speed, delay_s
-):
-    """The fake count takes longer than 5 s of clock time (250 ms real at 20x, 25 ms at
-    200x) and well under the new cap (2 s and 200 ms real): the runner's client counts,
-    a client with #16's default cap on the same clock times out."""
-    server = MockLlmServer(tokenize_delay_s=delay_s)
+COUNT_MS = 8_000
+"""Run-clock time of the fake count: over #16's 5-s cap, under the 40-s slot cap."""
+GUARD_S = 30.0
+"""Real-time guard of the fake tokenizer's waits; reached only when the client is broken."""
+
+
+class TokenizerClock(ScaledClock):
+    """A run clock of speed k on which no wall time passes: only the fake tokenizer moves it.
+
+    The runner reads `speed` (`default_token_count_cap_ms`), so its client gets the cap of a
+    real k-times clock. Each `asleep` records when it falls due, so the tokenizer sees the
+    client's pending cap. A slow CI runner therefore cannot move the run clock."""
+
+    def __init__(self, speed: float) -> None:
+        super().__init__(speed)
+        self._manual = ManualClock()
+        self._lock = threading.Lock()
+        self._due: list[int] = []
+
+    def now_ms(self) -> int:
+        return self._manual.now_ms()
+
+    def set_ms(self, ms: int) -> int:
+        return self._manual.set_ms(ms)
+
+    def sleep(self, seconds: float) -> None:
+        self._manual.sleep(seconds)
+
+    async def asleep(self, seconds: float) -> None:
+        due = self.now_ms() + round(seconds * 1000)
+        with self._lock:
+            self._due.append(due)
+        try:
+            while self.now_ms() < due:
+                await asyncio.sleep(0.001)
+        finally:
+            with self._lock:
+                self._due.remove(due)
+
+    def first_due(self) -> int | None:
+        with self._lock:
+            return min(self._due, default=None)
+
+    def utc_now(self) -> datetime:
+        return self._manual.utc_now()
+
+
+@dataclass
+class RunClockTokenizer(MockLlmServer):
+    """#16's mock server whose `/tokenize` takes `tokenize_delay_s` of run-clock time on
+    `clock`. It moves the clock itself: to the client's cap when the cap falls due first
+    (then it waits for the client to cancel, as a busy tokenizer would), otherwise to the
+    end of the count (then it answers). Nothing races the wall clock."""
+
+    clock: TokenizerClock | None = None
+
+    async def _wait(self, request: Request, seconds: float) -> bool:
+        clock = self.clock
+        assert clock is not None
+        end = clock.now_ms() + round(seconds * 1000)
+        loop = asyncio.get_running_loop()
+        guard = loop.time() + GUARD_S
+        while (cap := clock.first_due()) is None and loop.time() < guard:
+            await asyncio.sleep(0.001)  # the client starts its cap as it posts
+        if cap is None or cap >= end:
+            clock.set_ms(end)
+            return False
+        clock.set_ms(cap)
+        while loop.time() < guard:
+            if await request.is_disconnected():
+                return True
+            await asyncio.sleep(0.001)
+        return False
+
+
+@pytest.mark.parametrize("speed", [20, 200])
+def test_an_accelerated_runner_keeps_the_count_within_its_real_time_budget(tmp_path, speed):
+    """The fake count takes 8 s of run-clock time: longer than #16's 5 s (250 ms real at
+    20x, 25 ms at 200x) and well under the new 40-s cap (2 s and 200 ms real). The
+    runner's client counts in 8 s; a client with #16's default cap on the same clock is
+    cancelled at exactly 5 s. Only the fake tokenizer moves the clock, so how fast the
+    machine is does not matter."""
+    clock = TokenizerClock(speed)
+    server = RunClockTokenizer(tokenize_delay_s=COUNT_MS / 1000, clock=clock)
     with serve_in_thread(server.app) as url:
-        batch = _open(tmp_path, f"DEMO-count-cap-{speed}", url, ScaledClock(speed))
+        batch = _open(tmp_path, f"DEMO-count-cap-{speed}", url, clock)
         assert batch.llm is not None
         assert batch.token_count_cap_ms == batch.llm.count_timeout_ms == SLOT_CAP_MS
+        start = clock.now_ms()
         assert batch.llm.count_prompt_tokens(MESSAGES) > 0
+        assert clock.now_ms() - start == COUNT_MS
         old = OpenAICompatibleClient(url, batch.llm.model, run_id="DEMO-x", clock=batch.clock)
         assert old.count_timeout_ms == TOKEN_COUNT_TIMEOUT_MS
-        with pytest.raises(TokenCountTimeout):
+        with pytest.raises(TokenCountTimeout, match=f"after {TOKEN_COUNT_TIMEOUT_MS} ms"):
             old.count_prompt_tokens(MESSAGES)
+    assert (server.tokenize_calls, server.tokenize_aborted) == (2, 1)
     # the run records the cap it used, in the sitting's `llm` startup events
     startup = _llm_startup(batch)
     assert [e.event for e in startup] == ["startup_start", "startup_end"]
