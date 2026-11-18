@@ -65,6 +65,24 @@ namespace AcousticVocab.Foundation.Tests
         }
         [Test] public void NewUnimplementedSchemaConstraintFailsClosed()
         { var schema = JObject.Parse(Schema); schema["properties"]["station_id"]["not"] = new JObject(); Assert.Throws<ConfigurationFault>(() => StationConfig.Validate(Provisioned.ToString(), schema.ToString(), (string)Example["protocol_version"])); }
+        // Decision I7: the coupler measurement is optional in the schema (the app
+        // refuses study sound without it) but strict when present.
+        [Test, Category("REQ_AUD_09")] public void LevelCalibrationRecordIsStrictWhenPresent()
+        {
+            JObject With(Action<JObject> change)
+            {
+                var value = Provisioned; var record = new JObject { ["route"] = value["audio"]["route"], ["ear_peak_dba_at_0dbfs"] = 104.5, ["measured_on"] = "2026-12-15", ["coupler_id"] = "coupler-01" };
+                change(record); value["audio"]["level_calibration"] = record; return value;
+            }
+            Assert.That(Check(With(_ => { }))["audio"]["level_calibration"], Is.Not.Null);
+            foreach (var name in new[] { "route", "ear_peak_dba_at_0dbfs", "measured_on", "coupler_id" })
+                Assert.Throws<ConfigurationFault>(() => Check(With(r => r.Remove(name))), name);
+            Assert.Throws<ConfigurationFault>(() => Check(With(r => r["unexpected"] = 1)));
+            Assert.Throws<ConfigurationFault>(() => Check(With(r => r["ear_peak_dba_at_0dbfs"] = 200)));
+            Assert.Throws<ConfigurationFault>(() => Check(With(r => r["ear_peak_dba_at_0dbfs"] = "104.5")));
+            Assert.Throws<ConfigurationFault>(() => Check(With(r => r["measured_on"] = "2026-12-15\n")));
+            Assert.Throws<ConfigurationFault>(() => Check(With(r => r["coupler_id"] = "")));
+        }
         [Test] public void EmbeddedSchemaMatchesCanonical() => FoundationBuild.VerifySchema();
         [Test] public void PublicExampleCopyMatchesCanonical() => Assert.That(File.ReadAllText("Assets/Tests/EditMode/StationExample.json"), Is.EqualTo(File.ReadAllText(Path.Combine(FoundationBuild.RepositoryRoot, "apparatus/examples/station.example.json"))));
     }

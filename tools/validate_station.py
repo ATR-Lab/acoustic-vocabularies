@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import math
 from pathlib import Path
@@ -41,6 +42,17 @@ def validate(path: Path, protocol: str, topology: str) -> dict:
         raise ValueError("reference quaternion invalid")
     if abs(quaternion[0]) > .0001 or abs(quaternion[2]) > .0001:
         raise ValueError("reference must preserve world up")
+    # Decision I7: a provisioned station carries its install-time coupler
+    # measurement for the configured route; the app refuses study sound without it.
+    level = value["audio"].get("level_calibration")
+    if level is None:
+        raise ValueError("LEVEL_CAP_OFFSET_MISSING")
+    if level["route"] != value["audio"]["route"]:
+        raise ValueError("LEVEL_CAP_ROUTE_MISMATCH")
+    try:
+        datetime.date.fromisoformat(level["measured_on"])
+    except ValueError:
+        raise ValueError("LEVEL_CAP_OFFSET_INVALID") from None
     return value
 
 
@@ -52,6 +64,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         validate(args.path, args.protocol, args.topology)
-    except (ValueError, OSError, KeyError):
+    except ValueError as error:
+        # Fixed level-cap codes carry no configuration values, so name them.
+        code = str(error) if str(error).startswith("LEVEL_CAP_") else None
+        raise SystemExit("Station configuration rejected" + (f" ({code})" if code else "") + "; no private values emitted.")
+    except (OSError, KeyError):
         raise SystemExit("Station configuration rejected; no private values emitted.")
     print("Station configuration valid for specified protocol and topology.")

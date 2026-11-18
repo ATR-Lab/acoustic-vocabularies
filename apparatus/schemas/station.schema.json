@@ -90,6 +90,46 @@
           "minimum": 64,
           "maximum": 8192
         },
+        "level_calibration": {
+          "description": "Coupler measurement taken at station install. The app refuses to play study sound without it and caps every comfortable gain at 80 dB(A) peak at the ear (decision I7).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "route",
+            "ear_peak_dba_at_0dbfs",
+            "measured_on",
+            "coupler_id"
+          ],
+          "properties": {
+            "route": {
+              "description": "Audio route measured; must equal audio.route, so a route change needs a new measurement.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+            },
+            "ear_peak_dba_at_0dbfs": {
+              "description": "dB(A) peak at the ear for a 0 dBFS peak played at gain 0 dB (linear gain 1).",
+              "type": "number",
+              "minimum": 40,
+              "maximum": 140
+            },
+            "measured_on": {
+              "description": "Measurement date, YYYY-MM-DD.",
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 10,
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(?![\\s\\S])"
+            },
+            "coupler_id": {
+              "description": "Identifier of the coupler and meter used.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+            }
+          }
+        },
         "route_offset_ms": {
           "type": [
             "number",
