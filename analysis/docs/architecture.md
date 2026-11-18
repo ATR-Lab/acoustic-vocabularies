@@ -29,6 +29,7 @@ changes one only when unavoidable and says why in its pull request.
 | --- | --- | --- | --- |
 | `templates` | shared | skeleton | column lists of the four methodology log templates, extension columns, reviewed SHA-256, column classes, drift check |
 | `vocab` | shared | skeleton | raw-log values (aligned with the provisional producer), fault types, times, output enumerations, protocol thresholds |
+| `app_fault_codes` | shared | #284 | Unity app codes reviewed as not one of the seven fault types, and the literal pattern the app-code test scans for |
 | `codes` | shared | skeleton | checks C1-C8, discrepancy codes, suspension events, fault-injection map |
 | `windows` | shared | skeleton | visit windows and the yoked 24 h rule (aware times) |
 | `derived` | shared | skeleton | specifications of the six reconciled and derived tables, cell encoding, row schemas, canonical table bytes |
@@ -280,9 +281,14 @@ apparatus faults.
   adopted in `vocab`, so the remaining adapter maps columns only: **Pending** (#72/#73
   with #33).
 - **Fault types.** Fault codes form an open producer set; `vocab.fault_type` maps them to
-  the six protocol fault types or `other` (canonical codes plus known producer codes;
+  the seven protocol fault types or `other` (canonical codes plus known producer codes;
   mapping **Pending** #64/#67/#72). `presentation_freeze` also follows from
-  `frame_freeze_ms` > 250 and `failed_reset` from `reset_ok` = `false`.
+  `frame_freeze_ms` > 250 and `failed_reset` from `reset_ok` = `false`. Every code-shaped
+  string literal of the Unity app runtime is either mapped to one of the seven types
+  (`vocab.APP_FAULT_CODE_TYPES`) or listed as not applicable (`app_fault_codes`, type
+  `other`); `tests/analysis/test_app_fault_codes.py` scans the runtime and fails on a code
+  in neither (#284). The type never decides scoring: any fault code or type makes a trial
+  a technical failure.
 - **Waveform hashes.** A logged `waveform_sha256` is the file hash for file playback (the
   producer's export) and the PCM/composite hash for audio composed in memory. C3 matches a
   logged hash against both expected hashes of the item (`references.ExpectedHash`); an

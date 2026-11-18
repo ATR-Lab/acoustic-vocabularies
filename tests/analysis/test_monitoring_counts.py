@@ -52,6 +52,7 @@ FAULT_TYPES = (
     "failed_reset",
     "missing_response_log",
     "presentation_freeze",
+    "interface_loss",
     "other",
 )
 TARGETS = {

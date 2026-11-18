@@ -94,7 +94,7 @@ the SHA-256 of each input table. The same inputs give the same bytes on every pl
 
 | Table | Columns read |
 | --- | --- |
-| `visit-status` | `data_kind`, `study`, `set`, `unit_id`, `person_id`, `visit`, `visit_id`, `station_id`, `visit_state`, `reconciliation`, `checks_failed`, `discrepancies_n`, `unresolved_n`, `suspension_events`, `visit_date`, `days_since_anchor`, `window_lo_days`, `window_hi_days`, `timing`, `pair_gap_hours`, `pair_gap_ok`, `overrun`, `opportunities_n`, `fault_n`, `fault_<type>_n` (7 types), `comfort_flag`, `deviations_n`, `open_deviations_n`, `comfort_deviations_n`, `withdrawal_deviations_n` |
+| `visit-status` | `data_kind`, `study`, `set`, `unit_id`, `person_id`, `visit`, `visit_id`, `station_id`, `visit_state`, `reconciliation`, `checks_failed`, `discrepancies_n`, `unresolved_n`, `suspension_events`, `visit_date`, `days_since_anchor`, `window_lo_days`, `window_hi_days`, `timing`, `pair_gap_hours`, `pair_gap_ok`, `overrun`, `opportunities_n`, `fault_n`, `fault_<type>_n` (8 types), `comfort_flag`, `deviations_n`, `open_deviations_n`, `comfort_deviations_n`, `withdrawal_deviations_n` |
 | `discrepancies` | `data_kind`, `study`, `visit_id`, `seq`, `check`, `code`, `resolved`, `suspension_event` |
 | `enrollment` | `data_kind`, `study`, `set`, `planned_units_n`, `planned_persons_n`, `eligibility_records_n`, `eligible_persons_n`, `screening_cases_n`, `revealed_units_n`, `revealed_persons_n`, `spares_used_n`, `bank_unavailable_n`, `last_event_date` |
 

@@ -550,6 +550,10 @@
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "interface_loss": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "missing_playback": {
                     "minimum": 0,
                     "type": "integer"
@@ -574,6 +578,7 @@
                   "failed_reset",
                   "missing_response_log",
                   "presentation_freeze",
+                  "interface_loss",
                   "other"
                 ],
                 "type": "object"
@@ -647,6 +652,10 @@
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "interface_loss": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "missing_playback": {
                     "minimum": 0,
                     "type": "integer"
@@ -671,6 +680,7 @@
                   "failed_reset",
                   "missing_response_log",
                   "presentation_freeze",
+                  "interface_loss",
                   "other"
                 ],
                 "type": "object"
@@ -737,6 +747,10 @@
                   "minimum": 0,
                   "type": "integer"
                 },
+                "interface_loss": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "missing_playback": {
                   "minimum": 0,
                   "type": "integer"
@@ -761,6 +775,7 @@
                 "failed_reset",
                 "missing_response_log",
                 "presentation_freeze",
+                "interface_loss",
                 "other"
               ],
               "type": "object"
