@@ -38,7 +38,9 @@ def open_log(private, study="A"):
     data = (ROOT / "schedules/examples/demo-allocation" / study / name).read_bytes()
     path = private / (study + "-list.json")
     path.write_bytes(data)
-    return DurableRevealLog(path, sha(data), private / (study + ".admission.jsonl"), expected_head=GENESIS)
+    return DurableRevealLog(
+        path, sha(data), private / (study + ".admission.jsonl"), expected_head=GENESIS
+    )
 
 
 def orientation(private, person):
@@ -56,9 +58,26 @@ def orientation(private, person):
         "engineering_draft": False,
         "eligible": True,
     }
-    keys = ("screening_id", "orientation_id", "protocol_version", "station_id", "plan_sha256", "demo_index_sha256")
-    rows = [{"event": "orientation_header", "preallocation": True, "study_audio_loaded": False, **{k: receipt[k] for k in keys}}]
-    rows += [{"event": "practice_response", "attempt": 1, "ordinal": i + 1, "correct": True} for i in range(8)]
+    keys = (
+        "screening_id",
+        "orientation_id",
+        "protocol_version",
+        "station_id",
+        "plan_sha256",
+        "demo_index_sha256",
+    )
+    rows = [
+        {
+            "event": "orientation_header",
+            "preallocation": True,
+            "study_audio_loaded": False,
+            **{k: receipt[k] for k in keys},
+        }
+    ]
+    rows += [
+        {"event": "practice_response", "attempt": 1, "ordinal": i + 1, "correct": True}
+        for i in range(8)
+    ]
     rows.append(
         {
             "event": "eligibility_outcome",
@@ -82,7 +101,10 @@ def orientation(private, person):
 @pytest.mark.parametrize("study,people", [("A", ("DEMO-a",)), ("B", ("DEMO-b1", "DEMO-b2"))])
 @pytest.mark.xfail(
     strict=True,
-    reason="Requirement gap: the comfort screening result is not an allocation input; eligibility accepts consent/compatibility/orientation (A) or operator flags (B) only",
+    reason=(
+        "Requirement gap: #273 the comfort screening result is not an allocation input; "
+        "eligibility accepts consent/compatibility/orientation (A) or operator flags (B) only"
+    ),
 )
 def test_allocation_requires_a_recorded_comfortable_screening(private, study, people):
     """REQ-ELIG-02: allocation is refused unless every participant's comfort screening (profiles
@@ -92,13 +114,18 @@ def test_allocation_requires_a_recorded_comfortable_screening(private, study, pe
     files = [orientation(private, p) for p in people]
     # Nothing records the comfort screening, so eligibility must not be granted.
     with pytest.raises(RevealError):
-        log.log_eligibility(list(people), staff="DEMO-operator", checks=checks, orientation_files=files)
+        log.log_eligibility(
+            list(people), staff="DEMO-operator", checks=checks, orientation_files=files
+        )
     assert log.head == GENESIS
 
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Requirement gap: no accommodations field exists in screening, eligibility or reveal receipts",
+    reason=(
+        "Requirement gap: #313 no accommodations field exists in screening, "
+        "eligibility or reveal receipts"
+    ),
 )
 def test_declared_accommodations_are_recorded_at_screening_and_carried_to_visits(private):
     """REQ-ELIG-03: accommodations declared at screening are recorded with the eligibility
@@ -114,7 +141,9 @@ def test_declared_accommodations_are_recorded_at_screening_and_carried_to_visits
     )
     assert receipt["accommodations"] == {"DEMO-a": declared}
     reveal = log.reveal_next(
-        receipt["eligibility_id"], eligibility_receipt_sha256=receipt["receipt_sha256"], staff="DEMO-operator"
+        receipt["eligibility_id"],
+        eligibility_receipt_sha256=receipt["receipt_sha256"],
+        staff="DEMO-operator",
     )
     assert reveal["accommodations"] == {"DEMO-a": declared}
 
@@ -161,8 +190,17 @@ def test_each_new_atom_gets_exactly_one_twenty_second_lesson():
         per_person: dict[str, Counter[str]] = {}
         for person, visit, doc in docs(study):
             lessons = items(doc, "atomic_lessons")
-            assert all(it["trial_type"] == "atomic_lesson" and it["slot_s"] == 20 and it["plays"] == 3 for it in lessons)
-            expected = atoms() if (study, visit) == ("A", "D0") else wave_atoms(WAVE[visit]) if visit in WAVE else ()
+            assert all(
+                it["trial_type"] == "atomic_lesson" and it["slot_s"] == 20 and it["plays"] == 3
+                for it in lessons
+            )
+            expected = (
+                atoms()
+                if (study, visit) == ("A", "D0")
+                else wave_atoms(WAVE[visit])
+                if visit in WAVE
+                else ()
+            )
             assert sorted(it["atom_id"] for it in lessons) == sorted(expected), (person, visit)
             per_person.setdefault(person, Counter()).update(it["atom_id"] for it in lessons)
         for person, counts in per_person.items():
@@ -177,13 +215,20 @@ def test_each_newly_trained_message_gets_exactly_two_twenty_four_second_lessons(
         per_person: dict[str, Counter[str]] = {}
         for person, visit, doc in docs(study):
             lessons = items(doc, "message_lessons")
-            assert all(it["trial_type"] == "message_lesson" and it["slot_s"] == 24 and it["plays"] == 3 for it in lessons)
+            assert all(
+                it["trial_type"] == "message_lesson" and it["slot_s"] == 24 and it["plays"] == 3
+                for it in lessons
+            )
             if (study, visit) == ("A", "D0"):
                 expected = trained
             else:
-                expected = {c.message_id for c in trained_cells(WAVE[visit])} if visit in WAVE else set()
+                expected = (
+                    {c.message_id for c in trained_cells(WAVE[visit])} if visit in WAVE else set()
+                )
             for p in (1, 2):
-                assert sorted(it["message_id"] for it in lessons if it["pass"] == p) == sorted(expected), (person, visit, p)
+                assert sorted(it["message_id"] for it in lessons if it["pass"] == p) == sorted(
+                    expected
+                ), (person, visit, p)
             per_person.setdefault(person, Counter()).update(it["message_id"] for it in lessons)
         for person, counts in per_person.items():
             assert counts == Counter({m: 2 for m in trained}), person
@@ -199,7 +244,9 @@ def test_study_a_teaches_the_whole_vocabulary_at_the_first_visit_with_aligned_le
             assert len({it["message_id"] for it in items(doc, "message_lessons")}) == 18
             assert {it["presentation"] for it in items(doc, "message_lessons")} == {"structured"}
         else:
-            assert not {"atomic_lessons", "message_lessons", "atom_menus", "profile_menu"} & set(names), person
+            assert not {"atomic_lessons", "message_lessons", "atom_menus", "profile_menu"} & set(
+                names
+            ), person
 
 
 def test_follow_up_visits_contain_no_teaching_selection_or_repeated_sound():
@@ -209,8 +256,14 @@ def test_follow_up_visits_contain_no_teaching_selection_or_repeated_sound():
         for person, visit, doc in docs(study):
             if visit not in follow_ups:
                 continue
-            assert all(b["phase"] not in ("teaching", "selection") for b in doc["blocks"]), (person, visit)
-            assert all(it["plays"] <= 1 for b in doc["blocks"] for it in b["items"]), (person, visit)
+            assert all(b["phase"] not in ("teaching", "selection") for b in doc["blocks"]), (
+                person,
+                visit,
+            )
+            assert all(it["plays"] <= 1 for b in doc["blocks"] for it in b["items"]), (
+                person,
+                visit,
+            )
 
 
 def test_acquisition_visits_never_play_future_atoms_or_messages():
@@ -220,7 +273,12 @@ def test_acquisition_visits_never_play_future_atoms_or_messages():
         if visit not in WAVE:
             continue
         wave = WAVE[visit]
-        assert sorted(it["atom_id"] for it in items(doc, "atomic_lessons")) == sorted(wave_atoms(wave))
+        assert sorted(it["atom_id"] for it in items(doc, "atomic_lessons")) == sorted(
+            wave_atoms(wave)
+        )
         assert all(atom_wave(a) <= wave for a in used_atoms(doc)), (person, visit)
         later = {c.message_id for c in trained_cells() if c.training_wave > wave}
-        assert not later & {it.get("message_id") for b in doc["blocks"] for it in b["items"]}, (person, visit)
+        assert not later & {it.get("message_id") for b in doc["blocks"] for it in b["items"]}, (
+            person,
+            visit,
+        )

@@ -215,9 +215,7 @@ def test_battery_not_resumed_records_missing_endpoint_and_keeps_committed_scores
     assert endpoint["accounted_n"] == endpoint["scheduled_n"] - 1
     assert endpoint["planned_endpoint"] is False
     mine = [t for t in tables["trials"] if t["visit_id"] == vid and t["block"] == "trained"]
-    score = next(
-        s for s in battery_scores(mine, [endpoint]) if s.family is None
-    )
+    score = next(s for s in battery_scores(mine, [endpoint]) if s.family is None)
     assert score.operational is None and score.valid_delivery is None
     kept = sum(score_trial(t).y_operational for t in mine if t["retry_of"] is None)
     assert score.operational_n == len(mine) and score.operational_sum == kept > 0

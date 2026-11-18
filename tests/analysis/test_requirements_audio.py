@@ -25,7 +25,7 @@ APP_MISSING_RESPONSE_LOG = "ASSESSMENT_RESPONSE_LOG_MISSING"
 
 
 def test_classifier_keeps_underrun_hash_freeze_and_reset_codes_apart():
-    """REQ-INT-07: the app's underrun, hash, freeze and reset codes get four distinct named types."""
+    """REQ-INT-07: app underrun, hash, freeze and reset codes get four distinct types."""
     types = {
         APP_UNDERRUN: fault_type(APP_UNDERRUN),
         APP_HASH: fault_type(APP_HASH),
