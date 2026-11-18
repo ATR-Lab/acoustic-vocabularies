@@ -63,8 +63,9 @@ namespace AcousticVocab.SessionIntegration
             // Fixed Study A package chooses its already sealed profile; its
             // loader requires the sentinel null/zero, not a fabricated rank.
             if(package.Study=="A")return default;
+            // Rank 4 is the reserve committed after a journaled menu amendment (REQ-BANK-05).
             var selection=store.Get(atomId);
-            Need(new[]{"P1","P2","P3"}.Contains(selection.Profile)&&selection.Rank>=1&&selection.Rank<=3&&OldHashesVerified,"JOIN_SELECTION_UNAVAILABLE");
+            Need(new[]{"P1","P2","P3"}.Contains(selection.Profile)&&selection.Rank>=1&&selection.Rank<=4&&OldHashesVerified,"JOIN_SELECTION_UNAVAILABLE");
             return selection;
         }
         public AudioSelection For(string contentId)

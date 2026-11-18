@@ -17,8 +17,12 @@ namespace AcousticVocab.SelectionMenus
         internal readonly Func<string,MenuOption[]> Options;
         internal readonly Func<string,int,string,bool> Receipt;
         internal readonly Func<string,string> Meaning;
-        public MenuLedgerVerification(Func<string,MenuOption[]> options,Func<string,int,string,bool> receipt,Func<string,string> meaning)
-        {Options=options??throw new ArgumentNullException(nameof(options));Receipt=receipt??throw new ArgumentNullException(nameof(receipt));Meaning=meaning??throw new ArgumentNullException(nameof(meaning));}
+        internal readonly Func<string,MenuAmendment,MenuOption[]> AmendedOptions;
+        // `receipt` gets the stored rank (4 for a selected reserve; the stored index
+        // for the profile menu). `amendedOptions` independently reproduces a menu
+        // whose ledger records a reserve amendment; without it such a ledger fails.
+        public MenuLedgerVerification(Func<string,MenuOption[]> options,Func<string,int,string,bool> receipt,Func<string,string> meaning,Func<string,MenuAmendment,MenuOption[]> amendedOptions=null)
+        {Options=options??throw new ArgumentNullException(nameof(options));Receipt=receipt??throw new ArgumentNullException(nameof(receipt));Meaning=meaning??throw new ArgumentNullException(nameof(meaning));AmendedOptions=amendedOptions;}
     }
     public sealed class MenuReplayComparison
     {
@@ -83,14 +87,18 @@ namespace AcousticVocab.SelectionMenus
             {
                 var rows=groups[g];var first=rows[0];string key=binding.MenuKeys[g],attempt=(string)first["attempt_id"],opportunity=(string)first["opportunity_id"];double start=MenuJson.Number(first["slot_start_mono_ms"]);bool profile=key=="profile";
                 MenuRules.Require(start>=previousEnd&&rows.All(x=>(string)x["menu_key"]==key&&(string)x["meaning_display_id"]==verification.Meaning(key)&&(string)x["attempt_id"]==attempt&&(string)x["opportunity_id"]==opportunity&&MenuJson.Number(x["slot_start_mono_ms"])==start)&&MenuJson.Number(first["mono_ms"])<=start&&MenuJson.Number(first["expected_mono_ms"])==start&&!rows.Any(x=>(string)x["kind"]=="menu_interrupted"),"MENU_LEDGER_SEQUENCE");
-                previousEnd=start+(profile?60000:45000);var options=verification.Options(key);
+                previousEnd=start+(profile?60000:45000);var amendment=Amendment(rows,key,profile,binding);string amendmentEvent=amendment==null?null:(string)rows[1]["event_id"];
+                if(amendment!=null)rows=rows.Where(x=>(string)x["kind"]!=MenuAmendment.Kind).ToList();
+                if(replayPlan!=null)MenuRules.Require(amendment==null?replayPlan[g].Replay.Amendment==null:amendment.SameAs(replayPlan[g].Replay.Amendment),"MENU_YOKED_AMENDMENT");
+                var options=amendment==null?verification.Options(key):verification.AmendedOptions?.Invoke(key,amendment);
                 MenuRules.Require(options!=null&&options.Length==3&&options.All(x=>x!=null)&&options.Select(x=>x.CandidateId).Distinct().Count()==3&&options.Select(x=>x.Wave.PcmSha256).Distinct().Count()==3&&options.All(x=>profile?x.Wave.SampleCount==96000:new[]{21600,28800,36000,43200}.Contains(x.Wave.SampleCount)),"MENU_LEDGER_ASSETS");
+                if(amendment!=null){var reserve=options[amendment.ReplacedRank-1];MenuRules.Require(reserve.CandidateId==amendment.ReserveCandidateId&&reserve.Wave.PcmSha256==amendment.ReservePcmSha256&&reserve.Wave.FileSha256==amendment.ReserveFileSha256,"MENU_LEDGER_ASSETS");}
                 double choiceOpen=start+(profile?30000:22000),deadline=start+(profile?45000:32000);
                 var choice=One(rows,"choice_final");int selected=MenuJson.Integer(choice["selected_index"],1,3);MenuRules.Require(choice["defaulted"].Type==JTokenType.Boolean,"MENU_LEDGER_CHOICE");bool defaulted=(bool)choice["defaulted"];
                 MenuRules.Require(MenuJson.Number(choice["expected_mono_ms"])==deadline&&MenuJson.Number(choice["mono_ms"])>=deadline&&MenuJson.Number(choice["mono_ms"])<=deadline+20,"MENU_LEDGER_TIMING");
                 var revisions=rows.Where(x=>(string)x["kind"]=="choice_revised").ToArray();foreach(var revision in revisions)MenuRules.Require(MenuJson.Number(revision["mono_ms"])>=choiceOpen&&MenuJson.Number(revision["mono_ms"])<deadline,"MENU_LEDGER_CHOICE");
                 MenuRules.Require(assigned?revisions.Length==0:defaulted?revisions.Length==0&&selected==1:revisions.Length>0&&MenuJson.Integer(revisions.Last()["selected_index"],1,3)==selected,"MENU_LEDGER_CHOICE");
-                var receipt=One(rows,"selection_verified");MenuRules.Require(MenuJson.Integer(receipt["selected_index"],1,3)==selected&&receipt["defaulted"].Type==JTokenType.Boolean&&(bool)receipt["defaulted"]==defaulted&&MenuJson.Number(receipt["mono_ms"])>=MenuJson.Number(choice["mono_ms"])&&MenuRules.Hash((string)receipt["receipt_sha256"])&&verification.Receipt(key,selected,(string)receipt["receipt_sha256"]),"MENU_LEDGER_RECEIPT");
+                var receipt=One(rows,"selection_verified");MenuRules.Require(MenuJson.Integer(receipt["selected_index"],1,3)==selected&&receipt["defaulted"].Type==JTokenType.Boolean&&(bool)receipt["defaulted"]==defaulted&&MenuJson.Number(receipt["mono_ms"])>=MenuJson.Number(choice["mono_ms"])&&MenuRules.Hash((string)receipt["receipt_sha256"])&&verification.Receipt(key,amendment!=null&&selected==amendment.ReplacedRank?4:selected,(string)receipt["receipt_sha256"]),"MENU_LEDGER_RECEIPT");
                 double[] nominal=replayPlan?[g].Replay.OffsetsMs??(profile?new[]{6500d,10500,14500,18500,22500,26500,50000,54000}:new[]{5000d,8000,11000,14000,17000,20000,35000,38000});var offsets=new double[8];var source=new string[8];double previousComplete=-1;
                 for(int n=1;n<=8;n++)
                 {
@@ -105,9 +113,16 @@ namespace AcousticVocab.SelectionMenus
                 var displays=rows.Where(x=>(string)x["kind"] is "display_request" or "display_changed").ToArray();MenuRules.Require(displays.Length==12,"MENU_LEDGER_DISPLAY");
                 for(int d=0;d<6;d++)for(int edge=0;edge<2;edge++)
                 {var display=displays[d*2+edge];double stamp=MenuJson.Number(display["mono_ms"]);MenuRules.Require((string)display["kind"]==(edge==0?"display_request":"display_changed")&&(string)display["phase"]==phases[d].ToString()&&stamp>=start+boundaries[d]&&stamp<=start+boundaries[d]+20&&(phases[d]==MenuPhase.Selected?MenuJson.Integer(display["selected_index"],1,3)==selected:display["selected_index"].Type==JTokenType.Null),"MENU_LEDGER_DISPLAY");}
-                MenuRules.Require(ReferenceEquals(rows.Last(),displays.Last()),"MENU_LEDGER_SEQUENCE");entries.Add(new Entry{Key=key,Start=start,Replay=new MenuReplay(offsets,source,selected,defaulted,(string)choice["event_id"],(string)receipt["receipt_sha256"],displays.Where((x,i)=>i%2==1).Select(x=>MenuJson.Number(x["mono_ms"])-start).ToArray(),displays.Where((x,i)=>i%2==0).Select(x=>(string)x["event_id"]).ToArray(),displays.Where((x,i)=>i%2==1).Select(x=>(string)x["event_id"]).ToArray(),(string)first["event_id"],(string)receipt["event_id"])});
+                MenuRules.Require(ReferenceEquals(rows.Last(),displays.Last()),"MENU_LEDGER_SEQUENCE");entries.Add(new Entry{Key=key,Start=start,Replay=new MenuReplay(offsets,source,selected,defaulted,(string)choice["event_id"],(string)receipt["receipt_sha256"],displays.Where((x,i)=>i%2==1).Select(x=>MenuJson.Number(x["mono_ms"])-start).ToArray(),displays.Where((x,i)=>i%2==0).Select(x=>(string)x["event_id"]).ToArray(),displays.Where((x,i)=>i%2==1).Select(x=>(string)x["event_id"]).ToArray(),(string)first["event_id"],(string)receipt["event_id"],amendment,amendmentEvent)});
             }
             return entries.ToArray();
+        }
+        // REQ-BANK-05: at most one amendment per atom menu, directly after its start.
+        static MenuAmendment Amendment(List<JObject> rows,string key,bool profile,MenuLedgerBinding binding)
+        {
+            var found=rows.Where(x=>(string)x["kind"]==MenuAmendment.Kind).ToArray();if(found.Length==0)return null;
+            MenuRules.Require(found.Length==1&&!profile&&rows.Count>1&&ReferenceEquals(rows[1],found[0]),"MENU_LEDGER_AMENDMENT");
+            var amendment=MenuAmendment.Check(found[0]);MenuRules.Require(amendment.MenuKey==key&&amendment.BankSha256==binding.BankSha256,"MENU_LEDGER_AMENDMENT");return amendment;
         }
         public MenuReplayComparison CompareYoked(IReadOnlyList<MenuEvent> events,MenuLedgerBinding yokedBinding,MenuLedgerVerification verification)
         {MenuRules.Require(events!=null,"MENU_YOKED_INCOMPLETE");return CompareYokedRecords(events.Select(MenuJson.Event).ToList(),yokedBinding,verification);}
@@ -138,6 +153,7 @@ namespace AcousticVocab.SelectionMenus
                     expectedSource=kind=="display_request"?source.DisplayRequestEvents[n]:source.DisplayChangedEvents[n];
                     MenuRules.Require(Math.Abs(MenuJson.Number(row["mono_ms"])-start-source.DisplayOffsetsMs[n])<=20,"MENU_YOKED_DISPLAY");
                 }
+                else if(kind==MenuAmendment.Kind)expectedSource=source.AmendmentEventId;
                 else if(kind is "choice_final" or "selection_verified")
                 {expectedSource=kind=="choice_final"?source.SelectionEventId:source.VerificationEventId;MenuRules.Require(MenuJson.Integer(row["selected_index"],1,3)==source.SelectedIndex&&(bool)row["defaulted"]==source.Defaulted&&(kind!="selection_verified"||(string)row["receipt_sha256"]==source.SelectionReceiptSha256),"MENU_YOKED_CHOICE");}
                 MenuRules.Require(expectedSource!=null&&(string)row["yoked_source_event_id"]==expectedSource,"MENU_YOKED_SOURCE_EVENT");row["yoked_source_event_id"]=JValue.CreateNull();normalized.Add(row);

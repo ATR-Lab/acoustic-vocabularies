@@ -25,6 +25,9 @@ namespace AcousticVocab.StudyAudio
         readonly Dictionary<string,AudioFileRecord> files;
         readonly Dictionary<string,string> atoms;
         readonly Dictionary<string,MessageRecord> messages;
+        // Study B menu options replaced by the reserve (REQ-BANK-05), with the reason.
+        readonly Dictionary<string,string> withdrawn=new Dictionary<string,string>(StringComparer.Ordinal);
+        public const string OptionFileMissing="option_file_missing", OptionHashMismatch="option_hash_mismatch";
         public string Study { get; }
         public string PackageId { get; }
         public string PackageSha256 { get; }
@@ -58,7 +61,9 @@ namespace AcousticVocab.StudyAudio
             {
                 // Catch post-load file, manifest, extra-file and link changes
                 // before a buffer is handed to the explicit preload boundary.
-                PackageRules.CheckTree(directory,files.Keys);
+                // Only a withdrawn menu option may be absent, and it is never read.
+                PackageRules.Require(!withdrawn.ContainsKey(path));
+                PackageRules.CheckTree(directory,files.Keys,withdrawn.Keys);
                 PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"manifest.json",2*1024*1024))==manifestFileHash);
                 var spec=files[path]; byte[] bytes=PackageRules.Read(directory,path,spec.Length);
                 PackageRules.Require(bytes.LongLength==spec.Length && PcmWave.Hash(bytes)==spec.Hash);
@@ -71,6 +76,43 @@ namespace AcousticVocab.StudyAudio
         {
             PackageRules.Require(atoms.TryGetValue(Key(atomId,selectedProfile,rank),out var path));
             return Read(path);
+        }
+        // Study B menu cell (REQ-BANK-05): ranks 1-4 of one profile/atom. An option
+        // whose own cached file is missing or no longer matches its pinned hash is
+        // returned as null with its reason instead of failing the package. Any other
+        // change to the package tree or manifest still fails closed.
+        public PcmWave[] ReadMenuCell(string atomId,string selectedProfile,out string[] unusable)
+        {
+            try
+            {
+                PackageRules.Require(Study=="B");
+                var paths=new string[4];
+                for(int rank=1;rank<=4;rank++) { PackageRules.Require(atoms.TryGetValue(Key(atomId,selectedProfile,rank),out var path)); paths[rank-1]=path; }
+                PackageRules.CheckTree(directory,files.Keys,new HashSet<string>(paths.Concat(withdrawn.Keys),StringComparer.Ordinal));
+                PackageRules.Require(PcmWave.Hash(PackageRules.Read(directory,"manifest.json",2*1024*1024))==manifestFileHash);
+                var waves=new PcmWave[4]; var reasons=new string[4];
+                for(int i=0;i<4;i++)
+                {
+                    if(withdrawn.TryGetValue(paths[i],out var reason)) { reasons[i]=reason; continue; }
+                    var spec=files[paths[i]]; var info=new FileInfo(Path.Combine(directory,paths[i].Replace('/',Path.DirectorySeparatorChar)));
+                    if(!info.Exists) { reasons[i]=OptionFileMissing; continue; }
+                    PackageRules.Require((info.Attributes&FileAttributes.ReparsePoint)==0);
+                    byte[] bytes=info.Length==spec.Length?File.ReadAllBytes(info.FullName):null;
+                    if(bytes==null || bytes.LongLength!=spec.Length || PcmWave.Hash(bytes)!=spec.Hash) { reasons[i]=OptionHashMismatch; continue; }
+                    waves[i]=PcmWave.ParseCanonical(bytes);
+                }
+                unusable=reasons; return waves;
+            }
+            catch(AudioIntegrityException) { throw; }
+            catch(Exception) { throw new AudioIntegrityException(); }
+        }
+        // After the reserve replaced a shown option, that option is never read again
+        // and its file may be absent for the rest of this session.
+        public void WithdrawMenuOption(string atomId,string selectedProfile,int rank,string reason)
+        {
+            PackageRules.Require(Study=="B" && rank>=1 && rank<=3 && (reason==OptionFileMissing || reason==OptionHashMismatch));
+            PackageRules.Require(atoms.TryGetValue(Key(atomId,selectedProfile,rank),out var path));
+            if(!withdrawn.ContainsKey(path)) withdrawn.Add(path,reason);
         }
         MessageRecord Get(string messageId,string selectedProfile,int actionRank,int referentRank)
         {
@@ -368,7 +410,7 @@ namespace AcousticVocab.StudyAudio
             Require(info.Exists && (info.Attributes&FileAttributes.ReparsePoint)==0 && info.Length<=maximum);
             byte[] bytes=File.ReadAllBytes(path); Require(bytes.LongLength<=maximum); return bytes;
         }
-        internal static void CheckTree(string root,IEnumerable<string> listed)
+        internal static void CheckTree(string root,IEnumerable<string> listed,ICollection<string> mayBeAbsent=null)
         {
             NoLinks(root); var found=new HashSet<string>(StringComparer.Ordinal);
             int entries=0;
@@ -383,7 +425,11 @@ namespace AcousticVocab.StudyAudio
                     if(item is DirectoryInfo child) Walk(child,relative+"/",depth+1); else Require(found.Add(relative));
                 }
             }
-            Walk(new DirectoryInfo(root),""); Require(found.SetEquals(listed.Concat(new[]{"manifest.json"})));
+            Walk(new DirectoryInfo(root),"");
+            var expected=new HashSet<string>(listed.Concat(new[]{"manifest.json"}),StringComparer.Ordinal);
+            if(mayBeAbsent==null || mayBeAbsent.Count==0) { Require(found.SetEquals(expected)); return; }
+            // Listed files that may be absent; nothing unlisted may appear.
+            Require(found.IsSubsetOf(expected)); expected.ExceptWith(mayBeAbsent); Require(found.IsSupersetOf(expected));
         }
         internal static void Identity(JToken value,string format,string study,string id)
         { Require((string)value["format"]==format && Integer(value["format_version"])==1 && (string)value["study"]==study && (string)value["package_id"]==id); }

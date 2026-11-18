@@ -78,8 +78,22 @@ def test_real_atom_uses_upstream_store_and_exact_pcm(bridge):
     assert manifest['participant_ready'] is False and manifest['profile']=='P1'
 
 
+def test_reserve_rank_commits_the_exact_reserve_through_the_real_store(bridge):
+    """REQ-BANK-05: rank 4 is the reserve the app's journaled menu amendment placed in a
+    shown slot; the bridge commits exactly that bank option through the real store."""
+    receipt=bridge.select(request(bridge))
+    selected=bridge.select(request(bridge,receipt,atom='K-a1',rank=4))
+    bank,package,options=bridge._inputs()
+    reserve=bank.option('P1','K-a1',4)
+    assert reserve.menu=='reserve' and selected['status']=='committed' and selected['rank']==4
+    assert selected['pcm_sha256']==reserve.pcm_sha256 and selected['file_sha256']==options[('P1','K-a1',4)]['file_sha256']
+    entry=bridge.store.get(bridge.book_id,'K-a1')
+    assert entry.pcm_sha256==reserve.pcm_sha256 and entry.recipe.sha256()==reserve.recipe.sha256()
+    assert verified(bridge,selected)['entries'][0]['rank']==4
+
+
 @pytest.mark.parametrize('field,value,code',[
- ('rank',4,'ATOM_SHAPE'),('rank',True,'ATOM_SHAPE'),('expected_head','0'*64,'OLD_SNAPSHOT_PIN'),
+ ('rank',5,'ATOM_SHAPE'),('rank',0,'ATOM_SHAPE'),('rank',True,'ATOM_SHAPE'),('expected_head','0'*64,'OLD_SNAPSHOT_PIN'),
  ('expected_snapshot_sha256','0'*64,'OLD_SNAPSHOT_PIN'),('profile','P2','FIXED_PROFILE'),
  ('package_sha256','0'*64,'REQUEST_BINDING'),('menu_key','unknown','ATOM_SHAPE')])
 def test_bad_selection_refused_without_store_write(bridge,field,value,code):

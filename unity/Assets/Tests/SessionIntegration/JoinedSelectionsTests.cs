@@ -44,9 +44,17 @@ namespace AcousticVocab.SessionIntegration.Tests
             // Adapter retains the same verified store across fresh module views.
             var later=new JoinedSelections(b,permutationB,store);Assert.That(later.Get("K-a1").Rank,Is.EqualTo(2));store.OldHashesVerified=false;Assert.That(choices.OldHashesVerified,Is.False);Assert.Throws<SessionFault>(()=>later.For("K-a1-r1"));
         }
-        [Test]public void MissingRankReserveRankProfileMismatchAndWrongPackageAreRefused()
+        // REQ-BANK-05: rank 4 is the reserve a journaled menu amendment committed; it is
+        // accepted like a shown rank. Missing or unset ranks, a profile mismatch and a
+        // wrong package are still refused.
+        [Test, Category("REQ_BANK_05"), NUnit.Framework.Property("Requirement","REQ-BANK-05")]
+        public void ReserveRankIsAcceptedWhileMissingRankProfileMismatchAndWrongPackageAreRefused()
         {
-            var store=Store();var choices=new JoinedSelections(b,permutationB,store);store.Values.Remove("K-r1");Assert.Throws<SessionFault>(()=>choices.For("K-a1-r1"));store.Values["K-r1"]=new TeachingSelection("P2",4);Assert.Throws<SessionFault>(()=>choices.For("K-a1-r1"));store.Values["K-r1"]=new TeachingSelection("P3",1);Assert.Throws<SessionFault>(()=>choices.For("K-a1-r1"));store.PackageSha256=new string('a',64);Assert.That(choices.OldHashesVerified,Is.False);Assert.Throws<SessionFault>(()=>new JoinedSelections(b,permutationB,store));Assert.Throws<SessionFault>(()=>new JoinedSelections(b,permutationB));
+            var store=Store();var choices=new JoinedSelections(b,permutationB,store);store.Values.Remove("K-r1");Assert.Throws<SessionFault>(()=>choices.For("K-a1-r1"));
+            store.Values["K-r1"]=default;Assert.Throws<SessionFault>(()=>choices.For("K-a1-r1"));
+            store.Values["K-r1"]=new TeachingSelection("P2",4);var reserve=choices.For("K-a1-r1");Assert.That(reserve.Profile,Is.EqualTo("P2"));Assert.That(reserve.ActionRank,Is.EqualTo(2));Assert.That(reserve.ReferentRank,Is.EqualTo(4));
+            Assert.That(choices.Get("K-r1").Rank,Is.EqualTo(4));Assert.That(choices.For("K-r1").ReferentRank,Is.EqualTo(4));
+            store.Values["K-r1"]=new TeachingSelection("P3",1);Assert.Throws<SessionFault>(()=>choices.For("K-a1-r1"));store.PackageSha256=new string('a',64);Assert.That(choices.OldHashesVerified,Is.False);Assert.Throws<SessionFault>(()=>new JoinedSelections(b,permutationB,store));Assert.Throws<SessionFault>(()=>new JoinedSelections(b,permutationB));
         }
         [TestCase("message_id")][TestCase("action_atom")][TestCase("referent_atom")]
         public void MismatchedCanonicalMappingsCannotSelectOtherAtoms(string field)

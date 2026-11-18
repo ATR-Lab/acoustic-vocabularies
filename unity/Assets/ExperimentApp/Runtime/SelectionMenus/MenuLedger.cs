@@ -37,11 +37,12 @@ namespace AcousticVocab.SelectionMenus
         internal static int Integer(JToken value,int min,int max)
         {MenuRules.Require(value?.Type==JTokenType.Integer,"MENU_LEDGER_SCHEMA");long n=(long)value;MenuRules.Require(n>=min&&n<=max,"MENU_LEDGER_SCHEMA");return(int)n;}
         internal static JObject Event(MenuEvent value)
-        {var row=new JObject{["kind"]=value.Kind,["event_id"]=value.EventId,["attempt_id"]=value.AttemptId,["opportunity_id"]=value.OpportunityId,["menu_key"]=value.MenuKey,["meaning_display_id"]=value.MeaningDisplayId,["slot_start_mono_ms"]=value.SlotStartMonoMs,["mono_ms"]=value.MonoMs,["expected_mono_ms"]=value.ExpectedMonoMs,["onset_uncertainty_ms"]=value.OnsetUncertaintyMs,["audio_request_id"]=value.AudioRequestId,["presentation_index"]=value.PresentationIndex,["candidate_id"]=value.CandidateId,["pcm_sha256"]=value.PcmSha256,["file_sha256"]=value.FileSha256,["yoked_source_event_id"]=value.YokedSourceEventId,["selected_index"]=value.SelectedIndex,["defaulted"]=value.Defaulted,["phase"]=value.Phase?.ToString(),["matching_deviation_id"]=value.MatchingDeviationId,["receipt_sha256"]=value.ReceiptSha256};
+        {if(value.Kind==MenuAmendment.Kind)return MenuAmendment.Row(value);var row=new JObject{["kind"]=value.Kind,["event_id"]=value.EventId,["attempt_id"]=value.AttemptId,["opportunity_id"]=value.OpportunityId,["menu_key"]=value.MenuKey,["meaning_display_id"]=value.MeaningDisplayId,["slot_start_mono_ms"]=value.SlotStartMonoMs,["mono_ms"]=value.MonoMs,["expected_mono_ms"]=value.ExpectedMonoMs,["onset_uncertainty_ms"]=value.OnsetUncertaintyMs,["audio_request_id"]=value.AudioRequestId,["presentation_index"]=value.PresentationIndex,["candidate_id"]=value.CandidateId,["pcm_sha256"]=value.PcmSha256,["file_sha256"]=value.FileSha256,["yoked_source_event_id"]=value.YokedSourceEventId,["selected_index"]=value.SelectedIndex,["defaulted"]=value.Defaulted,["phase"]=value.Phase?.ToString(),["matching_deviation_id"]=value.MatchingDeviationId,["receipt_sha256"]=value.ReceiptSha256};
             foreach(var property in row.Properties().ToArray())if(property.Value is JValue v&&v.Value==null)property.Value=JValue.CreateNull();return row;
         }
         internal static void CheckEvent(JObject row)
         {
+            if(row?["kind"]?.Type==JTokenType.String&&(string)row["kind"]==MenuAmendment.Kind){MenuAmendment.Check(row);return;}
             Keys(row,"kind","event_id","attempt_id","opportunity_id","menu_key","meaning_display_id","slot_start_mono_ms","mono_ms","expected_mono_ms","onset_uncertainty_ms","audio_request_id","presentation_index","candidate_id","pcm_sha256","file_sha256","yoked_source_event_id","selected_index","defaulted","phase","matching_deviation_id","receipt_sha256");
             foreach(string field in new[]{"kind","event_id","attempt_id","opportunity_id","menu_key","meaning_display_id"})MenuRules.Require(row[field].Type==JTokenType.String,"MENU_LEDGER_SCHEMA");
             string kind=(string)row["kind"];MenuRules.Require(new[]{"menu_start","choice_revised","choice_final","selection_verified","display_request","display_changed","play_request","onset_authority","play_complete","menu_interrupted"}.Contains(kind)&&MenuRules.Guid((string)row["event_id"])&&MenuRules.Id((string)row["attempt_id"])&&MenuRules.Id((string)row["opportunity_id"])&&MenuRules.Id((string)row["menu_key"])&&MenuRules.Id((string)row["meaning_display_id"]),"MENU_LEDGER_SCHEMA");
@@ -69,7 +70,7 @@ namespace AcousticVocab.SelectionMenus
     }
     // Fresh append-only segment. A partial/interrupted segment is preserved and
     // cannot be sealed/replayed. Reconstruction is an explicit separate action.
-    public sealed class MenuLedger : IDisposable
+    public sealed class MenuLedger : IDisposable, IMenuPresentationHistory
     {
         readonly FileStream output;readonly MenuLedgerBinding binding;readonly List<JObject> records=new List<JObject>();
         string previous=new string('0',64);int sequence;double last=-1;bool failed,closed,sealedLedger;
@@ -96,8 +97,13 @@ namespace AcousticVocab.SelectionMenus
         {
             MenuRules.Require(value!=null,"MENU_LEDGER_EVENT");var row=MenuJson.Event(value);MenuJson.CheckEvent(row);
             MenuRules.Require(value.MonoMs>=last&&binding.MenuKeys.Contains(value.MenuKey),"MENU_LEDGER_SEQUENCE");
+            // REQ-BANK-05: an amendment directly follows its menu's start, before any
+            // other event of that menu in this segment.
+            if(value.Kind==MenuAmendment.Kind)MenuRules.Require(records.Count>0&&(string)records[records.Count-1]["kind"]=="menu_start"&&(string)records[records.Count-1]["attempt_id"]==value.AttemptId&&records.Count(x=>(string)x["menu_key"]==value.MenuKey)==1,"MENU_LEDGER_AMENDMENT");
             Write(row);records.Add(row);last=value.MonoMs;if(value.Kind=="menu_interrupted")failed=true;
         }
+        // REQ-BANK-05 history of this segment: any recorded event of the menu.
+        public bool Presented(string menuKey){MenuRules.Require(!failed,"MENU_LEDGER_UNAVAILABLE");return records.Any(x=>(string)x["menu_key"]==menuKey);}
         public void Seal(MenuLedgerVerification verification)
         {
             MenuReplaySequence.ValidateRecords(records,binding,verification);

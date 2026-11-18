@@ -32,7 +32,8 @@ engine calls the content pump before processing any boundary.
 
 `MenuCatalog` checks the #13 package/bank pins, #31 allocation file and stored
 profile order, package-bound permutation and wave atom order, and exact current
-schedule slots. Candidate ranks are always 1–3; reserve rank 4 is unavailable.
+schedule slots. Candidate ranks are 1–3; the rank-4 reserve enters a menu only
+under the reserve rule below.
 
 ### Qualified bank hash checks (#26 handoff)
 
@@ -59,10 +60,10 @@ menu. The same load gates the active and the read-only yoked catalog: a missing,
 changed or re-pinned bank manifest blocks both before a yoked replay can start.
 `BankQualified` reports a verified #26 bank; `ParticipantBankQualified` also needs a
 non-DEMO bank and package, and a DEMO qualified bank still requires explicit
-engineering preview (`MENU_DEMO_BANK_ENGINEERING_ONLY`). Banks with reserve-rule
-amendments are refused upstream by `av_banks.handoff` until menus apply
-`effective_menu`. A provisional package refuses a bank manifest and keeps
-`MENU_BANK_HANDOFF_PENDING` outside DEMO engineering.
+engineering preview (`MENU_DEMO_BANK_ENGINEERING_ONLY`). Banks with bank-side
+reserve amendments (`banks amend`) are still refused upstream by `av_banks.handoff`;
+the app records its own amendment in the menu ledger (below). A provisional package
+refuses a bank manifest and keeps `MENU_BANK_HANDOFF_PENDING` outside DEMO engineering.
 
 `tools/qualified_bank_fixture.py` builds the seeded synthetic test input: one DEMO
 bank from the real builder with the rehearsal's scripted proposer (no model), its
@@ -74,6 +75,56 @@ changed WAV bytes, a provisional relabel and both dyad roles; they are skipped, 
 passed, without that fixture. The joined engineering bootstrap still supplies only
 the provisional DEMO path, and the private menu-store bridge remains DEMO
 provisional (see its contract).
+### Reserve rule (REQ-BANK-05)
+
+`Prepare(item, profile, history)` reads the menu cell (ranks 1–4) with
+`LoadedAudioPackage.ReadMenuCell`, which reports an option whose own cached file is
+missing or no longer matches its pinned hash instead of failing the package; any
+other package change still fails closed. A shown option that no longer equals the
+verified bank option is unusable too. With all three shown options usable the menu
+is unchanged. When exactly one is unusable, the active session puts the cell's
+rank-4 reserve in that option's slot only if all of these hold, else it fails closed:
+
+- the package records a verified qualified bank (`MENU_RESERVE_BANK_UNQUALIFIED`);
+- a presentation history is supplied (`MENU_RESERVE_HISTORY_UNAVAILABLE`) and no
+  ledger segment of the visit holds any event of that menu
+  (`MENU_RESERVE_AFTER_PRESENTATION`). `MenuLedger` answers for the live segment;
+  `MenuPresentationHistory` adds retained segments, each a complete hash chain bound
+  to the same package, bank, allocation, unit, review and visit
+  (`MENU_RESERVE_HISTORY_INVALID` otherwise). The assigned partner replays only what
+  the active ledger presented, so no active event means neither partner heard it;
+- the reserve file is intact, equals the bank's rank-4 record (PCM/file hash and
+  recipe duration), has an atom duration and differs from the two remaining options
+  (`MENU_RESERVE_UNUSABLE`). Separation compatibility is the bank builder's check,
+  which covered all four ranks of the complete verified bank.
+
+Two unusable shown options fail with `MENU_RESERVE_MULTIPLE_UNUSABLE`; the assigned
+session never decides (`MENU_RESERVE_ASSIGNED_REFUSED`). The material carries a
+`MenuAmendment`: bank hash, profile, menu, replaced rank and candidate, reason
+(`option_file_missing` or `option_hash_mismatch`), and the reserve's bank option ID,
+candidate and PCM/file/recipe hashes. `MenuTimeline.Start` journals it as a
+`menu_amended` ledger record directly after `menu_start`, before any display or
+audio; `MenuLedger` refuses an amendment after any other event of that menu. The
+replaced option is withdrawn from the loaded package (never read again, may be
+absent); every other read stays strict. A selected reserve slot commits rank 4,
+which `FileMenuStore`, the menu-store bridge and `JoinedSelections` accept.
+
+Sealing and replay loading accept at most one amendment per atom menu, directly
+after its start and for the ledger's bank (`MENU_LEDGER_AMENDMENT`), and need the
+`amendedOptions` authority of `MenuLedgerVerification` to reproduce the same reserve
+independently (`MENU_LEDGER_ASSETS`). The assigned session prepares menus with
+`PrepareRecorded`, which reproduces the active amendment exactly without using its
+own copy of the replaced option (`MENU_RESERVE_RECORD_MISMATCH` if the record no
+longer matches the bank); its timeline must emit the same amendment, sourced to the
+active record (`MENU_YOKED_AMENDMENT`, `MENU_YOKED_SOURCE_EVENT`). An unusable option
+in a menu recorded without an amendment fails closed: `MENU_RESERVE_ASSIGNED_REFUSED`
+in the assigned session, `MENU_RESERVE_AFTER_PRESENTATION` when verifying the active
+ledger. A package already damaged at load still fails `PackageLoader.Load` and
+`QualifiedBank.Verify`; the rule covers cached files that become unusable after the
+session verified them. The joined engineering bootstrap still loads only the
+provisional DEMO bank and supplies no history or `amendedOptions`, so it cannot
+substitute.
+
 All candidate PCM is read through the #64 package loader, including its post-load
 file/hash checks. Profile examples are the three #14 `calibration-P*` files with
 96,000 samples each; their registry/file/PCM hashes are verified.
@@ -166,6 +217,8 @@ It persists the verified checkpoint before exposing a receipt to the menu. A
 missing, rejected, late or mismatched response blocks the selected repeats.
 Profile selection cannot stand in for an atom commit. An upstream `E_REJECTED`
 remains a rejection; no reserve, alternate candidate or weaker validator is used.
+A selected slot commits its bank rank: 4 only where a journaled amendment put the
+reserve in that slot.
 
 At the final menu's neutral tail, the real factory requests a fresh complete-wave
 verification. Reset completion and the subsequent teaching handoff remain blocked

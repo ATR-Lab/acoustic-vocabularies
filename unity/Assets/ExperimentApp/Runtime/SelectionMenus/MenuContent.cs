@@ -17,6 +17,8 @@ namespace AcousticVocab.SelectionMenus
         void RequestVerification(bool waveComplete=false);
         string RequestSelection(string menuKey,string profile,int? rank);
         bool TryGetReceipt(string exactRequestId,out string receiptSha256);
+        // Atom menus pass the stored bank rank (4 for a selected reserve); the
+        // profile menu passes its stored index.
         bool VerifyRecordedSelection(string menuKey,int selectedIndex,string receiptSha256,MenuCatalog catalog);
     }
     public interface IMenuView
@@ -34,21 +36,27 @@ namespace AcousticVocab.SelectionMenus
         readonly MenuCatalog catalog;readonly IMenuStore store;readonly PrivateModeResetClient backend;
         readonly AudioPlayer audio;readonly ResponsePanelController panel;readonly StateSourceHost source;readonly IMenuView view;
         readonly Func<bool> focused;readonly Action<MenuEvent> persist;readonly Action<AudioPlaybackEvent> audioPersist;readonly Action<string> faultSink;
-        readonly Action<SlotContext,int,PcmWave> bindAudio;readonly MenuReplaySequence replay;readonly List<Content> live=new List<Content>();bool disposed;
+        readonly Action<SlotContext,int,PcmWave> bindAudio;readonly MenuReplaySequence replay;readonly IMenuPresentationHistory history;readonly List<Content> live=new List<Content>();bool disposed;
         readonly ContentCueGate cueGate;
         public MenuContentFactory(MenuCatalog catalog,IMenuStore store,PrivateModeResetClient backend,AudioPlayer audio,ResponsePanelController panel,
-            StateSourceHost source,IMenuView view,Func<bool> focused,Action<MenuEvent> durableMenuSink,Action<AudioPlaybackEvent> durableAudioSink,Action<string> faultSink,MenuReplaySequence replay=null,Action<SlotContext,int,PcmWave> bindAudio=null,Action<ContentCueGateRefusal> cueRefused=null)
+            StateSourceHost source,IMenuView view,Func<bool> focused,Action<MenuEvent> durableMenuSink,Action<AudioPlaybackEvent> durableAudioSink,Action<string> faultSink,MenuReplaySequence replay=null,Action<SlotContext,int,PcmWave> bindAudio=null,Action<ContentCueGateRefusal> cueRefused=null,IMenuPresentationHistory history=null)
         {
             cueGate=new ContentCueGate("MENU_CUE_REFUSED",cueRefused);
             MenuRules.Require(catalog!=null&&store!=null&&store.PackageSha256==catalog.PackageSha256&&store.BankSha256==catalog.BankSha256&&backend!=null&&backend.RequiredMode=="test"&&audio!=null&&panel!=null&&source!=null&&view!=null&&focused!=null&&durableMenuSink!=null&&durableAudioSink!=null&&faultSink!=null&&(catalog.Role=="yoked")== (replay!=null),"MENU_DEPENDENCIES");
-            this.catalog=catalog;this.store=store;this.backend=backend;this.audio=audio;this.panel=panel;this.source=source;this.view=view;this.focused=focused;persist=durableMenuSink;audioPersist=durableAudioSink;this.faultSink=faultSink;this.replay=replay;this.bindAudio=bindAudio;
+            this.catalog=catalog;this.store=store;this.backend=backend;this.audio=audio;this.panel=panel;this.source=source;this.view=view;this.focused=focused;persist=durableMenuSink;audioPersist=durableAudioSink;this.faultSink=faultSink;this.replay=replay;this.bindAudio=bindAudio;this.history=history;
             audio.Event+=AudioEvent;view.Chosen+=Choose;
             try{if(!backend.ModeAcknowledged)backend.RequestMode();}catch{audio.Event-=AudioEvent;view.Chosen-=Choose;throw;}
         }
         public bool ExposureGate=>!disposed&&!cueGate.Failed&&focused()&&view.InputAvailable&&panel.ReadyForTrial&&source.CheckExposureReady()&&backend.ModeAcknowledged&&backend.NeutralHoldHealthy&&store.Ready&&store.OldHashesVerified;
         public double MinimumGapBeforeMs(SlotItem item,double baseline)=>replay?.MinimumGapBeforeMs(item,baseline)??0;
         public ISlotContent Create(SlotItem item)
-        {MenuRules.Require(!disposed&&!cueGate.Failed&&store.Ready&&store.OldHashesVerified,"MENU_STORE_UNVERIFIED");var content=new Content(this,catalog.Prepare(item,store.Profile));live.Add(content);return content;}
+        {
+            MenuRules.Require(!disposed&&!cueGate.Failed&&store.Ready&&store.OldHashesVerified,"MENU_STORE_UNVERIFIED");
+            // REQ-BANK-05: the active session decides the reserve rule; the assigned
+            // session reproduces the active ledger's amendment and never decides.
+            var material=replay!=null?catalog.PrepareRecorded(item,store.Profile,replay.For(item).Amendment):catalog.Prepare(item,store.Profile,history);
+            var content=new Content(this,material);live.Add(content);return content;
+        }
         public void Pump()
         {
             if(disposed)return;
@@ -92,12 +100,12 @@ namespace AcousticVocab.SelectionMenus
             public void Prepare(SlotContext context)
             {
                 MenuRules.Require(!prepared&&context.RetryOf==null,"MENU_PREPARE_REFUSED");Context=context;owner.view.Prepare(material);Preload(1);
-                var replay=owner.replay?.For(context.Item);Timeline=new MenuTimeline(context,material.Options.ToArray(),material.MeaningDisplayId,owner.persist,replay,()=>AudioPlayer.Now*1000);
+                var replay=owner.replay?.For(context.Item);Timeline=new MenuTimeline(context,material.Options.ToArray(),material.MeaningDisplayId,owner.persist,replay,()=>AudioPlayer.Now*1000,material.Amendment);
                 Timeline.PlayRequested+=(index,id,option,at)=>{MenuRules.Require(ExposureReady,"MENU_EXPOSURE_GATE");owner.bindAudio?.Invoke(Context,index-1,option.Wave);owner.audio.Schedule(id,at/1000);};
                 Timeline.DisplayChanged+=(phase,choice)=>{if(phase is MenuPhase.Hidden or MenuPhase.Neutral or MenuPhase.Ended)owner.view.Hide(Context.Item.TrialId);else owner.view.Show(Context.Item.TrialId,material,phase,choice,owner.catalog.Role=="yoked");};
                 Timeline.SelectionRequested+=(index,unused)=>
-                {MenuRules.Require(commitRequest==null&&owner.catalog.Role=="active","MENU_COMMIT_DUPLICATE");selected=index;commitRequest=owner.store.RequestSelection(material.Key,material.Key=="profile"?owner.catalog.ProfileAt(index):owner.store.Profile,material.Key=="profile"?(int?)null:index);};
-                if(replay!=null){selected=replay.SelectedIndex;MenuRules.Require(owner.store.VerifyRecordedSelection(material.Key,replay.SelectedIndex,replay.SelectionReceiptSha256,owner.catalog),"MENU_REPLAY_RECEIPT");Preload(replay.SelectedIndex);}
+                {MenuRules.Require(commitRequest==null&&owner.catalog.Role=="active","MENU_COMMIT_DUPLICATE");selected=index;commitRequest=owner.store.RequestSelection(material.Key,material.Key=="profile"?owner.catalog.ProfileAt(index):owner.store.Profile,material.Key=="profile"?(int?)null:material.Ranks[index-1]);};
+                if(replay!=null){selected=replay.SelectedIndex;MenuRules.Require(owner.store.VerifyRecordedSelection(material.Key,material.Key=="profile"?replay.SelectedIndex:material.Ranks[replay.SelectedIndex-1],replay.SelectionReceiptSha256,owner.catalog),"MENU_REPLAY_RECEIPT");Preload(replay.SelectedIndex);}
                 initialReset=owner.backend.RequestReset();prepared=true;
             }
             bool ExposureReady=>!interrupted&&owner.ExposureGate;

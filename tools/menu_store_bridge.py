@@ -1,6 +1,8 @@
 """Private DEMO-only selection adapter to the real #11 append-only store.
 
-No bank generation, reserve substitution, relaxed validator, or network service.
+No bank generation, reserve decision, relaxed validator, or network service.
+Rank 4 (the cell's reserve) is committed only as the option an app menu-ledger
+amendment placed in a shown slot (REQ-BANK-05); the bridge never substitutes.
 An unresolved write-ahead intent admits only the identical request on recovery.
 """
 from __future__ import annotations
@@ -165,7 +167,7 @@ class MenuStoreBridge:
         elif r['operation'] == 'profile':
             require(r['menu_key'] == 'profile' and r['rank'] is None, 'PROFILE_SHAPE')
         else:
-            require(r['menu_key'] in ATOM_IDS and type(r['rank']) is int and r['rank'] in (1, 2, 3), 'ATOM_SHAPE')
+            require(r['menu_key'] in ATOM_IDS and type(r['rank']) is int and r['rank'] in (1, 2, 3, 4), 'ATOM_SHAPE')
         return r
 
     def _records(self):
