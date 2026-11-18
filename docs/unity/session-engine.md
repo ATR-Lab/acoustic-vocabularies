@@ -51,6 +51,25 @@ callbacks cannot positively prove acoustic absence. Novel buffers require the
 engine's one-use package/message-bound `INovelSlotAuthorization` immediately
 before composition; it is an application boundary, not an authentication token.
 
+`SessionIntegration.NoOnsetReporter` is the only producer of `ConfirmedNoOnset`.
+It needs two independent records for the same single-play audio request: the
+durable `AUDIO_MISSING_PLAYBACK` observation with no callback, no delivered
+sample and no onset estimate, and a `LoopbackObservation` from an
+`ILoopbackObservationSource` (a capture of the participant audio route). The
+capture must name the request and the capture device, span from the request
+hand-off to the missing-playback observation (which lies after the scheduled
+window), and stay below both silence thresholds (peak -60 dBFS, RMS -70 dBFS;
+provisional). Its evidence hash is SHA-256 of `LoopbackObservation.Canonical()`;
+the engine and the `audio_evidence` row (`acoustic_measurement`) carry
+SHA-256 of `no-onset-evidence-v1`, the software row hash and the loopback hash,
+one per line. No station has a loopback source yet, and the joined owner
+configures none, so today no request is reported: a missing playback stays an
+`AUDIO_MISSING_PLAYBACK` technical fault, scored by the fault rule, with its
+exposure consumed and uncertain (a held-out message counts as heard). A capture
+that is absent, for another request or window, or from a failed source changes
+nothing. A capture with signal is recorded as `uncertain` evidence and the
+exposure stays consumed.
+
 Startup and crash recovery require operator confirmation. Unplayed items can
 resume; any durably requested or unresolved exposure is skipped and preserved.
 Pause before a scheduled onset interrupts the pending request but conservatively
