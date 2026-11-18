@@ -101,7 +101,9 @@ def _cs_tests(path: Path, root: Path) -> list[tuple[str, str, list[str]]]:
     for line in text.splitlines():
         code = CS_LITERAL_RE.sub('""', line.split("//", 1)[0] if '"' not in line else line)
         cls = CS_CLASS_RE.search(code)
-        if cls and "(" not in code.split("class", 1)[0] and depth == fixture_depth:
+        before = code[: cls.start()] if cls else ""
+        at = depth + before.count("{") - before.count("}")
+        if cls and "(" not in before and at == fixture_depth:
             current_class = cls.group(1)
         depth += code.count("{") - code.count("}")
         pending.extend(f"REQ-{a}-{n}" for a, n in CS_CATEGORY_RE.findall(line))
