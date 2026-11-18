@@ -63,8 +63,7 @@ namespace AcousticVocab.SessionIntegration
             if(simulation!=null){simulation.Bind(Package.PackageSha256,Schedule.Sha256,Package.Demo,Schedule.Demo,config.Directory("evidence"));Route=AudioRouteCalibration.ForSimulation(simulation);Gain=simulation.AudioGain;}
             else{if(!Have("audio_calibration","comfort_gain"))return;
             Route=AudioRouteCalibration.FromStationConfig(Json(Read("station")),Read("audio_calibration"));if(Route.UncertaintyMs>20)throw new SessionFault("JOIN_ROUTE_UNCERTAINTY");
-            var gain=config.RequireFile("comfort_gain");gain.ReadVerified();string expected=PcmWave.Hash(Encoding.ASCII.GetBytes(config.CodedId))+".local.jsonl";
-            if(Path.GetFileName(gain.Path)!=expected)throw new SessionFault("JOIN_GAIN_BINDING");Gain=ComfortableGainStore.RestoreVerified(gain.ReadVerified(),gain.Sha256,config.CodedId);}
+            var gain=config.RequireFile("comfort_gain");Gain=HeldGain(Path.GetFileName(gain.Path),gain.ReadVerified(),gain.Sha256,config.CodedId);}
             if(Blocks.Values.Any(k=>k is JoinedModuleKind.Teaching or JoinedModuleKind.Menus))
             {
                 if(!Have("teaching_manifest","teaching_review"))return;
@@ -104,6 +103,14 @@ namespace AcousticVocab.SessionIntegration
                 if((!Schedule.Demo||simulation!=null)&&Schedule.Blocks.SelectMany(b=>b.Items).Any(i=>i.TrialType=="speech"))
                 {if(!Have("speech_manifest","speech_review"))return;Speech=simulation!=null?SpeechBank.LoadSimulation(config.Directory("speech"),config.RequireFile("speech_manifest").Sha256,Read("speech_review"),config.RequireFile("speech_review").Sha256,Schedule.SpeechListSha256,simulation):SpeechBank.LoadReviewed(config.Directory("speech"),config.RequireFile("speech_manifest").Sha256,config.RequireFile("speech_review").Sha256,Schedule.SpeechListSha256);}
             }
+        }
+        // The single level path for every role (Study A learners, both Study B
+        // roles): the person's own pinned history, held before the visit began.
+        public static float HeldGain(string fileName,byte[] bytes,string sha256,string codedId)
+        {
+            if(codedId==null||fileName!=PcmWave.Hash(Encoding.ASCII.GetBytes(codedId))+".local.jsonl")throw new SessionFault("JOIN_GAIN_BINDING");
+            try{return ComfortableGainStore.RestoreHeldVerified(bytes,sha256,codedId);}
+            catch(AudioFault fault)when(fault.Code=="GAIN_NOT_HELD"){throw new SessionFault("JOIN_GAIN_NOT_HELD");}
         }
         public static void ValidateYokedPair(VisitSchedule yoked,VisitSchedule active,byte[] pinnedAllocation,IReadOnlyList<string> expectedMenuKeys)
         {

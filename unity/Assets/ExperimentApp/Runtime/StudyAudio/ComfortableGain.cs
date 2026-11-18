@@ -30,9 +30,10 @@ namespace AcousticVocab.StudyAudio
             using var sha=SHA256.Create();string hash=BitConverter.ToString(sha.ComputeHash(Encoding.ASCII.GetBytes(codedId))).Replace("-","").ToLowerInvariant();
             return Path.Combine(directory,hash+".local.jsonl");
         }
-        static float Read(string text,string codedId)
+        static float Read(string text,string codedId) => Read(text,codedId,out _);
+        static float Read(string text,string codedId,out bool held)
         {
-            float gain=InitialGain;
+            float gain=InitialGain;held=false;
             if(text.Length==0) return gain;
             if(text.Length>1048576 || !text.EndsWith("\n",StringComparison.Ordinal)) throw new AudioFault("GAIN_HISTORY_INVALID");
             bool first=true;
@@ -44,8 +45,16 @@ namespace AcousticVocab.StudyAudio
                 catch { throw new AudioFault("GAIN_HISTORY_INVALID"); }
                 bool carried=(string)row["event"]=="comfort_gain_carried";
                 if(carried && !first) throw new AudioFault("GAIN_HISTORY_INVALID");
+                if((string)row["event"]=="comfort_gain_held")
+                {
+                    // A held row never opens a history and always repeats the current gain.
+                    if(first || HeldGain(row,line,codedId)!=gain) throw new AudioFault("GAIN_HISTORY_INVALID");
+                    held=true;continue;
+                }
                 first=false;
                 if(carried) { gain=CarriedGain(row,line,codedId);continue; }
+                // No change row may follow a hold: the level stays constant across visits.
+                if(held) throw new AudioFault("GAIN_HISTORY_INVALID");
                 if(row.Count!=6 || (string)row["event"]!="comfort_gain_changed" || (string)row["coded_id"]!=codedId ||
                     row["old_gain"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
                     row["new_gain"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
@@ -75,11 +84,56 @@ namespace AcousticVocab.StudyAudio
             if(!AudioRouteCalibration.Finite(value) || value<=0 || value>1 || !AudioRouteCalibration.Finite(mono) || mono<0) throw new AudioFault("GAIN_HISTORY_INVALID");
             return (float)value;
         }
+        static float HeldGain(JObject row,string line,string codedId)
+        {
+            if(row.Count!=5 || (string)row["coded_id"]!=codedId ||
+                row["visit_id"]?.Type!=JTokenType.String || !Regex.IsMatch((string)row["visit_id"],"\\A[0-9a-f]{32}\\z") ||
+                row["gain"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
+                row["mono_s"]?.Type is not (JTokenType.Float or JTokenType.Integer) ||
+                row.ToString(Formatting.None)!=line) throw new AudioFault("GAIN_HISTORY_INVALID");
+            double value=(double)row["gain"],mono=(double)row["mono_s"];
+            if(!AudioRouteCalibration.Finite(value) || value<=0 || value>1 || !AudioRouteCalibration.Finite(mono) || mono<0) throw new AudioFault("GAIN_HISTORY_INVALID");
+            return (float)value;
+        }
         const string CodePattern="\\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\z";
-        public static float RestoreVerified(byte[] bytes,string expectedRawSha256,string codedId)
+        public static float RestoreVerified(byte[] bytes,string expectedRawSha256,string codedId) => RestoreVerified(bytes,expectedRawSha256,codedId,out _);
+        static float RestoreVerified(byte[] bytes,string expectedRawSha256,string codedId,out bool held)
         {
             if(bytes==null||bytes.Length==0||bytes.Length>1048576||PcmWave.Hash(bytes)!=expectedRawSha256||codedId==null||!Regex.IsMatch(codedId,@"\A[A-Za-z0-9][A-Za-z0-9._-]{0,79}\z"))throw new AudioFault("GAIN_HISTORY_INVALID");
-            string text=new UTF8Encoding(false,true).GetString(bytes);if(string.IsNullOrWhiteSpace(text))throw new AudioFault("GAIN_HISTORY_INVALID");return Read(text,codedId);
+            string text=new UTF8Encoding(false,true).GetString(bytes);if(string.IsNullOrWhiteSpace(text))throw new AudioFault("GAIN_HISTORY_INVALID");return Read(text,codedId,out held);
+        }
+        // A visit plays only a level that was held before it began, so no visit
+        // can start from a level that could still change (decision A6).
+        public static float RestoreHeldVerified(byte[] bytes,string expectedRawSha256,string codedId)
+        {
+            float gain=RestoreVerified(bytes,expectedRawSha256,codedId,out bool held);
+            if(!held) throw new AudioFault("GAIN_NOT_HELD");
+            return gain;
+        }
+        public bool IsHeld(string codedId)
+        {
+            string path=FileFor(codedId);
+            if(!File.Exists(path)) return false;
+            if(new FileInfo(path).Length>1048576) throw new AudioFault("GAIN_HISTORY_INVALID");
+            Read(File.ReadAllText(path,Encoding.UTF8),codedId,out bool held);return held;
+        }
+        // Ends the setting phase: the current level becomes the level for every
+        // later visit. Idempotent; never invents a gain for an empty history.
+        public float Hold(string codedId,string visitId,double monoSeconds)
+        {
+            if(visitId==null || !Regex.IsMatch(visitId,"\\A[0-9a-f]{32}\\z") || !AudioRouteCalibration.Finite(monoSeconds) || monoSeconds<0)
+                throw new AudioFault("GAIN_HOLD_INVALID");
+            string path=FileFor(codedId);
+            if(!File.Exists(path) || new FileInfo(path).Length==0) throw new AudioFault("GAIN_HOLD_SOURCE_MISSING");
+            using var stream=new FileStream(path,FileMode.Open,FileAccess.ReadWrite,FileShare.Read,4096,FileOptions.WriteThrough);
+            if(stream.Length>1044480) throw new AudioFault("GAIN_HISTORY_FULL");
+            string text;using(var reader=new StreamReader(stream,Encoding.UTF8,true,4096,true)) text=reader.ReadToEnd();
+            float gain=Read(text,codedId,out bool held);
+            if(held) return gain;
+            var row=new JObject { ["event"]="comfort_gain_held",["coded_id"]=codedId,["visit_id"]=visitId,["gain"]=gain,["mono_s"]=monoSeconds };
+            byte[] bytes=new UTF8Encoding(false).GetBytes(row.ToString(Formatting.None)+"\n");
+            stream.Position=stream.Length;stream.Write(bytes,0,bytes.Length);stream.Flush(true);
+            return gain;
         }
         public float Restore(string codedId)
         {
@@ -133,7 +187,10 @@ namespace AcousticVocab.StudyAudio
             using var stream=new FileStream(path,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.Read,4096,FileOptions.WriteThrough);
             if(stream.Length>1044480) throw new AudioFault("GAIN_HISTORY_FULL");
             string text;using(var reader=new StreamReader(stream,Encoding.UTF8,true,4096,true)) text=reader.ReadToEnd();
-            float old=Read(text,codedId);
+            float old=Read(text,codedId,out bool held);
+            // Decision A6: once held, the level is constant across visits and
+            // never changes inside a visit. Discomfort means the participant stops.
+            if(held) throw new AudioFault("GAIN_HELD_CONSTANT");
             var row=new JObject { ["event"]="comfort_gain_changed",["coded_id"]=codedId,["visit_id"]=visitId,
                 ["old_gain"]=old,["new_gain"]=value,["mono_s"]=monoSeconds };
             byte[] bytes=new UTF8Encoding(false).GetBytes(row.ToString(Formatting.None)+"\n");

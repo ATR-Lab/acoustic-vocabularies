@@ -116,7 +116,7 @@ namespace AcousticVocab.SessionEngine
                 (v[key].Type==JTokenType.Float||v[key].Type==JTokenType.Integer)&&(double)v[key]>=0&&!double.IsInfinity((double)v[key]));
             foreach(string key in new[]{"exposure_consumed","reset_ok","focus_ok"})SessionJson.Require(v[key].Type==JTokenType.Boolean);
             foreach(string key in new[]{"block_index","item_index"})SessionJson.Require(v[key].Type==JTokenType.Integer&&(int)v[key]>=0);
-            SessionJson.Require(v["event"].Type==JTokenType.String&&new[]{"operator_resume","visit_complete","state_before","state_after","onset_evidence","response","pause_requested","stop_requested","item_fault","retry_queued","boundary_late","session_stopped","session_paused","novel_buffer_authorized"}.Contains((string)v["event"]));
+            SessionJson.Require(v["event"].Type==JTokenType.String&&new[]{"operator_resume","visit_complete","state_before","state_after","onset_evidence","response","pause_requested","stop_requested","item_fault","retry_queued","boundary_late","session_stopped","session_paused","novel_buffer_authorized","participant_discomfort_stop"}.Contains((string)v["event"]));
             SessionJson.Require(v["technical_fault_code"].Type==JTokenType.Null||v["technical_fault_code"].Type==JTokenType.String&&new SessionFault((string)v["technical_fault_code"]).Code==(string)v["technical_fault_code"]);
             SessionJson.Require(v["response_code"].Type==JTokenType.Null||v["response_code"].Type==JTokenType.String&&new[]{"commit","dont_know","timeout"}.Contains((string)v["response_code"]));
             SessionJson.Require(v["evidence_sha256"].Type==JTokenType.Null||v["evidence_sha256"].Type==JTokenType.String&&SessionJson.Hash((string)v["evidence_sha256"]));
