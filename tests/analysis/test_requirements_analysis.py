@@ -835,7 +835,7 @@ def visit_endpoints(tables):
     return {e["battery"]: e for e in tables["endpoints"] if e["visit_id"] == VISIT}
 
 
-def test_declining_later_blocks_keeps_the_primary_score(tmp_path):
+def test_stopping_after_the_primary_battery_keeps_its_score(tmp_path):
     """REQ-MISS-03: a learner who completes the 36 trained trials and then declines the
     later blocks (withdrawal) keeps a complete, planned primary endpoint with its score;
     only the declined batteries are missing."""

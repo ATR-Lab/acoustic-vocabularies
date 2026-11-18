@@ -36,13 +36,13 @@ open issue tracking the fix.
 | REQ-AN-01 | Study A: learners are averaged equally within each vocabulary (available learners only); the primary contrast is the per-batch model-minus-search difference and needs both endpoints in the batch. | analysis | tested | 4 |
 | REQ-AN-02 | The two hand-design contrasts are secondary and Holm-adjusted. | analysis | tested | 2 |
 | REQ-AN-03 | Study B's primary endpoint is week-one exact accuracy over 36 trials, with the pair as the independent unit. | analysis | tested | 3 |
-| REQ-AN-04 | The choice contrast compares active with assigned members; the teaching contrast averages each pair's within-person aligned-minus-static differences over the 18 week-one trials per format. | analysis | tested | 3 |
+| REQ-AN-04 | The choice contrast compares active with assigned members; the teaching contrast averages, per pair, each member's aligned-minus-static difference over that format's 18 week-one trials. | analysis | tested | 3 |
 | REQ-AN-05 | The two Study B contrasts include a pair only if both members have a complete week-one battery inside its window. | analysis | tested | 2 |
 | REQ-AN-06 | Primary inference: two-sided t test on unit-level differences, alpha 0.05; Holm step-down over the two Study B contrasts. | analysis | tested | 5 |
 | REQ-AN-07 | Sensitivity analyses: cluster bootstrap over batches or pairs, and an available-observation hierarchical model with participant, vocabulary and item effects. | analysis | tested | 6 |
 | REQ-AN-08 | Worst- and best-case bounds impute 0 or 1 for each missing endpoint over all randomised participants; tipping-point displays vary the imputed values by condition. | analysis | tested | 6 |
 | REQ-AN-09 | Secondary outcomes are derived separately (four-week retention, held-out accuracy, component errors, response times, ownership ratings); the format-by-role interaction is exploratory. | analysis | tested; open gap #318 | 3 |
-| REQ-AN-10 | Intervals: 95% for Study A; Bonferroni 97.5% simultaneous intervals for each Study B contrast; Holm-significant contrasts whose 97.5% interval spans zero are flagged. | analysis | tested; open gap #310 | 5 |
+| REQ-AN-10 | Intervals: 95% for Study A; Bonferroni 97.5% simultaneous intervals for each Study B contrast; a contrast that is significant under Holm but whose 97.5% interval includes zero is flagged. | analysis | tested; open gap #310 | 5 |
 | REQ-AN-11 | If the choice contrast becomes an estimation contrast, the teaching contrast is tested alone at alpha 0.05. | analysis | tested; open gap #310 | 1 |
 | REQ-AN-12 | Ownership ratings are collected on forms and kept separate from accuracy data. | app | tested | 4 |
 
@@ -69,7 +69,7 @@ open issue tracking the fix.
 | REQ-AUD-02 | Study audio is nonspatial (no panning, spatialisation, reverb or target-dependent routing). | app | tested | 3 |
 | REQ-AUD-03 | Playback requires a calibration record for the configured output route; the app refuses study audio on an uncalibrated or changed route. | app | tested | 4 |
 | REQ-AUD-04 | The single output route is chosen and its onset timing calibrated on every station before piloting; the route is then frozen. | station | measurement (INSTALL) | 0 |
-| REQ-AUD-05 | Each participant's comfortable level is applied as a stored gain and restored unchanged at every later visit (never tuned to performance). | app | tested | 7 |
+| REQ-AUD-05 | The gain set for a person's comfort is stored and reapplied unchanged at each later visit; it is never adjusted for performance. | app | tested | 7 |
 | REQ-AUD-06 | A complete message is the action motif, 200 ms of silence, then the target motif. | app | tested | 3 |
 | REQ-AUD-07 | Complete messages last 1.1-2.0 s. | app | tested | 1 |
 | REQ-AUD-08 | Onset timing on the frozen route meets the residual-uncertainty target (p95 within 20 ms) measured against an independent reference. | station | measurement (INSTALL) | 0 |
@@ -101,7 +101,7 @@ open issue tracking the fix.
 
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
-| REQ-CURR-01 | After Study B visits 1, 2 and 3 the vocabulary holds 8, 12 and 16 atoms (8, 18 and 32 legal messages). | schedules | tested | 4 |
+| REQ-CURR-01 | Vocabulary size after Study B visits 1, 2 and 3: 8, 12 and 16 atoms, allowing 8, 18 and 32 legal complete messages respectively. | schedules | tested | 4 |
 | REQ-CURR-02 | New trained messages per family: V1 a1r1, a2r2; V2 a1r3, a3r1, a3r3; V3 a2r4, a3r4, a4r2, a4r3 (totals 8/4, 12/10, 16/18). | schedules | tested | 4 |
 | REQ-CURR-03 | The mapping from meanings to matrix indices is a stored permutation that varies across Study A batches and Study B pairs. | schedules | tested | 6 |
 | REQ-CURR-04 | Study A teaches all nine trained messages per family at day 0. | schedules | tested | 4 |
@@ -115,7 +115,7 @@ open issue tracking the fix.
 | REQ-ELIG-02 | Before allocation, the participant must find the profiles comfortable at their chosen level; the screening result gates allocation. | app | tested; open gap #273 | 1 |
 | REQ-ELIG-03 | Declared accommodations are recorded at screening and kept for later visits. | app | tested; open gap #313 | 1 |
 | REQ-ELIG-04 | Only adults are enrolled; eligibility is confirmed by staff before screening. | study-team | process (IRB) | 0 |
-| REQ-ELIG-05 | Comfort screening of the three profiles at the participant's chosen level is feasible within the screening booking and logged. | study-team | measurement (PILOT) | 0 |
+| REQ-ELIG-05 | The comfort check of all three profiles, at the level each person chose, fits within the screening booking and is logged. | study-team | measurement (PILOT) | 0 |
 
 ## ETH
 
@@ -124,7 +124,7 @@ open issue tracking the fix.
 | REQ-ETH-01 | The app refuses participant-mode sessions until approvals are recorded; engineering builds run only with synthetic (DEMO) material. | app | tested | 8 |
 | REQ-ETH-02 | Institutional review approval and consent precede any human session. | study-team | process (IRB) | 0 |
 | REQ-ETH-03 | Apparatus validation (the engineering pilot) is complete before any participant session. | study-team | process (G3) | 0 |
-| REQ-ETH-04 | The confirmatory plan, including generation settings, is registered before confirmatory generation and recruitment; the frozen configuration hashes are archived. | study-team | process (FREEZE) | 0 |
+| REQ-ETH-04 | Registration of the confirmatory plan (generation settings included) happens before confirmatory generation or recruitment starts; hashes of the frozen configuration are archived. | study-team | process (FREEZE) | 0 |
 
 ## GEN
 
@@ -134,19 +134,19 @@ open issue tracking the fix.
 | REQ-GEN-02 | Generation commits atoms one by one, following a stored atom order that all methods of a batch share, and finishes all 16 before any learner hears the vocabulary. | generation | tested | 4 |
 | REQ-GEN-03 | A proposer's input is limited to its own vocabulary's committed recipes and features plus the current atom's previous candidates, ratings and validator results. | generation | tested | 7 |
 | REQ-GEN-04 | Budget per atom and method: 4 rounds x 3 slots of 40 s; any invalid, out-of-range or timed-out proposal spends its slot. | generation | tested | 8 |
-| REQ-GEN-05 | The model gets the atom's written meaning and returns a single schema-constrained JSON recipe per slot; it never gets audio and gets no corrective retry. | generation | tested | 8 |
-| REQ-GEN-06 | Search round 1, and any round without an eligible parent, draws 3 recipes uniformly from the allowed values. | generation | tested | 5 |
+| REQ-GEN-05 | The model is given the written meaning of the atom and must return a single schema-constrained JSON recipe per slot; it never gets audio and gets no corrective retry. | generation | tested | 8 |
+| REQ-GEN-06 | Search round 1, and any round without an eligible parent, draws 3 recipes at random (uniform over the permitted values). | generation | tested | 5 |
 | REQ-GEN-07 | Later search rounds mutate the best eligible candidate so far: children change 1, 2 and 3 random coordinates; pitch moves +/-1..3 semitones, other fields one level; values reflect at the bounds. | generation | tested | 9 |
 | REQ-GEN-08 | A designer preview counts as one spent slot. | generation | tested | 4 |
 | REQ-GEN-09 | The model revision, prompt, decoding settings and seed streams are fixed before confirmatory generation. | generation | process (FREEZE) | 0 |
-| REQ-GEN-10 | Within a round the three methods propose in parallel, each method's 3 slots in sequence (at most 120 s), followed by 9 rating slots of 20 s (at most 5 min per round). | generation | tested; open gap #319 | 8 |
+| REQ-GEN-10 | In each round all three methods work at once, with each method's 3 slots run one after another (120 s maximum), then 9 rating slots of 20 s (a round lasts 300 s or less). | generation | tested; open gap #319 | 8 |
 | REQ-GEN-11 | A rating session holds 4 atoms in 90 min; one rater sees at most 576 candidates per batch over 4 sessions. | generation | tested | 5 |
 | REQ-GEN-12 | The rating queue is anonymous across methods (designer candidates included); the 6 method orders are balanced over panels; no method label is shown. | generation | tested | 7 |
 | REQ-GEN-13 | Ratings: association and distinctness on 1-7 scales plus a comfort judgment; distinctness compares with the closest committed motif (lowest atom index on ties). | generation | tested | 6 |
 | REQ-GEN-14 | Selector: score = rater mean of (association + distinctness)/2; eligible = valid and at least 2 comfort approvals; ties go to the earliest slot; the first atom's distinctness is fixed at 4. | generation | tested | 5 |
 | REQ-GEN-15 | No eligible candidate after 12 slots: take the first unused compatible recipe from a frozen ordered list of 64 per profile; if none fits, substitute the frozen fallback vocabulary before any learner exposure. | generation | tested | 6 |
 | REQ-GEN-16 | Primary analysis keeps the method label of a vocabulary that used fallbacks. | analysis | tested | 2 |
-| REQ-GEN-17 | Generation logs rejections, fallbacks, time, human effort, candidate diversity, ratings and selected durations. | generation | tested | 7 |
+| REQ-GEN-17 | Generation logs record rejected proposals, fallback use, elapsed time, designer effort, diversity of candidates, all ratings and the durations of the chosen sounds. | generation | tested | 7 |
 
 ## GRAM
 
@@ -217,10 +217,10 @@ open issue tracking the fix.
 
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
-| REQ-MISS-01 | Missed or out-of-window visits, and withdrawal before the 36th primary trial, give a missing (not zero) endpoint; the observed trials stay available to supporting models. | analysis | tested; open gap #310 | 8 |
+| REQ-MISS-01 | A visit that is missed or falls outside its window, or a withdrawal before the 36th primary trial, gives a missing (not zero) endpoint; the observed trials stay available to supporting models. | analysis | tested; open gap #310 | 8 |
 | REQ-MISS-02 | Operational scoring counts a played trial with a verified technical fault as incorrect when the participant carries on; a separate valid-delivery analysis drops such trials. | analysis | tested | 4 |
-| REQ-MISS-03 | Completing the 36 primary trials but declining later blocks keeps the primary score. | analysis | tested | 1 |
-| REQ-MISS-04 | A technical fault that ends a session makes the visit missed unless the battery is completed within the visit window. | analysis | tested; open gap #310 | 1 |
+| REQ-MISS-03 | A participant who finishes all 36 primary trials and then stops before the later blocks still has a primary endpoint. | analysis | tested | 1 |
+| REQ-MISS-04 | If a technical fault stops a session, the visit counts as missed unless the full battery is finished inside the visit window. | analysis | tested; open gap #310 | 1 |
 
 ## NEUT
 
@@ -245,7 +245,7 @@ open issue tracking the fix.
 | --- | --- | --- | --- | ---: |
 | REQ-PLAN-01 | Sample sizes (batches, learners, pairs) are configuration parameters, not constants in code. | schedules | tested; open gap #266 | 3 |
 | REQ-PLAN-02 | Pilot data (Study A 18 learners, Study B 8 pairs) stay separate from confirmatory data. | study-team | process (PILOT) | 0 |
-| REQ-PLAN-03 | Before protocol freeze each primary contrast must meet the 80%-power rule for a 10-point difference or be registered as an estimation contrast. | study-team | process (FREEZE) | 0 |
+| REQ-PLAN-03 | Before freeze, every primary contrast must meet the 80%-power rule for a 10-point difference, or be registered as an estimation contrast instead. | study-team | process (FREEZE) | 0 |
 
 ## RESP
 
@@ -272,7 +272,7 @@ open issue tracking the fix.
 | REQ-SA-01 | Study A participants learn one complete vocabulary (16 atoms, all 18 trained messages from the outset) through aligned lessons only. | app | tested | 5 |
 | REQ-SA-02 | Study A day 0 ends with the immediate primary test after lessons. | schedules | tested | 2 |
 | REQ-SA-03 | Study A's retention visit is day 7 +/- 1 and contains no refresher teaching. | app | tested | 4 |
-| REQ-SA-04 | Study A visits take about 75 and 30 minutes (booking). | study-team | process (PILOT) | 0 |
+| REQ-SA-04 | Booked lengths: Study A day 0 about 75 min, day 7 about 30 min. | study-team | process (PILOT) | 0 |
 | REQ-SA-05 | Study A allocation assigns 4 new learners per vocabulary at random; batch and learner counts are configuration parameters. | schedules | tested; open gap #266 | 6 |
 | REQ-SA-06 | Raters never serve as learners; panel and learner identities do not overlap. | schedules | tested; open gap #314 | 1 |
 | REQ-SA-07 | Learners and session experimenters are masked to the generation method: no method label reaches the app, console or run sheet. | app | tested | 8 |
@@ -296,7 +296,7 @@ open issue tracking the fix.
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
 | REQ-SCORE-01 | A trial scores correct only when both target and action match the request. | analysis | tested | 5 |
-| REQ-SCORE-02 | Chance for a committed guess is 1/32 (eight targets x four actions). | analysis | tested | 3 |
+| REQ-SCORE-02 | The response space has 32 legal commands (8 targets x 4 actions), so a random committed response is correct with probability 1/32. | analysis | tested | 3 |
 | REQ-SCORE-03 | Incorrect, abstained and timed-out trials all score 0 (abstention and timeout keep separate codes). | analysis | tested | 8 |
 
 ## TEST
@@ -307,7 +307,7 @@ open issue tracking the fix.
 | REQ-TEST-02 | The request audio plays exactly once per trial. | app | tested | 3 |
 | REQ-TEST-03 | A response is a target selection, an action selection and a Commit press. | app | tested | 3 |
 | REQ-TEST-04 | Commit must occur within 12 s of audio onset; the trial slot is 14 s. | app | tested | 4 |
-| REQ-TEST-05 | The slot includes a 2-s interval after the response window, and an early Commit does not shorten the slot. | app | tested | 4 |
+| REQ-TEST-05 | After the 12-s response window the slot runs 2 s more; committing early leaves the slot length unchanged. | app | tested | 4 |
 | REQ-TEST-06 | Target and action selections are editable until Commit, and a trial accepts one Commit only. | app | tested | 4 |
 | REQ-TEST-07 | Response timing uses host monotonic time anchored to audio onset, not simulation time. | app | tested | 8 |
 | REQ-TEST-08 | Changing to a target in the other family clears an incompatible action; Commit stays disabled until a legal target-action pair is selected; no default selection. | app | tested | 4 |
@@ -316,7 +316,7 @@ open issue tracking the fix.
 
 | ID | Requirement | Owner | Verification | Tests |
 | --- | --- | --- | --- | ---: |
-| REQ-VAL-01 | The no-cue and spoken-command blocks are scheduled only after the final scored retention battery (Study A day 7; Study B week 4). | schedules | tested | 3 |
+| REQ-VAL-01 | No-cue and spoken-command blocks are scheduled only after the last scored retention battery (Study A: day-7 visit; Study B: W4 visit). | schedules | tested | 3 |
 | REQ-VAL-02 | The validity block has 8 no-cue and 8 spoken-command trials in 14-s slots. | schedules | tested | 4 |
 | REQ-VAL-03 | No-cue accuracy above chance raises an investigation flag and triggers sensitivity reporting; it is never an exclusion rule. | analysis | tested; open gap #318 | 2 |
 | REQ-VAL-04 | No-cue targets are drawn uniformly with replacement from all 32 legal commands; spoken commands cover each action and each target once; the 16 trials are interleaved by a stored seed. | schedules | tested | 5 |
@@ -329,7 +329,7 @@ open issue tracking the fix.
 | REQ-VIS-01 | Study B acquisition windows: V1 day 0, V2 day 2 +/- 1, V3 day 4 +/- 1 and on a later day than V2. | console | tested; open gap #285 | 3 |
 | REQ-VIS-02 | Study B follow-up windows are anchored to the person's own V3: W1 at 7 +/- 1 days, W4 at 28 +/- 2 days. | console | tested; open gap #316 | 3 |
 | REQ-VIS-03 | No practice with study sounds is available between the final acquisition visit and the follow-ups. | app | tested | 5 |
-| REQ-VIS-04 | Study B visits take about 75, 45, 50, 30 and 40 minutes plus a 20-minute screening (booking). | study-team | process (PILOT) | 0 |
+| REQ-VIS-04 | Booked lengths for Study B: about 75 min (V1), 45 (V2), 50 (V3), 30 (W1) and 40 (W4), plus a 20-min screening. | study-team | process (PILOT) | 0 |
 | REQ-VIS-05 | Out-of-window visits are flagged and their endpoint treated as missing in the primary analysis. | analysis | tested | 4 |
 
 ## VOC

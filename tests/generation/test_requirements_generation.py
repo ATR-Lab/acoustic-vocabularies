@@ -283,8 +283,8 @@ def test_atoms_commit_one_by_one_in_the_shared_order_and_a_partial_book_never_sh
 
 
 def test_proposer_input_is_the_books_own_commits_and_the_atoms_history(appointment):
-    """REQ-GEN-03: a proposer receives only its own book's committed recipes (with their
-    features) and the current atom's earlier candidates, ratings and validator results."""
+    """REQ-GEN-03: a proposer sees only its own book's committed recipes and features, plus
+    this atom's previous candidates with their ratings and validator outcomes."""
     assert _fields(RoundRequest) == {
         "run_id",
         "batch_id",
@@ -490,7 +490,7 @@ def test_rounds_run_parallel_proposal_windows_then_nine_20_s_rating_slots(appoin
 
 def test_full_proposal_windows_run_each_methods_slots_in_sequence(full_window_atom):
     """REQ-GEN-10, REQ-GEN-11: when every slot takes its whole 40 s, the three methods
-    still propose in parallel, each method's three slots one after another, and the window
+    still work at the same time, each running its three slots one after another, and the window
     ends at 120 s; four such atoms (one rating session) fit the 90-min booking."""
     batch = full_window_atom
     timing = _timing(batch)
@@ -644,8 +644,8 @@ def test_fallback_is_a_frozen_ordered_list_of_64_per_profile_and_a_16_atom_book(
 
 
 def test_logs_and_audit_cover_rejections_fallbacks_time_effort_diversity_ratings_durations():
-    """REQ-GEN-17: generation logs rejections (every outcome code), fallbacks, time,
-    human effort, candidate diversity, ratings and the selected durations."""
+    """REQ-GEN-17: generation logs record rejections (every outcome code), fallback use,
+    elapsed time, designer effort, diversity of candidates, ratings and chosen durations."""
     assert {
         "slot",
         "slot_refusal",

@@ -275,7 +275,7 @@
   {
    "id": "REQ-AUD-05",
    "area": "AUD",
-   "text": "Each participant's comfortable level is applied as a stored gain and restored unchanged at every later visit (never tuned to performance).",
+   "text": "The gain set for a person's comfort is stored and reapplied unchanged at each later visit; it is never adjusted for performance.",
    "owner": "app",
    "verification": "auto",
    "gate": null,
@@ -520,7 +520,7 @@
   {
    "id": "REQ-ETH-04",
    "area": "ETH",
-   "text": "The confirmatory plan, including generation settings, is registered before confirmatory generation and recruitment; the frozen configuration hashes are archived.",
+   "text": "Registration of the confirmatory plan (generation settings included) happens before confirmatory generation or recruitment starts; hashes of the frozen configuration are archived.",
    "owner": "study-team",
    "verification": "process",
    "gate": "FREEZE",
@@ -1168,7 +1168,7 @@
   {
    "id": "REQ-TEST-05",
    "area": "TEST",
-   "text": "The slot includes a 2-s interval after the response window, and an early Commit does not shorten the slot.",
+   "text": "After the 12-s response window the slot runs 2 s more; committing early leaves the slot length unchanged.",
    "owner": "app",
    "verification": "auto",
    "gate": null,
@@ -1347,7 +1347,7 @@
   {
    "id": "REQ-SCORE-02",
    "area": "SCORE",
-   "text": "Chance for a committed guess is 1/32 (eight targets x four actions).",
+   "text": "The response space has 32 legal commands (8 targets x 4 actions), so a random committed response is correct with probability 1/32.",
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
@@ -2127,7 +2127,7 @@
   {
    "id": "REQ-VAL-01",
    "area": "VAL",
-   "text": "The no-cue and spoken-command blocks are scheduled only after the final scored retention battery (Study A day 7; Study B week 4).",
+   "text": "No-cue and spoken-command blocks are scheduled only after the last scored retention battery (Study A: day-7 visit; Study B: W4 visit).",
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
@@ -2341,7 +2341,7 @@
   {
    "id": "REQ-SA-04",
    "area": "SA",
-   "text": "Study A visits take about 75 and 30 minutes (booking).",
+   "text": "Booked lengths: Study A day 0 about 75 min, day 7 about 30 min.",
    "owner": "study-team",
    "verification": "process",
    "gate": "PILOT",
@@ -2717,7 +2717,7 @@
   {
    "id": "REQ-GEN-05",
    "area": "GEN",
-   "text": "The model gets the atom's written meaning and returns a single schema-constrained JSON recipe per slot; it never gets audio and gets no corrective retry.",
+   "text": "The model is given the written meaning of the atom and must return a single schema-constrained JSON recipe per slot; it never gets audio and gets no corrective retry.",
    "owner": "generation",
    "verification": "auto",
    "gate": null,
@@ -2770,7 +2770,7 @@
   {
    "id": "REQ-GEN-06",
    "area": "GEN",
-   "text": "Search round 1, and any round without an eligible parent, draws 3 recipes uniformly from the allowed values.",
+   "text": "Search round 1, and any round without an eligible parent, draws 3 recipes at random (uniform over the permitted values).",
    "owner": "generation",
    "verification": "auto",
    "gate": null,
@@ -2917,7 +2917,7 @@
   {
    "id": "REQ-GEN-10",
    "area": "GEN",
-   "text": "Within a round the three methods propose in parallel, each method's 3 slots in sequence (at most 120 s), followed by 9 rating slots of 20 s (at most 5 min per round).",
+   "text": "In each round all three methods work at once, with each method's 3 slots run one after another (120 s maximum), then 9 rating slots of 20 s (a round lasts 300 s or less).",
    "owner": "generation",
    "verification": "auto",
    "gate": null,
@@ -3186,7 +3186,7 @@
   {
    "id": "REQ-GEN-17",
    "area": "GEN",
-   "text": "Generation logs rejections, fallbacks, time, human effort, candidate diversity, ratings and selected durations.",
+   "text": "Generation logs record rejected proposals, fallback use, elapsed time, designer effort, diversity of candidates, all ratings and the durations of the chosen sounds.",
    "owner": "generation",
    "verification": "auto",
    "gate": null,
@@ -3968,7 +3968,7 @@
   {
    "id": "REQ-CURR-01",
    "area": "CURR",
-   "text": "After Study B visits 1, 2 and 3 the vocabulary holds 8, 12 and 16 atoms (8, 18 and 32 legal messages).",
+   "text": "Vocabulary size after Study B visits 1, 2 and 3: 8, 12 and 16 atoms, allowing 8, 18 and 32 legal complete messages respectively.",
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
@@ -4190,7 +4190,7 @@
   {
    "id": "REQ-VIS-04",
    "area": "VIS",
-   "text": "Study B visits take about 75, 45, 50, 30 and 40 minutes plus a 20-minute screening (booking).",
+   "text": "Booked lengths for Study B: about 75 min (V1), 45 (V2), 50 (V3), 30 (W1) and 40 (W4), plus a 20-min screening.",
    "owner": "study-team",
    "verification": "process",
    "gate": "PILOT",
@@ -4516,7 +4516,7 @@
   {
    "id": "REQ-MISS-01",
    "area": "MISS",
-   "text": "Missed or out-of-window visits, and withdrawal before the 36th primary trial, give a missing (not zero) endpoint; the observed trials stay available to supporting models.",
+   "text": "A visit that is missed or falls outside its window, or a withdrawal before the 36th primary trial, gives a missing (not zero) endpoint; the observed trials stay available to supporting models.",
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
@@ -4584,7 +4584,7 @@
   {
    "id": "REQ-MISS-03",
    "area": "MISS",
-   "text": "Completing the 36 primary trials but declining later blocks keeps the primary score.",
+   "text": "A participant who finishes all 36 primary trials and then stops before the later blocks still has a primary endpoint.",
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
@@ -4598,7 +4598,7 @@
   {
    "id": "REQ-MISS-04",
    "area": "MISS",
-   "text": "A technical fault that ends a session makes the visit missed unless the battery is completed within the visit window.",
+   "text": "If a technical fault stops a session, the visit counts as missed unless the full battery is finished inside the visit window.",
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
@@ -4692,7 +4692,7 @@
   {
    "id": "REQ-AN-04",
    "area": "AN",
-   "text": "The choice contrast compares active with assigned members; the teaching contrast averages each pair's within-person aligned-minus-static differences over the 18 week-one trials per format.",
+   "text": "The choice contrast compares active with assigned members; the teaching contrast averages, per pair, each member's aligned-minus-static difference over that format's 18 week-one trials.",
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
@@ -4873,7 +4873,7 @@
   {
    "id": "REQ-AN-10",
    "area": "AN",
-   "text": "Intervals: 95% for Study A; Bonferroni 97.5% simultaneous intervals for each Study B contrast; Holm-significant contrasts whose 97.5% interval spans zero are flagged.",
+   "text": "Intervals: 95% for Study A; Bonferroni 97.5% simultaneous intervals for each Study B contrast; a contrast that is significant under Holm but whose 97.5% interval includes zero is flagged.",
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
@@ -5217,7 +5217,7 @@
   {
    "id": "REQ-PLAN-03",
    "area": "PLAN",
-   "text": "Before protocol freeze each primary contrast must meet the 80%-power rule for a 10-point difference or be registered as an estimation contrast.",
+   "text": "Before freeze, every primary contrast must meet the 80%-power rule for a 10-point difference, or be registered as an estimation contrast instead.",
    "owner": "study-team",
    "verification": "process",
    "gate": "FREEZE",
@@ -5283,7 +5283,7 @@
   {
    "id": "REQ-ELIG-05",
    "area": "ELIG",
-   "text": "Comfort screening of the three profiles at the participant's chosen level is feasible within the screening booking and logged.",
+   "text": "The comfort check of all three profiles, at the level each person chose, fits within the screening booking and is logged.",
    "owner": "study-team",
    "verification": "measure",
    "gate": "PILOT",
