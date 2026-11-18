@@ -128,6 +128,9 @@ def lesson(joined, attempts, items, requests):
     return incomplete
 
 
+GRAMMAR_PHASES = ["explanation", "ready", "clicks"]
+
+
 def grammar(rows, requests):
     missing, active, complete, phases = set(), False, False, []
     ids, observed, finished = {}, set(), set()
@@ -136,8 +139,9 @@ def grammar(rows, requests):
         if kind == "started":
             require(not active and not complete, "MOCK_GRAMMAR_DUPLICATE_START"); active = True
         elif kind == "request":
-            require(active and not complete and key not in ids and key not in requests and phases == ([] if p["phase"] == "ready" else ["ready"]), "MOCK_GRAMMAR_PLAY_ORDER")
-            if phases: require(next(iter(ids)) in finished, "MOCK_GRAMMAR_OVERLAP")
+            require(active and not complete and key not in ids and key not in requests and p["phase"] in GRAMMAR_PHASES
+                    and phases == GRAMMAR_PHASES[:GRAMMAR_PHASES.index(p["phase"])], "MOCK_GRAMMAR_PLAY_ORDER")
+            if phases: require(set(ids) <= finished, "MOCK_GRAMMAR_OVERLAP")
             ids[key] = p["phase"]; phases.append(p["phase"])
         elif kind == "audio":
             require(key in ids and p["phase"] == ids[key], "MOCK_GRAMMAR_OBSERVATION_CONTEXT")
@@ -150,7 +154,7 @@ def grammar(rows, requests):
                 finished.add(key)
         elif kind == "completed": require(key in finished, "MOCK_GRAMMAR_COMPLETION")
         elif kind == "finished":
-            require(active and not complete and phases == ["ready","clicks"] and set(ids) == finished, "MOCK_GRAMMAR_FINISH")
+            require(active and not complete and phases == GRAMMAR_PHASES and set(ids) == finished, "MOCK_GRAMMAR_FINISH")
             complete = True
         elif kind == "interrupted": missing.add("GRAMMAR_INTERRUPTED")
     if not complete: missing.add("GRAMMAR_COMPLETION_MISSING")

@@ -230,7 +230,7 @@ def validate_data_payload(row, schedule_hash):
         require(all(hash_value(p[k]) for k in ("registry_sha256", "review_sha256")) and guid(p["clock_epoch"]) and number(p["host_mono_ms"]), "MOCK_GRAMMAR_BINDING")
         require(p["kind"] in {"started", "request", "audio", "completed", "finished", "interrupted"}, "MOCK_GRAMMAR_KIND")
         play = p["kind"] in {"request", "audio", "completed"}
-        require((p["phase"] in {"ready", "clicks"} and guid(p["audio_request_id"])) if play else p["phase"] is None and p["audio_request_id"] is None, "MOCK_GRAMMAR_CONTEXT")
+        require((p["phase"] in {"explanation", "ready", "clicks"} and guid(p["audio_request_id"])) if play else p["phase"] is None and p["audio_request_id"] is None, "MOCK_GRAMMAR_CONTEXT")
         if p["kind"] == "started":
             exact(p["operator_command"], "session_nonce request_id sequence")
             require(guid(p["operator_command"]["session_nonce"]) and guid(p["operator_command"]["request_id"]) and type(p["operator_command"]["sequence"]) is int and p["operator_command"]["sequence"] > 0, "MOCK_GRAMMAR_COMMAND")

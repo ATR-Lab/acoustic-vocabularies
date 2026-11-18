@@ -17,7 +17,7 @@ namespace AcousticVocab.DataLogging
             string kind=DataJson.Text(p["kind"]),phase=DataJson.OptionalText(p["phase"]),id=DataJson.OptionalText(p["audio_request_id"]);
             DataJson.Require(new[]{"started","request","audio","completed","finished","interrupted"}.Contains(kind));
             bool play=kind is "request" or "audio" or "completed";
-            DataJson.Require(play?new[]{"ready","clicks"}.Contains(phase)&&DataJson.Guid(id):phase==null&&id==null);
+            DataJson.Require(play?new[]{"explanation","ready","clicks"}.Contains(phase)&&DataJson.Guid(id):phase==null&&id==null);
             if(kind=="started")
             {var command=p["operator_command"];DataJson.Keys(command,"session_nonce","request_id","sequence");DataJson.Require(DataJson.Guid(DataJson.Text(command["session_nonce"]))&&DataJson.Guid(DataJson.Text(command["request_id"]))&&DataJson.Integer(command["sequence"])>0);}
             else DataJson.Require(p["operator_command"].Type==JTokenType.Null);
