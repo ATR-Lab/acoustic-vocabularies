@@ -70,6 +70,7 @@ contract update, section 14); **I** = interface, filled by the owner issue.
 | `threshold` | Listening tool: stimuli, session plan, runner, CSV, summary | I | #23 |
 | `audit` | `build_audit`, `build_set_audit`; `books.csv` columns (contract with #34) | I | #24 |
 | `freeze` | Freeze manifest builder and CI freeze guard | I | #25 |
+| `freeze_assembly` | G4 freeze assembly: fills the restricted draft from the GPU host's LLM manifest, evidence and vLLM lock and the private inputs; sign-off status table | I | #25, #308 |
 
 Owners may add private modules (`_<name>.py`) and subpackages next to their module, e.g.
 `web/a1/`, `llm_server.py`, `mock_llm.py`. #26 creates the `banks/` project; #27 and #28

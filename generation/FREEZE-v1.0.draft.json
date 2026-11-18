@@ -276,6 +276,15 @@
       "value": null
     },
     {
+      "category": "runtime",
+      "guard": "recorded",
+      "key": "runtime.vllm_lock_sha256",
+      "path": null,
+      "sha256": null,
+      "source": "PENDING (G4 assembly): SHA-256 of the sorted `pip freeze --all` lines of the vLLM server environment, from the lock file that bringup.sh writes on the GPU host; then `python -m av_generation.freeze_assembly fill ... --vllm-lock <file>` (generation/docs/freeze-assembly.md)",
+      "value": null
+    },
+    {
       "category": "decoding",
       "guard": "code",
       "key": "decoding.temperature",

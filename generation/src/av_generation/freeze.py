@@ -300,6 +300,15 @@ ITEM_SPECS: Final[tuple[ItemSpec, ...]] = (
         "sha256",
         _host("SHA-256 of the chat template the server applies, from the LLM manifest (#16)"),
     ),
+    ItemSpec(
+        "runtime.vllm_lock_sha256",
+        "recorded",
+        "sha256",
+        "PENDING (G4 assembly): SHA-256 of the sorted `pip freeze --all` lines of the vLLM "
+        "server environment, from the lock file that bringup.sh writes on the GPU host; then "
+        "`python -m av_generation.freeze_assembly fill ... --vllm-lock <file>` "
+        "(generation/docs/freeze-assembly.md)",
+    ),
     ItemSpec("decoding.temperature", "code", "number"),
     ItemSpec("decoding.top_p", "code", "number"),
     ItemSpec("decoding.top_k", "code", "integer"),
@@ -413,6 +422,7 @@ GENERATION_CODE_EXCLUDED: Final[Mapping[str, str]] = {
     "audit.py": "audit reports read from the logs (#24)",
     "dryrun.py": "synthetic-panel dry run (#22)",
     "freeze.py": "this freeze tooling; its rule texts are items (a2, selector, budget.study_b)",
+    "freeze_assembly.py": "G4 freeze assembly: fills a restricted draft, prints its status (#308)",
     "llm_bench.py": "LLM latency and repeatability benchmark (#16)",
     "llm_fake.py": "scripted LLM client for tests",
     "mock_llm.py": "mock LLM server for tests, the dry run and the benchmark (#16)",
