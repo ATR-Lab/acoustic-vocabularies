@@ -13,6 +13,7 @@ else stops for a person with the state kept.
 
 Modules: `job` (job file, data policy), `state` (checkpoint, journal), `runtime` (job
 lock, children, model probe), `session` (one supervisor session), `stages` (the stage
-drivers), `supervisor` (`run`, `status`, `check`), `demo` (DEMO inputs and job), `cli`.
-Runbook: `banks/docs/unattended-run.md`.
+drivers), `supervisor` (`run`, `status`, `check`), `demo` (DEMO inputs and job),
+`rehearsal` (the full-size DEMO rehearsal of the confirmatory campaign: its job, its
+guards and its summary), `cli`. Runbook: `banks/docs/unattended-run.md`.
 """

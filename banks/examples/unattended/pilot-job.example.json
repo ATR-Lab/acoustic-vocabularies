@@ -1,0 +1,35 @@
+{
+  "format": "av-banks/unattended-job",
+  "format_version": 1,
+  "job_id": "closure-pilot-01",
+  "root": "<restricted>/pilot-job/job",
+  "heartbeat_s": 60,
+  "lock_wait_s": 86400,
+  "model": {
+    "url": "http://<llm-host>:8000",
+    "runtime": "vllm",
+    "max_wait_s": 43200,
+    "poll_initial_s": 5,
+    "poll_max_s": 120,
+    "probe_timeout_s": 10
+  },
+  "stages": [
+    {
+      "name": "pilot",
+      "kind": "pilot",
+      "run_id": "P-banks-01",
+      "units": "<restricted>/schedules-out/B-pilot",
+      "generation_config": "<restricted>/pilot/generation-config.json",
+      "meanings": "<restricted>/meanings",
+      "prompts": "<restricted>/prompts",
+      "decoding_schema": "<restricted>/decoding-schema.json",
+      "dyads": 8,
+      "spares": 2,
+      "workers": 3,
+      "parallel_banks": 2,
+      "breaker": 3,
+      "max_restarts": 2,
+      "on_shortfall": "stop"
+    }
+  ]
+}

@@ -43,13 +43,19 @@ from av_banks.confirmatory.rehearsal import DEMO_THRESHOLD, demo_freeze_manifest
 from av_banks.proposer import b_prompt_sha256
 
 
-def demo_config(meanings_dir: Path, prompts_dir: Path, schema: dict[str, Any]) -> GenerationConfig:
-    """A DEMO generation config pinned to a meaning set, a prompt set and a schema."""
+def demo_config(
+    meanings_dir: Path,
+    prompts_dir: Path,
+    schema: dict[str, Any],
+    *,
+    name: str = "DEMO-unattended-config",
+) -> GenerationConfig:
+    """A DEMO generation config `name` pinned to a meaning set, a prompt set and a schema."""
     meanings = load_meanings(meanings_dir)
     prompt_set = load_prompt_set(prompts_dir, meanings=meanings)
     fallback = load_fallback(sound_root() / "testvectors" / "fallback" / "demo-manifest.json")
     return build_generation_config(
-        "DEMO-unattended-config",
+        name,
         llm_manifest_sha256=None,
         decoding_schema_sha256=schema_sha256(schema),
         prompts=PromptHashes(prompt_set.a3_sha256, b_prompt_sha256(prompt_set)),

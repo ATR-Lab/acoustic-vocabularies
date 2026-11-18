@@ -2,10 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/blob/main/banks/schema/unattended-job.schema.json",
   "title": "Unattended bank job",
-  "description": "Job file of the unattended bank supervisor (av_banks.unattended, #267): the job root, the model server and the stages in order (pilot banks #27, a confirmatory campaign #28 or its DEMO rehearsal). Relative paths are resolved against the job file's directory. The file lives in restricted storage; committed examples use placeholders only. Defaults are in banks/docs/unattended-run.md.",
+  "description": "Job file of the unattended bank supervisor (av_banks.unattended, #267): the job root, the model server and the stages in order (pilot banks #27, a confirmatory campaign #28 or its DEMO rehearsal). Relative paths are resolved against the job file's directory. The file lives in restricted storage; committed examples use placeholders only. Defaults are in banks/docs/unattended-run.md. A job with purpose 'rehearsal' (written by `python -m av_banks.unattended rehearsal-job`) is a full-size DEMO rehearsal of the confirmatory campaign and gives its size in 'rehearsal'.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "format_version", "job_id", "root", "model", "stages"],
+  "if": {"required": ["purpose"], "properties": {"purpose": {"const": "rehearsal"}}},
+  "then": {"required": ["rehearsal"]},
+  "else": {"not": {"required": ["rehearsal"]}},
   "properties": {
     "format": {"const": "av-banks/unattended-job"},
     "format_version": {"const": 1},
@@ -13,6 +16,17 @@
     "root": {"type": "string", "minLength": 1, "description": "job root: state, logs and the default stage roots"},
     "heartbeat_s": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
     "lock_wait_s": {"type": "number", "minimum": 0, "description": "how long a restarted supervisor waits for a child that its killed predecessor left running"},
+    "purpose": {"enum": ["banks", "rehearsal"], "description": "banks (default): pilot and confirmatory banks; rehearsal: a full-size DEMO rehearsal of the confirmatory campaign (av_banks.unattended.rehearsal)"},
+    "rehearsal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dyads", "spares"],
+      "description": "the size of a rehearsal: main and spare banks (one per DEMO unit B-C01.., B-S01..)",
+      "properties": {
+        "dyads": {"type": "integer", "minimum": 1, "maximum": 99},
+        "spares": {"type": "integer", "minimum": 0, "maximum": 99}
+      }
+    },
     "model": {
       "type": "object",
       "additionalProperties": false,

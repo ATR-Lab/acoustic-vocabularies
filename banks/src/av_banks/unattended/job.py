@@ -9,6 +9,12 @@ placeholders only (`banks/examples/unattended/`).
 Data policy (`docs/data-policy.md`): `check_location` refuses a job root or stage root
 inside a git work tree unless `git check-ignore` reports it ignored. The pilot and
 confirmatory tools refuse every non-DEMO run inside a work tree on top of this.
+
+`purpose` is `banks` (pilot and confirmatory banks, the default) or `rehearsal`: a
+full-size DEMO rehearsal of the confirmatory campaign (`rehearsal` module). A rehearsal
+job has a DEMO job ID, its size (`rehearsal.dyads`, `rehearsal.spares`) and exactly one
+confirmatory stage that plans a DEMO campaign inside the job root from DEMO inputs only
+(`_rehearsal_rules`; the inputs themselves are checked by `rehearsal.input_problems`).
 """
 
 from __future__ import annotations
@@ -23,7 +29,7 @@ from pathlib import Path
 from typing import Any, Final, Literal
 from urllib.parse import urlsplit, urlunsplit
 
-from av_generation.ids import RunKind
+from av_generation.ids import RunKind, is_demo
 from av_generation.jsonio import CodecError, file_sha256, read_json
 from av_generation.rundir import RunPolicyError
 from jsonschema import Draft202012Validator
@@ -40,6 +46,9 @@ E_POLICY: Final = "E_POLICY"
 E_PLATFORM: Final = "E_PLATFORM"
 E_LOCKED: Final = "E_LOCKED"
 E_STATE: Final = "E_STATE"
+E_REHEARSAL: Final = "E_REHEARSAL"
+
+Purpose = Literal["banks", "rehearsal"]
 
 
 class SupervisorError(RuntimeError):
@@ -146,6 +155,18 @@ Stage = PilotStage | ConfirmatoryStage
 
 
 @dataclass(frozen=True, slots=True)
+class RehearsalSize:
+    """The campaign size a rehearsal job builds: `dyads` main banks and `spares` spares."""
+
+    dyads: int
+    spares: int
+
+    @property
+    def banks(self) -> int:
+        return self.dyads + self.spares
+
+
+@dataclass(frozen=True, slots=True)
 class Job:
     """A loaded job file (module docstring)."""
 
@@ -157,6 +178,9 @@ class Job:
     stages: tuple[Stage, ...]
     heartbeat_s: float = 60.0
     lock_wait_s: float = 86_400.0
+    purpose: Purpose = "banks"
+    rehearsal: RehearsalSize | None = None
+    """The size of a rehearsal job (`purpose: rehearsal`); `None` otherwise."""
 
     def stage(self, name: str) -> Stage:
         for stage in self.stages:
@@ -283,6 +307,7 @@ def load_job(path: str | os.PathLike[str]) -> Job:
         _pilot(base, root, s) if s["kind"] == "pilot" else _confirmatory(base, root, s)
         for s in doc["stages"]
     ]
+    size = doc.get("rehearsal")
     job = Job(
         path=source,
         sha256=file_sha256(source),
@@ -292,6 +317,8 @@ def load_job(path: str | os.PathLike[str]) -> Job:
         stages=tuple(stages),
         heartbeat_s=float(doc.get("heartbeat_s", 60.0)),
         lock_wait_s=float(doc.get("lock_wait_s", 86_400.0)),
+        purpose=doc.get("purpose", "banks"),
+        rehearsal=RehearsalSize(int(size["dyads"]), int(size["spares"])) if size else None,
     )
     problems = _job_rules(job)
     if problems:
@@ -333,6 +360,33 @@ def _job_rules(job: Job) -> list[str]:
                     f"{stage.name}: 'register' needs the whole campaign; set "
                     "register to false for a stage limited by 'only'"
                 )
+    if job.purpose == "rehearsal":
+        problems += _rehearsal_rules(job)
+    return problems
+
+
+def _rehearsal_rules(job: Job) -> list[str]:
+    """A rehearsal job (module docstring): DEMO job and campaign IDs, one confirmatory
+    stage that plans its campaign inside the job root, no repository, no real pilot."""
+    problems = []
+    if not is_demo(job.job_id):
+        problems.append(f"a rehearsal job ID starts with 'DEMO-' (found {job.job_id!r})")
+    if len(job.stages) != 1 or not isinstance(job.stages[0], ConfirmatoryStage):
+        return [*problems, "a rehearsal job has exactly one stage, of kind confirmatory"]
+    stage = job.stages[0]
+    if stage.campaign_root == job.root or job.root not in stage.campaign_root.parents:
+        problems.append(f"{stage.name}: a rehearsal campaign root lies inside the job root")
+    spec = stage.plan
+    if spec is None:
+        return [*problems, f"{stage.name}: a rehearsal plans its own campaign; give 'plan'"]
+    if not is_demo(spec.campaign_id):
+        problems.append(f"{stage.name}: the rehearsal campaign ID starts with 'DEMO-'")
+    if spec.repo is not None or spec.freeze_repo_path is not None:
+        problems.append(f"{stage.name}: a rehearsal checks no freeze tag (no repo)")
+    if spec.pilot or spec.pilot_stages:
+        problems.append(f"{stage.name}: a rehearsal reads no pilot root (DEMO namespaces only)")
+    if not all(is_demo(ns) for ns in spec.pilot_namespaces):
+        problems.append(f"{stage.name}: rehearsal pilot namespaces start with 'DEMO-'")
     return problems
 
 
