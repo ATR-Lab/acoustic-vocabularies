@@ -16,10 +16,18 @@ them for a batch run and serves what people use during it:
   orchestrator's `PanelSessionHost`, served by `serve_panel` with a fresh access secret
   per session; the operator gets one keyed URL per station (`ServedPanel.station_urls`).
 
+Accelerated clocks (#305): #16's 5-s token-count cap is run-clock time, so at speed k it
+is only 5/k s of real time, while the count's HTTP overhead does not speed up.
+`open_batch` gives the client `default_token_count_cap_ms(clock)` (5 s of real time,
+at most the 40-s slot cap) and records the cap in `StudyBatch.token_count_cap_ms` and,
+when it differs from 5 s, in the detail of the sitting's `llm` startup events.
+
 Synthetic runs (`demo`/`synthetic` kinds only) can swap in the stand-ins of
 `_batch_sim`: simulated proposers (`proposers="sim"`), a bot designer that works the
 real A1 app over HTTP (`designer="bot"`) and in-process bot raters on the panel session
-contract (`panel="bots"`). The accelerated tests and the dry run (#22) use them.
+contract (`panel="bots"`). The accelerated tests and the dry run (#22) use them; a
+caller's own bot designer comes from `run_session(designer_factory=...)`, and
+`StudyBatch.served_a1` is the A1 page being served (#306).
 
 Start checks: `check_batch_start` is the one function every batch run passes before
 anything is created (run ID, input pins, prompt/LLM/meaning hashes, the frozen-config rule
@@ -64,7 +72,7 @@ from av_generation.a2 import A2Proposer
 from av_generation.a3 import A3Proposer
 from av_generation.clock import Clock, ManualClock, ScaledClock, SystemClock, utc_text
 from av_generation.config import BatchConfig
-from av_generation.constants import APPOINTMENTS_PER_BATCH, ATOMS_PER_APPOINTMENT
+from av_generation.constants import APPOINTMENTS_PER_BATCH, ATOMS_PER_APPOINTMENT, SLOT_CAP_MS
 from av_generation.freeze import FreezeError, load_freeze_manifest
 from av_generation.genconfig import (
     GenerationConfig,
@@ -75,7 +83,12 @@ from av_generation.genconfig import (
 from av_generation.ids import PUBLIC_RUN_KINDS, Method, RunKind
 from av_generation.jsonio import read_json
 from av_generation.ledger import SlotLedger
-from av_generation.llm import OpenAICompatibleClient, decoding_schema, decoding_schema_sha256
+from av_generation.llm import (
+    TOKEN_COUNT_TIMEOUT_MS,
+    OpenAICompatibleClient,
+    decoding_schema,
+    decoding_schema_sha256,
+)
 from av_generation.llm_manifest import (
     LlmManifest,
     load_llm_manifest,
@@ -106,11 +119,13 @@ from av_generation.webserve import serve_in_thread
 __all__ = [
     "BatchInputs",
     "DEMO_GENERATION_CONFIG_NAME",
+    "DesignerFactory",
     "PANEL_PORT",
     "RunnerError",
     "ServedPanel",
     "StudyBatch",
     "check_batch_start",
+    "default_token_count_cap_ms",
     "demo_generation_config",
     "load_batch_inputs",
     "main",
@@ -128,6 +143,8 @@ ProposerMode = Literal["real", "sim"]
 PanelMode = Literal["stations", "bots"]
 DesignerMode = Literal["kiosk", "bot"]
 Appointment = int | Literal["next", "all"]
+DesignerFactory = Callable[[str], sim.BotDesigner]
+"""Builds the bot designer of a session from the served A1 page URL (`run_session`)."""
 
 PANEL_PORT: Final = 8765
 """Default port of the rater panel server (the stations' URL)."""
@@ -393,6 +410,33 @@ def probe_llm_server(
 
 
 # ---------------------------------------------------------------------------
+# Token-count cap on accelerated clocks (#305)
+
+
+def default_token_count_cap_ms(clock: Clock) -> int:
+    """Run-clock cap of one A3 token count (`OpenAICompatibleClient.count_timeout_ms`)
+    on `clock`.
+
+    #16's cap is 5 s of run-clock time (`llm.TOKEN_COUNT_TIMEOUT_MS`). On a `ScaledClock`
+    with speed k > 1 the cap is k x 5 s, so the count keeps 5 s of real time, but never
+    more than the 40-s slot cap (`constants.SLOT_CAP_MS`): A3 counts within its slot, so
+    from 8x on the cap is the slot cap, as in the dry run (`DryRunPlan.token_count_cap_ms`).
+    The real clock, a manual clock and a `ScaledClock` at k <= 1 keep 5 s. The cap only
+    bounds the count request; it is not a frozen value of the slot rules."""
+    speed = clock.speed if isinstance(clock, ScaledClock) else 1.0
+    scaled = round(TOKEN_COUNT_TIMEOUT_MS * speed)
+    return min(SLOT_CAP_MS, max(TOKEN_COUNT_TIMEOUT_MS, scaled))
+
+
+def _startup_llm_detail(count_cap_ms: int) -> str:
+    """Detail of the `llm` startup events: the probe, and the token-count cap when it is
+    not #16's 5 s (accelerated clocks), so the run records the cap it used."""
+    if count_cap_ms == TOKEN_COUNT_TIMEOUT_MS:
+        return STARTUP_LLM_DETAIL
+    return f"{STARTUP_LLM_DETAIL}; token-count cap {count_cap_ms} ms (run clock)"
+
+
+# ---------------------------------------------------------------------------
 # Startup timing (every sitting)
 
 
@@ -485,6 +529,13 @@ class StudyBatch:
     served_panel: ServedPanel | None = None
     """The panel `run_session(panel="stations")` is serving right now (`station_urls`);
     `None` outside a station session."""
+    served_a1: str | None = None
+    """The URL of the A1 page `run_session` is serving right now (what `a1.serve_a1`
+    yields, also printed as `A1 designer page: <url>`); `None` outside a session and
+    with simulated proposers."""
+    token_count_cap_ms: int | None = None
+    """The run-clock cap of A3's token count in this sitting (real proposers):
+    `default_token_count_cap_ms(clock)` unless `open_batch` was given one."""
 
 
 def _layout(run_dir: Path, kind: RunKind, *, resume: bool) -> RunLayout:
@@ -512,6 +563,7 @@ def open_batch(
     sim_p_failure: float = 0.05,
     sim_propose: Mapping[Method, sim.ProposeFn] | None = None,
     log_startup: bool = True,
+    token_count_cap_ms: int | None = None,
 ) -> StudyBatch:
     """Check the start rules, create (or, with `resume=True`, reopen) the run directory
     `run_dir` (its name is the run ID) and build the batch's components.
@@ -527,18 +579,38 @@ def open_batch(
     `startup_end` timing events on the run clock: component `llm` (the server probe,
     real proposers only) and `renderer` (`renderer_self_test`). The #24 audit counts them
     in `startup_ms`. A closed run is reopened without writing. `log_startup=False` is for
-    callers that time and log their own startup (the #22 dry run)."""
+    callers that time and log their own startup (the #22 dry run).
+
+    The client's token-count cap is `token_count_cap_ms` (run-clock ms), by default
+    `default_token_count_cap_ms(clock)`: #16's 5 s on the real clock, and 5 s of real
+    time (at most the 40-s slot cap) on an accelerated one. It is kept in
+    `StudyBatch.token_count_cap_ms` and, when it is not 5 s, named in the detail of the
+    `llm` startup events."""
     run_kind = RunKind(kind)
     root = Path(run_dir)
+    if token_count_cap_ms is not None and (
+        isinstance(token_count_cap_ms, bool)
+        or not isinstance(token_count_cap_ms, int)
+        or token_count_cap_ms <= 0
+    ):
+        raise ValueError(
+            f"token_count_cap_ms must be a positive integer, got {token_count_cap_ms!r}"
+        )
     check_batch_start(inputs, kind=run_kind, run_id=root.name, proposers=proposers)
     runtime: str | None = None
+    count_cap_ms: int | None = None
     config = inputs.config
     startup = _StartupLog(clock, [])
     if proposers == "real":
         if llm_url is None:
             raise RunnerError(E_LLM_SERVER, "real proposers need the LLM server URL")
         assert inputs.llm_manifest is not None
-        with startup.timed("llm", STARTUP_LLM_DETAIL):
+        count_cap_ms = (
+            token_count_cap_ms
+            if token_count_cap_ms is not None
+            else default_token_count_cap_ms(clock)
+        )
+        with startup.timed("llm", _startup_llm_detail(count_cap_ms)):
             runtime = probe_llm_server(llm_url, inputs.llm_manifest, kind=run_kind)
     with startup.timed("renderer", STARTUP_RENDERER_DETAIL):
         renderer_self_test(inputs.fallback, config.profile.value)
@@ -551,7 +623,7 @@ def open_batch(
     client: OpenAICompatibleClient | None = None
     built: dict[Method, RoundProposer]
     if proposers == "real":
-        assert llm_url is not None and runtime is not None
+        assert llm_url is not None and runtime is not None and count_cap_ms is not None
         assert inputs.llm_manifest is not None and inputs.prompt_set is not None
         ledger = SlotLedger(
             layout.log("slot"),
@@ -568,6 +640,7 @@ def open_batch(
             request_log=RecordWriter(layout.log("llm_request")),
             runtime=runtime,
             model_revision=inputs.llm_manifest.model.revision,
+            count_timeout_ms=count_cap_ms,
         )
         a1 = study_service(
             layout, ledger, config, clock=clock, meanings=inputs.meanings, station=a1_station
@@ -616,6 +689,7 @@ def open_batch(
         ledger=ledger,
         a1=a1,
         llm=client,
+        token_count_cap_ms=count_cap_ms,
     )
 
 
@@ -743,13 +817,20 @@ def run_session(
     rating_policy: sim.RatingPolicy | None = None,
     designer_invalid_slots: frozenset[str] = frozenset(),
     designer_timeout_slots: frozenset[str] = frozenset(),
+    designer_factory: DesignerFactory | None = None,
     on_panel: Callable[[str], None] | None = None,
     log: Callable[[str], None] = _stdout,
 ) -> str | None:
     """Serve the A1 page and the rater panel, then run the session's appointments.
 
     - A1 (real proposers): `a1.serve_a1(batch.a1, host=a1_host, port=a1_port)` for the
-      designer's kiosk, or for a bot designer (`designer="bot"`, `_batch_sim.BotDesigner`).
+      designer's kiosk, or for a bot designer (`designer="bot"`, `_batch_sim.BotDesigner`
+      with `designer_invalid_slots` and `designer_timeout_slots`). `designer_factory(url)`
+      builds the bot designer instead (e.g. the dry run's thinking designer); it needs
+      `designer="bot"` and brings its own invalid and timeout slots (`E_MODE`
+      otherwise). The session starts the designer and stops it before the A1 server
+      stops. `batch.served_a1` is the page URL while it is served (`log` still gets
+      `A1 designer page: <url>`).
     - Panel: `serve_panel` for the stations (`panel="stations"`): `log` gets one keyed
       station URL per seat (the operator opens each on its station; a fresh access
       secret per session, so only these URLs open a seat), `on_panel(base_url)` is called
@@ -779,6 +860,14 @@ def run_session(
         has_a1=batch.a1 is not None,
         appointment=appointment,
     )
+    if designer_factory is not None and (
+        designer != "bot" or designer_invalid_slots or designer_timeout_slots
+    ):
+        raise RunnerError(
+            E_MODE,
+            "a designer factory replaces the default bot designer: use designer='bot' "
+            "and give the invalid and timeout slots to the factory's designer",
+        )
     run_id = batch.layout.run_id
     if RunManifest.read(batch.layout.manifest).closed_utc is not None:
         # A finished, closed run: nothing to serve, and nothing may be appended (the
@@ -799,10 +888,14 @@ def run_session(
     with ExitStack() as stack:
         if batch.a1 is not None:
             page = stack.enter_context(serve_a1(batch.a1, host=a1_host, port=a1_port))
+            batch.served_a1 = page
+            stack.callback(setattr, batch, "served_a1", None)
             log(f"A1 designer page: {page}")
             if designer == "bot":
-                batch.bot_designer = stack.enter_context(
-                    sim.BotDesigner(
+                bot = (
+                    designer_factory(page)
+                    if designer_factory is not None
+                    else sim.BotDesigner(
                         page,
                         run_id=run_id,
                         designer_id=batch.a1.designer_id,
@@ -810,6 +903,7 @@ def run_session(
                         timeout_slots=designer_timeout_slots,
                     )
                 )
+                batch.bot_designer = stack.enter_context(bot)
         host = orch.panel_host()
         if panel == "bots":
             policy = rating_policy if rating_policy is not None else sim.seeded_policy(run_id)

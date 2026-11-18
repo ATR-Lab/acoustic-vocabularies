@@ -24,9 +24,10 @@ The driver (`run_dry_run`, CLI `run`):
    a station), invalid and skipped (`timeout`) designer slots, the bot designer's think
    time and the mock model latency;
 4. runs one station session per appointment with `batch_runner.run_session(...,
-   panel="stations", on_panel=...)`: the hook starts the bot designer on the served A1
-   page and one `BotRater.from_station_url` per keyed URL; every later appointment runs
-   on the reopened run (`open_batch(..., resume=True)`), with new seat keys.
+   panel="stations", designer="bot", designer_factory=..., on_panel=...)`: the factory
+   builds the thinking bot designer on the served A1 page and the hook starts one
+   `BotRater.from_station_url` per keyed URL; every later appointment runs on the
+   reopened run (`open_batch(..., resume=True)`), with new seat keys.
 
 The whole-book fallback runs separately (`fallback_bank="single_recipe"`): every bank
 entry of the profile is the bank's recipe 0, so after a zero-eligible atom commits it, the
@@ -609,24 +610,15 @@ def _session(
     )
     a1 = batch.a1
     assert a1 is not None, "the dry run uses the real A1 service"
-    page: list[str] = []
     designer: list[ThinkingBotDesigner] = []
     results: dict[str, BotRunResult] = {}
     errors: list[BaseException] = []
     threads: list[threading.Thread] = []
     lines: list[str] = []
 
-    def stop_designer() -> None:
-        for bot in designer:
-            bot.stop()
-
     def capture(line: str) -> None:
         lines.append(line)
         log(line)
-        if line.startswith("A1 designer page: "):
-            page.append(line.removeprefix("A1 designer page: ").strip())
-        if line == f"Appointment {appointment}: done":
-            stop_designer()  # before the A1 server stops with the session
 
     def run_bot(bot: BotRater) -> None:
         try:
@@ -634,11 +626,9 @@ def _session(
         except BaseException as err:  # noqa: BLE001 - reported after the session
             errors.append(err)
 
-    def on_panel(_base_url: str) -> None:
-        if not page:
-            raise br.RunnerError(br.E_MODE, "the A1 page was not served")
+    def make_designer(page: str) -> ThinkingBotDesigner:
         bot_designer = ThinkingBotDesigner(
-            page[0],
+            page,
             run_id=run_id,
             designer_id=a1.designer_id,
             clock=batch.clock,
@@ -647,7 +637,9 @@ def _session(
             timeout_slots=frozenset(plan.designer_timeout_slots),
         )
         designer.append(bot_designer)
-        bot_designer.start()
+        return bot_designer  # run_session starts it and stops it before the A1 server
+
+    def on_panel(_base_url: str) -> None:
         for url in br.station_urls(batch).values():
             bot = BotRater.from_station_url(url, run_id=run_id, policy=policy, clock=batch.clock)
             thread = threading.Thread(target=run_bot, args=(bot,), daemon=True)
@@ -660,7 +652,8 @@ def _session(
             batch,
             appointment=appointment,
             panel="stations",
-            designer="kiosk",
+            designer="bot",
+            designer_factory=make_designer,
             a1_port=0,
             panel_port=0,
             station_timeout_s=station_timeout_s,
@@ -668,7 +661,6 @@ def _session(
             log=capture,
         )
     finally:
-        stop_designer()
         for thread in threads:
             thread.join(timeout=60)
     if errors:
@@ -767,7 +759,7 @@ def run_dry_run(
             _warm_up_renderer(fallback, config.profile.value)
 
         def open_run(reopen: bool) -> br.StudyBatch:
-            batch = br.open_batch(
+            return br.open_batch(
                 inputs,
                 run_dir,
                 kind=RunKind.SYNTHETIC,
@@ -777,10 +769,8 @@ def run_dry_run(
                 resume=reopen,
                 purpose="dry_run",
                 log_startup=False,  # the dry run times and logs its own startup
+                token_count_cap_ms=plan.token_count_cap_ms,
             )
-            if batch.llm is not None and plan.token_count_cap_ms is not None:
-                batch.llm.count_timeout_ms = plan.token_count_cap_ms
-            return batch
 
         batch = open_run(resume)
         startup_ms = startup.write(batch.layout, config.batch_id)
