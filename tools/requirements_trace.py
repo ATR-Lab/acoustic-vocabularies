@@ -231,8 +231,8 @@ def status(req: dict, refs: list[TestRef]) -> str:
     if ver == "process":
         return f"process ({req['gate']})"
     if refs:
-        return "tested" if not req.get("issue") else f"tested; gap #{req['issue']}"
-    return f"gap #{req['issue']}"
+        return "tested" if not req.get("issue") else f"tested; open gap #{req['issue']}"
+    return f"open gap #{req['issue']}"
 
 
 def render_index(trace: Trace) -> str:
@@ -244,8 +244,11 @@ def render_index(trace: Trace) -> str:
         "requirements for the experiment application and its tooling. Measurement",
         "procedures are in [measurements.md](measurements.md).",
         "",
-        "Run one requirement's Unity tests with `-testCategory REQ-...`; Python tests",
-        "carry the ID in their docstring or name.",
+        "Unity tests carry an ID as an NUnit category with underscores (`REQ_TEST_04`;",
+        "run one requirement with `-testCategory REQ_TEST_04`). Python tests carry the",
+        "ID in their docstring or name. \"Open gap\" means the requirement has tests that",
+        "state it (marked as known gaps where the code does not yet satisfy it) and an",
+        "open issue tracking the fix.",
         "",
     ]
     areas: dict[str, list[dict]] = {}
@@ -254,6 +257,8 @@ def render_index(trace: Trace) -> str:
     counts: dict[str, int] = {}
     for req in trace.requirements:
         key = status(req, trace.tests.get(req["id"], [])).split(" ")[0].rstrip(";")
+        if req["verification"] == "auto" and req.get("issue"):
+            key = "tested, open gap" if trace.tests.get(req["id"]) else "untested, open gap"
         counts[key] = counts.get(key, 0) + 1
     lines.append("| Status | Requirements |")
     lines.append("| --- | ---: |")

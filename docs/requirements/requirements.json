@@ -8,8 +8,36 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Workcell/WorkcellRegistry.cs",
+    "unity/Assets/ExperimentApp/Editor/Workcell/G1Import.cs",
+    "apparatus/workcell_layout.json",
+    "unity/Assets/ExperimentApp/Runtime/StateSources/StateParser.cs",
+    "unity/Assets/ExperimentApp/Runtime/StateSources/SnapshotSource.cs",
+    "unity/Assets/ExperimentApp/Runtime/StateIntegration/StateSourceHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Workcell/LayoutParityTests.cs",
+     "name": "CanonicalJointOrderAndCountsMatchVerifiedMap",
+     "suite": "AcousticVocab.Workcell.Tests.LayoutParityTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Workcell/LayoutParityTests.cs",
+     "name": "InvalidJointCannotMutateRobot",
+     "suite": "AcousticVocab.Workcell.Tests.LayoutParityTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Workcell/LayoutParityTests.cs",
+     "name": "ParticipantSceneHasNoAmbientAudioPhysicsOrExtraCamera",
+     "suite": "AcousticVocab.Workcell.Tests.LayoutParityTests"
+    },
+    {
+     "path": "unity/Assets/Tests/StateSources/StateSourceTests.cs",
+     "name": "EvenCorrectlyHashedMalformedNeutralIsRefused",
+     "suite": "AcousticVocab.Tests.StateSourceTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -30,8 +58,26 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs",
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentScreen.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioCalibrationHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedViewPlacementTests.cs",
+     "name": "RealHostViewUsesCalibratedWorldPoseAndRemainsUnderFocusRoot",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedViewPlacementTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StationConfigTests.cs",
+     "name": "ParticipantSceneContainsOnlyApprovedFoundationComponents",
+     "suite": "AcousticVocab.Foundation.Tests.StationConfigTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -41,8 +87,33 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/FoundationBootstrap.cs",
+    "unity/Assets/ExperimentApp/Runtime/ObserverReference.cs",
+    "unity/Assets/ExperimentApp/Runtime/StartupOriginGate.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StationConfigTests.cs",
+     "name": "RestoreMapsCurrentTrackedHeadToReferenceWithoutChangingTrackingPose",
+     "suite": "AcousticVocab.Foundation.Tests.StationConfigTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StationConfigTests.cs",
+     "name": "TiltedStartupPreservesWorldUpAndNaturalHeadPitchRoll",
+     "suite": "AcousticVocab.Foundation.Tests.StationConfigTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StationConfigTests.cs",
+     "name": "DuplicateOriginEventsLatchOneFaultUntilSafeRestore",
+     "suite": "AcousticVocab.Foundation.Tests.StationConfigTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StationConfigTests.cs",
+     "name": "ParticipantSceneContainsOnlyApprovedFoundationComponents",
+     "suite": "AcousticVocab.Foundation.Tests.StationConfigTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -52,8 +123,36 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/MessageComposer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PcmWave.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/SpeechBank.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioCalibrationHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "AllEighteenTrainedMessagesReproduceAndHoldoutsRemainHashOnly",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "NovelBufferRequiresOneConsumedSlotAndNeverCreatesAFile",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioCalibrationConfigurationTests.cs",
+     "name": "ArbitraryStudySoundCannotReplacePinnedExample",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioCalibrationConfigurationTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "SilentAssemblyHasNoStudyAudioOrPackageDependency",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -63,8 +162,24 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/ProjectSettings/ProjectSettings.asset"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/TeachingCatalogTests.cs",
+     "name": "AllTrainedContentBindsActualProducerPermutationAndComposition",
+     "suite": "AcousticVocab.Teaching.Tests.TeachingCatalogTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/ScheduleLoaderTests.cs",
+     "name": "ActualPublicProducerVisitContractsPass",
+     "suite": "AcousticVocab.SessionEngine.Tests.ScheduleLoaderTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -74,8 +189,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PcmWave.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "ResealedStereoOrMetadataWavStillRejected",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "CanonicalHeaderAndGapUseExactSampleCounts",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/MessageComposerTests.cs",
+     "name": "IntegerToFloatConversionPreservesCanonicalScale",
+     "suite": "AcousticVocab.Tests.StudyAudio.MessageComposerTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -85,8 +220,16 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/PlayMode/StudyAudio/AudioPlayerTests.cs",
+     "name": "SourceIsNonspatialAndEffectsAreRejected",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioPlayerTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -96,8 +239,31 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioTiming.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedVisitArtifacts.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentSessionHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioTimingTests.cs",
+     "name": "UnmeasuredRouteCannotScheduleStudyOrInventOnset",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioTimingTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioTimingTests.cs",
+     "name": "StationOffsetNeedsMatchingMeasuredRouteAndUncertainty",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioTimingTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioTimingTests.cs",
+     "name": "DeviceResetInvalidatesPriorMapping",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioTimingTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -118,8 +284,40 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/ComfortableGain.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioCalibrationHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedVisitArtifacts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/ComfortableGainTests.cs",
+     "name": "GainRestoresAcrossVisitsAndDoesNotLeakToAnotherCodedId",
+     "suite": "AcousticVocab.Tests.StudyAudio.ComfortableGainTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/ComfortableGainTests.cs",
+     "name": "ChangedGainChainCannotBeRestored",
+     "suite": "AcousticVocab.Tests.StudyAudio.ComfortableGainTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/ComfortableGainTests.cs",
+     "name": "TornHistoryBlocksRestoreAndFutureChanges",
+     "suite": "AcousticVocab.Tests.StudyAudio.ComfortableGainTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/ComfortableGainTests.cs",
+     "name": "PlayingOrInvalidGainCannotBeWritten",
+     "suite": "AcousticVocab.Tests.StudyAudio.ComfortableGainTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedArtifactTests.cs",
+     "name": "GainRestorationConsumesExactlyPinnedBytesAndCodedIdentity",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedArtifactTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -129,8 +327,22 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/MessageComposer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/MessageComposerTests.cs",
+     "name": "AllFourIndependentPatternVectorsMatchWithoutRendering",
+     "suite": "AcousticVocab.Tests.StudyAudio.MessageComposerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "CanonicalHeaderAndGapUseExactSampleCounts",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -140,7 +352,10 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/MessageComposer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs"
+   ],
    "tests": [],
    "issue": null
   },
@@ -162,8 +377,34 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationFlow.cs",
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationReceipt.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/PreallocationHandoff.cs",
+    "schedules/src/av_schedules/admission.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "EightFirstPassesAfterDurableOutcomeBeforeAnyEligibilityGrant",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "DraftSuccessIsRecordedButNeverAuthorizesAllocation",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/PreallocationHandoffTests.cs",
+     "name": "DraftOrFailedOrientationCannotOpenAllocationReceipts",
+     "suite": "AcousticVocab.SessionIntegration.Tests.PreallocationHandoffTests"
+    },
+    {
+     "path": "tests/schedules/test_admission.py",
+     "name": "test_orientation_integrity_and_admission_refusal",
+     "suite": "test_admission"
+    }
+   ],
    "issue": null
   },
   {
@@ -173,9 +414,14 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioCalibrationHost.cs",
+    "schedules/src/av_schedules/admission.py",
+    "schedules/src/av_schedules/reveal.py",
+    "ops/console/core.py"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 273
   },
   {
    "id": "REQ-ELIG-03",
@@ -186,7 +432,7 @@
    "gate": null,
    "code": [],
    "tests": [],
-   "issue": null
+   "issue": 313
   },
   {
    "id": "REQ-ELIG-04",
@@ -206,8 +452,52 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringConfig.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedVisitArtifacts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/PreallocationEngineeringHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/Foundation/SimulationTestAuthority.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedEngineeringConfigTests.cs",
+     "name": "ScopeCannotGrantAdmission",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedEngineeringConfigTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedEngineeringConfigTests.cs",
+     "name": "BooleanVersionAndSelfAssertedApprovalAreRefused",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedEngineeringConfigTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedEngineeringConfigTests.cs",
+     "name": "ValidPinsRemainEngineeringOnlyAndDoNotCreateOutputs",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedEngineeringConfigTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "DemoNeedsExplicitEngineeringOptIn",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/SimulationAuthorityTests.cs",
+     "name": "CannotAssertRealQualification",
+     "suite": "AcousticVocab.SessionIntegration.Tests.SimulationAuthorityTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/SimulationAuthorityTests.cs",
+     "name": "NonDemoAndWrongPinsNeverBind",
+     "suite": "AcousticVocab.SessionIntegration.Tests.SimulationAuthorityTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuCatalogTests.cs",
+     "name": "ProvisionalBankNeverGrantsParticipantAdmission",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuCatalogTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -250,8 +540,34 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationFlow.cs",
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationPlan.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/PreallocationHandoff.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "SilentAssemblyHasNoStudyAudioOrPackageDependency",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "MissingOrShortDemoCannotAdvanceToPractice",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationAssetTests.cs",
+     "name": "AudioPathsAreRejectedBeforeAnyAssetRead",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationAssetTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/PreallocationHandoffTests.cs",
+     "name": "DraftOrFailedOrientationCannotOpenAllocationReceipts",
+     "suite": "AcousticVocab.SessionIntegration.Tests.PreallocationHandoffTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -261,8 +577,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationPlan.cs",
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationFlow.cs",
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationAssets.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "ListsCoverEveryActionAndTargetAndHaveStoredDifferentOrder",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationAssetTests.cs",
+     "name": "EightDistinctActionsAreRequired",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationAssetTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -272,8 +603,37 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Orientation/OrientationFlow.cs",
+    "schedules/src/av_schedules/admission.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "SevenThenEightPassesSecondWithOneIdenticalReexplanation",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "SevenThenSevenFailsWithoutThirdCheckOrAllocation",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/Orientation/OrientationFlowTests.cs",
+     "name": "ActualJournalContainsOutcomeBeforeCallback",
+     "suite": "AcousticVocab.Orientation.Tests.OrientationFlowTests"
+    },
+    {
+     "path": "unity/Assets/Tests/OrientationPlayMode/OrientationFlowPlayTests.cs",
+     "name": "SevenThenSevenStopsBeforeAllocation",
+     "suite": "AcousticVocab.Orientation.PlayModeTests.OrientationFlowPlayTests"
+    },
+    {
+     "path": "tests/schedules/test_admission.py",
+     "name": "test_orientation_actual_terminal_counts",
+     "suite": "test_admission"
+    }
+   ],
    "issue": null
   },
   {
@@ -283,9 +643,21 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/GrammarFamiliarization.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/GrammarAssets.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedGrammarStage.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/GrammarFlowTests.cs",
+     "name": "ExactlyReadyThenClicksWithoutReplay",
+     "suite": "AcousticVocab.Teaching.Tests.GrammarFlowTests"
+    }
+   ],
+   "issue": 275,
+   "fix_pr": 327
   },
   {
    "id": "REQ-GRAM-02",
@@ -294,9 +666,13 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/GrammarAssets.cs",
+    "sound/reserved/registry.json"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 275,
+   "fix_pr": 327
   },
   {
    "id": "REQ-GRAM-03",
@@ -305,9 +681,25 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedGrammarStage.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedGrammarTests.cs",
+     "name": "PriorConsumedTeachingCannotMigrateWithoutFinishedGrammarHistory",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedGrammarTests"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedGrammarTests.cs",
+     "name": "BothOrderedPlaysAndDurableFinishRecoverWithoutTrialOrExposureRows",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedGrammarTests"
+    }
+   ],
+   "issue": 275,
+   "fix_pr": 327
   },
   {
    "id": "REQ-GRAM-04",
@@ -316,8 +708,33 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/GrammarAssets.cs",
+    "sound/src/av_sound/nonlexical.py",
+    "sound/reserved/registry.json"
+   ],
+   "tests": [
+    {
+     "path": "tests/sound/test_nonlexical.py",
+     "name": "test_no_asset_has_a_motif_length_so_no_recipe_renders_to_one",
+     "suite": "test_nonlexical"
+    },
+    {
+     "path": "tests/sound/test_nonlexical.py",
+     "name": "test_composer_refuses_an_asset_as_a_motif",
+     "suite": "test_nonlexical"
+    },
+    {
+     "path": "tests/sound/test_nonlexical.py",
+     "name": "test_registry_kinds_and_profiles",
+     "suite": "test_nonlexical"
+    },
+    {
+     "path": "tests/sound/test_nonlexical.py",
+     "name": "test_clicks_and_grammar_demo_layout",
+     "suite": "test_nonlexical"
+    }
+   ],
    "issue": null
   },
   {
@@ -327,8 +744,29 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_slots_and_plays_per_trial_type",
+     "suite": "test_orders"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/ScheduleLoaderTests.cs",
+     "name": "ActualPublicProducerVisitContractsPass",
+     "suite": "AcousticVocab.SessionEngine.Tests.ScheduleLoaderTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -338,8 +776,24 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "ExactlyThreeFixedPlaysAndFullSlotDespiteEarlyResponse",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "InstructionalTimeoutPermittedOnFirstLateDeadlineFrame",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -349,8 +803,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_slots_and_plays_per_trial_type",
+     "suite": "test_orders"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/ScheduleLoaderTests.cs",
+     "name": "LessonFamilyAlternationIsCheckedIndependentlyOfPool",
+     "suite": "AcousticVocab.SessionEngine.Tests.ScheduleLoaderTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -360,8 +834,24 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "ExactlyThreeFixedPlaysAndFullSlotDespiteEarlyResponse",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/PlayMode/Teaching/LessonTimelineTests.cs",
+     "name": "UnityFrameDrivenMockTimelineRetainsTwentyFourSeconds",
+     "suite": "AcousticVocab.Teaching.PlayModeTests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -371,7 +861,10 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs"
+   ],
    "tests": [],
    "issue": null
   },
@@ -382,8 +875,18 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "VariantsHaveIdenticalNonHighlightEvents",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -393,8 +896,17 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "HighlightsUseMeasuredAnchorAndAreOffForExactGapAndRetrieval",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -404,7 +916,10 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs"
+   ],
    "tests": [],
    "issue": null
   },
@@ -415,7 +930,10 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs"
+   ],
    "tests": [],
    "issue": null
   },
@@ -426,8 +944,18 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "VariantsHaveIdenticalNonHighlightEvents",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -437,8 +965,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "analysis/src/av_analysis/scoring.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "MultiPlaySlotCannotUseSingleNoOnsetReceipt",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "SecondResponseIsRefused",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -448,9 +991,13 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 276,
+   "fix_pr": 326
   },
   {
    "id": "REQ-LES-13",
@@ -459,8 +1006,37 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/design.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_message_lessons_alternate_families_with_counterbalanced_lead",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_once_per_pass_property_10000_seeds",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_study_b_menus_and_lessons_shared_by_dyad",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_seeds_are_stored_and_reproduce_the_order",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_b_wave_orders_balanced_within_arms_and_swap_levels",
+     "suite": "test_curriculum"
+    }
+   ],
    "issue": null
   },
   {
@@ -470,8 +1046,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "ExactlyThreeFixedPlaysAndFullSlotDespiteEarlyResponse",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "CompletedAudioDoesNotAllowSkippingFeedbackInterval",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -481,8 +1072,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionJournal.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/OperatorConsole/OperatorContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/OperatorConsole/OperatorMailbox.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ThirtySixFixedSlotsKeep504SecondsDespiteEarlyResponses",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -492,8 +1098,24 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/UnityAssessmentPorts.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ThirtySixFixedSlotsKeep504SecondsDespiteEarlyResponses",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -503,8 +1125,22 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "All32LegalTuplesCommitAndCannotBeReplaced",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "DontKnowAndTimeoutAreDistinctAndKeepProcessSelections",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -514,8 +1150,35 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "CommitDeadlineUsesOnsetAndRejectsExactBoundary",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ResponseFirstCommitLocksAndDeadlineRejectsLateCommit",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ThirtySixFixedSlotsKeep504SecondsDespiteEarlyResponses",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "ProducerProtectedVisitsRunExactCountsAndFixedTime",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -525,8 +1188,33 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ThirtySixFixedSlotsKeep504SecondsDespiteEarlyResponses",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "CommitWrongDontKnowTimeoutHaveIdenticalAcknowledgmentSuffix",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "PreparingNextSlotCannotErasePreviousAcknowledgment",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/PlayMode/Assessment/AssessmentBlockTests.cs",
+     "name": "AcknowledgmentLifecycleRetainsExactlyTwoSecondsForEveryOutcome",
+     "suite": "AcousticVocab.Assessment.PlayModeTests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -536,8 +1224,27 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "SameFamilyRetainsTheActualChosenAction",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "All32LegalTuplesCommitAndCannotBeReplaced",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ResponseFirstCommitLocksAndDeadlineRejectsLateCommit",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -547,8 +1254,45 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/PanelJournal.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/UnityAssessmentPorts.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "CommitDeadlineUsesOnsetAndRejectsExactBoundary",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "EverySelectionChangeHasTheSuppliedMonotonicTimestamp",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "RegressedClockAndInvalidTimingCannotContinue",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "MismatchedQualifiedOnsetIsRejected",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "MissingQualifiedOnsetNeverOpensResponseOrCompletesAsNormal",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ClockRegressionFailsClosed",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -558,8 +1302,32 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "EveryCrossFamilyChangeClearsWithoutMappingAction",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "AllCrossFamilyTuplesAreRejected",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "All32LegalTuplesCommitAndCannotBeReplaced",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/PanelContractTests.cs",
+     "name": "ActualGeneratedPanelShowsOnlyItsRoleAndFitsText",
+     "suite": "AcousticVocab.ResponsePanel.Tests.PanelContractTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -569,8 +1337,27 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/scoring.py",
+    "analysis/command_scoring.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_exact_first_commit_scores_one",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_wrong_components_score_zero",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/test_command_scoring.py",
+     "name": "test_all32_exact_wrong_components_and_distinct_absence",
+     "suite": "test_command_scoring"
+    }
+   ],
    "issue": null
   },
   {
@@ -580,8 +1367,21 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/scoring.py",
+    "analysis/src/av_analysis/derived.py",
+    "analysis/src/av_analysis/synthetic_tables.py",
+    "schedules/src/av_schedules/matrix.py",
+    "analysis/command_scoring.py",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs"
+   ],
+   "tests": [
+    {
+     "path": "tests/test_command_scoring.py",
+     "name": "test_illegal_answer_key_is_refused",
+     "suite": "test_command_scoring"
+    }
+   ],
    "issue": null
   },
   {
@@ -591,8 +1391,40 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/scoring.py",
+    "analysis/src/av_analysis/vocab.py",
+    "analysis/src/av_analysis/derived.py",
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/command_scoring.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_wrong_components_score_zero",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_abstention_and_timeout_are_unsuccessful_and_censored",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_no_response_recorded_is_zero",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/test_command_scoring.py",
+     "name": "test_all32_exact_wrong_components_and_distinct_absence",
+     "suite": "test_command_scoring"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "DontKnowAndTimeoutAreDistinctAndKeepProcessSelections",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -602,8 +1434,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "All32LegalTuplesCommitAndCannotBeReplaced",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/PanelContractTests.cs",
+     "name": "ActualGeneratedPanelShowsOnlyItsRoleAndFitsText",
+     "suite": "AcousticVocab.ResponsePanel.Tests.PanelContractTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -613,8 +1460,22 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "EveryCrossFamilyChangeClearsWithoutMappingAction",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "SameFamilyRetainsTheActualChosenAction",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -624,8 +1485,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/UnityAssessmentPorts.cs",
+    "isaac/commands/dispatcher.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "NeutralHoldLossInterruptsBeforeAnotherResponse",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "tests/isaac/test_command_lock.py",
+     "name": "test_all_32_test_demos_rejected_with_identical_full_state",
+     "suite": "test_command_lock"
+    },
+    {
+     "path": "tests/isaac/test_command_lock.py",
+     "name": "test_every_command_in_every_mode",
+     "suite": "test_command_lock"
+    }
+   ],
    "issue": null
   },
   {
@@ -635,8 +1516,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentAcknowledgmentView.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentScreen.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "CommitWrongDontKnowTimeoutHaveIdenticalAcknowledgmentSuffix",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/PlayMode/Assessment/AssessmentBlockTests.cs",
+     "name": "AcknowledgmentLifecycleRetainsExactlyTwoSecondsForEveryOutcome",
+     "suite": "AcousticVocab.Assessment.PlayModeTests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -646,8 +1542,32 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "tools/view_leakage.py",
+    "tools/leakage_png.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/test_view_leakage.py",
+     "name": "test_complete_synthetic_fixture_checks_all_2480_pairs_without_qualification",
+     "suite": "test_view_leakage"
+    },
+    {
+     "path": "tests/test_view_leakage.py",
+     "name": "test_target_conditioned_difference_is_failed_screen",
+     "suite": "test_view_leakage"
+    },
+    {
+     "path": "tests/test_view_leakage.py",
+     "name": "test_provisional_profile_cannot_pass_vacuous_view_or_pixel_comparisons",
+     "suite": "test_view_leakage"
+    },
+    {
+     "path": "tests/test_view_leakage.py",
+     "name": "test_incomplete_ambiguous_or_wrong_timing_refused",
+     "suite": "test_view_leakage"
+    }
+   ],
    "issue": null
   },
   {
@@ -668,8 +1588,24 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentStages.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/PostStudyActivities.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "OptionalStageRequiresCompletedBW4ValidityAndWritesItsOwnStage",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "DictionaryAuthorityIsOneUseAndCannotSurviveAnotherConsultation",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -679,8 +1615,19 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/PanelContractTests.cs",
+     "name": "ActualGeneratedPanelShowsOnlyItsRoleAndFitsText",
+     "suite": "AcousticVocab.ResponsePanel.Tests.PanelContractTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -690,8 +1637,18 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentAcknowledgmentView.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentScreen.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "CommitWrongDontKnowTimeoutHaveIdenticalAcknowledgmentSuffix",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -701,8 +1658,29 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentStages.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/PostStudyActivities.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "OptionalStageRequiresCompletedBW4ValidityAndWritesItsOwnStage",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "DictionaryAuthorityIsOneUseAndCannotSurviveAnotherConsultation",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "CommitWrongDontKnowTimeoutHaveIdenticalAcknowledgmentSuffix",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -712,8 +1690,27 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/planning.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_schedule_design_check_counts",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_visit_plan_matches_assessment_schedule",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_once_per_pass_property_10000_seeds",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -723,8 +1720,31 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_once_per_pass_property_10000_seeds",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_once_per_pass_property_random_seeds",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_once_per_pass_in_every_generated_schedule",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_fault_repeat_within_pass",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -734,8 +1754,31 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_order_in_every_protected_battery_and_pre_old_before_teaching",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_fault_swapped_block_order",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_design_checks.py",
+     "name": "test_fault_swapped_block_order",
+     "suite": "test_design_checks"
+    }
+   ],
    "issue": null
   },
   {
@@ -745,8 +1788,22 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/seeds.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_test_orders_randomized_per_person_and_pass",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_seeds_are_stored_and_reproduce_the_order",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -756,8 +1813,30 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponseState.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/ResponsePanelTests.cs",
+     "name": "AtomicRoleHasAllEightOptionsAndExplicitCommit",
+     "suite": "AcousticVocab.ResponsePanel.Tests.ResponsePanelTests"
+    },
+    {
+     "path": "unity/Assets/Tests/ResponsePanel/PanelContractTests.cs",
+     "name": "ActualGeneratedPanelShowsOnlyItsRoleAndFitsText",
+     "suite": "AcousticVocab.ResponsePanel.Tests.PanelContractTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "CommitWrongDontKnowTimeoutHaveIdenticalAcknowledgmentSuffix",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -767,8 +1846,31 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_contents_follow_curriculum",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_order_in_every_protected_battery_and_pre_old_before_teaching",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_visit_plan_matches_assessment_schedule",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_design_checks.py",
+     "name": "test_fault_pre_old_after_teaching",
+     "suite": "test_design_checks"
+    }
+   ],
    "issue": null
   },
   {
@@ -778,8 +1880,27 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/planning.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_visit_plan_matches_assessment_schedule",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_generated_schedules_match_assessment_schedule",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_design_checks.py",
+     "name": "test_assessment_schedule_reproduced_for_all_seven_visit_types",
+     "suite": "test_design_checks"
+    }
+   ],
    "issue": null
   },
   {
@@ -789,8 +1910,61 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/MessageComposer.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/UnityAssessmentPorts.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/ScheduleLoaderTests.cs",
+     "name": "HeldoutLessonCannotBeSmuggledThroughAnIntendedTuple",
+     "suite": "AcousticVocab.SessionEngine.Tests.ScheduleLoaderTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/ScheduleLoaderTests.cs",
+     "name": "HeldoutDictionaryIsRejected",
+     "suite": "AcousticVocab.SessionEngine.Tests.ScheduleLoaderTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/ScheduleLoaderTests.cs",
+     "name": "ActualPublicProducerVisitContractsPass",
+     "suite": "AcousticVocab.SessionEngine.Tests.ScheduleLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "HeldoutLessonIsRefusedBeforeCue",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioCalibrationConfigurationTests.cs",
+     "name": "ArbitraryStudySoundCannotReplacePinnedExample",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioCalibrationConfigurationTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioCalibrationConfigurationTests.cs",
+     "name": "ConfigHasNoStudyOrAcousticEvidenceOverride",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioCalibrationConfigurationTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "ResealedIndexCannotTurnHeldoutIntoTrainedOrChangeMeaning",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "AllEighteenTrainedMessagesReproduceAndHoldoutsRemainHashOnly",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "NovelBufferRequiresOneConsumedSlotAndNeverCreatesAFile",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -800,8 +1974,37 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionJournal.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "DurableUncertainIntentPrecedesCueAndCrashSkipsOpportunity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "AudioModuleExceptionAfterIntentKeepsConsumedOpportunity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ConfirmedAudibleCannotBecomeNoOnset",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "NovelPermissionIsIssuedOnceAtDurableCue",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/PlayMode/SessionEngine/SessionLifecycleTests.cs",
+     "name": "DurableRequestSurvivesEngineRecreationWithoutReplayingConsumedItem",
+     "suite": "AcousticVocab.SessionEngine.PlayModeTests.SessionLifecycleTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -811,8 +2014,26 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/matrix.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_matrix_constant_matches_protocol_cells",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_each_unit_has_32_rows_18_trained_14_heldout",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_index_introduction_waves_are_derived_from_matrix",
+     "suite": "test_curriculum"
+    }
+   ],
    "issue": null
   },
   {
@@ -822,8 +2043,38 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/matrix.py",
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/curriculum.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_a_all_components_taught",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_a_swap_exactly_9_of_18_and_3_per_profile",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_novel_visit_swap_semantics",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_each_heldout_message_is_tested_once_per_person",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_each_semantic_message_novel_equally_often_per_cycle",
+     "suite": "test_curriculum"
+    }
+   ],
    "issue": null
   },
   {
@@ -833,8 +2084,23 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/matrix.py",
+    "schedules/src/av_schedules/curriculum.py",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_b_novel_counts_per_visit",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_design_checks.py",
+     "name": "test_heldout_messages_played_once_only_at_their_visit",
+     "suite": "test_design_checks"
+    }
+   ],
    "issue": null
   },
   {
@@ -844,8 +2110,34 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "analysis/src/av_analysis/ledger.py",
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/reconcile_checks.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "NovelPermitIsBoundToExactPackageMessageAndOneUse",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ProvenNoOnsetQueuesOneBlockEndRetryWithNewAudioIdentity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "LaterConflictingEvidenceDisablesUnplayedRetryIncludingAfterCrash",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "tests/analysis/test_reconcile_checks.py",
+     "name": "test_c4_repeat_logged_as_novel_after_uncertain_onset",
+     "suite": "test_reconcile_checks"
+    }
+   ],
    "issue": null
   },
   {
@@ -855,8 +2147,26 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_validity_block_contents",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_order_in_every_protected_battery_and_pre_old_before_teaching",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -866,8 +2176,26 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_validity_block_contents",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_slots_and_plays_per_trial_type",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_design_checks.py",
+     "name": "test_every_test_item_uses_14_or_9_second_slots",
+     "suite": "test_design_checks"
+    }
+   ],
    "issue": null
   },
   {
@@ -877,9 +2205,11 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "analysis/src/av_analysis/pipeline.py"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 318
   },
   {
    "id": "REQ-VAL-04",
@@ -888,8 +2218,32 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/seeds.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_no_cue_targets_uniform_with_replacement",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_speech_list_covers_each_action_and_target_once",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_validity_block_contents",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_fault_validity_block",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -899,8 +2253,24 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/SessionJournal.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataDeriver.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "NoCueSlotHasNoAudioIdentityAndNeverConsumesExposure",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "NoCueUsesScheduledAnchorAndNeverTouchesAudio",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -910,8 +2280,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/TeachingScaffoldTests.cs",
+     "name": "StudyAHasNoRandomScaffoldAssignment",
+     "suite": "AcousticVocab.Teaching.Tests.TeachingScaffoldTests"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_message_lessons_alternate_families_with_counterbalanced_lead",
+     "suite": "test_orders"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/TeachingCatalogTests.cs",
+     "name": "StudyARejectsDictionarySchedule",
+     "suite": "AcousticVocab.Teaching.Tests.TeachingCatalogTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -921,8 +2311,21 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_order_in_every_protected_battery_and_pre_old_before_teaching",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -932,8 +2335,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "ops/console/core.py",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_calendar_window_edges_and_outside",
+     "suite": "test_console"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -954,9 +2372,36 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "schedules/src/av_schedules/assign.py",
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/cli.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_a_confirmatory_counts",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_a_pilot_counts",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_reveal_never_reissues_a_slot",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_reveal_a_requires_eligibility_and_reveals_in_order",
+     "suite": "test_allocation"
+    }
+   ],
+   "issue": 266,
+   "fix_pr": 298
   },
   {
    "id": "REQ-SA-06",
@@ -965,9 +2410,12 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "schedules/src/av_schedules/reveal.py",
+    "schedules/src/av_schedules/admission.py"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 314
   },
   {
    "id": "REQ-SA-07",
@@ -976,8 +2424,51 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "sound/src/av_sound/package.py",
+    "schedules/src/av_schedules/run_sheets.py",
+    "schedules/src/av_schedules/masking.py",
+    "ops/console/core.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_run_sheets.py",
+     "name": "test_run_sheets_hold_no_answers_or_method_labels",
+     "suite": "test_run_sheets"
+    },
+    {
+     "path": "tests/schedules/test_run_sheets.py",
+     "name": "test_run_sheet_examples_are_valid_demo_and_masked",
+     "suite": "test_run_sheets"
+    },
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_masking_blocks_free_text_without_echo",
+     "suite": "test_console"
+    },
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_http_origin_csrf_masking_and_export",
+     "suite": "test_console"
+    },
+    {
+     "path": "tests/sound/test_package.py",
+     "name": "test_package_carries_no_method_designer_rating_or_store_provenance",
+     "suite": "test_package"
+    },
+    {
+     "path": "tests/sound/test_package.py",
+     "name": "test_leak_scan_finds_method_and_designer_strings",
+     "suite": "test_package"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "HiddenAnswerMismatchIsRefusedWithoutExposingContent",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -987,9 +2478,41 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/config.py",
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/assign.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_batch_config.py",
+     "name": "test_inconsistent_configs_are_refused",
+     "suite": "test_batch_config"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_batch_config_from_schedules_files",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_any_namespace_and_interleaving_gives_balanced_profiles",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_a_swap_exactly_9_of_18_and_3_per_profile",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_a_confirmatory_counts",
+     "suite": "test_allocation"
+    }
+   ],
+   "issue": 266,
+   "fix_pr": 298
   },
   {
    "id": "REQ-SA-09",
@@ -998,8 +2521,37 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/assign.py",
+    "generation/src/av_generation/config.py",
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/records.py",
+    "generation/src/av_generation/a1.py",
+    "generation/src/av_generation/audit.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_a_designers_make_two_books_per_profile",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_a_book_key",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/generation/test_batch_config.py",
+     "name": "test_inconsistent_configs_are_refused",
+     "suite": "test_batch_config"
+    },
+    {
+     "path": "tests/generation/test_audit.py",
+     "name": "test_audit_columns",
+     "suite": "test_audit"
+    }
+   ],
    "issue": null
   },
   {
@@ -1009,8 +2561,39 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/proposers.py",
+    "generation/src/av_generation/ledger.py",
+    "generation/src/av_generation/records.py",
+    "generation/src/av_generation/meanings.py",
+    "generation/src/av_generation/a1.py",
+    "generation/src/av_generation/a2.py",
+    "generation/src/av_generation/a3.py",
+    "generation/src/av_generation/batch_runner.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_feedback_returns_the_books_closed_rounds_and_incumbent",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_full_batch_counts",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_batch_runner.py",
+     "name": "test_real_components_reach_the_batch_counts",
+     "suite": "test_batch_runner"
+    },
+    {
+     "path": "tests/generation/test_batch_runner.py",
+     "name": "test_a2_and_a1_slots_come_from_the_real_proposers",
+     "suite": "test_batch_runner"
+    }
+   ],
    "issue": null
   },
   {
@@ -1020,8 +2603,29 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/config.py",
+    "generation/src/av_generation/_orch_index.py",
+    "sound/src/av_sound/package.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_decisions_and_commits_follow_the_selector",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator_resume.py",
+     "name": "test_atom_and_appointment_order",
+     "suite": "test_orchestrator_resume"
+    },
+    {
+     "path": "tests/sound/test_package.py",
+     "name": "test_build_refuses_unsuitable_books",
+     "suite": "test_package"
+    }
+   ],
    "issue": null
   },
   {
@@ -1031,8 +2635,45 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/proposers.py",
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/_orch_index.py",
+    "generation/src/av_generation/prompts.py",
+    "generation/src/av_generation/a1.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_feedback_holds_only_the_books_own_fields",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_feedback_returns_the_books_closed_rounds_and_incumbent",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_prompt_builder.py",
+     "name": "test_a3_context_layout",
+     "suite": "test_prompt_builder"
+    },
+    {
+     "path": "tests/generation/test_prompt_builder.py",
+     "name": "test_sentinel_leaks_in_1000_prompts",
+     "suite": "test_prompt_builder"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_feedback_payload_holds_no_other_method_fields",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_requests_naming_another_book_are_refused",
+     "suite": "test_a1_api"
+    }
+   ],
    "issue": null
   },
   {
@@ -1042,8 +2683,51 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/constants.py",
+    "generation/src/av_generation/ledger.py",
+    "generation/src/av_generation/a1.py",
+    "generation/src/av_generation/a2.py",
+    "generation/src/av_generation/a3.py",
+    "generation/src/av_generation/outcomes.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_slot_ledger.py",
+     "name": "test_thirteenth_slot_raises_and_is_logged",
+     "suite": "test_slot_ledger"
+    },
+    {
+     "path": "tests/generation/test_slot_ledger.py",
+     "name": "test_each_a3_outcome_consumes_one_slot_and_at_most_one_call",
+     "suite": "test_slot_ledger"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_every_round_writes_three_records_including_invalid_ones",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_slot_times_out_at_40_s_server_time",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_13th_slot_request_for_an_atom_is_refused",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_llm_client.py",
+     "name": "test_cap_on_a_manual_clock_is_exactly_40_s",
+     "suite": "test_llm_client"
+    },
+    {
+     "path": "tests/generation/test_a3_proposer.py",
+     "name": "test_the_40_s_cap_covers_the_token_count_and_the_call",
+     "suite": "test_a3_proposer"
+    }
+   ],
    "issue": null
   },
   {
@@ -1053,8 +2737,50 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/a3.py",
+    "generation/src/av_generation/prompts.py",
+    "generation/src/av_generation/parser.py",
+    "generation/src/av_generation/llm.py",
+    "generation/prompts/"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_prompt_builder.py",
+     "name": "test_a3_context_layout",
+     "suite": "test_prompt_builder"
+    },
+    {
+     "path": "tests/generation/test_llm_client.py",
+     "name": "test_request_carries_frozen_values_seed_and_schema",
+     "suite": "test_llm_client"
+    },
+    {
+     "path": "tests/generation/test_llm_client.py",
+     "name": "test_decoding_schema_is_the_recipe_schema_with_the_domain",
+     "suite": "test_llm_client"
+    },
+    {
+     "path": "tests/generation/test_llm_client.py",
+     "name": "test_stop_reasons_map_to_statuses_without_retry",
+     "suite": "test_llm_client"
+    },
+    {
+     "path": "tests/generation/test_a3_proposer.py",
+     "name": "test_a_closed_slot_is_never_retried",
+     "suite": "test_a3_proposer"
+    },
+    {
+     "path": "tests/generation/test_output_parser.py",
+     "name": "test_property_junk_around_an_object_is_refused",
+     "suite": "test_output_parser"
+    },
+    {
+     "path": "tests/generation/test_llm_client.py",
+     "name": "test_a_failed_connect_is_tried_exactly_once",
+     "suite": "test_llm_client"
+    }
+   ],
    "issue": null
   },
   {
@@ -1064,8 +2790,37 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/a2.py",
+    "generation/src/av_generation/domain.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_round_one_writes_three_uniform_records",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_round_one_uniformity_chi_square_30000",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_uniform_sample_is_always_in_domain",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_mutation_rounds_use_the_incumbent_and_fallback_to_uniform",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_select_parent_takes_the_incumbent",
+     "suite": "test_a2_search"
+    }
+   ],
    "issue": null
   },
   {
@@ -1075,8 +2830,58 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/a2.py",
+    "generation/src/av_generation/constants.py",
+    "generation/src/av_generation/domain.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_select_parent_takes_the_incumbent",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_select_parent_refuses_a_faulty_incumbent",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_mutation_rounds_use_the_incumbent_and_fallback_to_uniform",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_ten_thousand_parents_children_differ_in_exactly_k",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_property_children",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_pitch_reflection",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_pitch_mutation_table",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_index_fields_at_a_boundary_move_inward",
+     "suite": "test_a2_search"
+    },
+    {
+     "path": "tests/generation/test_a2_search.py",
+     "name": "test_pitch_edge_cases_are_corrected_inward_and_logged",
+     "suite": "test_a2_search"
+    }
+   ],
    "issue": null
   },
   {
@@ -1086,8 +2891,32 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/a1.py",
+    "generation/src/av_generation/ledger.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_48_slot_session_has_no_play_without_a_consumed_slot",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_every_play_joins_one_consumed_valid_slot",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_second_audio_request_is_refused_and_logged",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_one_round_open_submit_play",
+     "suite": "test_a1_api"
+    }
+   ],
    "issue": null
   },
   {
@@ -1108,9 +2937,40 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/constants.py",
+    "generation/src/av_generation/_orch_host.py",
+    "generation/docs/orchestrator.md"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_the_three_proposal_windows_run_in_parallel",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_rating_order_follows_the_panel_blocks",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_a3_proposer.py",
+     "name": "test_later_slots_see_earlier_same_round_proposals",
+     "suite": "test_a3_proposer"
+    },
+    {
+     "path": "tests/generation/test_a1_api.py",
+     "name": "test_slots_open_back_to_back_with_40_s_each",
+     "suite": "test_a1_api"
+    },
+    {
+     "path": "tests/generation/test_a3_proposer.py",
+     "name": "test_window_end_closes_remaining_slots_without_calls",
+     "suite": "test_a3_proposer"
+    }
+   ],
+   "issue": 319
   },
   {
    "id": "REQ-GEN-11",
@@ -1119,8 +2979,27 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/constants.py",
+    "generation/src/av_generation/orchestrator.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_full_batch_counts",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_console_and_panel_events_are_masked",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator_resume.py",
+     "name": "test_pause_between_appointments_and_resume_from_the_logs",
+     "suite": "test_orchestrator_resume"
+    }
+   ],
    "issue": null
   },
   {
@@ -1130,8 +3009,46 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/orchestrator.py",
+    "generation/src/av_generation/_orch_host.py",
+    "generation/src/av_generation/panel_session.py",
+    "generation/src/av_generation/rater_protocol.py",
+    "generation/src/av_generation/masking.py",
+    "generation/src/av_generation/config.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_each_profile_of_the_batch_table_gets_every_order_once",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_any_namespace_and_interleaving_gives_balanced_profiles",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_console_and_panel_events_are_masked",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_panel_aliases_rotate_and_stay_masked",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_rating_order_follows_the_panel_blocks",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_rater_protocol.py",
+     "name": "test_messages_carry_no_method_labels",
+     "suite": "test_rater_protocol"
+    }
+   ],
    "issue": null
   },
   {
@@ -1141,8 +3058,41 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/constants.py",
+    "generation/src/av_generation/_orch_host.py",
+    "generation/src/av_generation/orchestrator.py",
+    "generation/schema/rater-message.schema.json",
+    "generation/schema/rating-record.schema.json",
+    "sound/src/av_sound/validate.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_nearest_reference_ties_go_to_the_lowest_index",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_first_atom_has_no_reference",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_first_atom_and_nearest_reference_playback",
+     "suite": "test_orchestrator"
+    },
+    {
+     "path": "tests/generation/test_rater_protocol.py",
+     "name": "test_ratings_outside_the_scale_or_with_free_text_are_rejected",
+     "suite": "test_rater_protocol"
+    },
+    {
+     "path": "tests/generation/test_orchestrator_host.py",
+     "name": "test_rating_refusal_codes",
+     "suite": "test_orchestrator_host"
+    }
+   ],
    "issue": null
   },
   {
@@ -1152,8 +3102,38 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/selector.py",
+    "generation/src/av_generation/constants.py",
+    "generation/src/av_generation/orchestrator.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_selector.py",
+     "name": "test_hand_computed_fixtures",
+     "suite": "test_selector"
+    },
+    {
+     "path": "tests/generation/test_selector.py",
+     "name": "test_fixture_suite_covers_the_acceptance_cases",
+     "suite": "test_selector"
+    },
+    {
+     "path": "tests/generation/test_selector.py",
+     "name": "test_selector_matches_a_brute_force_reference",
+     "suite": "test_selector"
+    },
+    {
+     "path": "tests/generation/test_selector.py",
+     "name": "test_counts_and_invalid_candidates",
+     "suite": "test_selector"
+    },
+    {
+     "path": "tests/generation/test_orchestrator.py",
+     "name": "test_decisions_and_commits_follow_the_selector",
+     "suite": "test_orchestrator"
+    }
+   ],
    "issue": null
   },
   {
@@ -1163,8 +3143,38 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/orchestrator.py",
+    "sound/src/av_sound/fallback.py",
+    "sound/src/av_sound/package.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_round_fallback.py",
+     "name": "test_zero_eligible_assigns_the_first_passing_unused_bank_recipe",
+     "suite": "test_round_fallback"
+    },
+    {
+     "path": "tests/generation/test_round_fallback.py",
+     "name": "test_all_fail_substitutes_the_fallback_book",
+     "suite": "test_round_fallback"
+    },
+    {
+     "path": "tests/generation/test_round_fallback.py",
+     "name": "test_the_substituted_method_keeps_generating_and_being_rated",
+     "suite": "test_round_fallback"
+    },
+    {
+     "path": "tests/sound/test_fallback.py",
+     "name": "test_scan_returns_the_lowest_index_unused_passing_recipe",
+     "suite": "test_fallback"
+    },
+    {
+     "path": "tests/sound/test_package.py",
+     "name": "test_build_refuses_unsuitable_books",
+     "suite": "test_package"
+    }
+   ],
    "issue": null
   },
   {
@@ -1174,8 +3184,19 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/unmask.py",
+    "analysis/src/av_analysis/estimators.py",
+    "analysis/src/av_analysis/references.py",
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_unmask.py",
+     "name": "test_study_a_conditions_from_key_and_slots",
+     "suite": "test_pipeline_unmask"
+    }
+   ],
    "issue": null
   },
   {
@@ -1185,8 +3206,44 @@
    "owner": "generation",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "generation/src/av_generation/records.py",
+    "generation/src/av_generation/rundir.py",
+    "generation/src/av_generation/audit.py",
+    "generation/schema/"
+   ],
+   "tests": [
+    {
+     "path": "tests/generation/test_audit.py",
+     "name": "test_effort_columns",
+     "suite": "test_audit"
+    },
+    {
+     "path": "tests/generation/test_audit.py",
+     "name": "test_slot_outcome_counts_per_book_sum_to_192",
+     "suite": "test_audit"
+    },
+    {
+     "path": "tests/generation/test_audit.py",
+     "name": "test_every_committed_atom_appears_once_with_its_source",
+     "suite": "test_audit"
+    },
+    {
+     "path": "tests/generation/test_audit.py",
+     "name": "test_message_durations_stay_within_bounds",
+     "suite": "test_audit"
+    },
+    {
+     "path": "tests/generation/test_audit.py",
+     "name": "test_counts_match_an_independent_tally",
+     "suite": "test_audit"
+    },
+    {
+     "path": "tests/generation/test_batch_runner.py",
+     "name": "test_logs_are_audit_ready",
+     "suite": "test_batch_runner"
+    }
+   ],
    "issue": null
   },
   {
@@ -1196,9 +3253,30 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "schedules/src/av_schedules/assign.py",
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/reveal.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_b_confirmatory_counts",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_b_pilot_counts",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_reveal_b_binds_members_and_substitutes_spares",
+     "suite": "test_allocation"
+    }
+   ],
+   "issue": 266,
+   "fix_pr": 298
   },
   {
    "id": "REQ-SB-02",
@@ -1207,9 +3285,23 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "schedules/src/av_schedules/reveal.py",
+    "schedules/src/av_schedules/admission.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_reveal_b_binds_members_and_substitutes_spares",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_admission.py",
+     "name": "test_recorded_checks_are_exact_and_b_member_order_bound",
+     "suite": "test_admission"
+    }
+   ],
+   "issue": 273
   },
   {
    "id": "REQ-SB-03",
@@ -1218,9 +3310,18 @@
    "owner": "console",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "ops/console/core.py"
+   ],
+   "tests": [
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_yoked_order_and_24_hours",
+     "suite": "test_console"
+    }
+   ],
+   "issue": 282,
+   "fix_pr": 322
   },
   {
    "id": "REQ-SB-04",
@@ -1229,8 +3330,17 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/design.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_message_lessons_alternate_families_with_counterbalanced_lead",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1240,8 +3350,39 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/matrix.py",
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/assign_output.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_b_confirmatory_design_table_counts",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_b_every_block_holds_each_cell_once",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_b_pilot_design_table",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_dyad_members_share_one_table",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_study_b_menus_and_lessons_shared_by_dyad",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1251,8 +3392,27 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/reveal.py",
+    "schedules/src/av_schedules/admission.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_allocation.py",
+     "name": "test_reveal_never_reissues_a_slot",
+     "suite": "test_allocation"
+    },
+    {
+     "path": "tests/schedules/test_admission.py",
+     "name": "test_spare_bank_mapping_retains_same_sq_swap_and_cannot_change_after_reveal",
+     "suite": "test_admission"
+    },
+    {
+     "path": "tests/schedules/test_admission.py",
+     "name": "test_stale_in_memory_owner_reloads_and_allocates_distinct_next_slot",
+     "suite": "test_admission"
+    }
+   ],
    "issue": null
   },
   {
@@ -1262,8 +3422,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingContent.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/TeachingScaffoldTests.cs",
+     "name": "StoredPerFamilyAssignmentResolvedExactly",
+     "suite": "AcousticVocab.Teaching.Tests.TeachingScaffoldTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/TeachingScaffoldTests.cs",
+     "name": "MismatchedScaffoldCannotChangeVariant",
+     "suite": "AcousticVocab.Teaching.Tests.TeachingScaffoldTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/TeachingScaffoldTests.cs",
+     "name": "StudyAHasNoRandomScaffoldAssignment",
+     "suite": "AcousticVocab.Teaching.Tests.TeachingScaffoldTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1273,8 +3453,56 @@
    "owner": "banks",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "banks/src/av_banks/builder.py",
+    "banks/src/av_banks/proposer.py",
+    "banks/src/av_banks/permutation.py",
+    "banks/src/av_banks/confirmatory/register.py",
+    "generation/src/av_generation/proposers.py",
+    "generation/src/av_generation/genconfig.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/banks/test_bank_inputs.py",
+     "name": "test_bank_ids_follow_the_dyad_slot_sequence",
+     "suite": "test_bank_inputs"
+    },
+    {
+     "path": "tests/banks/test_bank_inputs.py",
+     "name": "test_banks_bind_to_their_own_unit",
+     "suite": "test_bank_inputs"
+    },
+    {
+     "path": "tests/banks/test_bank_inputs.py",
+     "name": "test_seed_namespaces_name_their_bank_and_version",
+     "suite": "test_bank_inputs"
+    },
+    {
+     "path": "tests/banks/test_bank_inputs.py",
+     "name": "test_confirmatory_bank_needs_the_frozen_config",
+     "suite": "test_bank_inputs"
+    },
+    {
+     "path": "tests/banks/test_bank_inputs.py",
+     "name": "test_proposer_context_has_no_rating_participant_or_test_fields",
+     "suite": "test_bank_inputs"
+    },
+    {
+     "path": "tests/generation/test_prompt_builder.py",
+     "name": "test_b_context_layout_has_no_rating_field",
+     "suite": "test_prompt_builder"
+    },
+    {
+     "path": "tests/banks/test_campaign_seed_check.py",
+     "name": "test_the_72_confirmatory_banks_have_unique_seeds_disjoint_from_the_pilot",
+     "suite": "test_campaign_seed_check"
+    },
+    {
+     "path": "tests/banks/test_confirmatory_register.py",
+     "name": "test_register_commit_timestamp",
+     "suite": "test_confirmatory_register"
+    }
+   ],
    "issue": null
   },
   {
@@ -1284,8 +3512,44 @@
    "owner": "banks",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "banks/src/av_banks/builder.py",
+    "banks/src/av_banks/manifest.py",
+    "generation/src/av_generation/outcomes.py",
+    "generation/src/av_generation/constants.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_all_valid_script_builds_a_complete_bank",
+     "suite": "test_bank_build"
+    },
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_retention_matches_the_oracle_for_random_scripts",
+     "suite": "test_bank_build"
+    },
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_every_outcome_code_in_scripted_cells",
+     "suite": "test_bank_build"
+    },
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_exhausted_cell_fails_the_attempt_and_the_next_attempt_starts_fresh",
+     "suite": "test_bank_build"
+    },
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_a_13th_slot_in_a_cell_raises",
+     "suite": "test_bank_build"
+    },
+    {
+     "path": "tests/banks/test_bank_verify.py",
+     "name": "test_to_dyad_bank",
+     "suite": "test_bank_verify"
+    }
+   ],
    "issue": null
   },
   {
@@ -1295,8 +3559,29 @@
    "owner": "banks",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "banks/src/av_banks/builder.py",
+    "banks/src/av_banks/verify.py",
+    "sound/src/av_sound/validate.py",
+    "sound/src/av_sound/features.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/banks/test_bank_verify.py",
+     "name": "test_verify_passes_all_1920_pairs_per_profile",
+     "suite": "test_bank_verify"
+    },
+    {
+     "path": "tests/banks/test_bank_verify.py",
+     "name": "test_verify_detects_an_incompatible_pair",
+     "suite": "test_bank_verify"
+    },
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_retention_matches_the_oracle_for_random_scripts",
+     "suite": "test_bank_build"
+    }
+   ],
    "issue": null
   },
   {
@@ -1306,8 +3591,41 @@
    "owner": "banks",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "banks/src/av_banks/builder.py",
+    "banks/src/av_banks/manifest.py",
+    "banks/src/av_banks/register.py",
+    "banks/src/av_banks/metrics.py",
+    "banks/src/av_banks/confirmatory/register.py",
+    "generation/src/av_generation/ledger.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/banks/test_bank_build.py",
+     "name": "test_four_failed_attempts_make_the_bank_unavailable",
+     "suite": "test_bank_build"
+    },
+    {
+     "path": "tests/banks/test_bank_verify.py",
+     "name": "test_unavailable_bank_verifies",
+     "suite": "test_bank_verify"
+    },
+    {
+     "path": "tests/banks/test_pilot_throughput.py",
+     "name": "test_summary_of_an_unavailable_bank",
+     "suite": "test_pilot_throughput"
+    },
+    {
+     "path": "tests/banks/test_pilot_banks.py",
+     "name": "test_spares_replace_a_bank_that_fails_verify_and_an_unavailable_one",
+     "suite": "test_pilot_banks"
+    },
+    {
+     "path": "tests/banks/test_confirmatory_register.py",
+     "name": "test_register_with_too_few_complete_banks",
+     "suite": "test_confirmatory_register"
+    }
+   ],
    "issue": null
   },
   {
@@ -1317,9 +3635,32 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "banks/src/av_banks/amend.py",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/FileMenuStore.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedSelections.cs",
+    "tools/menu_store_bridge.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/banks/test_bank_verify.py",
+     "name": "test_amend_replaces_an_option_with_the_reserve",
+     "suite": "test_bank_verify"
+    },
+    {
+     "path": "tests/banks/test_bank_verify.py",
+     "name": "test_amend_refusals",
+     "suite": "test_bank_verify"
+    },
+    {
+     "path": "unity/Assets/Tests/SessionIntegration/JoinedSelectionsTests.cs",
+     "name": "MissingRankReserveRankProfileMismatchAndWrongPackageAreRefused",
+     "suite": "AcousticVocab.SessionIntegration.Tests.JoinedSelectionsTests"
+    }
+   ],
+   "issue": 281,
+   "fix_pr": 332
   },
   {
    "id": "REQ-MENU-01",
@@ -1328,8 +3669,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "EightPlaysAtFixedOffsetsAndDefaultFirstStoredChoice",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuCatalogTests.cs",
+     "name": "ActualProducerOptionsAndCalibrationFollowStoredOrderWithoutReserve",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuCatalogTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1339,8 +3695,25 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/FileMenuStore.cs",
+    "tools/menu_store_bridge.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "YokedHasNoIntermediateSelectionAndUsesOnlyStoredFinalChoice",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "tests/test_menu_store_bridge.py",
+     "name": "test_profile_once_persists_and_duplicate_is_noop",
+     "suite": "test_menu_store_bridge"
+    }
+   ],
    "issue": null
   },
   {
@@ -1350,8 +3723,21 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "EightPlaysAtFixedOffsetsAndDefaultFirstStoredChoice",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "ActiveCanReviseUntilDeadlineWithoutAdditionalListening",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1361,8 +3747,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "ActiveCanReviseUntilDeadlineWithoutAdditionalListening",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "LateSchedulingDoesNotBackfillMissedPlay",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "NeverStartedCancellationLeavesVisitLedgerAvailableButOldTimelineCannotRestart",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1372,8 +3778,17 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContent.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "ActiveCanReviseUntilDeadlineWithoutAdditionalListening",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1383,8 +3798,28 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuExposureProjection.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "EightPlaysAtFixedOffsetsAndDefaultFirstStoredChoice",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "ExposureHandoffRetainsRejectedCandidatesAndPauseFacts",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuCatalogTests.cs",
+     "name": "ActualProducerOptionsAndCalibrationFollowStoredOrderWithoutReserve",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuCatalogTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1394,8 +3829,18 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuCatalogTests.cs",
+     "name": "MissingProfileOrMeaningOutsideCurrentWaveRefused",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuCatalogTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1405,9 +3850,13 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs",
+    "apparatus/schemas/station.schema.json"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 317,
+   "fix_pr": 325
   },
   {
    "id": "REQ-YOKE-01",
@@ -1416,9 +3865,20 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuReplaySequence.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/YokedReplayAuthority.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "PartialOrExpiredOrFutureOrWrongReceiptLedgerCannotReplay",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    }
+   ],
+   "issue": 282,
+   "fix_pr": 322
   },
   {
    "id": "REQ-YOKE-02",
@@ -1427,8 +3887,35 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuReplaySequence.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "ActiveAndYokedMatchAllFilesCountsChoicesAndSourceEvents",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "RecordedDisplayOffsetsRemainAuthoritativeInYokedRun",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "WrongYokedMeaningBindingOrSourceEventCannotMatch",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "SealedIndependentAssetBoundLedgerPreservesAllPlaysSourceIdsAndPauses",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1438,8 +3925,22 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuReplaySequence.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "AllThreeVisitPairsPreserve128AtomAnd8ProfilePlaysPerPerson",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "EightPlaysAtFixedOffsetsAndDefaultFirstStoredChoice",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1449,9 +3950,21 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContent.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "YokedHasNoIntermediateSelectionAndUsesOnlyStoredFinalChoice",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    }
+   ],
+   "issue": 286,
+   "fix_pr": 321
   },
   {
    "id": "REQ-YOKE-05",
@@ -1460,9 +3973,23 @@
    "owner": "console",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "ops/console/core.py"
+   ],
+   "tests": [
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_yoked_order_and_24_hours",
+     "suite": "test_console"
+    },
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_window_override_never_overrides_hash_or_lock",
+     "suite": "test_console"
+    }
+   ],
+   "issue": 282,
+   "fix_pr": 322
   },
   {
    "id": "REQ-CURR-01",
@@ -1471,8 +3998,28 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/matrix.py",
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/planning.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_design_check_oracles_reproduced_from_matrix",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_index_introduction_waves_are_derived_from_matrix",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_contents_follow_curriculum",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1482,8 +4029,27 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/matrix.py",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_matrix_constant_matches_protocol_cells",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_each_unit_has_32_rows_18_trained_14_heldout",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1493,8 +4059,38 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/latin.py",
+    "schedules/src/av_schedules/curriculum.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_every_complete_block_is_a_latin_row",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_semantic_labels_follow_the_unit_permutation",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_permutation_documents_validate",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_each_semantic_message_at_each_cell_once_per_cycle",
+     "suite": "test_curriculum"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_schedule_links_to_permutation_json",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1504,8 +4100,31 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_once_per_pass_property_10000_seeds",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_schedule_design_check_counts",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_a_all_components_taught",
+     "suite": "test_curriculum"
+    }
+   ],
    "issue": null
   },
   {
@@ -1515,8 +4134,22 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_contents_follow_curriculum",
+     "suite": "test_orders"
+    },
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_no_heldout_in_lessons_menus_pre_old_or_dictionary",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1526,9 +4159,18 @@
    "owner": "console",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "ops/console/core.py"
+   ],
+   "tests": [
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_calendar_window_edges_and_outside",
+     "suite": "test_console"
+    }
+   ],
+   "issue": 285,
+   "fix_pr": 320
   },
   {
    "id": "REQ-VIS-02",
@@ -1537,9 +4179,17 @@
    "owner": "console",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "ops/console/core.py"
+   ],
+   "tests": [
+    {
+     "path": "ops/console/tests/test_console.py",
+     "name": "test_calendar_window_edges_and_outside",
+     "suite": "test_console"
+    }
+   ],
+   "issue": 316
   },
   {
    "id": "REQ-VIS-03",
@@ -1548,8 +4198,19 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/ScheduleLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/TeachingCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentStages.cs",
+    "schedules/src/av_schedules/orders.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_orders.py",
+     "name": "test_block_sequence_per_visit",
+     "suite": "test_orders"
+    }
+   ],
    "issue": null
   },
   {
@@ -1570,8 +4231,30 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/windows.py",
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/reconcile_checks.py",
+    "analysis/src/av_analysis/codes.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_analysis_windows.py",
+     "name": "test_classify_boundaries",
+     "suite": "test_analysis_windows"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_late_w1_visits_leave_the_primary_and_enter_the_timing_population",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_reconcile_faults.py",
+     "name": "test_injected_fault_is_detected_with_its_code",
+     "suite": "test_reconcile_faults"
+    }
+   ],
    "issue": null
   },
   {
@@ -1581,8 +4264,36 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "DurableUncertainIntentPrecedesCueAndCrashSkipsOpportunity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "CrashBeforeCueAllowsSameUnplayedOpportunityAfterConfirmation",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "AudioModuleExceptionAfterIntentKeepsConsumedOpportunity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "PauseBeforeCueIsUnplayedAndRequiresExplicitResume",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/PlayMode/SessionEngine/SessionLifecycleTests.cs",
+     "name": "DurableRequestSurvivesEngineRecreationWithoutReplayingConsumedItem",
+     "suite": "AcousticVocab.SessionEngine.PlayModeTests.SessionLifecycleTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1592,9 +4303,12 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 278,
+   "fix_pr": 331
   },
   {
    "id": "REQ-INT-03",
@@ -1603,9 +4317,12 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 278,
+   "fix_pr": 331
   },
   {
    "id": "REQ-INT-04",
@@ -1614,9 +4331,24 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/scoring.py",
+    "analysis/src/av_analysis/reconcile_checks.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_reconcile_derive.py",
+     "name": "test_withdrawal_mid_battery_leaves_no_row",
+     "suite": "test_reconcile_derive"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_partial_battery_keeps_its_known_contribution",
+     "suite": "test_pipeline_scoring"
+    }
+   ],
+   "issue": 310
   },
   {
    "id": "REQ-INT-05",
@@ -1625,8 +4357,37 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/OperatorConsole/OperatorMailbox.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "PauseBeforeCueIsUnplayedAndRequiresExplicitResume",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "PauseAfterScheduleBeforeOnsetInterruptsButDoesNotInferNoOnset",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "AudioModuleExceptionAfterIntentKeepsConsumedOpportunity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "DurableUncertainIntentPrecedesCueAndCrashSkipsOpportunity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/OperatorConsole/MailboxTests.cs",
+     "name": "MidTrialPauseHoldsTheNextUnplayedOpportunity",
+     "suite": "AcousticVocab.OperatorConsole.Tests.MailboxTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1636,9 +4397,41 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/SessionIntegrationOwner.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioDelivery.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataDeriver.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ProvenNoOnsetQueuesOneBlockEndRetryWithNewAudioIdentity",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "LaterConflictingEvidenceDisablesUnplayedRetryIncludingAfterCrash",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "MissingCallbackNeverCreatesRetry",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "MultiPlaySlotCannotUseSingleNoOnsetReceipt",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "ConfirmedNoOnsetRetryRetainsBothAttemptsAndSeparateAudioRequests",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    }
+   ],
+   "issue": 283,
+   "fix_pr": 330
   },
   {
    "id": "REQ-INT-07",
@@ -1647,9 +4440,54 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioDelivery.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PcmWave.cs",
+    "unity/Assets/ExperimentApp/Runtime/FrameBudget/FrameContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "analysis/src/av_analysis/vocab.py",
+    "analysis/src/av_analysis/derive.py"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioDeliveryTests.cs",
+     "name": "MissingCallbackIsNotSuccessfulPlayback",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioDeliveryTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioDeliveryTests.cs",
+     "name": "DroppedMiddleBufferLatchesUnderrun",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioDeliveryTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioDeliveryTests.cs",
+     "name": "CallbackAfterEndCannotConcealMissingAudio",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioDeliveryTests"
+    },
+    {
+     "path": "unity/Assets/Tests/FrameBudget/FrameMonitorTests.cs",
+     "name": "StrictThresholdLogsShortStallWithoutFreeze",
+     "suite": "AcousticVocab.FrameBudget.Tests.FrameMonitorTests"
+    },
+    {
+     "path": "unity/Assets/Tests/FrameBudget/FrameMonitorTests.cs",
+     "name": "InputLossWithinResponseFaultsWithNormalFrames",
+     "suite": "AcousticVocab.FrameBudget.Tests.FrameMonitorTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "ChangedWaveByteBlocksLoadAndPostLoadRead",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/SessionEngine/SessionEngineTests.cs",
+     "name": "ResetFailurePausesAtFixedEndWithoutAnotherCue",
+     "suite": "AcousticVocab.SessionEngine.Tests.SessionEngineTests"
+    }
+   ],
+   "issue": 284,
+   "fix_pr": 328
   },
   {
    "id": "REQ-INT-08",
@@ -1658,8 +4496,31 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuExposureProjection.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuSessionHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/SelectionMenuTests.cs",
+     "name": "InterruptionRetainsPartialEventsAndStopsAllLaterPlays",
+     "suite": "AcousticVocab.SelectionMenus.Tests.SelectionMenuTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "StartedMenuBeforeFirstDisplayStillNeedsNewSegmentAndCannotReplay",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "ActualEnginePreCueRefusalReplacesLeaseAndKeepsUntouchedVisitLedger",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1669,9 +4530,14 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/FileMenuStore.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuReplaySequence.cs"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 279
   },
   {
    "id": "REQ-MISS-01",
@@ -1680,9 +4546,35 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/scoring.py",
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/glmm.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_reconcile_derive.py",
+     "name": "test_visit_states_missed_withdrawn_pending",
+     "suite": "test_reconcile_derive"
+    },
+    {
+     "path": "tests/analysis/test_reconcile_derive.py",
+     "name": "test_withdrawal_mid_battery_leaves_no_row",
+     "suite": "test_reconcile_derive"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_partial_battery_keeps_its_known_contribution",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_late_w1_visits_leave_the_primary_and_enter_the_timing_population",
+     "suite": "test_pipeline_rules"
+    }
+   ],
+   "issue": 310
   },
   {
    "id": "REQ-MISS-02",
@@ -1691,8 +4583,28 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/scoring.py",
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_technical_failure_is_zero_operationally_and_excluded_from_valid",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_scoring.py",
+     "name": "test_battery_score_mean_of_36_with_family_denominators",
+     "suite": "test_pipeline_scoring"
+    },
+    {
+     "path": "tests/analysis/test_reconcile_derive.py",
+     "name": "test_lost_opportunity_becomes_a_deviation_row",
+     "suite": "test_reconcile_derive"
+    }
+   ],
    "issue": null
   },
   {
@@ -1702,7 +4614,10 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/scoring.py"
+   ],
    "tests": [],
    "issue": null
   },
@@ -1713,9 +4628,12 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "analysis/src/av_analysis/derive.py",
+    "analysis/src/av_analysis/reconcile_checks.py"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 310
   },
   {
    "id": "REQ-AN-01",
@@ -1724,8 +4642,27 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/estimators.py",
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_a_aggregation_by_hand",
+     "suite": "test_pipeline_estimators"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_a_batch_without_a_complete_member_is_missing_and_one_difference_is_unavailable",
+     "suite": "test_pipeline_estimators"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_a_primary_and_holm_secondaries_by_hand",
+     "suite": "test_pipeline_rules"
+    }
+   ],
    "issue": null
   },
   {
@@ -1735,8 +4672,22 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/estimators.py",
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_a_primary_and_holm_secondaries_by_hand",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_holm_fixtures_from_the_issue",
+     "suite": "test_pipeline_estimators"
+    }
+   ],
    "issue": null
   },
   {
@@ -1746,8 +4697,22 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/estimators.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_b_primary_intervals_95_and_97_5_by_hand",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_simulate.py",
+     "name": "test_b_differences_need_both_members",
+     "suite": "test_pipeline_simulate"
+    }
+   ],
    "issue": null
   },
   {
@@ -1757,8 +4722,22 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/estimators.py",
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_b_dyad_differences_by_hand",
+     "suite": "test_pipeline_estimators"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_b_primary_intervals_95_and_97_5_by_hand",
+     "suite": "test_pipeline_rules"
+    }
+   ],
    "issue": null
   },
   {
@@ -1768,8 +4747,17 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/estimators.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_late_w1_visits_leave_the_primary_and_enter_the_timing_population",
+     "suite": "test_pipeline_rules"
+    }
+   ],
    "issue": null
   },
   {
@@ -1779,8 +4767,32 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/estimators.py",
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_one_sample_t_matches_hand_computation",
+     "suite": "test_pipeline_estimators"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_holm_fixtures_from_the_issue",
+     "suite": "test_pipeline_estimators"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_estimators.py",
+     "name": "test_holm_rejects_a_p_value_exactly_at_its_threshold",
+     "suite": "test_pipeline_estimators"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_b_primary_intervals_95_and_97_5_by_hand",
+     "suite": "test_pipeline_rules"
+    }
+   ],
    "issue": null
   },
   {
@@ -1790,8 +4802,33 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/estimators.py",
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/glmm.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_a_bootstrap_resamples_whole_batches_within_profile",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_b_bootstrap_resamples_whole_dyads_within_scaffold_and_order",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_glmm.py",
+     "name": "test_model_specs_follow_section_5",
+     "suite": "test_pipeline_glmm"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_glmm.py",
+     "name": "test_b_model_data_codes_role_format_and_timing",
+     "suite": "test_pipeline_glmm"
+    }
+   ],
    "issue": null
   },
   {
@@ -1801,8 +4838,43 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "analysis/src/av_analysis/missingness.py",
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/unmask.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_missingness.py",
+     "name": "test_a_bounds_by_hand",
+     "suite": "test_pipeline_missingness"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_missingness.py",
+     "name": "test_b_bounds_by_hand",
+     "suite": "test_pipeline_missingness"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_missingness.py",
+     "name": "test_tipping_grid_a_by_hand",
+     "suite": "test_pipeline_missingness"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_missingness.py",
+     "name": "test_tipping_grid_b_by_hand",
+     "suite": "test_pipeline_missingness"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_a_bounds_keep_the_known_part_of_a_partial_battery",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_unmask.py",
+     "name": "test_reveal_log_defines_the_assigned_persons",
+     "suite": "test_pipeline_unmask"
+    }
+   ],
    "issue": null
   },
   {
@@ -1812,9 +4884,17 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "analysis/src/av_analysis/pipeline.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_first_pass_endpoint_uses_pass_one_only",
+     "suite": "test_pipeline_rules"
+    }
+   ],
+   "issue": 318
   },
   {
    "id": "REQ-AN-10",
@@ -1823,9 +4903,23 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "analysis/src/av_analysis/pipeline.py",
+    "analysis/src/av_analysis/estimators.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_a_primary_and_holm_secondaries_by_hand",
+     "suite": "test_pipeline_rules"
+    },
+    {
+     "path": "tests/analysis/test_pipeline_rules.py",
+     "name": "test_b_primary_intervals_95_and_97_5_by_hand",
+     "suite": "test_pipeline_rules"
+    }
+   ],
+   "issue": 310
   },
   {
    "id": "REQ-AN-11",
@@ -1834,9 +4928,11 @@
    "owner": "analysis",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "analysis/src/av_analysis/pipeline.py"
+   ],
    "tests": [],
-   "issue": null
+   "issue": 310
   },
   {
    "id": "REQ-AN-12",
@@ -1845,8 +4941,23 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/AssessmentStages.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/AssessmentDataJournal.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/AssessmentExport.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/ExperimentApp/Tests/EditMode/Assessment/AssessmentBlockTests.cs",
+     "name": "RatingsHaveBoundedRangesAndRecoverExactly",
+     "suite": "AcousticVocab.Assessment.Tests.AssessmentBlockTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/AssessmentAdapterTests.cs",
+     "name": "StageRowsReopenAndExportSeparatelyFromTrialAndExposureRows",
+     "suite": "AcousticVocab.DataLogging.Tests.AssessmentAdapterTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1856,8 +4967,43 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "sound/src/av_sound/store.py",
+    "tools/menu_store_bridge.py",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/FileMenuStore.cs"
+   ],
+   "tests": [
+    {
+     "path": "tests/sound/test_store.py",
+     "name": "test_overwrite_attempts_are_rejected_logged_and_change_nothing",
+     "suite": "test_store"
+    },
+    {
+     "path": "tests/sound/test_store.py",
+     "name": "test_growth_keeps_old_entries_identical",
+     "suite": "test_store"
+    },
+    {
+     "path": "tests/sound/test_store.py",
+     "name": "test_random_sequences_never_change_committed_entries",
+     "suite": "test_store"
+    },
+    {
+     "path": "tests/test_menu_store_bridge.py",
+     "name": "test_new_request_cannot_rewrite_old_atom",
+     "suite": "test_menu_store_bridge"
+    },
+    {
+     "path": "tests/test_menu_store_bridge.py",
+     "name": "test_actual_default_rank_one_choices_preserve_old_entries_across_waves",
+     "suite": "test_menu_store_bridge"
+    },
+    {
+     "path": "tests/test_menu_store_bridge.py",
+     "name": "test_changed_actual_old_blob_refused",
+     "suite": "test_menu_store_bridge"
+    }
+   ],
    "issue": null
   },
   {
@@ -1867,7 +5013,12 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/Assessment/ProtectedSlots.cs",
+    "unity/Assets/ExperimentApp/Runtime/Assessment/UnityAssessmentPorts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedSelections.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/FileMenuStore.cs"
+   ],
    "tests": [],
    "issue": null
   },
@@ -1878,8 +5029,39 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PackageLoader.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/PcmWave.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/MessageComposer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioPlayer.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/SpeechBank.cs",
+    "unity/Assets/ExperimentApp/Runtime/StudyAudio/AudioCalibrationHost.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/GrammarAssets.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuCatalog.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/SessionIntegrationOwner.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "ChangedWaveByteBlocksLoadAndPostLoadRead",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/PackageLoaderTests.cs",
+     "name": "CopiesCannotMutateVerifiedAudio",
+     "suite": "AcousticVocab.Tests.StudyAudio.PackageLoaderTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/AudioCalibrationConfigurationTests.cs",
+     "name": "ArbitraryStudySoundCannotReplacePinnedExample",
+     "suite": "AcousticVocab.Tests.StudyAudio.AudioCalibrationConfigurationTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/StudyAudio/SpeechBankTests.cs",
+     "name": "ChangedWaveRejectedBeforeConsumingSlot",
+     "suite": "AcousticVocab.Tests.StudyAudio.SpeechBankTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1889,9 +5071,43 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SessionEngine/FixedSlotEngine.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataAdapters.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataJournal.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataDeriver.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/GrammarStageCodec.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/SessionIntegrationOwner.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "ThirtySixTrialsProduceThirtySixAttemptsAndActualRequests",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "MissingOnsetConsumesExposureDespiteSuccessfulRequest",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/AdapterIntegrationTests.cs",
+     "name": "ActualAudioEventAdapterPreservesClockUnitsWithoutInferringAcousticOnset",
+     "suite": "AcousticVocab.DataLogging.Tests.AdapterIntegrationTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/AdapterIntegrationTests.cs",
+     "name": "RealSessionEngineProducesThirtySixDurableAttemptsAndOneRowPerRequestedPlay",
+     "suite": "AcousticVocab.DataLogging.Tests.AdapterIntegrationTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/AdapterIntegrationTests.cs",
+     "name": "GainDeviceFreezeAndSignedDeviationReferencesRemainTyped",
+     "suite": "AcousticVocab.DataLogging.Tests.AdapterIntegrationTests"
+    }
+   ],
+   "issue": 315,
+   "fix_pr": 329
   },
   {
    "id": "REQ-LOG-02",
@@ -1900,8 +5116,42 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuLedger.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuContracts.cs",
+    "unity/Assets/ExperimentApp/Runtime/SelectionMenus/MenuExposureProjection.cs",
+    "unity/Assets/ExperimentApp/Runtime/SessionIntegration/JoinedEngineeringBootstrap.cs",
+    "unity/Assets/ExperimentApp/Runtime/Teaching/LessonTimeline.cs",
+    "unity/Assets/ExperimentApp/Runtime/ResponsePanel/ResponsePanelController.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataAdapters.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "ExposureHandoffRetainsRejectedCandidatesAndPauseFacts",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/SelectionMenus/MenuLedgerTests.cs",
+     "name": "SelfConsistentStorageCannotHideInvalidPresentationEvidence",
+     "suite": "AcousticVocab.SelectionMenus.Tests.MenuLedgerTests"
+    },
+    {
+     "path": "unity/Assets/Tests/EditMode/Teaching/LessonTimelineTests.cs",
+     "name": "InstructionalTimeoutPermittedOnFirstLateDeadlineFrame",
+     "suite": "AcousticVocab.Teaching.Tests.LessonTimelineTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "TornTailIsPreservedAndCommittedResponseSurvivesRecovery",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "RejectedAndYokedCandidatePlaysAreBothRetained",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1911,8 +5161,49 @@
    "owner": "app",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
+   "code": [
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataJournal.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataExport.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataDeriver.cs",
+    "unity/Assets/ExperimentApp/Runtime/DataLogging/DataContracts.cs"
+   ],
+   "tests": [
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataExportTests.cs",
+     "name": "ExportIsCreateNewAndIncludesRawDerivedAndManifestHashes",
+     "suite": "AcousticVocab.DataLogging.Tests.DataExportTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataExportTests.cs",
+     "name": "AnyDerivedByteChangeOrManifestChangeIsDetected",
+     "suite": "AcousticVocab.DataLogging.Tests.DataExportTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataExportTests.cs",
+     "name": "RawByteTamperCannotBeReexportedAsValid",
+     "suite": "AcousticVocab.DataLogging.Tests.DataExportTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataExportTests.cs",
+     "name": "PreservedUnacknowledgedTailPreventsQualification",
+     "suite": "AcousticVocab.DataLogging.Tests.DataExportTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "CompleteCorruptLineFailsClosedAndLeavesOriginalUntouched",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "TornTailIsPreservedAndCommittedResponseSurvivesRecovery",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    },
+    {
+     "path": "unity/Assets/Tests/DataLogging/DataJournalTests.cs",
+     "name": "AppendFailureLatchesAndNeverReportsUnflushedRecordAsDurable",
+     "suite": "AcousticVocab.DataLogging.Tests.DataJournalTests"
+    }
+   ],
    "issue": null
   },
   {
@@ -1922,9 +5213,21 @@
    "owner": "schedules",
    "verification": "auto",
    "gate": null,
-   "code": [],
-   "tests": [],
-   "issue": null
+   "code": [
+    "schedules/src/av_schedules/design.py",
+    "schedules/src/av_schedules/assign.py",
+    "schedules/src/av_schedules/orders.py",
+    "schedules/src/av_schedules/cli.py"
+   ],
+   "tests": [
+    {
+     "path": "tests/schedules/test_curriculum.py",
+     "name": "test_b_spare_count_rules",
+     "suite": "test_curriculum"
+    }
+   ],
+   "issue": 266,
+   "fix_pr": 298
   },
   {
    "id": "REQ-PLAN-02",
