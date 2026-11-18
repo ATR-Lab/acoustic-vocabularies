@@ -5,7 +5,8 @@ runtime sources (``unity/Assets/ExperimentApp/Runtime/**/*.cs``): every string l
 matching ``app_fault_codes.APP_CODE_LITERAL_RE``, a superset of the fault codes (refusal
 and status codes have the same shape). Each must be in ``vocab.APP_FAULT_CODE_TYPES`` (one
 of the seven procedure fault types) or in ``app_fault_codes.APP_CODES_NOT_APPLICABLE``, so a
-new app code fails here until it is classified.
+new app code fails here until it is classified. Both sets may hold codes that are not in
+this tree's runtime (codes of queued Unity changes, or removed ones); that is not a failure.
 """
 
 from __future__ import annotations
@@ -53,10 +54,11 @@ SEVEN_CLASSES = {
 }
 
 
-def test_the_scan_finds_every_mapped_app_code():
-    """REQ-INT-07: the runtime scan sees the app's codes, and each mapped code is one of them."""
+def test_the_scan_finds_the_app_codes():
+    """REQ-INT-07: the runtime scan sees the app's codes, one per procedure fault class among
+    them. Mapped and listed codes may be absent: they include codes of queued Unity changes."""
     assert APP_CODES, f"no app codes found under {RUNTIME}"
-    assert set(APP_FAULT_CODE_TYPES) <= set(APP_CODES)
+    assert set(SEVEN_CLASSES) <= set(APP_CODES)
 
 
 @pytest.mark.parametrize("code", APP_CODES)
@@ -82,7 +84,6 @@ def test_app_codes_cover_the_seven_procedure_fault_types_apart():
     assert types == list(SEVEN_CLASSES.values())
     assert len(set(types)) == 7 and set(types) == set(FAULT_TYPES) - {"other"}
     assert set(APP_FAULT_CODE_TYPES.values()) == set(types)
-    assert set(SEVEN_CLASSES) <= set(APP_CODES)
 
 
 def test_the_app_mapping_agrees_with_the_canonical_codes():

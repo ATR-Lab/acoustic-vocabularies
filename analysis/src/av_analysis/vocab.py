@@ -133,7 +133,8 @@ LOST_OPPORTUNITY_CODE: Final = "OPPORTUNITY_LOST"
 # state the fault; a possible cause of one (application focus loss or pause, state-source
 # staleness, a binding, pin or chain check) is not. Every other app code is listed in
 # ``app_fault_codes.APP_CODES_NOT_APPLICABLE`` and classifies as ``other``;
-# ``tests/analysis/test_app_fault_codes.py`` fails on an app code in neither.
+# ``tests/analysis/test_app_fault_codes.py`` fails on an app code in neither. Both sets also
+# cover codes of queued Unity pull requests, so a code need not be on main yet.
 APP_FAULT_CODE_TYPES: Final[dict[str, FaultType]] = {
     # Frame interval over 250 ms in an attempt (frame monitor, soak capture).
     "FRAME_FREEZE": "presentation_freeze",
@@ -163,10 +164,12 @@ APP_FAULT_CODE_TYPES: Final[dict[str, FaultType]] = {
     "DATA_TEMPLATE_HASH": "hash_mismatch",
     "DATA_UPLOAD_HASH_MISMATCH": "hash_mismatch",
     "GRAMMAR_HASH": "hash_mismatch",
+    "GRAMMAR_EXPLANATION_HASH": "hash_mismatch",
     "JOIN_GRAMMAR_REVIEW_HASH": "hash_mismatch",
     "JOIN_PROVISIONED_HASH": "hash_mismatch",
     "LAYOUT_HASH_MISMATCH": "hash_mismatch",
     "MENU_LEDGER_HASH": "hash_mismatch",
+    "MENU_BANK_HASH_MISMATCH": "hash_mismatch",
     "MENU_STORE_HASH": "hash_mismatch",
     "ORIENTATION_DEMO_INDEX_HASH": "hash_mismatch",
     "ORIENTATION_PLAN_HASH": "hash_mismatch",
@@ -177,6 +180,8 @@ APP_FAULT_CODE_TYPES: Final[dict[str, FaultType]] = {
     "SESSION_JOURNAL_HASH": "hash_mismatch",
     "SESSION_PACKAGE_HASH": "hash_mismatch",
     "SESSION_SCHEMA_HASH": "hash_mismatch",
+    "SOAK_FEED_HASH": "hash_mismatch",
+    "SOAK_FEED_REPLY_HASH": "hash_mismatch",
     "STATE_HASH_IDENTITY": "hash_mismatch",
     # A requested neutral reset that was refused, failed its check or missed its deadline.
     "SESSION_RESET_DEADLINE_MISSED": "failed_reset",
@@ -185,6 +190,7 @@ APP_FAULT_CODE_TYPES: Final[dict[str, FaultType]] = {
     "SIMULATION_LOCAL_RESET_REFUSED": "failed_reset",
     "ORIENTATION_DEMO_RESET_REFUSED": "failed_reset",
     "CONTROL_RESET": "failed_reset",
+    "SOAK_RESUME_LATEST_RESET_FAILED": "failed_reset",
     # A response that could not be persisted, or a response window closed without one.
     "ASSESSMENT_RESPONSE_LOG_MISSING": "missing_response_log",
     "ASSESSMENT_RESPONSE_LOG_FAILED": "missing_response_log",
