@@ -62,11 +62,11 @@ namespace AcousticVocab.Orientation
         public OrientationStoryDecor(Transform display,Font font)
         {
             // The edge panel sits just behind the backing cube (front face at
-            // z -0.006, back at +0.006) so only its rim and glow show around it.
+            // z -0.006, back at +0.006) so only its 8 mm rim and glow show around it.
             var back=new GameObject("Orientation story edge",typeof(RectTransform),typeof(Canvas));
             back.transform.SetParent(display,false);back.transform.localPosition=new Vector3(0,0,.0075f);back.transform.localScale=Vector3.one*.001f;
-            var backCanvas=back.GetComponent<Canvas>();backCanvas.renderMode=RenderMode.WorldSpace;((RectTransform)back.transform).sizeDelta=new Vector2(740,300);
-            Edge=StoryPanel.Create(back.transform,"Story card",Vector2.zero,new Vector2(724,284));
+            var backCanvas=back.GetComponent<Canvas>();backCanvas.renderMode=RenderMode.WorldSpace;((RectTransform)back.transform).sizeDelta=new Vector2(760,320);
+            Edge=StoryPanel.Create(back.transform,"Story card",Vector2.zero,new Vector2(736,296));
             // Front decor sits between the backing face and the labels (z -0.012).
             var front=new GameObject("Orientation story decor",typeof(RectTransform),typeof(Canvas));
             front.transform.SetParent(display,false);front.transform.localPosition=new Vector3(0,0,-.008f);front.transform.localScale=Vector3.one*.001f;
