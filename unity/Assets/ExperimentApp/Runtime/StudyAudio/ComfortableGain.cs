@@ -110,6 +110,22 @@ namespace AcousticVocab.StudyAudio
             if(!held) throw new AudioFault("GAIN_NOT_HELD");
             return gain;
         }
+        public bool HasHistory(string codedId)
+        {
+            string path=FileFor(codedId);
+            return File.Exists(path) && new FileInfo(path).Length>0;
+        }
+        // The calibration scene's starting level (decision I7). A person with no
+        // history starts at the initial gain or the cap, whichever is lower. A
+        // recorded, carried or held gain above the cap is refused (GAIN_ABOVE_CAP),
+        // never lowered; the screening level is checked before a carried row is written.
+        public float RestoreWithinCap(string codedId,string sourceCodedId,string allocationReceiptSha256,double monoSeconds,LevelCap cap)
+        {
+            if(cap==null) throw new AudioFault("LEVEL_CAP_OFFSET_MISSING");
+            if(sourceCodedId==null) return HasHistory(codedId)?cap.Require(Restore(codedId)):cap.Initial(InitialGain);
+            if(!HasHistory(codedId) && HasHistory(sourceCodedId)) cap.Require(Restore(sourceCodedId));
+            return cap.Require(RestoreOrCarry(sourceCodedId,codedId,allocationReceiptSha256,monoSeconds));
+        }
         public bool IsHeld(string codedId)
         {
             string path=FileFor(codedId);

@@ -105,6 +105,7 @@ namespace AcousticVocab.StudyAudio
         AudioCalibrationConfiguration config;
         ProfileComfortSequence sequence;
         ComfortableGainStore gains;
+        LevelCap cap;
         IReadOnlyDictionary<string,PcmWave> examples;
         FileStream log;
         bool failed,focused=true,paused,pairActive,firstComplete,secondScheduled,secondComplete;
@@ -132,14 +133,18 @@ namespace AcousticVocab.StudyAudio
                 Write("calibration_started",new JObject { ["config_sha256"]=config.ConfigSha256,["profile_order"]=new JArray(config.ProfileOrder),
                     ["engineering_desktop_preview"]=config.DesktopPreview,["route"]=foundation.Configuration["audio"]["route"],
                     ["audio_onset_estimate_mono_ms"]=null,["onset_uncertainty_ms"]=null,["route_offset_ms"]=null,["study_playback_enabled"]=false });
+                // Decision I7: no calibration sound without the station's coupler
+                // measurement, and no level above the cap it implies.
+                cap=LevelCap.FromStation(foundation.Configuration);
                 examples=config.ReadExamples(root); gains=new ComfortableGainStore(Path.Combine(root,"comfortable-gain"));
                 sequence=new ProfileComfortSequence(config.ProfileOrder.ToArray()); sequence.Answer+=OnAnswer;
                 player.Event+=OnAudioEvent;
                 player.Configure(AudioRouteCalibration.Unmeasured((string)foundation.Configuration["audio"]["route"]),Gate);
-                float restored=config.GainSourceCodedId==null?gains.Restore(config.CodedId):gains.RestoreOrCarry(config.GainSourceCodedId,config.CodedId,config.GainSourceReceiptSha256,AudioPlayer.Now); player.SetComfortableGain(restored); player.Preload(examples,config.BudgetBytes);
+                float restored=gains.RestoreWithinCap(config.CodedId,config.GainSourceCodedId,config.GainSourceReceiptSha256,AudioPlayer.Now,cap); player.SetComfortableGain(restored); player.Preload(examples,config.BudgetBytes);
                 held=gains.IsHeld(config.CodedId);
                 Write("calibration_preloaded",new JObject { ["gain"]=restored,["estimated_preload_bytes"]=player.EstimatedPreloadBytes,
-                    ["gain_held"]=held,["unity_allocated_bytes"]=player.UnityAllocatedBytes,["file_sha256"]=new JArray(AudioCalibrationConfiguration.FileHashes),["pcm_sha256"]=new JArray(AudioCalibrationConfiguration.PcmHashes) });
+                    ["gain_held"]=held,["level_cap_max_gain"]=cap.MaxGain,["level_cap_dba_peak_at_ear"]=LevelCap.CapDbaPeakAtEar,["ear_peak_dba_at_0dbfs"]=cap.EarPeakDbaAt0Dbfs,
+                    ["level_calibration_measured_on"]=cap.MeasuredOn,["unity_allocated_bytes"]=player.UnityAllocatedBytes,["file_sha256"]=new JArray(AudioCalibrationConfiguration.FileHashes),["pcm_sha256"]=new JArray(AudioCalibrationConfiguration.PcmHashes) });
                 listenButton.onClick.AddListener(BeginProfile); quieterButton.onClick.AddListener(()=>ChangeGain(-.05f)); louderButton.onClick.AddListener(()=>ChangeGain(.05f));
                 yesButton.onClick.AddListener(()=>Respond(true)); noButton.onClick.AddListener(()=>Respond(false)); stopButton.onClick.AddListener(()=>Fail("CALIBRATION_OPERATOR_STOP"));
                 controllerPosition=new InputAction("Calibration controller position",InputActionType.Value,"<XRController>{RightHand}/devicePosition");
@@ -180,7 +185,8 @@ namespace AcousticVocab.StudyAudio
             if(!Gate() || pairActive || player.Playing || sequence.Finished || held) return;
             try
             {
-                float value=Mathf.Clamp(player.CurrentGain+delta,.01f,1f);
+                // The control cannot raise the level beyond the cap (decision I7).
+                float value=cap.Require(cap.Step(player.CurrentGain,delta));
                 var change=gains.ChangeForComfort(config.CodedId,config.VisitId,value,AudioPlayer.Now,!player.Playing);
                 player.SetComfortableGain(value); Write("calibration_gain_applied",new JObject { ["old_gain"]=change.Previous,["new_gain"]=change.Current }); RefreshUi();
             }
@@ -283,6 +289,7 @@ namespace AcousticVocab.StudyAudio
             bool gate=Gate(),answer=gate && pairActive && sequence.CanAnswer && !player.Playing;
             listenButton.interactable=gate && !pairActive && !sequence.Finished && player.Ready;
             quieterButton.interactable=louderButton.interactable=gate && !pairActive && !sequence.Finished && !player.Playing && !held;
+            if(cap!=null && player.CurrentGain>=cap.MaxGain) louderButton.interactable=false;
             yesButton.interactable=noButton.interactable=answer; stopButton.interactable=!failed && !sequence.Finished;
             gainText.text="Level: "+Mathf.RoundToInt(player.CurrentGain*100)+"%";
             statusText.text=sequence.Finished?(anyUncomfortable?"Responses saved. Tell the operator about discomfort.":"Responses saved. Continue with the operator."):

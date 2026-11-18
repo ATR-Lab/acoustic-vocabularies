@@ -5,6 +5,7 @@ using System.Text;
 using AcousticVocab.Foundation;
 using AcousticVocab.StudyAudio;
 using AcousticVocab.Assessment;
+using AcousticVocab.SessionEngine;
 using NUnit.Framework;
 using Newtonsoft.Json.Linq;
 namespace AcousticVocab.SessionIntegration.Tests
@@ -65,7 +66,8 @@ namespace AcousticVocab.SessionIntegration.Tests
             }
             if(assets.Schedule.Blocks.SelectMany(b=>b.Items).Any(i=>i.TrialType=="speech"))
             {Assert.That(assets.Speech,Is.Not.Null);Assert.That(assets.Speech.SimulationOnly,Is.True);Assert.That(assets.Speech.CanPresentValidity,Is.True);Assert.That(assets.Speech.Reviewed,Is.False);Assert.That(assets.Speech.Demo,Is.True);}
-            Assert.That(new JoinedVisitArtifacts(c).MissingAuthority,Is.EqualTo("JOIN_AUDIO_CALIBRATION_MISSING"));
+            // Outside simulation the station's coupler measurement is checked first (decision I7).
+            Assert.That(Assert.Throws<SessionFault>(()=>new JoinedVisitArtifacts(c)).Code,Is.EqualTo("LEVEL_CAP_OFFSET_MISSING"));
         }
     }
 }

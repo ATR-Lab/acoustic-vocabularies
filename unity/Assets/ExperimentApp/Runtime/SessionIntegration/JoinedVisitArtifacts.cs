@@ -33,7 +33,7 @@ namespace AcousticVocab.SessionIntegration
     {
         public JoinedEngineeringConfig Config{get;}public LoadedAudioPackage Package{get;}public VisitSchedule Schedule{get;}
         public IReadOnlyDictionary<string,JoinedModuleKind> Blocks{get;}public TeachingCatalog Teaching{get;private set;}public MenuCatalog Menus{get;private set;}
-        public AssessmentScripts Scripts{get;private set;}public SpeechBank Speech{get;private set;}public AudioRouteCalibration Route{get;private set;}public float Gain{get;private set;}
+        public AssessmentScripts Scripts{get;private set;}public SpeechBank Speech{get;private set;}public AudioRouteCalibration Route{get;private set;}public float Gain{get;private set;}public LevelCap Cap{get;private set;}
         public bool RatingsReviewed{get;private set;}public SimulationTestAuthority Simulation{get;}
         public GrammarAssets Grammar{get;private set;}public JoinedGrammarReview GrammarReview{get;private set;}
         public VisitSchedule YokedActiveSchedule{get;private set;}
@@ -61,9 +61,9 @@ namespace AcousticVocab.SessionIntegration
             // Missing provisioned authority is an explicit blocked state. No
             // placeholder route offset/review/gain is promoted by DEMO scope.
             if(simulation!=null){simulation.Bind(Package.PackageSha256,Schedule.Sha256,Package.Demo,Schedule.Demo,config.Directory("evidence"));Route=AudioRouteCalibration.ForSimulation(simulation);Gain=simulation.AudioGain;}
-            else{if(!Have("audio_calibration","comfort_gain"))return;
+            else{Cap=StationLevelCap(Json(Read("station")));if(!Have("audio_calibration","comfort_gain"))return;
             Route=AudioRouteCalibration.FromStationConfig(Json(Read("station")),Read("audio_calibration"));if(Route.UncertaintyMs>20)throw new SessionFault("JOIN_ROUTE_UNCERTAINTY");
-            var gain=config.RequireFile("comfort_gain");Gain=HeldGain(Path.GetFileName(gain.Path),gain.ReadVerified(),gain.Sha256,config.CodedId);}
+            var gain=config.RequireFile("comfort_gain");Gain=CappedGain(Cap,HeldGain(Path.GetFileName(gain.Path),gain.ReadVerified(),gain.Sha256,config.CodedId));}
             if(Blocks.Values.Any(k=>k is JoinedModuleKind.Teaching or JoinedModuleKind.Menus))
             {
                 if(!Have("teaching_manifest","teaching_review"))return;
@@ -111,6 +111,18 @@ namespace AcousticVocab.SessionIntegration
             if(codedId==null||fileName!=PcmWave.Hash(Encoding.ASCII.GetBytes(codedId))+".local.jsonl")throw new SessionFault("JOIN_GAIN_BINDING");
             try{return ComfortableGainStore.RestoreHeldVerified(bytes,sha256,codedId);}
             catch(AudioFault fault)when(fault.Code=="GAIN_NOT_HELD"){throw new SessionFault("JOIN_GAIN_NOT_HELD");}
+        }
+        // Decision I7, for every role that plays study sound: a station without
+        // its coupler measurement cannot start a visit, and a held level above
+        // the cap it implies is refused rather than lowered.
+        public static LevelCap StationLevelCap(JObject station)
+        {
+            try{return LevelCap.FromStation(station);}catch(AudioFault fault){throw new SessionFault(fault.Code);}
+        }
+        public static float CappedGain(LevelCap cap,float gain)
+        {
+            if(cap==null)throw new SessionFault("LEVEL_CAP_OFFSET_MISSING");
+            try{return cap.Require(gain);}catch(AudioFault fault){throw new SessionFault(fault.Code);}
         }
         public static void ValidateYokedPair(VisitSchedule yoked,VisitSchedule active,byte[] pinnedAllocation,IReadOnlyList<string> expectedMenuKeys)
         {
