@@ -1,0 +1,405 @@
+{
+  "$id": "https://github.com/ATR-Lab/acoustic-vocabularies/analysis/schema/power-check-config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Grid, losses, SD sources and scenarios of the freeze power check (#309, analysis/docs/power-check.md). Synthetic simulation input; a pilot-informed configuration stays in restricted storage.",
+  "properties": {
+    "alpha": {
+      "exclusiveMinimum": 0,
+      "maximum": 0.5,
+      "type": "number"
+    },
+    "basis": {
+      "description": "planning: the committed synthetic example; pilot: SDs and loss informed by pilot summaries (kept in restricted storage, never committed).",
+      "enum": [
+        "planning",
+        "pilot"
+      ]
+    },
+    "criterion": {
+      "description": "Required power (point estimate) for every primary contrast.",
+      "exclusiveMaximum": 1,
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "description": {
+      "maxLength": 400,
+      "minLength": 1,
+      "type": "string"
+    },
+    "effect_pp": {
+      "description": "Difference (percentage points) each primary contrast must detect.",
+      "exclusiveMinimum": 0,
+      "maximum": 50,
+      "type": "number"
+    },
+    "format": {
+      "const": "av-analysis/power-check-config"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "replicates": {
+      "default": 2000,
+      "description": "Replicates per cell; 1,000-2,000 for a decision run.",
+      "maximum": 100000,
+      "minimum": 10,
+      "type": "integer"
+    },
+    "seed": {
+      "description": "DEMO- seed label; every replicate draws from seeds.rng(seed, 'power-check', study, source, scenario, loss, size, replicate).",
+      "pattern": "^DEMO-[A-Za-z0-9._-]{1,64}$",
+      "type": "string"
+    },
+    "studies": {
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "A": {
+          "additionalProperties": false,
+          "properties": {
+            "baseline": {
+              "description": "Mean accuracy of the reference cells (A1, A2; assigned member on dictionary items).",
+              "exclusiveMaximum": 1,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            "heterogeneity": {
+              "description": "SD sources; the engine follows from the source (latent SDs: logistic-normal trial model; unit SDs: unit-level normal model).",
+              "items": {
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "engine": {
+                        "const": "logistic-normal"
+                      },
+                      "latent": {
+                        "description": "Latent logit SD set of the planning model (simulate.py A_CENTRAL_SD or A_PESSIMISTIC_SD).",
+                        "enum": [
+                          "central",
+                          "pessimistic"
+                        ]
+                      },
+                      "multiplier": {
+                        "default": 1.0,
+                        "description": "Multiplies every latent SD (heterogeneity stress).",
+                        "exclusiveMinimum": 0,
+                        "maximum": 5,
+                        "type": "number"
+                      },
+                      "name": {
+                        "description": "Name of the SD source (unique within the study; part of the seed).",
+                        "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "engine",
+                      "latent"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "engine": {
+                        "const": "unit-normal"
+                      },
+                      "name": {
+                        "description": "Name of the SD source (unique within the study; part of the seed).",
+                        "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$",
+                        "type": "string"
+                      },
+                      "unit_sd": {
+                        "additionalProperties": false,
+                        "description": "SD of the unit differences (proportion scale), for example from the pilot.",
+                        "properties": {
+                          "A3-A2": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 1,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "A3-A2"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "engine",
+                      "unit_sd"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "learners_per_book": {
+              "description": "Learners per book (planning: 4).",
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "loss": {
+              "description": "Independent per-person loss probabilities (MCAR).",
+              "items": {
+                "exclusiveMaximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "scenarios": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "effect_pp": {
+                    "additionalProperties": false,
+                    "description": "True contrasts in percentage points.",
+                    "properties": {
+                      "A3-A2": {
+                        "maximum": 50,
+                        "minimum": -50,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "A3-A2"
+                    ],
+                    "type": "object"
+                  },
+                  "name": {
+                    "description": "Scenario name (unique within the study).",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "effect_pp"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "sizes": {
+              "description": "Planned batches (grid; multiples of 6).",
+              "items": {
+                "maximum": 600,
+                "minimum": 6,
+                "multipleOf": 6,
+                "type": "integer"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "baseline",
+            "sizes",
+            "loss",
+            "heterogeneity",
+            "scenarios",
+            "learners_per_book"
+          ],
+          "type": "object"
+        },
+        "B": {
+          "additionalProperties": false,
+          "properties": {
+            "baseline": {
+              "description": "Mean accuracy of the reference cells (A1, A2; assigned member on dictionary items).",
+              "exclusiveMaximum": 1,
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            "heterogeneity": {
+              "description": "SD sources; the engine follows from the source (latent SDs: logistic-normal trial model; unit SDs: unit-level normal model).",
+              "items": {
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "engine": {
+                        "const": "logistic-normal"
+                      },
+                      "latent": {
+                        "description": "Latent logit SD set of the planning model (simulate.py B_CENTRAL_SD or B_PESSIMISTIC_SD).",
+                        "enum": [
+                          "central",
+                          "pessimistic"
+                        ]
+                      },
+                      "multiplier": {
+                        "default": 1.0,
+                        "description": "Multiplies every latent SD (heterogeneity stress).",
+                        "exclusiveMinimum": 0,
+                        "maximum": 5,
+                        "type": "number"
+                      },
+                      "name": {
+                        "description": "Name of the SD source (unique within the study; part of the seed).",
+                        "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "engine",
+                      "latent"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "correlation": {
+                        "default": 0.0,
+                        "description": "Correlation of a pair's C and S differences.",
+                        "maximum": 1,
+                        "minimum": -1,
+                        "type": "number"
+                      },
+                      "engine": {
+                        "const": "unit-normal"
+                      },
+                      "name": {
+                        "description": "Name of the SD source (unique within the study; part of the seed).",
+                        "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$",
+                        "type": "string"
+                      },
+                      "unit_sd": {
+                        "additionalProperties": false,
+                        "description": "SD of the unit differences (proportion scale), for example from the pilot.",
+                        "properties": {
+                          "C": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 1,
+                            "type": "number"
+                          },
+                          "S": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 1,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "C",
+                          "S"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "engine",
+                      "unit_sd"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "loss": {
+              "description": "Independent per-person loss probabilities (MCAR).",
+              "items": {
+                "exclusiveMaximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "scenarios": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "effect_pp": {
+                    "additionalProperties": false,
+                    "description": "True contrasts in percentage points.",
+                    "properties": {
+                      "C": {
+                        "maximum": 50,
+                        "minimum": -50,
+                        "type": "number"
+                      },
+                      "S": {
+                        "maximum": 50,
+                        "minimum": -50,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "C",
+                      "S"
+                    ],
+                    "type": "object"
+                  },
+                  "name": {
+                    "description": "Scenario name (unique within the study).",
+                    "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "effect_pp"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "sizes": {
+              "description": "Planned pairs (grid; multiples of 2).",
+              "items": {
+                "maximum": 600,
+                "minimum": 2,
+                "multipleOf": 2,
+                "type": "integer"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "baseline",
+            "sizes",
+            "loss",
+            "heterogeneity",
+            "scenarios"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "basis",
+    "description",
+    "seed",
+    "alpha",
+    "effect_pp",
+    "criterion",
+    "studies"
+  ],
+  "title": "Power-check configuration (python -m av_analysis.power_check run --config)",
+  "type": "object"
+}
