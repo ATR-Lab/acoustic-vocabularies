@@ -77,8 +77,38 @@ def instant(text):
         raise ConsoleFault("time_invalid") from None
 
 
+# Study B acquisition visits. Their pair rule matches the app, which refuses a yoked
+# session more than 24 h after the active launch (MENU_REPLAY_AGE): no deviation clears it.
+ACQUISITION_VISITS = ("V1", "V2", "V3")
+
+
+def active_end_faults(record, started, now):
+    """The active partner's session must be closed before the yoked one starts.
+
+    Consoles share no session records across stations, so the operator imports the
+    close as the `active_end` anchor: exactly a coded `session_id` and an aware
+    `ended_utc` after the active start.
+    """
+    if record is None:
+        return ["active_end_missing"]
+    try:
+        require(isinstance(record, dict) and set(record) == {"session_id", "ended_utc"}, "active_end_invalid")
+        code(record["session_id"])
+        ended = instant(record["ended_utc"])
+    except ConsoleFault:
+        raise ConsoleFault("active_end_invalid") from None
+    require(ended > started, "active_end_invalid")
+    return ["active_end_future"] if ended > now else []
+
+
+def overrideable(study, visit, fault):
+    """A logged deviation clears a timing fault for its day, except an acquisition pair window."""
+    return not (study == "B" and visit in ACQUISITION_VISITS and fault == "pair_window")
+
+
 def visit_window(study, visit, anchors, day, role=None, now=None):
-    """Calendar-day windows; dyad ordering is an elapsed UTC interval."""
+    """Calendar-day windows; dyad ordering is an elapsed UTC interval and, at V1-V3,
+    the imported close of the active session."""
     windows = {("A", "D7"): ("D0", 7, 1), ("B", "V2"): ("V1", 2, 1),
                ("B", "V3"): ("V1", 4, 1), ("B", "W1"): ("V3", 7, 1),
                ("B", "W4"): ("V3", 28, 2)}
@@ -98,9 +128,12 @@ def visit_window(study, visit, anchors, day, role=None, now=None):
             faults.append("visit_window")
     if study == "B" and role == "yoked":
         require("active" in anchors and now is not None, "active_anchor_missing")
-        elapsed = (now - instant(anchors["active"])).total_seconds()
+        started = instant(anchors["active"])
+        elapsed = (now - started).total_seconds()
         if not 0 <= elapsed <= 86400:
             faults.append("pair_window")
+        if visit in ACQUISITION_VISITS:
+            faults.extend(active_end_faults(anchors.get("active_end"), started, now))
     return dict(start=lower.isoformat() if lower else None, end=upper.isoformat() if upper else None,
                 faults=faults)
 
@@ -296,7 +329,7 @@ class Console:
         now = self.clock()
         window = visit_window(v.study, v.visit, v.anchors, now.astimezone().date(), v.role, now)
         for fault in window["faults"]:
-            if self.overrides.get(fault) != now.astimezone().date().isoformat():
+            if not overrideable(v.study, v.visit, fault) or self.overrides.get(fault) != now.astimezone().date().isoformat():
                 faults.append(fault)
         if not self.comfort:
             faults.append("comfort_pending")

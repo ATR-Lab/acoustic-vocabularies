@@ -22,7 +22,20 @@ neither a CSV hash nor a browser flag establishes engine readiness.
 
 Windows use the station's local calendar and the person's recorded anchors:
 A D7=D0+7±1; B V2/V3=V1+2±1/+4±1; W1/W4=person's V3+7±1/+28±2 days.
-Yoked must follow active within 24 elapsed UTC hours. Missing anchors block.
+Yoked must follow active within 24 elapsed UTC hours of the `active` anchor (the
+active session's start). Missing anchors block.
+
+At Study B V1–V3 the pair rule matches the app (`MENU_REPLAY_AGE`). Fault
+`pair_window` is not overrideable: a `pair_window` deviation is still logged
+but never enables start. The yoked visit also needs an `active_end` anchor,
+the record of the active partner's session close: exactly `session_id` (coded)
+and `ended_utc` (ISO 8601 with offset, after `active`). The operator imports it
+from the active session's records; consoles share none across stations.
+Start is refused with `active_end_missing` until it is present and
+`active_end_future` while its end is after the station clock. A malformed record
+or one ending at or before `active` raises `active_end_invalid`. W1/W4 are
+unchanged: no close record, and a `pair_window` deviation still applies (#316).
+
 A logged timing exception lasts only that visit/calendar day. Hash, old-hash,
 lock, audio, reset, input, headset and stale failures are not overrideable.
 This tightens #73's broad override wording to preserve #64/#67 mandatory gates.

@@ -41,7 +41,7 @@ def test_calendar_window_edges_and_outside(study,visit,anchor,offset,tolerance):
 @pytest.mark.parametrize('seconds,passes',[(0,True),(86400,True),(-1,False),(86401,False)])
 def test_yoked_order_and_24_hours(seconds,passes):
     view = visit_window('B','V1',{'active':NOW.isoformat()},NOW.date(),'yoked',NOW+timedelta(seconds=seconds))
-    assert (not view['faults']) is passes
+    assert ('pair_window' not in view['faults']) is passes
 
 
 def test_missing_anchor_is_not_overrideable(console):
