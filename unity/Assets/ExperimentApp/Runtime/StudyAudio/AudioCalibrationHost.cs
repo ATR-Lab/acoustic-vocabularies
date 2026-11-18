@@ -89,6 +89,7 @@ namespace AcousticVocab.StudyAudio
         public Text statusText,gainText;
         public Button listenButton,quieterButton,louderButton,yesButton,noButton,stopButton;
         public LineRenderer controllerRay;
+        public RectTransform levelFill,levelKnob;
         AudioCalibrationConfiguration config;
         ProfileComfortSequence sequence;
         ComfortableGainStore gains;
@@ -263,6 +264,7 @@ namespace AcousticVocab.StudyAudio
             quieterButton.interactable=louderButton.interactable=gate && !pairActive && !sequence.Finished && !player.Playing;
             yesButton.interactable=noButton.interactable=answer; stopButton.interactable=!failed && !sequence.Finished;
             gainText.text="Level: "+Mathf.RoundToInt(player.CurrentGain*100)+"%";
+            CalibrationLevelView.Show(levelFill,levelKnob,player.CurrentGain);
             statusText.text=sequence.Finished?(anyUncomfortable?"Responses saved. Tell the operator about discomfort.":"Responses saved. Continue with the operator."):
                 !gate?"Waiting for tracking and focus.":answer?"Was that comfortable?":pairActive?"Listen to both examples.":"Example "+(answered+1)+" of 3. Choose a comfortable level, then listen.";
         }

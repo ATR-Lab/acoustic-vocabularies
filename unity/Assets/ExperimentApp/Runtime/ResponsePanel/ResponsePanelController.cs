@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using AcousticVocab.Foundation;
+using AcousticVocab.Theme;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.XR;
@@ -28,7 +29,7 @@ namespace AcousticVocab.ResponsePanel
         // Synchronous durable subscriber boundary; failures propagate into ResponseState's abort latch.
         public event Action<PanelProcessEvent> ProcessRecorded;
         public event Action<string> Faulted;
-        sealed class Key { public string Kind, Value; public Transform Root; public BoxCollider Collider; public MeshRenderer Surface; public TextMesh Text; }
+        sealed class Key { public string Kind, Value; public Transform Root; public BoxCollider Collider; public MeshRenderer Surface, Edge; public TextMesh Text; }
         readonly List<Key> keys = new List<Key>();
         readonly List<XRHandSubsystem> handSubsystems = new List<XRHandSubsystem>();
         readonly List<Material> materials = new List<Material>();
@@ -38,6 +39,8 @@ namespace AcousticVocab.ResponsePanel
         TextMesh roleLabel;
         GameObject roleBacking;
         LineRenderer ray;
+        ResponsePanelStyle style;
+        Key hovered;
         GameObject tip;
         bool triggerDown, triggerArmed, pokeArmed, haveTip, engineeringStarted, paused, focused = true;
         Vector3 previousTip;
@@ -118,7 +121,7 @@ namespace AcousticVocab.ResponsePanel
                 {
                     if (InputAvailable && State.Request != null && !State.Locked) Fail("input_lost");
                     triggerArmed = false; triggerDown = false; pokeArmed = false; haveTip = false;
-                    ray.enabled = false; tip.SetActive(false);
+                    ray.enabled = false; tip.SetActive(false); hovered = null;
                 }
                 InputAvailable = available;
                 if (!engineeringStarted && settings.EngineeringMode != "disabled" && ReadyForTrial)
@@ -139,12 +142,13 @@ namespace AcousticVocab.ResponsePanel
             else State.DontKnow();
             Refresh();
         }
-        void Hit(Ray pointer, float distance)
+        void Hit(Ray pointer, float distance) { var closest = Pointed(pointer, distance); if (closest != null) Press(closest); }
+        Key Pointed(Ray pointer, float distance)
         {
             Key closest = null; float nearest = distance;
             foreach (var key in keys)
                 if (key.Root.gameObject.activeInHierarchy && key.Collider.Raycast(pointer, out RaycastHit hit, distance) && hit.distance < nearest) { nearest = hit.distance; closest = key; }
-            if (closest != null) Press(closest);
+            return closest;
         }
         static bool Finite(Vector3 p) => float.IsFinite(p.x) && float.IsFinite(p.y) && float.IsFinite(p.z);
         bool PollController()
@@ -162,13 +166,15 @@ namespace AcousticVocab.ResponsePanel
             if (!float.IsFinite(rotationNorm) || Mathf.Abs(rotationNorm - 1) > .001f || !Finite(direction) || direction.sqrMagnitude < .9f || direction.sqrMagnitude > 1.1f) return false;
             ray.enabled = !FaultLatched && panel.gameObject.activeInHierarchy;
             ray.SetPosition(0, start); ray.SetPosition(1, start + direction * 2);
+            // Hover only lights the edge of the key under the ray; it never selects.
+            hovered = ray.enabled ? Pointed(new Ray(start, direction), 2) : null;
             if (!down) triggerArmed = true;
             if (down && !triggerDown && triggerArmed) { Hit(new Ray(start, direction), 2); triggerArmed = false; }
             triggerDown = down; return true;
         }
         bool PollHand()
         {
-            ray.enabled = false; handSubsystems.Clear(); SubsystemManager.GetSubsystems(handSubsystems);
+            ray.enabled = false; hovered = null; handSubsystems.Clear(); SubsystemManager.GetSubsystems(handSubsystems);
             var subsystem = handSubsystems.Find(x => x.running); if (subsystem == null) return false;
             var hand = settings.LeftHand ? subsystem.leftHand : subsystem.rightHand;
             if (!hand.isTracked || !hand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose pose) || !Finite(pose.position)) return false;
@@ -197,11 +203,12 @@ namespace AcousticVocab.ResponsePanel
             roleBacking = GameObject.CreatePrimitive(PrimitiveType.Cube); roleBacking.name = "Role label backing";
             roleBacking.transform.SetParent(panel, false); roleBacking.transform.localPosition = new Vector3(0, settings.ButtonHeight + settings.Gap, 0);
             roleBacking.transform.localScale = new Vector3(settings.ButtonWidth * 1.5f, settings.ButtonHeight * .75f, .015f);
-            DisposeObject(roleBacking.GetComponent<Collider>()); roleBacking.GetComponent<Renderer>().sharedMaterial = Material("Unlit/Color", new Color(.075f, .085f, .095f));
+            DisposeObject(roleBacking.GetComponent<Collider>()); roleBacking.GetComponent<Renderer>().sharedMaterial = Material("Unlit/Color", StudyTheme.PanelFill);
             ray = new GameObject("Input ray").AddComponent<LineRenderer>(); ray.transform.SetParent(panel, false); ray.positionCount = 2;
-            ray.startWidth = ray.endWidth = .0015f; ray.sharedMaterial = Material("Unlit/Color", Color.cyan); ray.enabled = false;
+            ray.startWidth = ray.endWidth = .0015f; ray.sharedMaterial = Material("Unlit/Color", StudyTheme.Pointer); ray.enabled = false;
             tip = GameObject.CreatePrimitive(PrimitiveType.Sphere); tip.name = "Index tip"; tip.transform.SetParent(panel, false); tip.transform.localScale = Vector3.one * .008f;
-            DisposeObject(tip.GetComponent<Collider>()); tip.GetComponent<Renderer>().sharedMaterial = Material("Unlit/Color", Color.cyan); tip.SetActive(false);
+            DisposeObject(tip.GetComponent<Collider>()); tip.GetComponent<Renderer>().sharedMaterial = Material("Unlit/Color", StudyTheme.Pointer); tip.SetActive(false);
+            style = new ResponsePanelStyle(panel, settings, panelFont, reference.position);
             panel.gameObject.SetActive(false);
         }
         Vector3 Grid(int index, float shift) => new Vector3((index % 4 - 1.5f) * (settings.ButtonWidth + settings.Gap), shift - index / 4 * (settings.ButtonHeight + settings.Gap), 0);
@@ -216,8 +223,9 @@ namespace AcousticVocab.ResponsePanel
         {
             var root = new GameObject("Response key").transform; root.SetParent(panel, false); root.localPosition = position;
             var box = GameObject.CreatePrimitive(PrimitiveType.Cube); box.transform.SetParent(root, false); box.transform.localScale = new Vector3(settings.ButtonWidth * widthScale, settings.ButtonHeight, .015f);
-            var surface = box.GetComponent<MeshRenderer>(); surface.sharedMaterial = Material("Unlit/Color", new Color(.12f, .16f, .2f));
-            keys.Add(new Key { Kind = kind, Value = value, Root = root, Collider = box.GetComponent<BoxCollider>(), Surface = surface, Text = Text(root, "", new Vector3(0, 0, -.012f)) });
+            var surface = box.GetComponent<MeshRenderer>(); surface.sharedMaterial = Material("Unlit/Color", StudyTheme.SurfaceEnabled);
+            var edge = ResponsePanelStyle.AddKeyEdge(root, box.transform.localScale, color => Material("Unlit/Color", color));
+            keys.Add(new Key { Kind = kind, Value = value, Root = root, Collider = box.GetComponent<BoxCollider>(), Surface = surface, Edge = edge, Text = Text(root, "", new Vector3(0, 0, -.012f)) });
         }
         void Label(TextMesh label, string value, float width)
         {
@@ -253,10 +261,11 @@ namespace AcousticVocab.ResponsePanel
                 else { text = key.Value == "commit" ? "Commit" : "Don't know"; if (key.Value == "commit") enabled = State.CanCommit; }
                 key.Root.gameObject.SetActive(show); if (!show) continue;
                 Label(key.Text, text, settings.ButtonWidth * (i >= 12 ? 1.5f : 1));
-                key.Surface.sharedMaterial.color = selected ? new Color(.04f, .36f, .5f) : enabled ? new Color(.15f, .2f, .25f) : new Color(.075f, .085f, .095f);
+                key.Surface.sharedMaterial.color = StudyTheme.SurfaceFor(enabled, selected);
+                key.Edge.sharedMaterial.color = StudyTheme.EdgeFor(selected || enabled && key == hovered);
             }
             Label(roleLabel, role == PanelRole.Command ? "" : role == PanelRole.Action ? "Action" : "Target", settings.ButtonWidth * 4);
-            roleBacking.SetActive(role != PanelRole.Command);
+            roleBacking.SetActive(role != PanelRole.Command); style.Show(State.Request.Mode);
         }
         void OnApplicationFocus(bool value) { focused = value; if (!value && State?.Request != null && !State.Locked) Fail("application_focus_lost"); }
         void OnApplicationPause(bool value) { paused = value; if (value && State?.Request != null && !State.Locked) Fail("application_paused"); }

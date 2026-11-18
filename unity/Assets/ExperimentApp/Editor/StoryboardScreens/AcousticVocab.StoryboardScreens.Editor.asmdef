@@ -1,0 +1,20 @@
+{
+  "name": "AcousticVocab.StoryboardScreens.Editor",
+  "references": [
+    "AcousticVocab.Foundation",
+    "AcousticVocab.Foundation.Editor",
+    "AcousticVocab.ResponsePanel",
+    "AcousticVocab.ResponsePanel.Editor",
+    "AcousticVocab.SelectionMenus",
+    "AcousticVocab.SessionEngine",
+    "AcousticVocab.StudyAudio",
+    "AcousticVocab.StudyAudio.Editor",
+    "AcousticVocab.Teaching",
+    "AcousticVocab.Workcell",
+    "AcousticVocab.Workcell.Editor",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

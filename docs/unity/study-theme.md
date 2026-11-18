@@ -109,3 +109,20 @@ a GPU display (no `-nographics`). When the workcell and robot description can be
 built (`G1_DESCRIPTION_JSON` set) the panels are drawn in front of the workcell;
 otherwise on a neutral floor. Lesson text is example text and the lesson picture is
 a procedural placeholder. Captures are for review only and are not committed.
+
+### Where it applies on the test, menu and level screens (frames 1, 8-11)
+
+These views use the tokens and components above. Each change is presentation only: no
+timing, count, order, scoring or logging rule changes, and existing labels keep their
+geometry and the reviewed glyph angle.
+
+| View | What changes |
+| --- | --- |
+| Response panel (`ResponsePanelStyle`) | Keys use `SurfaceFor(enabled, selected)` with a hairline edge behind each key (lit when selected, or when the controller ray points at an enabled key; hover never selects). The role-label backing uses `PanelFill`; the ray and fingertip use `Pointer`. A glass card sits behind the keys. Test trials (full message and atomic probe) show a "Heard once" chip whose capitals are at least the configured key-label angle; it depends on the panel mode only, so it is the same on every trial and for every response. Lessons and practice show no chip. |
+| Study B menus (`MenuScreenStyle`) | A glass card behind the menu and a static mark under each option (the same seeded waveform glyph and two dots for "plays twice"). The assigned (read-only) role also sees a lock badge beside the instructions; the assigned wording itself stays the reviewed content text. The badge is the only difference between the two roles' screens. No countdown. |
+| Comfortable level (calibration scene) | Theme colours on the background, buttons (each button state) and pointer, Image-only edges (the calibration scene allows only plain uGUI components), and a display-only level bar showing the relative gain the level logic set, on the store's domain (0, 1]. The bar takes no input and never sets or widens a gain. |
+
+`AcousticVocab.StoryboardScreens.Editor.StoryboardCaptureScreens.Capture` (editor only)
+writes `frame-01-*.png` and `frame-08-*.png` ... `frame-11-*.png` the same way, with
+synthetic DEMO text, to an absolute `AV_STORYBOARD_CAPTURE_DIR` outside the checkout.
+It builds the calibration and workcell scenes, so it needs `G1_DESCRIPTION_JSON`.
